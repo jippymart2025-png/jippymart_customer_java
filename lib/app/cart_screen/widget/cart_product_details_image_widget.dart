@@ -483,7 +483,6 @@ Widget cartProductDetailsImageWidget(
                                                                   .split('~')
                                                                   .first);
                                                 }
-
                                                 // Check if this is a promotional item
                                                 if (cartProductModel.promoId !=
                                                         null &&

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
+import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
 import 'package:jippymart_customer/app/favourite_screens/controller/favourite_controller.dart';
 import 'package:jippymart_customer/app/favourite_screens/favourite_screen.dart';
 import 'package:jippymart_customer/app/home_screen/home_screen.dart';
@@ -18,6 +19,18 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class DashBoardController extends GetxController {
+
+
+  // RxList<Widget?> pageList = <Widget?>[].obs;
+  //
+  // void _updatePageList() {
+  //   final bool walletEnabled = Constant.walletSetting ?? false;
+  //
+  //   pageList.value = walletEnabled
+  //       ? [null, null, null, null, null]
+  //       : [null, null, null, null];
+  // }
+  RxBool isCartScreenInitialized = false.obs;
   RxInt selectedIndex = 0.obs;
   RxList<Widget> pageList = <Widget>[].obs;
   RxString currentTheme = "theme_1".obs;
@@ -37,7 +50,6 @@ class DashBoardController extends GetxController {
     currentTheme.value = Constant.theme;
     _updatePageList();
     _setupThemeListener();
-
     // ✅ Theme change listener
     _themeListener = ever(currentTheme, (_) {
       print('[DEBUG] Theme changed to: ${currentTheme.value}');
@@ -157,13 +169,13 @@ class DashBoardController extends GetxController {
               const FavouriteScreen(),
               const WalletScreen(),
               const OrderScreen(),
-              const ProfileScreen(),
+              const CartCheckOutScreen(),
             ]
           : [
               const HomeScreen(),
               const FavouriteScreen(),
               const OrderScreen(),
-              const ProfileScreen(),
+              const CartCheckOutScreen(),
             ];
     } else {
       newPages = walletEnabled
@@ -172,13 +184,13 @@ class DashBoardController extends GetxController {
               const FavouriteScreen(),
               const WalletScreen(),
               const OrderScreen(),
-              const ProfileScreen(),
+              const CartCheckOutScreen(),
             ]
           : [
               const HomeScreenTwo(),
               const FavouriteScreen(),
               const OrderScreen(),
-              const ProfileScreen(),
+              const CartCheckOutScreen(),
             ];
     }
 

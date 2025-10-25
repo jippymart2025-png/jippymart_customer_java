@@ -1,0 +1,240 @@
+
+import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
+import 'package:jippymart_customer/app/cart_screen/widget/cart_product_details_image_widget.dart';
+import 'package:jippymart_customer/app/dash_board_screens/controller/dash_board_controller.dart';
+import 'package:jippymart_customer/constant/constant.dart';
+import 'package:jippymart_customer/constant/show_toast_dialog.dart';
+import 'package:jippymart_customer/controllers/cart_controller.dart';
+import 'package:jippymart_customer/controllers/mart_navigation_controller.dart';
+import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/themes/mart_theme.dart';
+import 'package:jippymart_customer/themes/round_button_fill.dart';
+import 'package:jippymart_customer/utils/dark_theme_provider.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+
+// Cart theme enum for different color schemes
+
+class CartCheckOutScreen extends StatefulWidget {
+  final bool hideBackButton;
+  final String? source; // 'food' or 'mart' or null for auto-detect
+  final bool isFromMartNavigation; // true if accessed from mart navigation tabs
+
+  const CartCheckOutScreen(
+      {super.key,
+        this.hideBackButton = false,
+        this.source,
+        this.isFromMartNavigation = false});
+
+  @override
+  State<CartCheckOutScreen> createState() => _CartCheckOutScreenState();
+}
+
+class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
+  late CartController controller;
+
+  @override
+  void initState() {
+    super.initState();
+      controller = Get.put(CartController());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _refreshCartData();
+      });
+  }
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshCartData();
+    });
+  }
+
+  void _refreshCartData() {
+    print('DEBUG: Refreshing cart data...');
+    // Use the enhanced force refresh method
+    controller.forceRefreshCart();
+
+    // **FIXED: Re-initialize address if not selected (for global cart controller)**
+    if (controller.selectedAddress.value == null) {
+      print(
+          '🏠 [CART_REFRESH] No address selected, re-initializing address...');
+      // Trigger address initialization by calling the public method
+      controller.initializeAddress();
+    }
+
+    // Ensure payment method is set correctly based on order total
+    Future.delayed(const Duration(milliseconds: 500), () {
+      controller.checkAndUpdatePaymentMethod();
+      print(
+          'DEBUG: Cart refresh completed - Items: ${cartItem.length}, Total: ${controller.totalAmount.value}');
+    });
+  }
+
+  // Get theme colors based on cart theme
+  CartThemeColors _getThemeColors(CartTheme theme) {
+    switch (theme) {
+      case CartTheme.mart:
+        return CartThemeColors(
+          primary: MartTheme.jippyMartButton,
+          primaryDark: const Color(0xFF005A52),
+          accent: const Color(0xFF00A896),
+          surface: Colors.white,
+          onSurface: Colors.black87,
+        );
+      case CartTheme.food:
+        return CartThemeColors(
+          primary: const Color(0xFFFF6B35),
+          primaryDark: const Color(0xFFE55A2B),
+          accent: const Color(0xFFFF8A65),
+          surface: AppThemeData.surface,
+          onSurface: Colors.black87,
+        );
+      case CartTheme.mixed:
+        return CartThemeColors(
+          primary: const Color(0xFF607D8B),
+          primaryDark: const Color(0xFF455A64),
+          accent: const Color(0xFF78909C),
+          surface: AppThemeData.surface,
+          onSurface: Colors.black87,
+        );
+    }
+  }
+
+  // Determine cart theme based on source and content
+  CartTheme _getCartTheme() {
+    // If source is explicitly provided, use it
+    if (widget.source != null) {
+      if (widget.source == 'mart') {
+        return CartTheme.mart;
+      } else if (widget.source == 'food') {
+        return CartTheme.food;
+      }
+    }
+
+    // Auto-detect based on cart content
+    bool hasMartItems = cartItem.any((item) =>
+    item.vendorID?.contains('mart') == true ||
+        item.vendorID?.startsWith('demo_') == true ||
+        item.vendorID?.contains('vendor') == true);
+
+    bool hasFoodItems = cartItem.any((item) =>
+    !(item.vendorID?.contains('mart') == true ||
+        item.vendorID?.startsWith('demo_') == true ||
+        item.vendorID?.contains('vendor') == true));
+
+    if (hasMartItems && !hasFoodItems) {
+      return CartTheme.mart;
+    } else if (hasFoodItems && !hasMartItems) {
+      return CartTheme.food;
+    } else {
+      return CartTheme.mixed; // Both food and mart items
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final themeChange = Provider.of<DarkThemeProvider>(context);
+    final cartTheme = _getCartTheme();
+    final themeColors = _getThemeColors(cartTheme);
+
+    return GetX<CartController>(builder: (controller) {
+      // Check payment method every time the UI is built
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.checkAndUpdatePaymentMethod();
+      });
+
+      return WillPopScope(
+        onWillPop: () async {
+          if (controller.isGlobalLocked.value) {
+            ShowToastDialog.showToast("Please wait, payment is processing...");
+            return false; // prevent back navigation
+          }
+          return true;
+        },
+        child: Scaffold(
+            backgroundColor: themeChange.getThem()
+                ? AppThemeData.surfaceDark
+                : themeColors.surface,
+            appBar: AppBar(
+              backgroundColor: themeChange.getThem()
+                  ? AppThemeData.surfaceDark
+                  : themeColors.primary,
+              foregroundColor: Colors.white,
+              automaticallyImplyLeading: !widget.hideBackButton,
+              leading: widget.hideBackButton
+                  ? null
+                  : IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () {
+                  // Check if we're in mart navigation system (cart tab)
+                  if (widget.source == 'mart' &&
+                      widget.isFromMartNavigation) {
+                    // If accessed from mart navigation cart tab, go back to mart home
+                    try {
+                      final martNavController =
+                      Get.find<MartNavigationController>();
+                      martNavController.goToHome();
+                    } catch (e) {
+                      // Fallback to regular back navigation
+                      Get.back();
+                    }
+                  } else {
+                    // Regular back navigation for other cases (product details, etc.)
+                    Get.back();
+                  }
+                },
+              ),
+              title: Text(
+              'Cart',
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+              actions: [
+                // Debug buttons removed - methods not available in current version
+              ],
+            ),
+            body: cartItem.isEmpty
+                ? Constant.showEmptyView(message: "Item Not available".tr)
+                : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+
+                  cartProductDetailsImageWidget(
+                    themeChange,
+                    controller,
+                  ),
+
+                ],
+              ),
+            ),
+
+            //changed here
+            bottomNavigationBar: cartItem.isEmpty
+                ? null
+                : Container(
+              decoration: BoxDecoration(
+                  color:
+                  themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                  borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                  child: RoundedButtonFill(
+                  textColor: AppThemeData.surface,
+                  isEnabled: true,
+                  title:  "Check Out".tr,
+                  height: 5,
+                  color: AppThemeData.primary300,
+                  fontSizes: 16,
+                  onPress: () async {
+                    Get.to(() => const CartScreen());
+                    }
+                          ),
+                ),),
+      );
+    });
+  }
+}

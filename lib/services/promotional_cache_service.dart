@@ -1,4 +1,3 @@
-import 'dart:developer';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 
 /// **ULTRA-FAST PROMOTIONAL CACHE SERVICE**

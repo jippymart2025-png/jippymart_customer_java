@@ -32,7 +32,6 @@ import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/restaurant_sorting_utils.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
-import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/widget/animated_search_hint.dart';
 import 'package:jippymart_customer/widget/filter_bar.dart';
 import 'package:jippymart_customer/widget/gradiant_text.dart';

@@ -8,7 +8,6 @@ import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_scree
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/controllers/category_detail_controller.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
-import 'package:jippymart_customer/themes/app_them_data.dart';
 
 class MartSearchWidget extends StatefulWidget {
   final bool showHistory;

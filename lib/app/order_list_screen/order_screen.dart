@@ -419,299 +419,309 @@ class OrderScreen extends StatelessWidget {
 
   itemView(DarkThemeProvider themeChange, BuildContext context,
       OrderModel orderModel, OrderController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Container(
-        decoration: ShapeDecoration(
-          color: themeChange.getThem()
-              ? AppThemeData.grey900
-              : AppThemeData.grey50,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+    return GestureDetector(
+      onTap: ()async{
+        double? surgeFee =
+            await fetchOrderSergeFee(orderModel.id ?? '');
+        Get.to(
+            OrderDetailsScreen(
+              surgeFee: surgeFee,
+            ),
+            arguments: {"orderModel": orderModel});
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Container(
+          decoration: ShapeDecoration(
+            color: themeChange.getThem()
+                ? AppThemeData.grey900
+                : AppThemeData.grey50,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.all(Radius.circular(16)),
-                    child: Stack(
-                      children: [
-                        orderModel.vendor?.photo != null &&
-                                orderModel.vendor!.photo!.isNotEmpty
-                            ? NetworkImageWidget(
-                                imageUrl: orderModel.vendor!.photo!,
-                                fit: BoxFit.cover,
-                                height: Responsive.height(10, context),
-                                width: Responsive.width(20, context),
-                              )
-                            : Container(
-                                height: Responsive.height(10, context),
-                                width: Responsive.width(20, context),
-                                decoration: BoxDecoration(
-                                  color: AppThemeData.grey200,
-                                  borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.all(Radius.circular(16)),
+                      child: Stack(
+                        children: [
+                          orderModel.vendor?.photo != null &&
+                                  orderModel.vendor!.photo!.isNotEmpty
+                              ? NetworkImageWidget(
+                                  imageUrl: orderModel.vendor!.photo!,
+                                  fit: BoxFit.cover,
+                                  height: Responsive.height(10, context),
+                                  width: Responsive.width(20, context),
+                                )
+                              : Container(
+                                  height: Responsive.height(10, context),
+                                  width: Responsive.width(20, context),
+                                  decoration: BoxDecoration(
+                                    color: AppThemeData.grey200,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: Icon(
+                                    Icons.store,
+                                    color: AppThemeData.grey500,
+                                    size: Responsive.width(5, context),
+                                  ),
                                 ),
-                                child: Icon(
-                                  Icons.store,
-                                  color: AppThemeData.grey500,
-                                  size: Responsive.width(5, context),
-                                ),
+                          Container(
+                            height: Responsive.height(10, context),
+                            width: Responsive.width(20, context),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: const Alignment(0.00, 1.00),
+                                end: const Alignment(0, -1),
+                                colors: [
+                                  Colors.black.withOpacity(0),
+                                  AppThemeData.grey900
+                                ],
                               ),
-                        Container(
-                          height: Responsive.height(10, context),
-                          width: Responsive.width(20, context),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: const Alignment(0.00, 1.00),
-                              end: const Alignment(0, -1),
-                              colors: [
-                                Colors.black.withOpacity(0),
-                                AppThemeData.grey900
-                              ],
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(
-                    width: 10,
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          orderModel.status.toString(),
-                          textAlign: TextAlign.right,
-                          style: TextStyle(
-                            color: Constant.statusColor(
-                                status: orderModel.status.toString()),
-                            fontFamily: AppThemeData.semiBold,
-                            fontWeight: FontWeight.w500,
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        Text(
-                          orderModel.vendor?.title?.toString() ?? "Jippy Mart",
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey50
-                                : AppThemeData.grey900,
-                            fontFamily: AppThemeData.medium,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(
-                          height: 5,
-                        ),
-                        Text(
-                          orderModel.createdAt != null
-                              ? Constant.timestampToDateTime(
-                                  orderModel.createdAt!)
-                              : "Order placed",
-                          style: TextStyle(
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey300
-                                : AppThemeData.grey600,
-                            fontFamily: AppThemeData.medium,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        )
-                      ],
+                    const SizedBox(
+                      width: 10,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-
-              FutureBuilder<double?>(
-                future: fetchOrderToPay(orderModel.id ?? ''),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return CircularProgressIndicator(); // or shimmer
-                  } else if (snapshot.hasData) {
-                    return Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Total to Pay",
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            orderModel.status.toString(),
+                            textAlign: TextAlign.right,
                             style: TextStyle(
+                              color: Constant.statusColor(
+                                  status: orderModel.status.toString()),
+                              fontFamily: AppThemeData.semiBold,
+                              fontWeight: FontWeight.w500,
+                              fontSize: 12,
+                            ),
+                          ),
+                          const SizedBox(
+                            height: 5,
+                          ),
+                          Text(
+                            orderModel.vendor?.title?.toString() ?? "Jippy Mart",
+                            style: TextStyle(
+                              fontSize: 16,
                               color: themeChange.getThem()
                                   ? AppThemeData.grey50
                                   : AppThemeData.grey900,
+                              fontFamily: AppThemeData.medium,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          const SizedBox(
+                            height: 5,
+                          ),
+                          Text(
+                            orderModel.createdAt != null
+                                ? Constant.timestampToDateTime(
+                                    orderModel.createdAt!)
+                                : "Order placed",
+                            style: TextStyle(
+                              color: themeChange.getThem()
+                                  ? AppThemeData.grey300
+                                  : AppThemeData.grey600,
+                              fontFamily: AppThemeData.medium,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          )
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+      
+                FutureBuilder<double?>(
+                  future: fetchOrderToPay(orderModel.id ?? ''),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return CircularProgressIndicator(); // or shimmer
+                    } else if (snapshot.hasData) {
+                      return Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Total to Pay",
+                              style: TextStyle(
+                                color: themeChange.getThem()
+                                    ? AppThemeData.grey50
+                                    : AppThemeData.grey900,
+                                fontFamily: AppThemeData.semiBold,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            Constant.amountShow(
+                                amount: snapshot.data!.toString()),
+                            style: TextStyle(
+                              color: themeChange.getThem()
+                                  ? AppThemeData.primary300
+                                  : AppThemeData.primary300,
                               fontFamily: AppThemeData.semiBold,
                               fontWeight: FontWeight.w600,
                               fontSize: 16,
                             ),
                           ),
-                        ),
-                        Text(
-                          Constant.amountShow(
-                              amount: snapshot.data!.toString()),
-                          style: TextStyle(
-                            color: themeChange.getThem()
-                                ? AppThemeData.primary300
-                                : AppThemeData.primary300,
-                            fontFamily: AppThemeData.semiBold,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
-                    );
-                  } else {
-                    return Text("No billing info");
-                  }
-                },
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                child: MySeparator(
-                    color: themeChange.getThem()
-                        ? AppThemeData.grey700
-                        : AppThemeData.grey200),
-              ),
-              ///////////
-
-              // ListView.builder(
-              //   itemCount: orderModel.products!.length,
-              //   shrinkWrap: true,
-              //   padding: EdgeInsets.zero,
-              //   physics: const NeverScrollableScrollPhysics(),
-              //   itemBuilder: (context, index) {
-              //     CartProductModel cartProduct = orderModel.products![index];
-              //     return Row(
-              //       children: [
-              //         Expanded(
-              //           child: Text(
-              //             "${cartProduct.quantity} x ${cartProduct.name.toString()}",
-              //             style: TextStyle(
-              //               color: themeChange.getThem()
-              //                   ? AppThemeData.grey50
-              //                   : AppThemeData.grey900,
-              //               fontFamily: AppThemeData.regular,
-              //               fontWeight: FontWeight.w400,
-              //             ),
-              //           ),
-              //         ),
-              //         Text(
-              //           Constant.amountShow(
-              //               amount: double.parse(
-              //                           cartProduct.discountPrice.toString()) <=
-              //                       0
-              //                   ? (double.parse('${cartProduct.price ?? 0}') *
-              //                           double.parse(
-              //                               '${cartProduct.quantity ?? 0}'))
-              //                       .toString()
-              //                   : (double.parse(
-              //                               '${cartProduct.discountPrice ?? 0}') *
-              //                           double.parse(
-              //                               '${cartProduct.quantity ?? 0}'))
-              //                       .toString()),
-              //           style: TextStyle(
-              //             color: themeChange.getThem()
-              //                 ? AppThemeData.grey50
-              //                 : AppThemeData.grey900,
-              //             fontFamily: AppThemeData.semiBold,
-              //             fontWeight: FontWeight.w500,
-              //           ),
-              //         )
-              //       ],
-              //     );
-              //   },
-              ///////
-              Row(
-                children: [
-                  orderModel.status == Constant.orderCompleted
-                      ? Expanded(
-                          child: InkWell(
-                            onTap: () {
-                              if (orderModel.products != null) {
-                                for (var element in orderModel.products!) {
-                                  controller.addToCart(
-                                      cartProductModel: element);
-                                  ShowToastDialog.showToast(
-                                      "Item Added In a cart".tr);
+                        ],
+                      );
+                    } else {
+                      return Text("No billing info");
+                    }
+                  },
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: MySeparator(
+                      color: themeChange.getThem()
+                          ? AppThemeData.grey700
+                          : AppThemeData.grey200),
+                ),
+                ///////////
+      
+                // ListView.builder(
+                //   itemCount: orderModel.products!.length,
+                //   shrinkWrap: true,
+                //   padding: EdgeInsets.zero,
+                //   physics: const NeverScrollableScrollPhysics(),
+                //   itemBuilder: (context, index) {
+                //     CartProductModel cartProduct = orderModel.products![index];
+                //     return Row(
+                //       children: [
+                //         Expanded(
+                //           child: Text(
+                //             "${cartProduct.quantity} x ${cartProduct.name.toString()}",
+                //             style: TextStyle(
+                //               color: themeChange.getThem()
+                //                   ? AppThemeData.grey50
+                //                   : AppThemeData.grey900,
+                //               fontFamily: AppThemeData.regular,
+                //               fontWeight: FontWeight.w400,
+                //             ),
+                //           ),
+                //         ),
+                //         Text(
+                //           Constant.amountShow(
+                //               amount: double.parse(
+                //                           cartProduct.discountPrice.toString()) <=
+                //                       0
+                //                   ? (double.parse('${cartProduct.price ?? 0}') *
+                //                           double.parse(
+                //                               '${cartProduct.quantity ?? 0}'))
+                //                       .toString()
+                //                   : (double.parse(
+                //                               '${cartProduct.discountPrice ?? 0}') *
+                //                           double.parse(
+                //                               '${cartProduct.quantity ?? 0}'))
+                //                       .toString()),
+                //           style: TextStyle(
+                //             color: themeChange.getThem()
+                //                 ? AppThemeData.grey50
+                //                 : AppThemeData.grey900,
+                //             fontFamily: AppThemeData.semiBold,
+                //             fontWeight: FontWeight.w500,
+                //           ),
+                //         )
+                //       ],
+                //     );
+                //   },
+                ///////
+                Row(
+                  children: [
+                    orderModel.status == Constant.orderCompleted
+                        ? Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                if (orderModel.products != null) {
+                                  for (var element in orderModel.products!) {
+                                    controller.addToCart(
+                                        cartProductModel: element);
+                                    ShowToastDialog.showToast(
+                                        "Item Added In a cart".tr);
+                                  }
                                 }
-                              }
-                            },
-                            child: Text(
-                              "Reorder".tr,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  color: themeChange.getThem()
-                                      ? AppThemeData.primary300
-                                      : AppThemeData.primary300,
-                                  fontFamily: AppThemeData.semiBold,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16),
-                            ),
-                          ),
-                        )
-                      : orderModel.status == Constant.orderShipped ||
-                              orderModel.status == Constant.orderInTransit
-                          ? Expanded(
-                              child: InkWell(
-                                onTap: () {
-                                  Get.to(const LiveTrackingScreen(),
-                                      arguments: {"orderModel": orderModel});
-                                },
-                                child: Text(
-                                  "Track Order".tr,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                      color: themeChange.getThem()
-                                          ? AppThemeData.primary300
-                                          : AppThemeData.primary300,
-                                      fontFamily: AppThemeData.semiBold,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 16),
-                                ),
+                              },
+                              child: Text(
+                                "Reorder".tr,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                    color: themeChange.getThem()
+                                        ? AppThemeData.primary300
+                                        : AppThemeData.primary300,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16),
                               ),
-                            )
-                          : const SizedBox(),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        double? surgeFee =
-                            await fetchOrderSergeFee(orderModel.id ?? '');
-                        Get.to(
-                            OrderDetailsScreen(
-                              surgeFee: surgeFee,
                             ),
-                            arguments: {"orderModel": orderModel});
-                        // Get.off(const OrderPlacingScreen(), arguments: {"orderModel": orderModel});
-                      },
-                      child: Text(
-                        "View Details".tr,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey50
-                                : AppThemeData.grey900,
-                            fontFamily: AppThemeData.semiBold,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16),
+                          )
+                        : orderModel.status == Constant.orderShipped ||
+                                orderModel.status == Constant.orderInTransit
+                            ? Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    Get.to(const LiveTrackingScreen(),
+                                        arguments: {"orderModel": orderModel});
+                                  },
+                                  child: Text(
+                                    "Track Order".tr,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: themeChange.getThem()
+                                            ? AppThemeData.primary300
+                                            : AppThemeData.primary300,
+                                        fontFamily: AppThemeData.semiBold,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 16),
+                                  ),
+                                ),
+                              )
+                            : const SizedBox(),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () async {
+                          double? surgeFee =
+                              await fetchOrderSergeFee(orderModel.id ?? '');
+                          Get.to(
+                              OrderDetailsScreen(
+                                surgeFee: surgeFee,
+                              ),
+                              arguments: {"orderModel": orderModel});
+                        },
+                        child: Text(
+                          "View Details".tr,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: themeChange.getThem()
+                                  ? AppThemeData.grey50
+                                  : AppThemeData.grey900,
+                              fontFamily: AppThemeData.semiBold,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-            ],
+                  ],
+                ),
+                const SizedBox(
+                  height: 10,
+                ),
+              ],
+            ),
           ),
         ),
       ),

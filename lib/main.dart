@@ -63,8 +63,7 @@ void main() async {
     GlobalDeeplinkHandler.instance,
     permanent: true,
   );
-  print(
-      '🔗 [MAIN] GlobalDeeplinkHandler initialized and registered successfully');
+
 
   // 🛡️ CRASH PREVENTION: Initialize crash prevention system
   print(

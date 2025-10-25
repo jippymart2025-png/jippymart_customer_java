@@ -1,8 +1,8 @@
 import 'package:jippymart_customer/app/mart/mart_home_screen/widget/grocery_component_widget.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/widget/mart_header_card.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/controller/mart_controller.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/widget/mart_sub_category_section.dart';
-import 'package:jippymart_customer/app/mart/widgets/mart_product_card.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_product_home_card.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_search_bar.dart';
 import 'package:jippymart_customer/app/mart/widgets/playtime_product_card.dart';
@@ -34,268 +34,318 @@ class MartHomeScreen extends StatelessWidget {
           backgroundColor: ColorConst.white,
           body: GetBuilder<MartController>(
             builder: (controller) {
-              // Manually trigger streaming data loading when screen is built
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                print(
-                    '[MART HOME] 🚀 Screen built, triggering streaming data load...');
-
-                // Load homepage categories from Firestore
                 if (controller.featuredCategories.isEmpty &&
                     !controller.isCategoryLoading.value &&
                     !controller.isHomepageCategoriesLoaded.value) {
-                  print(
-                      '[MART HOME] 🏠 Loading homepage categories from Firestore...');
                   controller.loadHomepageCategoriesStreaming(limit: 6);
                 }
-
-                // Load featured products via streaming
                 if (controller.featuredItems.isEmpty &&
                     !controller.isProductLoading.value) {
-                  print(
-                      '[MART HOME] ⭐ Triggering featured products streaming...');
                   controller.loadFeaturedItemsStreaming();
                 }
-
-                // Load trending items via streaming
                 if (controller.trendingItems.isEmpty &&
                     !controller.isTrendingLoading.value) {
-                  print(
-                      '[MART HOME] 🔥 Triggering trending items streaming...');
+
                   controller.loadTrendingItemsStreaming();
                 }
-
                 // Load subcategories for the subcategories section
                 if (controller.subcategories.isEmpty &&
                     !controller.isSubcategoryLoading.value) {
-                  print(
-                      '[MART HOME] 🏷️ Triggering subcategories streaming...');
-                  // Load subcategories from the first main category
+
                   if (controller.featuredCategories.isNotEmpty) {
                     final mainCategory = controller.featuredCategories[0];
                     controller
                         .loadSubcategoriesStreaming(mainCategory.id ?? '');
                   }
                 }
-
-                // Load dynamic sections immediately in parallel (highest priority)
-                print(
-                    '[MART HOME] 📂 Triggering dynamic sections loading in parallel...');
-                controller.loadSectionsImmediately();
-                // Load mart banners using lazy loading streams (after screen is built)
-                print(
-                    '[MART HOME] 🎯 Starting lazy loading mart banners stream...');
-                // Use Future.microtask to load banners after the current frame
                 Future.microtask(() {
                   controller.loadMartBannersStream();
                 });
-                // Start banner timer if banners are loaded
                 if (controller.martTopBanners.isNotEmpty) {
-                  print('[MART HOME] 🎯 Starting banner timer...');
                   controller.startMartBannerTimer();
                 }
               });
-
-              return Stack(
-                children: [
-                  RefreshIndicator(
-                    onRefresh: controller.refreshData,
-                    child: CustomScrollView(
-                      slivers: [
-                        // Header Card (Group 266) - Toggle and Address only
-                        SliverToBoxAdapter(
-                          child: MartHeaderCard(screenWidth: screenWidth),
-                        ),
-
-                        // Top Banners Section - Only show if banners are available
-                        SliverToBoxAdapter(
-                          child: Obx(() {
-                            print(
-                                '[MART HOME] Banner count: ${controller.martTopBanners.length}');
-                            if (controller.martTopBanners.isNotEmpty) {
-                              return Column(
-                                children: [
-                                  const SizedBox(height: 6),
-                                  ReusableBannerWidget(
-                                    banners: controller.martTopBanners,
-                                    pageController: controller
-                                        .martTopBannerController.value,
-                                    currentPage:
-                                        controller.currentTopBannerPage,
-                                    height: 150,
-                                    onPanStart: () =>
-                                        controller.stopMartBannerTimer(),
-                                    onPanEnd: () =>
-                                        controller.startMartBannerTimer(),
-                                  ),
-                                ],
-                              );
-                            } else {
+              return SingleChildScrollView(
+                child: Column(
+                  children: [
+                    RefreshIndicator(
+                      onRefresh: controller.refreshData,
+                      child: Column(
+                        children: [
+                          MartHeaderCard(screenWidth: screenWidth),
+                          Obx(() {
+                              if (controller.martTopBanners.isNotEmpty) {
+                                return Column(
+                                  children: [
+                                    const SizedBox(height: 6),
+                                    ReusableBannerWidget(
+                                      banners: controller.martTopBanners,
+                                      pageController: controller
+                                          .martTopBannerController.value,
+                                      currentPage:
+                                      controller.currentTopBannerPage,
+                                      height: 150,
+                                      onPanStart: () =>
+                                          controller.stopMartBannerTimer(),
+                                      onPanEnd: () =>
+                                          controller.startMartBannerTimer(),
+                                    ),
+                                  ],
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            }),
+                            searchWidgetMain(),
+                        MartFeaturedProducts(screenWidth: screenWidth),
+                        Obx(() {
+                              if (controller.martBottomBanners.isNotEmpty) {
+                                return Column(
+                                  children: [
+                                    const SizedBox(height: 8),
+                                    ReusableBannerWidget(
+                                      banners: controller.martBottomBanners,
+                                      pageController: controller
+                                          .martBottomBannerController.value,
+                                      currentPage:
+                                      controller.currentBottomBannerPage,
+                                      height: 150,
+                                      enableAutoScroll:
+                                      false, // Bottom banners don't auto-scroll
+                                    ),
+                                    const SizedBox(height: 8),
+                                    BannerIndicatorDots(
+                                      itemCount:
+                                      controller.martBottomBanners.length,
+                                      currentIndex:
+                                      controller.currentBottomBannerPage,
+                                      activeColor: const Color(0xFF00998a),
+                                      inactiveColor: Colors.grey[300]!,
+                                    ),
+                                    const SizedBox(height: 8),
+                                  ],
+                                );
+                              }
                               return const SizedBox.shrink();
-                            }
-                          }),
-                        ),
-                        SliverToBoxAdapter(
-                          child: searchWidgetMain(),
-                        ),
-
-                        // Minimal spacing
-                        // SliverToBoxAdapter(
-                        //   child: SizedBox(height: 2),
-                        // ),
+                            }),
 
 
-                        // Minimal spacing
-                        // SliverToBoxAdapter(
-                        //   child: SizedBox(height: 2),
-                        // ),
+                         MartTrendingDealsPersonalCare(
+                                screenWidth: screenWidth,),
 
+                          // Subcategories Section
+                          MartSubcategoriesSection(
+                                screenWidth: screenWidth),
 
+                          // // Product Deals Section
 
-                        // Minimal spacing
-                        // SliverToBoxAdapter(
-                        //   child: SizedBox(height: 4),
-                        // ),
+                            MartProductDealsSection(screenWidth: screenWidth),
 
-                        // Featured Products
-                        SliverToBoxAdapter(
-                          child: MartFeaturedProducts(screenWidth: screenWidth),
-                        ),
-
-                        // Minimal spacing
-                        // SliverToBoxAdapter(
-                        //   child: SizedBox(height: 4),
-                        // ),
-
-                        // Bottom Banners Section
-                        SliverToBoxAdapter(
-                          child: Obx(() {
-                            if (controller.martBottomBanners.isNotEmpty) {
-                              return Column(
-                                children: [
-                                  const SizedBox(height: 8),
-                                  ReusableBannerWidget(
-                                    banners: controller.martBottomBanners,
-                                    pageController: controller
-                                        .martBottomBannerController.value,
-                                    currentPage:
-                                        controller.currentBottomBannerPage,
-                                    height: 150,
-                                    enableAutoScroll:
-                                        false, // Bottom banners don't auto-scroll
-                                  ),
-                                  const SizedBox(height: 8),
-                                  BannerIndicatorDots(
-                                    itemCount:
-                                        controller.martBottomBanners.length,
-                                    currentIndex:
-                                        controller.currentBottomBannerPage,
-                                    activeColor: const Color(0xFF00998a),
-                                    inactiveColor: Colors.grey[300]!,
-                                  ),
-                                  const SizedBox(height: 8),
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          }),
-                        ),
-
-
-                        // Trending Deals on Personal Care Section
-                        // Trending Deals on Personal Care Section
-                        SliverToBoxAdapter(
-                          child: MartTrendingDealsPersonalCare(
-                              screenWidth: screenWidth),
-                        ),
-
-                        // Subcategories Section
-                        SliverToBoxAdapter(
-                          child: MartSubcategoriesSection(
-                              screenWidth: screenWidth),
-                        ),
-
-                        // // Product Deals Section
-                        SliverToBoxAdapter(
-                          child:
-                              MartProductDealsSection(screenWidth: screenWidth),
-                        ),
-
-                        // Dynamic Sections from Firebase
-                        SliverToBoxAdapter(
-                          child: MartDynamicSections(screenWidth: screenWidth),
-                        ),
-
-
-                        // Bottom padding
-                        SliverToBoxAdapter(
-                          child: SizedBox(height: 25),
-                        ),
-                      ],
+                          // Dynamic Sections from Firebase
+                          MartDynamicSections(screenWidth: screenWidth),
+                           SizedBox(height: 25,),
+                        ],
+                      ),
                     ),
-                  ),
-
-                  // Positioned WhatsApp button above bottom navigation
-                  Positioned(
-                    bottom: MediaQuery.of(context).padding.bottom +
-                        120, // Above bottom navigation
-                    right: 16,
-                    child: GestureDetector(
-                      onTap: () async {
-                        // WhatsApp number - you can change this to your desired number
-                        const String phoneNumber =
-                            '+919390579864'; // Your actual WhatsApp number
-                        const String message =
-                            'Hello! I need help with my JippyMart order.'; // Customize the message
-
-                        final Uri whatsappUrl = Uri.parse(
-                            'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
-
-                        try {
-                          if (await canLaunchUrl(whatsappUrl)) {
-                            await launchUrl(whatsappUrl,
-                                mode: LaunchMode.externalApplication);
-                          } else {
-                            // Fallback to regular phone call if WhatsApp is not available
-                            final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
-                            if (await canLaunchUrl(phoneUrl)) {
-                              await launchUrl(phoneUrl,
+                    // RefreshIndicator(
+                    //   onRefresh: controller.refreshData,
+                    //   child: CustomScrollView(
+                    //     slivers: [
+                    //       SliverToBoxAdapter(
+                    //         child: MartHeaderCard(screenWidth: screenWidth),
+                    //       ),
+                    //
+                    //       SliverToBoxAdapter(
+                    //         child: Obx(() {
+                    //           print(
+                    //               '[MART HOME] Banner count: ${controller.martTopBanners.length}');
+                    //           if (controller.martTopBanners.isNotEmpty) {
+                    //             return Column(
+                    //               children: [
+                    //                 const SizedBox(height: 6),
+                    //                 ReusableBannerWidget(
+                    //                   banners: controller.martTopBanners,
+                    //                   pageController: controller
+                    //                       .martTopBannerController.value,
+                    //                   currentPage:
+                    //                       controller.currentTopBannerPage,
+                    //                   height: 150,
+                    //                   onPanStart: () =>
+                    //                       controller.stopMartBannerTimer(),
+                    //                   onPanEnd: () =>
+                    //                       controller.startMartBannerTimer(),
+                    //                 ),
+                    //               ],
+                    //             );
+                    //           } else {
+                    //             return const SizedBox.shrink();
+                    //           }
+                    //         }),
+                    //       ),
+                    //       SliverToBoxAdapter(
+                    //         child: searchWidgetMain(),
+                    //       ),
+                    //
+                    //       // Minimal spacing
+                    //       // SliverToBoxAdapter(
+                    //       //   child: SizedBox(height: 2),
+                    //       // ),
+                    //
+                    //
+                    //       // Minimal spacing
+                    //       // SliverToBoxAdapter(
+                    //       //   child: SizedBox(height: 2),
+                    //       // ),
+                    //
+                    //
+                    //
+                    //       // Minimal spacing
+                    //       // SliverToBoxAdapter(
+                    //       //   child: SizedBox(height: 4),
+                    //       // ),
+                    //
+                    //       // Featured Products
+                    //       SliverToBoxAdapter(
+                    //         child: MartFeaturedProducts(screenWidth: screenWidth),
+                    //       ),
+                    //
+                    //       // Minimal spacing
+                    //       // SliverToBoxAdapter(
+                    //       //   child: SizedBox(height: 4),
+                    //       // ),
+                    //
+                    //       // Bottom Banners Section
+                    //       SliverToBoxAdapter(
+                    //         child: Obx(() {
+                    //           if (controller.martBottomBanners.isNotEmpty) {
+                    //             return Column(
+                    //               children: [
+                    //                 const SizedBox(height: 8),
+                    //                 ReusableBannerWidget(
+                    //                   banners: controller.martBottomBanners,
+                    //                   pageController: controller
+                    //                       .martBottomBannerController.value,
+                    //                   currentPage:
+                    //                       controller.currentBottomBannerPage,
+                    //                   height: 150,
+                    //                   enableAutoScroll:
+                    //                       false, // Bottom banners don't auto-scroll
+                    //                 ),
+                    //                 const SizedBox(height: 8),
+                    //                 BannerIndicatorDots(
+                    //                   itemCount:
+                    //                       controller.martBottomBanners.length,
+                    //                   currentIndex:
+                    //                       controller.currentBottomBannerPage,
+                    //                   activeColor: const Color(0xFF00998a),
+                    //                   inactiveColor: Colors.grey[300]!,
+                    //                 ),
+                    //                 const SizedBox(height: 8),
+                    //               ],
+                    //             );
+                    //           }
+                    //           return const SizedBox.shrink();
+                    //         }),
+                    //       ),
+                    //
+                    //
+                    //       // Trending Deals on Personal Care Section
+                    //       // Trending Deals on Personal Care Section
+                    //       SliverToBoxAdapter(
+                    //         child: MartTrendingDealsPersonalCare(
+                    //             screenWidth: screenWidth),
+                    //       ),
+                    //
+                    //       // Subcategories Section
+                    //       SliverToBoxAdapter(
+                    //         child: MartSubcategoriesSection(
+                    //             screenWidth: screenWidth),
+                    //       ),
+                    //
+                    //       // // Product Deals Section
+                    //       SliverToBoxAdapter(
+                    //         child:
+                    //             MartProductDealsSection(screenWidth: screenWidth),
+                    //       ),
+                    //
+                    //       // Dynamic Sections from Firebase
+                    //       SliverToBoxAdapter(
+                    //         child: MartDynamicSections(screenWidth: screenWidth),
+                    //       ),
+                    //
+                    //
+                    //       // Bottom padding
+                    //       SliverToBoxAdapter(
+                    //         child: SizedBox(height: 25),
+                    //       ),
+                    //     ],
+                    //   ),
+                    // ),
+                
+                    // Positioned WhatsApp button above bottom navigation
+                    Positioned(
+                      bottom: MediaQuery.of(context).padding.bottom +
+                          120, // Above bottom navigation
+                      right: 16,
+                      child: GestureDetector(
+                        onTap: () async {
+                          // WhatsApp number - you can change this to your desired number
+                          const String phoneNumber =
+                              '+919390579864'; // Your actual WhatsApp number
+                          const String message =
+                              'Hello! I need help with my JippyMart order.'; // Customize the message
+                
+                          final Uri whatsappUrl = Uri.parse(
+                              'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
+                
+                          try {
+                            if (await canLaunchUrl(whatsappUrl)) {
+                              await launchUrl(whatsappUrl,
                                   mode: LaunchMode.externalApplication);
+                            } else {
+                              // Fallback to regular phone call if WhatsApp is not available
+                              final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
+                              if (await canLaunchUrl(phoneUrl)) {
+                                await launchUrl(phoneUrl,
+                                    mode: LaunchMode.externalApplication);
+                              }
                             }
+                          } catch (e) {
+                            print('Error launching WhatsApp: $e');
                           }
-                        } catch (e) {
-                          print('Error launching WhatsApp: $e');
-                        }
-                      },
-                      child: Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.green, // WhatsApp green color
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.all(0.0),
-                          child: SvgPicture.asset(
-                            'assets/images/whatsapp.svg',
-                            width: 24,
-                            height: 24,
-                            colorFilter: const ColorFilter.mode(
-                              Colors.white,
-                              BlendMode.srcIn,
+                        },
+                        child: Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: Colors.green, // WhatsApp green color
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(0.0),
+                            child: SvgPicture.asset(
+                              'assets/images/whatsapp.svg',
+                              width: 24,
+                              height: 24,
+                              colorFilter: const ColorFilter.mode(
+                                Colors.white,
+                                BlendMode.srcIn,
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               );
             },
           ),
@@ -303,315 +353,7 @@ class MartHomeScreen extends StatelessWidget {
   }
 }
 
-class MartHeaderCard extends StatefulWidget {
-  final double screenWidth;
 
-  const MartHeaderCard({super.key, required this.screenWidth});
-
-  @override
-  State<MartHeaderCard> createState() => _MartHeaderCardState();
-}
-
-class _MartHeaderCardState extends State<MartHeaderCard> {
-  bool isMartSelected = true; // Since we're in mart screen, mart is selected
-
-  void _navigateToCorrectHomeScreen() {
-    print('Jippy Food button tapped!');
-    try {
-      // Simply go back to the previous screen (which will be the correct home screen)
-      // Since both home screens use Get.to() to navigate here, Get.back() will work correctly
-      Get.back();
-    } catch (e) {
-      // Fallback navigation
-      print('Navigation error: $e');
-      Get.back();
-    }
-  }
-
-  void _selectMart() {
-    print('JippyMart button tapped!');
-    // Already in mart screen, so just stay here
-    // Could add some visual feedback if needed
-  }
-
-  void _showVendorSelectionDialog(
-      BuildContext context, MartController controller) {
-    if (controller.martVendors.isEmpty) {
-      Get.snackbar(
-        'No Vendors Available',
-        'Please wait while we load available vendors...',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select a Vendor'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 300,
-          child: ListView.builder(
-            itemCount: controller.martVendors.length,
-            itemBuilder: (context, index) {
-              final vendor = controller.martVendors[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: const Color(0xFF00998a),
-                  child: Text(
-                    vendor.name?.substring(0, 1).toUpperCase() ?? 'V',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                title: Text(vendor.name ?? 'Unknown Vendor'),
-                subtitle: Text(vendor.description ?? ''),
-                onTap: () {
-                  controller.selectVendor(vendor.id!);
-                  Navigator.of(context).pop();
-                  Get.snackbar(
-                    'Vendor Selected',
-                    '${vendor.name} selected successfully!',
-                    backgroundColor: Colors.green,
-                    colorText: Colors.white,
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity, // Use full width instead of fixed 412
-      height: 180, // Back to original height - only toggle and address
-      color:  ColorConst.white,
-      // decoration: const BoxDecoration(
-      //   gradient: LinearGradient(
-      //     begin: Alignment.topCenter,
-      //     end: Alignment.bottomCenter,
-      //     colors: [
-      //       Color(0xFFE8F8DB), // #CCCCFF
-      //       Color(0xFFE8F8DB), // #ECEAFD
-      //     ],
-      //     stops: [0.0, 1.0], // 0% to 100%
-      //   ),
-      // ),
-      child: Padding(
-        padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
-        child: Stack(
-          children: [
-            // Group 280 - Toggle Button
-            Positioned(
-              left: 16,
-              right: 16,
-              top: 16,
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFAF9EE),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Jippy Food Button (Left)
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _navigateToCorrectHomeScreen,
-                        child: Container(
-                          margin: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                                0xFFFAF9EE), // Jippy Food is not selected in mart screen
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'FOOD',
-                              style: TextStyle(
-                                color:
-                                    Color(0xFF666666), // Consistent grey color
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    // JippyMart Button (Right)
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectMart,
-                        child: Container(
-                          margin: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                                0xFF007F73), // Purple for selected mart
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'MART',
-                              style: TextStyle(
-                                color: Colors.white, // White text for selected
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Group 289 - Delivery Address Section
-            Positioned(
-              left: 16,
-              top: 70, // Reduced for better visibility on all devices
-              right: 16,
-              child: Container(
-                height: 60, // Increased from 55 to 60 to prevent overflow
-                child: Row(
-                  children: [
-                    // User avatar with initials
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF00998a),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          _getUserInitials(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 16),
-
-                    // Delivery address information
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Delivery to ${Constant.selectedLocation.addressAs ?? 'Current Location'}',
-                            style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              height:
-                                  1.2, // Reduced from 20/16 to 1.2 to save space
-                              color: Color(0xFF000000),
-                            ),
-                          ),
-                          const SizedBox(
-                              height: 1), // Reduced from 2 to 1 to save space
-                          Text(
-                            Constant.selectedLocation.getFullAddress(),
-                            style: const TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              height:
-                                  1.2, // Reduced from 15/12 to 1.2 to save space
-                              color: Color(0xFF000000),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // Down arrow
-                    Container(
-                      width: 24,
-                      height: 24,
-                      child: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Color(0xFF474747),
-                        size: 20,
-                      ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // Delivery time box
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00998a),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '20',
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              height: 20 / 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'min',
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              height: 15 / 12,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class MartSpotlightSelections extends StatelessWidget {
   final double screenWidth;
@@ -1178,7 +920,7 @@ class MartStealsOfMoment extends StatelessWidget {
 
           // Frame 276 - Horizontal scrollable container
           Expanded(
-            child: Container(
+            child: SizedBox(
               width: 413,
               height: 123, // Reduced from 141 to fit smaller container
               child: SingleChildScrollView(
@@ -2657,287 +2399,6 @@ class _GroceryItem extends StatelessWidget {
   }
 }
 
-// Helper method for category subcategories
-List<MartSubcategoryModel> _getSubcategoriesForCategory(String categoryName) {
-  // Generate sample subcategories based on the category
-  final cleanCategoryName = categoryName.replaceAll('\n', ' ').toLowerCase();
-
-  if (cleanCategoryName.contains('fresh vegetables')) {
-    return [
-      MartSubcategoryModel(
-        id: 'veg_001',
-        title: 'Leafy Vegetables',
-        photo:
-            'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'veg_002',
-        title: 'Root Vegetables',
-        photo:
-            'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'veg_003',
-        title: 'Gourds & Squashes',
-        photo:
-            'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'veg_004',
-        title: 'Exotic Vegetables',
-        photo:
-            'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'veg_005',
-        title: 'Herbs & Seasonings',
-        photo:
-            'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'veg_006',
-        title: 'Organic Vegetables',
-        photo:
-            'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=300&h=300&fit=crop',
-      ),
-    ];
-  } else if (cleanCategoryName.contains('fresh fruits')) {
-    return [
-      MartSubcategoryModel(
-        id: 'fruit_001',
-        title: 'Seasonal Fruits',
-        photo:
-            'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'fruit_002',
-        title: 'Citrus Fruits',
-        photo:
-            'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'fruit_003',
-        title: 'Tropical Fruits',
-        photo:
-            'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'fruit_004',
-        title: 'Berries',
-        photo:
-            'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'fruit_005',
-        title: 'Exotic Fruits',
-        photo:
-            'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'fruit_006',
-        title: 'Organic Fruits',
-        photo:
-            'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=300&h=300&fit=crop',
-      ),
-    ];
-  } else if (cleanCategoryName.contains('dairy')) {
-    return [
-      MartSubcategoryModel(
-        id: 'dairy_001',
-        title: 'Milk & Milk Products',
-        photo:
-            'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'dairy_002',
-        title: 'Cheese & Butter',
-        photo:
-            'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'dairy_003',
-        title: 'Yogurt & Curd',
-        photo:
-            'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'dairy_004',
-        title: 'Bread & Bakery',
-        photo:
-            'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'dairy_005',
-        title: 'Eggs',
-        photo:
-            'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'dairy_006',
-        title: 'Organic Dairy',
-        photo:
-            'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=300&h=300&fit=crop',
-      ),
-    ];
-  } else if (cleanCategoryName.contains('hair care')) {
-    return [
-      MartSubcategoryModel(
-        id: 'hair_001',
-        title: 'Shampoo & Conditioner',
-        photo:
-            'https://images.unsplash.com/photo-1522338140263-f46f5913618a?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'hair_002',
-        title: 'Hair Oils & Serums',
-        photo:
-            'https://images.unsplash.com/photo-1522338140263-f46f5913618a?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'hair_003',
-        title: 'Hair Styling',
-        photo:
-            'https://images.unsplash.com/photo-1522338140263-f46f5913618a?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'hair_004',
-        title: 'Hair Treatments',
-        photo:
-            'https://images.unsplash.com/photo-1522338140263-f46f5913618a?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'hair_005',
-        title: 'Hair Accessories',
-        photo:
-            'https://images.unsplash.com/photo-1522338140263-f46f5913618a?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'hair_006',
-        title: 'Professional Hair Care',
-        photo:
-            'https://images.unsplash.com/photo-1522338140263-f46f5913618a?w=300&h=300&fit=crop',
-      ),
-    ];
-  } else if (cleanCategoryName.contains('skincare')) {
-    return [
-      MartSubcategoryModel(
-        id: 'skin_001',
-        title: 'Face Wash & Cleansers',
-        photo:
-            'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'skin_002',
-        title: 'Moisturizers & Creams',
-        photo:
-            'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'skin_003',
-        title: 'Sunscreen & Protection',
-        photo:
-            'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'skin_004',
-        title: 'Face Masks & Treatments',
-        photo:
-            'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'skin_005',
-        title: 'Anti-Aging Products',
-        photo:
-            'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'skin_006',
-        title: 'Natural & Organic',
-        photo:
-            'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
-      ),
-    ];
-  } else if (cleanCategoryName.contains('chocolates')) {
-    return [
-      MartSubcategoryModel(
-        id: 'choc_001',
-        title: 'Dark Chocolates',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'choc_002',
-        title: 'Milk Chocolates',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'choc_003',
-        title: 'White Chocolates',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'choc_004',
-        title: 'Chocolate Bars',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'choc_005',
-        title: 'Chocolate Gifts',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'choc_006',
-        title: 'Sugar-Free Chocolates',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-    ];
-  } else {
-    // Default subcategories for other categories
-    return [
-      MartSubcategoryModel(
-        id: 'default_001',
-        title: 'Popular Items',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'default_002',
-        title: 'New Arrivals',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'default_003',
-        title: 'Best Sellers',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'default_004',
-        title: 'On Sale',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'default_005',
-        title: 'Premium Selection',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-      MartSubcategoryModel(
-        id: 'default_006',
-        title: 'Organic Options',
-        photo:
-            'https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=300&h=300&fit=crop',
-      ),
-    ];
-  }
-}
 
 class MartGlowWellnessSection extends StatelessWidget {
   final double screenWidth;
@@ -3040,44 +2501,6 @@ class MartGlowWellnessSection extends StatelessWidget {
   }
 }
 
-class _WellnessItem extends StatelessWidget {
-  final String label;
-
-  const _WellnessItem({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFD8D5FF),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF2D1B69),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class MartSnacksRefreshmentsSection extends StatelessWidget {
   final double screenWidth;
@@ -3160,44 +2583,6 @@ class MartSnacksRefreshmentsSection extends StatelessWidget {
   }
 }
 
-class _SnackItem extends StatelessWidget {
-  final String label;
-
-  const _SnackItem({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFD8D5FF),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF2D1B69),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class MartEverydayLifeHomeSection extends StatelessWidget {
   final double screenWidth;
@@ -3300,44 +2685,6 @@ class MartEverydayLifeHomeSection extends StatelessWidget {
   }
 }
 
-class _EverydayItem extends StatelessWidget {
-  final String label;
-
-  const _EverydayItem({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFD8D5FF),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF2D1B69),
-          ),
-        ),
-      ],
-    );
-  }
-}
 
 class MartLocalStoreSection extends StatelessWidget {
   final double screenWidth;
@@ -3883,8 +3230,7 @@ class MartProductDealsSection extends StatelessWidget {
   }
 }
 
-// _ProductCard class has been extracted to PlaytimeProductCard component
-// See: lib/app/mart/widgets/playtime_product_card.dart
+
 
 class MartHairCareSection extends StatelessWidget {
   final double screenWidth;
@@ -4824,12 +4170,6 @@ Color _parseColor(String hexColor) {
 }
 
 // Helper function to sanitize image URLs
-String _sanitizeImageUrl(String url) {
-  if (url.startsWith('"') && url.endsWith('"')) {
-    return url.substring(1, url.length - 1);
-  }
-  return url;
-}
 
 // Dynamic Sections Widget
 class MartDynamicSections extends StatefulWidget {
@@ -4840,7 +4180,6 @@ class MartDynamicSections extends StatefulWidget {
   @override
   State<MartDynamicSections> createState() => _MartDynamicSectionsState();
 }
-
 class _MartDynamicSectionsState extends State<MartDynamicSections> {
   bool _hasTriggeredLoading = false;
 
@@ -5026,42 +4365,6 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
     }
     return 0;
   }
-}
-
-// Helper function to get placeholder image for spotlight items
-Widget _getSpotlightPlaceholder(String title) {
-  IconData icon;
-  Color color;
-
-  if (title.toLowerCase().contains('fruit')) {
-    icon = Icons.apple;
-    color = Colors.red;
-  } else if (title.toLowerCase().contains('dairy') ||
-      title.toLowerCase().contains('bread') ||
-      title.toLowerCase().contains('egg')) {
-    icon = Icons.egg;
-    color = Colors.orange;
-  } else if (title.toLowerCase().contains('tea') ||
-      title.toLowerCase().contains('coffee')) {
-    icon = Icons.coffee;
-    color = Colors.brown;
-  } else if (title.toLowerCase().contains('protein') ||
-      title.toLowerCase().contains('supplement')) {
-    icon = Icons.fitness_center;
-    color = Colors.blue;
-  } else {
-    icon = Icons.shopping_basket;
-    color = Colors.green;
-  }
-
-  return Container(
-    color: color.withOpacity(0.1),
-    child: Icon(
-      icon,
-      size: 40,
-      color: color,
-    ),
-  );
 }
 
 
@@ -5574,26 +4877,6 @@ Widget searchWidgetMain() {
 
 // Helper method for user initials (keeping this one as it's still used)
 
-String _getUserInitials() {
-  final userModel = Constant.userModel;
-  if (userModel == null) return 'U';
-
-  String firstName = userModel.firstName?.trim() ?? '';
-  String lastName = userModel.lastName?.trim() ?? '';
-
-  String firstInitial = firstName.isNotEmpty ? firstName[0].toUpperCase() : '';
-  String lastInitial = lastName.isNotEmpty ? lastName[0].toUpperCase() : '';
-
-  if (firstInitial.isNotEmpty && lastInitial.isNotEmpty) {
-    return '$firstInitial$lastInitial';
-  } else if (firstInitial.isNotEmpty) {
-    return firstInitial;
-  } else if (lastInitial.isNotEmpty) {
-    return lastInitial;
-  } else {
-    return 'U';
-  }
-}
 
 // Dynamic Categories Section - Replaces dummy data sections
 class MartDynamicCategoriesSection extends StatelessWidget {

@@ -3,7 +3,6 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';

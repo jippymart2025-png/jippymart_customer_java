@@ -1,4 +1,3 @@
-import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/change%20langauge/change_language_screen.dart';
 import 'package:jippymart_customer/app/chat_screens/driver_inbox_screen.dart';
@@ -7,9 +6,7 @@ import 'package:jippymart_customer/app/dine_in_booking/dine_in_booking_screen.da
 import 'package:jippymart_customer/app/dine_in_screeen/dine_in_screen.dart';
 import 'package:jippymart_customer/app/edit_profile_screen/edit_profile_screen.dart';
 import 'package:jippymart_customer/app/gift_card/gift_card_screen.dart';
-import 'package:jippymart_customer/app/refer_friend_screen/refer_friend_screen.dart';
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
-import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/controllers/cart_controller.dart';

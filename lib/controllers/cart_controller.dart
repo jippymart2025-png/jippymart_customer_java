@@ -93,6 +93,243 @@ import '../models/product_model.dart';
 
 class CartController extends GetxController
     with CrashPreventionMixin, SystemCallOptimizerMixin {
+
+  // Add this method to your CartController class
+  Future<void> showPaymentMethodDialog(BuildContext context) async {
+    // First validate if order can be processed
+    final canProceed = await validateAndPlaceOrderBulletproof();
+    if (!canProceed) {
+      return;
+    }
+    // Show payment method selection dialog
+    await Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: Row(
+          children: [
+            Icon(
+              Icons.payment,
+              color: Colors.orange,
+              size: 24,
+            ),
+            SizedBox(width: 10),
+            Text(
+              "Select Payment Method",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        content: Obx(
+              () =>
+         Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Choose how you want to pay for your order:",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[700],
+                ),
+              ),
+              SizedBox(height: 20),
+              // COD Option
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: RadioListTile<String>(
+                  title: Row(
+                    children: [
+                      Image.asset(
+                        "assets/images/ic_cash.png",
+                        width: 30,
+                        height: 30,
+                      ),
+                      SizedBox(
+                        width: 150,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Cash on Delivery",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              "Pay when you receive your order",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  value: PaymentGateway.cod.name,
+                  groupValue: selectedPaymentMethod.value,
+                  onChanged: (value) {
+                    selectedPaymentMethod.value = value!;
+                  },
+                  activeColor: Colors.orange,
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // Razorpay Option
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: RadioListTile<String>(
+                  title: Row(
+                    children: [
+                      Image.asset(
+                        "assets/images/razorpay.png",
+                        width: 30,
+                        height: 30,
+                      ),
+                      SizedBox(
+                        width: 150,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Online Payment",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Text(
+                              "Pay securely with Razorpay",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  value: PaymentGateway.razorpay.name,
+                  groupValue: selectedPaymentMethod.value,
+                  onChanged: (value) {
+                    selectedPaymentMethod.value = value!;
+                  },
+                  activeColor: Colors.orange,
+                ),
+              ),
+
+              SizedBox(height: 10),
+              // Validation messages
+              if (subTotal.value > 599)
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.orange, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "COD not available for orders above ₹599",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (hasPromotionalItems())
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.orange, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "COD not available for promotional items",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          // Cancel Button
+          TextButton(
+            onPressed: () {
+              selectedPaymentMethod.value = '';
+              Get.back();
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.grey[600],
+            ),
+            child: Text("Cancel"),
+          ),
+          // OK/Proceed Button
+          ElevatedButton(
+            onPressed: () {
+              Get.back();
+              _processSelectedPaymentMethod();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text("Proceed to Pay"),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+// Add this helper method to process the selected payment
+  void _processSelectedPaymentMethod() {
+    // The actual payment processing will happen when user clicks "Pay Now" again
+    // This just sets the payment method and closes the dialog
+    print("Payment method selected: ${selectedPaymentMethod.value}");
+  }
+
   Future<Map<String, dynamic>> getWeather(double lat, double lon) async {
     print(" getWeather ");
     const apiKey = "7885eed00855633516f769cf3646aace"; // 🔑 Add your key
@@ -649,12 +886,10 @@ class CartController extends GetxController
         _checkPendingPaymentAndRecover();
       }
     });
-
     // **FIXED: Use existing bulletproof address validation method**
     _initializeAddressWithPriority();
     getCartData();
     getPaymentSettings();
-
     // Test profile validation immediately
     print('🔍 DEBUG: Testing profile validation on init...');
     validateUserProfile();
@@ -893,7 +1128,6 @@ class CartController extends GetxController
   /// 🔑 BULLETPROOF ORDER VALIDATION - NEVER FAILS
   Future<bool> validateAndPlaceOrderBulletproof() async {
     final startTime = DateTime.now();
-
     print('🚀 [BULLETPROOF_ORDER] ==========================================');
     print(
         '🚀 [BULLETPROOF_ORDER] ORDER VALIDATION STARTED at ${startTime.toIso8601String()}');
@@ -903,7 +1137,6 @@ class CartController extends GetxController
         '🚀 [BULLETPROOF_ORDER] Selected payment: ${selectedPaymentMethod.value}');
     print(
         '🚀 [BULLETPROOF_ORDER] Selected address: ${selectedAddress.value?.address ?? "NULL"}');
-
     // STEP 1: BULLETPROOF PROFILE VALIDATION
     print('🚀 [BULLETPROOF_ORDER] STEP 1: Starting profile validation...');
     final profileStartTime = DateTime.now();

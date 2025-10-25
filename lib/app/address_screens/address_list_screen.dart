@@ -15,7 +15,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_place_picker_mb/google_maps_place_picker.dart';
-import 'package:jippymart_customer/controllers/address_list_controller.dart';
 import 'package:provider/provider.dart';
 
 import '../../themes/text_field_widget.dart';

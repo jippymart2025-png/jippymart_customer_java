@@ -113,19 +113,7 @@ class MartController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    print('[MART CONTROLLER] ==========================================');
-    print('[MART CONTROLLER] 🚀 onInit() called');
-    print('[MART CONTROLLER] 📊 Initial state:');
-    print(
-        '[MART CONTROLLER]   - featuredCategories: ${featuredCategories.length}');
-    print(
-        '[MART CONTROLLER]   - isCategoryLoading: ${isCategoryLoading.value}');
-    print('[MART CONTROLLER]   - errorMessage: ${errorMessage.value}');
-    print('[MART CONTROLLER] ==========================================');
-
-    // Start sections loading immediately when controller is created
     _preloadSections();
-
     _initializeServices();
     setupSearchListener();
   }
@@ -142,26 +130,19 @@ class MartController extends GetxController {
         martBottomBannerController.value.dispose();
       }
     } catch (e) {
-      // Ignore disposal errors
     }
     super.onClose();
   }
-
-  // ==================== BANNER FUNCTIONALITY ====================
-
   /// Start mart banner auto-scroll timer
   void startMartBannerTimer() {
     _martBannerTimer?.cancel();
     _martBannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      // Check if controller is still valid and widget is mounted
       if (!Get.isRegistered<MartController>() ||
           !martTopBannerController.value.hasClients) {
         timer.cancel();
         return;
       }
-
       if (martTopBanners.isNotEmpty) {
-        // For infinite scrolling, we need to get the current page and move to next
         try {
           if (martTopBannerController.value.hasClients) {
             int currentPage = martTopBannerController.value.page?.round() ?? 0;
@@ -531,8 +512,8 @@ class MartController extends GetxController {
       errorMessage.value = "";
 
       // Get user's current location or use default coordinates
-      double? userLatitude;
-      double? userLongitude;
+      double? userLatitude =0.0;
+      double? userLongitude= 0.0;
 
       // Try to get location from user model or preferences
       if (Constant.userModel?.shippingAddress != null &&
