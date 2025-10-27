@@ -1757,13 +1757,9 @@ class CartController extends GetxController
   }
 
   getCartData() async {
-    print('DEBUG: CartController getCartData() called');
     cartProvider.cartStream.listen(
       (event) async {
-        print(
-            'DEBUG: CartController - Cart stream event received with ${event.length} items');
-        print(
-            'DEBUG: Cart items: ${event.map((e) => '${e.name} x${e.quantity}').join(', ')}');
+
 
         cartItem.clear();
         cartItem.addAll(event);
@@ -1774,16 +1770,12 @@ class CartController extends GetxController
               cartItem.where((item) => _isMartItem(item)).toList();
 
           if (martItems.isNotEmpty) {
-            // For mart items, get the mart vendor
-            print(
-                '[VENDOR_LOAD] 🏪 Cart contains mart items, loading mart vendor...');
+
             try {
               // Get the vendorID from the first mart item to load the specific mart vendor
               final firstMartItem = martItems.first;
               final vendorId = firstMartItem.vendorID;
 
-              print(
-                  '[VENDOR_LOAD] 🔍 Loading mart vendor for vendorID: $vendorId');
 
               MartVendorModel? martVendor;
 

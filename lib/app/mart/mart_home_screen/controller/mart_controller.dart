@@ -16,6 +16,132 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
 class MartController extends GetxController {
+
+
+  //NEW SECTION
+  RxMap<String, List<MartItemModel>> categoryProductsMap = <String, List<MartItemModel>>{}.obs;
+  RxList<String> uniqueCategoryTitles = <String>[].obs;
+  Future<void> loadCategoryProductsForSections() async {
+    try {
+      print('[MART CONTROLLER] 🔄 Loading products grouped by categoryTitle...');
+
+      // Get all mart items
+      final allProducts = await _firestoreService.getMartItems(
+        search: null,
+        limit: 200, // Get more items to have enough for each category
+      );
+
+      // Group products by categoryTitle
+      final Map<String, List<MartItemModel>> categoryMap = {};
+
+      for (final product in allProducts) {
+        final categoryTitle = product.categoryTitle ?? 'Uncategorized';
+
+        if (!categoryMap.containsKey(categoryTitle)) {
+          categoryMap[categoryTitle] = [];
+        }
+
+        // Add product to the category list (limit to 10 products per category for horizontal scroll)
+        if (categoryMap[categoryTitle]!.length < 10) {
+          categoryMap[categoryTitle]!.add(product);
+        }
+      }
+
+      // Update reactive variables
+      categoryProductsMap.clear();
+      categoryProductsMap.addAll(categoryMap);
+
+      uniqueCategoryTitles.clear();
+      uniqueCategoryTitles.addAll(categoryMap.keys.toList());
+
+      // 🐾 Move "Pet Care" to the top if it exists
+      if (uniqueCategoryTitles.contains('Pet Care')) {
+        uniqueCategoryTitles.remove('Pet Care');
+        uniqueCategoryTitles.insert(7, 'Pet Care');
+      }
+      if (uniqueCategoryTitles.contains('Fruits & Vegetables')) {
+        uniqueCategoryTitles.remove('Fruits & Vegetables');
+        uniqueCategoryTitles.insert(0, 'Fruits & Vegetables');
+      }
+      if (uniqueCategoryTitles.contains('Cooking Essentials')) {
+        uniqueCategoryTitles.remove('Cooking Essentials');
+        uniqueCategoryTitles.insert(1, 'Cooking Essentials');
+      }
+      print('[MART CONTROLLER] ✅ Loaded ${uniqueCategoryTitles.length} unique categories:');
+      for (final category in uniqueCategoryTitles) {
+        print('  - $category: ${categoryProductsMap[category]?.length ?? 0} products');
+      }
+
+      update();
+    } catch (e) {
+      print('[MART CONTROLLER] ❌ Error loading products by category: $e');
+    }
+  }
+
+  /// Load products grouped by categoryTitle for dynamic sections
+//   Future<void> loadCategoryProductsForSections() async {
+//     try {
+//       print('[MART CONTROLLER] 🔄 Loading products grouped by categoryTitle...');
+//
+//       // Get all mart items
+//       final allProducts = await _firestoreService.getMartItems(
+//         search: null,
+//         limit: 200, // Get more items to have enough for each category
+//       );
+//
+//       // Group products by categoryTitle
+//       final Map<String, List<MartItemModel>> categoryMap = {};
+//
+//       for (final product in allProducts) {
+//         final categoryTitle = product.categoryTitle ?? 'Uncategorized';
+//
+//         if (!categoryMap.containsKey(categoryTitle)) {
+//           categoryMap[categoryTitle] = [];
+//         }
+//
+//         // Add product to the category list (limit to 10 products per category for horizontal scroll)
+//         if (categoryMap[categoryTitle]!.length < 10) {
+//           categoryMap[categoryTitle]!.add(product);
+//         }
+//       }
+//
+//       // Update reactive variables
+//       categoryProductsMap.clear();
+//       categoryProductsMap.addAll(categoryMap);
+//
+//       uniqueCategoryTitles.clear();
+//       uniqueCategoryTitles.addAll(categoryMap.keys.toList());
+//
+//       print('[MART CONTROLLER] ✅ Loaded ${uniqueCategoryTitles.length} unique categories:');
+//       uniqueCategoryTitles.forEach((category) {
+//         print('  - $category: ${categoryProductsMap[category]?.length ?? 0} products');
+//       });
+// update();
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading products by category: $e');
+//     }
+//   }
+
+  /// Get products for a specific category title
+  List<MartItemModel> getProductsForCategoryTitle(String categoryTitle) {
+    return categoryProductsMap[categoryTitle] ?? [];
+  }
+
+  /// Get products for a specific category
+  List<MartItemModel> getProductsForCategory(String categoryId) {
+    // Filter martItems by category ID
+    final categoryProducts = martItems.where((item) => item.categoryID == categoryId).toList();
+
+    // If no products found in current martItems, try to load them
+    if (categoryProducts.isEmpty) {
+      // Trigger loading for this category
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        loadCategoryItems(categoryId);
+      });
+    }
+
+    return categoryProducts;
+  }
   // Service injection
   final MartFirestoreService _firestoreService =
       Get.find<MartFirestoreService>();
@@ -113,6 +239,7 @@ class MartController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    loadCategoryProductsForSections();
     _preloadSections();
     _initializeServices();
     setupSearchListener();

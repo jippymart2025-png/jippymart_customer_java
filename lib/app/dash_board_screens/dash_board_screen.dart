@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:provider/provider.dart';
 
 class DashBoardScreen extends StatelessWidget {
@@ -55,29 +56,29 @@ class DashBoardScreen extends StatelessWidget {
                   navigationBarItem(
                     themeChange,
                     index: 0,
-                    assetIcon: "assets/images/ic_home_icon.png",
+                    assetIcon:  ImageConst.homeOne,
                     label: 'Home'.tr,
                     controller: controller,
                   ),
                   navigationBarItem(
                     themeChange,
                     index: 1,
-                    assetIcon: "assets/icons/ic_fav.svg",
+                    assetIcon:ImageConst.favoriteOne,
                     label: 'Favourites'.tr,
                     controller: controller,
                   ),
                   navigationBarItem(
                     themeChange,
                     index: 2,
-                    assetIcon: "assets/icons/ic_orders.svg",
-                    label: 'Orders'.tr,
+                    assetIcon: ImageConst.cartOne,
+                    label: 'Cart'.tr,
                     controller: controller,
                   ),
                   navigationBarItem(
                     themeChange,
                     index: 3,
-                    assetIcon: "assets/icons/ic_profile.svg",
-                    label: 'Cart'.tr,
+                    assetIcon: ImageConst.orderOne,
+                    label: 'Orders'.tr,
                     controller: controller,
                   ),
                 ];

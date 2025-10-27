@@ -11,7 +11,6 @@ import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/widget/special_price_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 import '../../../themes/responsive.dart' show Responsive;
 
 Widget cartProductDetailsImageWidget(

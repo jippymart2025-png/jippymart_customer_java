@@ -93,7 +93,7 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
     return Container(
       width: double.infinity, // Use full width instead of fixed 412
       height: 180, // Back to original height - only toggle and address
-      color:  ColorConst.white,
+      color:   Colors.transparent,
       // decoration: const BoxDecoration(
       //   gradient: LinearGradient(
       //     begin: Alignment.topCenter,
@@ -161,8 +161,7 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
                         child: Container(
                           margin: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: const Color(
-                                0xFF007F73), // Purple for selected mart
+                            color: ColorConst.orangeLight,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Center(
@@ -188,7 +187,7 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
               left: 16,
               top: 70, // Reduced for better visibility on all devices
               right: 16,
-              child: Container(
+              child: SizedBox(
                 height: 60, // Increased from 55 to 60 to prevent overflow
                 child: Row(
                   children: [
@@ -196,8 +195,8 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
                     Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF00998a),
+                      decoration:  BoxDecoration(
+                        color: ColorConst.orangeLight,
                         shape: BoxShape.circle,
                       ),
                       child: Center(
@@ -222,26 +221,26 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
                         children: [
                           Text(
                             'Delivery to ${Constant.selectedLocation.addressAs ?? 'Current Location'}',
-                            style: const TextStyle(
+                            style:  TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               height:
                               1.2, // Reduced from 20/16 to 1.2 to save space
-                              color: Color(0xFF000000),
+                              color:ColorConst.white,
                             ),
                           ),
                           const SizedBox(
                               height: 1), // Reduced from 2 to 1 to save space
                           Text(
                             Constant.selectedLocation.getFullAddress(),
-                            style: const TextStyle(
+                            style:  TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                               height:
                               1.2, // Reduced from 15/12 to 1.2 to save space
-                              color: Color(0xFF000000),
+                              color:ColorConst.white,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -249,56 +248,7 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
                         ],
                       ),
                     ),
-
                     const SizedBox(width: 8),
-
-                    // Down arrow
-                    Container(
-                      width: 24,
-                      height: 24,
-                      child: const Icon(
-                        Icons.keyboard_arrow_down,
-                        color: Color(0xFF474747),
-                        size: 20,
-                      ),
-                    ),
-
-                    const SizedBox(width: 8),
-
-                    // Delivery time box
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF00998a),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '20',
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              height: 20 / 16,
-                              color: Colors.white,
-                            ),
-                          ),
-                          Text(
-                            'min',
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                              height: 15 / 12,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
               ),

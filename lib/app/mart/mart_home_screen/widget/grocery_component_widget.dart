@@ -13,43 +13,43 @@ Widget groceryComponent() {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Header with title and view all
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Shop by Category',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF1A1A1A),
-                  letterSpacing: -0.5,
-                ),
-              ),
-              // Container(
-              //   decoration: BoxDecoration(
-              //     color: ColorConst.martPrimary.withOpacity(0.1),
-              //     borderRadius: BorderRadius.circular(12),
-              //   ),
-              //   child: Padding(
-              //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              //     child: Text(
-              //       'View All',
-              //       style: TextStyle(
-              //         fontFamily: 'Montserrat',
-              //         fontSize: 12,
-              //         fontWeight: FontWeight.w600,
-              //         color: ColorConst.martPrimary,
-              //       ),
-              //     ),
-              //   ),
-              // ),
-            ],
-          ),
-        ),
-
+        // Padding(
+        //   padding: const EdgeInsets.only(bottom: 12),
+        //   child: Row(
+        //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        //     children: [
+        //       // Text(
+        //       //   'Shop by Category',
+        //       //   style: TextStyle(
+        //       //     fontFamily: 'Montserrat',
+        //       //     fontSize: 18,
+        //       //     fontWeight: FontWeight.w700,
+        //       //     color: Color(0xFF1A1A1A),
+        //       //     letterSpacing: -0.5,
+        //       //   ),
+        //       // ),
+        //       // Container(
+        //       //   decoration: BoxDecoration(
+        //       //     color: ColorConst.martPrimary.withOpacity(0.1),
+        //       //     borderRadius: BorderRadius.circular(12),
+        //       //   ),
+        //       //   child: Padding(
+        //       //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        //       //     child: Text(
+        //       //       'View All',
+        //       //       style: TextStyle(
+        //       //         fontFamily: 'Montserrat',
+        //       //         fontSize: 12,
+        //       //         fontWeight: FontWeight.w600,
+        //       //         color: ColorConst.martPrimary,
+        //       //       ),
+        //       //     ),
+        //       //   ),
+        //       // ),
+        //     ],
+        //   ),
+        // ),
+SizedBox(height: 20,),
         // Categories Grid
         GetX<MartController>(
           builder: (controller) {
@@ -289,11 +289,12 @@ Widget _buildEmptyState() {
 // Enhanced Categories Grid
 Widget _buildCategoriesGrid(MartController controller) {
   return SizedBox(
-    height: 125,
+    height: 120,
     child: ListView.separated(padding: EdgeInsets.zero,
       scrollDirection: Axis.horizontal,
-      itemCount: controller.featuredCategories.length > 6 ? 6 : controller.featuredCategories.length,
-      separatorBuilder: (context, index) => const SizedBox(width: 26),
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: controller.featuredCategories.length > 5 ? 5 : controller.featuredCategories.length,
+      separatorBuilder: (context, index) => const SizedBox(width: 30),
       itemBuilder: (context, index) {
         final category = controller.featuredCategories[index];
         return _buildCategoryItem(category, index);
@@ -305,7 +306,6 @@ Widget _buildCategoriesGrid(MartController controller) {
 // Enhanced Category Item with Modern Design
 Widget _buildCategoryItem(MartCategoryModel category, int index) {
   final categoryData = _getCategoryData(category.title ?? '');
-
   return AnimatedContainer(
     duration: Duration(milliseconds: 400 + (index * 100)),
     curve: Curves.easeOutBack,
@@ -317,28 +317,28 @@ Widget _buildCategoryItem(MartCategoryModel category, int index) {
         });
       },
       borderRadius: BorderRadius.circular(20),
-      child: Container(
-        width: 100,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: categoryData['color']!.withOpacity(0.15),
-              blurRadius: 20,
-              offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-          border: Border.all(
-            color: Colors.grey.withOpacity(0.1),
-            width: 1,
-          ),
-        ),
+      child: SizedBox(
+        width: 50,
+        // decoration: BoxDecoration(
+        //   borderRadius: BorderRadius.circular(20),
+        //   color: Colors.white,
+        //   boxShadow: [
+        //     BoxShadow(
+        //       color: categoryData['color']!.withOpacity(0.15),
+        //       blurRadius: 20,
+        //       offset: const Offset(0, 8),
+        //     ),
+        //     BoxShadow(
+        //       color: Colors.black.withOpacity(0.05),
+        //       blurRadius: 5,
+        //       offset: const Offset(0, 2),
+        //     ),
+        //   ],
+        //   border: Border.all(
+        //     color: Colors.grey.withOpacity(0.1),
+        //     width: 1,
+        //   ),
+        // ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -395,13 +395,14 @@ Widget _buildCategoryItem(MartCategoryModel category, int index) {
             ),
             const SizedBox(height: 12),
             // Category Name
-            Container(
-              constraints: const BoxConstraints(maxWidth: 90),
+            SizedBox(
+              // constraints: const BoxConstraints(maxWidth: 90),
+              height: 40,
               child: Text(
                 category.title ?? 'Category',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
-                  fontSize: 12,
+                  fontSize:9,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF2D3748),
                   height: 1.2,

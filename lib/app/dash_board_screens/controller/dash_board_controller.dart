@@ -168,14 +168,15 @@ class DashBoardController extends GetxController {
               const HomeScreen(),
               const FavouriteScreen(),
               const WalletScreen(),
+        const CartCheckOutScreen(),
               const OrderScreen(),
-              const CartCheckOutScreen(),
             ]
           : [
               const HomeScreen(),
               const FavouriteScreen(),
+        const CartCheckOutScreen(),
+
               const OrderScreen(),
-              const CartCheckOutScreen(),
             ];
     } else {
       newPages = walletEnabled
@@ -183,14 +184,16 @@ class DashBoardController extends GetxController {
               const HomeScreenTwo(),
               const FavouriteScreen(),
               const WalletScreen(),
+        const CartCheckOutScreen(),
+
               const OrderScreen(),
-              const CartCheckOutScreen(),
             ]
           : [
               const HomeScreenTwo(),
               const FavouriteScreen(),
+        const CartCheckOutScreen(),
+
               const OrderScreen(),
-              const CartCheckOutScreen(),
             ];
     }
 

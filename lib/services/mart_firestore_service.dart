@@ -1825,8 +1825,9 @@ class MartFirestoreService extends GetxService {
           uniqueSections.add(section);
         }
       }
-
+      //
       final sections = uniqueSections.toList()..sort();
+      // final sections = uniqueSections.toList();
       print(
           '[MART FIRESTORE] ✅ Found ${sections.length} unique sections: $sections');
 

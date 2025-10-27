@@ -14,6 +14,7 @@ import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:provider/provider.dart';
 
 // Cart theme enum for different color schemes
@@ -39,18 +40,40 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   @override
   void initState() {
     super.initState();
+    Future.delayed(const Duration(seconds: 2), () {
       controller = Get.put(CartController());
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _refreshCartData();
       });
+      setState(() {});
+    });
   }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshCartData();
+      if (controller != null) {
+        _refreshCartData();
+      }
     });
   }
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //     controller = Get.put(CartController());
+  //     WidgetsBinding.instance.addPostFrameCallback((_) {
+  //       _refreshCartData();
+  //     });
+  // }
+  // @override
+  // void didChangeDependencies() {
+  //   super.didChangeDependencies();
+  //   WidgetsBinding.instance.addPostFrameCallback((_) {
+  //     _refreshCartData();
+  //   });
+  // }
 
   void _refreshCartData() {
     print('DEBUG: Refreshing cart data...');
@@ -64,7 +87,6 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
       // Trigger address initialization by calling the public method
       controller.initializeAddress();
     }
-
     // Ensure payment method is set correctly based on order total
     Future.delayed(const Duration(milliseconds: 500), () {
       controller.checkAndUpdatePaymentMethod();
@@ -94,9 +116,9 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
         );
       case CartTheme.mixed:
         return CartThemeColors(
-          primary: const Color(0xFF607D8B),
-          primaryDark: const Color(0xFF455A64),
-          accent: const Color(0xFF78909C),
+          primary: const Color(0xFFFF6B35),
+          primaryDark: const Color(0xFFE55A2B),
+          accent: const Color(0xFFFF8A65),
           surface: AppThemeData.surface,
           onSurface: Colors.black87,
         );
@@ -141,7 +163,6 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     final themeColors = _getThemeColors(cartTheme);
 
     return GetX<CartController>(builder: (controller) {
-      // Check payment method every time the UI is built
       WidgetsBinding.instance.addPostFrameCallback((_) {
         controller.checkAndUpdatePaymentMethod();
       });
@@ -164,29 +185,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
                   : themeColors.primary,
               foregroundColor: Colors.white,
               automaticallyImplyLeading: !widget.hideBackButton,
-              leading: widget.hideBackButton
-                  ? null
-                  : IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                onPressed: () {
-                  // Check if we're in mart navigation system (cart tab)
-                  if (widget.source == 'mart' &&
-                      widget.isFromMartNavigation) {
-                    // If accessed from mart navigation cart tab, go back to mart home
-                    try {
-                      final martNavController =
-                      Get.find<MartNavigationController>();
-                      martNavController.goToHome();
-                    } catch (e) {
-                      // Fallback to regular back navigation
-                      Get.back();
-                    }
-                  } else {
-                    // Regular back navigation for other cases (product details, etc.)
-                    Get.back();
-                  }
-                },
-              ),
+              centerTitle: true,
               title: Text(
               'Cart',
                 style: const TextStyle(
@@ -196,22 +195,19 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
                 // Debug buttons removed - methods not available in current version
               ],
             ),
-            body: cartItem.isEmpty
-                ? Constant.showEmptyView(message: "Item Not available".tr)
-                : SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-
-                  cartProductDetailsImageWidget(
-                    themeChange,
-                    controller,
+            body: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(ImageConst.backgroundImage,
                   ),
-
-                ],
+                  fit: BoxFit.cover, // can use contain, fill, repeat
+                ),
+              ),
+              child: cartProductDetailsImageWidget(
+                themeChange,
+                controller,
               ),
             ),
-
             //changed here
             bottomNavigationBar: cartItem.isEmpty
                 ? null
