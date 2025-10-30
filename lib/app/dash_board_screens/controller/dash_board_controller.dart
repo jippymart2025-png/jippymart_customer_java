@@ -9,7 +9,6 @@ import 'package:jippymart_customer/app/favourite_screens/favourite_screen.dart';
 import 'package:jippymart_customer/app/home_screen/home_screen.dart';
 import 'package:jippymart_customer/app/home_screen/home_screen_two.dart';
 import 'package:jippymart_customer/app/order_list_screen/order_screen.dart';
-import 'package:jippymart_customer/app/profile_screen/profile_screen.dart';
 import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/controllers/order_controller.dart';
@@ -39,7 +38,6 @@ class DashBoardController extends GetxController {
   StreamSubscription<DocumentSnapshot>? _themeSubscription;
   Worker? _themeListener;
   final Map<String, List<Widget>> _pageCache = {};
-
   // Error recovery variables
   int _retryCount = 0;
   final int _maxRetries = 5;

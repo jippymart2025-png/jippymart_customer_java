@@ -1,4 +1,3 @@
-import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restauant_product_list_view.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_detail_shimmer_widget.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_cupon_list_view.dart';

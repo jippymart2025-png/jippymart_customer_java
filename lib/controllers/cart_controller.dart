@@ -93,15 +93,12 @@ import '../models/product_model.dart';
 
 class CartController extends GetxController
     with CrashPreventionMixin, SystemCallOptimizerMixin {
-
   // Add this method to your CartController class
   Future<void> showPaymentMethodDialog(BuildContext context) async {
-    // First validate if order can be processed
     final canProceed = await validateAndPlaceOrderBulletproof();
     if (!canProceed) {
       return;
     }
-    // Show payment method selection dialog
     await Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(
@@ -873,33 +870,25 @@ class CartController extends GetxController
 
   @override
   void onInit() {
-    // selectedAddress.value = Constant.selectedLocation;
     super.onInit();
-    print(
-        '🚀 DEBUG: CartController onInit() called - Profile validation starting...');
+    Future.delayed(const Duration(seconds: 3), () {
+      _restorePaymentState().then((_) {
+        if (isPaymentInProgress.value && _lastPaymentId != null) {
+          _checkPendingPaymentAndRecover();
+        }
+      });
+      _initializeAddressWithPriority();
+      getCartData();
+      getPaymentSettings();
+      validateUserProfile();
+      ever(subTotal, (_) {
+        if (subTotal.value > 599 &&
+            selectedPaymentMethod.value == PaymentGateway.cod.name) {
+          selectedPaymentMethod.value = PaymentGateway.razorpay.name;
+        }
+      });
+    }); // });
 
-    // 🔑 RESTORE PAYMENT STATE ON APP STARTUP (HANDLES APP KILLS)
-    _restorePaymentState().then((_) {
-      // Check if we have a pending payment after app restart
-      if (isPaymentInProgress.value && _lastPaymentId != null) {
-        print('🔑 PENDING PAYMENT DETECTED - Checking if order was placed...');
-        _checkPendingPaymentAndRecover();
-      }
-    });
-    // **FIXED: Use existing bulletproof address validation method**
-    _initializeAddressWithPriority();
-    getCartData();
-    getPaymentSettings();
-    // Test profile validation immediately
-    print('🔍 DEBUG: Testing profile validation on init...');
-    validateUserProfile();
-    ever(subTotal, (_) {
-      if (subTotal.value > 599 &&
-          selectedPaymentMethod.value == PaymentGateway.cod.name) {
-        selectedPaymentMethod.value = PaymentGateway.razorpay.name;
-      }
-    });
-    //  super.onInit();
   }
 
   /// 🔑 BULLETPROOF PROFILE VALIDATION - NEVER FAILS
@@ -1759,8 +1748,6 @@ class CartController extends GetxController
   getCartData() async {
     cartProvider.cartStream.listen(
       (event) async {
-
-
         cartItem.clear();
         cartItem.addAll(event);
 
@@ -1815,14 +1802,8 @@ class CartController extends GetxController
                 );
                 _cachedVendorModel = vendorModel.value;
                 _updateCacheTime();
-                print(
-                    '[VENDOR_LOAD] ✅ Mart vendor loaded: ${martVendor.title} (${martVendor.id})');
-                print(
-                    '[VENDOR_LOAD]   - Location: (${martVendor.latitude}, ${martVendor.longitude})');
-                print(
-                    '[VENDOR_LOAD]   - Is Self Delivery: false (mart vendors use regular delivery)');
+
               } else {
-                print('[VENDOR_LOAD] ❌ No mart vendor found in database');
                 // Don't set hardcoded values - let the system handle this gracefully
                 vendorModel.value = VendorModel();
               }

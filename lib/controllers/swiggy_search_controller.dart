@@ -2,7 +2,6 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
-import 'package:jippymart_customer/models/zone_model.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/trie_search.dart';
 import 'package:jippymart_customer/constant/collection_name.dart';

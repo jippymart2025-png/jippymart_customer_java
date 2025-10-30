@@ -2,11 +2,9 @@
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_product_details_image_widget.dart';
-import 'package:jippymart_customer/app/dash_board_screens/controller/dash_board_controller.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/controllers/cart_controller.dart';
-import 'package:jippymart_customer/controllers/mart_navigation_controller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -35,63 +33,47 @@ class CartCheckOutScreen extends StatefulWidget {
 }
 
 class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
-  late CartController controller;
+   late CartController controller;
 
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(seconds: 2), () {
-      controller = Get.put(CartController());
+    // Future.delayed(const Duration(seconds: 3), () {
+      controller = Get.put(CartController(), permanent: false);
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        Future.delayed(const Duration(seconds: 3), () {
         _refreshCartData();
       });
-      setState(() {});
-    });
+      });
+    // });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (controller != null) {
-        _refreshCartData();
-      }
-    });
-  }
-
-  // @override
-  // void initState() {
-  //   super.initState();
-  //     controller = Get.put(CartController());
-  //     WidgetsBinding.instance.addPostFrameCallback((_) {
-  //       _refreshCartData();
-  //     });
-  // }
   // @override
   // void didChangeDependencies() {
   //   super.didChangeDependencies();
   //   WidgetsBinding.instance.addPostFrameCallback((_) {
-  //     _refreshCartData();
+  //     if (controller != null) {
+  //       _refreshCartData();
+  //     }
   //   });
   // }
 
+
   void _refreshCartData() {
     print('DEBUG: Refreshing cart data...');
-    // Use the enhanced force refresh method
-    controller.forceRefreshCart();
-
+    controller?.forceRefreshCart();
     // **FIXED: Re-initialize address if not selected (for global cart controller)**
-    if (controller.selectedAddress.value == null) {
+    if (controller?.selectedAddress.value == null) {
       print(
           '🏠 [CART_REFRESH] No address selected, re-initializing address...');
       // Trigger address initialization by calling the public method
-      controller.initializeAddress();
+      controller?.initializeAddress();
     }
     // Ensure payment method is set correctly based on order total
     Future.delayed(const Duration(milliseconds: 500), () {
-      controller.checkAndUpdatePaymentMethod();
+      controller?.checkAndUpdatePaymentMethod();
       print(
-          'DEBUG: Cart refresh completed - Items: ${cartItem.length}, Total: ${controller.totalAmount.value}');
+          'DEBUG: Cart refresh completed - Items: ${cartItem.length}, Total: ${controller?.totalAmount.value}');
     });
   }
 
@@ -161,12 +143,10 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     final themeChange = Provider.of<DarkThemeProvider>(context);
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
-
-    return GetX<CartController>(builder: (controller) {
+    return controller ==null? Center(child: CircularProgressIndicator(),): GetX<CartController>(builder: (controller) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         controller.checkAndUpdatePaymentMethod();
       });
-
       return WillPopScope(
         onWillPop: () async {
           if (controller.isGlobalLocked.value) {

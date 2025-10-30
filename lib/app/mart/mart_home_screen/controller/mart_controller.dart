@@ -2161,7 +2161,6 @@ class MartController extends GetxController {
       // Try Firestore first (fastest path)
       try {
         final categories = await _firestoreService.getCategories(limit: 100);
-
         if (categories.isNotEmpty) {
           // Stream the data as it becomes available
           martCategories.clear();

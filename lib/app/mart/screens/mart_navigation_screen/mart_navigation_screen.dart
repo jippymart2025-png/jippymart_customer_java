@@ -61,15 +61,9 @@ class MartNavigationScreen extends StatelessWidget {
               //     // }),
               //   ],
               // ),
-
               bottomNavigationBar:  Obx(() {
                 if (navController.selectedIndex.value != 2) {
-                  return Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: _buildEnhancedNavigationBar(navController),
-                  );
+               return   _buildEnhancedNavigationBar(navController);
                 } else {
                   return const SizedBox.shrink();
                 }

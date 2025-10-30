@@ -45,18 +45,13 @@ import 'package:get_storage/get_storage.dart';
 import 'package:jippymart_customer/services/global_deeplink_handler.dart';
 import 'package:provider/provider.dart';
 
-import 'app/category_service/category__service_screen.dart'
-    show CateringServiceScreen;
 import 'app/category_service/controller/cetegory_service_controller.dart';
 import 'app/video_splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 🔗 CRITICAL: Initialize GlobalDeeplinkHandler FIRST - before any other services
-  print(
-    '🔗 [MAIN] Initializing GlobalDeeplinkHandler FIRST...',
-  );
+
   GlobalDeeplinkHandler.init();
   // Register GlobalDeeplinkHandler as a permanent GetX dependency
   Get.put(
@@ -66,17 +61,9 @@ void main() async {
 
 
   // 🛡️ CRASH PREVENTION: Initialize crash prevention system
-  print(
-    '🛡️ [MAIN] Initializing crash prevention system...',
-  );
+
   CrashPrevention();
-  print(
-    '🛡️ [MAIN] Crash prevention system initialized',
-  );
-  // 🚨 ANR PREVENTION:  Initialize ANR prevention systems
-  print(
-    '🚨 [MAIN] Initializing ANR prevention systems...',
-  );
+
   await SmartlookANRFix.configureSmartlook();
   await PlatformANRPrevention.preventMIUIANR();
   await PlatformANRPrevention.preventCiscoANR();
@@ -100,21 +87,14 @@ void main() async {
       sslEnabled: true,
     );
 
-    log('Firebase initialized successfully');
 
     // 📊 MONITORING: Start monitoring systems AFTER Firebase is initialized
-    print('📊 [MAIN] Starting monitoring systems...');
     ANRMonitor.startMonitoring();
     MemoryMonitor.startMemoryMonitoring();
     NativeLockPrevention.startLockContentionMonitoring();
     TextProcessingANRFix.startTextProcessingMonitoring();
     ANRStatusLogger.logANRPreventionStatus();
-    print('📊 [MAIN] Monitoring systems started');
   } catch (e) {
-    log('ERROR: Failed to initialize Firebase: $e');
-    // Continue with app initialization even if Firebase fails
-    print(
-        '⚠️ [MAIN] Firebase initialization failed, continuing without monitoring systems');
   }
 
   // **OPTIMIZED: Initialize GetStorage first (fastest)**
@@ -126,7 +106,6 @@ void main() async {
   // **OPTIMIZED: Initialize DatabaseHelper (lightweight)**
   DatabaseHelper.instance;
 
-  log('App Check: TEMPORARILY DISABLED to eliminate SafetyNet dependencies');
 
   // **OPTIMIZED: Register critical services and controllers immediately**
   Get.put(MartFirestoreService(), permanent: true);
@@ -143,7 +122,6 @@ void main() async {
   await cartProvider.checkCartPersistence();
 
   // **OPTIMIZED: Start app immediately, defer heavy services**
-  log('App startup: Starting app with deferred heavy services...');
 
   // **DEFERRED: Initialize heavy services in background**
   _initializeHeavyServicesInBackground();
@@ -189,10 +167,7 @@ void _initializeHeavyServicesInBackground() {
             .initialize()
             .timeout(const Duration(seconds: 3)),
       ]);
-
-      log('Background services initialized successfully');
     } catch (e) {
-      log('Background services initialization failed: $e');
     }
   });
 }
@@ -201,17 +176,10 @@ void _initializeHeavyServicesInBackground() {
 void _initializeDeepLinkServicesInBackground() {
   Future.microtask(() async {
     try {
-      print('🔗 [MAIN] 🚨 Background: Initializing FinalDeepLinkService...');
       await FinalDeepLinkService()
           .init(GlobalDeeplinkHandler.navigatorKey)
           .timeout(const Duration(seconds: 5));
-      print(
-          '🔗 [MAIN] ✅ Background: Final Deep Link Service initialized successfully');
-      log('🔗 [MAIN] Background: Final Deep Link Service initialized successfully');
     } catch (e) {
-      print(
-          '🔗 [MAIN] ❌ Background: Deep Link Service initialization failed: $e');
-      log('🔗 [MAIN] Background: Deep Link Service initialization failed: $e');
     }
   });
 }
@@ -220,11 +188,8 @@ void _initializeDeepLinkServicesInBackground() {
 void _initializeSmartLookInBackground() {
   Future.microtask(() async {
     final smartlookService = SmartlookService();
-
     try {
-      // ✅ CRITICAL: Prevent SessionRecordingStorage crashes first
       await smartlookService.preventSessionRecordingStorageCrash();
-
       await smartlookService
           .initialize(
         SmartlookConfig.projectKey,
@@ -237,22 +202,15 @@ void _initializeSmartLookInBackground() {
           smartlookService.setSensitiveDataMasking(true);
         }
         smartlookService.setRecordingQuality(SmartlookConfig.recordingQuality);
-        print(
-            '[SMARTLOOK] ✅ Initialized successfully in background with crash prevention');
       }
     } catch (e) {
-      print('[SMARTLOOK] ❌ Background initialization failed: $e');
-      // ✅ NEW: Try recovery with crash prevention
       try {
-        print('[SMARTLOOK] 🔧 Attempting recovery with crash prevention...');
         await smartlookService.preventSessionRecordingStorageCrash();
         await smartlookService.forceReinitialize(SmartlookConfig.projectKey,
             region: SmartlookConfig.region);
         if (smartlookService.isInitialized) {
-          print('[SMARTLOOK] ✅ Recovery successful with crash prevention');
         }
       } catch (e2) {
-        print('[SMARTLOOK] ❌ Recovery also failed: $e2');
       }
     }
   });
@@ -346,10 +304,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
                 child: appWidget,
               );
             } catch (e) {
-              print(
-                '[SMARTLOOK] Error wrapping with SmartlookRecordingWidget: $e',
-              );
-              // Return app without Smartlook wrapping if there's an error
               return appWidget;
             }
           },

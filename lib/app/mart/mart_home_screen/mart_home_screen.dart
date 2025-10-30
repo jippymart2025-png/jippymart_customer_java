@@ -4439,8 +4439,8 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
                 if (sectionProducts.isEmpty) {
                   return const SizedBox.shrink();
                 }
-                return Container(
-                  height: 215, // Same height as PlaytimeProductCard
+                return SizedBox(
+                  height: 215,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     itemCount: sectionProducts.length,

@@ -10,7 +10,6 @@ import 'package:jippymart_customer/themes/text_field_widget.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
-import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:dotted_border/src/dotted_border_options.dart';
 import 'package:flutter/material.dart';

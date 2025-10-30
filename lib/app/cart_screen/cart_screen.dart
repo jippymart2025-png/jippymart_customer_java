@@ -23,6 +23,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:provider/provider.dart';
 
 // Cart theme enum for different color schemes
@@ -45,7 +46,6 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   late CartController controller;
-
   @override
   void initState() {
     super.initState();
@@ -53,7 +53,6 @@ class _CartScreenState extends State<CartScreen> {
         '🚀 DEBUG: CartScreen initState() called - Initializing CartController...');
     controller = Get.put(CartController());
     print('✅ DEBUG: CartController initialized successfully');
-    // Force refresh cart data when screen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshCartData();
     });
@@ -101,8 +100,8 @@ class _CartScreenState extends State<CartScreen> {
       case CartTheme.mart:
         return CartThemeColors(
           primary: MartTheme.jippyMartButton,
-          primaryDark: const Color(0xFF005A52),
-          accent: const Color(0xFF00A896),
+          primaryDark:  ColorConst.martPrimary,
+          accent: ColorConst.martPrimary,
           surface: Colors.white,
           onSurface: Colors.black87,
         );
@@ -183,13 +182,14 @@ class _CartScreenState extends State<CartScreen> {
             appBar: AppBar(
               backgroundColor: themeChange.getThem()
                   ? AppThemeData.surfaceDark
-                  : themeColors.primary,
+                  : ColorConst.martPrimary,
+              // themeColors.primary,
               foregroundColor: Colors.white,
               automaticallyImplyLeading: !widget.hideBackButton,
               leading: widget.hideBackButton
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white,),
                       onPressed: () {
                         // Check if we're in mart navigation system (cart tab)
                         if (widget.source == 'mart' &&
