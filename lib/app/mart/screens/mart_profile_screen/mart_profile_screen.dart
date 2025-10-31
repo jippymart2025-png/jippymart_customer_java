@@ -31,7 +31,7 @@ class MartProfileScreen extends StatelessWidget {
                 expandedHeight: 75,
                 floating: false,
                 pinned: true,
-                backgroundColor: const Color(0xFF5D56F3),
+                backgroundColor: ColorConst.martPrimary,
                 automaticallyImplyLeading: false, // Remove back arrow
                 flexibleSpace: FlexibleSpaceBar(
                   title: const Padding(

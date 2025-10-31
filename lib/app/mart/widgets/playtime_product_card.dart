@@ -2,9 +2,11 @@ import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/
 import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
+import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
 class PlaytimeProductCard extends StatelessWidget {
   final String volume;
@@ -45,7 +47,7 @@ class PlaytimeProductCard extends StatelessWidget {
 
       // Get the cart controller
       final cartController = Get.find<CartController>();
-
+      final cartProvider = Provider.of<CartProvider>(context,listen:false);
       // Convert MartItemModel to CartProductModel
       final martVendorID = "mart_${product!.vendorID ?? 'unknown'}";
 
@@ -53,9 +55,9 @@ class PlaytimeProductCard extends StatelessWidget {
         id: product!.id,
         name: product!.name,
         photo: product!.photo,
-        price: product!.price?.toString() ?? '0',
+        price: product!.price.toString() ?? '0',
         discountPrice:
-            product!.disPrice?.toString() ?? product!.price?.toString() ?? '0',
+            product!.disPrice?.toString() ?? product!.price.toString() ?? '0',
         vendorID: martVendorID,
         vendorName: "Jippy Mart",
         categoryId: product!.categoryID,
@@ -72,7 +74,7 @@ class PlaytimeProductCard extends StatelessWidget {
         isIncrement: true,
         quantity: 1,
       );
-
+      cartProvider.initCart();
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

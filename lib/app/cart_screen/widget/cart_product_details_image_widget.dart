@@ -18,13 +18,14 @@ Widget cartProductDetailsImageWidget(
   CartController controller,
 ) {
   return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
+    padding: const EdgeInsets.symmetric(horizontal: 0),
     child: Container(
       decoration: ShapeDecoration(
         color:
             themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
+      // margin: EdgeInsets.only(top: 10),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
         child: ListView.separated(
@@ -472,16 +473,12 @@ Widget cartProductDetailsImageWidget(
                                             ),
                                             InkWell(
                                               onTap: () async {
-                                                // Ensure productModel is loaded before proceeding
-                                                if (productModel == null) {
-                                                  productModel =
-                                                      await FireStoreUtils
+                                                productModel ??= await FireStoreUtils
                                                           .getProductById(
                                                               cartProductModel
                                                                   .id!
                                                                   .split('~')
                                                                   .first);
-                                                }
                                                 // Check if this is a promotional item
                                                 if (cartProductModel.promoId !=
                                                         null &&
@@ -513,7 +510,6 @@ Widget cartProductDetailsImageWidget(
                                                     return;
                                                   }
                                                 }
-
                                                 if (productModel != null &&
                                                     productModel!
                                                             .itemAttribute !=

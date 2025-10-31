@@ -74,7 +74,7 @@ class MartHomeScreen extends StatelessWidget {
                   Stack(
                         children: [
                           Container(
-                            height: size.height*0.46, // set your desired height
+                            height: 430, // set your desired height
                             width: double.infinity,  // set your desired width
                             decoration: BoxDecoration(
                               color: ColorConst.greenLight,
@@ -187,7 +187,7 @@ class MartHomeScreen extends StatelessWidget {
                                     }
                                   }),
                                 SizedBox(height: 10,),
-                                groceryComponent(),
+                                groceryComponent(size),
                               // MartFeaturedProducts(screenWidth: screenWidth),
                               // Obx(() {
                               //       if (controller.martBottomBanners.isNotEmpty) {

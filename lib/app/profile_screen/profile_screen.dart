@@ -185,7 +185,7 @@ class ProfileScreen extends StatelessWidget {
                                     cardDecoration(themeChange, controller, "assets/icons/ic_change_language.svg", "Change Language".tr, () {
                                       Get.to(const ChangeLanguageScreen());
                                     }),
-                                    cardDecoration(themeChange, controller, "assets/icons/ic_light_dark.svg", "Dark Mode".tr, () {}),
+                                    // cardDecoration(themeChange, controller, "assets/icons/ic_light_dark.svg", "Dark Mode".tr, () {}),
                                   ],
                                 ),
                               ),

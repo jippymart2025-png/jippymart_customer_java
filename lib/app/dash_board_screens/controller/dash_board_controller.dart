@@ -29,6 +29,11 @@ class DashBoardController extends GetxController {
   //       ? [null, null, null, null, null]
   //       : [null, null, null, null];
   // }
+
+  void changeNavbar(int index){
+        selectedIndex.value = index;
+        print(" changenavbar $index");
+  }
   RxBool isCartScreenInitialized = false.obs;
   RxInt selectedIndex = 0.obs;
   RxList<Widget> pageList = <Widget>[].obs;

@@ -1,5 +1,6 @@
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/app/dash_board_screens/controller/dash_board_controller.dart';
+import 'package:jippymart_customer/main.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:flutter/material.dart';
@@ -21,17 +22,21 @@ class DashBoardScreen extends StatelessWidget {
           return PopScope(
             canPop: controller.canPopNow.value,
             onPopInvoked: (didPop) {
-              if (didPop) return; // If already popped, don't handle again
-              final now = DateTime.now();
-              if (controller.currentBackPressTime == null ||
-                  now.difference(controller.currentBackPressTime!) >
-                      const Duration(seconds: 2)) {
-                controller.currentBackPressTime = now;
-                controller.canPopNow.value = false;
-                ShowToastDialog.showToast("Double press to exit".tr);
-              } else {
-                // Second press within 2 seconds - exit the app
-                SystemNavigator.pop();
+              if (didPop) return;
+              if(controller.selectedIndex.value==0){
+                final now = DateTime.now();
+                if (controller.currentBackPressTime == null ||
+                    now.difference(controller.currentBackPressTime!) >
+                        const Duration(seconds: 2)) {
+                  controller.currentBackPressTime = now;
+                  controller.canPopNow.value = false;
+                  ShowToastDialog.showToast("Double press to exit".tr);
+                } else {
+                  // Second press within 2 seconds - exit the app
+                  SystemNavigator.pop();
+                }
+              }else{
+                controller.changeNavbar(0);
               }
             },
             // onPopInvokedWithResult: (didPop, dynamic) {
@@ -46,7 +51,6 @@ class DashBoardScreen extends StatelessWidget {
             //   }
             // },
             child: Scaffold(
-              // body: controller.pageList[controller.selectedIndex.value],
               body: Obx(() => IndexedStack(
                     index: controller.selectedIndex.value,
                     children: controller.pageList.toList(),
@@ -104,8 +108,7 @@ class DashBoardScreen extends StatelessWidget {
                       ? AppThemeData.grey300
                       : AppThemeData.grey600,
                   onTap: (int index) {
-                    final clampedIndex = index.clamp(0, items.length - 1);
-                    controller.selectedIndex.value = clampedIndex;
+                    controller.changeNavbar(index.clamp(0, items.length - 1));
                   },
                   items: items,
                 );

@@ -22,151 +22,151 @@ Widget cartNavigationBarWidget(DarkThemeProvider themeChange,
             topLeft: Radius.circular(20), topRight: Radius.circular(20))),
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
     child: Padding(
-      padding: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.only(bottom: 30),
       child: Row(
         children: [
-          Expanded(
-            flex: 2,
-            child: InkWell(
-              onTap: () {
-                Get.to(const SelectPaymentScreen());
-              },
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  controller.selectedPaymentMethod.value == ''
-                      ? cardDecoration(
-                          controller, PaymentGateway.wallet, themeChange, "")
-                      : controller.selectedPaymentMethod.value ==
-                              PaymentGateway.wallet.name
-                          ? cardDecoration(controller, PaymentGateway.wallet,
-                              themeChange, "assets/images/ic_wallet.png")
-                          : controller.selectedPaymentMethod.value ==
-                                  PaymentGateway.cod.name
-                              ? cardDecoration(controller, PaymentGateway.cod,
-                                  themeChange, "assets/images/ic_cash.png")
-                              : controller.selectedPaymentMethod.value ==
-                                      PaymentGateway.stripe.name
-                                  ? cardDecoration(
-                                      controller,
-                                      PaymentGateway.stripe,
-                                      themeChange,
-                                      "assets/images/stripe.png")
-                                  : controller.selectedPaymentMethod.value ==
-                                          PaymentGateway.paypal.name
-                                      ? cardDecoration(
-                                          controller,
-                                          PaymentGateway.paypal,
-                                          themeChange,
-                                          "assets/images/paypal.png")
-                                      : controller.selectedPaymentMethod.value ==
-                                              PaymentGateway.payStack.name
-                                          ? cardDecoration(
-                                              controller,
-                                              PaymentGateway.payStack,
-                                              themeChange,
-                                              "assets/images/paystack.png")
-                                          : controller.selectedPaymentMethod.value ==
-                                                  PaymentGateway
-                                                      .mercadoPago.name
-                                              ? cardDecoration(
-                                                  controller,
-                                                  PaymentGateway.mercadoPago,
-                                                  themeChange,
-                                                  "assets/images/mercado-pago.png")
-                                              : controller.selectedPaymentMethod.value ==
-                                                      PaymentGateway
-                                                          .flutterWave.name
-                                                  ? cardDecoration(
-                                                      controller,
-                                                      PaymentGateway
-                                                          .flutterWave,
-                                                      themeChange,
-                                                      "assets/images/flutterwave_logo.png")
-                                                  : controller.selectedPaymentMethod.value ==
-                                                          PaymentGateway
-                                                              .payFast.name
-                                                      ? cardDecoration(
-                                                          controller,
-                                                          PaymentGateway
-                                                              .payFast,
-                                                          themeChange,
-                                                          "assets/images/payfast.png")
-                                                      : controller.selectedPaymentMethod.value ==
-                                                              PaymentGateway
-                                                                  .paytm.name
-                                                          ? cardDecoration(
-                                                              controller,
-                                                              PaymentGateway
-                                                                  .paytm,
-                                                              themeChange,
-                                                              "assets/images/paytm.png")
-                                                          : controller.selectedPaymentMethod
-                                                                      .value ==
-                                                                  PaymentGateway
-                                                                      .midTrans
-                                                                      .name
-                                                              ? cardDecoration(
-                                                                  controller,
-                                                                  PaymentGateway
-                                                                      .midTrans,
-                                                                  themeChange,
-                                                                  "assets/images/midtrans.png")
-                                                              : controller.selectedPaymentMethod.value ==
-                                                                      PaymentGateway
-                                                                          .orangeMoney
-                                                                          .name
-                                                                  ? cardDecoration(controller, PaymentGateway.orangeMoney, themeChange, "assets/images/orange_money.png")
-                                                                  : controller.selectedPaymentMethod.value == PaymentGateway.xendit.name
-                                                                      ? cardDecoration(controller, PaymentGateway.xendit, themeChange, "assets/images/xendit.png")
-                                                                      : cardDecoration(controller, PaymentGateway.razorpay, themeChange, "assets/images/razorpay.png"),
-                  const SizedBox(
-                    width: 10,
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Pay Via".tr,
-                        textAlign: TextAlign.start,
-                        style: TextStyle(
-                          fontFamily: AppThemeData.semiBold,
-                          color: themeChange.getThem()
-                              ? AppThemeData.grey400
-                              : AppThemeData.grey500,
-                          fontSize: 12,
-                        ),
-                      ),
-                      controller.selectedPaymentMethod.value == ''
-                          ? Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Container(
-                                  width: 60,
-                                  height: 12,
-                                  color: themeChange.getThem()
-                                      ? AppThemeData.grey800
-                                      : AppThemeData.grey100),
-                            )
-                          : Text(
-                              controller.selectedPaymentMethod.value,
-                              textAlign: TextAlign.start,
-                              style: TextStyle(
-                                fontFamily: AppThemeData.semiBold,
-                                color: themeChange.getThem()
-                                    ? AppThemeData.grey50
-                                    : AppThemeData.grey900,
-                                fontSize: 16,
-                              ),
-                            ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+          // Expanded(
+          //   flex: 2,
+          //   child: InkWell(
+          //     onTap: () {
+          //       Get.to(const SelectPaymentScreen());
+          //     },
+          //     child: Row(
+          //       mainAxisAlignment: MainAxisAlignment.start,
+          //       crossAxisAlignment: CrossAxisAlignment.center,
+          //       mainAxisSize: MainAxisSize.min,
+          //       children: [
+          //         controller.selectedPaymentMethod.value == ''
+          //             ? cardDecoration(
+          //                 controller, PaymentGateway.wallet, themeChange, "")
+          //             : controller.selectedPaymentMethod.value ==
+          //                     PaymentGateway.wallet.name
+          //                 ? cardDecoration(controller, PaymentGateway.wallet,
+          //                     themeChange, "assets/images/ic_wallet.png")
+          //                 : controller.selectedPaymentMethod.value ==
+          //                         PaymentGateway.cod.name
+          //                     ? cardDecoration(controller, PaymentGateway.cod,
+          //                         themeChange, "assets/images/ic_cash.png")
+          //                     : controller.selectedPaymentMethod.value ==
+          //                             PaymentGateway.stripe.name
+          //                         ? cardDecoration(
+          //                             controller,
+          //                             PaymentGateway.stripe,
+          //                             themeChange,
+          //                             "assets/images/stripe.png")
+          //                         : controller.selectedPaymentMethod.value ==
+          //                                 PaymentGateway.paypal.name
+          //                             ? cardDecoration(
+          //                                 controller,
+          //                                 PaymentGateway.paypal,
+          //                                 themeChange,
+          //                                 "assets/images/paypal.png")
+          //                             : controller.selectedPaymentMethod.value ==
+          //                                     PaymentGateway.payStack.name
+          //                                 ? cardDecoration(
+          //                                     controller,
+          //                                     PaymentGateway.payStack,
+          //                                     themeChange,
+          //                                     "assets/images/paystack.png")
+          //                                 : controller.selectedPaymentMethod.value ==
+          //                                         PaymentGateway
+          //                                             .mercadoPago.name
+          //                                     ? cardDecoration(
+          //                                         controller,
+          //                                         PaymentGateway.mercadoPago,
+          //                                         themeChange,
+          //                                         "assets/images/mercado-pago.png")
+          //                                     : controller.selectedPaymentMethod.value ==
+          //                                             PaymentGateway
+          //                                                 .flutterWave.name
+          //                                         ? cardDecoration(
+          //                                             controller,
+          //                                             PaymentGateway
+          //                                                 .flutterWave,
+          //                                             themeChange,
+          //                                             "assets/images/flutterwave_logo.png")
+          //                                         : controller.selectedPaymentMethod.value ==
+          //                                                 PaymentGateway
+          //                                                     .payFast.name
+          //                                             ? cardDecoration(
+          //                                                 controller,
+          //                                                 PaymentGateway
+          //                                                     .payFast,
+          //                                                 themeChange,
+          //                                                 "assets/images/payfast.png")
+          //                                             : controller.selectedPaymentMethod.value ==
+          //                                                     PaymentGateway
+          //                                                         .paytm.name
+          //                                                 ? cardDecoration(
+          //                                                     controller,
+          //                                                     PaymentGateway
+          //                                                         .paytm,
+          //                                                     themeChange,
+          //                                                     "assets/images/paytm.png")
+          //                                                 : controller.selectedPaymentMethod
+          //                                                             .value ==
+          //                                                         PaymentGateway
+          //                                                             .midTrans
+          //                                                             .name
+          //                                                     ? cardDecoration(
+          //                                                         controller,
+          //                                                         PaymentGateway
+          //                                                             .midTrans,
+          //                                                         themeChange,
+          //                                                         "assets/images/midtrans.png")
+          //                                                     : controller.selectedPaymentMethod.value ==
+          //                                                             PaymentGateway
+          //                                                                 .orangeMoney
+          //                                                                 .name
+          //                                                         ? cardDecoration(controller, PaymentGateway.orangeMoney, themeChange, "assets/images/orange_money.png")
+          //                                                         : controller.selectedPaymentMethod.value == PaymentGateway.xendit.name
+          //                                                             ? cardDecoration(controller, PaymentGateway.xendit, themeChange, "assets/images/xendit.png")
+          //                                                             : cardDecoration(controller, PaymentGateway.razorpay, themeChange, "assets/images/razorpay.png"),
+          //         const SizedBox(
+          //           width: 10,
+          //         ),
+          //         Column(
+          //           mainAxisSize: MainAxisSize.min,
+          //           crossAxisAlignment: CrossAxisAlignment.start,
+          //           children: [
+          //             Text(
+          //               "Pay Via".tr,
+          //               textAlign: TextAlign.start,
+          //               style: TextStyle(
+          //                 fontFamily: AppThemeData.semiBold,
+          //                 color: themeChange.getThem()
+          //                     ? AppThemeData.grey400
+          //                     : AppThemeData.grey500,
+          //                 fontSize: 12,
+          //               ),
+          //             ),
+          //             controller.selectedPaymentMethod.value == ''
+          //                 ? Padding(
+          //                     padding: const EdgeInsets.only(top: 4),
+          //                     child: Container(
+          //                         width: 60,
+          //                         height: 12,
+          //                         color: themeChange.getThem()
+          //                             ? AppThemeData.grey800
+          //                             : AppThemeData.grey100),
+          //                   )
+          //                 : Text(
+          //                     controller.selectedPaymentMethod.value,
+          //                     textAlign: TextAlign.start,
+          //                     style: TextStyle(
+          //                       fontFamily: AppThemeData.semiBold,
+          //                       color: themeChange.getThem()
+          //                           ? AppThemeData.grey50
+          //                           : AppThemeData.grey900,
+          //                       fontSize: 16,
+          //                     ),
+          //                   ),
+          //           ],
+          //         ),
+          //       ],
+          //     ),
+          //   ),
+          // ),
           Expanded(
             child: RoundedButtonFill(
               textColor: AppThemeData.surface,
@@ -489,4 +489,5 @@ Future<void> _processPayment(CartController controller, BuildContext context) as
   } else {
     ShowToastDialog.showToast("Please select payment method".tr);
   }
+
 }

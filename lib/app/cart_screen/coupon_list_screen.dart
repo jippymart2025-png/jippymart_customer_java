@@ -161,285 +161,320 @@ class CouponListScreen extends StatelessWidget {
                     //     ),
                     //   ],
                     // ),
-                child:       ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: Stack(
-                          children: [
-                            Positioned.fill(
-                              child: SvgPicture.asset(color:couponModel.isEnabled ==true?null: Colors.grey,
-                                ImageConst.cupon,
-                                fit: BoxFit.fill,
+                child:       GestureDetector(
+                                    onTap: couponModel.isEnabled == false
+                                        ? (){
+                                      ShowToastDialog.showToast(
+                                        "Coupon Expired",
+                                      );
+                                    }
+                                        : () {
+                                      double minValue = double.tryParse(
+                                          couponModel.itemValue ?? '0') ??
+                                          0.0;
+                                      if (controller.subTotal.value <= minValue) {
+                                        ShowToastDialog.showToast(
+                                          "This coupon can only be applied for orders above ₹${minValue.toStringAsFixed(0)}.",
+                                        );
+                                        return;
+                                      }
+                                      double couponAmount = Constant
+                                          .calculateDiscount(
+                                          amount: controller.subTotal.value
+                                              .toString(),
+                                          offerModel: couponModel);
+                                      if (couponAmount < controller.subTotal.value) {
+                                        controller.selectedCouponModel.value =
+                                            couponModel;
+                                        controller.couponCodeController.value.text =
+                                            couponModel.code ?? '';
+                                        controller.calculatePrice();
+                                        Get.back();
+                                      } else {
+                                        ShowToastDialog.showToast(
+                                            "Coupon code not applied".tr);
+                                      }
+                                    },
+                  child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Stack(
+                            children: [
+                              Positioned.fill(
+                                child: SvgPicture.asset(color:couponModel.isEnabled ==true?null: Colors.grey,
+                                  ImageConst.cupon,
+                                  fit: BoxFit.fill,
+                                ),
                               ),
-                            ),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 60,
-                                  height: 125,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(left: 10),
-                                    child: Align(
-                                      alignment: Alignment.center,
-                                      child: RotatedBox(
-                                        quarterTurns: -1,
-                                        child: Text(
-                                          "${couponModel.discountType == "Fix Price" ? Constant.amountShow(amount: couponModel.discount) : "${couponModel.discount}%"} ${'Off'.tr}",
-                                          textAlign: TextAlign.start,
-                                          style: TextStyle(
-                                            fontFamily: AppThemeData.semiBold,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 20,
-                                            color: themeChange.getThem()
-                                                ? AppThemeData.surface
-                                                : AppThemeData.surface,
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  SizedBox(
+                                    width: 60,
+                                    height: 125,
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(left: 10),
+                                      child: Align(
+                                        alignment: Alignment.center,
+                                        child: RotatedBox(
+                                          quarterTurns: -1,
+                                          child: Text(
+                                            "${couponModel.discountType == "Fix Price" ? Constant.amountShow(amount: couponModel.discount) : "${couponModel.discount}%"} ${'Off'.tr}",
+                                            textAlign: TextAlign.start,
+                                            style: TextStyle(
+                                              fontFamily: AppThemeData.semiBold,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 20,
+                                              color: themeChange.getThem()
+                                                  ? AppThemeData.surface
+                                                  : AppThemeData.surface,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ),
                                   ),
-                                ),
-                      SizedBox(width: 20,),
-                      SizedBox(
-                        height: 80,
-                        child: DottedBorder(
-                          options: CustomPathDottedBorderOptions(
-                            dashPattern: [8, 8],
-                            strokeWidth: 4,
-                            color: ColorConst.white,  customPath: (size) {
-                            return Path()
-                              ..moveTo(size.width / 2, 0)
-                              ..lineTo(size.width / 2, size.height);
-                          },
+                        SizedBox(width: 20,),
+                        SizedBox(
+                          height: 80,
+                          child: DottedBorder(
+                            options: CustomPathDottedBorderOptions(
+                              dashPattern: [8, 8],
+                              strokeWidth: 4,
+                              color: ColorConst.white,  customPath: (size) {
+                              return Path()
+                                ..moveTo(size.width / 2, 0)
+                                ..lineTo(size.width / 2, size.height);
+                            },
+                            ),
+                            child: const SizedBox(width: 2), // just a thin column
                           ),
-                          child: const SizedBox(width: 2), // just a thin column
                         ),
-                      ),
-                                SizedBox(width: 50,),
-                                Column(
-                                  children: [
-                                    Text(
-                                      "Coupon",
-                                      textAlign: TextAlign.start,
-                                      style: TextStyle(
-                                        fontFamily: AppThemeData.semiBold,
-                                        // fontWeight: FontWeight.bold,
-                                        fontSize: 40,
-                                        color: themeChange.getThem()
-                                            ? AppThemeData.surface
-                                            : AppThemeData.surface,
-                                      ),
-                                    ),
-                                    Stack(
-                                      alignment: Alignment.center, // ✅ centers all children
-                                      children: [
-                                        SvgPicture.asset(
-                                          ImageConst.codeCupon,
-                                          fit: BoxFit.fill,
-                                          height: 40,
-                                          width: 40,
+                                  SizedBox(width: 10,),
+                                  Column(
+                                    children: [
+                                      Text(
+                                        "Coupon",
+                                        textAlign: TextAlign.start,
+                                        style: TextStyle(
+                                          fontFamily: AppThemeData.semiBold,
+                                          // fontWeight: FontWeight.bold,
+                                          fontSize: 40,
+                                          color: themeChange.getThem()
+                                              ? AppThemeData.surface
+                                              : AppThemeData.surface,
                                         ),
-                                        Center( // ✅ ensures the text stays centered
-                                          child: Column(mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              SizedBox(height: 5,),
-                                              Text(
-                                                "${couponModel.code}",
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontFamily: AppThemeData.semiBold,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 14,
-                                                  color: themeChange.getThem()
-                                                      ? AppThemeData.surface
-                                                      : AppThemeData.surface,
+                                      ),
+                                      Stack(
+                                        alignment: Alignment.center, // ✅ centers all children
+                                        children: [
+                                          SvgPicture.asset(
+                                            ImageConst.codeCupon,
+                                            fit: BoxFit.fill,
+                                            height: 40,
+                                            width: 40,
+                                          ),
+                                          Center( // ✅ ensures the text stays centered
+                                            child: Column(mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                SizedBox(height: 5,),
+                                                Text(
+                                                  "${couponModel.code}",
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontFamily: AppThemeData.semiBold,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 14,
+                                                    color: themeChange.getThem()
+                                                        ? AppThemeData.surface
+                                                        : AppThemeData.surface,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      // Stack(
+                                      //   children: [
+                                      //     SvgPicture.asset(
+                                      //       ImageConst.codeCupon,
+                                      //       fit: BoxFit.fill,height: 40,
+                                      //       width: 40,
+                                      //     ),
+                                      //     Text(
+                                      //       "${couponModel.code}",
+                                      //       textAlign: TextAlign.start,
+                                      //       style: TextStyle(
+                                      //         fontFamily: AppThemeData.semiBold,
+                                      //         fontWeight: FontWeight.bold,
+                                      //         fontSize: 18,
+                                      //         color: themeChange.getThem()
+                                      //             ? AppThemeData.surface
+                                      //             : AppThemeData.surface,
+                                      //       ),
+                                      //     ),
+                                      //   ],
+                                      // ),
+                                      SizedBox(height: 10,),
+                                              SizedBox(
+                                                width: 220,
+                                                child: Text(
+                                                  "${couponModel.description}",
+                                                  textAlign: TextAlign.start,
+                                                  style: TextStyle(
+                                                    fontFamily: AppThemeData.medium,
+                                                    fontSize: 16,
+                                                    color: themeChange.getThem()
+                                                        ? AppThemeData.surface
+                                                        : AppThemeData.surface,
+
+                                                  ),maxLines: 2,
                                                 ),
                                               ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-
-                                    // Stack(
-                                    //   children: [
-                                    //     SvgPicture.asset(
-                                    //       ImageConst.codeCupon,
-                                    //       fit: BoxFit.fill,height: 40,
-                                    //       width: 40,
-                                    //     ),
-                                    //     Text(
-                                    //       "${couponModel.code}",
-                                    //       textAlign: TextAlign.start,
-                                    //       style: TextStyle(
-                                    //         fontFamily: AppThemeData.semiBold,
-                                    //         fontWeight: FontWeight.bold,
-                                    //         fontSize: 18,
-                                    //         color: themeChange.getThem()
-                                    //             ? AppThemeData.surface
-                                    //             : AppThemeData.surface,
-                                    //       ),
-                                    //     ),
-                                    //   ],
-                                    // ),
-                                    SizedBox(height: 10,),
-                                            SizedBox(
-                                              width: 220,
-                                              child: Text(
-                                                "${couponModel.description}",
-                                                textAlign: TextAlign.start,
-                                                style: TextStyle(
-                                                  fontFamily: AppThemeData.medium,
-                                                  fontSize: 16,
-                                                  color: themeChange.getThem()
-                                                      ? AppThemeData.surface
-                                                      : AppThemeData.surface,
-
-                                                ),maxLines: 2,
-                                              ),
-                                            ),
-                                    SizedBox(height: 10,),
-                                  ],
-                                ),
-                                // Expanded(
-                                //   child: Padding(
-                                //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-                                //     child: Column(
-                                //       crossAxisAlignment: CrossAxisAlignment.start,
-                                //       mainAxisSize: MainAxisSize.min,
-                                //       children: [
-                                //         Row(
-                                //           children: [
-                                //             DottedBorder(
-                                //               options: RoundedRectDottedBorderOptions(
-                                //                 color: couponModel.isEnabled == false
-                                //                     ? (themeChange.getThem()
-                                //                     ? AppThemeData.grey600
-                                //                     : AppThemeData.grey400)
-                                //                     : (themeChange.getThem()
-                                //                     ? AppThemeData.grey400
-                                //                     : AppThemeData.grey500),
-                                //                 strokeWidth: 1,
-                                //                 radius: const Radius.circular(6),
-                                //                 dashPattern: const [6, 6],
-                                //               ),
-                                //               child: Padding(
-                                //                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                                //                 child: Text(
-                                //                   "${couponModel.code}",
-                                //                   textAlign: TextAlign.start,
-                                //                   style: TextStyle(
-                                //                     fontFamily: AppThemeData.semiBold,
-                                //                     fontSize: 16,
-                                //                     color: couponModel.isEnabled == false
-                                //                         ? (themeChange.getThem()
-                                //                         ? AppThemeData.grey600
-                                //                         : AppThemeData.grey400)
-                                //                         : (themeChange.getThem()
-                                //                         ? AppThemeData.grey400
-                                //                         : AppThemeData.grey500),
-                                //                   ),
-                                //                 ),
-                                //               ),
-                                //             ),
-                                //             const SizedBox(width: 8),
-                                //             if (couponModel.isEnabled == false)
-                                //               Container(
-                                //                 padding: const EdgeInsets.symmetric(
-                                //                     horizontal: 8, vertical: 2),
-                                //                 decoration: BoxDecoration(
-                                //                   color: themeChange.getThem()
-                                //                       ? AppThemeData.grey700
-                                //                       : AppThemeData.grey300,
-                                //                   borderRadius: BorderRadius.circular(6),
-                                //                 ),
-                                //                 child: Text(
-                                //                   "Used",
-                                //                   style: TextStyle(
-                                //                     color: themeChange.getThem()
-                                //                         ? AppThemeData.grey200
-                                //                         : AppThemeData.grey800,
-                                //                     fontFamily: AppThemeData.medium,
-                                //                     fontSize: 12,
-                                //                   ),
-                                //                 ),
-                                //               ),
-                                //             const Expanded(child: SizedBox(height: 10)),
-                                //             InkWell(
-                                //               onTap: couponModel.isEnabled == false
-                                //                   ? null
-                                //                   : () {
-                                //                 double minValue = double.tryParse(
-                                //                     couponModel.itemValue ?? '0') ??
-                                //                     0.0;
-                                //                 if (controller.subTotal.value <= minValue) {
-                                //                   ShowToastDialog.showToast(
-                                //                     "This coupon can only be applied for orders above ₹${minValue.toStringAsFixed(0)}.",
-                                //                   );
-                                //                   return;
-                                //                 }
-                                //                 double couponAmount = Constant
-                                //                     .calculateDiscount(
-                                //                     amount: controller.subTotal.value
-                                //                         .toString(),
-                                //                     offerModel: couponModel);
-                                //                 if (couponAmount < controller.subTotal.value) {
-                                //                   controller.selectedCouponModel.value =
-                                //                       couponModel;
-                                //                   controller.couponCodeController.value.text =
-                                //                       couponModel.code ?? '';
-                                //                   controller.calculatePrice();
-                                //                   Get.back();
-                                //                 } else {
-                                //                   ShowToastDialog.showToast(
-                                //                       "Coupon code not applied".tr);
-                                //                 }
-                                //               },
-                                //               child: Text(
-                                //                 couponModel.isEnabled == false
-                                //                     ? "Used"
-                                //                     : "Tap To Apply".tr,
-                                //                 textAlign: TextAlign.start,
-                                //                 style: TextStyle(
-                                //                   fontFamily: AppThemeData.medium,
-                                //                   color: couponModel.isEnabled == false
-                                //                       ? (themeChange.getThem()
-                                //                       ? AppThemeData.grey600
-                                //                       : AppThemeData.grey400)
-                                //                       : (themeChange.getThem()
-                                //                       ? AppThemeData.primary300
-                                //                       : AppThemeData.primary300),
-                                //                 ),
-                                //               ),
-                                //             ),
-                                //           ],
-                                //         ),
-                                //         const SizedBox(height: 20),
-                                //         MySeparator(
-                                //             color: themeChange.getThem()
-                                //                 ? AppThemeData.grey700
-                                //                 : AppThemeData.grey200),
-                                //         const SizedBox(height: 20),
-                                //         Text(
-                                //           "${couponModel.description}",
-                                //           textAlign: TextAlign.start,
-                                //           style: TextStyle(
-                                //             fontFamily: AppThemeData.medium,
-                                //             fontSize: 16,
-                                //             color: themeChange.getThem()
-                                //                 ? AppThemeData.grey50
-                                //                 : AppThemeData.grey900,
-                                //           ),
-                                //         ),
-                                //       ],
-                                //     ),
-                                //   ),
-                                // ),
-                              ],
-                            ),
-                          ],
+                                      SizedBox(height: 10,),
+                                    ],
+                                  ),
+                                  // Expanded(
+                                  //   child: Padding(
+                                  //     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+                                  //     child: Column(
+                                  //       crossAxisAlignment: CrossAxisAlignment.start,
+                                  //       mainAxisSize: MainAxisSize.min,
+                                  //       children: [
+                                  //         Row(
+                                  //           children: [
+                                  //             DottedBorder(
+                                  //               options: RoundedRectDottedBorderOptions(
+                                  //                 color: couponModel.isEnabled == false
+                                  //                     ? (themeChange.getThem()
+                                  //                     ? AppThemeData.grey600
+                                  //                     : AppThemeData.grey400)
+                                  //                     : (themeChange.getThem()
+                                  //                     ? AppThemeData.grey400
+                                  //                     : AppThemeData.grey500),
+                                  //                 strokeWidth: 1,
+                                  //                 radius: const Radius.circular(6),
+                                  //                 dashPattern: const [6, 6],
+                                  //               ),
+                                  //               child: Padding(
+                                  //                 padding: const EdgeInsets.symmetric(horizontal: 16),
+                                  //                 child: Text(
+                                  //                   "${couponModel.code}",
+                                  //                   textAlign: TextAlign.start,
+                                  //                   style: TextStyle(
+                                  //                     fontFamily: AppThemeData.semiBold,
+                                  //                     fontSize: 16,
+                                  //                     color: couponModel.isEnabled == false
+                                  //                         ? (themeChange.getThem()
+                                  //                         ? AppThemeData.grey600
+                                  //                         : AppThemeData.grey400)
+                                  //                         : (themeChange.getThem()
+                                  //                         ? AppThemeData.grey400
+                                  //                         : AppThemeData.grey500),
+                                  //                   ),
+                                  //                 ),
+                                  //               ),
+                                  //             ),
+                                  //             const SizedBox(width: 8),
+                                  //             if (couponModel.isEnabled == false)
+                                  //               Container(
+                                  //                 padding: const EdgeInsets.symmetric(
+                                  //                     horizontal: 8, vertical: 2),
+                                  //                 decoration: BoxDecoration(
+                                  //                   color: themeChange.getThem()
+                                  //                       ? AppThemeData.grey700
+                                  //                       : AppThemeData.grey300,
+                                  //                   borderRadius: BorderRadius.circular(6),
+                                  //                 ),
+                                  //                 child: Text(
+                                  //                   "Used",
+                                  //                   style: TextStyle(
+                                  //                     color: themeChange.getThem()
+                                  //                         ? AppThemeData.grey200
+                                  //                         : AppThemeData.grey800,
+                                  //                     fontFamily: AppThemeData.medium,
+                                  //                     fontSize: 12,
+                                  //                   ),
+                                  //                 ),
+                                  //               ),
+                                  //             const Expanded(child: SizedBox(height: 10)),
+                                  //             InkWell(
+                                  //               onTap: couponModel.isEnabled == false
+                                  //                   ? null
+                                  //                   : () {
+                                  //                 double minValue = double.tryParse(
+                                  //                     couponModel.itemValue ?? '0') ??
+                                  //                     0.0;
+                                  //                 if (controller.subTotal.value <= minValue) {
+                                  //                   ShowToastDialog.showToast(
+                                  //                     "This coupon can only be applied for orders above ₹${minValue.toStringAsFixed(0)}.",
+                                  //                   );
+                                  //                   return;
+                                  //                 }
+                                  //                 double couponAmount = Constant
+                                  //                     .calculateDiscount(
+                                  //                     amount: controller.subTotal.value
+                                  //                         .toString(),
+                                  //                     offerModel: couponModel);
+                                  //                 if (couponAmount < controller.subTotal.value) {
+                                  //                   controller.selectedCouponModel.value =
+                                  //                       couponModel;
+                                  //                   controller.couponCodeController.value.text =
+                                  //                       couponModel.code ?? '';
+                                  //                   controller.calculatePrice();
+                                  //                   Get.back();
+                                  //                 } else {
+                                  //                   ShowToastDialog.showToast(
+                                  //                       "Coupon code not applied".tr);
+                                  //                 }
+                                  //               },
+                                  //               child: Text(
+                                  //                 couponModel.isEnabled == false
+                                  //                     ? "Used"
+                                  //                     : "Tap To Apply".tr,
+                                  //                 textAlign: TextAlign.start,
+                                  //                 style: TextStyle(
+                                  //                   fontFamily: AppThemeData.medium,
+                                  //                   color: couponModel.isEnabled == false
+                                  //                       ? (themeChange.getThem()
+                                  //                       ? AppThemeData.grey600
+                                  //                       : AppThemeData.grey400)
+                                  //                       : (themeChange.getThem()
+                                  //                       ? AppThemeData.primary300
+                                  //                       : AppThemeData.primary300),
+                                  //                 ),
+                                  //               ),
+                                  //             ),
+                                  //           ],
+                                  //         ),
+                                  //         const SizedBox(height: 20),
+                                  //         MySeparator(
+                                  //             color: themeChange.getThem()
+                                  //                 ? AppThemeData.grey700
+                                  //                 : AppThemeData.grey200),
+                                  //         const SizedBox(height: 20),
+                                  //         Text(
+                                  //           "${couponModel.description}",
+                                  //           textAlign: TextAlign.start,
+                                  //           style: TextStyle(
+                                  //             fontFamily: AppThemeData.medium,
+                                  //             fontSize: 16,
+                                  //             color: themeChange.getThem()
+                                  //                 ? AppThemeData.grey50
+                                  //                 : AppThemeData.grey900,
+                                  //           ),
+                                  //         ),
+                                  //       ],
+                                  //     ),
+                                  //   ),
+                                  // ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      )
+                )
                     // child: Row(
                     //   crossAxisAlignment: CrossAxisAlignment.start, // This makes the orange banner fill the card height
                     //   children: [

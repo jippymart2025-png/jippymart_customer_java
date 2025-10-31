@@ -47,48 +47,33 @@ import 'package:provider/provider.dart';
 
 import 'app/category_service/controller/cetegory_service_controller.dart';
 import 'app/video_splash_screen.dart';
-
+import 'dart:io';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // For SystemNavigator.pop()
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-
   GlobalDeeplinkHandler.init();
-  // Register GlobalDeeplinkHandler as a permanent GetX dependency
   Get.put(
     GlobalDeeplinkHandler.instance,
     permanent: true,
   );
-
-
   // 🛡️ CRASH PREVENTION: Initialize crash prevention system
-
   CrashPrevention();
-
   await SmartlookANRFix.configureSmartlook();
   await PlatformANRPrevention.preventMIUIANR();
   await PlatformANRPrevention.preventCiscoANR();
-  print(
-    '🚨 [MAIN] ANR prevention systems initialized',
-  );
-
-  log('🔗 [MAIN] 🚀 MAIN FUNCTION CALLED!');
-
-  // **OPTIMIZED: Initialize only critical services synchronously**
   try {
     // Initialize Firebase with timeout
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 3,),);
 
-    // Configure Firestore settings
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
       cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
       sslEnabled: true,
     );
 
-
-    // 📊 MONITORING: Start monitoring systems AFTER Firebase is initialized
     ANRMonitor.startMonitoring();
     MemoryMonitor.startMemoryMonitoring();
     NativeLockPrevention.startLockContentionMonitoring();
@@ -214,6 +199,36 @@ void _initializeSmartLookInBackground() {
       }
     }
   });
+}
+
+
+Future<bool> onWillPop(BuildContext context) async {
+  bool? shouldExit = await showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Exit App'),
+      content: const Text('Are you sure you want to exit the app?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('No'),
+        ),
+        TextButton(
+          onPressed: () {
+            if (Platform.isAndroid) {
+              SystemNavigator.pop(); // Close app properly on Android
+            } else if (Platform.isIOS) {
+              exit(0); // Force close on iOS (not recommended by Apple, but works)
+            } else {
+              SystemNavigator.pop();
+            }
+          },
+          child: const Text('Yes'),
+        ),
+      ],
+    ),
+  );
+  return shouldExit ?? false;
 }
 
 class MyApp extends StatefulWidget {

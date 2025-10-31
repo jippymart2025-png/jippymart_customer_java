@@ -48,32 +48,25 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     // });
   }
 
-  // @override
-  // void didChangeDependencies() {
-  //   super.didChangeDependencies();
-  //   WidgetsBinding.instance.addPostFrameCallback((_) {
-  //     if (controller != null) {
-  //       _refreshCartData();
-  //     }
-  //   });
-  // }
-
-
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 3), () {
+        _refreshCartData();
+      });
+    });
+  }
   void _refreshCartData() {
     print('DEBUG: Refreshing cart data...');
-    controller?.forceRefreshCart();
-    // **FIXED: Re-initialize address if not selected (for global cart controller)**
-    if (controller?.selectedAddress.value == null) {
-      print(
-          '🏠 [CART_REFRESH] No address selected, re-initializing address...');
+    controller.forceRefreshCart();
+    if (controller.selectedAddress.value == null) {
       // Trigger address initialization by calling the public method
-      controller?.initializeAddress();
+      controller.initializeAddress();
     }
     // Ensure payment method is set correctly based on order total
     Future.delayed(const Duration(milliseconds: 500), () {
-      controller?.checkAndUpdatePaymentMethod();
-      print(
-          'DEBUG: Cart refresh completed - Items: ${cartItem.length}, Total: ${controller?.totalAmount.value}');
+      controller.checkAndUpdatePaymentMethod();
     });
   }
 
@@ -143,7 +136,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     final themeChange = Provider.of<DarkThemeProvider>(context);
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
-    return controller ==null? Center(child: CircularProgressIndicator(),): GetX<CartController>(builder: (controller) {
+    return  GetX<CartController>(builder: (controller) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         controller.checkAndUpdatePaymentMethod();
       });
@@ -175,7 +168,24 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
                 // Debug buttons removed - methods not available in current version
               ],
             ),
-            body: Container(
+            body:cartItem.isEmpty? Center(
+              child: Text(
+                    "No Available Items",
+                textAlign:
+                TextAlign.start,
+                style: TextStyle(
+                  fontFamily: AppThemeData
+                      .semiBold,
+                  color: themeChange
+                      .getThem()
+                      ? AppThemeData
+                      .primary300
+                      : AppThemeData
+                      .primary300,
+                  fontSize: 16,
+                ),
+              ),
+            ): Container(
               decoration: BoxDecoration(
                 image: DecorationImage(
                   image: AssetImage(ImageConst.backgroundImage,
@@ -183,32 +193,40 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
                   fit: BoxFit.cover, // can use contain, fill, repeat
                 ),
               ),
-              child: cartProductDetailsImageWidget(
-                themeChange,
-                controller,
+              child: Column(
+                children: [
+                  cartProductDetailsImageWidget(
+                    themeChange,
+                    controller,
+                  ),
+                ],
               ),
             ),
-            //changed here
             bottomNavigationBar: cartItem.isEmpty
                 ? null
-                : Container(
-              decoration: BoxDecoration(
-                  color:
-                  themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
-                  borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(20), topRight: Radius.circular(20))),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                  child: RoundedButtonFill(
-                  textColor: AppThemeData.surface,
-                  isEnabled: true,
-                  title:  "Check Out".tr,
-                  height: 5,
-                  color: AppThemeData.primary300,
-                  fontSizes: 16,
-                  onPress: () async {
-                    Get.to(() => const CartScreen());
-                    }
-                          ),
+                : SafeArea(
+                  child: Container(
+                                decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(20), topRight: Radius.circular(20),),),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                    child: RoundedButtonFill(
+                    textColor: AppThemeData.surface,
+                    isEnabled: true,
+                    title:  "Check Out".tr,
+                    height: 5,
+                    color: AppThemeData.primary300,
+                    fontSizes: 16,
+                        // onPress: () async {
+                        //   await Get.to(() => const CartScreen())?.then((_) {
+                        //     _refreshCartData();
+                        //   });
+                        // }
+                      onPress: () async {
+                      Get.to(() => const CartScreen());
+                      }
+                            ),
+                  ),
                 ),),
       );
     });

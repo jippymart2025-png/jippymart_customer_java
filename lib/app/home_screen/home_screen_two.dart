@@ -58,46 +58,85 @@ import 'discount_restaurant_list_screen.dart';
 
 class HomeScreenTwo extends StatelessWidget {
   const HomeScreenTwo({super.key});
-
-  // Check if mart is available in current zone
   static Future<void> _checkMartAvailability() async {
     try {
+      // 1️⃣ Early exit if zone not set
+      if (Constant.selectedZone?.id == null) {
+        ComingSoonDialogHelper.show(
+          title: "COMING SOON".tr,
+          message: "We're working hard to bring Jippy Mart to your area. Stay tuned!",
+        );
+        return;
+      }
 
-      // First check if there are any mart vendors in the zone (regardless of open/closed status)
-      final martVendors = await MartZoneUtils.getMartVendorsForCurrentZone();
+      // 2️⃣ Fetch vendors ONCE
+      final martVendors = await MartZoneUtils.getCachedMartVendors();
 
+      // 3️⃣ Handle no vendors
       if (martVendors.isEmpty) {
         ComingSoonDialogHelper.show(
           title: "COMING SOON".tr,
-          message:
-              "We're working hard to bring Jippy Mart to your area. Stay tuned for updates!",
+          message: "We're working hard to bring Jippy Mart to your area. Stay tuned!",
         );
-      } else {
-        // Mart vendors exist, now check if they're temporarily closed
-        final isMartTemporarilyClosed =
-            await MartZoneUtils.isMartTemporarilyClosedInCurrentZone();
-
-        if (isMartTemporarilyClosed) {
-          // Show mart available hours dialog
-          ComingSoonDialogHelper.show(
-            title: "Mart Available from 7AM to 9PM".tr,
-            message: "",
-          );
-        } else {
-          // Navigate to mart navigation screen
-          Get.to(() => const MartNavigationScreen());
-        }
+        return;
       }
 
+      // 4️⃣ Check if all closed (no extra Firestore call)
+      final allClosed = martVendors.every((v) => v.isOpen == false);
+      if (allClosed) {
+        ComingSoonDialogHelper.show(
+          title: "Mart Available from 7AM to 9PM".tr,
+          message: "",
+        );
+        return;
+      }
+
+      // 5️⃣ Navigate immediately
+      Get.to(() => const MartNavigationScreen());
+
     } catch (e) {
+      debugPrint("❌ Mart check failed: $e");
       ComingSoonDialogHelper.show(
         title: "COMING SOON".tr,
-        message:
-            "We're working hard to bring Jippy Mart to your area. Stay tuned for updates!",
+        message: "We're working hard to bring Jippy Mart to your area. Stay tuned!",
       );
-
     }
   }
+
+  // // Check if mart is available in current zone
+  // static Future<void> _checkMartAvailability() async {
+  //   try {
+  //     final martVendors = await MartZoneUtils.getMartVendorsForCurrentZone();
+  //     if (martVendors.isEmpty) {
+  //       ComingSoonDialogHelper.show(
+  //         title: "COMING SOON".tr,
+  //         message:
+  //             "We're working hard to bring Jippy Mart to your area. Stay tuned for updates!",
+  //       );
+  //     } else {
+  //       final isMartTemporarilyClosed =
+  //           await MartZoneUtils.isMartTemporarilyClosedInCurrentZone();
+  //       if (isMartTemporarilyClosed) {
+  //         // Show mart available hours dialog
+  //         ComingSoonDialogHelper.show(
+  //           title: "Mart Available from 7AM to 9PM".tr,
+  //           message: "",
+  //         );
+  //       } else {
+  //         // Navigate to mart navigation screen
+  //         Get.to(() => const MartNavigationScreen());
+  //       }
+  //     }
+  //
+  //   } catch (e) {
+  //     ComingSoonDialogHelper.show(
+  //       title: "COMING SOON".tr,
+  //       message:
+  //           "We're working hard to bring Jippy Mart to your area. Stay tuned for updates!",
+  //     );
+  //
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -1327,8 +1366,8 @@ class CategoryView extends StatelessWidget {
                     });
                   },
                   child: Container(
-                    margin: const EdgeInsets.only(right: 12),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                    margin: const EdgeInsets.only(right: 0),
+                    padding: const EdgeInsets.only(right: 8,),
                     // decoration: BoxDecoration(
                     //   color: Colors.white,
                     //   borderRadius: BorderRadius.circular(16),

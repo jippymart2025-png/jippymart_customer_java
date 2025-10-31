@@ -219,7 +219,7 @@ class _CartScreenState extends State<CartScreen> {
               ],
             ),
             body: cartItem.isEmpty
-                ? Constant.showEmptyView(message: "Item Not available".tr)
+                ? Constant.showEmptyView(message: "No Available Items")
                 : SingleChildScrollView(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1040,15 +1040,16 @@ class _CartScreenState extends State<CartScreen> {
                       ],
                     ),
                   ),
-
             //changed here
             bottomNavigationBar: cartItem.isEmpty
                 ? null
-                : cartNavigationBarWidget(
-                    themeChange,
-                    controller,
-                    context,
-                  )),
+                :
+                  cartNavigationBarWidget(
+                      themeChange,
+                      controller,
+                      context,
+                    ),
+                ),
       );
     });
   }

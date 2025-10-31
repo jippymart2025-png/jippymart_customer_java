@@ -44,7 +44,6 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
       appBar: AppBar(
         backgroundColor:ColorConst.martPrimary,
@@ -83,7 +82,7 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
             color: MartTheme.jippyMartButton,
             onRefresh: _loadCategories,
             child: SingleChildScrollView(
-              // physics: const AlwaysScrollableScrollPhysics(),
+              physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
               child: _buildCategoriesBySections(controller.martCategories),
             ),
@@ -219,11 +218,7 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
           final index = entry.key;
           final sectionName = entry.value;
           final sectionCategories = sections[sectionName]!;
-          return Column(
-            children: [
-              _buildSection(sectionName, sectionCategories),
-            ],
-          );
+          return _buildSection(sectionName, sectionCategories);
         }),
       ],
     );
@@ -232,6 +227,7 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
   Widget _buildSection(String sectionName, List<MartCategoryModel> sectionCategories) {
     sectionCategories.sort((a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0));
     return ListView.builder(
+      physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
       padding: const EdgeInsets.symmetric(horizontal: 0),
       itemCount: sectionCategories.length,
@@ -318,14 +314,15 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
                 category.title ?? 'Category',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
-                  fontSize: 18,
+                  fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: ColorConst.blackColor,
                 ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-              ),Spacer(),
+              ),
+              Spacer(),
               Icon(Icons.arrow_forward_ios_rounded,color: ColorConst.blackColor,)
             ],
           ),

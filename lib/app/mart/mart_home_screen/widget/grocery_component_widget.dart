@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shimmer/shimmer.dart';
 import 'dart:math';
-Widget groceryComponent() {
+Widget groceryComponent(Size size) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
     child: Column(
@@ -50,7 +50,6 @@ Widget groceryComponent() {
         //   ),
         // ),
 SizedBox(height: 20,),
-        // Categories Grid
         GetX<MartController>(
           builder: (controller) {
             // Loading State
@@ -74,7 +73,7 @@ SizedBox(height: 20,),
             }
 
             // Success State - Premium Categories Grid
-            return _buildCategoriesGrid(controller);
+            return _buildCategoriesGrid(controller,size);
           },
         ),
       ],
@@ -287,24 +286,24 @@ Widget _buildEmptyState() {
 }
 
 // Enhanced Categories Grid
-Widget _buildCategoriesGrid(MartController controller) {
+Widget _buildCategoriesGrid(MartController controller,Size size) {
   return SizedBox(
     height: 120,
     child: ListView.separated(padding: EdgeInsets.zero,
       scrollDirection: Axis.horizontal,
-      physics: NeverScrollableScrollPhysics(),
+      // physics: NeverScrollableScrollPhysics(),
       itemCount: controller.featuredCategories.length > 5 ? 5 : controller.featuredCategories.length,
       separatorBuilder: (context, index) => const SizedBox(width: 30),
       itemBuilder: (context, index) {
         final category = controller.featuredCategories[index];
-        return _buildCategoryItem(category, index);
+        return _buildCategoryItem(category, index,size);
       },
     ),
   );
 }
 
 // Enhanced Category Item with Modern Design
-Widget _buildCategoryItem(MartCategoryModel category, int index) {
+Widget _buildCategoryItem(MartCategoryModel category, int index,Size size) {
   final categoryData = _getCategoryData(category.title ?? '');
   return AnimatedContainer(
     duration: Duration(milliseconds: 400 + (index * 100)),
@@ -318,7 +317,7 @@ Widget _buildCategoryItem(MartCategoryModel category, int index) {
       },
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-        width: 50,
+        width: size.width*0.11,
         // decoration: BoxDecoration(
         //   borderRadius: BorderRadius.circular(20),
         //   color: Colors.white,

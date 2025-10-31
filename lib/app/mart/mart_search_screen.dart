@@ -5,6 +5,7 @@ import 'package:jippymart_customer/controllers/category_detail_controller.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_search_widget.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/utils/utils/color_const.dart';
 
 class MartSearchScreen extends StatefulWidget {
   const MartSearchScreen({Key? key}) : super(key: key);
@@ -258,7 +259,7 @@ class _MartSearchScreenState extends State<MartSearchScreen>
                 // Custom colorful app bar
                 Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF007F73),
+                    color: ColorConst.martPrimary,
                     boxShadow: MartTheme.elevatedShadow,
                   ),
                   child: SafeArea(
