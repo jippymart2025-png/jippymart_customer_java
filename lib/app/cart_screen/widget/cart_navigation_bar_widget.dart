@@ -173,7 +173,7 @@ Widget cartNavigationBarWidget(DarkThemeProvider themeChange,
               isEnabled: true,
               title: controller.isProcessingOrder.value
                   ? "Processing...".tr
-                  : "Pay Now".tr,
+                  : "Place Order".tr,
               height: 5,
               color: AppThemeData.primary300,
               fontSizes: 16,
@@ -183,6 +183,9 @@ Widget cartNavigationBarWidget(DarkThemeProvider themeChange,
                       "Please wait, order is being processed...".tr);
                   return;
                 }
+                // print("${controller.vendorModel.value.author.toString()} "
+                //     " ${controller.vendorModel.value.authorName.toString()}  ${controller.vendorModel.value.categoryTitle.toString()}  vendorModel.value.author ");
+
                 await controller.showPaymentMethodDialog(context);
                 if (controller.selectedPaymentMethod.value.isNotEmpty) {
                   await _processPayment(controller, context);
@@ -413,11 +416,9 @@ Future<void> _processPayment(CartController controller, BuildContext context) as
   final validationStartTime = DateTime.now();
   final canProceed = await controller.validateAndPlaceOrderBulletproof();
   final validationDuration = DateTime.now().difference(validationStartTime);
-
   if (!canProceed) {
     return;
   }
-
   // Validate coupon and discount amounts
   if ((controller.couponAmount.value >= 1) &&
       (controller.couponAmount.value > controller.totalAmount.value)) {
@@ -426,7 +427,6 @@ Future<void> _processPayment(CartController controller, BuildContext context) as
             .tr);
     return;
   }
-
   if ((controller.specialDiscountAmount.value >= 1) &&
       (controller.specialDiscountAmount.value > controller.totalAmount.value)) {
     ShowToastDialog.showToast(
@@ -434,7 +434,6 @@ Future<void> _processPayment(CartController controller, BuildContext context) as
             .tr);
     return;
   }
-
   // Process based on selected payment method
   if (controller.selectedPaymentMethod.value == PaymentGateway.stripe.name) {
     ShowToastDialog.showToast("Stripe payment is disabled".tr);

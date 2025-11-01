@@ -76,10 +76,7 @@ class HomeScreen extends StatelessWidget {
           '📍 [HOME_SCREEN] Current Zone: ${Constant.selectedZone?.id ?? "NULL"} (${Constant.selectedZone?.name ?? "NULL"})');
       print(
           '📍 [HOME_SCREEN] User Location: ${Constant.selectedLocation.location?.latitude ?? "NULL"}, ${Constant.selectedLocation.location?.longitude ?? "NULL"}');
-
-      // First check if there are any mart vendors in the zone (regardless of open/closed status)
       final martVendors = await MartZoneUtils.getMartVendorsForCurrentZone();
-
       if (martVendors.isEmpty) {
         print(
             '❌ [HOME_SCREEN] No mart vendors in zone - Showing COMING SOON dialog');

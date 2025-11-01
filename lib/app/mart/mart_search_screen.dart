@@ -281,7 +281,6 @@ class _MartSearchScreenState extends State<MartSearchScreen>
                             ),
                           ),
                           const SizedBox(width: 16),
-
                           // Title with emoji
                           Expanded(
                             child: Row(
@@ -307,7 +306,6 @@ class _MartSearchScreenState extends State<MartSearchScreen>
                     ),
                   ),
                 ),
-
                 // Search widget with transparent background
                 Expanded(
                   child: Container(

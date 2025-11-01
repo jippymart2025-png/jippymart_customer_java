@@ -233,66 +233,66 @@ class MartHomeScreen extends StatelessWidget {
                               ],
                             ),
                           ),
-                          Positioned(
-                            bottom: MediaQuery.of(context).padding.bottom +
-                                120, // Above bottom navigation
-                            right: 16,
-                            child: GestureDetector(
-                              onTap: () async {
-                                // WhatsApp number - you can change this to your desired number
-                                const String phoneNumber =
-                                    '+919390579864'; // Your actual WhatsApp number
-                                const String message =
-                                    'Hello! I need help with my JippyMart order.'; // Customize the message
-
-                                final Uri whatsappUrl = Uri.parse(
-                                    'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
-
-                                try {
-                                  if (await canLaunchUrl(whatsappUrl)) {
-                                    await launchUrl(whatsappUrl,
-                                        mode: LaunchMode.externalApplication);
-                                  } else {
-                                    // Fallback to regular phone call if WhatsApp is not available
-                                    final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
-                                    if (await canLaunchUrl(phoneUrl)) {
-                                      await launchUrl(phoneUrl,
-                                          mode: LaunchMode.externalApplication);
-                                    }
-                                  }
-                                } catch (e) {
-                                  print('Error launching WhatsApp: $e');
-                                }
-                              },
-                              child: Container(
-                                width: 56,
-                                height: 56,
-                                decoration: BoxDecoration(
-                                  color: Colors.green, // WhatsApp green color
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.2),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Padding(
-                                  padding: const EdgeInsets.all(0.0),
-                                  child: SvgPicture.asset(
-                                    'assets/images/whatsapp.svg',
-                                    width: 24,
-                                    height: 24,
-                                    colorFilter: const ColorFilter.mode(
-                                      Colors.white,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                          // Positioned(
+                          //   bottom: MediaQuery.of(context).padding.bottom +
+                          //       120, // Above bottom navigation
+                          //   right: 16,
+                          //   child: GestureDetector(
+                          //     onTap: () async {
+                          //       // WhatsApp number - you can change this to your desired number
+                          //       const String phoneNumber =
+                          //           '+919390579864'; // Your actual WhatsApp number
+                          //       const String message =
+                          //           'Hello! I need help with my JippyMart order.'; // Customize the message
+                          //
+                          //       final Uri whatsappUrl = Uri.parse(
+                          //           'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
+                          //
+                          //       try {
+                          //         if (await canLaunchUrl(whatsappUrl)) {
+                          //           await launchUrl(whatsappUrl,
+                          //               mode: LaunchMode.externalApplication);
+                          //         } else {
+                          //           // Fallback to regular phone call if WhatsApp is not available
+                          //           final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
+                          //           if (await canLaunchUrl(phoneUrl)) {
+                          //             await launchUrl(phoneUrl,
+                          //                 mode: LaunchMode.externalApplication);
+                          //           }
+                          //         }
+                          //       } catch (e) {
+                          //         print('Error launching WhatsApp: $e');
+                          //       }
+                          //     },
+                          //     child: Container(
+                          //       width: 56,
+                          //       height: 56,
+                          //       decoration: BoxDecoration(
+                          //         color: Colors.green, // WhatsApp green color
+                          //         shape: BoxShape.circle,
+                          //         boxShadow: [
+                          //           BoxShadow(
+                          //             color: Colors.black.withOpacity(0.2),
+                          //             blurRadius: 8,
+                          //             offset: const Offset(0, 4),
+                          //           ),
+                          //         ],
+                          //       ),
+                          //       child: Padding(
+                          //         padding: const EdgeInsets.all(0.0),
+                          //         child: SvgPicture.asset(
+                          //           'assets/images/whatsapp.svg',
+                          //           width: 24,
+                          //           height: 24,
+                          //           colorFilter: const ColorFilter.mode(
+                          //             Colors.white,
+                          //             BlendMode.srcIn,
+                          //           ),
+                          //         ),
+                          //       ),
+                          //     ),
+                          //   ),
+                          // ),
 
                         ],
                       ),
@@ -300,6 +300,61 @@ class MartHomeScreen extends StatelessWidget {
                 ),
               );
             },
+          ),
+          floatingActionButton:   GestureDetector(
+            onTap: () async {
+              // WhatsApp number - you can change this to your desired number
+              const String phoneNumber =
+                  '+919390579864'; // Your actual WhatsApp number
+              const String message =
+                  'Hello! I need help with my JippyMart order.'; // Customize the message
+
+              final Uri whatsappUrl = Uri.parse(
+                  'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
+
+              try {
+                if (await canLaunchUrl(whatsappUrl)) {
+                  await launchUrl(whatsappUrl,
+                      mode: LaunchMode.externalApplication);
+                } else {
+                  // Fallback to regular phone call if WhatsApp is not available
+                  final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
+                  if (await canLaunchUrl(phoneUrl)) {
+                    await launchUrl(phoneUrl,
+                        mode: LaunchMode.externalApplication);
+                  }
+                }
+              } catch (e) {
+                print('Error launching WhatsApp: $e');
+              }
+            },
+            child: Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: Colors.green, // WhatsApp green color
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(0.0),
+                child: SvgPicture.asset(
+                  'assets/images/whatsapp.svg',
+                  width: 24,
+                  height: 24,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
+                ),
+              ),
+            ),
           ),
         ));
   }

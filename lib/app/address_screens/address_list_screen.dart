@@ -1,3 +1,4 @@
+import 'package:geolocator/geolocator.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/controllers/address_list_controller.dart';
@@ -522,31 +523,99 @@ class AddressListScreen extends StatelessWidget {
                                     controller.location.value = UserLocation(latitude: lat, longitude: lng);
                                   }
                                 } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) => PlacePicker(
-                                        apiKey: Constant.mapAPIKey,
-                                        onPlacePicked: (result) {
-                                          controller.localityEditingController.value.text = result.formattedAddress!.toString();
-                                          controller.localityText.value = result.formattedAddress!.toString();
-                                          controller.location.value = UserLocation(
-                                            latitude: result.geometry!.location.lat,
-                                            longitude: result.geometry!.location.lng,
-                                          );
-                                          Get.back();
-                                        },
-                                        initialPosition: const LatLng(-33.8567844, 151.213108),
-                                        useCurrentLocation: true,
-                                        selectInitialPosition: true,
-                                        usePinPointingSearch: true,
-                                        usePlaceDetailSearch: true,
-                                        zoomGesturesEnabled: true,
-                                        zoomControlsEnabled: true,
-                                        resizeToAvoidBottomInset: false,
-                                      ),
-                                    ),
-                                  );
+                                  // ✅ 1. Check location permission and service
+                                  bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+                                  if (!serviceEnabled) {
+                                    // Show message or open location settings
+                                    Get.snackbar("Location Disabled", "Please enable location services.");
+                                    await Geolocator.openLocationSettings();
+                                    return;
+                                  }
+
+                                  LocationPermission permission = await Geolocator.checkPermission();
+                                  if (permission == LocationPermission.denied) {
+                                    permission = await Geolocator.requestPermission();
+                                    if (permission == LocationPermission.denied) {
+                                      Get.snackbar("Permission Denied", "Location permission is required.");
+                                      return;
+                                    }
+                                  }
+                                  if (permission == LocationPermission.deniedForever) {
+                                    Get.snackbar(
+                                      "Permission Denied Forever",
+                                      "Please enable location permission in Settings.",
+                                    );
+                                    await Geolocator.openAppSettings();
+                                    return;
+                                  }
+                                  // ✅ 2. Safe to open PlacePicker now
+                                  Get.to(() => PlacePicker(
+                                    apiKey: Constant.mapAPIKey,
+                                    onPlacePicked: (result) {
+                                      controller.localityEditingController.value.text =
+                                          result.formattedAddress!.toString();
+                                      controller.localityText.value =
+                                          result.formattedAddress!.toString();
+                                      controller.location.value = UserLocation(
+                                        latitude: result.geometry!.location.lat,
+                                        longitude: result.geometry!.location.lng,
+                                      );
+                                      Get.back();
+                                    },
+                                    initialPosition: const LatLng(-33.8567844, 151.213108),
+                                    useCurrentLocation: true,
+                                    selectInitialPosition: true,
+                                    usePinPointingSearch: true,
+                                    usePlaceDetailSearch: true,
+                                    zoomGesturesEnabled: true,
+                                    zoomControlsEnabled: true,
+                                    resizeToAvoidBottomInset: false,
+                                  ));
+                                  // Get.to(() => PlacePicker(
+                                  //   apiKey: Constant.mapAPIKey,
+                                  //   onPlacePicked: (result) {
+                                  //     controller.localityEditingController.value.text = result.formattedAddress!.toString();
+                                  //     controller.localityText.value = result.formattedAddress!.toString();
+                                  //     controller.location.value = UserLocation(
+                                  //       latitude: result.geometry!.location.lat,
+                                  //       longitude: result.geometry!.location.lng,
+                                  //     );
+                                  //     Get.back();
+                                  //   },
+                                  //   initialPosition: const LatLng(-33.8567844, 151.213108),
+                                  //   useCurrentLocation: true,
+                                  //   selectInitialPosition: true,
+                                  //   usePinPointingSearch: true,
+                                  //   usePlaceDetailSearch: true,
+                                  //   zoomGesturesEnabled: true,
+                                  //   zoomControlsEnabled: true,
+                                  //   resizeToAvoidBottomInset: false,
+                                  // ),);
+                                  // Navigator.push(
+                                  //   context,
+                                  //   MaterialPageRoute(
+                                  //     builder: (context) => PlacePicker(
+                                  //       apiKey: Constant.mapAPIKey,
+                                  //       onPlacePicked: (result) {
+                                  //         controller.localityEditingController.value.text = result.formattedAddress!.toString();
+                                  //         controller.localityText.value = result.formattedAddress!.toString();
+                                  //         controller.location.value = UserLocation(
+                                  //           latitude: result.geometry!.location.lat,
+                                  //           longitude: result.geometry!.location.lng,
+                                  //         );
+                                  //         Get.back();
+                                  //       },
+                                  //       initialPosition: const LatLng(-33.8567844, 151.213108),
+                                  //       useCurrentLocation: true,
+                                  //       selectInitialPosition: true,
+                                  //       usePinPointingSearch: true,
+                                  //       usePlaceDetailSearch: true,
+                                  //       zoomGesturesEnabled: true,
+                                  //       zoomControlsEnabled: true,
+                                  //       resizeToAvoidBottomInset: false,
+                                  //     ),
+                                  //   ),
+                                  // );
                                 }
                               },
                               child: Container(

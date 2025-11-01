@@ -73,7 +73,6 @@ class MartVendorService {
           .where('isOpen', isEqualTo: true)
           .limit(1)
           .get();
-
       if (querySnapshot.docs.isNotEmpty) {
         final doc = querySnapshot.docs.first;
         return MartVendorModel.fromJson({...doc.data(), 'id': doc.id});

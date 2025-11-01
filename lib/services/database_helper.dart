@@ -28,7 +28,6 @@ class DatabaseHelper {
       version: 4, // ✅ Bumped version (important!)
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
-        // Migration logic
         if (oldVersion < 2) {
           await db.execute('ALTER TABLE cart_products ADD COLUMN vendorName TEXT');
         }
@@ -51,6 +50,7 @@ class DatabaseHelper {
         }
       },
     );
+
   }
 
   Future _createDB(Database db, int version) async {
@@ -79,26 +79,24 @@ class DatabaseHelper {
     if (kDebugMode) {
       print('✅ Table cart_products created (version $version)');
     }
-  }
 
+  }
+//changes
   Future<void> insertCartProduct(CartProductModel product) async {
     final db = await instance.database;
-
     // ✅ Ensure non-null vendorName to avoid errors
     final data = product.toJson()
       ..['variant_info'] = jsonEncode(product.variantInfo)
       ..['extras'] = jsonEncode(product.extras)
       ..['vendorName'] = product.vendorName ?? 'Unknown Vendor';
-
     if (kDebugMode) log('🛒 insertCartProduct -> $data');
-
     await db.insert(
       'cart_products',
       data,
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
-  }
 
+  }
   Future<List<CartProductModel>> fetchCartProducts() async {
     final db = await instance.database;
     final maps = await db.query('cart_products');
@@ -108,6 +106,7 @@ class DatabaseHelper {
     return List.generate(maps.length, (i) {
       return CartProductModel.fromJson(maps[i]);
     });
+
   }
 
   Future<void> updateCartProduct(CartProductModel product) async {
@@ -117,9 +116,7 @@ class DatabaseHelper {
       ..['variant_info'] = jsonEncode(product.variantInfo)
       ..['extras'] = jsonEncode(product.extras)
       ..['vendorName'] = product.vendorName ?? 'Unknown Vendor';
-
     if (kDebugMode) log('🛠 updateCartProduct -> $data');
-
     await db.update(
       'cart_products',
       data,
@@ -131,8 +128,8 @@ class DatabaseHelper {
   Future<void> deleteCartProduct(String id) async {
     final db = await instance.database;
     await db.delete('cart_products', where: 'id = ?', whereArgs: [id]);
-  }
 
+  }
   Future<void> updateCartProductQuantity(String id, String quantity) async {
     final db = await instance.database;
     await db.update(

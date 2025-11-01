@@ -282,14 +282,11 @@ class FireStoreUtils {
         log('getUserProfile: UUID is empty, returning null');
         return null;
       }
-
       log('getUserProfile: Fetching user with UUID: $uuid');
       DocumentSnapshot<Map<String, dynamic>> userDocument =
           await fireStore.collection(CollectionName.users).doc(uuid).get();
-
       log('getUserProfile: Document exists: ${userDocument.exists}');
       log('getUserProfile: Document data: ${userDocument.data()}');
-
       if (userDocument.data() != null) {
         Map<String, dynamic> data =
             Map<String, dynamic>.from(userDocument.data()!);

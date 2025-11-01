@@ -18,7 +18,6 @@ class CartProvider with ChangeNotifier {
 
   CartProvider() {
     initCart();
-    // Ensure cart is loaded when provider is created
     WidgetsBinding.instance.addPostFrameCallback((_) {
       initCart();
     });
@@ -40,6 +39,7 @@ class CartProvider with ChangeNotifier {
     }
     // Force stream update
     _cartStreamController.sink.add(_cartItems);
+    notifyListeners();
     print('DEBUG: CartProvider - Stream updated with ${_cartItems.length} items');
   }
 
@@ -68,6 +68,7 @@ class CartProvider with ChangeNotifier {
         _cartItems[index].extrasPrice = "0";
       }
       await DatabaseHelper.instance.updateCartProduct(_cartItems[index]);
+      notifyListeners();
     } else {
       // Check if this is a mart item (vendorID starts with "demo_" or contains "mart")
       bool isMartItem = product.vendorID?.startsWith("demo_") == true || 
@@ -82,8 +83,6 @@ class CartProvider with ChangeNotifier {
           !(item.vendorID?.startsWith("demo_") == true || 
             item.vendorID?.contains("mart") == true ||
             item.vendorID?.contains("vendor") == true));
-      
-
       // 1. Cart is empty, OR
       // 2. Adding mart item and cart only has mart items, OR
       // 3. Adding food item and cart only has food items from same vendor
@@ -109,7 +108,7 @@ class CartProvider with ChangeNotifier {
     }
     
     // Force refresh cart data and notify listeners
-   await  initCart();
+    await  initCart();
     print('DEBUG: CartProvider - Cart updated, total items: ${_cartItems.length}');
     notifyListeners();
     return true;
@@ -158,11 +157,13 @@ class CartProvider with ChangeNotifier {
         await DatabaseHelper.instance.deleteCartProduct(product.id!);
         _cartItems.removeAt(index);
         print('DEBUG: CartProvider - Item removed from cart, remaining items: ${_cartItems.length}');
+        notifyListeners();
       } else {
         await DatabaseHelper.instance.updateCartProduct(_cartItems[index]);
         print('DEBUG: CartProvider - Item quantity updated to: $quantity');
       }
     }
+    notifyListeners();
     await initCart();
     print('DEBUG: CartProvider - Stream updated after removeFromCart');
   }
@@ -206,6 +207,7 @@ class CartProvider with ChangeNotifier {
     cartItem.clear();
     await DatabaseHelper.instance.deleteAllCartProducts();
     _cartStreamController.sink.add(_cartItems);
+    notifyListeners();
   }
 
   // Method to manually refresh cart from database
@@ -248,15 +250,11 @@ class CartProvider with ChangeNotifier {
             // Clear existing cart items
             await DatabaseHelper.instance.deleteAllCartProducts();
             _cartItems.clear();
-            
             // Add the new item
             product.quantity = quantity;
             await DatabaseHelper.instance.insertCartProduct(product);
             _cartItems.add(product);
-            
-            // Refresh cart data
             await initCart();
-            
             Get.back(); // Close dialog
             ShowToastDialog.showToast("Cart updated with new restaurant items".tr);
           },

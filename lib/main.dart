@@ -200,8 +200,6 @@ void _initializeSmartLookInBackground() {
     }
   });
 }
-
-
 Future<bool> onWillPop(BuildContext context) async {
   bool? shouldExit = await showDialog(
     context: context,

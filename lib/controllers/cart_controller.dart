@@ -1341,7 +1341,6 @@ class CartController extends GetxController
   void _updateCacheTime() {
     _lastCacheTime = DateTime.now();
   }
-
   // **ULTRA-FAST METHOD TO PRELOAD ALL CALCULATION DATA FOR INSTANT CART UPDATES**
   Future<void> _loadCalculationCache() async {
     if (_calculationCacheLoaded) return;
@@ -1754,12 +1753,108 @@ class CartController extends GetxController
       print('DEBUG: Stack trace: ${StackTrace.current}');
     }
   }
+  /// 🔑 CLEAR VENDOR CACHE WHEN CART CHANGES
+  void _clearVendorCache() {
+    _cachedVendorModel = null;
+    _lastCacheTime = null;
+    vendorModel.value = VendorModel(); // Reset to empty
+    print('🔑 VENDOR CACHE CLEARED - Ready for fresh vendor data');
+  }
+  /// 🔑 LOAD FRESH VENDOR DATA - NO CACHING
+  Future<void> _loadFreshVendorForCart() async {
+    try {
+      print('🛒 [FRESH_VENDOR_LOAD] Starting fresh vendor load...');
 
+      final martItems = cartItem.where((item) => _isMartItem(item)).toList();
+      final restaurantItems = cartItem.where((item) => !_isMartItem(item)).toList();
+
+      if (martItems.isNotEmpty) {
+        await _loadFreshMartVendor(martItems);
+      } else if (restaurantItems.isNotEmpty) {
+        await _loadFreshRestaurantVendor(restaurantItems.first.vendorID);
+      } else {
+        print('🛒 [FRESH_VENDOR_LOAD] No items found for vendor loading');
+      }
+    } catch (e) {
+      print('🛒 [FRESH_VENDOR_LOAD] Error loading fresh vendor: $e');
+    }
+  }
+
+  /// 🔑 LOAD FRESH MART VENDOR
+  Future<void> _loadFreshMartVendor(List<CartProductModel> martItems) async {
+    try {
+      final firstMartItem = martItems.first;
+      final vendorId = firstMartItem.vendorID;
+
+      print('🛒 [FRESH_MART_VENDOR] Loading mart vendor: $vendorId');
+
+      MartVendorModel? martVendor;
+      if (vendorId != null && vendorId.isNotEmpty) {
+        martVendor = await MartVendorService.getMartVendorById(vendorId);
+        if (martVendor == null) {
+          martVendor = await MartVendorService.getDefaultMartVendor();
+        }
+      } else {
+        martVendor = await MartVendorService.getDefaultMartVendor();
+      }
+
+      if (martVendor != null) {
+        vendorModel.value = VendorModel(
+          id: martVendor.id,
+          title: martVendor.title,
+          latitude: martVendor.latitude,
+          longitude: martVendor.longitude,
+          isSelfDelivery: false,
+          vType: martVendor.vType,
+          zoneId: martVendor.zoneId,
+          isOpen: martVendor.isOpen,
+        );
+        print('🛒 [FRESH_MART_VENDOR] Loaded: ${martVendor.title}');
+      }
+    } catch (e) {
+      print('🛒 [FRESH_MART_VENDOR] Error: $e');
+    }
+  }
+
+  /// 🔑 LOAD FRESH RESTAURANT VENDOR
+  Future<void> _loadFreshRestaurantVendor(String? vendorId) async {
+    try {
+      if (vendorId == null) {
+        print('🛒 [FRESH_RESTAURANT_VENDOR] No vendor ID provided');
+        return;
+      }
+
+      print('🛒 [FRESH_RESTAURANT_VENDOR] Loading restaurant vendor: $vendorId');
+
+      final freshVendor = await FireStoreUtils.getVendorById(vendorId);
+      if (freshVendor != null) {
+        vendorModel.value = freshVendor;
+        print('🛒 [FRESH_RESTAURANT_VENDOR] Loaded: ${freshVendor.title}');
+      } else {
+        print('🛒 [FRESH_RESTAURANT_VENDOR] Vendor not found: $vendorId');
+      }
+    } catch (e) {
+      print('🛒 [FRESH_RESTAURANT_VENDOR] Error: $e');
+    }
+  }
   getCartData() async {
     cartProvider.cartStream.listen(
       (event) async {
         cartItem.clear();
         cartItem.addAll(event);
+        // 🔑 CRITICAL: Clear vendor cache when cart changes significantly
+        if (cartItem.isNotEmpty) {
+          final firstItemVendor = cartItem.first.vendorID;
+          if (_cachedVendorModel?.id != firstItemVendor) {
+            print('🛒 [VENDOR_DEBUG] Vendor changed, clearing cache');
+            _clearVendorCache();
+          }
+        }
+
+        if (cartItem.isNotEmpty) {
+          // Force fresh vendor load - NEVER use cache here
+          await _loadFreshVendorForCart();
+        }
 
         if (cartItem.isNotEmpty) {
           // Check if cart contains mart items
@@ -3480,12 +3575,9 @@ class CartController extends GetxController
     final baseCharge = dc.baseDeliveryCharge ?? 23;
     final freeKm = dc.freeDeliveryDistanceKm ?? 7;
     final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
-
     // Regular delivery has complex logic that doesn't fit the simple reusable method
     // So we'll keep the original logic but use the reusable method where possible
-
     print('DEBUG: Calculating regular delivery charge');
-
     if (vendorModel.value.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges.value = 0.0;
@@ -3576,7 +3668,6 @@ class CartController extends GetxController
           return false;
         }
       }
-
       final success = await cartProvider.addToCart(
           Get.context!, cartProductModel, quantity);
       if (!success) {
@@ -3612,9 +3703,10 @@ class CartController extends GetxController
   }
 
   /// Enhanced place order with idempotency and state management
+  ///
+  /// finder
   placeOrder() async {
     print('DEBUG: Starting placeOrder process');
-
     // Check idempotency - prevent duplicate orders
     if (_isOrderInProgress()) {
       print('DEBUG: Order already in progress, ignoring duplicate request');
@@ -3622,7 +3714,6 @@ class CartController extends GetxController
           "Order is already being processed. Please wait...".tr);
       return;
     }
-
     // Check debouncing
     if (lastOrderAttempt != null &&
         DateTime.now().difference(lastOrderAttempt!) < orderDebounceTime) {
@@ -4035,11 +4126,13 @@ class CartController extends GetxController
       print('DEBUG: Error in rollback: $e');
     }
   }
-
+/// finderone
   setOrder() async {
     print('DEBUG: Starting order placement process');
 
     // Validate restaurant status before placing order (for wallet payments)
+    await FireStoreUtils.getVendorById(vendorModel.value.id!);
+    print("${vendorModel.value.author.toString()}  ${vendorModel.value.authorName.toString()}  ${vendorModel.value.categoryTitle.toString()}  vendorModel.value.author ");
     if (vendorModel.value.id != null) {
       final latestVendor =
           await FireStoreUtils.getVendorById(vendorModel.value.id!);
@@ -4076,10 +4169,11 @@ class CartController extends GetxController
   }
 
   // Internal method for order placement without restaurant status validation
+
+  ///issue finded
   Future<void> _setOrderInternal() async {
     String? orderId;
     List<CartProductModel> orderedProducts = [];
-
     try {
       // Check subscription limits if applicable
       if ((Constant.isSubscriptionModelApplied == true ||
@@ -4098,7 +4192,6 @@ class CartController extends GetxController
           return;
         }
       }
-
       // Prepare cart products
       for (CartProductModel cartProduct in cartItem) {
         CartProductModel tempCart = cartProduct;
@@ -4300,7 +4393,7 @@ class CartController extends GetxController
           .doc(orderModel.id)
           .set(orderModel.toJson());
 
-      print('DEBUG: Order stored successfully, processing additional tasks...');
+      log('DEBUG: Order stored successfully, processing additional tasks... ${orderModel.toJson()}');
 
       // Process additional tasks in parallel
       final additionalTasks = <Future>[];
