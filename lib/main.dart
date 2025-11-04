@@ -57,7 +57,6 @@ void main() async {
     GlobalDeeplinkHandler.instance,
     permanent: true,
   );
-  // 🛡️ CRASH PREVENTION: Initialize crash prevention system
   CrashPrevention();
   await SmartlookANRFix.configureSmartlook();
   await PlatformANRPrevention.preventMIUIANR();
@@ -143,8 +142,6 @@ void _initializeHeavyServicesInBackground() {
         ProductionLogger.initialize().timeout(const Duration(seconds: 2)),
         AppLifecycleLogger.initialize().timeout(const Duration(seconds: 2)),
       ]);
-
-      // Initialize deep link services in background
       await Future.wait([
         PendingDeepLinkHandler.checkPendingDeepLinks()
             .timeout(const Duration(seconds: 3)),
