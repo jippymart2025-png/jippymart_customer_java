@@ -1,10 +1,10 @@
 
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_product_details_image_widget.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -33,13 +33,13 @@ class CartCheckOutScreen extends StatefulWidget {
 }
 
 class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
-   late CartController controller;
 
+  late CartControllerProvider controller;
   @override
   void initState() {
     super.initState();
+    controller=  Provider.of<CartControllerProvider>(context,listen:false);
     // Future.delayed(const Duration(seconds: 3), () {
-      controller = Get.put(CartController(), permanent: false);
       WidgetsBinding.instance.addPostFrameCallback((_) {
         Future.delayed(const Duration(seconds: 3), () {
         _refreshCartData();
@@ -136,7 +136,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     final themeChange = Provider.of<DarkThemeProvider>(context);
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
-    return  GetX<CartController>(builder: (controller) {
+    return  Consumer<CartControllerProvider>(builder: (context,controller, _) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         controller.checkAndUpdatePaymentMethod();
       });

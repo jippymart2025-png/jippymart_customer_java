@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_brand_products_screen/mart_brand_products_screen.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/controller/mart_controller.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/mart_brand_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
+import 'package:provider/provider.dart';
 
 class MartProductDetailsScreen extends StatefulWidget {
   final dynamic product;
@@ -63,7 +64,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   /// Fetch delivery settings from Firestore
   void _fetchDeliverySettings() {
     try {
-      final martController = Get.find<MartController>();
+      final martController = Provider.of<MartProvider>(context,listen: false);
       martController.fetchDeliverySettings();
     } catch (e) {
       print('Error fetching delivery settings: $e');
@@ -180,7 +181,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
     return WillPopScope(
       onWillPop: () async {
-        // Refresh cart status when navigating back
         _checkCartStatus();
         return true;
       },
@@ -188,7 +188,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         backgroundColor: const Color(0xFFF6F6FF),
         body: CustomScrollView(
           slivers: [
-            // App Bar with Product Images
             SliverAppBar(
               expandedHeight: 300,
               pinned: true,
@@ -204,34 +203,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                 ),
                 onPressed: () => Get.back(),
               ),
-              // actions: [
-              //   IconButton(
-              //     icon: Container(
-              //       padding: const EdgeInsets.all(8),
-              //       decoration: BoxDecoration(
-              //         color: Colors.white.withOpacity(0.9),
-              //         shape: BoxShape.circle,
-              //       ),
-              //       child: const Icon(Icons.favorite_border, color: Colors.black87),
-              //     ),
-              //     onPressed: () {
-              //       // Add to favorites
-              //     },
-              //   ),
-              //   IconButton(
-              //     icon: Container(
-              //       padding: const EdgeInsets.all(8),
-              //       decoration: BoxDecoration(
-              //         color: Colors.white.withOpacity(0.9),
-              //         shape: BoxShape.circle,
-              //       ),
-              //       child: const Icon(Icons.share, color: Colors.black87),
-              //     ),
-              //     onPressed: () {
-              //       // Share product
-              //     },
-              //   ),
-              // ],
               flexibleSpace: FlexibleSpaceBar(
                 background: Stack(
                   children: [
@@ -827,8 +798,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Delivery Information - Only show if active
-                GetBuilder<MartController>(
-                  builder: (martController) {
+                Consumer<MartProvider>(
+                  builder: (context,martController,_) {
                     if (!martController.isDeliverySettingsActive) {
                       return const SizedBox.shrink(); // Hide if not active
                     }
@@ -882,12 +853,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
       child: ElevatedButton(
         onPressed: () async {
           try {
-            // No need to show loading state - the toast will handle the feedback
 
-            // Get the cart controller
-            final cartController = Get.find<CartController>();
+            CartControllerProvider  cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
 
-            // Convert MartItemModel to CartProductModel (same as product card)
             final martVendorID = "mart_${widget.product.vendorID ?? 'unknown'}";
 
             final cartProduct = CartProductModel(
@@ -910,12 +878,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               promoId: null,
             );
 
-            print(
-                '[CART] Product details - Adding to cart: ${cartProduct.name} (ID: ${cartProduct.id})');
-            print('[CART] Product details - Quantity: ${cartProduct.quantity}');
 
-            // Add to cart using cart controller
-            final success = await cartController.addToCart(
+            final success = await cartControllerProvider.addToCart(
               cartProductModel: cartProduct,
               isIncrement: true,
               quantity: quantity,
@@ -1091,7 +1055,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                   onPressed: () async {
                     try {
                       // Get the cart controller
-                      final cartController = Get.find<CartController>();
+                      CartControllerProvider cartControllerProvider =  Provider.of<CartControllerProvider>(context,listen:false);
 
                       // Create CartProductModel for removal
                       final martVendorID =
@@ -1116,14 +1080,14 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
                       if (cartQuantity > 1) {
                         // Decrement quantity
-                        cartController.addToCart(
+                        cartControllerProvider.addToCart(
                           cartProductModel: cartProduct,
                           isIncrement: false,
                           quantity: cartQuantity - 1,
                         );
                       } else {
                         // Remove completely
-                        cartController.addToCart(
+                        cartControllerProvider.addToCart(
                           cartProductModel: cartProduct,
                           isIncrement: false,
                           quantity: 0,
@@ -1153,7 +1117,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                   onPressed: () async {
                     try {
                       // Get the cart controller
-                      final cartController = Get.find<CartController>();
+                      CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
 
                       // Create CartProductModel for addition
                       final martVendorID =
@@ -1177,7 +1141,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                       );
 
                       // Add one more item
-                      cartController.addToCart(
+                      cartControllerProvider.addToCart(
                         cartProductModel: cartProduct,
                         isIncrement: true,
                         quantity: cartQuantity + 1,
@@ -1224,7 +1188,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   }
 
   Widget _buildSimilarProducts() {
-    final controller = Get.find<MartController>();
+    final controller =Provider.of<MartProvider>(context,listen:false);
 
     // Debug logging
     print('[SIMILAR PRODUCTS] Current product: ${widget.product.name}');
@@ -1565,7 +1529,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                         onPressed: () async {
                           try {
                             // Get the cart controller
-                            final cartController = Get.find<CartController>();
+                            CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
 
                             // Convert MartItemModel to CartProductModel
                             final martVendorID =
@@ -1589,7 +1553,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                             );
 
                             // Add to cart
-                            cartController.addToCart(
+                            cartControllerProvider.addToCart(
                               cartProductModel: cartProduct,
                               isIncrement: true,
                               quantity: 1,

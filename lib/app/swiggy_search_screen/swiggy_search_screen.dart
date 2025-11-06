@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/swiggy_search_screen/provider/swiggy_search_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/controllers/swiggy_search_controller.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/models/product_model.dart';
@@ -23,7 +23,7 @@ class SwiggySearchScreen extends StatefulWidget {
 }
 
 class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
-  final SwiggySearchController controller = Get.put(SwiggySearchController());
+  // late SwiggySearchProvider controller;
   final TextEditingController searchController = TextEditingController();
   final CartProvider cartProvider = CartProvider();
   final FocusNode searchFocusNode = FocusNode();
@@ -31,7 +31,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   @override
   void initState() {
     super.initState();
-    // Auto-focus search field
+    // controller = Provider.of(context,listen: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       searchFocusNode.requestFocus();
     });
@@ -47,16 +47,20 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return Scaffold(
-      backgroundColor: themeChange.getThem()
-          ? AppThemeData.grey900
-          : AppThemeData.grey50,
-      appBar: _buildAppBar(themeChange),
-      body: _buildBody(themeChange),
+    return Consumer<SwiggySearchProvider>(
+      builder: (context,controller,_) {
+        return Scaffold(
+          backgroundColor: themeChange.getThem()
+              ? AppThemeData.grey900
+              : AppThemeData.grey50,
+          appBar: _buildAppBar(themeChange,controller),
+          body: _buildBody(themeChange,controller),
+        );
+      }
     );
   }
 
-  PreferredSizeWidget _buildAppBar(DarkThemeProvider themeChange) {
+  PreferredSizeWidget _buildAppBar(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return AppBar(
       backgroundColor: themeChange.getThem()
           ? AppThemeData.grey900
@@ -129,7 +133,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildBody(DarkThemeProvider themeChange) {
+  Widget _buildBody(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return Obx(() {
       // Show loading state
       if (controller.isLoadingData.value) {
@@ -138,16 +142,16 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
 
       // Show suggestions while typing
       if (controller.showSuggestions.value && controller.searchSuggestions.isNotEmpty) {
-        return _buildSuggestionsList(themeChange);
+        return _buildSuggestionsList(themeChange,controller);
       }
 
       // Show search results
       if (controller.hasSearched.value) {
-        return _buildSearchResults(themeChange);
+        return _buildSearchResults(themeChange,controller);
       }
 
       // Show initial state (recent + trending)
-      return _buildInitialState(themeChange);
+      return _buildInitialState(themeChange,controller);
     });
   }
 
@@ -334,7 +338,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 // **CLEAR RECENT SEARCHES METHOD**
-  void _clearRecentSearches(themeChange) {
+  void _clearRecentSearches(themeChange,SwiggySearchProvider controller) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -392,7 +396,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
       },
     );
   }
-  Widget _buildInitialState(DarkThemeProvider themeChange) {
+  Widget _buildInitialState(DarkThemeProvider themeChange,SwiggySearchProvider controller){
     return SingleChildScrollView(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       child: Column(
@@ -400,9 +404,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         children: [
           // Recent Searches
           if (controller.recentSearches.isNotEmpty) ...[
-            _buildRecentSearchesHeader(themeChange), // Updated header with clear button
+            _buildRecentSearchesHeader(themeChange,controller), // Updated header with clear button
             const SizedBox(height: 16),
-            _buildRecentSearches(themeChange),
+            _buildRecentSearches(themeChange,controller),
             const SizedBox(height: 32),
           ],
 
@@ -410,7 +414,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
           if (controller.trendingSearches.isNotEmpty) ...[
             _buildSectionHeader("🔥 Trending Now", themeChange),
             const SizedBox(height: 16),
-            _buildTrendingSearches(themeChange),
+            _buildTrendingSearches(themeChange,controller),
             const SizedBox(height: 16),
           ],
         ],
@@ -418,7 +422,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
   // **RECENT SEARCHES HEADER WITH CLEAR BUTTON**
-  Widget _buildRecentSearchesHeader(DarkThemeProvider themeChange) {
+  Widget _buildRecentSearchesHeader(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -435,7 +439,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         ),
         // **CLEAR BUTTON**
         GestureDetector(
-          onTap:()=> _clearRecentSearches(themeChange),
+          onTap:()=> _clearRecentSearches(themeChange,controller),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -494,7 +498,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   //   );
   // }
 
-  Widget _buildSuggestionsList(DarkThemeProvider themeChange) {
+  Widget _buildSuggestionsList(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: controller.searchSuggestions.length,
@@ -565,7 +569,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildSearchResults(DarkThemeProvider themeChange) {
+  Widget _buildSearchResults(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return Obx(() {
       // Show loading indicator when searching
       if (controller.isSearching.value) {
@@ -586,7 +590,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Results summary
-            _buildResultsSummary(themeChange),
+            _buildResultsSummary(themeChange,controller),
             const SizedBox(height: 20),
 
             // Categories section - TEMPORARILY HIDDEN
@@ -601,7 +605,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
             if (controller.productResults.isNotEmpty) ...[
               _buildSectionHeader("🍕 Dishes (${controller.productResults.length})", themeChange),
               const SizedBox(height: 12),
-              _buildProductsList(themeChange),
+              _buildProductsList(themeChange,controller),
               const SizedBox(height: 24),
             ],
 
@@ -609,13 +613,13 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
             if (controller.restaurantResults.isNotEmpty) ...[
               _buildSectionHeader("🍴 Restaurants (${controller.restaurantResults.length})", themeChange),
               const SizedBox(height: 12),
-              _buildRestaurantsList(themeChange),
+              _buildRestaurantsList(themeChange,controller),
             ],
 
             // Load More Button
             if (controller.hasMoreResults.value) ...[
               const SizedBox(height: 20),
-              _buildLoadMoreButton(themeChange),
+              _buildLoadMoreButton(themeChange,controller),
             ] else ...[
               // Creative "No more results" message
               const SizedBox(height: 20),
@@ -666,7 +670,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildResultsSummary(DarkThemeProvider themeChange) {
+  Widget _buildResultsSummary(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -734,7 +738,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildRecentSearches(DarkThemeProvider themeChange) {
+  Widget _buildRecentSearches(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -753,7 +757,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   search: search,
                   isRecent: true,
                   themeChange: themeChange,
-                  index: index,
+                  index: index,controller: controller
                 ),
               ),
             );
@@ -763,7 +767,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildTrendingSearches(DarkThemeProvider themeChange) {
+  Widget _buildTrendingSearches(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -783,7 +787,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   search: trend,
                   isRecent: false,
                   themeChange: themeChange,
-                  index: index,
+                  index: index,controller: controller
                 ),
               ),
             );
@@ -797,7 +801,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     required String search,
     required bool isRecent,
     required DarkThemeProvider themeChange,
-    required int index,
+    required int index,required SwiggySearchProvider controller,
   }) {
     // Get appropriate emoji and colors based on search term
     String emoji = _getSearchEmoji(search);
@@ -974,7 +978,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     }
   }
 
-  Widget _buildRestaurantsList(DarkThemeProvider themeChange) {
+  Widget _buildRestaurantsList(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -986,19 +990,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildCategoriesList(DarkThemeProvider themeChange) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: controller.categoryResults.length,
-      itemBuilder: (context, index) {
-        VendorCategoryModel category = controller.categoryResults[index];
-        return _buildCategoryCard(category, themeChange);
-      },
-    );
-  }
 
-  Widget _buildProductsList(DarkThemeProvider themeChange) {
+
+  Widget _buildProductsList(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -1010,7 +1004,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildLoadMoreButton(DarkThemeProvider themeChange) {
+  Widget _buildLoadMoreButton(DarkThemeProvider themeChange,SwiggySearchProvider controller) {
     return Center(
       child: ElevatedButton(
         onPressed: () {

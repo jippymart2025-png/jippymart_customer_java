@@ -1,7 +1,7 @@
 import 'package:geolocator/geolocator.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/address_list_controller.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/services/location_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -17,24 +17,19 @@ import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_place_picker_mb/google_maps_place_picker.dart';
 import 'package:provider/provider.dart';
-
 import '../../themes/text_field_widget.dart';
 
 class AddressListScreen extends StatelessWidget {
   const AddressListScreen({super.key});
-
-  /// Static function to show add address modal from anywhere in the app
   static void showAddAddressModal(BuildContext context) {
-    final controller = Get.put(AddressListController());
+    final controller =Provider.of<AddressListProvider>(context,listen: false);
     addAddressBottomSheet(context, controller);
   }
-
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: AddressListController(),
-        builder: (controller) {
+    return Consumer<AddressListProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             appBar: AppBar(
               centerTitle: false,
@@ -235,7 +230,7 @@ class AddressListScreen extends StatelessWidget {
         });
   }
 
-  void showActionSheet(BuildContext context, int index, AddressListController controller) {
+  void showActionSheet(BuildContext context, int index, AddressListProvider controller) {
     showCupertinoModalPopup<void>(
       context: context,
       builder: (BuildContext context) => CupertinoActionSheet(
@@ -253,8 +248,8 @@ class AddressListScreen extends StatelessWidget {
                 }
                 tempShippingAddress.add(element);
               }
-              controller.userModel.value.shippingAddress = tempShippingAddress;
-              await FireStoreUtils.updateUser(controller.userModel.value).then(
+              controller.userModel.shippingAddress = tempShippingAddress;
+              await FireStoreUtils.updateUser(controller.userModel).then(
                 (value) {
                   ShowToastDialog.closeLoader();
                   controller.getUser();
@@ -277,8 +272,8 @@ class AddressListScreen extends StatelessWidget {
             onPressed: () async {
               ShowToastDialog.showLoader("Please wait".tr);
               controller.shippingAddressList.removeAt(index);
-              controller.userModel.value.shippingAddress = controller.shippingAddressList;
-              await FireStoreUtils.updateUser(controller.userModel.value).then(
+              controller.userModel.shippingAddress = controller.shippingAddressList;
+              await FireStoreUtils.updateUser(controller.userModel).then(
                 (value) {
                   controller.getUser();
                   ShowToastDialog.closeLoader();
@@ -300,7 +295,7 @@ class AddressListScreen extends StatelessWidget {
     );
   }
 
-  static addAddressBottomSheet(BuildContext context, AddressListController controller, {int? index}) {
+  static addAddressBottomSheet(BuildContext context, AddressListProvider controller, {int? index}) {
     return showModalBottomSheet(
         context: context,
         isScrollControlled: true,
@@ -349,9 +344,9 @@ class AddressListScreen extends StatelessWidget {
                                     final lat = firstPlace.coordinates.latitude;
                                     final lng = firstPlace.coordinates.longitude;
                                     final address = firstPlace.address;
-                                    controller.localityEditingController.value.text = address.toString();
-                                    controller.localityText.value = address.toString(); // Update reactive string
-                                    controller.location.value = UserLocation(latitude: lat, longitude: lng);
+                                    controller.localityEditingController.text = address.toString();
+                                    controller.localityText = address.toString(); // Update reactive string
+                                    controller.location = UserLocation(latitude: lat, longitude: lng);
                                   }
                                 } else {
                                   Navigator.push(
@@ -360,9 +355,9 @@ class AddressListScreen extends StatelessWidget {
                                       builder: (context) => PlacePicker(
                                         apiKey: Constant.mapAPIKey,
                                         onPlacePicked: (result) {
-                                          controller.localityEditingController.value.text = result.formattedAddress!.toString();
-                                          controller.localityText.value = result.formattedAddress!.toString(); // Update reactive string
-                                          controller.location.value = UserLocation(latitude: result.geometry!.location.lat, longitude: result.geometry!.location.lng);
+                                          controller.localityEditingController.text = result.formattedAddress!.toString();
+                                          controller.localityText = result.formattedAddress!.toString(); // Update reactive string
+                                          controller.location = UserLocation(latitude: result.geometry!.location.lat, longitude: result.geometry!.location.lng);
                                           Get.back();
                                         },
                                         initialPosition: const LatLng(-33.8567844, 151.213108),
@@ -427,14 +422,14 @@ class AddressListScreen extends StatelessWidget {
                                       return InkWell(
                                         onTap: () {
                                           setState(() {
-                                            controller.selectedSaveAs.value = controller.saveAsList[index].toString();
+                                            controller.selectedSaveAs = controller.saveAsList[index].toString();
                                           });
                                         },
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 5),
                                           child: Container(
                                             decoration: BoxDecoration(
-                                                color: controller.selectedSaveAs.value == controller.saveAsList[index].toString()
+                                                color: controller.selectedSaveAs == controller.saveAsList[index].toString()
                                                     ? AppThemeData.primary300
                                                     : themeChange.getThem()
                                                         ? AppThemeData.grey800
@@ -455,7 +450,7 @@ class AddressListScreen extends StatelessWidget {
                                                     width: 18,
                                                     height: 18,
                                                     colorFilter: ColorFilter.mode(
-                                                        controller.selectedSaveAs.value == controller.saveAsList[index].toString()
+                                                        controller.selectedSaveAs == controller.saveAsList[index].toString()
                                                             ? AppThemeData.grey50
                                                             : themeChange.getThem()
                                                                 ? AppThemeData.grey700
@@ -471,7 +466,7 @@ class AddressListScreen extends StatelessWidget {
                                                       fontSize: 14,
                                                       fontWeight: FontWeight.w500,
                                                       fontFamily: AppThemeData.medium,
-                                                      color: controller.selectedSaveAs.value == controller.saveAsList[index].toString()
+                                                      color: controller.selectedSaveAs == controller.saveAsList[index].toString()
                                                           ? AppThemeData.grey50
                                                           : themeChange.getThem()
                                                               ? AppThemeData.grey700
@@ -492,7 +487,7 @@ class AddressListScreen extends StatelessWidget {
                                 ),
                                 TextFieldWidget(
                                   title: 'House/Flat/Floor No.'.tr,
-                                  controller: controller.houseBuildingTextEditingController.value,
+                                  controller: controller.houseBuildingTextEditingController,
                                   hintText: 'House/Flat/Floor No.'.tr,
                                 ),
                                 // Apartment/Road/Area field with clickable location icon
@@ -518,15 +513,13 @@ class AddressListScreen extends StatelessWidget {
                                     final lat = firstPlace.coordinates.latitude;
                                     final lng = firstPlace.coordinates.longitude;
                                     final address = firstPlace.address;
-                                    controller.localityEditingController.value.text = address.toString();
-                                    controller.localityText.value = address.toString();
-                                    controller.location.value = UserLocation(latitude: lat, longitude: lng);
+                                    controller.localityEditingController.text = address.toString();
+                                    controller.localityText = address.toString();
+                                    controller.location = UserLocation(latitude: lat, longitude: lng);
                                   }
                                 } else {
-                                  // ✅ 1. Check location permission and service
                                   bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
                                   if (!serviceEnabled) {
-                                    // Show message or open location settings
                                     Get.snackbar("Location Disabled", "Please enable location services.");
                                     await Geolocator.openLocationSettings();
                                     return;
@@ -552,11 +545,11 @@ class AddressListScreen extends StatelessWidget {
                                   Get.to(() => PlacePicker(
                                     apiKey: Constant.mapAPIKey,
                                     onPlacePicked: (result) {
-                                      controller.localityEditingController.value.text =
-                                          result.formattedAddress!.toString();
-                                      controller.localityText.value =
-                                          result.formattedAddress!.toString();
-                                      controller.location.value = UserLocation(
+                                      controller.localityEditingController.text =
+                                          result.formattedAddress?.toString()??'';
+                                      controller.localityText =
+                                          result.formattedAddress?.toString()??'';
+                                      controller.location = UserLocation(
                                         latitude: result.geometry!.location.lat,
                                         longitude: result.geometry!.location.lng,
                                       );
@@ -571,51 +564,6 @@ class AddressListScreen extends StatelessWidget {
                                     zoomControlsEnabled: true,
                                     resizeToAvoidBottomInset: false,
                                   ));
-                                  // Get.to(() => PlacePicker(
-                                  //   apiKey: Constant.mapAPIKey,
-                                  //   onPlacePicked: (result) {
-                                  //     controller.localityEditingController.value.text = result.formattedAddress!.toString();
-                                  //     controller.localityText.value = result.formattedAddress!.toString();
-                                  //     controller.location.value = UserLocation(
-                                  //       latitude: result.geometry!.location.lat,
-                                  //       longitude: result.geometry!.location.lng,
-                                  //     );
-                                  //     Get.back();
-                                  //   },
-                                  //   initialPosition: const LatLng(-33.8567844, 151.213108),
-                                  //   useCurrentLocation: true,
-                                  //   selectInitialPosition: true,
-                                  //   usePinPointingSearch: true,
-                                  //   usePlaceDetailSearch: true,
-                                  //   zoomGesturesEnabled: true,
-                                  //   zoomControlsEnabled: true,
-                                  //   resizeToAvoidBottomInset: false,
-                                  // ),);
-                                  // Navigator.push(
-                                  //   context,
-                                  //   MaterialPageRoute(
-                                  //     builder: (context) => PlacePicker(
-                                  //       apiKey: Constant.mapAPIKey,
-                                  //       onPlacePicked: (result) {
-                                  //         controller.localityEditingController.value.text = result.formattedAddress!.toString();
-                                  //         controller.localityText.value = result.formattedAddress!.toString();
-                                  //         controller.location.value = UserLocation(
-                                  //           latitude: result.geometry!.location.lat,
-                                  //           longitude: result.geometry!.location.lng,
-                                  //         );
-                                  //         Get.back();
-                                  //       },
-                                  //       initialPosition: const LatLng(-33.8567844, 151.213108),
-                                  //       useCurrentLocation: true,
-                                  //       selectInitialPosition: true,
-                                  //       usePinPointingSearch: true,
-                                  //       usePlaceDetailSearch: true,
-                                  //       zoomGesturesEnabled: true,
-                                  //       zoomControlsEnabled: true,
-                                  //       resizeToAvoidBottomInset: false,
-                                  //     ),
-                                  //   ),
-                                  // );
                                 }
                               },
                               child: Container(
@@ -632,7 +580,7 @@ class AddressListScreen extends StatelessWidget {
                                     Expanded(
                                       child: IgnorePointer( // 👈 prevents TextField from catching taps
                                         child: TextField(
-                                          controller: controller.localityEditingController.value,
+                                          controller: controller.localityEditingController,
                                           readOnly: true,
                                           style: TextStyle(
                                             fontSize: 16,
@@ -667,208 +615,11 @@ class AddressListScreen extends StatelessWidget {
                               ),
                             ),
 
-                            // InkWell(
-                                    //   onTap: () async {
-                                    //     print("log is working");
-                                    //     if (Constant.selectedMapType == 'osm') {
-                                    //       final result = await Get.to(() => MapPickerPage());
-                                    //       if (result != null) {
-                                    //         final firstPlace = result;
-                                    //         final lat = firstPlace.coordinates.latitude;
-                                    //         final lng = firstPlace.coordinates.longitude;
-                                    //         final address = firstPlace.address;
-                                    //         controller.localityEditingController.value.text = address.toString();
-                                    //         controller.localityText.value = address.toString(); // Update reactive string
-                                    //         controller.location.value = UserLocation(latitude: lat, longitude: lng);
-                                    //       }
-                                    //     } else {
-                                    //       Navigator.push(
-                                    //         context,
-                                    //         MaterialPageRoute(
-                                    //           builder: (context) => PlacePicker(
-                                    //             apiKey: Constant.mapAPIKey,
-                                    //             onPlacePicked: (result) {
-                                    //               controller.localityEditingController.value.text = result.formattedAddress!.toString();
-                                    //               controller.localityText.value = result.formattedAddress!.toString(); // Update reactive string
-                                    //               controller.location.value = UserLocation(latitude: result.geometry!.location.lat, longitude: result.geometry!.location.lng);
-                                    //               Get.back();
-                                    //             },
-                                    //             initialPosition: const LatLng(-33.8567844, 151.213108),
-                                    //             useCurrentLocation: true,
-                                    //             selectInitialPosition: true,
-                                    //             usePinPointingSearch: true,
-                                    //             usePlaceDetailSearch: true,
-                                    //             zoomGesturesEnabled: true,
-                                    //             zoomControlsEnabled: true,
-                                    //             resizeToAvoidBottomInset: false,
-                                    //           ),
-                                    //         ),
-                                    //       );
-                                    //     }
-                                    //   },
-                                    //   child: Container(
-                                    //     decoration: BoxDecoration(
-                                    //       border: Border.all(
-                                    //         color: themeChange.getThem() ? AppThemeData.grey700 : AppThemeData.grey300,
-                                    //       ),
-                                    //       borderRadius: BorderRadius.circular(8),
-                                    //     ),
-                                    //     child:  InkWell(
-                                    //       onTap: () async {
-                                    //         print("log is working");
-                                    //         if (Constant.selectedMapType == 'osm') {
-                                    //           final result = await Get.to(() => MapPickerPage());
-                                    //           if (result != null) {
-                                    //             final firstPlace = result;
-                                    //             final lat = firstPlace.coordinates.latitude;
-                                    //             final lng = firstPlace.coordinates.longitude;
-                                    //             final address = firstPlace.address;
-                                    //             controller.localityEditingController.value.text = address.toString();
-                                    //             controller.localityText.value = address.toString(); // Update reactive string
-                                    //             controller.location.value = UserLocation(latitude: lat, longitude: lng);
-                                    //           }
-                                    //         } else {
-                                    //           Navigator.push(
-                                    //             context,
-                                    //             MaterialPageRoute(
-                                    //               builder: (context) => PlacePicker(
-                                    //                 apiKey: Constant.mapAPIKey,
-                                    //                 onPlacePicked: (result) {
-                                    //                   controller.localityEditingController.value.text = result.formattedAddress!.toString();
-                                    //                   controller.localityText.value = result.formattedAddress!.toString(); // Update reactive string
-                                    //                   controller.location.value = UserLocation(latitude: result.geometry!.location.lat, longitude: result.geometry!.location.lng);
-                                    //                   Get.back();
-                                    //                 },
-                                    //                 initialPosition: const LatLng(-33.8567844, 151.213108),
-                                    //                 useCurrentLocation: true,
-                                    //                 selectInitialPosition: true,
-                                    //                 usePinPointingSearch: true,
-                                    //                 usePlaceDetailSearch: true,
-                                    //                 zoomGesturesEnabled: true,
-                                    //                 zoomControlsEnabled: true,
-                                    //                 resizeToAvoidBottomInset: false,
-                                    //               ),
-                                    //             ),
-                                    //           );
-                                    //         }
-                                    //       },
-                                    //       child: Row(
-                                    //         children: [
-                                    //           Expanded(
-                                    //             child:     InkWell(
-                                    //               onTap: () async {
-                                    //                 print("log is working");
-                                    //                 if (Constant.selectedMapType == 'osm') {
-                                    //                   final result = await Get.to(() => MapPickerPage());
-                                    //                   if (result != null) {
-                                    //                     final firstPlace = result;
-                                    //                     final lat = firstPlace.coordinates.latitude;
-                                    //                     final lng = firstPlace.coordinates.longitude;
-                                    //                     final address = firstPlace.address;
-                                    //                     controller.localityEditingController.value.text = address.toString();
-                                    //                     controller.localityText.value = address.toString(); // Update reactive string
-                                    //                     controller.location.value = UserLocation(latitude: lat, longitude: lng);
-                                    //                   }
-                                    //                 } else {
-                                    //                   Navigator.push(
-                                    //                     context,
-                                    //                     MaterialPageRoute(
-                                    //                       builder: (context) => PlacePicker(
-                                    //                         apiKey: Constant.mapAPIKey,
-                                    //                         onPlacePicked: (result) {
-                                    //                           controller.localityEditingController.value.text = result.formattedAddress!.toString();
-                                    //                           controller.localityText.value = result.formattedAddress!.toString(); // Update reactive string
-                                    //                           controller.location.value = UserLocation(latitude: result.geometry!.location.lat, longitude: result.geometry!.location.lng);
-                                    //                           Get.back();
-                                    //                         },
-                                    //                         initialPosition: const LatLng(-33.8567844, 151.213108),
-                                    //                         useCurrentLocation: true,
-                                    //                         selectInitialPosition: true,
-                                    //                         usePinPointingSearch: true,
-                                    //                         usePlaceDetailSearch: true,
-                                    //                         zoomGesturesEnabled: true,
-                                    //                         zoomControlsEnabled: true,
-                                    //                         resizeToAvoidBottomInset: false,
-                                    //                       ),
-                                    //                     ),
-                                    //                   );
-                                    //                 }
-                                    //               },
-                                    //               child: TextField(
-                                    //                 controller: controller.localityEditingController.value,
-                                    //                 readOnly: true, // Make field read-only
-                                    //                 style: TextStyle(
-                                    //                   fontSize: 16,
-                                    //                   color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
-                                    //                 ),
-                                    //                 decoration: InputDecoration(
-                                    //                   hintText: 'Please add address using icon'.tr,
-                                    //                   hintStyle: TextStyle(
-                                    //                     color: themeChange.getThem() ? AppThemeData.grey700 : AppThemeData.grey300,
-                                    //                   ),
-                                    //                   border: InputBorder.none,
-                                    //                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    //                 ),
-                                    //               ),
-                                    //             ),
-                                    //           ),
-                                    //           InkWell(
-                                    //             onTap: () async {
-                                    //               if (Constant.selectedMapType == 'osm') {
-                                    //                 final result = await Get.to(() => MapPickerPage());
-                                    //                 if (result != null) {
-                                    //                   final firstPlace = result;
-                                    //                   final lat = firstPlace.coordinates.latitude;
-                                    //                   final lng = firstPlace.coordinates.longitude;
-                                    //                   final address = firstPlace.address;
-                                    //                   controller.localityEditingController.value.text = address.toString();
-                                    //                   controller.localityText.value = address.toString(); // Update reactive string
-                                    //                   controller.location.value = UserLocation(latitude: lat, longitude: lng);
-                                    //                 }
-                                    //               } else {
-                                    //                 Navigator.push(
-                                    //                   context,
-                                    //                   MaterialPageRoute(
-                                    //                     builder: (context) => PlacePicker(
-                                    //                       apiKey: Constant.mapAPIKey,
-                                    //                       onPlacePicked: (result) {
-                                    //                         controller.localityEditingController.value.text = result.formattedAddress!.toString();
-                                    //                         controller.localityText.value = result.formattedAddress!.toString(); // Update reactive string
-                                    //                         controller.location.value = UserLocation(latitude: result.geometry!.location.lat, longitude: result.geometry!.location.lng);
-                                    //                         Get.back();
-                                    //                       },
-                                    //                       initialPosition: const LatLng(-33.8567844, 151.213108),
-                                    //                       useCurrentLocation: true,
-                                    //                       selectInitialPosition: true,
-                                    //                       usePinPointingSearch: true,
-                                    //                       usePlaceDetailSearch: true,
-                                    //                       zoomGesturesEnabled: true,
-                                    //                       zoomControlsEnabled: true,
-                                    //                       resizeToAvoidBottomInset: false,
-                                    //                     ),
-                                    //                   ),
-                                    //                 );
-                                    //               }
-                                    //             },
-                                    //             child: Container(
-                                    //               padding: const EdgeInsets.all(12),
-                                    //               child: Icon(
-                                    //                 Icons.location_on,
-                                    //                 color: AppThemeData.primary300,
-                                    //                 size: 20,
-                                    //               ),
-                                    //             ),
-                                    //           ),
-                                    //         ],
-                                    //       ),
-                                    //     ),
-                                    //   ),
-                                    // ),
                                   ],
                                 ),
                                 TextFieldWidget(
                                   title: 'Nearby landmark'.tr,
-                                  controller: controller.landmarkEditingController.value,
+                                  controller: controller.landmarkEditingController,
                                   hintText: 'Nearby landmark (Optional)'.tr,
                                 ),
                               ],
@@ -883,92 +634,80 @@ class AddressListScreen extends StatelessWidget {
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 20),
                         child: RoundedButtonFill(
-                          isEnabled: !controller.isLoading.value,
+                          isEnabled: !controller.isLoading,
                           title: "Save Address Details".tr,
                           height: 5.5,
                           color: AppThemeData.primary300,
                           fontSizes: 16,
                           onPress: () async {
-                            if (controller.location.value.latitude == null || controller.location.value.longitude == null) {
+                            if (controller.location.latitude == null || controller.location.longitude == null) {
                               ShowToastDialog.showToast("Please select Location".tr);
                             } else if (controller.houseBuildingTextEditingController.value.text.isEmpty) {
                               ShowToastDialog.showToast("Please Enter Flat / House / Flore / Building".tr);
                             } else if (controller.localityEditingController.value.text.isEmpty) {
                               ShowToastDialog.showToast("Please Enter Area / Sector / locality".tr);
                             } else {
-                              controller.isLoading.value = true;
+                              controller.isLoading = true;
                               ShowToastDialog.showLoader("Please wait".tr);
-                              if (controller.shippingModel.value.id != null && index != null) {
-                                controller.shippingModel.value.location = controller.location.value;
-                                controller.shippingModel.value.addressAs = controller.selectedSaveAs.value;
-                                controller.shippingModel.value.address = controller.houseBuildingTextEditingController.value.text;
-                                controller.shippingModel.value.locality = controller.localityEditingController.value.text;
-                                controller.shippingModel.value.landmark = controller.landmarkEditingController.value.text;
+                              if (controller.shippingModel.id != null && index != null) {
+                                controller.shippingModel.location = controller.location;
+                                controller.shippingModel.addressAs = controller.selectedSaveAs;
+                                controller.shippingModel.address = controller.houseBuildingTextEditingController.value.text;
+                                controller.shippingModel.locality = controller.localityEditingController.value.text;
+                                controller.shippingModel.landmark = controller.landmarkEditingController.value.text;
 
                                 // 🔑 ZONE DETECTION: Detect and assign zone ID for updated address coordinates
-                                if (controller.location.value.latitude != null && controller.location.value.longitude != null) {
+                                if (controller.location.latitude != null && controller.location.longitude != null) {
                                   try {
-                                    print('🔍 [ADDRESS_UPDATE] Starting zone detection for updated address...');
                                     final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
-                                      controller.location.value.latitude!,
-                                      controller.location.value.longitude!,
+                                      controller.location.latitude??0.0,
+                                      controller.location.longitude!,context
                                     );
                                     
                                     if (zoneId.isNotEmpty) {
-                                      controller.shippingModel.value.zoneId = zoneId;
-                                      print('✅ [ADDRESS_UPDATE] Zone detected and assigned: $zoneId');
+                                      controller.shippingModel.zoneId = zoneId;
                                     } else {
-                                      print('⚠️ [ADDRESS_UPDATE] No zone detected for coordinates - leaving zoneId as null');
                                     }
                                   } catch (e) {
-                                    print('❌ [ADDRESS_UPDATE] Error detecting zone: $e');
-                                    // Continue without zone ID if detection fails
                                   }
                                 } else {
-                                  print('⚠️ [ADDRESS_UPDATE] No coordinates available for zone detection');
                                 }
 
                                 controller.shippingAddressList.removeAt(index);
-                                controller.shippingAddressList.insert(index, controller.shippingModel.value);
+                                controller.shippingAddressList.insert(index, controller.shippingModel);
                               } else {
-                                controller.shippingModel.value.id = Constant.getUuid();
-                                controller.shippingModel.value.location = controller.location.value;
-                                controller.shippingModel.value.addressAs = controller.selectedSaveAs.value;
-                                controller.shippingModel.value.address = controller.houseBuildingTextEditingController.value.text;
-                                controller.shippingModel.value.locality = controller.localityEditingController.value.text;
-                                controller.shippingModel.value.landmark = controller.landmarkEditingController.value.text;
-                                controller.shippingModel.value.isDefault = controller.shippingAddressList.isEmpty ? true : false;
+                                controller.shippingModel.id = Constant.getUuid();
+                                controller.shippingModel.location = controller.location;
+                                controller.shippingModel.addressAs = controller.selectedSaveAs;
+                                controller.shippingModel.address = controller.houseBuildingTextEditingController.value.text;
+                                controller.shippingModel.locality = controller.localityEditingController.value.text;
+                                controller.shippingModel.landmark = controller.landmarkEditingController.value.text;
+                                controller.shippingModel.isDefault = controller.shippingAddressList.isEmpty ? true : false;
                                 
                                 // 🔑 ZONE DETECTION: Detect and assign zone ID for the address coordinates
-                                if (controller.location.value.latitude != null && controller.location.value.longitude != null) {
+                                if (controller.location.latitude != null && controller.location.longitude != null) {
                                   try {
                                     print('🔍 [ADDRESS_SAVE] Starting zone detection for new address...');
                                     final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
-                                      controller.location.value.latitude!,
-                                      controller.location.value.longitude!,
+                                      controller.location.latitude??0.0,
+                                      controller.location.longitude??0.0,context
                                     );
                                     
                                     if (zoneId.isNotEmpty) {
-                                      controller.shippingModel.value.zoneId = zoneId;
-                                      print('✅ [ADDRESS_SAVE] Zone detected and assigned: $zoneId');
+                                      controller.shippingModel.zoneId = zoneId;
                                     } else {
-                                      print('⚠️ [ADDRESS_SAVE] No zone detected for coordinates - leaving zoneId as null');
                                     }
                                   } catch (e) {
-                                    print('❌ [ADDRESS_SAVE] Error detecting zone: $e');
-                                    // Continue without zone ID if detection fails
                                   }
                                 } else {
-                                  print('⚠️ [ADDRESS_SAVE] No coordinates available for zone detection');
                                 }
-                                
-                                controller.shippingAddressList.add(controller.shippingModel.value);
+                                controller.shippingAddressList.add(controller.shippingModel);
                               }
                               setState(() {});
 
-                              controller.userModel.value.shippingAddress = controller.shippingAddressList;
-                              await FireStoreUtils.updateUser(controller.userModel.value);
-                              controller.isLoading.value = false;
+                              controller.userModel.shippingAddress = controller.shippingAddressList;
+                              await FireStoreUtils.updateUser(controller.userModel);
+                              controller.isLoading = false;
                               ShowToastDialog.closeLoader();
                               Get.back();
                             }

@@ -1,5 +1,5 @@
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
@@ -46,7 +46,7 @@ class PlaytimeProductCard extends StatelessWidget {
       // No need to show loading state - the toast will handle the feedback
 
       // Get the cart controller
-      final cartController = Get.find<CartController>();
+      CartControllerProvider cartControllerProvider =  Provider.of<CartControllerProvider>(context,listen:false);
       final cartProvider = Provider.of<CartProvider>(context,listen:false);
       // Convert MartItemModel to CartProductModel
       final martVendorID = "mart_${product!.vendorID ?? 'unknown'}";
@@ -69,7 +69,7 @@ class PlaytimeProductCard extends StatelessWidget {
       );
 
       // Add to cart
-      cartController.addToCart(
+      cartControllerProvider.addToCart(
         cartProductModel: cartProduct,
         isIncrement: true,
         quantity: 1,

@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/controllers/mart_address_controller.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_address_screen/provider/mart_address_provider.dart';
+import 'package:provider/provider.dart';
 
 class MartAddressScreen extends StatelessWidget {
   const MartAddressScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    Get.put(MartAddressController());
-    
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -33,11 +32,10 @@ class MartAddressScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: GetBuilder<MartAddressController>(
-        builder: (controller) {
+      body: Consumer<MartAddressProvider>(
+        builder: (context,controller,_) {
           return Column(
             children: [
-              // Add New Address Card
               Container(
                 margin: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -133,7 +131,7 @@ class MartAddressScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAddressesList(MartAddressController controller) {
+  Widget _buildAddressesList(MartAddressProvider controller) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: controller.addresses.length,

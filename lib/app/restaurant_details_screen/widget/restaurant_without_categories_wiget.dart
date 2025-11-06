@@ -1,5 +1,5 @@
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart' show Constant, cartItem;
-import 'package:jippymart_customer/controllers/restaurant_details_controller.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
@@ -17,7 +17,7 @@ import 'package:get/get.dart';
 import '../../../constant/show_toast_dialog.dart';
 
 Widget buildProductsWithoutCategories(BuildContext context,
-    DarkThemeProvider themeChange, RestaurantDetailsController controller) {
+    DarkThemeProvider themeChange, RestaurantDetailsProvider controller) {
   return Obx(() => ListView.builder(
         itemCount: controller.productList.length,
         shrinkWrap: true,
@@ -514,11 +514,10 @@ Widget buildProductsWithoutCategories(BuildContext context,
                                             }
                                           }
 
-                                          controller.update();
                                           controller
                                               .calculatePrice(productModel)
                                               .then((_) {
-                                            controller.update();
+
                                           });
                                           // productDetailsBottomSheet(
                                           //     context,

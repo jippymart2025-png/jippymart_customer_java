@@ -1,7 +1,7 @@
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart' show Constant;
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
@@ -160,7 +160,7 @@ Widget buildDeliveryFeeUI({
   }
 }
 
-tipsDialog(CartController controller, themeChange) {
+tipsDialog(CartControllerProvider controller, themeChange) {
   return Dialog(
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     insetPadding: const EdgeInsets.all(10),
@@ -245,7 +245,7 @@ tipsDialog(CartController controller, themeChange) {
   );
 }
 
-cardDecoration(CartController controller, PaymentGateway value, themeChange,
+cardDecoration(CartControllerProvider controller, PaymentGateway value, themeChange,
     String image) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 5),

@@ -1,17 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/category_service/category__service_screen.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/controller/mart_controller.dart';
-import 'package:jippymart_customer/controllers/restaurant_details_controller.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/utils/crash_prevention.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
 /// 🔗 Global Deeplink Handler Service
 ///
@@ -55,7 +55,7 @@ class GlobalDeeplinkHandler {
   }
 
   /// Store a deep link for later processing
-  void storeDeeplink(String url) {
+  void storeDeeplink(String url,BuildContext context) {
     print('🔗 [GLOBAL_DEEPLINK] 🚀 storeDeeplink() called with URL: $url');
     print(' [GLOBAL_DEEPLINK]  storeDeeplink() called with URL: $url');
     if (url.isEmpty) {
@@ -87,7 +87,7 @@ class GlobalDeeplinkHandler {
     print(
         '🔗 [GLOBAL_DEEPLINK] 🛡️ Using enhanced crash prevention for all deep links');
     DeepLinkCrashPrevention.safeProcessDeepLink(url, () async {
-      await _processDeeplink(url);
+      await _processDeeplink(url,context);
       // Reset processing flag after completion
       _isProcessing = false;
       print('🔗 [GLOBAL_DEEPLINK] ✅ Reset processing flag after completion');
@@ -102,42 +102,22 @@ class GlobalDeeplinkHandler {
   String? get pendingDeeplink => _pendingDeeplink;
 
   /// Navigate to pending deep link (call this after home screen is ready)
-  void navigatePendingDeeplink() {
-    print('🔗 [GLOBAL_DEEPLINK] navigatePendingDeeplink() called');
-    print('🔗 [GLOBAL_DEEPLINK] hasPendingDeeplink: $hasPendingDeeplink');
-    print('🔗 [GLOBAL_DEEPLINK] pendingDeeplink: $_pendingDeeplink');
-    print('🔗 [GLOBAL_DEEPLINK] isProcessing: $_isProcessing');
-
+  void navigatePendingDeeplink(BuildContext context) {
     if (!hasPendingDeeplink || _isProcessing) {
-      print('🔗 [GLOBAL_DEEPLINK] No pending deeplink or already processing');
       return;
     }
-
-    print(
-        '🔗 [GLOBAL_DEEPLINK] 🚀 Navigating to pending deeplink: $_pendingDeeplink');
     _isProcessing = true;
-
     try {
-      navigateToLink(_pendingDeeplink!);
+      navigateToLink(_pendingDeeplink!,context);
       clearPending();
-      print('🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to deeplink');
     } catch (e) {
-      print('❌ [GLOBAL_DEEPLINK] Error navigating to deeplink: $e');
     } finally {
       _isProcessing = false;
     }
   }
 
-//changed here
-  /// Navigate to a specific deep link
-  void navigateToLink(String link) {
-    print('🔗 [GLOBAL_DEEPLINK] navigateToLink() called with: $link');
-
+  void navigateToLink(String link,BuildContext context) {
     final uri = Uri.parse(link);
-    print(
-        '🔗 [GLOBAL_DEEPLINK] Parsed URI: scheme=${uri.scheme}, host=${uri.host}, path=${uri.path}');
-    print('🔗 [GLOBAL_DEEPLINK] Path segments: ${uri.pathSegments}');
-
     // Handle both custom scheme and HTTPS URLs
     String pathToCheck;
     List<String> pathSegments;
@@ -156,31 +136,22 @@ class GlobalDeeplinkHandler {
       pathToCheck = uri.path;
       pathSegments = uri.pathSegments;
     }
-    print(
-        '🔗 [GLOBAL_DEEPLINK] Final path: $pathToCheck, segments: $pathSegments');
 
     if (pathSegments.isNotEmpty && pathSegments[0] == 'product') {
       final productId = pathSegments.length > 1 ? pathSegments[1] : null;
-      print('🔗 [GLOBAL_DEEPLINK] 🛍️ Navigating to Product ID: $productId');
       if (productId != null) {
-        _navigateToProduct(productId);
+        _navigateToProduct(productId,context);
       } else {
-        print('🔗 [GLOBAL_DEEPLINK] ❌ No product ID found in URL');
       }
     } else if (pathSegments.isNotEmpty && pathSegments[0] == 'restaurant') {
       final restaurantId = pathSegments.length > 1 ? pathSegments[1] : null;
-      print(
-          '🔗 [GLOBAL_DEEPLINK] 🍽️ Navigating to Restaurant ID: $restaurantId');
       if (restaurantId != null) {
-        _navigateToRestaurant(restaurantId);
+        _navigateToRestaurant(restaurantId,context);
       } else {
-        print('🔗 [GLOBAL_DEEPLINK] ❌ No restaurant ID found in URL');
       }
     } else if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
-      print('🔗 [GLOBAL_DEEPLINK] Catering link clicked, navigating...');
       _navigateToCatering();
     } else {
-      print('🔗 [GLOBAL_DEEPLINK] ❌ No matching route for: $link');
     }
   }
 
@@ -194,52 +165,17 @@ class GlobalDeeplinkHandler {
   }
 
   /// Navigate to product details using GetX
-  void _navigateToProduct(String productId) async {
+  void _navigateToProduct(String productId,BuildContext context) async {
     try {
-      print('🔗 [GLOBAL_DEEPLINK] ===== PRODUCT NAVIGATION =====');
-      print('🔗 [GLOBAL_DEEPLINK] 🔍 Fetching product: $productId');
+      final martController =Provider.of<MartProvider>(context,listen: false);
 
-      // Get mart controller and fetch product
-      final martController = Get.find<MartController>();
-
-      // Ensure CartController is available for product details screen
-      if (!Get.isRegistered<CartController>()) {
-        print(
-            '🔗 [GLOBAL_DEEPLINK] CartController not available, initializing...');
-        Get.put(CartController(), permanent: true);
-      }
-
-      print(
-          '🔗 [GLOBAL_DEEPLINK] Calling martController.getProductById($productId)...');
       final product = await martController.getProductById(productId);
-
       if (product != null) {
-        print('🔗 [GLOBAL_DEEPLINK] ✅ Product found!');
-        print('🔗 [GLOBAL_DEEPLINK] Product Name: ${product.name}');
-        print('🔗 [GLOBAL_DEEPLINK] Product ID: ${product.id}');
-        print('🔗 [GLOBAL_DEEPLINK] Product Price: ${product.currentPrice}');
-        print('🔗 [GLOBAL_DEEPLINK] Product Available: ${product.isAvailable}');
 
-        // **FIXED: Reduced delay to prevent blocking UI**
-        print(
-            '🔗 [GLOBAL_DEEPLINK] DEBUG - Waiting briefly for home screen to load before navigation...');
         await Future.delayed(Duration(milliseconds: 500));
-
-        // Use GetX navigation instead of navigator key
-        print(
-            '🔗 [GLOBAL_DEEPLINK] DEBUG - Using GetX navigation to product details...');
         Get.to(() => MartProductDetailsScreen(product: product));
-        print(
-            '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to product details using GetX');
       } else {
-        print('🔗 [GLOBAL_DEEPLINK] ❌ Product not found: $productId');
-        print('🔗 [GLOBAL_DEEPLINK] This could mean:');
-        print('🔗 [GLOBAL_DEEPLINK] 1. Product ID is incorrect');
-        print('🔗 [GLOBAL_DEEPLINK] 2. Product doesn\'t exist in database');
-        print('🔗 [GLOBAL_DEEPLINK] 3. Product is not published/available');
-        print('🔗 [GLOBAL_DEEPLINK] Redirecting to mart home...');
 
-        // Navigate to mart home instead of showing nothing
         navigatorKey.currentState?.push(MaterialPageRoute(
           builder: (_) => const MartNavigationScreen(),
         ));
@@ -256,7 +192,7 @@ class GlobalDeeplinkHandler {
   }
 
   /// Navigate to restaurant details
-  void _navigateToRestaurant(String restaurantId) async {
+  void _navigateToRestaurant(String restaurantId,BuildContext context) async {
     try {
       print('🔗 [GLOBAL_DEEPLINK] 🍽️ Navigating to restaurant: $restaurantId');
       // Track current restaurant to prevent duplicate navigation
@@ -302,18 +238,15 @@ class GlobalDeeplinkHandler {
 
         // Try to update the controller with new restaurant data after navigation
         try {
-          if (Get.isRegistered<RestaurantDetailsController>()) {
+
             print(
                 '🔗 [GLOBAL_DEEPLINK] 🔍 Controller is registered, attempting update...');
-            final controller = Get.find<RestaurantDetailsController>();
+            final controller = Provider.of<RestaurantDetailsProvider>(context,listen: false);
+
             print(
                 '🔗 [GLOBAL_DEEPLINK] 🔍 Controller found, calling updateRestaurant...');
             controller.updateRestaurant(restaurant);
-            print(
-                '🔗 [GLOBAL_DEEPLINK] ✅ Updated controller with new restaurant data: ${restaurant.title}');
-          } else {
-            print('🔗 [GLOBAL_DEEPLINK] ⚠️ Controller is not registered yet');
-          }
+
         } catch (e) {
           print('🔗 [GLOBAL_DEEPLINK] ❌ Could not update controller: $e');
         }
@@ -353,7 +286,7 @@ class GlobalDeeplinkHandler {
   }
 
   /// Process deep link with enhanced crash prevention
-  Future<void> _processDeeplink(String url) async {
+  Future<void> _processDeeplink(String url,BuildContext context) async {
     try {
       print(
           '🔗 [GLOBAL_DEEPLINK] Processing deep link with enhanced crash prevention: $url');
@@ -373,14 +306,14 @@ class GlobalDeeplinkHandler {
         if (restaurantId != null) {
           print(
               '🔗 [GLOBAL_DEEPLINK] 🍽️ Processing restaurant deep link: $restaurantId');
-          _navigateToRestaurant(restaurantId);
+          _navigateToRestaurant(restaurantId,context);
         }
       } else if (url.contains('/mart/')) {
         _navigateToMart(url);
       } else if (url.contains('/product/')) {
         final productId = _extractProductId(url);
         if (productId != null) {
-          _navigateToProduct(productId);
+          _navigateToProduct(productId,context);
         }
       } else if (url.contains('/category/')) {
         final categoryId = _extractCategoryId(url);

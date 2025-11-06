@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:jippymart_customer/app/change%20langauge/provider/change_language_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/change_language_controller.dart';
 import 'package:jippymart_customer/services/localization_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
@@ -17,9 +17,8 @@ class ChangeLanguageScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: ChangeLanguageController(),
-        builder: (controller) {
+    return Consumer<ChangeLanguageProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             appBar: AppBar(
               backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,

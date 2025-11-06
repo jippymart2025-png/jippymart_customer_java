@@ -2,7 +2,6 @@
 import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/foundation.dart';
-import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';

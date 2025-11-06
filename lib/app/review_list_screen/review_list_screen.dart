@@ -1,7 +1,7 @@
 import 'package:jippymart_customer/app/chat_screens/full_screen_image_viewer.dart';
+import 'package:jippymart_customer/app/review_list_screen/provider/review_list_provider.dart';
 import 'package:jippymart_customer/constant/collection_name.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/review_list_controller.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/rating_model.dart';
 import 'package:jippymart_customer/models/review_attribute_model.dart';
@@ -21,10 +21,8 @@ class ReviewListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-
-    return GetX(
-        init: ReviewListController(),
-        builder: (controller) {
+    return Consumer<ReviewListProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
             appBar: AppBar(

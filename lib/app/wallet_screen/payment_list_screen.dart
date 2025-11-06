@@ -1,7 +1,7 @@
+import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/wallet_controller.dart';
 import 'package:jippymart_customer/payment/createRazorPayOrderModel.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -19,9 +19,8 @@ class PaymentListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: WalletController(),
-        builder: (controller) {
+    return Consumer<WalletProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             appBar: AppBar(
               backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
@@ -192,7 +191,7 @@ class PaymentListScreen extends StatelessWidget {
         });
   }
 
-  cardDecoration(WalletController controller, PaymentGateway value, themeChange, String image) {
+  cardDecoration(WalletProvider controller, PaymentGateway value, themeChange, String image) {
     return Obx(
       () => Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),

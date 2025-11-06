@@ -3,22 +3,20 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/category_service/provider/category_sevice_provider.dart';
+import 'package:provider/provider.dart' show Consumer;
 import 'package:url_launcher/url_launcher.dart';
 
-import 'controller/cetegory_service_controller.dart';
 
 class CateringServiceScreen extends StatelessWidget {
   const CateringServiceScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(
-      CategoryServiceController(),
-    );
+
     return Scaffold(
-      body: GetBuilder<CategoryServiceController>(
-          init: CategoryServiceController(),
-          builder: (controller) {
+      body: Consumer<CategoryServiceProvider>(
+          builder: (context,controller,_) {
             return Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
@@ -776,7 +774,7 @@ class CateringServiceScreen extends StatelessWidget {
   }
 
   Widget _buildDateField({
-    required CategoryServiceController controller,
+    required CategoryServiceProvider controller,
     required BuildContext context,
   }) {
     return Padding(
@@ -829,7 +827,7 @@ class CateringServiceScreen extends StatelessWidget {
   }
 
   Widget _buildFunctionTypeDropdown({
-    required CategoryServiceController controller,
+    required CategoryServiceProvider controller,
   }) {
     return Column(
       children: [
@@ -904,7 +902,7 @@ class CateringServiceScreen extends StatelessWidget {
   }
 
   Widget _buildOtherFunctionTypeField({
-    required CategoryServiceController controller,
+    required CategoryServiceProvider controller,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -949,7 +947,7 @@ class CateringServiceScreen extends StatelessWidget {
   }
 
   Widget _buildMealPreferenceRadio({
-    required CategoryServiceController controller,
+    required CategoryServiceProvider controller,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -1014,7 +1012,7 @@ class CateringServiceScreen extends StatelessWidget {
     required String value,
     required String label,
     required IconData icon,
-    required CategoryServiceController controller,
+    required CategoryServiceProvider controller,
   }) {
     return Expanded(
       child: InkWell(
@@ -1064,7 +1062,7 @@ class CateringServiceScreen extends StatelessWidget {
   }
 
   Widget _buildSubmitButton({
-    required CategoryServiceController controller,
+    required CategoryServiceProvider controller,
     required BuildContext context,
   }) {
     return Container(
@@ -1091,8 +1089,7 @@ class CateringServiceScreen extends StatelessWidget {
         onPressed: controller.isLoading
             ? null
             : () {
-                controller.submitForm(
-                    categoryServiceController: controller, context: context);
+                controller.submitForm(context: context);
               },
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,

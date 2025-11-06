@@ -1,6 +1,6 @@
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
@@ -14,9 +14,8 @@ class SelectPaymentScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-      init: CartController(),
-      builder: (controller) {
+    return Consumer<CartControllerProvider>(
+      builder: (context,controller,_) {
         return Scaffold(
           backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
           appBar: AppBar(
@@ -262,7 +261,7 @@ class SelectPaymentScreen extends StatelessWidget {
     );
   }
 
-  Widget cardDecoration(CartController controller, PaymentGateway value, themeChange, String image) {
+  Widget cardDecoration(CartControllerProvider controller, PaymentGateway value, themeChange, String image) {
     return Obx(
       () => Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),

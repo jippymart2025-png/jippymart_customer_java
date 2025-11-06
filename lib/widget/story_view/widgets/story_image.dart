@@ -3,12 +3,10 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:jippymart_customer/app/home_screen/screen/story_view_screen/provider/story_provider.dart';
 
-import '../controller/story_controller.dart';
 import '../utils.dart';
 
-/// Utitlity to load image (gif, png, jpg, etc) media just once. Resource is
-/// cached to disk with default configurations of [DefaultCacheManager].
 class ImageLoader {
   ui.Codec? frames;
 
@@ -68,7 +66,7 @@ class StoryImage extends StatefulWidget {
 
   final BoxFit? fit;
 
-  final StoryController? controller;
+  final StoryProvider? controller;
   final Widget? loadingWidget;
   final Widget? errorWidget;
 
@@ -84,7 +82,7 @@ class StoryImage extends StatefulWidget {
   /// Use this shorthand to fetch images/gifs from the provided [url]
   factory StoryImage.url(
     String url, {
-    StoryController? controller,
+        StoryProvider? controller,
     Map<String, dynamic>? requestHeaders,
     BoxFit fit = BoxFit.fitWidth,
     Widget? loadingWidget,

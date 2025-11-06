@@ -1,10 +1,10 @@
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restauant_product_list_view.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_detail_shimmer_widget.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_cupon_list_view.dart';
 import 'package:jippymart_customer/app/review_list_screen/review_list_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/restaurant_details_controller.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
@@ -57,29 +57,27 @@ class RestaurantDetailsScreen extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: GetBuilder<RestaurantDetailsController>(
-                  builder: (restaurantDetailsController) {
+                child: Consumer<RestaurantDetailsProvider>(
+                  builder: (context,controller,_) {
                     return Padding(
                       padding: const EdgeInsets.only(top: 5, bottom: 5),
                       child: ListView.builder(
-                        itemCount: restaurantDetailsController
+                        itemCount: controller
                             .vendorCategoryList.length,
                         itemBuilder: (context, index) {
-                          final category = restaurantDetailsController
+                          final category = controller
                               .vendorCategoryList[index];
                           return _buildMenuItem(
                             category.title.toString(),
-                            restaurantDetailsController
+                            controller
                                 .getProductsByCategory(category.id.toString())
                                 .length,
                             onTap: () {
                               Navigator.pop(
-                                  context); // Close bottom sheet first
-
-                              // Use a small delay to ensure bottom sheet is closed
+                                  context);
                               Future.delayed(const Duration(milliseconds: 300),
                                   () {
-                                restaurantDetailsController
+                                    controller
                                     .scrollToCategory(index);
                               });
                             },
@@ -157,138 +155,11 @@ class RestaurantDetailsScreen extends StatelessWidget {
       ),
     );
   }
-  // void _showMenuModal(BuildContext context) {
-  //   showModalBottomSheet(
-  //     context: context,
-  //     isScrollControlled: true,
-  //     backgroundColor: Colors.transparent,
-  //     isDismissible: true,
-  //     enableDrag: true,
-  //     builder: (context) => GestureDetector(
-  //       onTap: () => Navigator.pop(context),
-  //       child: Container(
-  //         color: Colors.transparent,
-  //         child: Align(
-  //           alignment: Alignment.bottomCenter,
-  //           child: GestureDetector(
-  //             onTap: () {},
-  //             child: Container(
-  //               margin: const EdgeInsets.only(bottom: 50, left: 20, right: 40),
-  //               height: MediaQuery.of(context).size.height * 0.35,
-  //               width: MediaQuery.of(context).size.width * 0.7,
-  //               decoration: BoxDecoration(
-  //                 color: Colors.white,
-  //                 borderRadius: BorderRadius.circular(20),
-  //                 boxShadow: [
-  //                   BoxShadow(
-  //                     color: Colors.black.withOpacity(0.1),
-  //                     blurRadius: 10,
-  //                     offset: const Offset(0, -2),
-  //                   ),
-  //                 ],
-  //               ),
-  //               child: GetBuilder<RestaurantDetailsController>(
-  //                   builder: (restaurantDetailsController) {
-  //                 return Padding(
-  //                   padding: const EdgeInsets.only(top: 5, bottom: 5),
-  //                   child: ListView.builder(
-  //                     itemCount:
-  //                         restaurantDetailsController.vendorCategoryList.length,
-  //                     itemBuilder: (context, index) {
-  //                       final category = restaurantDetailsController
-  //                           .vendorCategoryList[index];
-  //                       return _buildMenuItem(
-  //                           category.title.toString(),
-  //                           restaurantDetailsController
-  //                               .getProductsByCategory(
-  //                                 category.id.toString(),
-  //                               )
-  //                               .length, onTap: () {
-  //                         Navigator.pop(context);
-  //                         WidgetsBinding.instance.addPostFrameCallback((_) {
-  //                           restaurantDetailsController.scrollToCategory(index);
-  //                         });
-  //                       });
-  //                     },
-  //                   ),
-  //                 );
-  //               }),
-  //             ),
-  //           ),
-  //         ),
-  //       ),
-  //     ),
-  //   );
-  // }
-
-  // Widget _buildMenuItem(String title, int count,
-  //     {bool isNew = false, void Function()? onTap}) {
-  //   return Padding(
-  //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-  //     child: GestureDetector(
-  //       onTap: onTap,
-  //       child: Row(
-  //         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-  //         children: [
-  //           Expanded(
-  //             child: Row(
-  //               children: [
-  //                 Flexible(
-  //                   child: Text(
-  //                     title,
-  //                     style: const TextStyle(
-  //                       fontSize: 16,
-  //                       fontWeight: FontWeight.w500,
-  //                       color: Colors.black87,
-  //                     ),
-  //                     overflow: TextOverflow.ellipsis,
-  //                     maxLines: 1,
-  //                   ),
-  //                 ),
-  //                 if (isNew) ...[
-  //                   const SizedBox(width: 8),
-  //                   Container(
-  //                     padding: const EdgeInsets.symmetric(
-  //                         horizontal: 6, vertical: 2),
-  //                     decoration: BoxDecoration(
-  //                       color: Colors.red,
-  //                       borderRadius: BorderRadius.circular(8),
-  //                     ),
-  //                     child: const Text(
-  //                       'NEW',
-  //                       style: TextStyle(
-  //                         color: Colors.white,
-  //                         fontSize: 10,
-  //                         fontWeight: FontWeight.bold,
-  //                       ),
-  //                     ),
-  //                   ),
-  //                 ],
-  //               ],
-  //             ),
-  //           ),
-  //           const SizedBox(width: 16),
-  //           Text(
-  //             '$count items',
-  //             style: const TextStyle(
-  //               fontSize: 14,
-  //               color: Colors.grey,
-  //               fontWeight: FontWeight.w400,
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //     ),
-  //   );
-  // }
-
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: RestaurantDetailsController(scrollToProductId: scrollToProductId),
-        autoRemove: false,
-        builder: (controller) {
+    return Consumer<RestaurantDetailsProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             bottomNavigationBar: cartItem.isEmpty
                 ? null
@@ -1215,15 +1086,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                           Builder(
                                             builder: (context) {
                                               try {
-                                                return Obx(() {
-                                                  // Safety check for controller and reactive variables
-                                                  if (!Get.isRegistered<
-                                                      RestaurantDetailsController>()) {
-                                                    return const SizedBox
-                                                        .shrink();
-                                                  }
-
-                                                  // Show clear button only if any filter is active
                                                   final hasActiveFilters =
                                                       (controller.isVag
                                                                   .value ??
@@ -1240,12 +1102,10 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                               .value
                                                               .text
                                                               .isNotEmpty);
-
                                                   if (!hasActiveFilters) {
                                                     return const SizedBox
                                                         .shrink();
                                                   }
-
                                                   return InkWell(
                                                     onTap: () {
                                                       try {
@@ -1325,7 +1185,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                       ),
                                                     ),
                                                   );
-                                                });
                                               } catch (e) {
                                                 print(
                                                     'Error building clear filter button: $e');
@@ -1390,7 +1249,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 20),
                               ] else ...[
-                                ProductListView(controller: controller),
+                                ProductListView(),
                               ],
                             ],
                           ),
@@ -1403,7 +1262,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
   }
 
   timeShowBottomSheet(
-      BuildContext context, RestaurantDetailsController productModel) {
+      BuildContext context, RestaurantDetailsProvider productModel) {
     return showModalBottomSheet(
         context: context,
         isScrollControlled: true,

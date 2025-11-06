@@ -2,13 +2,11 @@ import 'dart:developer';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
-import 'package:jippymart_customer/models/zone_model.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 class LocationService {
 
@@ -189,72 +187,74 @@ class LocationService {
   }
 
   /// Check if location is within service area
-  static Future<bool> isLocationInServiceArea(double latitude, double longitude) async {
-    try {
-      // Get zones and check if location is within any zone
-      List<ZoneModel>? zones = await FireStoreUtils.getZone();
-      
-      if (zones != null) {
-        for (ZoneModel zone in zones) {
-          if (zone.area != null && Constant.isPointInPolygon(
-            LatLng(latitude, longitude),
-            zone.area!,
-          )) {
-            Constant.selectedZone = zone;
-            Constant.isZoneAvailable = true;
-            return true;
-          }
-        }
-      }
-      
-      return false;
-    } catch (e) {
-      log('[LOCATION_SERVICE] Error checking service area: $e');
-      return false;
-    }
-  }
+  // static Future<bool> isLocationInServiceArea(double latitude, double longitude) async {
+  //   try {
+  //     // Get zones and check if location is within any zone
+  //     List<ZoneModel>? zones = await FireStoreUtils.getZone();
+  //
+  //     if (zones != null) {
+  //       for (ZoneModel zone in zones) {
+  //         if (zone.area != null && Constant.isPointInPolygon(
+  //           LatLng(latitude, longitude),
+  //           zone.area!,
+  //         )) {
+  //           Constant.selectedZone = zone;
+  //           Constant.isZoneAvailable = true;
+  //           return true;
+  //         }
+  //       }
+  //     }
+  //
+  //     return false;
+  //   } catch (e) {
+  //     log('[LOCATION_SERVICE] Error checking service area: $e');
+  //     return false;
+  //   }
+  // }
 
   /// 🔑 DETECT ZONE ID FOR COORDINATES
   /// 
   /// This method detects the zone ID for given coordinates by checking
   /// if the coordinates fall within any zone polygon
   static Future<String?> _detectZoneIdForCoordinates(double latitude, double longitude) async {
-    try {
-      log('[LOCATION_SERVICE] Starting zone detection for coordinates: $latitude, $longitude');
-      
-      // Get all zones from Firestore
-      List<ZoneModel>? zones = await FireStoreUtils.getZone();
-      
-      if (zones == null || zones.isEmpty) {
-        log('[LOCATION_SERVICE] No zones available in database');
-        return null;
-      }
-      
-      log('[LOCATION_SERVICE] Found ${zones.length} zones to check');
-      
-      // Check if coordinates fall within any zone polygon
-      for (ZoneModel zone in zones) {
-        if (zone.area != null && zone.area!.isNotEmpty) {
-          log('[LOCATION_SERVICE] Checking zone: ${zone.name} (${zone.id})');
-          
-          // Use the existing polygon validation logic
-          if (Constant.isPointInPolygon(
-            LatLng(latitude, longitude),
-            zone.area!,
-          )) {
-            log('[LOCATION_SERVICE] Zone detected: ${zone.name} (${zone.id})');
-            return zone.id;
-          }
-        }
-      }
-      
-      log('[LOCATION_SERVICE] Coordinates not within any service zone');
-      return null;
-      
-    } catch (e) {
-      log('[LOCATION_SERVICE] Error detecting zone: $e');
-      return null;
-    }
+    return null;
+
+    // try {
+    //   log('[LOCATION_SERVICE] Starting zone detection for coordinates: $latitude, $longitude');
+    //
+    //   // Get all zones from Firestore
+    //   List<ZoneModel>? zones = await FireStoreUtils.getZone();
+    //
+    //   if (zones == null || zones.isEmpty) {
+    //     log('[LOCATION_SERVICE] No zones available in database');
+    //     return null;
+    //   }
+    //
+    //   log('[LOCATION_SERVICE] Found ${zones.length} zones to check');
+    //
+    //   // Check if coordinates fall within any zone polygon
+    //   for (ZoneModel zone in zones) {
+    //     if (zone.area != null && zone.area!.isNotEmpty) {
+    //       log('[LOCATION_SERVICE] Checking zone: ${zone.name} (${zone.id})');
+    //
+    //       // Use the existing polygon validation logic
+    //       if (Constant.isPointInPolygon(
+    //         LatLng(latitude, longitude),
+    //         zone.area!,
+    //       )) {
+    //         log('[LOCATION_SERVICE] Zone detected: ${zone.name} (${zone.id})');
+    //         return zone.id;
+    //       }
+    //     }
+    //   }
+    //
+    //   log('[LOCATION_SERVICE] Coordinates not within any service zone');
+    //   return null;
+    //
+    // } catch (e) {
+    //   log('[LOCATION_SERVICE] Error detecting zone: $e');
+    //   return null;
+    // }
   }
 
   /// Validate location coordinates

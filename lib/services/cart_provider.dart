@@ -13,16 +13,13 @@ import 'package:get/get.dart';
 class CartProvider with ChangeNotifier {
   final _cartStreamController = StreamController<List<CartProductModel>>.broadcast();
   List<CartProductModel> _cartItems = [];
-
   Stream<List<CartProductModel>> get cartStream => _cartStreamController.stream;
-
   CartProvider() {
     initCart();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       initCart();
     });
   }
-
   Future<void> initCart() async {
     if (kDebugMode) {
       print('DEBUG: CartProvider _initCart() called');

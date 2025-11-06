@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/controllers/mart_search_controller.dart';
+import 'package:jippymart_customer/app/mart/provider/mart_search_provider.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_product_card.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
-import 'package:jippymart_customer/controllers/category_detail_controller.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
+import 'package:provider/provider.dart';
 
 class MartSearchWidget extends StatefulWidget {
   final bool showHistory;
@@ -29,7 +29,7 @@ class MartSearchWidget extends StatefulWidget {
 }
 
 class _MartSearchWidgetState extends State<MartSearchWidget> {
-  late final MartSearchController searchController;
+  late final MartSearchProvider searchController;
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   
@@ -176,15 +176,11 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   void initState() {
     super.initState();
     try {
-      searchController = Get.find<MartSearchController>();
+      searchController = Provider.of<MartSearchProvider>(context,listen:false);
     } catch (e) {
-      // If controller not found, create it
-      searchController = Get.put(MartSearchController());
+      searchController =  Provider.of<MartSearchProvider>(context,listen:false);
     }
-    
     _textController.addListener(_onSearchChanged);
-    
-    // Load trending searches on initialization
     _loadTrendingSearches();
   }
   
@@ -235,8 +231,8 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
         
         // Search Results
         Expanded(
-          child: GetX<MartSearchController>(
-            builder: (controller) {
+          child: Consumer<MartSearchProvider>(
+            builder: (context,controller,_) {
               if (controller.isLoading.value) {
                 return _buildLoadingWidget();
               }
@@ -708,8 +704,8 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   }
   
   Widget _buildSearchHistory() {
-    return GetX<MartSearchController>(
-      builder: (controller) {
+    return  Consumer<MartSearchProvider>(
+      builder: (context,controller,_) {
         if (controller.searchHistory.isEmpty) {
           return const SizedBox.shrink();
         }
@@ -966,18 +962,14 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                        child: MartProductCard(
                          product: item,
                          screenWidth: MediaQuery.of(context).size.width,
-                         controller: Get.find<CategoryDetailController>(),
                        ),
                      );
                    } catch (e) {
-                     // Fallback: Initialize controller if not found
-                     final controller = Get.put(CategoryDetailController());
                      return SizedBox(
                        width: cardWidth,
                        child: MartProductCard(
                          product: item,
                          screenWidth: MediaQuery.of(context).size.width,
-                         controller: controller,
                        ),
                      );
                    }
@@ -993,8 +985,8 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   Widget _buildLoadMoreButton() {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child: GetX<MartSearchController>(
-        builder: (controller) {
+      child:  Consumer<MartSearchProvider>(
+        builder: (context,controller,_) {
           return ElevatedButton(
             onPressed: controller.isLoading.value 
                 ? null 

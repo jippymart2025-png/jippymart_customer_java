@@ -1,7 +1,7 @@
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart' show CartProductModel;
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart' show AppThemeData;
@@ -15,7 +15,7 @@ import '../../../themes/responsive.dart' show Responsive;
 
 Widget cartProductDetailsImageWidget(
   DarkThemeProvider themeChange,
-  CartController controller,
+  CartControllerProvider controller,
 ) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 0),

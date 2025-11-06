@@ -1,5 +1,5 @@
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_product_card.dart';
-import 'package:jippymart_customer/controllers/category_detail_controller.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:flutter/material.dart';
@@ -214,7 +214,7 @@ class TestMartProductCardScreen extends StatelessWidget {
     String subcategoryTitle,
   ) {
     // Create a mock controller for testing
-    final testController = CategoryDetailController();
+    final testController = CategoryDetailsProvider();
     testController.subcategories.value = [
       MartSubcategoryModel(
         id: subcategoryId,
@@ -225,7 +225,7 @@ class TestMartProductCardScreen extends StatelessWidget {
 
     return MartProductCard(
       product: product,
-      controller: testController,
+
       screenWidth: MediaQuery.of(context).size.width,
     );
   }

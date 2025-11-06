@@ -1,6 +1,6 @@
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
+import 'package:jippymart_customer/app/scan_qrcode_screen/provider/scan_qr_code_provider.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/scan_qr_code_controller.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
@@ -15,9 +15,8 @@ class ScanQrCodeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetBuilder(
-      init: ScanQrCodeController(),
-      builder: (controller) {
+    return Consumer<ScanQrCodeProvider>(
+      builder: (context,controller,_) {
         return Scaffold(
           appBar: AppBar(
             centerTitle: false,

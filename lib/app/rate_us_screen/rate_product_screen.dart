@@ -1,7 +1,7 @@
 import 'dart:io';
 
+import 'package:jippymart_customer/app/rate_us_screen/provider/rate_product_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/rate_product_controller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -23,9 +23,8 @@ class RateProductScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: RateProductController(),
-        builder: (controller) {
+    return Consumer<RateProductProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
             appBar: AppBar(
@@ -318,7 +317,7 @@ class RateProductScreen extends StatelessWidget {
         });
   }
 
-  buildBottomSheet(BuildContext context, RateProductController controller) {
+  buildBottomSheet(BuildContext context, RateProductProvider controller) {
     return showModalBottomSheet(
         context: context,
         builder: (context) {

@@ -1,16 +1,16 @@
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provider/signup_provider.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/change%20langauge/provider/change_language_provider.dart';
+import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
+import 'package:jippymart_customer/app/home_screen/provider/global_settings_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/provider/restaurant_list_provider.dart';
 import 'package:jippymart_customer/config/smartlook_config.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-// import 'package:firebase_app_check/firebase_app_check.dart';  // TEMPORARILY DISABLED
-import 'package:jippymart_customer/app/dash_board_screens/controller/dash_board_controller.dart';
-import 'package:jippymart_customer/controllers/global_setting_controller.dart';
-import 'package:jippymart_customer/controllers/login_controller.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/controller/mart_controller.dart';
-import 'package:jippymart_customer/controllers/otp_controller.dart';
 import 'package:jippymart_customer/firebase_options.dart';
 import 'package:jippymart_customer/models/language_model.dart';
 import 'package:jippymart_customer/services/api_service.dart';
@@ -42,21 +42,53 @@ import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_smartlook/flutter_smartlook.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:jippymart_customer/services/global_deeplink_handler.dart';
 import 'package:provider/provider.dart';
-
-import 'app/category_service/controller/cetegory_service_controller.dart';
-import 'app/video_splash_screen.dart';
+import 'app/address_screens/provider/address_list_provider.dart'
+    show AddressListProvider;
+import 'app/advertisement_screens/provider/all_advertisement_provider.dart';
+import 'app/auth_screen/provider/login_provider.dart';
+import 'app/cart_screen/screens/order_placing_screen/provider/order_placing_provider.dart';
+import 'app/category_service/provider/category_sevice_provider.dart';
+import 'app/chat_screens/provider/chat_provider.dart' show ChatProvider;
+import 'app/edit_profile_screen/provider/edit_profile_provider.dart'
+    show EditProfileProvider;
+import 'app/favourite_screens/provider/favorite_provider.dart';
+import 'app/forgot_password_screen/provider/forgot_password_provider.dart';
+import 'app/gift_card/screens/gift_card_screen/provider/gift_card_provider.dart';
+import 'app/gift_card/screens/history_gift_card_screen/provider/history_gift_card_provider.dart';
+import 'app/gift_card/screens/redeem_gift_card_screen/provider/redeem_gift_card_provider.dart';
+import 'app/home_screen/provider/map_view_provider.dart';
+import 'app/home_screen/screen/category_restaurant_screen/provider/category_resaurant_provider.dart';
+import 'app/home_screen/screen/discount_restaurant_list_screen/provider/discount_resaurant_list_provider.dart';
+import 'app/home_screen/screen/story_view_screen/provider/story_provider.dart';
+import 'app/location_permission_screen/provider/location_permission_provider.dart';
+import 'app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'app/mart/provider/category_details_provider.dart';
+import 'app/mart/provider/mart_search_provider.dart';
+import 'app/mart/screens/mart_edit_profile_screen/provider/mart_edit_profile_provider.dart';
+import 'app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
+import 'app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart'
+    show LiveTrackingProvider;
+import 'app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
+import 'app/order_list_screen/screens/order_screen/provider/order_provider.dart';
+import 'app/profile_screen/provider/my_profile_provider.dart';
+import 'app/rate_us_screen/provider/rate_product_provider.dart';
+import 'app/refer_friend_screen/provider/refer_friend_provider.dart';
+import 'app/restaurant_details_screen/provider/restaurant_details_provider.dart';
+import 'app/review_list_screen/provider/review_list_provider.dart';
+import 'app/scan_qrcode_screen/provider/scan_qr_code_provider.dart';
+import 'app/search_screen/provider/search_provider.dart';
+import 'app/splash_screen/provider/splash_provider.dart';
+import 'app/swiggy_search_screen/provider/swiggy_search_provider.dart';
+import 'app/splash_screen/video_splash_screen.dart';
 import 'dart:io';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // For SystemNavigator.pop()
+import 'package:flutter/services.dart';
+import 'app/wallet_screen/provider/wallet_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GlobalDeeplinkHandler.init();
-  Get.put(
-    GlobalDeeplinkHandler.instance,
-    permanent: true,
-  );
+  Get.put(GlobalDeeplinkHandler.instance, permanent: true);
   CrashPrevention();
   await SmartlookANRFix.configureSmartlook();
   await PlatformANRPrevention.preventMIUIANR();
@@ -65,77 +97,38 @@ void main() async {
     // Initialize Firebase with timeout
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(const Duration(seconds: 3,),);
-
+    ).timeout(const Duration(seconds: 3));
     FirebaseFirestore.instance.settings = const Settings(
       persistenceEnabled: true,
       cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
       sslEnabled: true,
     );
-
     ANRMonitor.startMonitoring();
     MemoryMonitor.startMemoryMonitoring();
     NativeLockPrevention.startLockContentionMonitoring();
     TextProcessingANRFix.startTextProcessingMonitoring();
     ANRStatusLogger.logANRPreventionStatus();
-  } catch (e) {
-  }
-
-  // **OPTIMIZED: Initialize GetStorage first (fastest)**
+  } catch (e) {}
   await GetStorage.init();
-
-  // **OPTIMIZED: Initialize Preferences (needed for app)**
   await Preferences.initPref();
-
-  // **OPTIMIZED: Initialize DatabaseHelper (lightweight)**
   DatabaseHelper.instance;
 
-
-  // **OPTIMIZED: Register critical services and controllers immediately**
   Get.put(MartFirestoreService(), permanent: true);
-  Get.put(OtpController(), permanent: true);
-  Get.put(DashBoardController(), permanent: true);
-  Get.put(LoginController());
-  Get.put(MartController(), permanent: true);
-  Get.put(
-    CategoryServiceController(),
-  );
-
-  // **OPTIMIZED: Initialize cart provider (lightweight)**
   final cartProvider = CartProvider();
   await cartProvider.checkCartPersistence();
 
-  // **OPTIMIZED: Start app immediately, defer heavy services**
-
-  // **DEFERRED: Initialize heavy services in background**
-  _initializeHeavyServicesInBackground();
-
-  // **FIXED: Initialize deep link services asynchronously to prevent blocking**
-  _initializeDeepLinkServicesInBackground();
-
-  // **OPTIMIZED: Initialize SmartLook in background (non-blocking)**
-  _initializeSmartLookInBackground();
-  runApp(
-    MyApp(),
-  );
+  runApp(MyApp());
 }
 
-// **NEW: Background initialization function**
 void _initializeHeavyServicesInBackground() {
-  // Run heavy services in background without blocking app startup
   Future.microtask(() async {
     try {
-      // Initialize heavy services with timeouts
       await Future.wait([
         Get.putAsync(
-              () => ApiService().init(),
-        ).timeout(
-          const Duration(
-            seconds: 5,
-          ),
-        ),
+          () => ApiService().init(),
+        ).timeout(const Duration(seconds: 5)),
         Get.putAsync(
-              () => MartFirestoreService().init(),
+          () => MartFirestoreService().init(),
         ).timeout(const Duration(seconds: 5)),
         CacheManager.initialize().timeout(const Duration(seconds: 3)),
         PerformanceOptimizer.initialize().timeout(const Duration(seconds: 2)),
@@ -143,30 +136,28 @@ void _initializeHeavyServicesInBackground() {
         AppLifecycleLogger.initialize().timeout(const Duration(seconds: 2)),
       ]);
       await Future.wait([
-        PendingDeepLinkHandler.checkPendingDeepLinks()
-            .timeout(const Duration(seconds: 3)),
-        MobileDeepLinkService()
-            .initialize()
-            .timeout(const Duration(seconds: 3)),
+        PendingDeepLinkHandler.checkPendingDeepLinks().timeout(
+          const Duration(seconds: 3),
+        ),
+        MobileDeepLinkService().initialize().timeout(
+          const Duration(seconds: 3),
+        ),
       ]);
-    } catch (e) {
-    }
+    } catch (e) {}
   });
 }
 
 // **NEW: Deep Link Services background initialization**
-void _initializeDeepLinkServicesInBackground() {
+void _initializeDeepLinkServicesInBackground(BuildContext context) {
   Future.microtask(() async {
     try {
       await FinalDeepLinkService()
-          .init(GlobalDeeplinkHandler.navigatorKey)
+          .init(GlobalDeeplinkHandler.navigatorKey, context)
           .timeout(const Duration(seconds: 5));
-    } catch (e) {
-    }
+    } catch (e) {}
   });
 }
 
-// **NEW: SmartLook background initialization with crash prevention**
 void _initializeSmartLookInBackground() {
   Future.microtask(() async {
     final smartlookService = SmartlookService();
@@ -174,9 +165,9 @@ void _initializeSmartLookInBackground() {
       await smartlookService.preventSessionRecordingStorageCrash();
       await smartlookService
           .initialize(
-        SmartlookConfig.projectKey,
-        region: SmartlookConfig.region,
-      )
+            SmartlookConfig.projectKey,
+            region: SmartlookConfig.region,
+          )
           .timeout(const Duration(seconds: 3));
 
       if (smartlookService.isInitialized) {
@@ -188,15 +179,16 @@ void _initializeSmartLookInBackground() {
     } catch (e) {
       try {
         await smartlookService.preventSessionRecordingStorageCrash();
-        await smartlookService.forceReinitialize(SmartlookConfig.projectKey,
-            region: SmartlookConfig.region);
-        if (smartlookService.isInitialized) {
-        }
-      } catch (e2) {
-      }
+        await smartlookService.forceReinitialize(
+          SmartlookConfig.projectKey,
+          region: SmartlookConfig.region,
+        );
+        if (smartlookService.isInitialized) {}
+      } catch (e2) {}
     }
   });
 }
+
 Future<bool> onWillPop(BuildContext context) async {
   bool? shouldExit = await showDialog(
     context: context,
@@ -211,9 +203,9 @@ Future<bool> onWillPop(BuildContext context) async {
         TextButton(
           onPressed: () {
             if (Platform.isAndroid) {
-              SystemNavigator.pop(); // Close app properly on Android
+              SystemNavigator.pop();
             } else if (Platform.isIOS) {
-              exit(0); // Force close on iOS (not recommended by Apple, but works)
+              exit(0);
             } else {
               SystemNavigator.pop();
             }
@@ -239,20 +231,26 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     getCurrentAppTheme();
+    _initializeHeavyServicesInBackground();
+    _initializeDeepLinkServicesInBackground(context);
+    _initializeSmartLookInBackground();
     WidgetsBinding.instance.addObserver(this);
-    // Deep Link Service is already initialized in main()
-
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (Preferences.getString(Preferences.languageCodeKey)
-          .toString()
-          .isNotEmpty) {
+      if (Preferences.getString(
+        Preferences.languageCodeKey,
+      ).toString().isNotEmpty) {
         LanguageModel languageModel = Constant.getLanguage();
         LocalizationService().changeLocale(languageModel.slug.toString());
       } else {
-        LanguageModel languageModel =
-        LanguageModel(slug: "en", isRtl: false, title: "English");
+        LanguageModel languageModel = LanguageModel(
+          slug: "en",
+          isRtl: false,
+          title: "English",
+        );
         Preferences.setString(
-            Preferences.languageCodeKey, jsonEncode(languageModel.toJson()));
+          Preferences.languageCodeKey,
+          jsonEncode(languageModel.toJson()),
+        );
       }
     });
     super.initState();
@@ -264,60 +262,93 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   void getCurrentAppTheme() async {
-    themeChangeProvider.darkTheme =
-    await themeChangeProvider.darkThemePreference.getTheme();
+    themeChangeProvider.darkTheme = await themeChangeProvider
+        .darkThemePreference
+        .getTheme();
   }
 
   @override
   Widget build(BuildContext context) {
-    return
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider(create: (_) => themeChangeProvider),
-          ChangeNotifierProvider(create: (_) => CartProvider()),
-        ],
-        // ChangeNotifierProvider(
-        // create: (_) {
-        //   return themeChangeProvider;
-        // },
-        child: Consumer<DarkThemeProvider>(
-          builder: (context, value, child) {
-            // ✅ ENHANCED: Conditional Smartlook wrapping with error handling
-            Widget appWidget = GetMaterialApp(
-              navigatorKey: GlobalDeeplinkHandler.navigatorKey,
-              title: 'JippyMart Customer'.tr,
-              debugShowCheckedModeBanner: false,
-              theme: Styles.themeData(
-                  themeChangeProvider.darkTheme == 0
-                      ? true
-                      : themeChangeProvider.darkTheme == 1
-                      ? false
-                      : false,
-                  context),
-              localizationsDelegates: const [
-                CountryLocalizations.delegate,
-              ],
-              locale: LocalizationService.locale,
-              fallbackLocale: LocalizationService.locale,
-              translations: LocalizationService(),
-              builder: EasyLoading.init(),
-              home: GetBuilder<GlobalSettingController>(
-                init: GlobalSettingController(),
-                builder: (context) {
-                  // return CateringServiceScreen();
-                  return const VideoSplashScreen();
-                },
-              ),
-            );
-            try {
-              return SmartlookRecordingWidget(
-                child: appWidget,
-              );
-            } catch (e) {
-              return appWidget;
-            }
-          },
-        ),
-      );
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => themeChangeProvider),
+        ChangeNotifierProvider(create: (_) => CartProvider()),
+        ChangeNotifierProvider(create: (_) => HomeProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryRestaurantProvider()),
+        ChangeNotifierProvider(create: (_) => DiscountRestaurantListProvider()),
+        ChangeNotifierProvider(create: (_) => RestaurantListProvider()),
+        ChangeNotifierProvider(create: (_) => StoryProvider()),
+        ChangeNotifierProvider(create: (_) => AddressListProvider()),
+        ChangeNotifierProvider(create: (_) => AllAdvertisementProvider()),
+        ChangeNotifierProvider(create: (_) => LoginProvider()),
+        ChangeNotifierProvider(create: (_) => CartControllerProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryServiceProvider()),
+        ChangeNotifierProvider(create: (_) => ChangeLanguageProvider()),
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => DashBoardProvider()),
+        ChangeNotifierProvider(create: (_) => EditProfileProvider()),
+        ChangeNotifierProvider(create: (_) => FavouriteProvider()),
+        ChangeNotifierProvider(create: (_) => ForgotPasswordProvider()),
+        ChangeNotifierProvider(create: (_) => GiftCardProvider()),
+        ChangeNotifierProvider(create: (_) => HistoryGiftCardProvider()),
+        ChangeNotifierProvider(create: (_) => RedeemGiftCardProvider()),
+        ChangeNotifierProvider(create: (_) => LocationPermissionProvider()),
+        ChangeNotifierProvider(create: (_) => MartProvider()),
+        ChangeNotifierProvider(create: (_) => MartEditProfileProvider()),
+        ChangeNotifierProvider(create: (_) => MartNavigationProvider()),
+        ChangeNotifierProvider(create: (_) => LiveTrackingProvider()),
+        ChangeNotifierProvider(create: (_) => OrderDetailsProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => MyProfileProvider()),
+        ChangeNotifierProvider(create: (_) => RateProductProvider()),
+        ChangeNotifierProvider(create: (_) => ReferFriendProvider()),
+        ChangeNotifierProvider(create: (_) => RestaurantDetailsProvider()),
+        ChangeNotifierProvider(create: (_) => ReviewListProvider()),
+        ChangeNotifierProvider(create: (_) => ScanQrCodeProvider()),
+        ChangeNotifierProvider(create: (_) => SearchScreenProvider()),
+        ChangeNotifierProvider(create: (_) => WalletProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryDetailsProvider()),
+        ChangeNotifierProvider(create: (_) => MapViewProvider()),
+        ChangeNotifierProvider(create: (_) => GlobalSettingsProvider()),
+        ChangeNotifierProvider(create: (_) => SwiggySearchProvider()),
+        ChangeNotifierProvider(create: (_) => MartSearchProvider()),
+        ChangeNotifierProvider(create: (_) => OrderPlacingProvider()),
+        ChangeNotifierProvider(create: (_) => SignupProvider()),
+        ChangeNotifierProvider(create: (_) => SplashProvider()),
+      ],
+      child: Consumer<DarkThemeProvider>(
+        builder: (context, value, child) {
+          Widget appWidget = GetMaterialApp(
+            navigatorKey: GlobalDeeplinkHandler.navigatorKey,
+            title: 'JippyMart Customer'.tr,
+            debugShowCheckedModeBanner: false,
+            theme: Styles.themeData(
+              themeChangeProvider.darkTheme == 0
+                  ? true
+                  : themeChangeProvider.darkTheme == 1
+                  ? false
+                  : false,
+              context,
+            ),
+            localizationsDelegates: const [CountryLocalizations.delegate],
+            locale: LocalizationService.locale,
+            fallbackLocale: LocalizationService.locale,
+            translations: LocalizationService(),
+            builder: EasyLoading.init(),
+            home: Consumer<GlobalSettingsProvider>(
+              builder: (context, controller, _) {
+                controller.initFunction(context);
+                return const VideoSplashScreen();
+              },
+            ),
+          );
+          try {
+            return SmartlookRecordingWidget(child: appWidget);
+          } catch (e) {
+            return appWidget;
+          }
+        },
+      ),
+    );
   }
 }

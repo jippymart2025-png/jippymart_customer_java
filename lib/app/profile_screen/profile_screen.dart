@@ -1,16 +1,15 @@
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
+import 'package:jippymart_customer/app/auth_screen/provider/login_provider.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart' show CartControllerProvider;
 import 'package:jippymart_customer/app/change%20langauge/change_language_screen.dart';
 import 'package:jippymart_customer/app/chat_screens/driver_inbox_screen.dart';
 import 'package:jippymart_customer/app/chat_screens/restaurant_inbox_screen.dart';
-import 'package:jippymart_customer/app/dine_in_booking/dine_in_booking_screen.dart';
-import 'package:jippymart_customer/app/dine_in_screeen/dine_in_screen.dart';
 import 'package:jippymart_customer/app/edit_profile_screen/edit_profile_screen.dart';
-import 'package:jippymart_customer/app/gift_card/gift_card_screen.dart';
+import 'package:jippymart_customer/app/gift_card/screens/gift_card_screen/gift_card_screen.dart';
+import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
-import 'package:jippymart_customer/controllers/my_profile_controller.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
@@ -26,7 +25,6 @@ import 'package:get/get.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
-import 'package:jippymart_customer/controllers/login_controller.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -37,9 +35,8 @@ class ProfileScreen extends StatelessWidget {
     final themeChange = Provider.of<DarkThemeProvider>(context);
     return Scaffold(
       backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
-      body: GetX(
-          init: MyProfileController(),
-          builder: (controller) {
+      body: Consumer<MyProfileProvider>(
+          builder: (context,controller,_) {
             return controller.isLoading.value
                 ? Constant.loader(message: "Loading profile...".tr)
                 : Padding(
@@ -98,13 +95,13 @@ class ProfileScreen extends StatelessWidget {
                                         : cardDecoration(themeChange, controller, "assets/images/ic_profile.svg", "Profile Information".tr, () {
                                             Get.to(const EditProfileScreen());
                                           }),
-                                    if (Constant.isEnabledForCustomer == true)
-                                      Visibility(
-                                        visible: false,
-                                        child: cardDecoration(themeChange, controller, "assets/images/ic_dinin.svg", "Dine-In".tr, () {
-                                          Get.to(const DineInScreen());
-                                        }),
-                                      ),
+                                    // if (Constant.isEnabledForCustomer == true)
+                                    //   Visibility(
+                                    //     visible: false,
+                                    //     child: cardDecoration(themeChange, controller, "assets/images/ic_dinin.svg", "Dine-In".tr, () {
+                                    //       Get.to(const DineInScreen());
+                                    //     }),
+                                    //   ),
                                     Visibility(
                                       visible: false,
                                       child: cardDecoration(themeChange, controller, "assets/images/ic_gift.svg", "Gift Card".tr, () {
@@ -118,45 +115,7 @@ class ProfileScreen extends StatelessWidget {
                             const SizedBox(
                               height: 20,
                             ),
-                            Visibility(
-                              visible: false,
-                              child: Constant.isEnabledForCustomer == true
-                                  ? Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Bookings Information".tr,
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey500,
-                                            fontFamily: AppThemeData.semiBold,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                        const SizedBox(
-                                          height: 10,
-                                        ),
-                                        Container(
-                                          width: Responsive.width(100, context),
-                                          decoration: ShapeDecoration(
-                                            color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
-                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                          ),
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                            child: Column(
-                                              children: [
-                                                cardDecoration(themeChange, controller, "assets/icons/ic_dinin_order.svg", "Dine-In Booking".tr, () {
-                                                  Get.to(const DineInBookingScreen());
-                                                }),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : const SizedBox(),
-                            ),
+
                             const SizedBox(
                               height: 10,
                             ),
@@ -330,85 +289,80 @@ class ProfileScreen extends StatelessWidget {
                             const SizedBox(
                               height: 10,
                             ),
-                            Container(
-                              width: Responsive.width(100, context),
-                              decoration: ShapeDecoration(
-                                color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                child: Column(
-                                  children: [
-                                    Constant.userModel == null
-                                        ? cardDecoration(themeChange, controller, "assets/icons/ic_logout.svg", "Log In", () {
-                                            Get.offAll(const PhoneNumberScreen());
-                                          })
-                                        : cardDecoration(themeChange, controller, "assets/icons/ic_logout.svg", "Log out", () {
-                                            showDialog(
-                                                context: context,
-                                                builder: (BuildContext context) {
-                                                  return CustomDialogBox(
-                                                    title: "Log out".tr,
-                                                    descriptions: "Are you sure you want to log out? You will need to enter your credentials to log back in.".tr,
-                                                    positiveString: "Log out".tr,
-                                                    negativeString: "Cancel".tr,
-                                                    positiveClick: () async {
-                                                      Constant.userModel!.fcmToken = "";
-                                                      await FireStoreUtils.updateUser(Constant.userModel!);
-                                                      Constant.userModel = null;
-                                                      FireStoreUtils.backendUserId = null;
-                                                      // Clear auth token if used
-                                                      try {
-                                                        if (Get.isRegistered<LoginController>()) {
-                                                          Get.find<LoginController>().authToken.value = '';
-                                                        }
-                                                      } catch (_) {}
-                                                      // Clear preferences (or use your Preferences.clear() if available)
-                                                      await Preferences.clearSharPreference();
-                                                      // Delete API token from secure storage
-                                                      final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
-                                                      await secureStorage.delete(key: 'api_token');
-                                                      // Clear cart data before logout
-                                                      print('DEBUG: Profile logout - Starting cart clearing process');
-                                                      try {
-                                                        // Force clear cart from database directly
-                                                        print('DEBUG: Profile logout - Clearing cart directly from database');
-                                                        await DatabaseHelper.instance.deleteAllCartProducts();
-                                                        print('DEBUG: Profile logout - Cart cleared from database');
-                                                        
-                                                        // Also try to clear via CartController if available
-                                                        if (Get.isRegistered<CartController>()) {
-                                                          print('DEBUG: Profile logout - CartController found, clearing cart');
-                                                          final cartController = Get.find<CartController>();
-                                                          await cartController.clearCart();
-                                                          print('DEBUG: Profile logout - Cart cleared successfully');
-                                                        } else {
-                                                          print('DEBUG: Profile logout - CartController not registered, but database cleared');
-                                                        }
-                                                      } catch (e) {
-                                                        print('DEBUG: Profile logout - Error clearing cart: $e');
-                                                      }
-                                                      
-                                                      // Delete all controllers except splash/login
-                                                      Get.deleteAll(force: true);
-                                                      await FirebaseAuth.instance.signOut();
-                                                      Get.offAll(const PhoneNumberScreen());
-                                                    },
-                                                    negativeClick: () {
-                                                      Get.back();
-                                                    },
-                                                    img: Image.asset(
-                                                      'assets/images/ic_logout.gif',
-                                                      height: 50,
-                                                      width: 50,
-                                                    ),
-                                                  );
-                                                });
-                                          }),
-                                  ],
-                                ),
-                              ),
+                            Consumer<LoginProvider>(
+                                builder: (context,loginProvider,_) {
+                                return Container(
+                                  width: Responsive.width(100, context),
+                                  decoration: ShapeDecoration(
+                                    color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    child: Column(
+                                      children: [
+                                        Constant.userModel == null
+                                            ? cardDecoration(themeChange, controller, "assets/icons/ic_logout.svg", "Log In", () {
+                                                Get.offAll(const PhoneNumberScreen());
+                                              })
+                                            : cardDecoration(themeChange, controller, "assets/icons/ic_logout.svg", "Log out", () {
+                                                showDialog(
+                                                    context: context,
+                                                    builder: (BuildContext context) {
+                                                      return CustomDialogBox(
+                                                        title: "Log out".tr,
+                                                        descriptions: "Are you sure you want to log out? You will need to enter your credentials to log back in.".tr,
+                                                        positiveString: "Log out".tr,
+                                                        negativeString: "Cancel".tr,
+                                                        positiveClick: () async {
+                                                          Constant.userModel!.fcmToken = "";
+                                                          await FireStoreUtils.updateUser(Constant.userModel!);
+                                                          Constant.userModel = null;
+                                                          FireStoreUtils.backendUserId = null;
+                                                          // Clear auth token if used
+                                                          try {
+                                                              loginProvider.authToken = '';
+                                                          } catch (_) {}
+                                                          // Clear preferences (or use your Preferences.clear() if available)
+                                                          await Preferences.clearSharPreference();
+                                                          // Delete API token from secure storage
+                                                          final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
+                                                          await secureStorage.delete(key: 'api_token');
+                                                          // Clear cart data before logout
+                                                          print('DEBUG: Profile logout - Starting cart clearing process');
+                                                          try {
+                                                            // Force clear cart from database directly
+                                                            await DatabaseHelper.instance.deleteAllCartProducts();
+
+                                                            // Also try to clear via CartController if available
+                                                            CartControllerProvider  cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+                                                              print('DEBUG: Profile logout - CartController found, clearing cart');
+                                                              await cartControllerProvider.clearCart();
+                                                          } catch (e) {
+                                                            print('DEBUG: Profile logout - Error clearing cart: $e');
+                                                          }
+
+                                                          // Delete all controllers except splash/login
+                                                          Get.deleteAll(force: true);
+                                                          await FirebaseAuth.instance.signOut();
+                                                          Get.offAll(const PhoneNumberScreen());
+                                                        },
+                                                        negativeClick: () {
+                                                          Get.back();
+                                                        },
+                                                        img: Image.asset(
+                                                          'assets/images/ic_logout.gif',
+                                                          height: 50,
+                                                          width: 50,
+                                                        ),
+                                                      );
+                                                    });
+                                              }),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
                             ),
                             const SizedBox(
                               height: 10,
@@ -430,15 +384,15 @@ class ProfileScreen extends StatelessWidget {
                                                 negativeString: "Cancel".tr,
                                                 positiveClick: () async {
                                                   ShowToastDialog.showLoader("Please wait".tr);
-                                                  
+
                                                   // Clear cart data before account deletion
                                                   try {
-                                                    if (Get.isRegistered<CartController>()) {
-                                                      final cartController = Get.find<CartController>();
-                                                      await cartController.clearCart();
-                                                    }
+
+                                                      CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+                                                      await cartControllerProvider.clearCart();
+
                                                   } catch (_) {}
-                                                  
+
                                                   await controller.deleteUserFromServer();
                                                   await FireStoreUtils.deleteUser().then((value) {
                                                     ShowToastDialog.closeLoader();
@@ -503,7 +457,7 @@ class ProfileScreen extends StatelessWidget {
   }
 
 
-  cardDecoration(themeChange, MyProfileController controller, String image, String title, Function()? onPress) {
+  cardDecoration(themeChange, MyProfileProvider controller, String image, String title, Function()? onPress) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: InkWell(

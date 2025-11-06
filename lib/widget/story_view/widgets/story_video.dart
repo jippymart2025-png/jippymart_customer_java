@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
+import 'package:jippymart_customer/app/home_screen/screen/story_view_screen/provider/story_provider.dart';
 import 'package:video_player/video_player.dart';
 
-import '../controller/story_controller.dart';
 import '../utils.dart';
 
 class VideoLoader {
@@ -40,7 +40,7 @@ class VideoLoader {
 }
 
 class StoryVideo extends StatefulWidget {
-  final StoryController? storyController;
+  final StoryProvider? storyController;
   final VideoLoader videoLoader;
   final Widget? loadingWidget;
   final Widget? errorWidget;
@@ -55,7 +55,7 @@ class StoryVideo extends StatefulWidget {
 
   static StoryVideo url(
     String url, {
-    StoryController? controller,
+        StoryProvider? controller,
     Map<String, dynamic>? requestHeaders,
     Key? key,
     Widget? loadingWidget,

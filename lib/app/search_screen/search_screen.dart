@@ -1,6 +1,6 @@
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
+import 'package:jippymart_customer/app/search_screen/provider/search_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/search_controller.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -24,18 +24,12 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   late FocusNode _searchFocusNode;
-  SearchScreenController? _controller;
 
   @override
   void initState() {
     super.initState();
     _searchFocusNode = FocusNode();
-    // Initialize the controller only if it doesn't exist
-    if (!Get.isRegistered<SearchScreenController>()) {
-      _controller = Get.put(SearchScreenController());
-    } else {
-      _controller = Get.find<SearchScreenController>();
-    }
+
     
     // Auto-focus the search field after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -54,14 +48,9 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX<SearchScreenController>(
-        init: _controller ?? SearchScreenController(),
-        builder: (controller) {
-          // Ensure the controller is properly initialized
-          if (_controller == null) {
-            _controller = controller;
-          }
-          
+    return Consumer<SearchScreenProvider>(
+        builder: (context,controller,_) {
+
           return Scaffold(
             appBar: AppBar(
               backgroundColor: themeChange.getThem()
@@ -109,7 +98,7 @@ class _SearchScreenState extends State<SearchScreen> {
         });
   }
 
-  Widget _buildSearchContent(SearchScreenController controller, DarkThemeProvider themeChange) {
+  Widget _buildSearchContent(SearchScreenProvider controller, DarkThemeProvider themeChange) {
     // Show loading indicator when searching
     if (controller.isSearching.value) {
       return Center(
@@ -300,7 +289,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildRestaurantsList(SearchScreenController controller, DarkThemeProvider themeChange) {
+  Widget _buildRestaurantsList(SearchScreenProvider controller, DarkThemeProvider themeChange) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -519,7 +508,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildProductsList(SearchScreenController controller, DarkThemeProvider themeChange) {
+  Widget _buildProductsList(SearchScreenProvider controller, DarkThemeProvider themeChange) {
     print("DEBUG: Building products list with ${controller.productSearchList.length} products");
     if (controller.productSearchList.isNotEmpty) {
       print("DEBUG: First product: ${controller.productSearchList.first.name}");
@@ -642,7 +631,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildSuggestionsList(SearchScreenController controller, DarkThemeProvider themeChange) {
+  Widget _buildSuggestionsList(SearchScreenProvider controller, DarkThemeProvider themeChange) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),

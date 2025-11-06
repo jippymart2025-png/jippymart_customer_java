@@ -2,14 +2,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jippymart_customer/controllers/category_detail_controller.dart';
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_product_card.dart';
-import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
+import 'package:provider/provider.dart';
 
 class MartCategoryDetailScreen extends StatelessWidget {
   const MartCategoryDetailScreen({super.key});
@@ -43,32 +43,35 @@ class MartCategoryDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(CategoryDetailController());
-    return Scaffold(
-backgroundColor: ColorConst.white,
-      body: Column(
-        children: [
-          _buildHeader(context, controller),
-          _buildFilterChips(controller),
-          Flexible(
-            child: Row(
-              children: [
-                _buildCategorySidebar(controller),
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.topLeft, // 🔑 Ensure content starts from top-left
-                    child: _buildProductContent(controller),
-                  ),
+    return Consumer<CategoryDetailsProvider>(
+      builder: (context,controller,_) {
+        return Scaffold(
+        backgroundColor: ColorConst.white,
+          body: Column(
+            children: [
+              _buildHeader(context, controller),
+              _buildFilterChips(controller),
+              Flexible(
+                child: Row(
+                  children: [
+                    _buildCategorySidebar(controller),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.topLeft, // 🔑 Ensure content starts from top-left
+                        child: _buildProductContent(controller),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      }
     );
   }
 
-  Widget _buildHeader(BuildContext context, CategoryDetailController controller) {
+  Widget _buildHeader(BuildContext context, CategoryDetailsProvider controller) {
     return Container(
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 2,
@@ -123,7 +126,7 @@ backgroundColor: ColorConst.white,
     );
   }
 
-  Widget _buildFilterChips(CategoryDetailController controller) {
+  Widget _buildFilterChips(CategoryDetailsProvider controller) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4), // 🔑 Reduced from 8 to 4
       decoration: const BoxDecoration(
@@ -225,7 +228,7 @@ backgroundColor: ColorConst.white,
   }
 
   Widget _buildFilterChip(
-    CategoryDetailController controller,
+    CategoryDetailsProvider controller,
     String label,
     IconData icon,
     String? filterType, {
@@ -272,7 +275,7 @@ backgroundColor: ColorConst.white,
     });
   }
 
-  Widget _buildCategorySidebar(CategoryDetailController controller) {
+  Widget _buildCategorySidebar(CategoryDetailsProvider controller) {
     return Container(
       width: 80,
       decoration: BoxDecoration(
@@ -323,7 +326,7 @@ backgroundColor: ColorConst.white,
   Widget _buildCategoryItem(
     MartSubcategoryModel category,
     bool isSelected,
-    CategoryDetailController controller,
+    CategoryDetailsProvider controller,
   ) {
     return GestureDetector(
       onTap: () => controller.selectSubCategory(category.id ?? ''),
@@ -417,7 +420,7 @@ backgroundColor: ColorConst.white,
     );
   }
 
-  Widget _buildProductContent(CategoryDetailController controller) {
+  Widget _buildProductContent(CategoryDetailsProvider controller) {
     return Obx(() {
       if (controller.isLoadingProducts.value) {
         return const Center(
@@ -647,7 +650,7 @@ backgroundColor: ColorConst.white,
                         width: cardWidth,
                         child: MartProductCard(
                           product: product, 
-                          controller: controller,
+
                           screenWidth: screenWidth,
                         ),
                       );
@@ -662,7 +665,7 @@ backgroundColor: ColorConst.white,
     });
   }
 
-  Stream<QuerySnapshot> _buildProductStream(CategoryDetailController controller) {
+  Stream<QuerySnapshot> _buildProductStream(CategoryDetailsProvider controller) {
     Query query = FirebaseFirestore.instance
         .collection('mart_items')
         .where('publish', isEqualTo: true);

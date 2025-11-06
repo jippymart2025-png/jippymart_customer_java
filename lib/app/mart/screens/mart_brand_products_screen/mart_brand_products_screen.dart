@@ -1,14 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/controller/mart_controller.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_product_card.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
-import 'package:jippymart_customer/controllers/category_detail_controller.dart';
 import 'package:jippymart_customer/models/mart_brand_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
 class MartBrandProductsScreen extends StatefulWidget {
   final String brandID;
@@ -26,16 +27,20 @@ class MartBrandProductsScreen extends StatefulWidget {
 }
 
 class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
-  final MartController _martController = Get.find<MartController>();
-  final CartController _cartController = Get.find<CartController>();
-  final CategoryDetailController _categoryController =
-      Get.find<CategoryDetailController>();
+  late MartProvider _martController ;
+ late CartControllerProvider cartControllerProvider ;
+ late  CategoryDetailsProvider _categoryController ;
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   MartBrandModel? brandData;
 
   @override
   void initState() {
+
+    cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+    _martController =Provider.of<MartProvider>(context,listen:false);
+    _categoryController=   Provider.of<CategoryDetailsProvider>(context,listen:false);
     super.initState();
     _fetchBrandData();
   }
@@ -269,7 +274,6 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
                                 width: cardWidth,
                                 child: MartProductCard(
                                   product: product,
-                                  controller: _categoryController,
                                   screenWidth: screenWidth,
                                 ),
                               );

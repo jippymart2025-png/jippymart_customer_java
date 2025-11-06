@@ -1,5 +1,5 @@
+import 'package:jippymart_customer/app/forgot_password_screen/provider/forgot_password_provider.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/forgot_password_controller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
@@ -15,9 +15,8 @@ class ForgotPasswordScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: ForgotPasswordController(),
-        builder: (controller) {
+    return Consumer<ForgotPasswordProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             appBar: AppBar(
               backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,

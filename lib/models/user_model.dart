@@ -12,7 +12,7 @@ class UserModel {
   String? fcmToken;
   String? countryCode;
   String? phoneNumber;
-  double? walletAmount;
+  int? walletAmount;
   bool? active;
   bool? isActive;
   bool? isDocumentVerify;
@@ -90,10 +90,16 @@ class UserModel {
             return ShippingAddress();
           }).toList();
         } else if (json['shippingAddress'] is Map) {
-          addresses = [ShippingAddress.fromJson(json['shippingAddress'] as Map<String, dynamic>)];
+          addresses = [
+            ShippingAddress.fromJson(
+              json['shippingAddress'] as Map<String, dynamic>,
+            ),
+          ];
         } else if (json['shippingAddress'] is String) {
           try {
-            addresses = [ShippingAddress.fromJson(jsonDecode(json['shippingAddress']))];
+            addresses = [
+              ShippingAddress.fromJson(jsonDecode(json['shippingAddress'])),
+            ];
           } catch (e) {
             log('Error parsing shipping address string: $e');
             addresses = [];
@@ -112,7 +118,9 @@ class UserModel {
         fcmToken: json['fcmToken']?.toString(),
         countryCode: json['countryCode']?.toString(),
         phoneNumber: json['phoneNumber']?.toString(),
-        walletAmount: (json['wallet_amount'] is num) ? (json['wallet_amount'] as num).toDouble() : 0.0,
+        walletAmount: (json['wallet_amount'] is num)
+            ? (json['wallet_amount'] as num).toInt()
+            : 0,
         createdAt: json['createdAt'] as Timestamp?,
         active: json['active'] as bool?,
         isActive: json['isActive'] as bool?,
@@ -182,7 +190,16 @@ class ShippingAddress {
   bool? isDefault;
   String? zoneId; // 🔑 Add zoneId field for delivery zone validation
 
-  ShippingAddress({this.address, this.landmark, this.locality, this.location, this.isDefault, this.addressAs, this.id, this.zoneId});
+  ShippingAddress({
+    this.address,
+    this.landmark,
+    this.locality,
+    this.location,
+    this.isDefault,
+    this.addressAs,
+    this.id,
+    this.zoneId,
+  });
 
   ShippingAddress.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -192,7 +209,9 @@ class ShippingAddress {
     isDefault = json['isDefault'];
     addressAs = json['addressAs'];
     zoneId = json['zoneId']; // 🔑 Parse zoneId
-    location = json['location'] == null ? null : UserLocation.fromJson(json['location']);
+    location = json['location'] == null
+        ? null
+        : UserLocation.fromJson(json['location']);
   }
 
   Map<String, dynamic> toJson() {
@@ -212,23 +231,25 @@ class ShippingAddress {
 
   String getFullAddress() {
     List<String> addressParts = [];
-    
+
     // Add address if available
     if (address != null && address!.isNotEmpty) {
       addressParts.add(address!);
     }
-    
+
     // Add locality if available and different from address
     if (locality != null && locality!.isNotEmpty && locality != address) {
       addressParts.add(locality!);
     }
-    
+
     // Add landmark if available and different from address and locality
-    if (landmark != null && landmark!.isNotEmpty && 
-        landmark != address && landmark != locality) {
+    if (landmark != null &&
+        landmark!.isNotEmpty &&
+        landmark != address &&
+        landmark != locality) {
       addressParts.add(landmark!);
     }
-    
+
     // **FIXED: Remove duplicates and clean up the address**
     List<String> uniqueParts = [];
     for (String part in addressParts) {
@@ -237,15 +258,15 @@ class ShippingAddress {
         uniqueParts.add(cleanPart);
       }
     }
-    
+
     // Join with commas and clean up
     String fullAddress = uniqueParts.join(', ');
-    
+
     // If no address parts, return a default message
     if (fullAddress.isEmpty) {
       return 'Current Location';
     }
-    
+
     return fullAddress;
   }
 

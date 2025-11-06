@@ -1,7 +1,7 @@
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_address_screen/mart_address_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_edit_profile_screen/mart_edit_profile_screen.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/controller/mart_controller.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
@@ -11,6 +11,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
+import 'package:provider/provider.dart';
 
 class MartProfileScreen extends StatelessWidget {
   const MartProfileScreen({super.key});
@@ -23,8 +24,8 @@ class MartProfileScreen extends StatelessWidget {
     });
     return Scaffold(
       backgroundColor: const Color(0xFFF6F6FF),
-      body: GetBuilder<MartController>(
-        builder: (controller) {
+      body: Consumer<MartProvider>(
+        builder: (context,controller,_) {
           return CustomScrollView(
             slivers: [
               SliverAppBar(

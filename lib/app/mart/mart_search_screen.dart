@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/controllers/mart_search_controller.dart';
-import 'package:jippymart_customer/controllers/category_detail_controller.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_search_widget.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -131,17 +129,6 @@ class _MartSearchScreenState extends State<MartSearchScreen>
   @override
   void initState() {
     super.initState();
-
-    // Initialize the search controller
-    Get.put(MartSearchController());
-
-    // Initialize the category detail controller for product cards
-    try {
-      Get.find<CategoryDetailController>();
-    } catch (e) {
-      Get.put(CategoryDetailController());
-    }
-
     // Floating animation controller
     _floatingController = AnimationController(
       duration: const Duration(seconds: 4),
@@ -164,7 +151,6 @@ class _MartSearchScreenState extends State<MartSearchScreen>
         ),
         child: Stack(
           children: [
-            // Floating animated emojis - Smaller size, edge positioning only
             ...List.generate(8, (index) { // 🔑 Reduced from 12 to 8 emojis
               final screenWidth = MediaQuery.of(context).size.width;
               final screenHeight = MediaQuery.of(context).size.height;

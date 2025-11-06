@@ -3,8 +3,8 @@ import 'dart:math';
 
 import 'package:collection/collection.dart' show IterableExtension;
 import 'package:flutter/material.dart';
+import 'package:jippymart_customer/app/home_screen/screen/story_view_screen/provider/story_provider.dart';
 
-import '../controller/story_controller.dart';
 import '../utils.dart';
 import 'story_image.dart';
 import 'story_video.dart';
@@ -109,7 +109,7 @@ class StoryItem {
   /// one passed to the `StoryView`
   factory StoryItem.pageImage({
     required String url,
-    required StoryController controller,
+    required StoryProvider controller,
     Key? key,
     BoxFit imageFit = BoxFit.fitWidth,
     Text? caption,
@@ -165,7 +165,7 @@ class StoryItem {
   factory StoryItem.inlineImage({
     required String url,
     Text? caption,
-    required StoryController controller,
+    required StoryProvider controller,
     Key? key,
     BoxFit imageFit = BoxFit.cover,
     Map<String, dynamic>? requestHeaders,
@@ -223,7 +223,7 @@ class StoryItem {
   /// one passed to the `StoryView`
   factory StoryItem.pageVideo(
     String url, {
-    required StoryController controller,
+    required StoryProvider controller,
     Key? key,
     Duration? duration,
     BoxFit imageFit = BoxFit.fitWidth,
@@ -403,7 +403,7 @@ class StoryView extends StatefulWidget {
   final bool inline;
 
   /// Controls the playback of the stories
-  final StoryController controller;
+  final StoryProvider controller;
 
   /// Indicator Color
   final Color? indicatorColor;

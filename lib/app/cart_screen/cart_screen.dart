@@ -1,17 +1,16 @@
-import 'dart:developer' as dev;
 
 import 'package:bottom_picker/bottom_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/coupon_list_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_bill_details_widget.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_navigation_bar_widget.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_product_details_image_widget.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
-import 'package:jippymart_customer/controllers/mart_navigation_controller.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
@@ -26,42 +25,34 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:provider/provider.dart';
 
-// Cart theme enum for different color schemes
 
 class CartScreen extends StatefulWidget {
   final bool hideBackButton;
-  final String? source; // 'food' or 'mart' or null for auto-detect
-  final bool isFromMartNavigation; // true if accessed from mart navigation tabs
-
+  final String? source;
+  final bool isFromMartNavigation;
   const CartScreen(
-      {Key? key,
+      {super.key,
       this.hideBackButton = false,
       this.source,
-      this.isFromMartNavigation = false})
-      : super(key: key);
+      this.isFromMartNavigation = false});
 
   @override
   _CartScreenState createState() => _CartScreenState();
 }
 
 class _CartScreenState extends State<CartScreen> {
-  late CartController controller;
+  late CartControllerProvider controller;
   @override
   void initState() {
     super.initState();
-    print(
-        '🚀 DEBUG: CartScreen initState() called - Initializing CartController...');
-    controller = Get.put(CartController());
-    print('✅ DEBUG: CartController initialized successfully');
+    controller = Provider.of<CartControllerProvider>(context,listen:false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshCartData();
     });
   }
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Refresh cart data when dependencies change (navigation)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshCartData();
     });
@@ -74,23 +65,12 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _refreshCartData() {
-    print('DEBUG: Refreshing cart data...');
-    // Use the enhanced force refresh method
     controller.forceRefreshCart();
-
-    // **FIXED: Re-initialize address if not selected (for global cart controller)**
     if (controller.selectedAddress.value == null) {
-      print(
-          '🏠 [CART_REFRESH] No address selected, re-initializing address...');
-      // Trigger address initialization by calling the public method
       controller.initializeAddress();
     }
-
-    // Ensure payment method is set correctly based on order total
     Future.delayed(const Duration(milliseconds: 500), () {
       controller.checkAndUpdatePaymentMethod();
-      print(
-          'DEBUG: Cart refresh completed - Items: ${cartItem.length}, Total: ${controller.totalAmount.value}');
     });
   }
 
@@ -161,12 +141,10 @@ class _CartScreenState extends State<CartScreen> {
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
 
-    return GetX<CartController>(builder: (controller) {
-      // Check payment method every time the UI is built
+    return Consumer<CartControllerProvider>(builder: (context,controller,_) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         controller.checkAndUpdatePaymentMethod();
       });
-
       return WillPopScope(
         onWillPop: () async {
           if (controller.isGlobalLocked.value) {
@@ -191,20 +169,16 @@ class _CartScreenState extends State<CartScreen> {
                   : IconButton(
                       icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white,),
                       onPressed: () {
-                        // Check if we're in mart navigation system (cart tab)
                         if (widget.source == 'mart' &&
                             widget.isFromMartNavigation) {
-                          // If accessed from mart navigation cart tab, go back to mart home
                           try {
                             final martNavController =
-                                Get.find<MartNavigationController>();
+                            Provider.of<MartNavigationProvider>(context,listen: false);
                             martNavController.goToHome();
                           } catch (e) {
-                            // Fallback to regular back navigation
                             Get.back();
                           }
                         } else {
-                          // Regular back navigation for other cases (product details, etc.)
                           Get.back();
                         }
                       },
@@ -215,7 +189,6 @@ class _CartScreenState extends State<CartScreen> {
                     color: Colors.white, fontWeight: FontWeight.bold),
               ),
               actions: [
-                // Debug buttons removed - methods not available in current version
               ],
             ),
             body: cartItem.isEmpty
@@ -263,7 +236,7 @@ class _CartScreenState extends State<CartScreen> {
                                                   addressModel
                                                       .location!.latitude!,
                                                   addressModel
-                                                      .location!.longitude!,
+                                                      .location!.longitude!,context
                                                 );
 
                                                 if (zoneId.isNotEmpty) {

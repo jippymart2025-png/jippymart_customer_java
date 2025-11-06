@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/controllers/mart_edit_profile_controller.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_edit_profile_screen/provider/mart_edit_profile_provider.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
+import 'package:provider/provider.dart';
 
 class MartEditProfileScreen extends StatefulWidget {
   const MartEditProfileScreen({Key? key}) : super(key: key);
@@ -62,84 +63,87 @@ class _MartEditProfileScreenState extends State<MartEditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.put(MartEditProfileController());
-    
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Profile Information',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Get.back(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: _hasChanges ? () => _saveProfile(controller) : null,
-            child: Text(
-              'Save',
+
+    return Consumer<MartEditProfileProvider>(
+      builder: (context,controller, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text(
+              'Profile Information',
               style: TextStyle(
-                color: _hasChanges ? const Color(0xFF5D56F3) : Colors.grey,
                 fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
             ),
+            backgroundColor: Colors.white,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+              onPressed: () => Get.back(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: _hasChanges ? () => _saveProfile(controller) : null,
+                child: Text(
+                  'Save',
+                  style: TextStyle(
+                    color: _hasChanges ? const Color(0xFF5D56F3) : Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Profile Picture Section
-            _buildProfilePictureSection(controller),
-            const SizedBox(height: 32),
-            
-            // Personal Information Section
-            _buildSectionHeader('Personal Information'),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _firstNameController,
-              label: 'First Name',
-              hint: 'Enter first name',
-              isEditable: true,
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                // Profile Picture Section
+                _buildProfilePictureSection(controller),
+                const SizedBox(height: 32),
+
+                // Personal Information Section
+                _buildSectionHeader('Personal Information'),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _firstNameController,
+                  label: 'First Name',
+                  hint: 'Enter first name',
+                  isEditable: true,
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _lastNameController,
+                  label: 'Last Name',
+                  hint: 'Enter last name',
+                  isEditable: true,
+                ),
+                const SizedBox(height: 32),
+
+                // Contact Information Section
+                _buildSectionHeader('Contact Information'),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _emailController,
+                  label: 'Email',
+                  hint: 'Enter email address',
+                  isEditable: false,
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                const SizedBox(height: 16),
+                _buildTextField(
+                  controller: _phoneController,
+                  label: 'Phone Number',
+                  hint: 'Enter phone number',
+                  isEditable: false,
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 32),
+              ],
             ),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _lastNameController,
-              label: 'Last Name',
-              hint: 'Enter last name',
-              isEditable: true,
-            ),
-            const SizedBox(height: 32),
-            
-            // Contact Information Section
-            _buildSectionHeader('Contact Information'),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _emailController,
-              label: 'Email',
-              hint: 'Enter email address',
-              isEditable: false,
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 16),
-            _buildTextField(
-              controller: _phoneController,
-              label: 'Phone Number',
-              hint: 'Enter phone number',
-              isEditable: false,
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
-      ),
+          ),
+        );
+      }
     );
   }
 
@@ -230,7 +234,7 @@ class _MartEditProfileScreenState extends State<MartEditProfileScreen> {
   }
 
   // Profile Picture Section with Initials
-  Widget _buildProfilePictureSection(MartEditProfileController controller) {
+  Widget _buildProfilePictureSection(MartEditProfileProvider controller) {
     final userModel = Constant.userModel;
     return Center(
       child: Stack(
@@ -314,7 +318,7 @@ class _MartEditProfileScreenState extends State<MartEditProfileScreen> {
     );
   }
 
-  void _saveProfile(MartEditProfileController controller) {
+  void _saveProfile(MartEditProfileProvider controller) {
     controller.updateProfile(
       firstName: _firstNameController.text.trim(),
       lastName: _lastNameController.text.trim(),

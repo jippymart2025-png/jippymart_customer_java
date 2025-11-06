@@ -1,8 +1,8 @@
+import 'package:flutter/cupertino.dart';
+import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/services/mart_vendor_service.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
-import 'package:jippymart_customer/models/zone_model.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:geolocator/geolocator.dart';
 
 class MartZoneUtils {
@@ -202,65 +202,63 @@ class MartZoneUtils {
       return [];
     }
   }
-
   /// Get zone ID for specific coordinates
   /// This is the core method for zone detection during address saving
-  static Future<String> getZoneIdForCoordinates(double latitude, double longitude) async {
-    try {
-      print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION STARTED =====');
-      print('📍 [MART_ZONE_UTILS] Coordinates: lat=$latitude, lng=$longitude');
-      
-      // Get all zones from Firestore
-      final zones = await FireStoreUtils.getZone();
-      
-      if (zones == null || zones.isEmpty) {
-        print('❌ [MART_ZONE_UTILS] No zones found in database');
-        print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (NO ZONES) =====');
-        return '';
-      }
-      
-      print('📊 [MART_ZONE_UTILS] Found ${zones.length} zones in database');
-      
-      // Check each zone to see if coordinates fall within it
-      for (int i = 0; i < zones.length; i++) {
-        final zone = zones[i];
-        print('🔍 [MART_ZONE_UTILS] Checking zone ${i + 1}: ${zone.name} (ID: ${zone.id})');
-        print('   📍 Zone center: lat=${zone.latitude}, lng=${zone.longitude}');
-        print('   📍 Zone area points: ${zone.area?.length ?? 0}');
-        print('   📍 Zone published: ${zone.publish}');
-        
-        // Skip unpublished zones
-        if (zone.publish != true) {
-          print('   ⏭️ Skipping unpublished zone');
-          continue;
-        }
-        
-        // Check if coordinates fall within this zone
-        if (await _isCoordinateInZone(latitude, longitude, zone)) {
-          print('✅ [MART_ZONE_UTILS] Coordinates found in zone: ${zone.name} (${zone.id})');
-          print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (SUCCESS) =====');
-          return zone.id ?? '';
-        } else {
-          print('   ❌ Coordinates not in this zone');
-        }
-      }
-      
-      print('❌ [MART_ZONE_UTILS] Coordinates not found in any zone');
-      print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (NO MATCH) =====');
-      return '';
-    } catch (e) {
-      print('❌ [MART_ZONE_UTILS] Error detecting zone for coordinates: $e');
-      print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (ERROR) =====');
-      return '';
-    }
+  static Future<String> getZoneIdForCoordinates(double latitude, double longitude,BuildContext context) async {
+    // try {
+    //   print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION STARTED =====');
+    //   print('📍 [MART_ZONE_UTILS] Coordinates: lat=$latitude, lng=$longitude');
+    //
+    //   // Get all zones from Firestore
+    //   final zones = await FireStoreUtils.getZone();
+    //
+    //   if (zones == null || zones.isEmpty) {
+    //     print('❌ [MART_ZONE_UTILS] No zones found in database');
+    //     print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (NO ZONES) =====');
+    //     return '';
+    //   }
+    //
+    //   print('📊 [MART_ZONE_UTILS] Found ${zones.length} zones in database');
+    //
+    //   // Check each zone to see if coordinates fall within it
+    //   for (int i = 0; i < zones.length; i++) {
+    //     final zone = zones[i];
+    //     print('🔍 [MART_ZONE_UTILS] Checking zone ${i + 1}: ${zone.name} (ID: ${zone.id})');
+    //     print('   📍 Zone center: lat=${zone.latitude}, lng=${zone.longitude}');
+    //     print('   📍 Zone area points: ${zone.area?.length ?? 0}');
+    //     print('   📍 Zone published: ${zone.publish}');
+    //
+    //     // Skip unpublished zones
+    //     if (zone.publish != true) {
+    //       print('   ⏭️ Skipping unpublished zone');
+    //       continue;
+    //     }
+    //     // Check if coordinates fall within this zone
+    //     if (await _isCoordinateInZone(latitude, longitude, zone)) {
+    //       print('✅ [MART_ZONE_UTILS] Coordinates found in zone: ${zone.name} (${zone.id})');
+    //       print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (SUCCESS) =====');
+    //       return zone.id ?? '';
+    //     } else {
+    //       print('   ❌ Coordinates not in this zone');
+    //     }
+    //   }
+    //
+    //   print('❌ [MART_ZONE_UTILS] Coordinates not found in any zone');
+    //   print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (NO MATCH) =====');
+    //   return '';
+    // } catch (e) {
+    //   print('❌ [MART_ZONE_UTILS] Error detecting zone for coordinates: $e');
+    //   print('🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (ERROR) =====');
+    //   return '';
+    // }
+    return '';
   }
 
   /// Check if coordinates are within a zone (polygon or circle)
-  static Future<bool> _isCoordinateInZone(double lat, double lng, ZoneModel zone) async {
+  static Future<bool> _isCoordinateInZone(double lat, double lng, Zone zone) async {
     try {
       // If zone has center coordinates, try both polygon and circular detection
       if (zone.latitude != null && zone.longitude != null) {
-        
         // First try polygon detection if area points exist
         if (zone.area != null && zone.area!.isNotEmpty) {
           final isInPolygon = _isPointInPolygon(lat, lng, zone.area!);
@@ -271,15 +269,13 @@ class MartZoneUtils {
             return true;
           }
         }
-        
         // If polygon detection fails or no area points, try circular detection
         final distance = Geolocator.distanceBetween(
-          zone.latitude!,
-          zone.longitude!,
+      double.parse(zone.latitude.toString())    ,
+            double.parse(zone.longitude.toString()),
           lat,
           lng,
         );
-        
         // Use larger radius for better coverage (15km for all zones)
         const defaultRadius = 15000; // 15km in meters
         final isInCircle = distance <= defaultRadius;

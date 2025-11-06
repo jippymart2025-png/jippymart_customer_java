@@ -1,9 +1,9 @@
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
+import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/app/dash_board_screens/controller/dash_board_controller.dart';
-import 'package:jippymart_customer/app/favourite_screens/controller/favourite_controller.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
@@ -28,10 +28,9 @@ class FavouriteScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetBuilder<DashBoardController>(builder: (contexts) {
-      return GetX(
-          init: FavouriteController(),
-          builder: (controller) {
+    return Consumer<DashBoardProvider>(builder: (context,controller,_) {
+      return Consumer<FavouriteProvider>(
+          builder: (context,controller,_) {
             return Scaffold(
               backgroundColor: themeChange.getThem()
                   ? AppThemeData.surfaceDark

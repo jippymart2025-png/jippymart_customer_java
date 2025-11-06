@@ -1,7 +1,7 @@
+import 'package:jippymart_customer/app/advertisement_screens/provider/all_advertisement_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/advertisement_list_controller.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
@@ -23,9 +23,8 @@ class AllAdvertisementScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: AdvertisementListController(),
-        builder: (controller) {
+    return Consumer<AllAdvertisementProvider>(
+        builder: (context,controller, _) {
           return Scaffold(
               appBar: AppBar(
                 backgroundColor: themeChange.getThem()
@@ -45,7 +44,7 @@ class AllAdvertisementScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              body: controller.isLoading.value
+              body: controller.isLoading
                   ? Constant.loader()
                   : controller.advertisementList.isEmpty
                       ? Constant.showEmptyView(
@@ -65,10 +64,9 @@ class AllAdvertisementScreen extends StatelessWidget {
         });
   }
 }
-
 class AdvertisementCard extends StatelessWidget {
   final AdvertisementModel model;
-  final AdvertisementListController controller;
+  final AllAdvertisementProvider controller;
 
   const AdvertisementCard(
       {super.key, required this.controller, required this.model});

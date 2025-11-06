@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/controller/mart_controller.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 
@@ -31,62 +30,7 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
     // Could add some visual feedback if needed
   }
 
-  void _showVendorSelectionDialog(
-      BuildContext context, MartController controller) {
-    if (controller.martVendors.isEmpty) {
-      Get.snackbar(
-        'No Vendors Available',
-        'Please wait while we load available vendors...',
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
-      );
-      return;
-    }
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Select a Vendor'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 300,
-          child: ListView.builder(
-            itemCount: controller.martVendors.length,
-            itemBuilder: (context, index) {
-              final vendor = controller.martVendors[index];
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: const Color(0xFF00998a),
-                  child: Text(
-                    vendor.name?.substring(0, 1).toUpperCase() ?? 'V',
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                ),
-                title: Text(vendor.name ?? 'Unknown Vendor'),
-                subtitle: Text(vendor.description ?? ''),
-                onTap: () {
-                  controller.selectVendor(vendor.id!);
-                  Navigator.of(context).pop();
-                  Get.snackbar(
-                    'Vendor Selected',
-                    '${vendor.name} selected successfully!',
-                    backgroundColor: Colors.green,
-                    colorText: Colors.white,
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,17 +38,7 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
       width: double.infinity, // Use full width instead of fixed 412
       height: 180, // Back to original height - only toggle and address
       color:   Colors.transparent,
-      // decoration: const BoxDecoration(
-      //   gradient: LinearGradient(
-      //     begin: Alignment.topCenter,
-      //     end: Alignment.bottomCenter,
-      //     colors: [
-      //       Color(0xFFE8F8DB), // #CCCCFF
-      //       Color(0xFFE8F8DB), // #ECEAFD
-      //     ],
-      //     stops: [0.0, 1.0], // 0% to 100%
-      //   ),
-      // ),
+
       child: Padding(
         padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
         child: Stack(

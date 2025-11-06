@@ -104,7 +104,6 @@ class ExampleUsageScenarios {
           return const RestaurantLoadingWidget();
         }
         
-        return const Text('Restaurant List');
       },
     );
   }
@@ -120,7 +119,6 @@ class ExampleUsageScenarios {
           return const DataLoadingWidget(message: "👤 Loading Profile...");
         }
         
-        return const Text('Profile Data');
       },
     );
   }

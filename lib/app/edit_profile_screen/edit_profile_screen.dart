@@ -1,7 +1,7 @@
 import 'dart:io';
 
+import 'package:jippymart_customer/app/edit_profile_screen/provider/edit_profile_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/edit_profile_controller.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
@@ -21,11 +21,8 @@ class EditProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: EditProfileController(),
-        builder: (controller) {
-          print('[PROFILE_SCREEN] Loaded user model: ' +
-              controller.userModel.value.toJson().toString());
+    return Consumer<EditProfileProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             appBar: AppBar(
               centerTitle: false,
@@ -401,7 +398,7 @@ class EditProfileScreen extends StatelessWidget {
         });
   }
 
-  buildBottomSheet(BuildContext context, EditProfileController controller) {
+  buildBottomSheet(BuildContext context, EditProfileProvider controller) {
     return showModalBottomSheet(
       context: context,
       builder: (context) {

@@ -1,9 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../models/user_model.dart';
-import '../models/zone_model.dart';
-import '../constant/constant.dart';
-import '../utils/fire_store_utils.dart';
 
 /// Service for validating orders before placement
 /// Ensures delivery address is within vendor's delivery zone
@@ -106,49 +102,49 @@ class OrderValidationService {
   /// 
   /// This method detects the zone ID for an address that doesn't have one
   /// by checking if the coordinates fall within any zone polygon
-  Future<String?> detectZoneIdForAddress(ShippingAddress address) async {
-    try {
-      print('🔍 [ORDER_VALIDATION] Detecting zone ID for address: ${address.id}');
-      
-      if (address.location?.latitude == null || address.location?.longitude == null) {
-        print('🔍 [ORDER_VALIDATION] Address has no coordinates');
-        return null;
-      }
-      
-      // Get all zones from Firestore
-      List<ZoneModel>? zones = await FireStoreUtils.getZone();
-      
-      if (zones == null || zones.isEmpty) {
-        print('🔍 [ORDER_VALIDATION] No zones available in database');
-        return null;
-      }
-      
-      print('🔍 [ORDER_VALIDATION] Found ${zones.length} zones to check');
-      
-      // Check if coordinates fall within any zone polygon
-      for (ZoneModel zone in zones) {
-        if (zone.area != null && zone.area!.isNotEmpty) {
-          print('🔍 [ORDER_VALIDATION] Checking zone: ${zone.name} (${zone.id})');
-          
-          // Use the existing polygon validation logic
-          if (Constant.isPointInPolygon(
-            LatLng(address.location!.latitude!, address.location!.longitude!),
-            zone.area!,
-          )) {
-            print('🔍 [ORDER_VALIDATION] Zone detected: ${zone.name} (${zone.id})');
-            return zone.id;
-          }
-        }
-      }
-      
-      print('🔍 [ORDER_VALIDATION] Address coordinates not within any service zone');
-      return null;
-      
-    } catch (e) {
-      print('🔍 [ORDER_VALIDATION] Error detecting zone: $e');
-      return null;
-    }
-  }
+  // Future<String?> detectZoneIdForAddress(ShippingAddress address) async {
+  //   try {
+  //     print('🔍 [ORDER_VALIDATION] Detecting zone ID for address: ${address.id}');
+  //
+  //     if (address.location?.latitude == null || address.location?.longitude == null) {
+  //       print('🔍 [ORDER_VALIDATION] Address has no coordinates');
+  //       return null;
+  //     }
+  //
+  //     // Get all zones from Firestore
+  //     List<ZoneModel>? zones = await FireStoreUtils.getZone();
+  //
+  //     if (zones == null || zones.isEmpty) {
+  //       print('🔍 [ORDER_VALIDATION] No zones available in database');
+  //       return null;
+  //     }
+  //
+  //     print('🔍 [ORDER_VALIDATION] Found ${zones.length} zones to check');
+  //
+  //     // Check if coordinates fall within any zone polygon
+  //     for (ZoneModel zone in zones) {
+  //       if (zone.area != null && zone.area!.isNotEmpty) {
+  //         print('🔍 [ORDER_VALIDATION] Checking zone: ${zone.name} (${zone.id})');
+  //
+  //         // Use the existing polygon validation logic
+  //         if (Constant.isPointInPolygon(
+  //           LatLng(address.location!.latitude!, address.location!.longitude!),
+  //           zone.area!,
+  //         )) {
+  //           print('🔍 [ORDER_VALIDATION] Zone detected: ${zone.name} (${zone.id})');
+  //           return zone.id;
+  //         }
+  //       }
+  //     }
+  //
+  //     print('🔍 [ORDER_VALIDATION] Address coordinates not within any service zone');
+  //     return null;
+  //
+  //   } catch (e) {
+  //     print('🔍 [ORDER_VALIDATION] Error detecting zone: $e');
+  //     return null;
+  //   }
+  // }
 
   /// Validates if a specific address is within a vendor's delivery zone
   /// 

@@ -1,8 +1,8 @@
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
-import 'package:jippymart_customer/app/order_list_screen/order_details_screen.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/order_details_screen.dart';
 import 'package:jippymart_customer/app/wallet_screen/payment_list_screen.dart';
+import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/wallet_controller.dart';
 import 'package:jippymart_customer/models/wallet_transaction_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -20,9 +20,8 @@ class WalletScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: WalletController(),
-        builder: (controller) {
+    return Consumer<WalletProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
             body: controller.isLoading.value
@@ -184,7 +183,7 @@ class WalletScreen extends StatelessWidget {
         });
   }
 
-  transactionCard(WalletController controller, themeChange, WalletTransactionModel transactionModel) {
+  transactionCard(WalletProvider controller, themeChange, WalletTransactionModel transactionModel) {
     return Column(
       children: [
         InkWell(

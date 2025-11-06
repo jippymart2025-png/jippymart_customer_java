@@ -1,8 +1,8 @@
 
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
 
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-Widget billCartWidget(DarkThemeProvider themeChange, CartController controller,
+Widget billCartWidget(DarkThemeProvider themeChange, CartControllerProvider controller,
     BuildContext context) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),

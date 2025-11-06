@@ -1,28 +1,27 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/controllers/category_detail_controller.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
+import 'package:provider/provider.dart';
 
 class MartProductCard extends StatelessWidget {
   final MartItemModel product;
-  final CategoryDetailController controller;
   final double screenWidth;
 
   const MartProductCard({
     super.key,
     required this.product,
-    required this.controller,
     required this.screenWidth,
   });
 
-  String _getSubcategoryName(dynamic subcategoryID) {
+  String _getSubcategoryName(dynamic subcategoryID,CategoryDetailsProvider controller) {
     if (subcategoryID == null) return 'General';
 
     // Try to find the subcategory by ID in the controller's subcategories list
@@ -46,7 +45,7 @@ class MartProductCard extends StatelessWidget {
   }
 
   Future<void> _handleAddToCart(
-      BuildContext context, MartItemModel product) async {
+      BuildContext context, MartItemModel product,CategoryDetailsProvider controller) async {
     try {
       // Prepare cart item data
       final cartItem = {
@@ -57,7 +56,7 @@ class MartProductCard extends StatelessWidget {
         'originalPrice': product.price,
         'image': product.photo,
         'description': product.description,
-        'category': _getSubcategoryName(product.subcategoryID),
+        'category': _getSubcategoryName(product.subcategoryID,controller),
         'quantity': 1,
         'hasOptions': product.has_options ?? false,
         'optionsCount': product.options_count ?? 0,
@@ -104,7 +103,7 @@ class MartProductCard extends StatelessWidget {
       // No need to show loading state - the toast will handle the feedback
 
       // Get the cart controller
-      final cartController = Get.find<CartController>();
+      CartControllerProvider cartControllerProvider =  Provider.of<CartControllerProvider>(context,listen:false);
 
       // Convert MartItemModel to CartProductModel
       // For mart items, we need to modify the vendorID to be recognized as a mart item
@@ -139,7 +138,7 @@ class MartProductCard extends StatelessWidget {
       // Add to cart using cart controller
       try {
         print('[CART] Calling cartController.addToCart...');
-        final success = await cartController.addToCart(
+        final success = await cartControllerProvider.addToCart(
           cartProductModel: cartProduct,
           isIncrement: true,
           quantity: 1,
@@ -255,7 +254,7 @@ class MartProductCard extends StatelessWidget {
       MartItemModel product, Map<String, dynamic> selectedOption) async {
     try {
       // Get the cart controller
-      final cartController = Get.find<CartController>();
+      CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
 
       // Convert MartItemModel to CartProductModel with option details
       final cartProduct = CartProductModel(
@@ -287,7 +286,7 @@ class MartProductCard extends StatelessWidget {
           '[CART] Original Price: ${cartProduct.price}, Discounted Price: ${cartProduct.discountPrice}');
 
       // Add to cart using cart controller
-      final success = await cartController.addToCart(
+      final success = await cartControllerProvider.addToCart(
         cartProductModel: cartProduct,
         isIncrement: true,
         quantity: 1,
@@ -492,94 +491,98 @@ class MartProductCard extends StatelessWidget {
                           ),
                   ),
                 ),
-                Positioned(
-                  bottom: 4,
-                  right: 4,
-                  child: GestureDetector(
-                    onTap: () {
-                      if (product.has_options == true) {
-                        _showProductOptionsModal(context, product);
-                      } else {
-                        _handleAddToCart(context, product);
-                      }
-                    },
-                    child: Container(
-                      width: 62,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color:  ColorConst.orangeLight),
-                      ),
-                      child: Builder(
-                        builder: (context) {
-                          print(
-                              '[DEBUG] Product: ${product.name}, has_options: ${product.has_options}');
-                          return (product.has_options == true)
-                              ? Column(
-                                  children: [
-                                    // Top 60% - ADD
-                                    Expanded(
-                                      flex: 3,
-                                      child: Center(
-                                        child: Text(
-                                          "ADD",
-                                          style: TextStyle(
-                                            color: Colors.purple,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 10,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    // Divider line
-                                    Container(
-                                      height: 1,
-                                      color: Colors.purple.withOpacity(0.3),
-                                    ),
-                                    // Bottom 40% - options
-                                    Expanded(
-                                      flex: 2,
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: ColorConst.orangeLight,
-                                          borderRadius: const BorderRadius.only(
-                                            bottomLeft: Radius.circular(8),
-                                            bottomRight: Radius.circular(8),
-                                          ),
-                                        ),
-                                        child: Center(
-                                          child: Padding(
-                                            padding: const EdgeInsets.only(
-                                                bottom: 2),
+                Consumer<CategoryDetailsProvider>(
+                  builder: (context,controller,_) {
+                    return Positioned(
+                      bottom: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () {
+                          if (product.has_options == true) {
+                            _showProductOptionsModal(context, product);
+                          } else {
+                            _handleAddToCart(context, product,controller);
+                          }
+                        },
+                        child: Container(
+                          width: 62,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color:  ColorConst.orangeLight),
+                          ),
+                          child: Builder(
+                            builder: (context) {
+                              print(
+                                  '[DEBUG] Product: ${product.name}, has_options: ${product.has_options}');
+                              return (product.has_options == true)
+                                  ? Column(
+                                      children: [
+                                        // Top 60% - ADD
+                                        Expanded(
+                                          flex: 3,
+                                          child: Center(
                                             child: Text(
-                                              "(${product.options_count ?? 0})options",
+                                              "ADD",
                                               style: TextStyle(
-                                                color: Colors.grey.shade700,
-                                                fontWeight: FontWeight.w900,
-                                                fontSize: 8,
+                                                color: Colors.purple,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 10,
                                               ),
                                             ),
                                           ),
                                         ),
+                                        // Divider line
+                                        Container(
+                                          height: 1,
+                                          color: Colors.purple.withOpacity(0.3),
+                                        ),
+                                        // Bottom 40% - options
+                                        Expanded(
+                                          flex: 2,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              color: ColorConst.orangeLight,
+                                              borderRadius: const BorderRadius.only(
+                                                bottomLeft: Radius.circular(8),
+                                                bottomRight: Radius.circular(8),
+                                              ),
+                                            ),
+                                            child: Center(
+                                              child: Padding(
+                                                padding: const EdgeInsets.only(
+                                                    bottom: 2),
+                                                child: Text(
+                                                  "(${product.options_count ?? 0})options",
+                                                  style: TextStyle(
+                                                    color: Colors.grey.shade700,
+                                                    fontWeight: FontWeight.w900,
+                                                    fontSize: 8,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  : Center(
+                                      child: Text(
+                                        "ADD",
+                                        style: TextStyle(
+                                          color: ColorConst.orangeLight,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 10,
+                                        ),
                                       ),
-                                    ),
-                                  ],
-                                )
-                              : Center(
-                                  child: Text(
-                                    "ADD",
-                                    style: TextStyle(
-                                      color: ColorConst.orangeLight,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 10,
-                                    ),
-                                  ),
-                                );
-                        },
+                                    );
+                            },
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
+                    );
+                  }
                 ),
               ],
             ),
@@ -709,78 +712,82 @@ class MartProductCard extends StatelessWidget {
                       // SizedBox(height: screenWidth < 360 ? 4.0 : 6.0),
 
                       // Info chips
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: screenWidth > 600
-                              ? 4.0
-                              : (screenWidth > 400 ? 3.0 : 2.0),
-                          vertical: screenWidth < 360 ? 2.0 : 3.0,
-                        ),
-                        child: Row(
-                          children: [
-                            // Subcategory instead of parent category
-                            Expanded(
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenWidth > 600
-                                      ? 6.0
-                                      : (screenWidth > 400 ? 5.0 : 4.0),
-                                  vertical: screenWidth > 600
-                                      ? 3.0
-                                      : (screenWidth > 400 ? 2.5 : 2.0),
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.blue.shade100,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  _getSubcategoryName(product.subcategoryID),
-                                  style: TextStyle(
-                                    fontSize: _getResponsiveFontSize(
-                                        screenWidth, 9.0),
-                                    color: Colors.blue.shade800,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
+                      Consumer<CategoryDetailsProvider>(
+                        builder: (context,controller,_) {
+                          return Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenWidth > 600
+                                  ? 4.0
+                                  : (screenWidth > 400 ? 3.0 : 2.0),
+                              vertical: screenWidth < 360 ? 2.0 : 3.0,
                             ),
-
-                            SizedBox(
-                                width: screenWidth < 360
-                                    ? 6.0
-                                    : (screenWidth > 600 ? 12.0 : 8.0)),
-
-                            // Delivery time tag
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade200,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.flash_on,
-                                    size: 10,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text('15 mins',
+                            child: Row(
+                              children: [
+                                // Subcategory instead of parent category
+                                Expanded(
+                                  child: Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: screenWidth > 600
+                                          ? 6.0
+                                          : (screenWidth > 400 ? 5.0 : 4.0),
+                                      vertical: screenWidth > 600
+                                          ? 3.0
+                                          : (screenWidth > 400 ? 2.5 : 2.0),
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      _getSubcategoryName(product.subcategoryID,controller),
                                       style: TextStyle(
                                         fontSize: _getResponsiveFontSize(
                                             screenWidth, 9.0),
-                                        color: Colors.black87,
+                                        color: Colors.blue.shade800,
                                         fontWeight: FontWeight.w500,
-                                      )),
-                                ],
-                              ),
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+
+                                SizedBox(
+                                    width: screenWidth < 360
+                                        ? 6.0
+                                        : (screenWidth > 600 ? 12.0 : 8.0)),
+
+                                // Delivery time tag
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 4, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.flash_on,
+                                        size: 10,
+                                        color: Colors.grey.shade700,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text('15 mins',
+                                          style: TextStyle(
+                                            fontSize: _getResponsiveFontSize(
+                                                screenWidth, 9.0),
+                                            color: Colors.black87,
+                                            fontWeight: FontWeight.w500,
+                                          )),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        }
                       ),
 
                       // Add spacing after info chips

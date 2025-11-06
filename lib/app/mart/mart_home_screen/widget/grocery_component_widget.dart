@@ -1,9 +1,10 @@
-import 'package:jippymart_customer/app/mart/mart_home_screen/controller/mart_controller.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'dart:math';
 Widget groceryComponent(Size size) {
@@ -50,8 +51,8 @@ Widget groceryComponent(Size size) {
         //   ),
         // ),
 SizedBox(height: 20,),
-        GetX<MartController>(
-          builder: (controller) {
+        Consumer<MartProvider>(
+          builder: (context,controller,_) {
             // Loading State
             if (controller.isCategoryLoading.value) {
               return _buildCategoryShimmer();
@@ -152,7 +153,7 @@ Widget _buildCategoryShimmer() {
 }
 
 // Enhanced Error State
-Widget _buildErrorState(MartController controller) {
+Widget _buildErrorState(MartProvider controller) {
   return Container(
     height: 120,
     margin: const EdgeInsets.symmetric(vertical: 8),
@@ -286,7 +287,7 @@ Widget _buildEmptyState() {
 }
 
 // Enhanced Categories Grid
-Widget _buildCategoriesGrid(MartController controller,Size size) {
+Widget _buildCategoriesGrid(MartProvider controller,Size size) {
   return SizedBox(
     height: 120,
     child: ListView.separated(padding: EdgeInsets.zero,

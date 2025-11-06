@@ -1,6 +1,6 @@
+import 'package:jippymart_customer/app/refer_friend_screen/provider/refer_friend_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/refer_friend_controller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -17,9 +17,8 @@ class ReferFriendScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: ReferFriendController(),
-        builder: (controller) {
+    return Consumer<ReferFriendProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             body: controller.isLoading.value
                 ? Constant.loader()

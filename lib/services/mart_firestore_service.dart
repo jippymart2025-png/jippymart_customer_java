@@ -50,14 +50,6 @@ class MartFirestoreService extends GetxService {
           .map((doc) {
             try {
               final data = doc.data();
-              if (data == null) return null;
-
-              // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
-                print(
-                    '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}');
-                return null;
-              }
 
               final Map<String, dynamic> itemData =
                   Map<String, dynamic>.from(data);
@@ -141,14 +133,6 @@ class MartFirestoreService extends GetxService {
           .map((doc) {
             try {
               final data = doc.data();
-              if (data == null) return null;
-
-              // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
-                print(
-                    '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}');
-                return null;
-              }
 
               final Map<String, dynamic> itemData =
                   Map<String, dynamic>.from(data);
@@ -887,47 +871,16 @@ class MartFirestoreService extends GetxService {
   /// Get ALL subcategories from Firestore (for debugging - no filters)
   Future<List<MartSubcategoryModel>> getAllSubcategoriesDebug() async {
     try {
-      print(
-          '[MART FIRESTORE] 🔍 DEBUG: Fetching ALL subcategories from Firestore (no filters)...');
-
       final querySnapshot =
           await _firestore.collection('mart_subcategories').get();
-      print(
-          '[MART FIRESTORE] 🔍 DEBUG: Found ${querySnapshot.docs.length} total subcategories in Firestore');
-
-      // Log ALL documents found
-      print('[MART FIRESTORE] 🔍 DEBUG: ALL DOCUMENTS IN COLLECTION:');
       for (int i = 0; i < querySnapshot.docs.length; i++) {
         final doc = querySnapshot.docs[i];
-        final data = doc.data();
-        print('[MART FIRESTORE] 🔍 DEBUG: ${i + 1}. ID: ${doc.id}');
-        print('[MART FIRESTORE] 🔍 DEBUG:    Data: $data');
-        if (data is Map<String, dynamic>) {
-          print(
-              '[MART FIRESTORE] 🔍 DEBUG:    show_in_homepage: ${data['show_in_homepage']}');
-          print('[MART FIRESTORE] 🔍 DEBUG:    publish: ${data['publish']}');
-          print('[MART FIRESTORE] 🔍 DEBUG:    title: ${data['title']}');
-          print(
-              '[MART FIRESTORE] 🔍 DEBUG:    parent_category_id: ${data['parent_category_id']}');
-        }
-        print('[MART FIRESTORE] 🔍 DEBUG:    ---');
-      }
 
+      }
       final subcategories = querySnapshot.docs
           .map((doc) {
             try {
               final data = doc.data();
-              if (data == null) {
-                print('[MART FIRESTORE] ❌ Document ${doc.id} has null data');
-                return null;
-              }
-
-              // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
-                print(
-                    '[MART FIRESTORE] 🔍 DEBUG: Document data is not a Map for ${doc.id}, type: ${data.runtimeType}');
-                return null;
-              }
 
               final Map<String, dynamic> subcategoryData =
                   Map<String, dynamic>.from(data);
@@ -2238,13 +2191,6 @@ class MartFirestoreService extends GetxService {
         return null;
       }
 
-      // Ensure data is a Map<String, dynamic>
-      if (data is! Map<String, dynamic>) {
-        print(
-            '[MART FIRESTORE] ⚠️ Category data is not a Map for $categoryId, type: ${data.runtimeType}');
-        return null;
-      }
-
       final Map<String, dynamic> categoryData = Map<String, dynamic>.from(data);
 
       // Add document ID to the data
@@ -2295,13 +2241,6 @@ class MartFirestoreService extends GetxService {
         return null;
       }
 
-      // Ensure data is a Map<String, dynamic>
-      if (data is! Map<String, dynamic>) {
-        print(
-            '[MART FIRESTORE] ⚠️ Vendor data is not a Map for $vendorId, type: ${data.runtimeType}');
-        return null;
-      }
-
       final Map<String, dynamic> vendorData = Map<String, dynamic>.from(data);
 
       // Add document ID to the data
@@ -2334,13 +2273,6 @@ class MartFirestoreService extends GetxService {
       final data = docSnapshot.data();
       if (data == null) {
         print('[MART FIRESTORE] ⚠️ Category data is null for: $categoryId');
-        return null;
-      }
-
-      // Ensure data is a Map<String, dynamic>
-      if (data is! Map<String, dynamic>) {
-        print(
-            '[MART FIRESTORE] ⚠️ Category data is not a Map for $categoryId, type: ${data.runtimeType}');
         return null;
       }
 
@@ -2412,17 +2344,6 @@ class MartFirestoreService extends GetxService {
       final doc = querySnapshot.docs.first;
 
       final data = doc.data();
-      if (data == null) {
-        print('[MART FIRESTORE] ⚠️ Item data is null for: $itemId');
-        return null;
-      }
-
-      // Ensure data is a Map<String, dynamic>
-      if (data is! Map<String, dynamic>) {
-        print(
-            '[MART FIRESTORE] ⚠️ Item data is not a Map for $itemId, type: ${data.runtimeType}');
-        return null;
-      }
 
       final Map<String, dynamic> itemData = Map<String, dynamic>.from(data);
 
@@ -3081,14 +3002,6 @@ class MartFirestoreService extends GetxService {
         for (var doc in snapshot.docs) {
           try {
             final data = doc.data();
-            if (data == null) continue;
-
-            // Ensure data is a Map<String, dynamic>
-            if (data is! Map<String, dynamic>) {
-              print(
-                  '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}');
-              continue;
-            }
 
             final Map<String, dynamic> itemData =
                 Map<String, dynamic>.from(data);

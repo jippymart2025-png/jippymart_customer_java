@@ -1,8 +1,8 @@
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
 
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_product_details_view.dart';
 import 'package:jippymart_customer/constant/constant.dart' show Constant, cartItem;
-import 'package:jippymart_customer/controllers/restaurant_details_controller.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
@@ -22,16 +22,15 @@ import 'package:provider/provider.dart';
 import '../../../constant/show_toast_dialog.dart';
 
 class ProductListView extends StatelessWidget {
-  final RestaurantDetailsController controller;
 
-  const ProductListView({super.key, required this.controller});
+  const ProductListView({super.key, });
 
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
 
-    return GetBuilder<RestaurantDetailsController>(
-      builder: (restaurantDetailsControllerOne) {
+    return Consumer<RestaurantDetailsProvider>(
+      builder: (context,controller,_) {
         return Container(
           color: themeChange.getThem()
               ? AppThemeData.grey900
@@ -72,7 +71,7 @@ class ProductListView extends StatelessWidget {
                                 context,
                                 themeChange,
                                 vendorCategoryModel,
-                                index,
+                                index,controller
                               ),
                             );
                           },
@@ -86,7 +85,7 @@ class ProductListView extends StatelessWidget {
     BuildContext context,
     DarkThemeProvider themeChange,
     VendorCategoryModel vendorCategoryModel,
-    int index,
+    int index,RestaurantDetailsProvider controller
   ) {
     return ExpansionTile(
       childrenPadding: EdgeInsets.zero,
@@ -111,10 +110,10 @@ class ProductListView extends StatelessWidget {
         ),
       ),
       children: [
-        GetBuilder<RestaurantDetailsController>(
-          builder: (restaurantDetailsControllerTwo) =>
+    Consumer<RestaurantDetailsProvider>(
+    builder: (context,controller,_) =>
               _buildProductsForCategory(
-                  vendorCategoryModel, context, themeChange),
+                  vendorCategoryModel, context, themeChange,controller),
         ),
       ],
     );
@@ -123,7 +122,7 @@ class ProductListView extends StatelessWidget {
   Widget _buildProductsForCategory(
     VendorCategoryModel vendorCategoryModel,
     BuildContext context,
-    DarkThemeProvider themeChange,
+    DarkThemeProvider themeChange,RestaurantDetailsProvider controller
   ) {
     final products =
         controller.getProductsByCategory(vendorCategoryModel.id.toString());
@@ -136,7 +135,7 @@ class ProductListView extends StatelessWidget {
       itemBuilder: (context, productIndex) {
         ProductModel productModel = products[productIndex];
         return _buildProductItem(productModel, context, themeChange,
-            vendorCategoryModel, productIndex);
+            vendorCategoryModel, productIndex,controller);
       },
     );
   }
@@ -146,7 +145,7 @@ class ProductListView extends StatelessWidget {
       BuildContext context,
       DarkThemeProvider themeChange,
       VendorCategoryModel vendorCategoryModel,
-      int index) {
+      int index,RestaurantDetailsProvider controller) {
     ProductModel productModel = controller
         .getProductsByCategory(vendorCategoryModel.id.toString())[index];
     bool isItemAvailable = productModel.isAvailable ?? true;
@@ -664,7 +663,7 @@ class ProductListView extends StatelessWidget {
                                         }
                                       }
                                     }
-                                    controller.update();
+
                                     controller.calculatePrice(productModel);
                                     productDetailsBottomSheet(
                                         context, productModel);
@@ -974,7 +973,7 @@ productDetailsBottomSheet(BuildContext context, ProductModel productModel) {
           ));
 }
 
-infoDialog(RestaurantDetailsController controller, themeChange,
+infoDialog(RestaurantDetailsProvider controller, themeChange,
     ProductModel productModel) {
   return Dialog(
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),

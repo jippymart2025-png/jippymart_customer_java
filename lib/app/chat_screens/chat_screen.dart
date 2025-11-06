@@ -4,8 +4,8 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/chat_screens/full_screen_image_viewer.dart';
 import 'package:jippymart_customer/app/chat_screens/full_screen_video_viewer.dart';
+import 'package:jippymart_customer/app/chat_screens/provider/chat_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/controllers/chat_controller.dart';
 import 'package:jippymart_customer/models/conversation_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
@@ -29,9 +29,8 @@ class ChatScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: ChatController(),
-        builder: (controller) {
+    return Consumer<ChatProvider>(
+        builder: (context,controller,_) {
           return Scaffold(
             appBar: AppBar(
               backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
@@ -276,7 +275,7 @@ class ChatScreen extends StatelessWidget {
     );
   }
 
-  onCameraClick(BuildContext context, ChatController controller) {
+  onCameraClick(BuildContext context, ChatProvider controller) {
     final action = CupertinoActionSheet(
       message: Text(
         'Send Media'.tr,

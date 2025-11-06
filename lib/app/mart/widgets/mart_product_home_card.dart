@@ -1,51 +1,32 @@
 
 
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/controllers/category_detail_controller.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
+import 'package:provider/provider.dart';
 
 class MartProductCardHome extends StatelessWidget {
   final MartItemModel product;
-  final CategoryDetailController controller;
   final double screenWidth;
 
   const MartProductCardHome({
     super.key,
     required this.product,
-    required this.controller,
     required this.screenWidth,
   });
 
-  String _getSubcategoryName(dynamic subcategoryID) {
-    if (subcategoryID == null) return 'General';
 
-    String? subcategoryTitle;
-
-    if (subcategoryID is String) {
-      subcategoryTitle = controller.subcategories
-          .where((sub) => sub.id == subcategoryID)
-          .firstOrNull
-          ?.title;
-    } else if (subcategoryID is List && subcategoryID.isNotEmpty) {
-      subcategoryTitle = controller.subcategories
-          .where((sub) => sub.id == subcategoryID.first)
-          .firstOrNull
-          ?.title;
-    }
-    return subcategoryTitle ?? 'General';
-  }
 
   Future<void> _handleAddToCart(
       BuildContext context, MartItemModel product) async {
     try {
-      final cartController = Get.find<CartController>();
+      CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
       final martVendorID = "mart_${product.vendorID ?? 'unknown'}";
 
       final cartProduct = CartProductModel(
@@ -65,7 +46,7 @@ class MartProductCardHome extends StatelessWidget {
         promoId: null,
       );
 
-      final success = await cartController.addToCart(
+      final success = await cartControllerProvider.addToCart(
         cartProductModel: cartProduct,
         isIncrement: true,
         quantity: 1,
@@ -170,7 +151,7 @@ class MartProductCardHome extends StatelessWidget {
   Future<void> _handleAddOptionToCart(BuildContext context,
       MartItemModel product, Map<String, dynamic> selectedOption) async {
     try {
-      final cartController = Get.find<CartController>();
+      CartControllerProvider  cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
       final cartProduct = CartProductModel(
         id: "${product.id}_${selectedOption['id']}",
         name: "${product.name} - ${selectedOption['option_title']}",
@@ -195,7 +176,7 @@ class MartProductCardHome extends StatelessWidget {
         promoId: null,
       );
 
-      final success = await cartController.addToCart(
+      final success = await cartControllerProvider.addToCart(
         cartProductModel: cartProduct,
         isIncrement: true,
         quantity: 1,
@@ -867,9 +848,6 @@ class ProductOptionsModal extends StatelessWidget {
                 final hasDiscount = option['original_price'] != null &&
                     option['price'] != null &&
                     option['original_price'] > option['price'];
-                final savings = hasDiscount
-                    ? (option['original_price'] - option['price'])
-                    : 0;
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),

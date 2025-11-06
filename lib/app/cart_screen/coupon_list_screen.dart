@@ -1,9 +1,9 @@
 import 'dart:ui';
 
 import 'package:flutter_svg/svg.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart' show CartControllerProvider;
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
@@ -22,14 +22,10 @@ class CouponListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX<CartController>(
-        builder: (controller) {
-          // Ensure coupons are loaded when screen opens
+    return Consumer<CartControllerProvider>(builder: (context,controller,_) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            print('[COUPON_DEBUG] 🖥️ Coupon screen opened, ensuring coupons are loaded...');
             controller.ensureCouponsLoaded();
           });
-          // Show 'No coupons available' if couponList is empty and loading is done
           if (controller.couponList.isEmpty) {
             return Scaffold(
               backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,

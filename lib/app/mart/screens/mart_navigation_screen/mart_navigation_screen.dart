@@ -1,10 +1,10 @@
+import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/controllers/mart_navigation_controller.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -20,9 +20,8 @@ class MartNavigationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Theme(
       data: MartTheme.theme,
-      child: GetBuilder<MartNavigationController>(
-        init: MartNavigationController(),
-        builder: (navController) {
+      child: Consumer<MartNavigationProvider>(
+        builder: (context,navController,_) {
           return PopScope(
             canPop: false,
             onPopInvoked: (didPop) async {
@@ -39,28 +38,7 @@ class MartNavigationScreen extends StatelessWidget {
                       index: navController.selectedIndex.value,
                       children: navController.pageList,
                     )),
-              // body: Stack(
-              //   children: [
-              //     Obx(() => IndexedStack(
-              //       index: navController.selectedIndex.value,
-              //       children: navController.pageList,
-              //     )),
-              //
-              //     // Fixed Enhanced Floating Navigation Bar
-              //     // Obx(() {
-              //     //   if (navController.selectedIndex.value != 2) {
-              //     //     return Positioned(
-              //     //       bottom: 0,
-              //     //       left: 0,
-              //     //       right: 0,
-              //     //       child: _buildEnhancedNavigationBar(navController),
-              //     //     );
-              //     //   } else {
-              //     //     return const SizedBox.shrink();
-              //     //   }
-              //     // }),
-              //   ],
-              // ),
+
               bottomNavigationBar:  Obx(() {
                 if (navController.selectedIndex.value != 2) {
                return   _buildEnhancedNavigationBar(navController);
@@ -75,7 +53,7 @@ class MartNavigationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEnhancedNavigationBar(MartNavigationController controller) {
+  Widget _buildEnhancedNavigationBar(MartNavigationProvider controller) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -155,7 +133,7 @@ class MartNavigationScreen extends StatelessWidget {
     required String activeIcon,
     required String label,
     required int index,
-    required MartNavigationController controller,
+    required MartNavigationProvider controller,
     Widget? badge,
   }) {
     return Obx(() {

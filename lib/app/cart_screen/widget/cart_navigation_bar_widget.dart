@@ -1,19 +1,16 @@
-import 'package:jippymart_customer/app/cart_screen/select_payment_screen.dart';
-import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/controllers/cart_controller.dart';
 import 'package:jippymart_customer/payment/createRazorPayOrderModel.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 Widget cartNavigationBarWidget(DarkThemeProvider themeChange,
-    CartController controller, BuildContext context) {
+    CartControllerProvider controller, BuildContext context) {
   return Container(
     decoration: BoxDecoration(
         color:
@@ -411,11 +408,10 @@ Widget cartNavigationBarWidget(DarkThemeProvider themeChange,
   );
 
 }
-Future<void> _processPayment(CartController controller, BuildContext context) async {
+Future<void> _processPayment(CartControllerProvider controller, BuildContext context) async {
   // Run bulletproof validation
   final validationStartTime = DateTime.now();
   final canProceed = await controller.validateAndPlaceOrderBulletproof();
-  final validationDuration = DateTime.now().difference(validationStartTime);
   if (!canProceed) {
     return;
   }

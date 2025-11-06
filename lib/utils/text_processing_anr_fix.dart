@@ -69,8 +69,6 @@ class TextProcessingANRFix {
 
   /// **Execute text processing in isolate**
   static T _executeTextInIsolate<T>(Map<String, dynamic> params) {
-    final operationName = params['operationName'] as String;
-    final timeoutMs = params['timeout'] as int?;
     return null as T;
   }
 

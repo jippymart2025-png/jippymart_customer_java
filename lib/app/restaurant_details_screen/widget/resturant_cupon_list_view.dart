@@ -1,4 +1,4 @@
-import 'package:jippymart_customer/controllers/restaurant_details_controller.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
@@ -13,7 +13,7 @@ import '../../../constant/show_toast_dialog.dart';
 import '../../../themes/responsive.dart';
 
 class CouponListView extends StatelessWidget {
-  final RestaurantDetailsController controller;
+  final RestaurantDetailsProvider controller;
 
   const CouponListView({super.key, required this.controller});
 

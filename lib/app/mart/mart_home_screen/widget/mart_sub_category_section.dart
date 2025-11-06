@@ -1,10 +1,11 @@
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
-import '../controller/mart_controller.dart' show MartController;
 
 class MartSubcategoriesSection extends StatelessWidget {
   final double screenWidth;
@@ -76,8 +77,8 @@ class MartSubcategoriesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 16),
-          GetX<MartController>(
-            builder: (controller) {
+          Consumer<MartProvider>(
+            builder: (context,controller,_) {
               final itemCount = controller.homepageSubcategories.length;
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 0),
@@ -133,9 +134,8 @@ class MartSubcategoriesSection extends StatelessWidget {
             },
           ),
           const SizedBox(height: 8),
-          GetX<MartController>(
-            builder: (controller) {
-              // Initial load
+          Consumer<MartProvider>(
+            builder: (context,controller,_) {
               if (controller.subcategoriesMap.isEmpty &&
                   !controller.isSubcategoryLoading.value) {
                 print(
@@ -242,7 +242,7 @@ class MartSubcategoriesSection extends StatelessWidget {
   }
 
   /// Build enhanced empty state
-  Widget _buildEnhancedEmptyState(MartController controller) {
+  Widget _buildEnhancedEmptyState(MartProvider controller) {
     return Container(
       padding: const EdgeInsets.all(32),
       margin: const EdgeInsets.symmetric(vertical: 20),
@@ -307,7 +307,7 @@ class MartSubcategoriesSection extends StatelessWidget {
   }
 
   /// Build enhanced pagination controls
-  Widget _buildEnhancedPaginationControls(MartController controller) {
+  Widget _buildEnhancedPaginationControls(MartProvider controller) {
     return Container(
       margin: const EdgeInsets.only(top: 24, bottom: 16),
       padding: const EdgeInsets.all(16),

@@ -1,4 +1,4 @@
-import 'package:jippymart_customer/controllers/restaurant_details_controller.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
@@ -24,9 +24,8 @@ class ProductDetailsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final themeChange = Provider.of<DarkThemeProvider>(context);
-    return GetX(
-        init: RestaurantDetailsController(),
-        builder: (controller) {
+    return Consumer<RestaurantDetailsProvider>(
+        builder: (context,controller,_) {
           bool isItemAvailable = productModel.isAvailable ?? true;
 
           return Scaffold(
@@ -372,7 +371,6 @@ class ProductDetailsView extends StatelessWidget {
                                                               .value = 1;
                                                         }
 
-                                                        controller.update();
                                                         controller
                                                             .calculatePrice(
                                                                 productModel);
@@ -582,8 +580,7 @@ class ProductDetailsView extends StatelessWidget {
                                                                     .remove(
                                                                         title);
                                                               }
-                                                              controller
-                                                                  .update();
+
                                                             }
                                                           }
                                                         : null,
@@ -632,7 +629,7 @@ class ProductDetailsView extends StatelessWidget {
                                   ? () {
                                       if (controller.quantity.value > 1) {
                                         controller.quantity.value -= 1;
-                                        controller.update();
+
                                       }
                                     }
                                   : null,
@@ -697,7 +694,7 @@ class ProductDetailsView extends StatelessWidget {
                                             (productModel.quantity ?? 0) ==
                                                 -1) {
                                           controller.quantity.value += 1;
-                                          controller.update();
+
                                         } else {
                                           ShowToastDialog.showToast(
                                               "Out of stock".tr);
@@ -717,7 +714,7 @@ class ProductDetailsView extends StatelessWidget {
                                                 totalQuantity ||
                                             totalQuantity == -1) {
                                           controller.quantity.value += 1;
-                                          controller.update();
+
                                         } else {
                                           ShowToastDialog.showToast(
                                               "Out of stock".tr);
