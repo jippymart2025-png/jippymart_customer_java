@@ -28,7 +28,6 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<DashBoardProvider>(
       builder: (context, controller, _) {
         // Ensure pageList is initialized and has items
@@ -62,44 +61,34 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           },
           child: Scaffold(
             body: IndexedStack(index: safeIndex, children: safePageList),
-            bottomNavigationBar: _buildBottomNavigationBar(
-              themeChange,
-              controller,
-            ),
+            bottomNavigationBar: _buildBottomNavigationBar(controller),
           ),
         );
       },
     );
   }
 
-  Widget _buildBottomNavigationBar(
-    DarkThemeProvider themeChange,
-    DashBoardProvider controller,
-  ) {
+  Widget _buildBottomNavigationBar(DashBoardProvider controller) {
     final List<BottomNavigationBarItem> items = [
       _buildNavigationBarItem(
-        themeChange,
         index: 0,
         assetIcon: ImageConst.homeOne,
         label: 'Home'.tr,
         controller: controller,
       ),
       _buildNavigationBarItem(
-        themeChange,
         index: 1,
         assetIcon: ImageConst.favoriteOne,
         label: 'Favourites'.tr,
         controller: controller,
       ),
       _buildNavigationBarItem(
-        themeChange,
         index: 2,
         assetIcon: ImageConst.cartOne,
         label: 'Cart'.tr,
         controller: controller,
       ),
       _buildNavigationBarItem(
-        themeChange,
         index: 3,
         assetIcon: ImageConst.orderOne,
         label: 'Orders'.tr,
@@ -117,15 +106,9 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
       selectedLabelStyle: const TextStyle(fontFamily: AppThemeData.bold),
       unselectedLabelStyle: const TextStyle(fontFamily: AppThemeData.bold),
       currentIndex: safeIndex,
-      backgroundColor: themeChange.getThem()
-          ? AppThemeData.grey900
-          : AppThemeData.grey50,
-      selectedItemColor: themeChange.getThem()
-          ? AppThemeData.primary300
-          : AppThemeData.primary300,
-      unselectedItemColor: themeChange.getThem()
-          ? AppThemeData.grey300
-          : AppThemeData.grey600,
+      backgroundColor: AppThemeData.grey50,
+      selectedItemColor: AppThemeData.primary300,
+      unselectedItemColor: AppThemeData.grey600,
       onTap: (int index) {
         controller.changeNavbar(index.clamp(0, items.length - 1));
       },
@@ -133,8 +116,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     );
   }
 
-  BottomNavigationBarItem _buildNavigationBarItem(
-    DarkThemeProvider themeChange, {
+  BottomNavigationBarItem _buildNavigationBarItem({
     required int index,
     required String label,
     required String assetIcon,
@@ -142,10 +124,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
   }) {
     final isSelected = controller.selectedIndex == index;
     final iconColor = isSelected
-        ? (themeChange.getThem()
-              ? AppThemeData.primary300
-              : AppThemeData.primary300)
-        : (themeChange.getThem() ? AppThemeData.grey300 : AppThemeData.grey600);
+        ? (AppThemeData.primary300)
+        : (AppThemeData.grey600);
 
     return BottomNavigationBarItem(
       icon: Padding(

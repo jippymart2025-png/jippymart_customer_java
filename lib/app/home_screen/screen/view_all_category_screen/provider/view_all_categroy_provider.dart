@@ -27,11 +27,8 @@ class ViewAllCategoryProvider extends ChangeNotifier{
   if (!CategoryConfig.enableCategoryFiltering) {
   return;
   }
-
   List<VendorCategoryModel> filteredCategories = [];
-
   if (CategoryConfig.useTitleFiltering) {
-  // Filter by category titles
   filteredCategories = vendorCategoryModel.where((category) {
   return category.title != null &&
   CategoryConfig.allowedCategoryTitles.contains(category.title);

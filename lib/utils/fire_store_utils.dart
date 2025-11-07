@@ -62,7 +62,6 @@ import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:provider/provider.dart';
 import 'package:uuid/uuid.dart';
 import 'package:video_compress/video_compress.dart';
 
@@ -420,7 +419,6 @@ class FireStoreUtils {
 
   static Future<bool> updateUser(UserModel userModel) async {
     bool isUpdate = false;
-    // Always use Firebase UID as document ID
     String uid = userModel.id ?? FirebaseAuth.instance.currentUser?.uid ?? '';
     if (uid.isEmpty) {
       log('updateUser: No UID available for user document!');
@@ -1389,25 +1387,25 @@ class FireStoreUtils {
     return list;
   }
 
-  static Future<List<VendorCategoryModel>> getHomeVendorCategory() async {
-    List<VendorCategoryModel> list = [];
-    await fireStore
-        .collection(CollectionName.vendorCategories)
-        .where("show_in_homepage", isEqualTo: true)
-        .where('publish', isEqualTo: true)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            VendorCategoryModel walletTransactionModel =
-                VendorCategoryModel.fromJson(element.data());
-            list.add(walletTransactionModel);
-          }
-        })
-        .catchError((error) {
-          log(error.toString());
-        });
-    return list;
-  }
+  // static Future<List<VendorCategoryModel>> getHomeVendorCategory() async {
+  //   List<VendorCategoryModel> list = [];
+  //   await fireStore
+  //       .collection(CollectionName.vendorCategories)
+  //       .where("show_in_homepage", isEqualTo: true)
+  //       .where('publish', isEqualTo: true)
+  //       .get()
+  //       .then((value) {
+  //         for (var element in value.docs) {
+  //           VendorCategoryModel walletTransactionModel =
+  //               VendorCategoryModel.fromJson(element.data());
+  //           list.add(walletTransactionModel);
+  //         }
+  //       })
+  //       .catchError((error) {
+  //         log(error.toString());
+  //       });
+  //   return list;
+  // }
 
   static Future<List<VendorCategoryModel>> getVendorCategory() async {
     List<VendorCategoryModel> list = [];
@@ -1428,189 +1426,139 @@ class FireStoreUtils {
     return list;
   }
 
-  /// Helper method to ensure zone is detected before banner filtering
-  // static Future<void> _ensureZoneIsDetected() async {
-  //   // If zone is already detected, return
-  //   if (Constant.selectedZone != null) {
-  //     log('[BANNER_FILTERING] Zone already detected: ${Constant.selectedZone!.id}');
-  //     return;
-  //   }
   //
-  //   // Check if we have a valid location
-  //   if (Constant.selectedLocation.location?.latitude == null ||
-  //       Constant.selectedLocation.location?.longitude == null) {
-  //     log('[BANNER_FILTERING] No valid location available for zone detection');
-  //     return;
-  //   }
+  // static Future<List<BannerModel>> getHomeTopBanner() async {
+  //   List<BannerModel> bannerList = [];
+  //   List<BannerModel> filteredBannerList = [];
+  //   String? customerZoneId = Constant.selectedZone?.id;
+  //   String? customerZoneTitle = Constant.selectedZone?.name;
+  //   log(
+  //     '[BANNER_FILTERING] Customer zone - ID: $customerZoneId, Title: $customerZoneTitle',
+  //   );
   //
-  //   try {
-  //     log('[BANNER_FILTERING] Attempting to detect zone for location: ${Constant.selectedLocation.location!.latitude}, ${Constant.selectedLocation.location!.longitude}');
+  //   await fireStore
+  //       .collection(CollectionName.menuItems)
+  //       .where("is_publish", isEqualTo: true)
+  //       .where("position", isEqualTo: "top")
+  //       .orderBy("set_order", descending: false)
+  //       .get()
+  //       .then((value) {
+  //         log(
+  //           '[BANNER_FILTERING] Total banners in database: ${value.docs.length}',
+  //         );
   //
-  //     // Get all zones and check if current location is within any zone
-  //     List<ZoneModel>? zones = await getZone();
+  //         for (var element in value.docs) {
+  //           BannerModel bannerHome = BannerModel.fromJson(element.data());
+  //           bannerList.add(bannerHome);
   //
-  //     if (zones != null && zones.isNotEmpty) {
-  //       for (ZoneModel zone in zones) {
-  //         if (zone.area != null &&
-  //             Constant.isPointInPolygon(
-  //               LatLng(Constant.selectedLocation.location!.latitude!,
-  //                   Constant.selectedLocation.location!.longitude!),
-  //               zone.area!,
-  //             )) {
-  //           Constant.selectedZone = zone;
-  //           Constant.isZoneAvailable = true;
-  //           log('[BANNER_FILTERING] Zone detected successfully: ${zone.id} - ${zone.name}');
-  //           return;
+  //           // Filter banners by zone
+  //           bool shouldShowBanner = false;
+  //
+  //           // If banner has no zone specified, show it to all zones
+  //           if (bannerHome.zoneId == null || bannerHome.zoneId!.isEmpty) {
+  //             shouldShowBanner = true;
+  //             log(
+  //               '[BANNER_FILTERING] Banner "${bannerHome.title}" - No zone specified, showing to all zones',
+  //             );
+  //           }
+  //           // If customer zone is null/not set, show all banners (fallback behavior)
+  //           else if (customerZoneId == null || customerZoneId.isEmpty) {
+  //             shouldShowBanner = true;
+  //             log(
+  //               '[BANNER_FILTERING] Banner "${bannerHome.title}" - Customer zone not set, showing all banners (fallback)',
+  //             );
+  //           }
+  //           // If banner zone matches customer zone
+  //           else if (bannerHome.zoneId == customerZoneId) {
+  //             shouldShowBanner = true;
+  //             log(
+  //               '[BANNER_FILTERING] Banner "${bannerHome.title}" - Zone matches customer zone ($customerZoneId)',
+  //             );
+  //           } else {
+  //             log(
+  //               '[BANNER_FILTERING] Banner "${bannerHome.title}" - Zone ${bannerHome.zoneId} does not match customer zone $customerZoneId',
+  //             );
+  //           }
+  //           if (shouldShowBanner) {
+  //             filteredBannerList.add(bannerHome);
+  //           }
   //         }
-  //       }
-  //       log('[BANNER_FILTERING] Location is not within any service zone');
-  //     } else {
-  //       log('[BANNER_FILTERING] No zones available in database');
-  //     }
-  //   } catch (e) {
-  //     log('[BANNER_FILTERING] Error detecting zone: $e');
-  //   }
+  //
+  //         log(
+  //           '[BANNER_FILTERING] Banners matching customer zone: ${filteredBannerList.length}',
+  //         );
+  //       });
+  //   return filteredBannerList;
   // }
-
-  static Future<List<BannerModel>> getHomeTopBanner() async {
-    List<BannerModel> bannerList = [];
-    List<BannerModel> filteredBannerList = [];
-
-    // Get customer's current zone (should be set by home controller)
-    String? customerZoneId = Constant.selectedZone?.id;
-    String? customerZoneTitle = Constant.selectedZone?.name;
-
-    log(
-      '[BANNER_FILTERING] Customer zone - ID: $customerZoneId, Title: $customerZoneTitle',
-    );
-
-    await fireStore
-        .collection(CollectionName.menuItems)
-        .where("is_publish", isEqualTo: true)
-        .where("position", isEqualTo: "top")
-        .orderBy("set_order", descending: false)
-        .get()
-        .then((value) {
-          log(
-            '[BANNER_FILTERING] Total banners in database: ${value.docs.length}',
-          );
-
-          for (var element in value.docs) {
-            BannerModel bannerHome = BannerModel.fromJson(element.data());
-            bannerList.add(bannerHome);
-
-            // Filter banners by zone
-            bool shouldShowBanner = false;
-
-            // If banner has no zone specified, show it to all zones
-            if (bannerHome.zoneId == null || bannerHome.zoneId!.isEmpty) {
-              shouldShowBanner = true;
-              log(
-                '[BANNER_FILTERING] Banner "${bannerHome.title}" - No zone specified, showing to all zones',
-              );
-            }
-            // If customer zone is null/not set, show all banners (fallback behavior)
-            else if (customerZoneId == null || customerZoneId.isEmpty) {
-              shouldShowBanner = true;
-              log(
-                '[BANNER_FILTERING] Banner "${bannerHome.title}" - Customer zone not set, showing all banners (fallback)',
-              );
-            }
-            // If banner zone matches customer zone
-            else if (bannerHome.zoneId == customerZoneId) {
-              shouldShowBanner = true;
-              log(
-                '[BANNER_FILTERING] Banner "${bannerHome.title}" - Zone matches customer zone ($customerZoneId)',
-              );
-            }
-            // If banner zone doesn't match
-            else {
-              log(
-                '[BANNER_FILTERING] Banner "${bannerHome.title}" - Zone ${bannerHome.zoneId} does not match customer zone $customerZoneId',
-              );
-            }
-
-            if (shouldShowBanner) {
-              filteredBannerList.add(bannerHome);
-            }
-          }
-
-          log(
-            '[BANNER_FILTERING] Banners matching customer zone: ${filteredBannerList.length}',
-          );
-        });
-    return filteredBannerList;
-  }
-
-  static Future<List<BannerModel>> getHomeBottomBanner() async {
-    List<BannerModel> bannerList = [];
-    List<BannerModel> filteredBannerList = [];
-
-    // Get customer's current zone (should be set by home controller)
-    String? customerZoneId = Constant.selectedZone?.id;
-    String? customerZoneTitle = Constant.selectedZone?.name;
-
-    log(
-      '[BANNER_FILTERING] Customer zone for bottom banners - ID: $customerZoneId, Title: $customerZoneTitle',
-    );
-
-    await fireStore
-        .collection(CollectionName.menuItems)
-        .where("is_publish", isEqualTo: true)
-        .where("position", isEqualTo: "middle")
-        .orderBy("set_order", descending: false)
-        .get()
-        .then((value) {
-          log(
-            '[BANNER_FILTERING] Total bottom banners in database: ${value.docs.length}',
-          );
-
-          for (var element in value.docs) {
-            BannerModel bannerHome = BannerModel.fromJson(element.data());
-            bannerList.add(bannerHome);
-
-            // Filter banners by zone
-            bool shouldShowBanner = false;
-
-            // If banner has no zone specified, show it to all zones
-            if (bannerHome.zoneId == null || bannerHome.zoneId!.isEmpty) {
-              shouldShowBanner = true;
-              log(
-                '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - No zone specified, showing to all zones',
-              );
-            }
-            // If customer zone is null/not set, show all banners (fallback behavior)
-            else if (customerZoneId == null || customerZoneId.isEmpty) {
-              shouldShowBanner = true;
-              log(
-                '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Customer zone not set, showing all banners (fallback)',
-              );
-            }
-            // If banner zone matches customer zone
-            else if (bannerHome.zoneId == customerZoneId) {
-              shouldShowBanner = true;
-              log(
-                '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Zone matches customer zone ($customerZoneId)',
-              );
-            }
-            // If banner zone doesn't match
-            else {
-              log(
-                '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Zone ${bannerHome.zoneId} does not match customer zone $customerZoneId',
-              );
-            }
-
-            if (shouldShowBanner) {
-              filteredBannerList.add(bannerHome);
-            }
-          }
-
-          log(
-            '[BANNER_FILTERING] Bottom banners matching customer zone: ${filteredBannerList.length}',
-          );
-        });
-    return filteredBannerList;
-  }
+  //
+  // static Future<List<BannerModel>> getHomeBottomBanner() async {
+  //   List<BannerModel> bannerList = [];
+  //   List<BannerModel> filteredBannerList = [];
+  //   // Get customer's current zone (should be set by home controller)
+  //   String? customerZoneId = Constant.selectedZone?.id;
+  //   String? customerZoneTitle = Constant.selectedZone?.name;
+  //
+  //   log(
+  //     '[BANNER_FILTERING] Customer zone for bottom banners - ID: $customerZoneId, Title: $customerZoneTitle',
+  //   );
+  //
+  //   await fireStore
+  //       .collection(CollectionName.menuItems)
+  //       .where("is_publish", isEqualTo: true)
+  //       .where("position", isEqualTo: "middle")
+  //       .orderBy("set_order", descending: false)
+  //       .get()
+  //       .then((value) {
+  //         log(
+  //           '[BANNER_FILTERING] Total bottom banners in database: ${value.docs.length}',
+  //         );
+  //
+  //         for (var element in value.docs) {
+  //           BannerModel bannerHome = BannerModel.fromJson(element.data());
+  //           bannerList.add(bannerHome);
+  //
+  //           // Filter banners by zone
+  //           bool shouldShowBanner = false;
+  //
+  //           // If banner has no zone specified, show it to all zones
+  //           if (bannerHome.zoneId == null || bannerHome.zoneId!.isEmpty) {
+  //             shouldShowBanner = true;
+  //             log(
+  //               '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - No zone specified, showing to all zones',
+  //             );
+  //           }
+  //           // If customer zone is null/not set, show all banners (fallback behavior)
+  //           else if (customerZoneId == null || customerZoneId.isEmpty) {
+  //             shouldShowBanner = true;
+  //             log(
+  //               '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Customer zone not set, showing all banners (fallback)',
+  //             );
+  //           }
+  //           // If banner zone matches customer zone
+  //           else if (bannerHome.zoneId == customerZoneId) {
+  //             shouldShowBanner = true;
+  //             log(
+  //               '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Zone matches customer zone ($customerZoneId)',
+  //             );
+  //           }
+  //           // If banner zone doesn't match
+  //           else {
+  //             log(
+  //               '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Zone ${bannerHome.zoneId} does not match customer zone $customerZoneId',
+  //             );
+  //           }
+  //
+  //           if (shouldShowBanner) {
+  //             filteredBannerList.add(bannerHome);
+  //           }
+  //         }
+  //
+  //         log(
+  //           '[BANNER_FILTERING] Bottom banners matching customer zone: ${filteredBannerList.length}',
+  //         );
+  //       });
+  //   return filteredBannerList;
+  // }
 
   // ==================== MART BANNERS ====================
 

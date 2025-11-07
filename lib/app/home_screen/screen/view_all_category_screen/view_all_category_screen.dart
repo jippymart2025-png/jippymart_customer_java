@@ -14,15 +14,12 @@ class ViewAllCategoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
-    final bool isDark = themeChange.getThem();
-
     return Consumer<ViewAllCategoryProvider>(
       builder: (context, controller, _) {
         return Scaffold(
-          backgroundColor: isDark ? AppThemeData.grey50 : AppThemeData.grey50,
+          backgroundColor: AppThemeData.grey50,
           appBar: AppBar(
-            backgroundColor: isDark ? AppThemeData.surfaceDark : AppThemeData.surface,
+            backgroundColor: AppThemeData.surface,
             elevation: 0,
             centerTitle: false,
             titleSpacing: 0,
@@ -30,7 +27,7 @@ class ViewAllCategoryScreen extends StatelessWidget {
               "Categories".tr,
               style: TextStyle(
                 fontSize: 18,
-                color: isDark ? AppThemeData.grey50 : AppThemeData.grey900,
+                color: AppThemeData.grey900,
                 fontFamily: AppThemeData.extraBold,
                 fontWeight: FontWeight.w700,
               ),
@@ -39,63 +36,61 @@ class ViewAllCategoryScreen extends StatelessWidget {
           body: controller.isLoading
               ? Constant.loader()
               : Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Scrollbar(
-                    thumbVisibility: true,
-                    thickness: 4,
-                    radius: const Radius.circular(10),
-                    child: GridView.builder(
-                      padding: const EdgeInsets.only(bottom: 16),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 16,
-                        crossAxisSpacing: 16,
-                        childAspectRatio: 0.8,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 16,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Scrollbar(
+                          thumbVisibility: true,
+                          thickness: 4,
+                          radius: const Radius.circular(10),
+                          child: GridView.builder(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  mainAxisSpacing: 16,
+                                  crossAxisSpacing: 16,
+                                  childAspectRatio: 0.8,
+                                ),
+                            itemCount: controller.vendorCategoryModel.length,
+                            itemBuilder: (context, index) {
+                              VendorCategoryModel vendorCategoryModel =
+                                  controller.vendorCategoryModel[index];
+                              return _buildCategoryItem(
+                                vendorCategoryModel,
+                                context,
+                              );
+                            },
+                          ),
+                        ),
                       ),
-                      itemCount: controller.vendorCategoryModel.length,
-                      itemBuilder: (context, index) {
-                        VendorCategoryModel vendorCategoryModel = controller.vendorCategoryModel[index];
-                        return _buildCategoryItem(
-                          vendorCategoryModel,
-                          isDark,
-                          context,
-                        );
-                      },
-                    ),
+                    ],
                   ),
                 ),
-              ],
-            ),
-          ),
         );
       },
     );
   }
 
   Widget _buildCategoryItem(
-      VendorCategoryModel category,
-      bool isDark,
-      BuildContext context,
-      ) {
+    VendorCategoryModel category,
+    BuildContext context,
+  ) {
     return Card(
       elevation: 0,
-      shadowColor: isDark ? Colors.black54 : Colors.grey.withOpacity(0.3),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      color: isDark ? AppThemeData.grey50 : AppThemeData.grey50,
+      shadowColor: Colors.grey.withOpacity(0.3),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: AppThemeData.grey50,
       child: InkWell(
         onTap: () {
           Get.to(
             const CategoryRestaurantScreen(),
-            arguments: {
-              "vendorCategoryModel": category,
-              "dineIn": false,
-            },
+            arguments: {"vendorCategoryModel": category, "dineIn": false},
             transition: Transition.cupertino,
           );
         },
@@ -111,10 +106,10 @@ class ViewAllCategoryScreen extends StatelessWidget {
                 height: 70,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: isDark ? AppThemeData.surfaceDark : Colors.grey.shade100,
+                  color: Colors.grey.shade100,
                   boxShadow: [
                     BoxShadow(
-                      color: isDark ? Colors.black26 : Colors.grey.withOpacity(0.2),
+                      color: Colors.grey.withOpacity(0.2),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -148,7 +143,7 @@ class ViewAllCategoryScreen extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: isDark ? AppThemeData.grey50 : AppThemeData.grey900,
+                    color: AppThemeData.grey900,
                     fontFamily: AppThemeData.medium,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,

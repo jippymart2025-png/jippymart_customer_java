@@ -28,335 +28,349 @@ class MartHomeScreen extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     Size size = MediaQuery.of(context).size;
     return Theme(
-        data: MartTheme.theme,
-        child: Scaffold(
-          backgroundColor: Colors.transparent,
-          body: Consumer<MartProvider>(
-            builder: (context,controller,_) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (controller.featuredCategories.isEmpty &&
-                    !controller.isCategoryLoading.value &&
-                    !controller.isHomepageCategoriesLoaded.value) {
-                  controller.loadHomepageCategoriesStreaming(limit: 6);
+      data: MartTheme.theme,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Consumer<MartProvider>(
+          builder: (context, controller, _) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (controller.featuredCategories.isEmpty &&
+                  !controller.isCategoryLoading.value &&
+                  !controller.isHomepageCategoriesLoaded.value) {
+                controller.loadHomepageCategoriesStreaming(limit: 6);
+              }
+              if (controller.featuredItems.isEmpty &&
+                  !controller.isProductLoading.value) {
+                controller.loadFeaturedItemsStreaming();
+              }
+              if (controller.trendingItems.isEmpty &&
+                  !controller.isTrendingLoading.value) {
+                controller.loadTrendingItemsStreaming();
+              }
+              // Load subcategories for the subcategories section
+              if (controller.subcategories.isEmpty &&
+                  !controller.isSubcategoryLoading.value) {
+                if (controller.featuredCategories.isNotEmpty) {
+                  final mainCategory = controller.featuredCategories[0];
+                  controller.loadSubcategoriesStreaming(mainCategory.id ?? '');
                 }
-                if (controller.featuredItems.isEmpty &&
-                    !controller.isProductLoading.value) {
-                  controller.loadFeaturedItemsStreaming();
-                }
-                if (controller.trendingItems.isEmpty &&
-                    !controller.isTrendingLoading.value) {
-                  controller.loadTrendingItemsStreaming();
-                }
-                // Load subcategories for the subcategories section
-                if (controller.subcategories.isEmpty &&
-                    !controller.isSubcategoryLoading.value) {
-
-                  if (controller.featuredCategories.isNotEmpty) {
-                    final mainCategory = controller.featuredCategories[0];
-                    controller
-                        .loadSubcategoriesStreaming(mainCategory.id ?? '');
-                  }
-                }
-                Future.microtask(() {
-                  controller.loadMartBannersStream();
-                });
-                if (controller.martTopBanners.isNotEmpty) {
-                  controller.startMartBannerTimer();
-                }
+              }
+              Future.microtask(() {
+                controller.loadMartBannersStream();
               });
-              return SingleChildScrollView(
-                child: Column(
-                  children: [
+              if (controller.martTopBanners.isNotEmpty) {
+                controller.startMartBannerTimer();
+              }
+            });
+            return SingleChildScrollView(
+              child: Column(
+                children: [
                   Stack(
-                        children: [
-                          Container(
-                            height: 430, // set your desired height
-                            width: double.infinity,  // set your desired width
-                            decoration: BoxDecoration(
-                              color: ColorConst.greenLight,
-                              borderRadius: BorderRadius.only(bottomLeft: Radius.circular(26),bottomRight: Radius.circular(26
-                                ,)
-                                ,), // set your desired radius
-                            ),
-                          ),
-                          RefreshIndicator(
-                            onRefresh: controller.refreshData,
-                            child: Column(
-                              children: [
-                                MartHeaderCard(screenWidth: screenWidth),
-                                SizedBox(height: 10,),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                  child: InkWell(
-                                    onTap: () {
-                                      Get.to(() => const MartSearchScreen());
-                                    },
-                                    child: AnimatedSearchHint(
-                                      controller: null,
-                                      enable: false,
-                                      fillColor: Colors.white,
-                                      fontFamily: 'Outfit-Bold',
-                                      textStyle: TextStyle(
-                                        fontFamily: 'Outfit-Bold',
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 12,
-                                        color: Colors.black,
-                                      ),
-                                      hintTextStyle: TextStyle(
-                                        fontFamily: 'Outfit-Bold',
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 15,
-                                        color: Colors.grey,
-                                      ),
-                                      suffix: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                                        child: SvgPicture.asset(
-                                          "assets/icons/ic_search.svg",
-                                          color: Color(0xFFff5201),
-                                        ),
-                                      ),
-                                      hints: [
-                                        "Search 'milk'",
-                                        "Search 'bread'",
-                                        "Search 'rice'",
-                                        "Search 'atta'",
-                                        "Search 'oil'",
-                                        "Search 'sugar'",
-                                        "Search 'tea'",
-                                        "Search 'coffee'",
-                                        "Search 'snacks'",
-                                        "Search 'biscuits'",
-                                        "Search 'cold drinks'",
-                                        "Search 'toothpaste'",
-                                        "Search 'detergent'",
-                                        "Search 'shampoo'",
-                                        "Search 'soap'",
-                                        "Search 'cleaning supplies'",
-                                        "Search 'baby care'",
-                                        "Search 'personal care'",
-                                        "Search 'frozen food'",
-                                        "Search 'fresh vegetables'",
-                                        "Search 'fruits'",
-                                        "Search 'eggs'",
-                                        "Search 'dry fruits'",
-                                        "Search 'masala'",
-                                        "Search 'instant food'",
-                                        "Search 'breakfast items'",
-                                        "Search 'stationery'",
-                                        "Search 'pet food'",
-                                        "Search 'household essentials'",
-                                        "Search 'kitchen items'",
-                                        "Search 'offers near you'",
-                                        "Search 'best deals'",
-                                        "Search 'today’s discount'",
-                                        "Search 'new arrivals'",
-                                        "Search 'bestsellers'",
-                                      ],
-                                      interval: const Duration(seconds: 2),
+                    children: [
+                      Container(
+                        height: 430, // set your desired height
+                        width: double.infinity, // set your desired width
+                        decoration: BoxDecoration(
+                          color: ColorConst.greenLight,
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(26),
+                            bottomRight: Radius.circular(26),
+                          ), // set your desired radius
+                        ),
+                      ),
+                      RefreshIndicator(
+                        onRefresh: controller.refreshData,
+                        child: Column(
+                          children: [
+                            MartHeaderCard(screenWidth: screenWidth),
+                            SizedBox(height: 10),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: InkWell(
+                                onTap: () {
+                                  Get.to(() => const MartSearchScreen());
+                                },
+                                child: AnimatedSearchHint(
+                                  controller: null,
+                                  enable: false,
+                                  fillColor: Colors.white,
+                                  fontFamily: 'Outfit-Bold',
+                                  textStyle: TextStyle(
+                                    fontFamily: 'Outfit-Bold',
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                    color: Colors.black,
+                                  ),
+                                  hintTextStyle: TextStyle(
+                                    fontFamily: 'Outfit-Bold',
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15,
+                                    color: Colors.grey,
+                                  ),
+                                  suffix: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    child: SvgPicture.asset(
+                                      "assets/icons/ic_search.svg",
+                                      color: Color(0xFFff5201),
                                     ),
                                   ),
+                                  hints: [
+                                    "Search 'milk'",
+                                    "Search 'bread'",
+                                    "Search 'rice'",
+                                    "Search 'atta'",
+                                    "Search 'oil'",
+                                    "Search 'sugar'",
+                                    "Search 'tea'",
+                                    "Search 'coffee'",
+                                    "Search 'snacks'",
+                                    "Search 'biscuits'",
+                                    "Search 'cold drinks'",
+                                    "Search 'toothpaste'",
+                                    "Search 'detergent'",
+                                    "Search 'shampoo'",
+                                    "Search 'soap'",
+                                    "Search 'cleaning supplies'",
+                                    "Search 'baby care'",
+                                    "Search 'personal care'",
+                                    "Search 'frozen food'",
+                                    "Search 'fresh vegetables'",
+                                    "Search 'fruits'",
+                                    "Search 'eggs'",
+                                    "Search 'dry fruits'",
+                                    "Search 'masala'",
+                                    "Search 'instant food'",
+                                    "Search 'breakfast items'",
+                                    "Search 'stationery'",
+                                    "Search 'pet food'",
+                                    "Search 'household essentials'",
+                                    "Search 'kitchen items'",
+                                    "Search 'offers near you'",
+                                    "Search 'best deals'",
+                                    "Search 'today’s discount'",
+                                    "Search 'new arrivals'",
+                                    "Search 'bestsellers'",
+                                  ],
+                                  interval: const Duration(seconds: 2),
                                 ),
-                                SizedBox(height: 10,),
-                                Obx(() {
-                                    if (controller.martTopBanners.isNotEmpty) {
-                                      return Column(
-                                        children: [
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 10.0,right: 10,top: 10),
-                                            child: ReusableBannerWidget(
-                                              banners: controller.martTopBanners,
-                                              pageController: controller
-                                                  .martTopBannerController.value,
-                                              currentPage:
-                                              controller.currentTopBannerPage,
-                                              height: 150,
-                                              onPanStart: () =>
-                                                  controller.stopMartBannerTimer(),
-                                              onPanEnd: () =>
-                                                  controller.startMartBannerTimer(),
-                                            ),
-                                          ),
-                                        ],
-                                      );
-                                    } else {
-                                      return const SizedBox.shrink();
-                                    }
-                                  }),
-                                SizedBox(height: 10,),
-                                groceryComponent(size),
-                              // MartFeaturedProducts(screenWidth: screenWidth),
-                              // Obx(() {
-                              //       if (controller.martBottomBanners.isNotEmpty) {
-                              //         return Column(
-                              //           children: [
-                              //             const SizedBox(height: 8),
-                              //             ReusableBannerWidget(
-                              //               banners: controller.martBottomBanners,
-                              //               pageController: controller
-                              //                   .martBottomBannerController.value,
-                              //               currentPage:
-                              //               controller.currentBottomBannerPage,
-                              //               height: 150,
-                              //               enableAutoScroll:
-                              //               false, // Bottom banners don't auto-scroll
-                              //             ),
-                              //             const SizedBox(height: 8),
-                              //             BannerIndicatorDots(
-                              //               itemCount:
-                              //               controller.martBottomBanners.length,
-                              //               currentIndex:
-                              //               controller.currentBottomBannerPage,
-                              //               activeColor: const Color(0xFF00998a),
-                              //               inactiveColor: Colors.grey[300]!,
-                              //             ),
-                              //             const SizedBox(height: 8),
-                              //           ],
-                              //         );
-                              //       }
-                              //       return const SizedBox.shrink();
-                              //     }),
-                               // MartTrendingDealsPersonalCare(
-                               //        screenWidth: screenWidth,),
-                                // Subcategories Section
-                                // MartSubcategoriesSection(
-                                //       screenWidth: screenWidth),
-                                // // Product Deals Section
-                              // MartProductDealsSection(screenWidth: screenWidth),
-                                // Dynamic Sections from Firebase
-                                // MartDynamicSections(screenWidth: screenWidth),
-                                MartDynamicSectionsEnhanced(screenWidth: screenWidth),
-                                 SizedBox(height: 25,),
-                              ],
+                              ),
                             ),
-                          ),
-                          // Positioned(
-                          //   bottom: MediaQuery.of(context).padding.bottom +
-                          //       120, // Above bottom navigation
-                          //   right: 16,
-                          //   child: GestureDetector(
-                          //     onTap: () async {
-                          //       // WhatsApp number - you can change this to your desired number
-                          //       const String phoneNumber =
-                          //           '+919390579864'; // Your actual WhatsApp number
-                          //       const String message =
-                          //           'Hello! I need help with my JippyMart order.'; // Customize the message
-                          //
-                          //       final Uri whatsappUrl = Uri.parse(
-                          //           'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
-                          //
-                          //       try {
-                          //         if (await canLaunchUrl(whatsappUrl)) {
-                          //           await launchUrl(whatsappUrl,
-                          //               mode: LaunchMode.externalApplication);
-                          //         } else {
-                          //           // Fallback to regular phone call if WhatsApp is not available
-                          //           final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
-                          //           if (await canLaunchUrl(phoneUrl)) {
-                          //             await launchUrl(phoneUrl,
-                          //                 mode: LaunchMode.externalApplication);
-                          //           }
-                          //         }
-                          //       } catch (e) {
-                          //         print('Error launching WhatsApp: $e');
-                          //       }
-                          //     },
-                          //     child: Container(
-                          //       width: 56,
-                          //       height: 56,
-                          //       decoration: BoxDecoration(
-                          //         color: Colors.green, // WhatsApp green color
-                          //         shape: BoxShape.circle,
-                          //         boxShadow: [
-                          //           BoxShadow(
-                          //             color: Colors.black.withOpacity(0.2),
-                          //             blurRadius: 8,
-                          //             offset: const Offset(0, 4),
-                          //           ),
-                          //         ],
-                          //       ),
-                          //       child: Padding(
-                          //         padding: const EdgeInsets.all(0.0),
-                          //         child: SvgPicture.asset(
-                          //           'assets/images/whatsapp.svg',
-                          //           width: 24,
-                          //           height: 24,
-                          //           colorFilter: const ColorFilter.mode(
-                          //             Colors.white,
-                          //             BlendMode.srcIn,
-                          //           ),
-                          //         ),
-                          //       ),
-                          //     ),
-                          //   ),
-                          // ),
-
-                        ],
+                            SizedBox(height: 10),
+                            Obx(() {
+                              if (controller.martTopBanners.isNotEmpty) {
+                                return Column(
+                                  children: [
+                                    Padding(
+                                      padding: const EdgeInsets.only(
+                                        left: 10.0,
+                                        right: 10,
+                                        top: 10,
+                                      ),
+                                      child: ReusableBannerWidget(
+                                        banners: controller.martTopBanners,
+                                        pageController: controller
+                                            .martTopBannerController
+                                            .value,
+                                        currentPage:
+                                            controller.currentTopBannerPage,
+                                        height: 150,
+                                        onPanStart: () =>
+                                            controller.stopMartBannerTimer(),
+                                        onPanEnd: () =>
+                                            controller.startMartBannerTimer(),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              } else {
+                                return const SizedBox.shrink();
+                              }
+                            }),
+                            SizedBox(height: 10),
+                            groceryComponent(size),
+                            // MartFeaturedProducts(screenWidth: screenWidth),
+                            // Obx(() {
+                            //       if (controller.martBottomBanners.isNotEmpty) {
+                            //         return Column(
+                            //           children: [
+                            //             const SizedBox(height: 8),
+                            //             ReusableBannerWidget(
+                            //               banners: controller.martBottomBanners,
+                            //               pageController: controller
+                            //                   .martBottomBannerController.value,
+                            //               currentPage:
+                            //               controller.currentBottomBannerPage,
+                            //               height: 150,
+                            //               enableAutoScroll:
+                            //               false, // Bottom banners don't auto-scroll
+                            //             ),
+                            //             const SizedBox(height: 8),
+                            //             BannerIndicatorDots(
+                            //               itemCount:
+                            //               controller.martBottomBanners.length,
+                            //               currentIndex:
+                            //               controller.currentBottomBannerPage,
+                            //               activeColor: const Color(0xFF00998a),
+                            //               inactiveColor: Colors.grey[300]!,
+                            //             ),
+                            //             const SizedBox(height: 8),
+                            //           ],
+                            //         );
+                            //       }
+                            //       return const SizedBox.shrink();
+                            //     }),
+                            // MartTrendingDealsPersonalCare(
+                            //        screenWidth: screenWidth,),
+                            // Subcategories Section
+                            // MartSubcategoriesSection(
+                            //       screenWidth: screenWidth),
+                            // // Product Deals Section
+                            // MartProductDealsSection(screenWidth: screenWidth),
+                            // Dynamic Sections from Firebase
+                            // MartDynamicSections(screenWidth: screenWidth),
+                            MartDynamicSectionsEnhanced(
+                              screenWidth: screenWidth,
+                            ),
+                            SizedBox(height: 25),
+                          ],
+                        ),
                       ),
-                  ],
-                ),
-              );
-            },
-          ),
-          floatingActionButton:   GestureDetector(
-            onTap: () async {
-              // WhatsApp number - you can change this to your desired number
-              const String phoneNumber =
-                  '+919390579864'; // Your actual WhatsApp number
-              const String message =
-                  'Hello! I need help with my JippyMart order.'; // Customize the message
 
-              final Uri whatsappUrl = Uri.parse(
-                  'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
-
-              try {
-                if (await canLaunchUrl(whatsappUrl)) {
-                  await launchUrl(whatsappUrl,
-                      mode: LaunchMode.externalApplication);
-                } else {
-                  // Fallback to regular phone call if WhatsApp is not available
-                  final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
-                  if (await canLaunchUrl(phoneUrl)) {
-                    await launchUrl(phoneUrl,
-                        mode: LaunchMode.externalApplication);
-                  }
-                }
-              } catch (e) {
-                print('Error launching WhatsApp: $e');
-              }
-            },
-            child: Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: Colors.green, // WhatsApp green color
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                      // Positioned(
+                      //   bottom: MediaQuery.of(context).padding.bottom +
+                      //       120, // Above bottom navigation
+                      //   right: 16,
+                      //   child: GestureDetector(
+                      //     onTap: () async {
+                      //       // WhatsApp number - you can change this to your desired number
+                      //       const String phoneNumber =
+                      //           '+919390579864'; // Your actual WhatsApp number
+                      //       const String message =
+                      //           'Hello! I need help with my JippyMart order.'; // Customize the message
+                      //
+                      //       final Uri whatsappUrl = Uri.parse(
+                      //           'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
+                      //
+                      //       try {
+                      //         if (await canLaunchUrl(whatsappUrl)) {
+                      //           await launchUrl(whatsappUrl,
+                      //               mode: LaunchMode.externalApplication);
+                      //         } else {
+                      //           // Fallback to regular phone call if WhatsApp is not available
+                      //           final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
+                      //           if (await canLaunchUrl(phoneUrl)) {
+                      //             await launchUrl(phoneUrl,
+                      //                 mode: LaunchMode.externalApplication);
+                      //           }
+                      //         }
+                      //       } catch (e) {
+                      //         print('Error launching WhatsApp: $e');
+                      //       }
+                      //     },
+                      //     child: Container(
+                      //       width: 56,
+                      //       height: 56,
+                      //       decoration: BoxDecoration(
+                      //         color: Colors.green, // WhatsApp green color
+                      //         shape: BoxShape.circle,
+                      //         boxShadow: [
+                      //           BoxShadow(
+                      //             color: Colors.black.withOpacity(0.2),
+                      //             blurRadius: 8,
+                      //             offset: const Offset(0, 4),
+                      //           ),
+                      //         ],
+                      //       ),
+                      //       child: Padding(
+                      //         padding: const EdgeInsets.all(0.0),
+                      //         child: SvgPicture.asset(
+                      //           'assets/images/whatsapp.svg',
+                      //           width: 24,
+                      //           height: 24,
+                      //           colorFilter: const ColorFilter.mode(
+                      //             Colors.white,
+                      //             BlendMode.srcIn,
+                      //           ),
+                      //         ),
+                      //       ),
+                      //     ),
+                      //   ),
+                      // ),
+                    ],
                   ),
                 ],
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(0.0),
-                child: SvgPicture.asset(
-                  'assets/images/whatsapp.svg',
-                  width: 24,
-                  height: 24,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
+            );
+          },
+        ),
+        floatingActionButton: GestureDetector(
+          onTap: () async {
+            // WhatsApp number - you can change this to your desired number
+            const String phoneNumber =
+                '+919390579864'; // Your actual WhatsApp number
+            const String message =
+                'Hello! I need help with my JippyMart order.'; // Customize the message
+
+            final Uri whatsappUrl = Uri.parse(
+              'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}',
+            );
+
+            try {
+              if (await canLaunchUrl(whatsappUrl)) {
+                await launchUrl(
+                  whatsappUrl,
+                  mode: LaunchMode.externalApplication,
+                );
+              } else {
+                // Fallback to regular phone call if WhatsApp is not available
+                final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
+                if (await canLaunchUrl(phoneUrl)) {
+                  await launchUrl(
+                    phoneUrl,
+                    mode: LaunchMode.externalApplication,
+                  );
+                }
+              }
+            } catch (e) {
+              print('Error launching WhatsApp: $e');
+            }
+          },
+          child: Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: Colors.green, // WhatsApp green color
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(0.0),
+              child: SvgPicture.asset(
+                'assets/images/whatsapp.svg',
+                width: 24,
+                height: 24,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
                 ),
               ),
             ),
           ),
-        ));
+        ),
+      ),
+    );
   }
 }
-
-
 
 class MartSpotlightSelections extends StatelessWidget {
   final double screenWidth;
@@ -428,7 +442,7 @@ class MartSpotlightSelections extends StatelessWidget {
               width: 402,
               height: 92,
               child: Consumer<MartProvider>(
-                builder: (context,controller,_) {
+                builder: (context, controller, _) {
                   if (controller.spotlightItems.isEmpty) {
                     return const Center(
                       child: Text(
@@ -442,10 +456,9 @@ class MartSpotlightSelections extends StatelessWidget {
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        ...controller.spotlightItems
-                            .asMap()
-                            .entries
-                            .map((entry) {
+                        ...controller.spotlightItems.asMap().entries.map((
+                          entry,
+                        ) {
                           final index = entry.key;
                           final item = entry.value;
 
@@ -479,10 +492,7 @@ class _SpotlightCard extends StatelessWidget {
   final String title;
   final String discount;
 
-  const _SpotlightCard({
-    required this.title,
-    required this.discount,
-  });
+  const _SpotlightCard({required this.title, required this.discount});
 
   @override
   Widget build(BuildContext context) {
@@ -814,8 +824,10 @@ class SpotlightCard extends StatelessWidget {
           // GIF placeholder in middle (purple background)
           Expanded(
             child: Container(
-              margin:
-                  const EdgeInsets.symmetric(horizontal: 6.0, vertical: 3.0),
+              margin: const EdgeInsets.symmetric(
+                horizontal: 6.0,
+                vertical: 3.0,
+              ),
               decoration: BoxDecoration(
                 color: const Color(0xFF5D56F3),
                 borderRadius: BorderRadius.circular(12),
@@ -873,9 +885,7 @@ class SpotlightCard extends StatelessWidget {
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
               ),
-              borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(16),
-              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
             ),
             child: Text(
               offer,
@@ -909,8 +919,10 @@ class MartStealsOfMoment extends StatelessWidget {
         children: [
           // Section Title
           const Padding(
-            padding:
-                EdgeInsets.only(left: 16, bottom: 4), // Reduced from 8 to 4
+            padding: EdgeInsets.only(
+              left: 16,
+              bottom: 4,
+            ), // Reduced from 8 to 4
             child: Text(
               'Steals of the moment',
               style: TextStyle(
@@ -1445,13 +1457,13 @@ class MartStealsOfMoment extends StatelessWidget {
                                   child: ShaderMask(
                                     shaderCallback: (bounds) =>
                                         const LinearGradient(
-                                      colors: [
-                                        Color(0xFF3C720E),
-                                        Color(0xFF72D81B)
-                                      ],
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                    ).createShader(bounds),
+                                          colors: [
+                                            Color(0xFF3C720E),
+                                            Color(0xFF72D81B),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ).createShader(bounds),
                                     child: const Text(
                                       'BUY GET',
                                       style: TextStyle(
@@ -1475,13 +1487,13 @@ class MartStealsOfMoment extends StatelessWidget {
                                   child: ShaderMask(
                                     shaderCallback: (bounds) =>
                                         const LinearGradient(
-                                      colors: [
-                                        Color(0xFF3C720E),
-                                        Color(0xFF72D81B)
-                                      ],
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                    ).createShader(bounds),
+                                          colors: [
+                                            Color(0xFF3C720E),
+                                            Color(0xFF72D81B),
+                                          ],
+                                          begin: Alignment.topCenter,
+                                          end: Alignment.bottomCenter,
+                                        ).createShader(bounds),
                                     child: const Text(
                                       '1',
                                       style: TextStyle(
@@ -1529,7 +1541,6 @@ class MartStealsOfMoment extends StatelessWidget {
     );
   }
 }
-
 
 class MartTrendingNowSection extends StatelessWidget {
   final double screenWidth;
@@ -1585,8 +1596,6 @@ class MartTrendingNowSection extends StatelessWidget {
       ),
     );
   }
-
-
 }
 
 class MartTrendingDealsPersonalCare extends StatelessWidget {
@@ -1598,14 +1607,18 @@ class MartTrendingDealsPersonalCare extends StatelessWidget {
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
-        final martController = Provider.of<MartProvider>(context,listen:false);
+        final martController = Provider.of<MartProvider>(
+          context,
+          listen: false,
+        );
         if (martController.filteredTrendingItems.isEmpty &&
             !martController.isTrendingLoading.value) {
           martController.loadTrendingItemsStreaming();
         }
       } catch (e) {
         print(
-            '[MART HOME] Controller not found, skipping trending items load: $e');
+          '[MART HOME] Controller not found, skipping trending items load: $e',
+        );
       }
     });
 
@@ -1631,11 +1644,14 @@ class MartTrendingDealsPersonalCare extends StatelessWidget {
                 ),
                 GestureDetector(
                   onTap: () {
-                    Get.to(() => MartCategoryDetailScreen(), arguments: {
-                      'categoryId': 'trending',
-                      'categoryName': 'Trending Deals',
-                      'initialFilter': 'trending',
-                    });
+                    Get.to(
+                      () => MartCategoryDetailScreen(),
+                      arguments: {
+                        'categoryId': 'trending',
+                        'categoryName': 'Trending Deals',
+                        'initialFilter': 'trending',
+                      },
+                    );
                   },
                   child: Container(
                     decoration: BoxDecoration(
@@ -1643,7 +1659,10 @@ class MartTrendingDealsPersonalCare extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       child: Text(
                         'View All',
                         style: TextStyle(
@@ -1660,13 +1679,11 @@ class MartTrendingDealsPersonalCare extends StatelessWidget {
             ),
           ),
           Consumer<MartProvider>(
-            builder: (context,controller,_) {
+            builder: (context, controller, _) {
               if (controller.isTrendingLoading.value) {
                 return const SizedBox(
                   height: 280,
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: Center(child: CircularProgressIndicator()),
                 );
               }
 
@@ -1679,10 +1696,7 @@ class MartTrendingDealsPersonalCare extends StatelessWidget {
                       children: [
                         const Text(
                           'No trending items found',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 16,
-                          ),
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
                         const SizedBox(height: 16),
                         ElevatedButton(
@@ -1705,8 +1719,9 @@ class MartTrendingDealsPersonalCare extends StatelessWidget {
                   // Calculate dynamic card width based on screen size
                   // final cardWidth =
                   //     isTablet ? 200.0 : (isLargePhone ? 180.0 : 160.0);
-                  final cardWidth =
-                  isTablet ? 200.0 : (isLargePhone ? 130.0 : 130.0);
+                  final cardWidth = isTablet
+                      ? 200.0
+                      : (isLargePhone ? 130.0 : 130.0);
                   // 🔑 Auto-adjustable layout using Wrap for truly flexible card heights
                   return Padding(
                     padding: const EdgeInsets.only(
@@ -1722,8 +1737,9 @@ class MartTrendingDealsPersonalCare extends StatelessWidget {
                         runAlignment: WrapAlignment.start,
                         spacing: 0,
                         runSpacing: 16.0,
-                        children:
-                            controller.filteredTrendingItems.map((product) {
+                        children: controller.filteredTrendingItems.map((
+                          product,
+                        ) {
                           return SizedBox(
                             width: cardWidth,
                             child: MartProductCardHome(
@@ -1743,8 +1759,6 @@ class MartTrendingDealsPersonalCare extends StatelessWidget {
       ),
     );
   }
-
-
 }
 
 class _TrendingCategoryItem extends StatelessWidget {
@@ -1830,7 +1844,8 @@ class MartKitchenGrocerySection extends StatelessWidget {
             crossAxisCount: 4,
             crossAxisSpacing: 12,
             mainAxisSpacing: 16,
-            childAspectRatio: 0.75, // Fixed overflow issue
+            childAspectRatio: 0.75,
+            // Fixed overflow issue
             children: [
               _GroceryItem(
                 label: 'Fresh\nVegetables',
@@ -1905,16 +1920,13 @@ class _GroceryItem extends StatelessWidget {
   final String? imageUrl;
   final VoidCallback? onTap;
 
-  const _GroceryItem({
-    required this.label,
-    this.imageUrl,
-    this.onTap,
-  });
+  const _GroceryItem({required this.label, this.imageUrl, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap ??
+      onTap:
+          onTap ??
           () {
             // Show coming soon message
             Get.snackbar(
@@ -2004,7 +2016,8 @@ class _GroceryItem extends StatelessWidget {
                     fontFamily: 'Montserrat',
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    height: 15 / 12, // line-height: 15px
+                    height: 15 / 12,
+                    // line-height: 15px
                     color: Color(0xFF000000),
                   ),
                   textAlign: TextAlign.center,
@@ -2017,7 +2030,6 @@ class _GroceryItem extends StatelessWidget {
     );
   }
 }
-
 
 class MartGlowWellnessSection extends StatelessWidget {
   final double screenWidth;
@@ -2050,7 +2062,8 @@ class MartGlowWellnessSection extends StatelessWidget {
             crossAxisCount: 4,
             crossAxisSpacing: 8,
             mainAxisSpacing: 12,
-            childAspectRatio: 87 / 129, // Exact ratio from CSS
+            childAspectRatio: 87 / 129,
+            // Exact ratio from CSS
             children: [
               _GroceryItem(
                 label: 'Bath &\nBody',
@@ -2120,7 +2133,6 @@ class MartGlowWellnessSection extends StatelessWidget {
   }
 }
 
-
 class MartSnacksRefreshmentsSection extends StatelessWidget {
   final double screenWidth;
 
@@ -2152,7 +2164,8 @@ class MartSnacksRefreshmentsSection extends StatelessWidget {
             crossAxisCount: 4,
             crossAxisSpacing: 8,
             mainAxisSpacing: 12,
-            childAspectRatio: 87 / 129, // Exact ratio from CSS
+            childAspectRatio: 87 / 129,
+            // Exact ratio from CSS
             children: [
               _GroceryItem(
                 label: 'Cold Drinks\nand Juices',
@@ -2202,7 +2215,6 @@ class MartSnacksRefreshmentsSection extends StatelessWidget {
   }
 }
 
-
 class MartEverydayLifeHomeSection extends StatelessWidget {
   final double screenWidth;
 
@@ -2234,7 +2246,8 @@ class MartEverydayLifeHomeSection extends StatelessWidget {
             crossAxisCount: 4,
             crossAxisSpacing: 8,
             mainAxisSpacing: 12,
-            childAspectRatio: 87 / 129, // Exact ratio from CSS
+            childAspectRatio: 87 / 129,
+            // Exact ratio from CSS
             children: [
               _GroceryItem(
                 label: 'Home and\nFurnishing',
@@ -2303,7 +2316,6 @@ class MartEverydayLifeHomeSection extends StatelessWidget {
     );
   }
 }
-
 
 class MartLocalStoreSection extends StatelessWidget {
   final double screenWidth;
@@ -2539,10 +2551,9 @@ class _TrendingCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<MartProvider>(
-      builder: (context,controller,_) {
+      builder: (context, controller, _) {
         return StreamBuilder<List<MartBannerModel>>(
-          stream:controller.streamBannersByPosition('top', limit: 1)
-            ,
+          stream: controller.streamBannersByPosition('top', limit: 1),
           builder: (context, snapshot) {
             // Default data if no banner is available
             String title = 'Nurture with love';
@@ -2553,8 +2564,11 @@ class _TrendingCard extends StatelessWidget {
             // Use real data if available
             if (snapshot.hasData && snapshot.data!.isNotEmpty) {
               final banner = snapshot.data!.first;
-              title = (banner.title?.isNotEmpty == true) ? banner.title! : title;
-              description = (banner.description?.isNotEmpty == true &&
+              title = (banner.title?.isNotEmpty == true)
+                  ? banner.title!
+                  : title;
+              description =
+                  (banner.description?.isNotEmpty == true &&
                       banner.description != '-')
                   ? banner.description!
                   : description;
@@ -2565,10 +2579,11 @@ class _TrendingCard extends StatelessWidget {
               onTap: () {
                 if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   try {
-                   controller
-                        .handleBannerTap(snapshot.data!.first);
+                    controller.handleBannerTap(snapshot.data!.first);
                   } catch (e) {
-                    print('[MART HOME] Controller not found for banner tap: $e');
+                    print(
+                      '[MART HOME] Controller not found for banner tap: $e',
+                    );
                   }
                 }
               },
@@ -2580,10 +2595,7 @@ class _TrendingCard extends StatelessWidget {
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF5C5C99),
-                      Color(0xFF1F1F33),
-                    ],
+                    colors: [Color(0xFF5C5C99), Color(0xFF1F1F33)],
                   ),
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
@@ -2609,7 +2621,8 @@ class _TrendingCard extends StatelessWidget {
                             fontFamily: 'Montserrat',
                             fontSize: 32,
                             fontWeight: FontWeight.w800,
-                            height: 1.22, // 39/32
+                            height: 1.22,
+                            // 39/32
                             color: Colors.white,
                           ),
                         ),
@@ -2629,7 +2642,8 @@ class _TrendingCard extends StatelessWidget {
                             fontFamily: 'Montserrat',
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
-                            height: 1.23, // 16/13
+                            height: 1.23,
+                            // 16/13
                             color: Colors.white,
                           ),
                         ),
@@ -2654,7 +2668,8 @@ class _TrendingCard extends StatelessWidget {
                               fontFamily: 'Montserrat',
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              height: 1.21, // 17/14
+                              height: 1.21,
+                              // 17/14
                               color: Color(0xFF00998a),
                             ),
                           ),
@@ -2667,7 +2682,7 @@ class _TrendingCard extends StatelessWidget {
             );
           },
         );
-      }
+      },
     );
   }
 }
@@ -2755,7 +2770,7 @@ class MartProductDealsSection extends StatelessWidget {
           //   ),
           // ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical:8),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -2772,11 +2787,14 @@ class MartProductDealsSection extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     // Navigate to category detail screen with trending filter
-                    Get.to(() => MartCategoryDetailScreen(), arguments: {
-                      'categoryId': 'trending',
-                      'categoryName': 'Trending Deals',
-                      'initialFilter': 'trending',
-                    });
+                    Get.to(
+                      () => MartCategoryDetailScreen(),
+                      arguments: {
+                        'categoryId': 'trending',
+                        'categoryName': 'Trending Deals',
+                        'initialFilter': 'trending',
+                      },
+                    );
                   },
                   child: Container(
                     decoration: BoxDecoration(
@@ -2784,7 +2802,10 @@ class MartProductDealsSection extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       child: Text(
                         'View All',
                         style: TextStyle(
@@ -2801,7 +2822,7 @@ class MartProductDealsSection extends StatelessWidget {
             ),
           ),
           Consumer<MartProvider>(
-              builder: (context,controller,_) {
+            builder: (context, controller, _) {
               return Padding(
                 padding: const EdgeInsets.only(
                   left: 16,
@@ -2813,9 +2834,7 @@ class MartProductDealsSection extends StatelessWidget {
                     stream: controller.streamProductDeals(limit: 10),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return const Center(
-                          child: CircularProgressIndicator(),
-                        );
+                        return const Center(child: CircularProgressIndicator());
                       }
 
                       if (snapshot.hasError) {
@@ -2838,14 +2857,16 @@ class MartProductDealsSection extends StatelessWidget {
                         itemCount: products.length,
                         itemBuilder: (context, index) {
                           return _martItemToPlaytimeCard(
-                              products[index], screenWidth);
+                            products[index],
+                            screenWidth,
+                          );
                         },
                       );
                     },
                   ),
                 ),
               );
-            }
+            },
           ),
           const SizedBox(height: 8),
         ],
@@ -2853,8 +2874,6 @@ class MartProductDealsSection extends StatelessWidget {
     );
   }
 }
-
-
 
 class MartHairCareSection extends StatelessWidget {
   final double screenWidth;
@@ -2933,15 +2952,16 @@ class MartHairCareSection extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 4),
               children: List.generate(
-                  10,
-                  (index) => PlaytimeProductCard(
-                        volume: '580 ml',
-                        productName: 'Keratin Smooth Shampoo',
-                        discount: '40% OFF',
-                        currentPrice: '₹619',
-                        originalPrice: '₹1016',
-                        screenWidth: screenWidth,
-                      )),
+                10,
+                (index) => PlaytimeProductCard(
+                  volume: '580 ml',
+                  productName: 'Keratin Smooth Shampoo',
+                  discount: '40% OFF',
+                  currentPrice: '₹619',
+                  originalPrice: '₹1016',
+                  screenWidth: screenWidth,
+                ),
+              ),
             ),
           ),
         ],
@@ -3027,15 +3047,16 @@ class MartChocolatesSection extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 4),
               children: List.generate(
-                  10,
-                  (index) => PlaytimeProductCard(
-                        volume: '150 g',
-                        productName: 'Amul Dark Chocolate',
-                        discount: '8% OFF',
-                        currentPrice: '₹179',
-                        originalPrice: '₹200',
-                        screenWidth: screenWidth,
-                      )),
+                10,
+                (index) => PlaytimeProductCard(
+                  volume: '150 g',
+                  productName: 'Amul Dark Chocolate',
+                  discount: '8% OFF',
+                  currentPrice: '₹179',
+                  originalPrice: '₹200',
+                  screenWidth: screenWidth,
+                ),
+              ),
             ),
           ),
         ],
@@ -3565,7 +3586,8 @@ class MartSloganSection extends StatelessWidget {
                 fontFamily: 'Montserrat',
                 fontSize: 40,
                 fontWeight: FontWeight.w800,
-                height: 49 / 40, // line-height: 49px
+                height: 49 / 40,
+                // line-height: 49px
                 color: Color(0xFF787878),
               ),
             ),
@@ -3581,7 +3603,8 @@ class MartSloganSection extends StatelessWidget {
                 fontFamily: 'Montserrat',
                 fontSize: 50,
                 fontWeight: FontWeight.w800,
-                height: 61 / 50, // line-height: 61px
+                height: 61 / 50,
+                // line-height: 61px
                 color: Color(0xFF787878),
               ),
             ),
@@ -3656,11 +3679,14 @@ class MartFeaturedProducts extends StatelessWidget {
               ),
               GestureDetector(
                 onTap: () {
-                  Get.to(() => MartCategoryDetailScreen(), arguments: {
-                    'categoryId': 'featured',
-                    'categoryName': 'Featured Products',
-                    'initialFilter': 'featured',
-                  });
+                  Get.to(
+                    () => MartCategoryDetailScreen(),
+                    arguments: {
+                      'categoryId': 'featured',
+                      'categoryName': 'Featured Products',
+                      'initialFilter': 'featured',
+                    },
+                  );
                 },
                 child: Container(
                   decoration: BoxDecoration(
@@ -3668,7 +3694,10 @@ class MartFeaturedProducts extends StatelessWidget {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     child: Text(
                       'View All',
                       style: TextStyle(
@@ -3686,13 +3715,11 @@ class MartFeaturedProducts extends StatelessWidget {
         ),
 
         Consumer<MartProvider>(
-          builder: (context,controller,_) {
+          builder: (context, controller, _) {
             if (controller.isProductLoading.value) {
               return const SizedBox(
                 height: 280,
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
+                child: Center(child: CircularProgressIndicator()),
               );
             }
 
@@ -3703,18 +3730,11 @@ class MartFeaturedProducts extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.star,
-                        size: 64,
-                        color: Colors.grey,
-                      ),
+                      const Icon(Icons.star, size: 64, color: Colors.grey),
                       const SizedBox(height: 8), // Reduced from 16 to 8
                       const Text(
                         'No featured products found',
-                        style: TextStyle(
-                          color: Colors.grey,
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.grey, fontSize: 16),
                       ),
                     ],
                   ),
@@ -3727,8 +3747,9 @@ class MartFeaturedProducts extends StatelessWidget {
                 final isTablet = screenWidth > 600;
                 final isLargePhone = screenWidth > 400;
                 // Calculate dynamic card width based on screen size
-                final cardWidth =
-                    isTablet ? 200.0 : (isLargePhone ? 130.0 : 130.0);
+                final cardWidth = isTablet
+                    ? 200.0
+                    : (isLargePhone ? 130.0 : 130.0);
                 // 🔑 Auto-adjustable layout using Wrap for truly flexible card heights
                 return Padding(
                   padding: const EdgeInsets.only(
@@ -3748,8 +3769,9 @@ class MartFeaturedProducts extends StatelessWidget {
                         return SizedBox(
                           width: cardWidth,
                           child: MartProductCardHome(
-                              product: product,
-                              screenWidth: screenWidth),
+                            product: product,
+                            screenWidth: screenWidth,
+                          ),
                         );
                       }).toList(),
                     ),
@@ -3762,8 +3784,6 @@ class MartFeaturedProducts extends StatelessWidget {
       ],
     );
   }
-
-
 }
 
 // Helper function to parse color from hex string
@@ -3787,21 +3807,24 @@ class MartDynamicSectionsEnhanced extends StatefulWidget {
   const MartDynamicSectionsEnhanced({super.key, required this.screenWidth});
 
   @override
-  State<MartDynamicSectionsEnhanced> createState() => _MartDynamicSectionsEnhancedState();
+  State<MartDynamicSectionsEnhanced> createState() =>
+      _MartDynamicSectionsEnhancedState();
 }
 
-class _MartDynamicSectionsEnhancedState extends State<MartDynamicSectionsEnhanced> {
+class _MartDynamicSectionsEnhancedState
+    extends State<MartDynamicSectionsEnhanced> {
   bool _hasTriggeredLoading = false;
-// @override
-//   void initState() {
-//   final controller = Get.put(MartController());
-//   controller.  loadCategoryProductsForSections();
-//     super.initState();
-//   }
+
+  // @override
+  //   void initState() {
+  //   final controller = Get.put(MartController());
+  //   controller.  loadCategoryProductsForSections();
+  //     super.initState();
+  //   }
   @override
   Widget build(BuildContext context) {
     return Consumer<MartProvider>(
-      builder: (context,controller,_) {
+      builder: (context, controller, _) {
         // Trigger category products loading
         if (!_hasTriggeredLoading) {
           _hasTriggeredLoading = true;
@@ -3819,14 +3842,22 @@ class _MartDynamicSectionsEnhancedState extends State<MartDynamicSectionsEnhance
 
         return Column(
           children: uniqueCategories.map((category) {
-            return _buildCategorySection(controller, category, categoryProducts[category] ?? []);
+            return _buildCategorySection(
+              controller,
+              category,
+              categoryProducts[category] ?? [],
+            );
           }).toList(),
         );
       },
     );
   }
 
-  Widget _buildCategorySection(MartProvider controller, String categoryName, List<MartItemModel> products) {
+  Widget _buildCategorySection(
+    MartProvider controller,
+    String categoryName,
+    List<MartItemModel> products,
+  ) {
     if (products.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -3859,19 +3890,27 @@ class _MartDynamicSectionsEnhancedState extends State<MartDynamicSectionsEnhance
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () {
-                    print('[MART DYNAMIC SECTIONS] 🔗 Navigating to category: $categoryName');
+                    print(
+                      '[MART DYNAMIC SECTIONS] 🔗 Navigating to category: $categoryName',
+                    );
 
                     // Find the category ID for this category title
                     final category = controller.martCategories.firstWhere(
-                          (cat) => cat.title == categoryName,
-                      orElse: () => MartCategoryModel(id: '', title: categoryName),
+                      (cat) => cat.title == categoryName,
+                      orElse: () =>
+                          MartCategoryModel(id: '', title: categoryName),
                     );
 
-                    Get.to(() => MartCategoryDetailScreen(), arguments: {
-                      'categoryId': category.id ?? 'category_${categoryName.toLowerCase().replaceAll(' ', '_')}',
-                      'categoryName': categoryName,
-                      'initialFilter': 'category',
-                    });
+                    Get.to(
+                      () => MartCategoryDetailScreen(),
+                      arguments: {
+                        'categoryId':
+                            category.id ??
+                            'category_${categoryName.toLowerCase().replaceAll(' ', '_')}',
+                        'categoryName': categoryName,
+                        'initialFilter': 'category',
+                      },
+                    );
                   },
                   child: Container(
                     decoration: BoxDecoration(
@@ -3879,7 +3918,10 @@ class _MartDynamicSectionsEnhancedState extends State<MartDynamicSectionsEnhance
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       child: Text(
                         'View All',
                         style: TextStyle(
@@ -3938,11 +3980,13 @@ class _MartDynamicSectionsEnhancedState extends State<MartDynamicSectionsEnhance
     if (product.disPrice != null &&
         product.price != null &&
         product.price! > product.disPrice!) {
-      return ((product.price! - product.disPrice!) / product.price! * 100).round();
+      return ((product.price! - product.disPrice!) / product.price! * 100)
+          .round();
     }
     return 0;
   }
 }
+
 // Dynamic Sections Widget
 class MartDynamicSections extends StatefulWidget {
   final double screenWidth;
@@ -3952,13 +3996,14 @@ class MartDynamicSections extends StatefulWidget {
   @override
   State<MartDynamicSections> createState() => _MartDynamicSectionsState();
 }
+
 class _MartDynamicSectionsState extends State<MartDynamicSections> {
   bool _hasTriggeredLoading = false;
 
   @override
   Widget build(BuildContext context) {
     return Consumer<MartProvider>(
-      builder: (context,controller,_) {
+      builder: (context, controller, _) {
         // Trigger sections loading only once to prevent blinking
         if (!_hasTriggeredLoading && controller.availableSections.isEmpty) {
           _hasTriggeredLoading = true;
@@ -3999,7 +4044,7 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-            sectionName,
+                  sectionName,
                   style: TextStyle(
                     fontFamily: 'Montserrat',
                     fontSize: 18,
@@ -4011,14 +4056,19 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
                 GestureDetector(
                   onTap: () {
                     print(
-                        '[MART DYNAMIC SECTIONS] 🔗 Navigating to section: $sectionName');
-                    Get.to(() => MartCategoryDetailScreen(), arguments: {
-                      'categoryId':
-                      'section_${sectionName.toLowerCase().replaceAll(' ', '_')}',
-                      'categoryName': sectionName,
-                      'initialFilter': 'section',
-                      'sectionName': sectionName, // Pass the actual section name
-                    });
+                      '[MART DYNAMIC SECTIONS] 🔗 Navigating to section: $sectionName',
+                    );
+                    Get.to(
+                      () => MartCategoryDetailScreen(),
+                      arguments: {
+                        'categoryId':
+                            'section_${sectionName.toLowerCase().replaceAll(' ', '_')}',
+                        'categoryName': sectionName,
+                        'initialFilter': 'section',
+                        'sectionName': sectionName,
+                        // Pass the actual section name
+                      },
+                    );
                   },
                   child: Container(
                     decoration: BoxDecoration(
@@ -4026,7 +4076,10 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       child: Text(
                         'View All',
                         style: TextStyle(
@@ -4085,14 +4138,13 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
           // const SizedBox(height: 16),
           // Horizontal Scroll of Products using PlaytimeProductCard
           Padding(
-            padding: const EdgeInsets.only(
-              left: 16,
-            ),
+            padding: const EdgeInsets.only(left: 16),
             child: Consumer<MartProvider>(
-              builder: (context,controller,_) {
+              builder: (context, controller, _) {
                 // Get products for this section from Firebase
-                final sectionProducts =
-                    controller.getProductsForSection(sectionName);
+                final sectionProducts = controller.getProductsForSection(
+                  sectionName,
+                );
                 // If no products available, don't show anything (sections will appear as products load)
                 if (sectionProducts.isEmpty) {
                   return const SizedBox.shrink();
@@ -4113,7 +4165,8 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
                         originalPrice: '₹${product.price ?? 0}',
                         screenWidth: widget.screenWidth,
                         imageUrl: product.photo,
-                        product: product, // Pass the product model for navigation
+                        product:
+                            product, // Pass the product model for navigation
                       );
                     },
                   ),
@@ -4137,7 +4190,6 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
   }
 }
 
-
 Widget searchWidgetMain() {
   /// Get appropriate icon for category based on name
 
@@ -4148,18 +4200,15 @@ Widget searchWidgetMain() {
 
     child: Column(
       children: [
-        SizedBox(
-          height: 16,
-        ),
-        // Group 262 - Search Bar
+        SizedBox(height: 16),
 
+        // Group 262 - Search Bar
       ],
     ),
   );
 }
 
 // Helper method for user initials (keeping this one as it's still used)
-
 
 // Dynamic Categories Section - Replaces dummy data sections
 class MartDynamicCategoriesSection extends StatelessWidget {
@@ -4170,7 +4219,7 @@ class MartDynamicCategoriesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Consumer<MartProvider>(
-      builder: (context,controller,_) {
+      builder: (context, controller, _) {
         if (controller.isCategoryLoading.value) {
           return Container(
             width: double.infinity,
@@ -4193,7 +4242,8 @@ class MartDynamicCategoriesSection extends StatelessWidget {
                   crossAxisCount: 4,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 16,
-                  childAspectRatio: 0.75, // Fixed overflow issue
+                  childAspectRatio: 0.75,
+                  // Fixed overflow issue
                   children: List.generate(
                     8,
                     (index) => Container(
@@ -4201,9 +4251,7 @@ class MartDynamicCategoriesSection extends StatelessWidget {
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
                   ),
                 ),
@@ -4231,10 +4279,7 @@ class MartDynamicCategoriesSection extends StatelessWidget {
                 const Center(
                   child: Text(
                     'No categories available',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(color: Colors.grey, fontSize: 16),
                   ),
                 ),
               ],
@@ -4266,18 +4311,21 @@ class MartDynamicCategoriesSection extends StatelessWidget {
                 crossAxisCount: 4,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 16,
-                childAspectRatio: 0.75, // Fixed overflow issue
+                childAspectRatio: 0.75,
+                // Fixed overflow issue
                 children: controller.featuredCategories
                     .map(
                       (category) => _DynamicCategoryItem(
                         category: category,
                         onTap: () {
                           // Navigate to category detail screen
-                          Get.to(() => const MartCategoryDetailScreen(),
-                              arguments: {
-                                'categoryId': category.id,
-                                'categoryName': category.title,
-                              });
+                          Get.to(
+                            () => const MartCategoryDetailScreen(),
+                            arguments: {
+                              'categoryId': category.id,
+                              'categoryName': category.title,
+                            },
+                          );
                         },
                       ),
                     )
@@ -4295,10 +4343,7 @@ class _DynamicCategoryItem extends StatelessWidget {
   final MartCategoryModel category;
   final VoidCallback? onTap;
 
-  const _DynamicCategoryItem({
-    required this.category,
-    this.onTap,
-  });
+  const _DynamicCategoryItem({required this.category, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -4408,17 +4453,15 @@ class _DynamicCategoryItem extends StatelessWidget {
       color = Colors.grey;
     }
 
-    return Icon(
-      icon,
-      size: 32,
-      color: color,
-    );
+    return Icon(icon, size: 32, color: color);
   }
 }
 
 // Helper function to convert MartItemModel to PlaytimeProductCard format
 PlaytimeProductCard _martItemToPlaytimeCard(
-    MartItemModel item, double screenWidth) {
+  MartItemModel item,
+  double screenWidth,
+) {
   // Calculate discount percentage
   String discount = '';
   if (item.disPrice != null &&
@@ -4448,5 +4491,3 @@ PlaytimeProductCard _martItemToPlaytimeCard(
     product: item, // Pass the product model for cart functionality
   );
 }
-
-

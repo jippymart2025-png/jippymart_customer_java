@@ -13,7 +13,7 @@ import 'package:get/get.dart';
 enum CartTheme {
   food, // Default food app theme
   mart, // Green mart theme
-  mixed // Mixed cart theme
+  mixed, // Mixed cart theme
 }
 
 // Cart theme colors class
@@ -37,7 +37,6 @@ Widget buildDeliveryFeeUI({
   required bool isFreeDelivery,
   required double originalFee,
   required double currentFee,
-  required DarkThemeProvider themeChange,
 }) {
   print('[DELIVERY_UI] 🎨 Building delivery fee UI:');
   print('[DELIVERY_UI]   - isFreeDelivery: $isFreeDelivery');
@@ -81,9 +80,7 @@ Widget buildDeliveryFeeUI({
             Constant.amountShow(amount: currentFee.toString()),
             style: TextStyle(
               fontFamily: AppThemeData.regular,
-              color: themeChange.getThem()
-                  ? AppThemeData.grey50
-                  : AppThemeData.grey900,
+              color: AppThemeData.grey900,
               fontSize: 16,
             ),
           ),
@@ -119,9 +116,7 @@ Widget buildDeliveryFeeUI({
             Constant.amountShow(amount: '0.00'),
             style: TextStyle(
               fontFamily: AppThemeData.regular,
-              color: themeChange.getThem()
-                  ? AppThemeData.grey50
-                  : AppThemeData.grey900,
+              color: AppThemeData.grey900,
               fontSize: 16,
             ),
           ),
@@ -138,9 +133,7 @@ Widget buildDeliveryFeeUI({
           textAlign: TextAlign.start,
           style: TextStyle(
             fontFamily: AppThemeData.regular,
-            color: themeChange.getThem()
-                ? AppThemeData.grey50
-                : AppThemeData.grey900,
+            color: AppThemeData.grey900,
             fontSize: 16,
           ),
         ),
@@ -149,9 +142,7 @@ Widget buildDeliveryFeeUI({
           Constant.amountShow(amount: currentFee.toString()),
           style: TextStyle(
             fontFamily: AppThemeData.regular,
-            color: themeChange.getThem()
-                ? AppThemeData.grey50
-                : AppThemeData.grey900,
+            color: AppThemeData.grey900,
             fontSize: 16,
           ),
         ),
@@ -160,13 +151,12 @@ Widget buildDeliveryFeeUI({
   }
 }
 
-tipsDialog(CartControllerProvider controller, themeChange) {
+tipsDialog(CartControllerProvider controller) {
   return Dialog(
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     insetPadding: const EdgeInsets.all(10),
     clipBehavior: Clip.antiAliasWithSaveLayer,
-    backgroundColor:
-        themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
+    backgroundColor: AppThemeData.surface,
     child: Padding(
       padding: const EdgeInsets.all(30),
       child: SizedBox(
@@ -179,22 +169,25 @@ tipsDialog(CartControllerProvider controller, themeChange) {
               title: 'Tips Amount'.tr,
               controller: controller.tipsController.value,
               textInputType: const TextInputType.numberWithOptions(
-                  signed: true, decimal: true),
+                signed: true,
+                decimal: true,
+              ),
               textInputAction: TextInputAction.done,
               inputFormatters: [
                 FilteringTextInputFormatter.allow(RegExp('[0-9]')),
               ],
               prefix: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
                 child: Text(
                   "${Constant.currencyModel!.symbol}".tr,
                   style: TextStyle(
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey50
-                          : AppThemeData.grey900,
-                      fontFamily: AppThemeData.semiBold,
-                      fontSize: 12),
+                    color: AppThemeData.grey900,
+                    fontFamily: AppThemeData.semiBold,
+                    fontSize: 12,
+                  ),
                 ),
               ),
               hintText: 'Enter Tips Amount'.tr,
@@ -204,20 +197,14 @@ tipsDialog(CartControllerProvider controller, themeChange) {
                 Expanded(
                   child: RoundedButtonFill(
                     title: "Cancel".tr,
-                    color: themeChange.getThem()
-                        ? AppThemeData.grey700
-                        : AppThemeData.grey200,
-                    textColor: themeChange.getThem()
-                        ? AppThemeData.grey50
-                        : AppThemeData.grey900,
+                    color: AppThemeData.grey200,
+                    textColor: AppThemeData.grey900,
                     onPress: () async {
                       Get.back();
                     },
                   ),
                 ),
-                const SizedBox(
-                  width: 20,
-                ),
+                const SizedBox(width: 20),
                 Expanded(
                   child: RoundedButtonFill(
                     title: "Add".tr,
@@ -226,10 +213,12 @@ tipsDialog(CartControllerProvider controller, themeChange) {
                     onPress: () async {
                       if (controller.tipsController.value.text.isEmpty) {
                         ShowToastDialog.showToast(
-                            "Please enter tips Amount".tr);
+                          "Please enter tips Amount".tr,
+                        );
                       } else {
-                        controller.deliveryTips.value =
-                            double.parse(controller.tipsController.value.text);
+                        controller.deliveryTips.value = double.parse(
+                          controller.tipsController.value.text,
+                        );
                         controller.calculatePrice();
                         Get.back();
                       }
@@ -245,8 +234,12 @@ tipsDialog(CartControllerProvider controller, themeChange) {
   );
 }
 
-cardDecoration(CartControllerProvider controller, PaymentGateway value, themeChange,
-    String image) {
+cardDecoration(
+  CartControllerProvider controller,
+  PaymentGateway value,
+  themeChange,
+  String image,
+) {
   return Padding(
     padding: const EdgeInsets.symmetric(vertical: 5),
     child: Container(
@@ -264,10 +257,9 @@ cardDecoration(CartControllerProvider controller, PaymentGateway value, themeCha
             ? Container(
                 color: themeChange.getThem()
                     ? AppThemeData.grey800
-                    : AppThemeData.grey100)
-            : Image.asset(
-                image,
-              ),
+                    : AppThemeData.grey100,
+              )
+            : Image.asset(image),
       ),
     ),
   );

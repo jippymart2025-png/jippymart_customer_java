@@ -21,10 +21,9 @@ class RestaurantInboxScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
+        backgroundColor: AppThemeData.surface,
         centerTitle: false,
         titleSpacing: 0,
         title: Text(
@@ -33,7 +32,7 @@ class RestaurantInboxScreen extends StatelessWidget {
           style: TextStyle(
             fontFamily: AppThemeData.medium,
             fontSize: 16,
-            color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+            color: AppThemeData.grey900,
           ),
         ),
       ),
@@ -47,46 +46,58 @@ class RestaurantInboxScreen extends StatelessWidget {
             onTap: () async {
               ShowToastDialog.showLoader("Please wait".tr);
 
-              UserModel? customer = await FireStoreUtils.getUserProfile(inboxModel.customerId.toString());
-              UserModel? restaurantUser = await FireStoreUtils.getUserProfile(inboxModel.restaurantId.toString());
-              VendorModel? vendorModel = await FireStoreUtils.getVendorById(restaurantUser!.vendorID.toString());
+              UserModel? customer = await FireStoreUtils.getUserProfile(
+                inboxModel.customerId.toString(),
+              );
+              UserModel? restaurantUser = await FireStoreUtils.getUserProfile(
+                inboxModel.restaurantId.toString(),
+              );
+              VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+                restaurantUser!.vendorID.toString(),
+              );
               ShowToastDialog.closeLoader();
 
-              Get.to(const ChatScreen(), arguments: {
-                "customerName": '${customer!.fullName()}',
-                "restaurantName": vendorModel!.title,
-                "orderId": inboxModel.orderId,
-                "restaurantId": restaurantUser.id,
-                "customerId": customer.id,
-                "customerProfileImage": customer.profilePictureURL,
-                "restaurantProfileImage": vendorModel.photo,
-                "token": restaurantUser.fcmToken,
-                "chatType": inboxModel.chatType,
-              });
+              Get.to(
+                const ChatScreen(),
+                arguments: {
+                  "customerName": '${customer!.fullName()}',
+                  "restaurantName": vendorModel!.title,
+                  "orderId": inboxModel.orderId,
+                  "restaurantId": restaurantUser.id,
+                  "customerId": customer.id,
+                  "customerProfileImage": customer.profilePictureURL,
+                  "restaurantProfileImage": vendorModel.photo,
+                  "token": restaurantUser.fcmToken,
+                  "chatType": inboxModel.chatType,
+                },
+              );
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               child: Container(
                 decoration: ShapeDecoration(
-                  color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  color: AppThemeData.grey50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: Row(
                     children: [
                       ClipRRect(
-                        borderRadius: const BorderRadius.all(Radius.circular(10)),
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(10),
+                        ),
                         child: NetworkImageWidget(
-                          imageUrl: inboxModel.restaurantProfileImage.toString(),
+                          imageUrl: inboxModel.restaurantProfileImage
+                              .toString(),
                           fit: BoxFit.cover,
                           height: Responsive.height(6, context),
                           width: Responsive.width(12, context),
                         ),
                       ),
-                      const SizedBox(
-                        width: 10,
-                      ),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,33 +111,33 @@ class RestaurantInboxScreen extends StatelessWidget {
                                     style: TextStyle(
                                       fontFamily: AppThemeData.semiBold,
                                       fontSize: 16,
-                                      color: themeChange.getThem() ? AppThemeData.grey100 : AppThemeData.grey800,
+                                      color: AppThemeData.grey800,
                                     ),
                                   ),
                                 ),
                                 Text(
-                                  Constant.timestampToDate(inboxModel.createdAt!),
+                                  Constant.timestampToDate(
+                                    inboxModel.createdAt!,
+                                  ),
                                   textAlign: TextAlign.start,
                                   style: TextStyle(
                                     fontFamily: AppThemeData.regular,
                                     fontSize: 16,
-                                    color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey500,
+                                    color: AppThemeData.grey500,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(
-                              height: 5,
-                            ),
+                            const SizedBox(height: 5),
                             Text(
                               "${inboxModel.lastMessage}",
                               textAlign: TextAlign.start,
                               style: TextStyle(
                                 fontFamily: AppThemeData.medium,
                                 fontSize: 14,
-                                color: themeChange.getThem() ? AppThemeData.grey200 : AppThemeData.grey700,
+                                color: AppThemeData.grey700,
                               ),
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -140,7 +151,10 @@ class RestaurantInboxScreen extends StatelessWidget {
         shrinkWrap: true,
         onEmpty: Constant.showEmptyView(message: "No Conversion found".tr),
         // orderBy is compulsory to enable pagination
-        query: FirebaseFirestore.instance.collection('chat_restaurant').where("customerId", isEqualTo: FireStoreUtils.getCurrentUid()).orderBy('createdAt', descending: true),
+        query: FirebaseFirestore.instance
+            .collection('chat_restaurant')
+            .where("customerId", isEqualTo: FireStoreUtils.getCurrentUid())
+            .orderBy('createdAt', descending: true),
         //Change types customerId
         viewType: ViewType.list,
         initialLoader: Constant.loader(),

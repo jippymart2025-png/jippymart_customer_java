@@ -21,14 +21,11 @@ class RedeemGiftCardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<RedeemGiftCardProvider>(
       builder: (context, controller, _) {
         return Scaffold(
           appBar: AppBar(
-            backgroundColor: themeChange.getThem()
-                ? AppThemeData.surfaceDark
-                : AppThemeData.surface,
+            backgroundColor: AppThemeData.surface,
             centerTitle: false,
             titleSpacing: 0,
           ),
@@ -45,9 +42,7 @@ class RedeemGiftCardScreen extends StatelessWidget {
                     "Redeem Gift Card".tr,
                     style: TextStyle(
                       fontSize: 24,
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey50
-                          : AppThemeData.grey900,
+                      color: AppThemeData.grey900,
                       fontFamily: AppThemeData.semiBold,
                       fontWeight: FontWeight.w500,
                     ),
@@ -57,9 +52,7 @@ class RedeemGiftCardScreen extends StatelessWidget {
                         .tr,
                     style: TextStyle(
                       fontSize: 16,
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey50
-                          : AppThemeData.grey900,
+                      color: AppThemeData.grey900,
                       fontFamily: AppThemeData.regular,
                       fontWeight: FontWeight.w400,
                     ),
@@ -90,9 +83,7 @@ class RedeemGiftCardScreen extends StatelessWidget {
             ),
           ),
           bottomNavigationBar: Container(
-            color: themeChange.getThem()
-                ? AppThemeData.grey900
-                : AppThemeData.grey50,
+            color: AppThemeData.grey50,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Padding(
               padding: const EdgeInsets.only(bottom: 20),

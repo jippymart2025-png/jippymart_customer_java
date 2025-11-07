@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/subscription_plan_model.dart';
+import 'dart:convert' as jsons;
 
 class VendorModel {
   String? author;
@@ -24,7 +25,7 @@ class VendorModel {
   num? walletAmount;
   String? closeDineTime;
   String? zoneId;
-  Timestamp? createdAt;
+  String? createdAt;
   double? longitude;
   bool? enabledDiveInFuture;
   String? restaurantCost;
@@ -48,113 +49,249 @@ class VendorModel {
   bool? isSelfDelivery;
   String? vType; // Vendor type: 'restaurant' or 'mart'
   double? distance; // Used for sorting/filtering, not from backend
+  bool? isActive;
 
   VendorModel({
-      this.author,
-      this.dineInActive,
-      this.openDineTime,
-      this.categoryID,
-      this.id,
-      this.categoryPhoto,
-      this.restaurantMenuPhotos,
-      this.workingHours,
-      this.location,
-      this.fcmToken,
-      this.g,
-      this.hidephotos,
-      this.reststatus,
-      this.isOpen,
-      this.filters,
-      this.reviewsCount,
-      this.photo,
-      this.description,
-      this.walletAmount,
-      this.closeDineTime,
-      this.zoneId,
-      this.createdAt,
-      this.longitude,
-      this.enabledDiveInFuture,
-      this.restaurantCost,
-      this.deliveryCharge,
-      this.adminCommission,
-      this.authorProfilePic,
-      this.authorName,
-      this.phonenumber,
-      this.specialDiscount,
-      this.specialDiscountEnable,
-      this.coordinates,
-      this.reviewsSum,
-      this.photos,
-      this.title,
-      this.categoryTitle,
-      this.latitude,
-      this.subscriptionPlanId,
-      this.subscriptionExpiryDate,
-      this.subscriptionPlan,
-      this.subscriptionTotalOrders,
-      this.isSelfDelivery,
-      this.vType
+    this.author,
+    this.dineInActive,
+    this.openDineTime,
+    this.categoryID,
+    this.id,
+    this.categoryPhoto,
+    this.restaurantMenuPhotos,
+    this.workingHours,
+    this.location,
+    this.fcmToken,
+    this.g,
+    this.hidephotos,
+    this.reststatus,
+    this.isOpen,
+    this.filters,
+    this.reviewsCount,
+    this.photo,
+    this.description,
+    this.walletAmount,
+    this.closeDineTime,
+    this.zoneId,
+    this.createdAt,
+    this.longitude,
+    this.enabledDiveInFuture,
+    this.restaurantCost,
+    this.deliveryCharge,
+    this.adminCommission,
+    this.authorProfilePic,
+    this.authorName,
+    this.phonenumber,
+    this.specialDiscount,
+    this.specialDiscountEnable,
+    this.coordinates,
+    this.reviewsSum,
+    this.photos,
+    this.title,
+    this.categoryTitle,
+    this.latitude,
+    this.subscriptionPlanId,
+    this.subscriptionExpiryDate,
+    this.subscriptionPlan,
+    this.subscriptionTotalOrders,
+    this.isSelfDelivery,
+    this.vType,
+    this.distance,
+    this.isActive,
   });
 
   VendorModel.fromJson(Map<String, dynamic> json) {
     author = json['author'];
     dineInActive = json['dine_in_active'];
     openDineTime = json['openDineTime'];
-    if (json['categoryID'].runtimeType != String) {
-      categoryID = json['categoryID'] ?? [];
+
+    // Handle categoryID - could be List or String
+    if (json['categoryID'] != null) {
+      if (json['categoryID'] is List) {
+        categoryID = json['categoryID'];
+      } else {
+        categoryID = [json['categoryID']];
+      }
+    } else {
+      categoryID = [];
     }
+
     id = json['id'];
     categoryPhoto = json['categoryPhoto'];
     restaurantMenuPhotos = json['restaurantMenuPhotos'] ?? [];
+
+    // Handle workingHours
     if (json['workingHours'] != null) {
       workingHours = <WorkingHours>[];
-      json['workingHours'].forEach((v) {
-        workingHours!.add(WorkingHours.fromJson(v));
-      });
+      if (json['workingHours'] is List) {
+        json['workingHours'].forEach((v) {
+          workingHours!.add(WorkingHours.fromJson(v));
+        });
+      }
     }
+
     location = json['location'];
     fcmToken = json['fcmToken'];
     g = json['g'] != null ? G.fromJson(json['g']) : null;
     hidephotos = json['hidephotos'];
     reststatus = json['reststatus'];
     isOpen = json['isOpen'];
-    filters = json['filters'] != null ? Filters.fromJson(json['filters']) : null;
+    filters = json['filters'] != null
+        ? Filters.fromJson(json['filters'])
+        : null;
     reviewsCount = json['reviewsCount'] ?? 0.0;
     photo = json['photo'];
     description = json['description'];
     walletAmount = json['walletAmount'];
     closeDineTime = json['closeDineTime'];
     zoneId = json['zoneId'];
-    createdAt = json['createdAt'];
-    longitude = double.parse(json['longitude'].toString());
+
+    // Handle createdAt - could be String from API
+    createdAt = json['createdAt']?.toString();
+
+    // Handle longitude - could be double or String
+    if (json['longitude'] != null) {
+      longitude = json['longitude'] is double
+          ? json['longitude']
+          : double.tryParse(json['longitude'].toString());
+    }
+
     enabledDiveInFuture = json['enabledDiveInFuture'];
     restaurantCost = json['restaurantCost']?.toString();
-    deliveryCharge = json['DeliveryCharge'] != null ? DeliveryCharge.fromJson(json['DeliveryCharge']) : null;
-    adminCommission = json['adminCommission'] != null ? AdminCommission.fromJson(json['adminCommission']) : null;
+
+    deliveryCharge = json['DeliveryCharge'] != null
+        ? DeliveryCharge.fromJson(json['DeliveryCharge'])
+        : null;
+
+    // **FIX: Handle adminCommission - could be Map or JSON String**
+    if (json['adminCommission'] != null) {
+      if (json['adminCommission'] is Map) {
+        // If it's already a Map (from Firebase)
+        adminCommission = AdminCommission.fromJson(json['adminCommission']);
+      } else if (json['adminCommission'] is String) {
+        // If it's a JSON String (from API)
+        try {
+          final commissionString = json['adminCommission'] as String;
+          final commissionMap = jsons.json.decode(commissionString);
+          adminCommission = AdminCommission.fromJson(commissionMap);
+        } catch (e) {
+          print('Error parsing adminCommission string: $e');
+          adminCommission = null;
+        }
+      }
+    } else {
+      adminCommission = null;
+    }
+
     authorProfilePic = json['authorProfilePic'];
     authorName = json['authorName'];
     phonenumber = json['phonenumber'];
-    if (json['specialDiscount'] != null) {
+
+    // Handle specialDiscount
+    if (json['specialDiscount'] != null && json['specialDiscount'] is List) {
       specialDiscount = <SpecialDiscount>[];
       json['specialDiscount'].forEach((v) {
         specialDiscount!.add(SpecialDiscount.fromJson(v));
       });
     }
+
     specialDiscountEnable = json['specialDiscountEnable'];
     coordinates = json['coordinates'];
     reviewsSum = json['reviewsSum'] ?? 0.0;
     photos = json['photos'] ?? [];
     title = json['title'];
-    if (json['categoryTitle'].runtimeType != String) {
-      categoryTitle = json['categoryTitle'] ?? [];
+
+    // Handle categoryTitle - could be List or String
+    if (json['categoryTitle'] != null) {
+      if (json['categoryTitle'] is List) {
+        categoryTitle = json['categoryTitle'];
+      } else {
+        categoryTitle = [json['categoryTitle']];
+      }
+    } else {
+      categoryTitle = [];
     }
-    latitude = double.parse(json['latitude'].toString());
+
+    // Handle latitude - could be double or String
+    if (json['latitude'] != null) {
+      latitude = json['latitude'] is double
+          ? json['latitude']
+          : double.tryParse(json['latitude'].toString());
+    }
+
     subscriptionPlanId = json['subscriptionPlanId'];
-    subscriptionExpiryDate = json['subscriptionExpiryDate'];
-    subscriptionPlan = json['subscription_plan'] != null ? SubscriptionPlanModel.fromJson(json['subscription_plan']) : null;
+
+    // Handle subscriptionExpiryDate
+    subscriptionExpiryDate = _parseTimestamp(json['subscriptionExpiryDate']);
+
+    subscriptionPlan = json['subscription_plan'] != null
+        ? SubscriptionPlanModel.fromJson(json['subscription_plan'])
+        : null;
+
     subscriptionTotalOrders = json['subscriptionTotalOrders'];
     isSelfDelivery = json['isSelfDelivery'] ?? false;
     vType = json['vType'];
+
+    // Handle distance - could be double or String
+    if (json['distance'] != null) {
+      distance = json['distance'] is double
+          ? json['distance']
+          : double.tryParse(json['distance'].toString());
+    }
+
+    isActive = json['isActive'];
+  }
+
+  // In VendorModel.fromJson method, add these lines if needed:
+  factory VendorModel.fromApiJson(Map<String, dynamic> json) {
+    return VendorModel(
+      id: json['id'],
+      title: json['title'],
+      zoneId: json['zoneId'],
+      latitude: json['latitude'] is double
+          ? json['latitude']
+          : double.tryParse(json['latitude'].toString()),
+      longitude: json['longitude'] is double
+          ? json['longitude']
+          : double.tryParse(json['longitude'].toString()),
+      distance: json['distance'] is double
+          ? json['distance']
+          : double.tryParse(json['distance'].toString()),
+      vType: json['vType'],
+      isActive: json['isActive'],
+      isOpen: json['isOpen'],
+      subscriptionPlan: json['subscriptionPlan'],
+      subscriptionTotalOrders: json['subscriptionTotalOrders'],
+      subscriptionExpiryDate: json['subscriptionExpiryDate'],
+      reviewsCount: json['reviewsCount'],
+      reviewsSum: json['reviewsSum'],
+      // reviewsAverage: json['reviewsAverage'],
+      restaurantCost: json['restaurantCost']?.toString(),
+      createdAt: DateTime.parse(json['createdAt']).toString(),
+      photo: json['photo'],
+      location: json['location'],
+      enabledDiveInFuture: json['enabledDiveInFuture'],
+      description: json['description'],
+      phonenumber: json['phonenumber'],
+      adminCommission: json['adminCommission'] != null
+          ? AdminCommission.fromJson(json['adminCommission'])
+          : null,
+      specialDiscountEnable: json['specialDiscountEnable'],
+    );
+  }
+
+  static Timestamp? _parseTimestamp(dynamic timestamp) {
+    if (timestamp == null) return null;
+    if (timestamp is Timestamp) return timestamp;
+    if (timestamp is String) {
+      // Handle string timestamp format from API
+      try {
+        return Timestamp.fromDate(DateTime.parse(timestamp));
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -204,7 +341,9 @@ class VendorModel {
     data['authorName'] = authorName;
     data['phonenumber'] = phonenumber;
     if (specialDiscount != null) {
-      data['specialDiscount'] = specialDiscount!.map((v) => v.toJson()).toList();
+      data['specialDiscount'] = specialDiscount!
+          .map((v) => v.toJson())
+          .toList();
     }
     data['specialDiscountEnable'] = specialDiscountEnable;
     data['coordinates'] = coordinates;
@@ -215,6 +354,8 @@ class VendorModel {
     data['latitude'] = latitude;
     data['isSelfDelivery'] = isSelfDelivery ?? false;
     data['vType'] = vType;
+    data['distance'] = distance;
+    data['isActive'] = isActive;
     return data;
   }
 }
@@ -293,7 +434,16 @@ class Filters {
   String? freeWiFi;
   String? takesReservations;
 
-  Filters({this.goodForLunch, this.outdoorSeating, this.liveMusic, this.vegetarianFriendly, this.goodForDinner, this.goodForBreakfast, this.freeWiFi, this.takesReservations});
+  Filters({
+    this.goodForLunch,
+    this.outdoorSeating,
+    this.liveMusic,
+    this.vegetarianFriendly,
+    this.goodForDinner,
+    this.goodForBreakfast,
+    this.freeWiFi,
+    this.takesReservations,
+  });
 
   Filters.fromJson(Map<String, dynamic> json) {
     goodForLunch = json['Good for Lunch'];
@@ -399,7 +549,13 @@ class SpecialDiscountTimeslot {
   String? type;
   String? from;
 
-  SpecialDiscountTimeslot({this.discount, this.discountType, this.to, this.type, this.from});
+  SpecialDiscountTimeslot({
+    this.discount,
+    this.discountType,
+    this.to,
+    this.type,
+    this.from,
+  });
 
   SpecialDiscountTimeslot.fromJson(Map<String, dynamic> json) {
     discount = json['discount'];

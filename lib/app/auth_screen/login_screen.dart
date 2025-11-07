@@ -22,14 +22,11 @@ class LoginScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<LoginProvider>(
       builder: (context, controller, _) {
         return Scaffold(
           appBar: AppBar(
-            backgroundColor: themeChange.getThem()
-                ? AppThemeData.surfaceDark
-                : AppThemeData.surface,
+            backgroundColor: AppThemeData.surface,
             actions: [
               InkWell(
                 onTap: () async {
@@ -51,9 +48,7 @@ class LoginScreen extends StatelessWidget {
                   child: Text(
                     "Skip".tr,
                     style: TextStyle(
-                      color: themeChange.getThem()
-                          ? AppThemeData.primary300
-                          : AppThemeData.primary300,
+                      color: AppThemeData.primary300,
                       fontSize: 18,
                       fontFamily: AppThemeData.semiBold,
                     ),
@@ -71,9 +66,7 @@ class LoginScreen extends StatelessWidget {
                   Text(
                     "Welcome Back! 👋".tr,
                     style: TextStyle(
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey50
-                          : AppThemeData.grey900,
+                      color: AppThemeData.grey900,
                       fontSize: 22,
                       fontFamily: AppThemeData.semiBold,
                     ),
@@ -82,9 +75,7 @@ class LoginScreen extends StatelessWidget {
                     "Log in to continue enjoying delicious food delivered to your doorstep."
                         .tr,
                     style: TextStyle(
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey400
-                          : AppThemeData.grey500,
+                      color: AppThemeData.grey500,
                       fontSize: 16,
                       fontFamily: AppThemeData.regular,
                     ),
@@ -94,12 +85,8 @@ class LoginScreen extends StatelessWidget {
                     visible: true,
                     child: RoundedButtonFill(
                       title: "Continue with Mobile Number".tr,
-                      textColor: themeChange.getThem()
-                          ? AppThemeData.grey100
-                          : AppThemeData.grey900,
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey900
-                          : AppThemeData.grey100,
+                      textColor: AppThemeData.grey900,
+                      color: AppThemeData.grey100,
                       icon: SvgPicture.asset(
                         "assets/icons/ic_phone.svg",
                         colorFilter: const ColorFilter.mode(
@@ -131,28 +118,26 @@ class LoginScreen extends StatelessWidget {
                       TextSpan(
                         text: "Didn't have an account?".tr,
                         style: TextStyle(
-                          color: themeChange.getThem()
-                              ? AppThemeData.grey50
-                              : AppThemeData.grey900,
+                          color: AppThemeData.grey900,
                           fontFamily: AppThemeData.medium,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
                       const WidgetSpan(child: SizedBox(width: 10)),
-                      TextSpan(
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            Get.to(const SignupScreen());
-                          },
-                        text: 'Sign up'.tr,
-                        style: TextStyle(
-                          color: AppThemeData.primary300,
-                          fontFamily: AppThemeData.bold,
-                          fontWeight: FontWeight.w500,
-                          decoration: TextDecoration.underline,
-                          decorationColor: AppThemeData.primary300,
-                        ),
-                      ),
+                      // TextSpan(
+                      //   recognizer: TapGestureRecognizer()
+                      //     ..onTap = () {
+                      //       Get.to(const SignupScreen());
+                      //     },
+                      //   text: 'Sign up'.tr,
+                      //   style: TextStyle(
+                      //     color: AppThemeData.primary300,
+                      //     fontFamily: AppThemeData.bold,
+                      //     fontWeight: FontWeight.w500,
+                      //     decoration: TextDecoration.underline,
+                      //     decorationColor: AppThemeData.primary300,
+                      //   ),
+                      // ),
                     ],
                   ),
                 ),

@@ -1,4 +1,3 @@
-
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
@@ -22,29 +21,30 @@ class CartCheckOutScreen extends StatefulWidget {
   final String? source; // 'food' or 'mart' or null for auto-detect
   final bool isFromMartNavigation; // true if accessed from mart navigation tabs
 
-  const CartCheckOutScreen(
-      {super.key,
-        this.hideBackButton = false,
-        this.source,
-        this.isFromMartNavigation = false});
+  const CartCheckOutScreen({
+    super.key,
+    this.hideBackButton = false,
+    this.source,
+    this.isFromMartNavigation = false,
+  });
 
   @override
   State<CartCheckOutScreen> createState() => _CartCheckOutScreenState();
 }
 
 class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
-
   late CartControllerProvider controller;
+
   @override
   void initState() {
     super.initState();
-    controller=  Provider.of<CartControllerProvider>(context,listen:false);
+    controller = Provider.of<CartControllerProvider>(context, listen: false);
     // Future.delayed(const Duration(seconds: 3), () {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Future.delayed(const Duration(seconds: 3), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(seconds: 3), () {
         _refreshCartData();
       });
-      });
+    });
     // });
   }
 
@@ -57,6 +57,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
       });
     });
   }
+
   void _refreshCartData() {
     print('DEBUG: Refreshing cart data...');
     controller.forceRefreshCart();
@@ -112,15 +113,19 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     }
 
     // Auto-detect based on cart content
-    bool hasMartItems = cartItem.any((item) =>
-    item.vendorID?.contains('mart') == true ||
-        item.vendorID?.startsWith('demo_') == true ||
-        item.vendorID?.contains('vendor') == true);
+    bool hasMartItems = cartItem.any(
+      (item) =>
+          item.vendorID?.contains('mart') == true ||
+          item.vendorID?.startsWith('demo_') == true ||
+          item.vendorID?.contains('vendor') == true,
+    );
 
-    bool hasFoodItems = cartItem.any((item) =>
-    !(item.vendorID?.contains('mart') == true ||
-        item.vendorID?.startsWith('demo_') == true ||
-        item.vendorID?.contains('vendor') == true));
+    bool hasFoodItems = cartItem.any(
+      (item) =>
+          !(item.vendorID?.contains('mart') == true ||
+              item.vendorID?.startsWith('demo_') == true ||
+              item.vendorID?.contains('vendor') == true),
+    );
 
     if (hasMartItems && !hasFoodItems) {
       return CartTheme.mart;
@@ -133,102 +138,104 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
-    return  Consumer<CartControllerProvider>(builder: (context,controller, _) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.checkAndUpdatePaymentMethod();
-      });
-      return WillPopScope(
-        onWillPop: () async {
-          if (controller.isGlobalLocked.value) {
-            ShowToastDialog.showToast("Please wait, payment is processing...");
-            return false; // prevent back navigation
-          }
-          return true;
-        },
-        child: Scaffold(
-            backgroundColor: themeChange.getThem()
-                ? AppThemeData.surfaceDark
-                : themeColors.surface,
+    return Consumer<CartControllerProvider>(
+      builder: (context, controller, _) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.checkAndUpdatePaymentMethod();
+        });
+        return WillPopScope(
+          onWillPop: () async {
+            if (controller.isGlobalLocked.value) {
+              ShowToastDialog.showToast(
+                "Please wait, payment is processing...",
+              );
+              return false; // prevent back navigation
+            }
+            return true;
+          },
+          child: Scaffold(
+            backgroundColor: themeColors.surface,
             appBar: AppBar(
-              backgroundColor: themeChange.getThem()
-                  ? AppThemeData.surfaceDark
-                  : themeColors.primary,
+              backgroundColor: themeColors.primary,
               foregroundColor: Colors.white,
               automaticallyImplyLeading: !widget.hideBackButton,
               centerTitle: true,
               title: Text(
-              'Cart',
+                'Cart',
                 style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               actions: [
                 // Debug buttons removed - methods not available in current version
               ],
             ),
-            body:cartItem.isEmpty? Center(
-              child: Text(
-                    "No Available Items",
-                textAlign:
-                TextAlign.start,
-                style: TextStyle(
-                  fontFamily: AppThemeData
-                      .semiBold,
-                  color: themeChange
-                      .getThem()
-                      ? AppThemeData
-                      .primary300
-                      : AppThemeData
-                      .primary300,
-                  fontSize: 16,
-                ),
-              ),
-            ): Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(ImageConst.backgroundImage,
+            body: cartItem.isEmpty
+                ? Center(
+                    child: Text(
+                      "No Available Items",
+                      textAlign: TextAlign.start,
+                      style: TextStyle(
+                        fontFamily: AppThemeData.semiBold,
+                        color: AppThemeData.primary300,
+                        fontSize: 16,
+                      ),
+                    ),
+                  )
+                : Container(
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage(ImageConst.backgroundImage),
+                        fit: BoxFit.cover, // can use contain, fill, repeat
+                      ),
+                    ),
+                    child: Column(
+                      children: [cartProductDetailsImageWidget(controller)],
+                    ),
                   ),
-                  fit: BoxFit.cover, // can use contain, fill, repeat
-                ),
-              ),
-              child: Column(
-                children: [
-                  cartProductDetailsImageWidget(
-                    themeChange,
-                    controller,
-                  ),
-                ],
-              ),
-            ),
             bottomNavigationBar: cartItem.isEmpty
                 ? null
                 : SafeArea(
-                  child: Container(
-                                decoration: BoxDecoration(
-                    borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(20), topRight: Radius.circular(20),),),
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                    child: RoundedButtonFill(
-                    textColor: AppThemeData.surface,
-                    isEnabled: true,
-                    title:  "Check Out".tr,
-                    height: 5,
-                    color: AppThemeData.primary300,
-                    fontSizes: 16,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 20,
+                      ),
+                      child: RoundedButtonFill(
+                        textColor: AppThemeData.surface,
+                        isEnabled: true,
+                        title: "Check Out".tr,
+                        height: 5,
+                        color: AppThemeData.primary300,
+                        fontSizes: 16,
                         // onPress: () async {
                         //   await Get.to(() => const CartScreen())?.then((_) {
                         //     _refreshCartData();
                         //   });
                         // }
-                      onPress: () async {
-                      Get.to(() => const CartScreen());
-                      }
+                        onPress: () async {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => CartScreen(),
                             ),
+                          );
+                          // Get.to(() => const CartScreen());
+                        },
+                      ),
+                    ),
                   ),
-                ),),
-      );
-    });
+          ),
+        );
+      },
+    );
   }
 }

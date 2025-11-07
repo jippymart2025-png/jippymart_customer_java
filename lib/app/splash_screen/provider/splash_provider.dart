@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
@@ -17,14 +18,13 @@ import 'package:get/get.dart';
 
 class SplashProvider extends ChangeNotifier {
   late HomeProvider homeProvider;
+  late AddressListProvider addressListProvider;
 
-  void initFunction(BuildContext context) {
-    homeProvider = Provider.of<HomeProvider>(context, listen: false);
-    homeProvider.initFunction();
+  void initFunction(BuildContext context) async {
     _initializeLogo(context);
   }
 
-  void _initializeLogo(BuildContext context) async {
+  _initializeLogo(BuildContext context) async {
     await Future.delayed(const Duration(microseconds: 500)).then((value) {
       _navigateToMainApp(context);
     });
@@ -32,8 +32,13 @@ class SplashProvider extends ChangeNotifier {
 
   void _navigateToMainApp(BuildContext context) async {
     try {
+      homeProvider = Provider.of<HomeProvider>(context, listen: false);
+      addressListProvider = Provider.of<AddressListProvider>(
+        context,
+        listen: false,
+      );
       final apiToken = await SqlStorageConst.getAuthToken();
-      final userId = await SqlStorageConst.getUserId();
+      final userId = await SqlStorageConst.getFirebaseId();
       if (apiToken == null || apiToken.isEmpty || userId == null) {
         Get.offAll(
           () => const PhoneNumberScreen(),
@@ -43,7 +48,9 @@ class SplashProvider extends ChangeNotifier {
         _checkUpdatesInBackground();
         return;
       }
+      addressListProvider.initFunction();
       await _loadUserDataFromStorage();
+      homeProvider.initFunction(context: context);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => DashBoardScreen()),
         (Route<dynamic> route) => false,
@@ -63,18 +70,21 @@ class SplashProvider extends ChangeNotifier {
 
   Future<void> _loadUserDataFromStorage() async {
     try {
+      print(" _loadAllDataInParallel  first ");
       final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
       final userId = await secureStorage.read(key: 'user_id');
+      final firebaseId = await secureStorage.read(key: 'firebase_id');
       final firstName = await secureStorage.read(key: 'user_firstName') ?? '';
       final lastName = await secureStorage.read(key: 'user_lastName') ?? '';
       final email = await secureStorage.read(key: 'user_email') ?? '';
       final phone = await secureStorage.read(key: 'user_phone') ?? '';
       final countryCode =
           await secureStorage.read(key: 'user_countryCode') ?? '+91';
-      if (userId != null) {
+      if (firebaseId != null) {
         UserModel userModel = UserModel(
           id: userId,
           firstName: firstName,
+          firebaseId: firebaseId,
           lastName: lastName,
           email: email,
           phoneNumber: phone,
@@ -83,6 +93,7 @@ class SplashProvider extends ChangeNotifier {
           active: true,
         );
         Constant.userModel = userModel;
+        notifyListeners();
       } else {}
     } catch (e) {}
   }

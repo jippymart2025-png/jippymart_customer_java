@@ -11,137 +11,103 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 
 class SignupProvider extends ChangeNotifier {
-  Rx<TextEditingController> firstNameEditingController =
-      TextEditingController().obs;
-  Rx<TextEditingController> lastNameEditingController =
-      TextEditingController().obs;
-  Rx<TextEditingController> emailEditingController =
-      TextEditingController().obs;
-  Rx<TextEditingController> phoneNUmberEditingController =
-      TextEditingController().obs;
-  Rx<TextEditingController> countryCodeEditingController =
-      TextEditingController(text: "+91").obs;
-  Rx<TextEditingController> passwordEditingController =
-      TextEditingController().obs;
-  Rx<TextEditingController> conformPasswordEditingController =
-      TextEditingController().obs;
-  Rx<TextEditingController> referralCodeEditingController =
-      TextEditingController().obs;
-
-  RxBool passwordVisible = true.obs;
-  RxBool conformPasswordVisible = true.obs;
-
-  RxString type = "".obs;
+  TextEditingController firstNameEditingController = TextEditingController();
+  TextEditingController lastNameEditingController = TextEditingController();
+  TextEditingController emailEditingController = TextEditingController();
+  TextEditingController phoneNUmberEditingController = TextEditingController();
+  TextEditingController countryCodeEditingController = TextEditingController(
+    text: "+91",
+  );
+  String type = "";
   String authToken = "";
-
   Rx<UserModel> userModel = UserModel().obs;
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
-  void initFunction() {
-    getArgument();
+  void initFunction({
+    required String phoneNumber,
+    required String countryCode,
+  }) {
+    phoneNUmberEditingController.text = phoneNumber;
+    countryCodeEditingController.text = countryCode;
+    notifyListeners();
   }
 
-  getArgument() {
-    dynamic argumentData = Get.arguments;
-    if (argumentData != null) {
-      type.value = argumentData['type'];
-      userModel.value = argumentData['userModel'];
-      authToken = argumentData['token'] ?? '';
-
-      if (type.value == "mobileNumber") {
-        phoneNUmberEditingController.value.text = userModel.value.phoneNumber
-            .toString();
-        countryCodeEditingController.value.text = userModel.value.countryCode
-            .toString();
-      }
-    }
-  }
-
-  Future<Map<String, dynamic>> _makeApiCall(
+  // In your _makeApiCall method, make sure it accepts 201 as success
+  Future<dynamic> _makeApiCall(
     String endpoint,
     Map<String, dynamic> data,
     String method, {
     String? token,
   }) async {
     try {
-      final url = Uri.parse('${AppConst.baseUrl}$endpoint');
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
-
-      // Add authorization header if token is provided
+      final headers = await getHeaders();
       if (token != null) {
         headers['Authorization'] = 'Bearer $token';
       }
 
-      http.Response response;
-
-      if (method == 'POST') {
-        response = await http.post(
-          url,
-          headers: headers,
-          body: json.encode(data),
-        );
-      } else {
-        throw Exception('Unsupported HTTP method');
-      }
-
-      if (response.statusCode == 200) {
+      final response = method == 'POST'
+          ? await http.post(
+              Uri.parse('${AppConst.baseUrl}$endpoint'),
+              headers: headers,
+              body: json.encode(data),
+            )
+          : await http.get(
+              Uri.parse('${AppConst.baseUrl}$endpoint'),
+              headers: headers,
+            );
+      print('[API_CALL] Response status: ${response.statusCode}');
+      print('[API_CALL] Response body: ${response.body}');
+      // Accept both 200 and 201 as success statuses
+      if (response.statusCode == 200 || response.statusCode == 201) {
         return json.decode(response.body);
       } else {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } catch (e) {
+      print('[API_CALL] Error: $e');
       rethrow;
     }
   }
 
   signUpWithEmailAndPassword() async {
-    if (referralCodeEditingController.value.text.toString().isNotEmpty) {
-      // You might want to implement referral code validation with your API
-      // For now, we'll proceed with signup
-      await signUp();
-    } else {
-      await signUp();
-    }
+    await signUp();
   }
 
   signUp() async {
     ShowToastDialog.showLoader("Please wait".tr);
-
     try {
+      String countryCode = countryCodeEditingController.text.replaceAll(
+        '+',
+        '',
+      );
       Map<String, dynamic> signupData = {
         "firstName": firstNameEditingController.value.text.trim(),
         "lastName": lastNameEditingController.value.text.trim(),
         "email": emailEditingController.value.text.trim().toLowerCase(),
-        "phone": phoneNUmberEditingController.value.text.trim(),
+        "phone":
+            "$countryCode${phoneNUmberEditingController.value.text.trim()}",
       };
-
-      // If we have a token from OTP verification, use it for authenticated signup
-      final endpoint = authToken.isNotEmpty
-          ? 'api/complete-profile'
-          : 'api/signup';
-
+      print(" signUp signupData ${signupData}");
+      final endpoint = authToken.isNotEmpty ? 'complete-profile' : 'signup';
       final response = await _makeApiCall(
         endpoint,
         signupData,
         'POST',
         token: authToken.isNotEmpty ? authToken : null,
       );
-
+      print(" signUp signUp ${response}");
       if (response['success'] == true) {
-        // Store the token if this is a new registration
         if (response['token'] != null) {
           await secureStorage.write(key: 'api_token', value: response['token']);
         }
-
-        // Create user model from response
         final userData = response['user'] ?? {};
         UserModel newUser = UserModel(
           id: userData['id']?.toString() ?? '',
+          firebaseId: userData['firebase_id'] ?? '',
           firstName:
               userData['firstName'] ??
               firstNameEditingController.value.text.trim(),
@@ -157,15 +123,11 @@ class SignupProvider extends ChangeNotifier {
           countryCode: countryCodeEditingController.value.text,
           walletAmount: userData['wallet_amount'] ?? 0.0,
         );
-
         // Store user data locally
-        await _storeUserData(newUser);
+        await SqlStorageConst.storeUserData(newUser);
         Constant.userModel = newUser;
-
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast("Account created successfully".tr);
-
-        // Navigate to appropriate screen
         if (newUser.shippingAddress != null &&
             newUser.shippingAddress!.isNotEmpty) {
           Get.offAll(const DashBoardScreen());
@@ -176,20 +138,11 @@ class SignupProvider extends ChangeNotifier {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(response['message'] ?? "Signup failed".tr);
       }
+      notifyListeners();
     } catch (e) {
       print('[DEBUG] signUp() error: ${e.toString()}');
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast("Error creating account. Please try again.");
     }
-  }
-
-  // Store user data locally
-  Future<void> _storeUserData(UserModel user) async {
-    await secureStorage.write(key: 'user_id', value: user.id);
-    await secureStorage.write(key: 'user_firstName', value: user.firstName);
-    await secureStorage.write(key: 'user_lastName', value: user.lastName);
-    await secureStorage.write(key: 'user_email', value: user.email);
-    await secureStorage.write(key: 'user_phone', value: user.phoneNumber);
-    await secureStorage.write(key: 'user_countryCode', value: user.countryCode);
   }
 }

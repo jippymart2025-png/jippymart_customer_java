@@ -16,7 +16,8 @@ import 'package:jippymart_customer/services/mart_firestore_service.dart';
 
 /// Reusable banner widget that works with both BannerModel and MartBannerModel
 class ReusableBannerWidget extends StatelessWidget {
-  final List<dynamic> banners; // Can be List<BannerModel> or List<MartBannerModel>
+  final List<dynamic>
+  banners; // Can be List<BannerModel> or List<MartBannerModel>
   final PageController pageController;
   final RxInt currentPage;
   final double height;
@@ -26,6 +27,7 @@ class ReusableBannerWidget extends StatelessWidget {
   final Function()? onPanStart;
   final Function()? onPanEnd;
   final double? width;
+
   const ReusableBannerWidget({
     super.key,
     required this.banners,
@@ -37,7 +39,7 @@ class ReusableBannerWidget extends StatelessWidget {
     this.onBannerTap,
     this.onPanStart,
     this.onPanEnd,
-    this.width
+    this.width,
   });
 
   @override
@@ -83,7 +85,8 @@ class ReusableBannerWidget extends StatelessWidget {
           physics: const BouncingScrollPhysics(),
           controller: pageController,
           scrollDirection: Axis.horizontal,
-          itemCount: banners.length * 1000, // Create a large number for infinite effect
+          itemCount: banners.length * 1000,
+          // Create a large number for infinite effect
           padEnds: false,
           pageSnapping: true,
           onPageChanged: (value) {
@@ -113,8 +116,8 @@ class ReusableBannerWidget extends StatelessWidget {
     if (banner is BannerModel) {
       imageUrl = banner.photo;
       title = banner.title;
-      redirectType = banner.redirect_type;
-      redirectId = banner.redirect_id;
+      redirectType = banner.redirectType;
+      redirectId = banner.redirectId;
     } else if (banner is MartBannerModel) {
       imageUrl = banner.photo;
       title = banner.title;
@@ -162,10 +165,7 @@ class ReusableBannerWidget extends StatelessWidget {
                   },
                   loadingBuilder: (context, child, loadingProgress) {
                     // Lazy loading - show placeholder immediately while image loads in background
-                    return Container(
-                      color: Colors.grey[50],
-                      child: child,
-                    );
+                    return Container(color: Colors.grey[50], child: child);
                   },
                 )
               else
@@ -184,10 +184,7 @@ class ReusableBannerWidget extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      Colors.black.withOpacity(0.3),
-                    ],
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
                   ),
                 ),
               ),
@@ -239,9 +236,15 @@ class ReusableBannerWidget extends StatelessWidget {
     );
   }
 
-  Future<void> _handleBannerTap(BuildContext context, String? redirectType, String? redirectId) async {
-    print('[BANNER NAVIGATION] 🎯 Banner tapped - Type: $redirectType, ID: $redirectId');
-    
+  Future<void> _handleBannerTap(
+    BuildContext context,
+    String? redirectType,
+    String? redirectId,
+  ) async {
+    print(
+      '[BANNER NAVIGATION] 🎯 Banner tapped - Type: $redirectType, ID: $redirectId',
+    );
+
     if (redirectType == null || redirectId == null) {
       print('[BANNER NAVIGATION] ❌ Missing redirect type or ID');
       return;
@@ -277,10 +280,10 @@ class ReusableBannerWidget extends StatelessWidget {
 
   Future<void> _handleStoreRedirect(String storeId) async {
     ShowToastDialog.showLoader("Please wait".tr);
-    
+
     try {
       VendorModel? vendorModel = await FireStoreUtils.getVendorById(storeId);
-      
+
       if (vendorModel != null) {
         if (vendorModel.zoneId == Constant.selectedZone?.id) {
           ShowToastDialog.closeLoader();
@@ -291,7 +294,8 @@ class ReusableBannerWidget extends StatelessWidget {
         } else {
           ShowToastDialog.closeLoader();
           ShowToastDialog.showToast(
-            "Sorry, The Zone is not available in your area. Change the other location first.".tr,
+            "Sorry, The Zone is not available in your area. Change the other location first."
+                .tr,
           );
         }
       } else {
@@ -306,25 +310,27 @@ class ReusableBannerWidget extends StatelessWidget {
 
   Future<void> _handleProductRedirect(String productId) async {
     ShowToastDialog.showLoader("Please wait".tr);
-    
+
     try {
       // Try to get mart item first
       final martService = Get.find<MartFirestoreService>();
       MartItemModel? martItem = await martService.getItemById(productId);
-      
+
       if (martItem != null) {
         // This is a mart product
         ShowToastDialog.closeLoader();
-        Get.to(
-          MartProductDetailsScreen(product: martItem),
-        );
+        Get.to(MartProductDetailsScreen(product: martItem));
       } else {
         // Try to get regular product
-        ProductModel? productModel = await FireStoreUtils.getProductById(productId);
-        
+        ProductModel? productModel = await FireStoreUtils.getProductById(
+          productId,
+        );
+
         if (productModel != null) {
-          VendorModel? vendorModel = await FireStoreUtils.getVendorById(productModel.vendorID.toString());
-          
+          VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+            productModel.vendorID.toString(),
+          );
+
           if (vendorModel != null) {
             if (vendorModel.zoneId == Constant.selectedZone?.id) {
               ShowToastDialog.closeLoader();
@@ -335,7 +341,8 @@ class ReusableBannerWidget extends StatelessWidget {
             } else {
               ShowToastDialog.closeLoader();
               ShowToastDialog.showToast(
-                "Sorry, The Zone is not available in your area. Change the other location first.".tr,
+                "Sorry, The Zone is not available in your area. Change the other location first."
+                    .tr,
               );
             }
           } else {
@@ -354,13 +361,17 @@ class ReusableBannerWidget extends StatelessWidget {
   }
 
   Future<void> _handleCategoryRedirect(String categoryId) async {
-    print('[BANNER NAVIGATION] 🎯 Category redirect triggered for ID: $categoryId');
+    print(
+      '[BANNER NAVIGATION] 🎯 Category redirect triggered for ID: $categoryId',
+    );
     ShowToastDialog.showLoader("Please wait".tr);
-    
+
     try {
       // Navigate to category detail screen with the category ID
       ShowToastDialog.closeLoader();
-      print('[BANNER NAVIGATION] 🚀 Navigating to MartCategoryDetailScreen with categoryId: $categoryId');
+      print(
+        '[BANNER NAVIGATION] 🚀 Navigating to MartCategoryDetailScreen with categoryId: $categoryId',
+      );
       Get.to(
         () => const MartCategoryDetailScreen(),
         arguments: {
@@ -410,20 +421,22 @@ class BannerIndicatorDots extends StatelessWidget {
   Widget build(BuildContext context) {
     if (itemCount <= 1) return const SizedBox.shrink();
 
-    return Obx(() => Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(
-        itemCount,
-        (index) => Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: currentIndex.value == index ? activeColor : inactiveColor,
+    return Obx(
+      () => Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(
+          itemCount,
+          (index) => Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: currentIndex.value == index ? activeColor : inactiveColor,
+            ),
           ),
         ),
       ),
-    ));
+    );
   }
 }

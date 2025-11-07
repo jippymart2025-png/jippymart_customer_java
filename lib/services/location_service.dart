@@ -9,7 +9,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 
 class LocationService {
-
   /// Get current location with proper error handling
   static Future<Position?> getCurrentLocation({
     bool showLoader = true,
@@ -26,7 +25,9 @@ class LocationService {
         log('[LOCATION_SERVICE] Location services disabled');
         if (showLoader) ShowToastDialog.closeLoader();
         if (showError) {
-          ShowToastDialog.showToast("Please enable location services in your device settings".tr);
+          ShowToastDialog.showToast(
+            "Please enable location services in your device settings".tr,
+          );
         }
         return null;
       }
@@ -48,7 +49,10 @@ class LocationService {
       if (permission == LocationPermission.deniedForever) {
         if (showLoader) ShowToastDialog.closeLoader();
         if (showError) {
-          ShowToastDialog.showToast("Location permissions are permanently denied. Please enable them in settings.".tr);
+          ShowToastDialog.showToast(
+            "Location permissions are permanently denied. Please enable them in settings."
+                .tr,
+          );
         }
         return null;
       }
@@ -60,24 +64,33 @@ class LocationService {
         timeLimit: const Duration(seconds: 15),
       );
 
-      log('[LOCATION_SERVICE] Position obtained: ${position.latitude}, ${position.longitude}');
+      log(
+        '[LOCATION_SERVICE] Position obtained: ${position.latitude}, ${position.longitude}',
+      );
       if (showLoader) ShowToastDialog.closeLoader();
       return position;
-
     } catch (e) {
       log('[LOCATION_SERVICE] Error getting location: $e');
       if (showLoader) ShowToastDialog.closeLoader();
       if (showError) {
-        ShowToastDialog.showToast("Failed to get current location. Please try again.".tr);
+        ShowToastDialog.showToast(
+          "Failed to get current location. Please try again.".tr,
+        );
       }
       return null;
     }
   }
 
   /// Get address from coordinates
-  static Future<String?> getAddressFromCoordinates(double latitude, double longitude) async {
+  static Future<String?> getAddressFromCoordinates(
+    double latitude,
+    double longitude,
+  ) async {
     try {
-      List<Placemark> placemarks = await placemarkFromCoordinates(latitude, longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
       if (placemarks.isNotEmpty) {
         Placemark placemark = placemarks[0];
         return "${placemark.name}, ${placemark.subLocality}, ${placemark.locality}, ${placemark.administrativeArea}, ${placemark.postalCode}, ${placemark.country}";
@@ -99,13 +112,12 @@ class LocationService {
         showLoader: showLoader,
         showError: showError,
       );
-
       if (position == null) {
         return null;
       }
-
       ShippingAddress addressModel = ShippingAddress();
-      addressModel.id = 'current_location_${DateTime.now().millisecondsSinceEpoch}'; // 🔑 Add unique ID
+      addressModel.id =
+          'current_location_${DateTime.now().millisecondsSinceEpoch}'; // 🔑 Add unique ID
       addressModel.addressAs = "Current Location";
       addressModel.location = UserLocation(
         latitude: position.latitude,
@@ -128,17 +140,23 @@ class LocationService {
       }
 
       // 🔑 CRITICAL: Detect zone ID for current location
-      String? detectedZoneId = await _detectZoneIdForCoordinates(position.latitude, position.longitude);
+      String? detectedZoneId = await _detectZoneIdForCoordinates(
+        position.latitude,
+        position.longitude,
+      );
       addressModel.zoneId = detectedZoneId;
-      
-      log('[LOCATION_SERVICE] Created current location address with ID: ${addressModel.id} and zone ID: ${detectedZoneId ?? "NULL"}');
+
+      log(
+        '[LOCATION_SERVICE] Created current location address with ID: ${addressModel.id} and zone ID: ${detectedZoneId ?? "NULL"}',
+      );
 
       return addressModel;
-
     } catch (e) {
       log('[LOCATION_SERVICE] Error creating shipping address: $e');
       if (showError) {
-        ShowToastDialog.showToast("Failed to get location details. Please try again.".tr);
+        ShowToastDialog.showToast(
+          "Failed to get location details. Please try again.".tr,
+        );
       }
       return null;
     }
@@ -163,7 +181,10 @@ class LocationService {
       Constant.selectedLocation = addressModel;
 
       // Save to local storage
-      await Preferences.setString('user_location', addressModel.location!.toJson().toString());
+      await Preferences.setString(
+        'user_location',
+        addressModel.location!.toJson().toString(),
+      );
 
       // Update user profile if logged in
       if (Constant.userModel != null) {
@@ -176,11 +197,12 @@ class LocationService {
 
       log('[LOCATION_SERVICE] Location updated successfully');
       return true;
-
     } catch (e) {
       log('[LOCATION_SERVICE] Error updating location: $e');
       if (showError) {
-        ShowToastDialog.showToast("Failed to update location. Please try again.".tr);
+        ShowToastDialog.showToast(
+          "Failed to update location. Please try again.".tr,
+        );
       }
       return false;
     }
@@ -213,10 +235,13 @@ class LocationService {
   // }
 
   /// 🔑 DETECT ZONE ID FOR COORDINATES
-  /// 
+  ///
   /// This method detects the zone ID for given coordinates by checking
   /// if the coordinates fall within any zone polygon
-  static Future<String?> _detectZoneIdForCoordinates(double latitude, double longitude) async {
+  static Future<String?> _detectZoneIdForCoordinates(
+    double latitude,
+    double longitude,
+  ) async {
     return null;
 
     // try {
@@ -259,8 +284,11 @@ class LocationService {
 
   /// Validate location coordinates
   static bool isValidLocation(double latitude, double longitude) {
-    return latitude >= -90 && latitude <= 90 && 
-           longitude >= -180 && longitude <= 180 &&
-           latitude != 0 && longitude != 0;
+    return latitude >= -90 &&
+        latitude <= 90 &&
+        longitude >= -180 &&
+        longitude <= 180 &&
+        latitude != 0 &&
+        longitude != 0;
   }
-} 
+}

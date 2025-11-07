@@ -2,7 +2,8 @@ import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/models/cart_product_model.dart' show CartProductModel;
+import 'package:jippymart_customer/models/cart_product_model.dart'
+    show CartProductModel;
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart' show AppThemeData;
 import 'package:jippymart_customer/utils/dark_theme_provider.dart';
@@ -13,16 +14,12 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../themes/responsive.dart' show Responsive;
 
-Widget cartProductDetailsImageWidget(
-  DarkThemeProvider themeChange,
-  CartControllerProvider controller,
-) {
+Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 0),
     child: Container(
       decoration: ShapeDecoration(
-        color:
-            themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+        color: AppThemeData.grey50,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       // margin: EdgeInsets.only(top: 10),
@@ -37,8 +34,9 @@ Widget cartProductDetailsImageWidget(
           itemBuilder: (context, index) {
             CartProductModel cartProductModel = cartItem[index];
             ProductModel? productModel;
-            FireStoreUtils.getProductById(cartProductModel.id!.split('~').first)
-                .then((value) {
+            FireStoreUtils.getProductById(
+              cartProductModel.id!.split('~').first,
+            ).then((value) {
               productModel = value;
             });
             Widget priceWidget;
@@ -48,8 +46,10 @@ Widget cartProductDetailsImageWidget(
                 children: [
                   Container(
                     margin: const EdgeInsets.only(right: 6),
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(4),
@@ -69,9 +69,7 @@ Widget cartProductDetailsImageWidget(
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 16,
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey50
-                          : AppThemeData.grey900,
+                      color: AppThemeData.grey900,
                       fontFamily: AppThemeData.semiBold,
                       fontWeight: FontWeight.w600,
                     ),
@@ -83,18 +81,15 @@ Widget cartProductDetailsImageWidget(
                       double.parse(cartProductModel.discountPrice!) > 0)
                     Text(
                       Constant.amountShow(
-                          amount: cartProductModel.discountPrice),
+                        amount: cartProductModel.discountPrice,
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 14,
                         decoration: TextDecoration.lineThrough,
-                        decorationColor: themeChange.getThem()
-                            ? AppThemeData.grey500
-                            : AppThemeData.grey400,
-                        color: themeChange.getThem()
-                            ? AppThemeData.grey500
-                            : AppThemeData.grey400,
+                        decorationColor: AppThemeData.grey400,
+                        color: AppThemeData.grey400,
                         fontFamily: AppThemeData.semiBold,
                         fontWeight: FontWeight.w600,
                       ),
@@ -102,7 +97,8 @@ Widget cartProductDetailsImageWidget(
                 ],
               );
             } else if (double.parse(
-                    cartProductModel.discountPrice.toString()) <=
+                  cartProductModel.discountPrice.toString(),
+                ) <=
                 0) {
               priceWidget = Text(
                 Constant.amountShow(amount: cartProductModel.price),
@@ -110,9 +106,7 @@ Widget cartProductDetailsImageWidget(
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 16,
-                  color: themeChange.getThem()
-                      ? AppThemeData.grey50
-                      : AppThemeData.grey900,
+                  color: AppThemeData.grey900,
                   fontFamily: AppThemeData.semiBold,
                   fontWeight: FontWeight.w600,
                 ),
@@ -123,14 +117,13 @@ Widget cartProductDetailsImageWidget(
                   Flexible(
                     child: Text(
                       Constant.amountShow(
-                          amount: cartProductModel.discountPrice.toString()),
+                        amount: cartProductModel.discountPrice.toString(),
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: 16,
-                        color: themeChange.getThem()
-                            ? AppThemeData.grey500
-                            : AppThemeData.grey400,
+                        color: AppThemeData.grey400,
                         fontFamily: AppThemeData.semiBold,
                         fontWeight: FontWeight.w600,
                       ),
@@ -145,12 +138,8 @@ Widget cartProductDetailsImageWidget(
                       style: TextStyle(
                         fontSize: 14,
                         decoration: TextDecoration.lineThrough,
-                        decorationColor: themeChange.getThem()
-                            ? AppThemeData.grey500
-                            : AppThemeData.grey400,
-                        color: themeChange.getThem()
-                            ? AppThemeData.grey500
-                            : AppThemeData.grey400,
+                        decorationColor: AppThemeData.grey400,
+                        color: AppThemeData.grey400,
                         fontFamily: AppThemeData.semiBold,
                         fontWeight: FontWeight.w600,
                       ),
@@ -162,15 +151,15 @@ Widget cartProductDetailsImageWidget(
             return InkWell(
               onTap: () async {
                 await FireStoreUtils.getVendorById(
-                        productModel!.vendorID.toString())
-                    .then(
-                  (value) {
-                    if (value != null) {
-                      Get.to(const RestaurantDetailsScreen(),
-                          arguments: {"vendorModel": value});
-                    }
-                  },
-                );
+                  productModel!.vendorID.toString(),
+                ).then((value) {
+                  if (value != null) {
+                    Get.to(
+                      const RestaurantDetailsScreen(),
+                      arguments: {"vendorModel": value},
+                    );
+                  }
+                });
               },
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -187,12 +176,13 @@ Widget cartProductDetailsImageWidget(
                                 flex: 2,
                                 child: ClipRRect(
                                   borderRadius: const BorderRadius.all(
-                                      Radius.circular(16)),
+                                    Radius.circular(16),
+                                  ),
                                   child: Stack(
                                     children: [
                                       NetworkImageWidget(
-                                        imageUrl:
-                                            cartProductModel.photo.toString(),
+                                        imageUrl: cartProductModel.photo
+                                            .toString(),
                                         height: Responsive.height(10, context),
                                         width: Responsive.width(16, context),
                                         fit: BoxFit.cover,
@@ -227,9 +217,7 @@ Widget cartProductDetailsImageWidget(
                                       overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontFamily: AppThemeData.regular,
-                                        color: themeChange.getThem()
-                                            ? AppThemeData.grey50
-                                            : AppThemeData.grey900,
+                                        color: AppThemeData.grey900,
                                         fontSize: 16,
                                       ),
                                     ),
@@ -237,28 +225,33 @@ Widget cartProductDetailsImageWidget(
                                     cartProductModel.promoId != null &&
                                             cartProductModel.promoId!.isNotEmpty
                                         ? Padding(
-                                            padding:
-                                                const EdgeInsets.only(top: 4),
+                                            padding: const EdgeInsets.only(
+                                              top: 4,
+                                            ),
                                             child: Row(
                                               children: [
                                                 Container(
                                                   margin: const EdgeInsets.only(
-                                                      right: 6),
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 6,
-                                                      vertical: 2),
+                                                    right: 6,
+                                                  ),
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 2,
+                                                      ),
                                                   decoration: BoxDecoration(
                                                     color: Colors.red,
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                            4),
+                                                          4,
+                                                        ),
                                                   ),
                                                   child: Text(
                                                     'Offer',
                                                     style: TextStyle(
                                                       color: Color(
-                                                          0xFFFFD700), // gold
+                                                        0xFFFFD700,
+                                                      ), // gold
                                                       fontWeight:
                                                           FontWeight.bold,
                                                       fontSize: 10,
@@ -277,16 +270,15 @@ Widget cartProductDetailsImageWidget(
                                               Flexible(
                                                 child: Text(
                                                   Constant.amountShow(
-                                                      amount: cartProductModel
-                                                          .price),
+                                                    amount:
+                                                        cartProductModel.price,
+                                                  ),
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
                                                   style: TextStyle(
                                                     fontSize: 16,
-                                                    color: themeChange.getThem()
-                                                        ? AppThemeData.grey50
-                                                        : AppThemeData.grey900,
+                                                    color: AppThemeData.grey900,
                                                     fontFamily:
                                                         AppThemeData.semiBold,
                                                     fontWeight: FontWeight.w600,
@@ -297,9 +289,10 @@ Widget cartProductDetailsImageWidget(
                                               Flexible(
                                                 child: Text(
                                                   Constant.amountShow(
-                                                      amount: cartProductModel
-                                                          .discountPrice
-                                                          .toString()),
+                                                    amount: cartProductModel
+                                                        .discountPrice
+                                                        .toString(),
+                                                  ),
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,
@@ -307,13 +300,9 @@ Widget cartProductDetailsImageWidget(
                                                     fontSize: 14,
                                                     decoration: TextDecoration
                                                         .lineThrough,
-                                                    decorationColor: themeChange
-                                                            .getThem()
-                                                        ? AppThemeData.grey500
-                                                        : AppThemeData.grey400,
-                                                    color: themeChange.getThem()
-                                                        ? AppThemeData.grey500
-                                                        : AppThemeData.grey400,
+                                                    decorationColor:
+                                                        AppThemeData.grey400,
+                                                    color: AppThemeData.grey400,
                                                     fontFamily:
                                                         AppThemeData.semiBold,
                                                     fontWeight: FontWeight.w600,
@@ -322,90 +311,70 @@ Widget cartProductDetailsImageWidget(
                                               ),
                                             ],
                                           )
-                                        : double.parse(cartProductModel
-                                                    .discountPrice
-                                                    .toString()) <=
-                                                0
-                                            ? Text(
-                                                Constant.amountShow(
-                                                    amount:
-                                                        cartProductModel.price),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  color: themeChange.getThem()
-                                                      ? AppThemeData.grey50
-                                                      : AppThemeData.grey900,
-                                                  fontFamily:
-                                                      AppThemeData.semiBold,
-                                                  fontWeight: FontWeight.w600,
+                                        : double.parse(
+                                                cartProductModel.discountPrice
+                                                    .toString(),
+                                              ) <=
+                                              0
+                                        ? Text(
+                                            Constant.amountShow(
+                                              amount: cartProductModel.price,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 16,
+                                              color: AppThemeData.grey900,
+                                              fontFamily: AppThemeData.semiBold,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          )
+                                        : Row(
+                                            children: [
+                                              Flexible(
+                                                child: Text(
+                                                  Constant.amountShow(
+                                                    amount: cartProductModel
+                                                        .discountPrice
+                                                        .toString(),
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 16,
+                                                    color: AppThemeData.grey900,
+                                                    fontFamily:
+                                                        AppThemeData.semiBold,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
                                                 ),
-                                              )
-                                            : Row(
-                                                children: [
-                                                  Flexible(
-                                                    child: Text(
-                                                      Constant.amountShow(
-                                                          amount:
-                                                              cartProductModel
-                                                                  .discountPrice
-                                                                  .toString()),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        fontSize: 16,
-                                                        color: themeChange
-                                                                .getThem()
-                                                            ? AppThemeData
-                                                                .grey50
-                                                            : AppThemeData
-                                                                .grey900,
-                                                        fontFamily: AppThemeData
-                                                            .semiBold,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                  const SizedBox(width: 5),
-                                                  Flexible(
-                                                    child: Text(
-                                                      Constant.amountShow(
-                                                          amount:
-                                                              cartProductModel
-                                                                  .price),
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        fontSize: 14,
-                                                        decoration:
-                                                            TextDecoration
-                                                                .lineThrough,
-                                                        decorationColor:
-                                                            themeChange
-                                                                    .getThem()
-                                                                ? AppThemeData
-                                                                    .grey500
-                                                                : AppThemeData
-                                                                    .grey400,
-                                                        color: themeChange
-                                                                .getThem()
-                                                            ? AppThemeData
-                                                                .grey500
-                                                            : AppThemeData
-                                                                .grey400,
-                                                        fontFamily: AppThemeData
-                                                            .semiBold,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ],
                                               ),
+                                              const SizedBox(width: 5),
+                                              Flexible(
+                                                child: Text(
+                                                  Constant.amountShow(
+                                                    amount:
+                                                        cartProductModel.price,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    decoration: TextDecoration
+                                                        .lineThrough,
+                                                    decorationColor:
+                                                        AppThemeData.grey400,
+                                                    color: AppThemeData.grey400,
+                                                    fontFamily:
+                                                        AppThemeData.semiBold,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                   ],
                                 ),
                               ),
@@ -416,19 +385,22 @@ Widget cartProductDetailsImageWidget(
                                   constraints: BoxConstraints(maxWidth: 90),
                                   child: Container(
                                     decoration: ShapeDecoration(
-                                      color: themeChange.getThem()
-                                          ? AppThemeData.grey900
-                                          : AppThemeData.grey50,
+                                      color: AppThemeData.grey50,
                                       shape: RoundedRectangleBorder(
                                         side: const BorderSide(
-                                            width: 1, color: Color(0xFFD1D5DB)),
-                                        borderRadius:
-                                            BorderRadius.circular(200),
+                                          width: 1,
+                                          color: Color(0xFFD1D5DB),
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          200,
+                                        ),
                                       ),
                                     ),
                                     child: Padding(
                                       padding: const EdgeInsets.symmetric(
-                                          vertical: 5, horizontal: 5),
+                                        vertical: 5,
+                                        horizontal: 5,
+                                      ),
                                       child: SingleChildScrollView(
                                         scrollDirection: Axis.horizontal,
                                         child: Row(
@@ -443,7 +415,8 @@ Widget cartProductDetailsImageWidget(
                                                   cartProductModel:
                                                       cartProductModel,
                                                   isIncrement: false,
-                                                  quantity: cartProductModel
+                                                  quantity:
+                                                      cartProductModel
                                                           .quantity! -
                                                       1,
                                                 );
@@ -453,7 +426,8 @@ Widget cartProductDetailsImageWidget(
                                             Padding(
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                      horizontal: 4),
+                                                    horizontal: 4,
+                                                  ),
                                               child: Text(
                                                 cartProductModel.quantity
                                                     .toString(),
@@ -465,48 +439,49 @@ Widget cartProductDetailsImageWidget(
                                                   fontFamily:
                                                       AppThemeData.medium,
                                                   fontWeight: FontWeight.w500,
-                                                  color: themeChange.getThem()
-                                                      ? AppThemeData.grey100
-                                                      : AppThemeData.grey800,
+                                                  color: AppThemeData.grey800,
                                                 ),
                                               ),
                                             ),
                                             InkWell(
                                               onTap: () async {
-                                                productModel ??= await FireStoreUtils
-                                                          .getProductById(
-                                                              cartProductModel
-                                                                  .id!
-                                                                  .split('~')
-                                                                  .first);
+                                                productModel ??=
+                                                    await FireStoreUtils.getProductById(
+                                                      cartProductModel.id!
+                                                          .split('~')
+                                                          .first,
+                                                    );
                                                 // Check if this is a promotional item
                                                 if (cartProductModel.promoId !=
                                                         null &&
                                                     cartProductModel
-                                                        .promoId!.isNotEmpty) {
+                                                        .promoId!
+                                                        .isNotEmpty) {
                                                   final isAllowed = await controller
                                                       .isPromotionalItemQuantityAllowed(
+                                                        cartProductModel.id ??
+                                                            '',
+                                                        cartProductModel
+                                                                .vendorID ??
+                                                            '',
+                                                        cartProductModel
+                                                                .quantity! +
+                                                            1,
+                                                      );
+
+                                                  if (!isAllowed) {
+                                                    final limit = await controller
+                                                        .getPromotionalItemLimit(
                                                           cartProductModel.id ??
                                                               '',
                                                           cartProductModel
                                                                   .vendorID ??
                                                               '',
-                                                          cartProductModel
-                                                                  .quantity! +
-                                                              1);
-
-                                                  if (!isAllowed) {
-                                                    final limit = await controller
-                                                        .getPromotionalItemLimit(
-                                                            cartProductModel
-                                                                    .id ??
-                                                                '',
-                                                            cartProductModel
-                                                                    .vendorID ??
-                                                                '');
+                                                        );
                                                     ShowToastDialog.showToast(
-                                                        "Maximum $limit items allowed for this promotional offer"
-                                                            .tr);
+                                                      "Maximum $limit items allowed for this promotional offer"
+                                                          .tr,
+                                                    );
                                                     return;
                                                   }
                                                 }
@@ -515,51 +490,66 @@ Widget cartProductDetailsImageWidget(
                                                             .itemAttribute !=
                                                         null) {
                                                   if (productModel!
-                                                      .itemAttribute!.variants!
-                                                      .where((element) =>
-                                                          element.variantSku ==
-                                                          cartProductModel
-                                                              .variantInfo!
-                                                              .variantSku)
+                                                      .itemAttribute!
+                                                      .variants!
+                                                      .where(
+                                                        (element) =>
+                                                            element
+                                                                .variantSku ==
+                                                            cartProductModel
+                                                                .variantInfo!
+                                                                .variantSku,
+                                                      )
                                                       .isNotEmpty) {
-                                                    if (int.parse(productModel!
-                                                                .itemAttribute!
-                                                                .variants!
-                                                                .where((element) =>
-                                                                    element.variantSku ==
-                                                                    cartProductModel
-                                                                        .variantInfo!
-                                                                        .variantSku)
-                                                                .first
-                                                                .variantQuantity
-                                                                .toString()) >=
+                                                    if (int.parse(
+                                                              productModel!
+                                                                  .itemAttribute!
+                                                                  .variants!
+                                                                  .where(
+                                                                    (element) =>
+                                                                        element
+                                                                            .variantSku ==
+                                                                        cartProductModel
+                                                                            .variantInfo!
+                                                                            .variantSku,
+                                                                  )
+                                                                  .first
+                                                                  .variantQuantity
+                                                                  .toString(),
+                                                            ) >=
                                                             (cartProductModel
                                                                     .quantity ??
                                                                 0) ||
-                                                        int.parse(productModel!
-                                                                .itemAttribute!
-                                                                .variants!
-                                                                .where((element) =>
-                                                                    element
-                                                                        .variantSku ==
-                                                                    cartProductModel
-                                                                        .variantInfo!
-                                                                        .variantSku)
-                                                                .first
-                                                                .variantQuantity
-                                                                .toString()) ==
+                                                        int.parse(
+                                                              productModel!
+                                                                  .itemAttribute!
+                                                                  .variants!
+                                                                  .where(
+                                                                    (element) =>
+                                                                        element
+                                                                            .variantSku ==
+                                                                        cartProductModel
+                                                                            .variantInfo!
+                                                                            .variantSku,
+                                                                  )
+                                                                  .first
+                                                                  .variantQuantity
+                                                                  .toString(),
+                                                            ) ==
                                                             -1) {
                                                       await controller.addToCart(
-                                                          cartProductModel:
-                                                              cartProductModel,
-                                                          isIncrement: true,
-                                                          quantity:
-                                                              cartProductModel
-                                                                      .quantity! +
-                                                                  1);
+                                                        cartProductModel:
+                                                            cartProductModel,
+                                                        isIncrement: true,
+                                                        quantity:
+                                                            cartProductModel
+                                                                .quantity! +
+                                                            1,
+                                                      );
                                                     } else {
                                                       ShowToastDialog.showToast(
-                                                          "Out of stock".tr);
+                                                        "Out of stock".tr,
+                                                      );
                                                     }
                                                   } else {
                                                     if ((productModel!
@@ -572,16 +562,18 @@ Widget cartProductDetailsImageWidget(
                                                                 .quantity ==
                                                             -1) {
                                                       await controller.addToCart(
-                                                          cartProductModel:
-                                                              cartProductModel,
-                                                          isIncrement: true,
-                                                          quantity:
-                                                              cartProductModel
-                                                                      .quantity! +
-                                                                  1);
+                                                        cartProductModel:
+                                                            cartProductModel,
+                                                        isIncrement: true,
+                                                        quantity:
+                                                            cartProductModel
+                                                                .quantity! +
+                                                            1,
+                                                      );
                                                     } else {
                                                       ShowToastDialog.showToast(
-                                                          "Out of stock".tr);
+                                                        "Out of stock".tr,
+                                                      );
                                                     }
                                                   }
                                                 } else if (productModel !=
@@ -594,26 +586,30 @@ Widget cartProductDetailsImageWidget(
                                                       productModel!.quantity ==
                                                           -1) {
                                                     await controller.addToCart(
-                                                        cartProductModel:
-                                                            cartProductModel,
-                                                        isIncrement: true,
-                                                        quantity:
-                                                            cartProductModel
-                                                                    .quantity! +
-                                                                1);
+                                                      cartProductModel:
+                                                          cartProductModel,
+                                                      isIncrement: true,
+                                                      quantity:
+                                                          cartProductModel
+                                                              .quantity! +
+                                                          1,
+                                                    );
                                                   } else {
                                                     ShowToastDialog.showToast(
-                                                        "Out of stock".tr);
+                                                      "Out of stock".tr,
+                                                    );
                                                   }
                                                 } else {
                                                   // Fallback: if productModel is null, allow increment for mart items
                                                   await controller.addToCart(
-                                                      cartProductModel:
-                                                          cartProductModel,
-                                                      isIncrement: true,
-                                                      quantity: cartProductModel
-                                                              .quantity! +
-                                                          1);
+                                                    cartProductModel:
+                                                        cartProductModel,
+                                                    isIncrement: true,
+                                                    quantity:
+                                                        cartProductModel
+                                                            .quantity! +
+                                                        1,
+                                                  );
                                                 }
                                               },
                                               child: const Icon(Icons.add),
@@ -635,11 +631,15 @@ Widget cartProductDetailsImageWidget(
                             cartProductModel.variantInfo!.variantOptions ==
                                 null ||
                             cartProductModel
-                                .variantInfo!.variantOptions!.isEmpty
+                                .variantInfo!
+                                .variantOptions!
+                                .isEmpty
                         ? Container()
                         : Padding(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 5, vertical: 10),
+                              horizontal: 5,
+                              vertical: 10,
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -648,42 +648,40 @@ Widget cartProductDetailsImageWidget(
                                   textAlign: TextAlign.start,
                                   style: TextStyle(
                                     fontFamily: AppThemeData.semiBold,
-                                    color: themeChange.getThem()
-                                        ? AppThemeData.grey300
-                                        : AppThemeData.grey600,
+                                    color: AppThemeData.grey600,
                                     fontSize: 16,
                                   ),
                                 ),
-                                const SizedBox(
-                                  height: 5,
-                                ),
+                                const SizedBox(height: 5),
                                 Wrap(
                                   spacing: 6.0,
                                   runSpacing: 6.0,
                                   children: List.generate(
                                     cartProductModel
-                                        .variantInfo!.variantOptions!.length,
+                                        .variantInfo!
+                                        .variantOptions!
+                                        .length,
                                     (i) {
                                       return Container(
                                         decoration: ShapeDecoration(
-                                          color: themeChange.getThem()
-                                              ? AppThemeData.grey800
-                                              : AppThemeData.grey100,
+                                          color: AppThemeData.grey100,
                                           shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8)),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 16, vertical: 5),
+                                            horizontal: 16,
+                                            vertical: 5,
+                                          ),
                                           child: Text(
                                             "${cartProductModel.variantInfo!.variantOptions!.keys.elementAt(i)} : ${cartProductModel.variantInfo!.variantOptions![cartProductModel.variantInfo!.variantOptions!.keys.elementAt(i)]}",
                                             textAlign: TextAlign.start,
                                             style: TextStyle(
                                               fontFamily: AppThemeData.medium,
-                                              color: themeChange.getThem()
-                                                  ? AppThemeData.grey500
-                                                  : AppThemeData.grey400,
+                                              color: AppThemeData.grey400,
                                             ),
                                           ),
                                         ),
@@ -701,9 +699,7 @@ Widget cartProductDetailsImageWidget(
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const SizedBox(
-                                height: 10,
-                              ),
+                              const SizedBox(height: 10),
                               Row(
                                 children: [
                                   Expanded(
@@ -712,36 +708,34 @@ Widget cartProductDetailsImageWidget(
                                       textAlign: TextAlign.start,
                                       style: TextStyle(
                                         fontFamily: AppThemeData.semiBold,
-                                        color: themeChange.getThem()
-                                            ? AppThemeData.grey300
-                                            : AppThemeData.grey600,
+                                        color: AppThemeData.grey600,
                                         fontSize: 16,
                                       ),
                                     ),
                                   ),
                                   Text(
                                     Constant.amountShow(
-                                        amount: (double.parse(cartProductModel
-                                                    .extrasPrice
-                                                    .toString()) *
-                                                double.parse(cartProductModel
-                                                    .quantity
-                                                    .toString()))
-                                            .toString()),
+                                      amount:
+                                          (double.parse(
+                                                    cartProductModel.extrasPrice
+                                                        .toString(),
+                                                  ) *
+                                                  double.parse(
+                                                    cartProductModel.quantity
+                                                        .toString(),
+                                                  ))
+                                              .toString(),
+                                    ),
                                     textAlign: TextAlign.start,
                                     style: TextStyle(
                                       fontFamily: AppThemeData.semiBold,
-                                      color: themeChange.getThem()
-                                          ? AppThemeData.primary300
-                                          : AppThemeData.primary300,
+                                      color: AppThemeData.primary300,
                                       fontSize: 16,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(
-                                height: 5,
-                              ),
+                              const SizedBox(height: 5),
                               Wrap(
                                 spacing: 6.0,
                                 runSpacing: 6.0,
@@ -750,25 +744,25 @@ Widget cartProductDetailsImageWidget(
                                   (i) {
                                     return Container(
                                       decoration: ShapeDecoration(
-                                        color: themeChange.getThem()
-                                            ? AppThemeData.grey800
-                                            : AppThemeData.grey100,
+                                        color: AppThemeData.grey100,
                                         shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8)),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
                                       ),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 16, vertical: 5),
+                                          horizontal: 16,
+                                          vertical: 5,
+                                        ),
                                         child: Text(
                                           cartProductModel.extras![i]
                                               .toString(),
                                           textAlign: TextAlign.start,
                                           style: TextStyle(
                                             fontFamily: AppThemeData.medium,
-                                            color: themeChange.getThem()
-                                                ? AppThemeData.grey500
-                                                : AppThemeData.grey400,
+                                            color: AppThemeData.grey400,
                                           ),
                                         ),
                                       ),

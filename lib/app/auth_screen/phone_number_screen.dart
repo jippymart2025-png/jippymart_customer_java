@@ -51,14 +51,10 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
-    final isDark = themeChange.getThem();
     return Consumer<LoginProvider>(
       builder: (context, controller, _) {
         return Scaffold(
-          backgroundColor: isDark
-              ? AppThemeData.surfaceDark
-              : AppThemeData.surface,
+          backgroundColor: AppThemeData.surface,
           extendBodyBehindAppBar: true,
           appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
           body: Stack(
@@ -148,9 +144,7 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
                             Text(
                               "Welcome Back! 👋".tr,
                               style: TextStyle(
-                                color: isDark
-                                    ? AppThemeData.grey50
-                                    : AppThemeData.grey900,
+                                color: AppThemeData.grey900,
                                 fontSize: 32,
                                 fontFamily: AppThemeData.semiBold,
                                 fontWeight: FontWeight.w700,
@@ -162,9 +156,7 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
                               "Log in to continue enjoying delicious food delivered to your doorstep."
                                   .tr,
                               style: TextStyle(
-                                color: isDark
-                                    ? AppThemeData.grey400
-                                    : AppThemeData.grey500,
+                                color: AppThemeData.grey500,
                                 fontSize: 16,
                                 fontFamily: AppThemeData.regular,
                                 height: 1.5,
@@ -197,35 +189,25 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
                                   controller.countryCode = selectedCountryCode;
                                 },
                                 dialogTextStyle: TextStyle(
-                                  color: isDark
-                                      ? AppThemeData.grey50
-                                      : AppThemeData.grey900,
+                                  color: AppThemeData.grey900,
                                   fontWeight: FontWeight.w500,
                                   fontFamily: AppThemeData.medium,
                                 ),
-                                dialogBackgroundColor: isDark
-                                    ? AppThemeData.grey800
-                                    : AppThemeData.grey100,
+                                dialogBackgroundColor: AppThemeData.grey100,
                                 initialSelection: 'IN',
                                 countryFilter: const ['IN'],
                                 comparator: (a, b) =>
                                     b.name!.compareTo(a.name.toString()),
                                 textStyle: TextStyle(
                                   fontSize: 14,
-                                  color: isDark
-                                      ? AppThemeData.grey50
-                                      : AppThemeData.grey900,
+                                  color: AppThemeData.grey900,
                                   fontFamily: AppThemeData.medium,
                                 ),
                                 searchDecoration: InputDecoration(
-                                  iconColor: isDark
-                                      ? AppThemeData.grey50
-                                      : AppThemeData.grey900,
+                                  iconColor: AppThemeData.grey900,
                                 ),
                                 searchStyle: TextStyle(
-                                  color: isDark
-                                      ? AppThemeData.grey50
-                                      : AppThemeData.grey900,
+                                  color: AppThemeData.grey900,
                                   fontWeight: FontWeight.w500,
                                   fontFamily: AppThemeData.medium,
                                 ),
@@ -314,18 +296,14 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
                             Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
-                                color: isDark
-                                    ? AppThemeData.grey800.withOpacity(0.3)
-                                    : AppThemeData.grey100.withOpacity(0.5),
+                                color: AppThemeData.grey100.withOpacity(0.5),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 children: [
                                   Icon(
                                     Icons.lock_rounded,
-                                    color: isDark
-                                        ? AppThemeData.grey400
-                                        : AppThemeData.grey500,
+                                    color: AppThemeData.grey500,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 12),
@@ -334,9 +312,7 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
                                       "Your phone number is safe with us. We'll send you a one-time password."
                                           .tr,
                                       style: TextStyle(
-                                        color: isDark
-                                            ? AppThemeData.grey400
-                                            : AppThemeData.grey500,
+                                        color: AppThemeData.grey500,
                                         fontSize: 13,
                                         fontFamily: AppThemeData.regular,
                                         height: 1.4,

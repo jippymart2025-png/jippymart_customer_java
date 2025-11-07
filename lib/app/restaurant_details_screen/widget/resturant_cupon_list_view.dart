@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 
 import '../../../constant/constant.dart';
 import '../../../constant/show_toast_dialog.dart';
@@ -19,7 +18,6 @@ class CouponListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return SizedBox(
       height: Responsive.height(9, context),
       child: ListView.builder(
@@ -33,21 +31,17 @@ class CouponListView extends StatelessWidget {
               width: 300, // fixed width for coupon card
               clipBehavior: Clip.antiAlias,
               decoration: ShapeDecoration(
-                color: themeChange.getThem()
-                    ? AppThemeData.grey900
-                    : AppThemeData.grey50,
+                color: AppThemeData.grey50,
                 shape: RoundedRectangleBorder(
-                  side: BorderSide(
-                      width: 1,
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey800
-                          : AppThemeData.grey100),
+                  side: BorderSide(width: 1, color: AppThemeData.grey100),
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 5,
+                ),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
@@ -66,9 +60,7 @@ class CouponListView extends StatelessWidget {
                               ? Constant.amountShow(amount: offerModel.discount)
                               : "${offerModel.discount}%",
                           style: TextStyle(
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey50
-                                : AppThemeData.grey50,
+                            color: AppThemeData.grey50,
                             fontFamily: AppThemeData.semiBold,
                             fontWeight: FontWeight.w600,
                             fontSize: 12,
@@ -87,9 +79,7 @@ class CouponListView extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 16,
-                              color: themeChange.getThem()
-                                  ? AppThemeData.grey50
-                                  : AppThemeData.grey900,
+                              color: AppThemeData.grey900,
                               fontFamily: AppThemeData.semiBold,
                               fontWeight: FontWeight.w600,
                             ),
@@ -108,9 +98,11 @@ class CouponListView extends StatelessWidget {
                                 )
                               : InkWell(
                                   onTap: () {
-                                    Clipboard.setData(ClipboardData(
-                                            text: offerModel.code.toString()))
-                                        .then((value) {
+                                    Clipboard.setData(
+                                      ClipboardData(
+                                        text: offerModel.code.toString(),
+                                      ),
+                                    ).then((value) {
                                       ShowToastDialog.showToast("Copied".tr);
                                     });
                                   },
@@ -123,9 +115,7 @@ class CouponListView extends StatelessWidget {
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: themeChange.getThem()
-                                                ? AppThemeData.grey400
-                                                : AppThemeData.grey500,
+                                            color: AppThemeData.grey500,
                                             fontFamily: AppThemeData.semiBold,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -133,21 +123,23 @@ class CouponListView extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 5),
                                       SvgPicture.asset(
-                                          "assets/icons/ic_copy.svg"),
+                                        "assets/icons/ic_copy.svg",
+                                      ),
                                       const SizedBox(
-                                          height: 10, child: VerticalDivider()),
+                                        height: 10,
+                                        child: VerticalDivider(),
+                                      ),
                                       const SizedBox(width: 5),
                                       Expanded(
                                         child: Text(
                                           Constant.timestampToDateTime(
-                                              offerModel.expiresAt!),
+                                            offerModel.expiresAt!,
+                                          ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color: themeChange.getThem()
-                                                ? AppThemeData.grey400
-                                                : AppThemeData.grey500,
+                                            color: AppThemeData.grey500,
                                             fontFamily: AppThemeData.semiBold,
                                             fontWeight: FontWeight.w600,
                                           ),

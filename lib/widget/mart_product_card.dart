@@ -37,49 +37,41 @@ class _MartProductCardState extends State<MartProductCard>
   late Animation<double> _scaleAnimation;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
-  
+
   bool _isAddingToCart = false;
   int _currentQuantity = 0;
 
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize animations
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _scaleController = AnimationController(
       duration: const Duration(milliseconds: 200),
       vsync: this,
     );
-    
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.8,
-    ).animate(CurvedAnimation(
-      parent: _scaleController,
-      curve: Curves.easeInOut,
-    ));
-    
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -0.5),
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-    
-    _fadeAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
-    
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.8).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+
+    _slideAnimation =
+        Tween<Offset>(begin: Offset.zero, end: const Offset(0, -0.5)).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeInOut,
+          ),
+        );
+
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
     // Check current cart quantity
     _checkCurrentQuantity();
   }
@@ -92,7 +84,9 @@ class _MartProductCardState extends State<MartProductCard>
   }
 
   void _checkCurrentQuantity() {
-    final cartItems = cartItem.where((item) => item.id == widget.product.id).toList();
+    final cartItems = cartItem
+        .where((item) => item.id == widget.product.id)
+        .toList();
     if (cartItems.isNotEmpty) {
       setState(() {
         _currentQuantity = cartItems.first.quantity ?? 0;
@@ -102,7 +96,7 @@ class _MartProductCardState extends State<MartProductCard>
 
   Future<void> _addToCart() async {
     if (_isAddingToCart) return;
-    
+
     setState(() {
       _isAddingToCart = true;
     });
@@ -110,7 +104,7 @@ class _MartProductCardState extends State<MartProductCard>
     try {
       // Start scale animation
       await _scaleController.forward();
-      
+
       // Create cart product model
       final cartProduct = CartProductModel(
         id: widget.product.id,
@@ -120,7 +114,8 @@ class _MartProductCardState extends State<MartProductCard>
         discountPrice: widget.product.disPrice,
         quantity: 1,
         vendorID: widget.product.vendorID,
-        vendorName: "Vendor", // Default vendor name since ProductModel doesn't have it
+        vendorName: "Vendor",
+        // Default vendor name since ProductModel doesn't have it
         extras: [],
         extrasPrice: "0",
         promoId: null,
@@ -133,30 +128,31 @@ class _MartProductCardState extends State<MartProductCard>
       if (success) {
         // Show success animation
         await _showAddToCartAnimation();
-        
+
         // Trigger cart animation if cart icon key is provided
         if (widget.cartIconKey != null) {
           // Trigger flying animation to cart
           CartAnimationHelper.triggerAnimation(widget.product.id ?? 'default');
         }
-        
+
         // Update quantity
         _checkCurrentQuantity();
-        
+
         // Show success message
         ShowToastDialog.showToast("Added to cart successfully!".tr);
       } else {
         // Show error message for cart conflict
-        ShowToastDialog.showToast("Can't add items while you have food in cart".tr);
+        ShowToastDialog.showToast(
+          "Can't add items while you have food in cart".tr,
+        );
       }
-      
     } catch (e) {
       ShowToastDialog.showToast("Failed to add to cart".tr);
     } finally {
       setState(() {
         _isAddingToCart = false;
       });
-      
+
       // Reset scale animation
       await _scaleController.reverse();
     }
@@ -165,21 +161,23 @@ class _MartProductCardState extends State<MartProductCard>
   Future<void> _showAddToCartAnimation() async {
     // Start the slide and fade animation
     _animationController.forward();
-    
+
     // Wait for animation to complete
     await Future.delayed(const Duration(milliseconds: 800));
-    
+
     // Reset animation
     _animationController.reset();
   }
 
   Future<void> _updateQuantity(bool isIncrement) async {
     if (_isAddingToCart) return;
-    
-    final newQuantity = isIncrement ? _currentQuantity + 1 : _currentQuantity - 1;
-    
+
+    final newQuantity = isIncrement
+        ? _currentQuantity + 1
+        : _currentQuantity - 1;
+
     if (newQuantity < 0) return;
-    
+
     setState(() {
       _isAddingToCart = true;
     });
@@ -194,7 +192,8 @@ class _MartProductCardState extends State<MartProductCard>
         discountPrice: widget.product.disPrice,
         quantity: newQuantity,
         vendorID: widget.product.vendorID,
-        vendorName: "Vendor", // Default vendor name since ProductModel doesn't have it
+        vendorName: "Vendor",
+        // Default vendor name since ProductModel doesn't have it
         extras: [],
         extrasPrice: "0",
         promoId: null,
@@ -202,20 +201,25 @@ class _MartProductCardState extends State<MartProductCard>
 
       // Update cart using existing cart provider
       final cartProvider = Provider.of<CartProvider>(context, listen: false);
-      
+
       if (newQuantity == 0) {
         await cartProvider.removeFromCart(cartProduct, 0);
       } else {
-        final success = await cartProvider.addToCart(context, cartProduct, newQuantity);
+        final success = await cartProvider.addToCart(
+          context,
+          cartProduct,
+          newQuantity,
+        );
         if (!success) {
-          ShowToastDialog.showToast("Can't add items while you have food in cart".tr);
+          ShowToastDialog.showToast(
+            "Can't add items while you have food in cart".tr,
+          );
           return;
         }
       }
 
       // Update quantity
       _checkCurrentQuantity();
-      
     } catch (e) {
       ShowToastDialog.showToast("Failed to update cart".tr);
     } finally {
@@ -227,13 +231,11 @@ class _MartProductCardState extends State<MartProductCard>
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
-    
     Widget productCard = GestureDetector(
       onTap: widget.onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: themeChange.getThem() ? AppThemeData.grey900 : Colors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -246,16 +248,13 @@ class _MartProductCardState extends State<MartProductCard>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Product Image with Add Button
             Stack(
               children: [
-                // Product Image
                 GestureDetector(
                   onTap: () {
-                    // Navigate to product details screen
-                    Get.to(() => MartProductDetailsScreen(
-                      product: widget.product,
-                    ));
+                    Get.to(
+                      () => MartProductDetailsScreen(product: widget.product),
+                    );
                   },
                   child: Container(
                     height: 140,
@@ -272,45 +271,60 @@ class _MartProductCardState extends State<MartProductCard>
                         topLeft: Radius.circular(16),
                         topRight: Radius.circular(16),
                       ),
-                      child: widget.product.photo != null && widget.product.photo!.isNotEmpty
+                      child:
+                          widget.product.photo != null &&
+                              widget.product.photo!.isNotEmpty
                           ? Image.network(
                               widget.product.photo!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                color: Colors.grey[300],
-                                child: const Icon(Icons.image, color: Colors.grey, size: 50),
-                              ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    color: Colors.grey[300],
+                                    child: const Icon(
+                                      Icons.image,
+                                      color: Colors.grey,
+                                      size: 50,
+                                    ),
+                                  ),
                             )
                           : Container(
                               color: Colors.grey[300],
-                              child: const Icon(Icons.image, color: Colors.grey, size: 50),
+                              child: const Icon(
+                                Icons.image,
+                                color: Colors.grey,
+                                size: 50,
+                              ),
                             ),
                     ),
                   ),
                 ),
-                
+
                 // Volume/Quantity Badge
-                if (widget.product.quantity != null && widget.product.quantity! > 0)
+                if (widget.product.quantity != null &&
+                    widget.product.quantity! > 0)
                   Positioned(
                     top: 12,
                     left: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 3,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                                              child: Text(
-                          "${widget.product.quantity} ml",
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+                      child: Text(
+                        "${widget.product.quantity} ml",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
                         ),
+                      ),
                     ),
                   ),
-                
+
                 // Add to Cart Button
                 if (widget.showAddButton)
                   Positioned(
@@ -322,13 +336,13 @@ class _MartProductCardState extends State<MartProductCard>
                         return Transform.scale(
                           scale: _scaleAnimation.value,
                           child: _currentQuantity == 0
-                              ? _buildAddButton(themeChange)
-                              : _buildQuantityControl(themeChange),
+                              ? _buildAddButton()
+                              : _buildQuantityControl(),
                         );
                       },
                     ),
                   ),
-                
+
                 // Add to Cart Animation Overlay
                 AnimatedBuilder(
                   animation: _animationController,
@@ -341,7 +355,9 @@ class _MartProductCardState extends State<MartProductCard>
                           height: 140,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: AppThemeData.primary300.withValues(alpha: 0.8),
+                            color: AppThemeData.primary300.withValues(
+                              alpha: 0.8,
+                            ),
                             borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(16),
                               topRight: Radius.circular(16),
@@ -361,7 +377,7 @@ class _MartProductCardState extends State<MartProductCard>
                 ),
               ],
             ),
-            
+
             // Product Details
             Padding(
               padding: const EdgeInsets.all(6),
@@ -374,61 +390,64 @@ class _MartProductCardState extends State<MartProductCard>
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
-                      color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                      color: AppThemeData.grey900,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  
+
                   const SizedBox(height: 3),
-                  
+
                   // Price and Discount
                   Row(
                     children: [
-                                             // Current Price
-                       Text(
-                         "₹${widget.product.disPrice ?? widget.product.price ?? "0"}",
-                         style: TextStyle(
-                           fontSize: 15,
-                           fontWeight: FontWeight.bold,
-                           color: AppThemeData.primary300,
-                         ),
-                       ),
-                       
-                       const SizedBox(width: 8),
-                       
-                       // Original Price (if discounted)
-                       if (widget.product.disPrice != null && 
-                           widget.product.disPrice != widget.product.price)
-                         Text(
-                           "₹${widget.product.price ?? "0"}",
-                           style: TextStyle(
-                             fontSize: 14,
-                             decoration: TextDecoration.lineThrough,
-                             color: Colors.grey[600],
-                           ),
-                         ),
-                      
+                      // Current Price
+                      Text(
+                        "₹${widget.product.disPrice ?? widget.product.price ?? "0"}",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: AppThemeData.primary300,
+                        ),
+                      ),
+
+                      const SizedBox(width: 8),
+
+                      // Original Price (if discounted)
+                      if (widget.product.disPrice != null &&
+                          widget.product.disPrice != widget.product.price)
+                        Text(
+                          "₹${widget.product.price ?? "0"}",
+                          style: TextStyle(
+                            fontSize: 14,
+                            decoration: TextDecoration.lineThrough,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+
                       const Spacer(),
-                      
-                                             // Discount Badge
-                       if (widget.product.disPrice != null && 
-                           widget.product.disPrice != widget.product.price)
-                         Container(
-                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                           decoration: BoxDecoration(
-                             color: Colors.green,
-                             borderRadius: BorderRadius.circular(8),
-                           ),
-                           child: const Text(
-                             "50% OFF",
-                             style: TextStyle(
-                               color: Colors.white,
-                               fontSize: 9,
-                               fontWeight: FontWeight.bold,
-                             ),
-                           ),
-                         ),
+
+                      // Discount Badge
+                      if (widget.product.disPrice != null &&
+                          widget.product.disPrice != widget.product.price)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            "50% OFF",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ],
@@ -438,7 +457,6 @@ class _MartProductCardState extends State<MartProductCard>
         ),
       ),
     );
-    
     // Wrap with cart animation if cart icon key is provided
     if (widget.cartIconKey != null) {
       return CartAnimationWidget(
@@ -449,11 +467,11 @@ class _MartProductCardState extends State<MartProductCard>
         child: productCard,
       );
     }
-    
+
     return productCard;
   }
 
-  Widget _buildAddButton(DarkThemeProvider themeChange) {
+  Widget _buildAddButton() {
     return GestureDetector(
       onTap: _addToCart,
       child: Container(
@@ -469,16 +487,12 @@ class _MartProductCardState extends State<MartProductCard>
             ),
           ],
         ),
-        child: const Icon(
-          Icons.add,
-          color: Colors.white,
-          size: 18,
-        ),
+        child: const Icon(Icons.add, color: Colors.white, size: 18),
       ),
     );
   }
 
-  Widget _buildQuantityControl(DarkThemeProvider themeChange) {
+  Widget _buildQuantityControl() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
@@ -504,27 +518,20 @@ class _MartProductCardState extends State<MartProductCard>
                 color: AppThemeData.primary300,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.remove,
-                color: Colors.white,
-                size: 16,
-              ),
+              child: const Icon(Icons.remove, color: Colors.white, size: 16),
             ),
           ),
-          
+
           const SizedBox(width: 6),
-          
+
           // Quantity
           Text(
             "$_currentQuantity",
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-            ),
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
-          
+
           const SizedBox(width: 6),
-          
+
           // Increase Button
           GestureDetector(
             onTap: () => _updateQuantity(true),
@@ -534,11 +541,7 @@ class _MartProductCardState extends State<MartProductCard>
                 color: AppThemeData.primary300,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Icon(
-                Icons.add,
-                color: Colors.white,
-                size: 16,
-              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 16),
             ),
           ),
         ],
@@ -546,4 +549,3 @@ class _MartProductCardState extends State<MartProductCard>
     );
   }
 }
-

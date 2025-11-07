@@ -1,4 +1,3 @@
-
 import 'package:bottom_picker/bottom_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
@@ -25,16 +24,17 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:provider/provider.dart';
 
-
 class CartScreen extends StatefulWidget {
   final bool hideBackButton;
   final String? source;
   final bool isFromMartNavigation;
-  const CartScreen(
-      {super.key,
-      this.hideBackButton = false,
-      this.source,
-      this.isFromMartNavigation = false});
+
+  const CartScreen({
+    super.key,
+    this.hideBackButton = false,
+    this.source,
+    this.isFromMartNavigation = false,
+  });
 
   @override
   _CartScreenState createState() => _CartScreenState();
@@ -42,14 +42,16 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   late CartControllerProvider controller;
+
   @override
   void initState() {
     super.initState();
-    controller = Provider.of<CartControllerProvider>(context,listen:false);
+    controller = Provider.of<CartControllerProvider>(context, listen: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshCartData();
     });
   }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -80,7 +82,7 @@ class _CartScreenState extends State<CartScreen> {
       case CartTheme.mart:
         return CartThemeColors(
           primary: MartTheme.jippyMartButton,
-          primaryDark:  ColorConst.martPrimary,
+          primaryDark: ColorConst.martPrimary,
           accent: ColorConst.martPrimary,
           surface: Colors.white,
           onSurface: Colors.black87,
@@ -116,15 +118,19 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     // Auto-detect based on cart content
-    bool hasMartItems = cartItem.any((item) =>
-        item.vendorID?.contains('mart') == true ||
-        item.vendorID?.startsWith('demo_') == true ||
-        item.vendorID?.contains('vendor') == true);
+    bool hasMartItems = cartItem.any(
+      (item) =>
+          item.vendorID?.contains('mart') == true ||
+          item.vendorID?.startsWith('demo_') == true ||
+          item.vendorID?.contains('vendor') == true,
+    );
 
-    bool hasFoodItems = cartItem.any((item) =>
-        !(item.vendorID?.contains('mart') == true ||
-            item.vendorID?.startsWith('demo_') == true ||
-            item.vendorID?.contains('vendor') == true));
+    bool hasFoodItems = cartItem.any(
+      (item) =>
+          !(item.vendorID?.contains('mart') == true ||
+              item.vendorID?.startsWith('demo_') == true ||
+              item.vendorID?.contains('vendor') == true),
+    );
 
     if (hasMartItems && !hasFoodItems) {
       return CartTheme.mart;
@@ -137,43 +143,46 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
-
-    return Consumer<CartControllerProvider>(builder: (context,controller,_) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        controller.checkAndUpdatePaymentMethod();
-      });
-      return WillPopScope(
-        onWillPop: () async {
-          if (controller.isGlobalLocked.value) {
-            ShowToastDialog.showToast("Please wait, payment is processing...");
-            return false; // prevent back navigation
-          }
-          return true;
-        },
-        child: Scaffold(
-            backgroundColor: themeChange.getThem()
-                ? AppThemeData.surfaceDark
-                : themeColors.surface,
+    return Consumer<CartControllerProvider>(
+      builder: (context, controller, _) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          controller.checkAndUpdatePaymentMethod();
+        });
+        return WillPopScope(
+          onWillPop: () async {
+            if (controller.isGlobalLocked.value) {
+              ShowToastDialog.showToast(
+                "Please wait, payment is processing...",
+              );
+              return false; // prevent back navigation
+            }
+            return true;
+          },
+          child: Scaffold(
+            backgroundColor: themeColors.surface,
             appBar: AppBar(
-              backgroundColor: themeChange.getThem()
-                  ? AppThemeData.surfaceDark
-                  : ColorConst.martPrimary,
+              backgroundColor: ColorConst.martPrimary,
               // themeColors.primary,
               foregroundColor: Colors.white,
               automaticallyImplyLeading: !widget.hideBackButton,
               leading: widget.hideBackButton
                   ? null
                   : IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white,),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white,
+                      ),
                       onPressed: () {
                         if (widget.source == 'mart' &&
                             widget.isFromMartNavigation) {
                           try {
                             final martNavController =
-                            Provider.of<MartNavigationProvider>(context,listen: false);
+                                Provider.of<MartNavigationProvider>(
+                                  context,
+                                  listen: false,
+                                );
                             martNavController.goToHome();
                           } catch (e) {
                             Get.back();
@@ -186,10 +195,11 @@ class _CartScreenState extends State<CartScreen> {
               title: Text(
                 cartTheme == CartTheme.mart ? 'Mart Cart' : 'Cart',
                 style: const TextStyle(
-                    color: Colors.white, fontWeight: FontWeight.bold),
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              actions: [
-              ],
+              actions: [],
             ),
             body: cartItem.isEmpty
                 ? Constant.showEmptyView(message: "No Available Items")
@@ -200,81 +210,88 @@ class _CartScreenState extends State<CartScreen> {
                         controller.selectedFoodType.value == 'TakeAway'
                             ? const SizedBox()
                             : Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                                 child: InkWell(
                                   onTap: () {
-                                    Get.to(const AddressListScreen())!.then(
-                                      (value) async {
-                                        if (value != null) {
-                                          ShippingAddress addressModel = value;
+                                    Get.to(const AddressListScreen())!.then((
+                                      value,
+                                    ) async {
+                                      if (value != null) {
+                                        ShippingAddress addressModel = value;
 
-                                          // 🔑 ZONE DETECTION: Use the same zone system as restaurants
-                                          if (addressModel.location?.latitude !=
-                                                  null &&
-                                              addressModel
-                                                      .location?.longitude !=
-                                                  null) {
-                                            try {
-                                              print(
-                                                  '🔍 [CART_ADDRESS_CHANGE] Using restaurant zone system for consistency...');
-
-                                              // Use the same zone as restaurants (Constant.selectedZone)
-                                              if (Constant.selectedZone !=
-                                                  null) {
-                                                addressModel.zoneId =
-                                                    Constant.selectedZone!.id;
-                                                print(
-                                                    '✅ [CART_ADDRESS_CHANGE] Using restaurant zone: ${Constant.selectedZone!.name} (${Constant.selectedZone!.id})');
-                                              } else {
-                                                // Fallback to mart zone detection if restaurant zone not available
-                                                print(
-                                                    '⚠️ [CART_ADDRESS_CHANGE] No restaurant zone available, trying mart zone detection...');
-                                                final zoneId =
-                                                    await MartZoneUtils
-                                                        .getZoneIdForCoordinates(
-                                                  addressModel
-                                                      .location!.latitude!,
-                                                  addressModel
-                                                      .location!.longitude!,context
-                                                );
-
-                                                if (zoneId.isNotEmpty) {
-                                                  addressModel.zoneId = zoneId;
-                                                  print(
-                                                      '✅ [CART_ADDRESS_CHANGE] Mart zone detected: $zoneId');
-                                                } else {
-                                                  print(
-                                                      '⚠️ [CART_ADDRESS_CHANGE] No zone detected for coordinates - leaving zoneId as null');
-                                                }
-                                              }
-                                            } catch (e) {
-                                              print(
-                                                  '❌ [CART_ADDRESS_CHANGE] Error detecting zone: $e');
-                                              // Continue without zone ID if detection fails
-                                            }
-                                          } else {
+                                        // 🔑 ZONE DETECTION: Use the same zone system as restaurants
+                                        if (addressModel.location?.latitude !=
+                                                null &&
+                                            addressModel.location?.longitude !=
+                                                null) {
+                                          try {
                                             print(
-                                                '⚠️ [CART_ADDRESS_CHANGE] No coordinates available for zone detection');
-                                          }
+                                              '🔍 [CART_ADDRESS_CHANGE] Using restaurant zone system for consistency...',
+                                            );
 
-                                          controller.selectedAddress.value =
-                                              addressModel;
-                                          controller.calculatePrice();
+                                            // Use the same zone as restaurants (Constant.selectedZone)
+                                            if (Constant.selectedZone != null) {
+                                              addressModel.zoneId =
+                                                  Constant.selectedZone!.id;
+                                              print(
+                                                '✅ [CART_ADDRESS_CHANGE] Using restaurant zone: ${Constant.selectedZone!.name} (${Constant.selectedZone!.id})',
+                                              );
+                                            } else {
+                                              // Fallback to mart zone detection if restaurant zone not available
+                                              print(
+                                                '⚠️ [CART_ADDRESS_CHANGE] No restaurant zone available, trying mart zone detection...',
+                                              );
+                                              final zoneId =
+                                                  await MartZoneUtils.getZoneIdForCoordinates(
+                                                    addressModel
+                                                        .location!
+                                                        .latitude!,
+                                                    addressModel
+                                                        .location!
+                                                        .longitude!,
+                                                    context,
+                                                  );
+                                              if (zoneId.isNotEmpty) {
+                                                addressModel.zoneId = zoneId;
+                                                print(
+                                                  '✅ [CART_ADDRESS_CHANGE] Mart zone detected: $zoneId',
+                                                );
+                                              } else {
+                                                print(
+                                                  '⚠️ [CART_ADDRESS_CHANGE] No zone detected for coordinates - leaving zoneId as null',
+                                                );
+                                              }
+                                            }
+                                          } catch (e) {
+                                            print(
+                                              '❌ [CART_ADDRESS_CHANGE] Error detecting zone: $e',
+                                            );
+                                            // Continue without zone ID if detection fails
+                                          }
+                                        } else {
+                                          print(
+                                            '⚠️ [CART_ADDRESS_CHANGE] No coordinates available for zone detection',
+                                          );
                                         }
-                                      },
-                                    );
+
+                                        controller.selectedAddress.value =
+                                            addressModel;
+                                        controller.calculatePrice();
+                                      }
+                                    });
                                   },
                                   child: Column(
                                     children: [
                                       Container(
                                         decoration: ShapeDecoration(
-                                          color: themeChange.getThem()
-                                              ? AppThemeData.grey900
-                                              : AppThemeData.grey50,
+                                          color: AppThemeData.grey50,
                                           shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8)),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.all(10),
@@ -289,14 +306,15 @@ class _CartScreenState extends State<CartScreen> {
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   SvgPicture.asset(
-                                                      "assets/icons/ic_send_one.svg"),
-                                                  const SizedBox(
-                                                    width: 10,
+                                                    "assets/icons/ic_send_one.svg",
                                                   ),
+                                                  const SizedBox(width: 10),
                                                   Expanded(
                                                     child: Text(
-                                                      controller.selectedAddress
-                                                              .value?.addressAs
+                                                      controller
+                                                              .selectedAddress
+                                                              .value
+                                                              ?.addressAs
                                                               ?.toString() ??
                                                           "No Address Selected",
                                                       textAlign:
@@ -304,23 +322,18 @@ class _CartScreenState extends State<CartScreen> {
                                                       style: TextStyle(
                                                         fontFamily: AppThemeData
                                                             .semiBold,
-                                                        color: themeChange
-                                                                .getThem()
-                                                            ? AppThemeData
-                                                                .primary300
-                                                            : AppThemeData
-                                                                .primary300,
+                                                        color: AppThemeData
+                                                            .primary300,
                                                         fontSize: 16,
                                                       ),
                                                     ),
                                                   ),
                                                   SvgPicture.asset(
-                                                      "assets/icons/ic_down.svg"),
+                                                    "assets/icons/ic_down.svg",
+                                                  ),
                                                 ],
                                               ),
-                                              const SizedBox(
-                                                height: 5,
-                                              ),
+                                              const SizedBox(height: 5),
                                               Text(
                                                 //changed here1
                                                 controller.selectedAddress.value
@@ -330,29 +343,20 @@ class _CartScreenState extends State<CartScreen> {
                                                 style: TextStyle(
                                                   fontFamily:
                                                       AppThemeData.medium,
-                                                  color: themeChange.getThem()
-                                                      ? AppThemeData.grey400
-                                                      : AppThemeData.grey500,
+                                                  color: AppThemeData.grey500,
                                                 ),
                                               ),
                                             ],
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(
-                                        height: 20,
-                                      ),
+                                      const SizedBox(height: 20),
                                     ],
                                   ),
                                 ),
                               ),
-                        cartProductDetailsImageWidget(
-                          themeChange,
-                          controller,
-                        ),
-                        const SizedBox(
-                          height: 20,
-                        ),
+                        cartProductDetailsImageWidget(controller),
+                        const SizedBox(height: 20),
                         Visibility(
                           visible: false,
                           child: Padding(
@@ -366,26 +370,22 @@ class _CartScreenState extends State<CartScreen> {
                                   textAlign: TextAlign.start,
                                   style: TextStyle(
                                     fontFamily: AppThemeData.semiBold,
-                                    color: themeChange.getThem()
-                                        ? AppThemeData.grey50
-                                        : AppThemeData.grey900,
+                                    color: AppThemeData.grey900,
                                     fontSize: 16,
                                   ),
                                 ),
-                                const SizedBox(
-                                  height: 10,
-                                ),
+                                const SizedBox(height: 10),
                                 controller.selectedFoodType.value == 'TakeAway'
                                     ? const SizedBox()
                                     : Container(
                                         width: Responsive.width(100, context),
                                         decoration: ShapeDecoration(
-                                          color: themeChange.getThem()
-                                              ? AppThemeData.grey900
-                                              : AppThemeData.grey50,
+                                          color: AppThemeData.grey50,
                                           shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(8)),
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
                                         ),
                                         child: Padding(
                                           padding: const EdgeInsets.all(10),
@@ -403,18 +403,12 @@ class _CartScreenState extends State<CartScreen> {
                                                       style: TextStyle(
                                                         fontFamily:
                                                             AppThemeData.medium,
-                                                        color: themeChange
-                                                                .getThem()
-                                                            ? AppThemeData
-                                                                .primary300
-                                                            : AppThemeData
-                                                                .primary300,
+                                                        color: AppThemeData
+                                                            .primary300,
                                                         fontSize: 16,
                                                       ),
                                                     ),
-                                                    const SizedBox(
-                                                      height: 5,
-                                                    ),
+                                                    const SizedBox(height: 5),
                                                     Text(
                                                       "Standard".tr,
                                                       textAlign:
@@ -423,12 +417,8 @@ class _CartScreenState extends State<CartScreen> {
                                                         fontFamily:
                                                             AppThemeData.medium,
                                                         fontSize: 12,
-                                                        color: themeChange
-                                                                .getThem()
-                                                            ? AppThemeData
-                                                                .grey400
-                                                            : AppThemeData
-                                                                .grey500,
+                                                        color: AppThemeData
+                                                            .grey500,
                                                       ),
                                                     ),
                                                   ],
@@ -436,30 +426,30 @@ class _CartScreenState extends State<CartScreen> {
                                               ),
                                               Radio(
                                                 value: controller
-                                                    .deliveryType.value,
+                                                    .deliveryType
+                                                    .value,
                                                 groupValue: "instant".tr,
                                                 activeColor:
                                                     AppThemeData.primary300,
                                                 onChanged: (value) {
-                                                  controller.deliveryType
-                                                      .value = "instant".tr;
+                                                  controller
+                                                          .deliveryType
+                                                          .value =
+                                                      "instant".tr;
                                                 },
-                                              )
+                                              ),
                                             ],
                                           ),
                                         ),
                                       ),
-                                const SizedBox(
-                                  height: 10,
-                                ),
+                                const SizedBox(height: 10),
                                 Container(
                                   width: Responsive.width(100, context),
                                   decoration: ShapeDecoration(
-                                    color: themeChange.getThem()
-                                        ? AppThemeData.grey900
-                                        : AppThemeData.grey50,
+                                    color: AppThemeData.grey50,
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                   ),
                                   child: Offstage(
                                     offstage: true,
@@ -494,18 +484,12 @@ class _CartScreenState extends State<CartScreen> {
                                                     style: TextStyle(
                                                       fontFamily:
                                                           AppThemeData.medium,
-                                                      color:
-                                                          themeChange.getThem()
-                                                              ? AppThemeData
-                                                                  .primary300
-                                                              : AppThemeData
-                                                                  .primary300,
+                                                      color: AppThemeData
+                                                          .primary300,
                                                       fontSize: 16,
                                                     ),
                                                   ),
-                                                  const SizedBox(
-                                                    height: 5,
-                                                  ),
+                                                  const SizedBox(height: 5),
                                                   Text(
                                                     "${'Your preferred time'.tr} ${controller.deliveryType.value == "schedule" ? Constant.timestampToDateTime(Timestamp.fromDate(controller.scheduleDateTime.value)) : ""}",
                                                     textAlign: TextAlign.start,
@@ -513,11 +497,8 @@ class _CartScreenState extends State<CartScreen> {
                                                       fontFamily:
                                                           AppThemeData.medium,
                                                       fontSize: 12,
-                                                      color: themeChange
-                                                              .getThem()
-                                                          ? AppThemeData.grey400
-                                                          : AppThemeData
-                                                              .grey500,
+                                                      color:
+                                                          AppThemeData.grey500,
                                                     ),
                                                   ),
                                                 ],
@@ -534,21 +515,26 @@ class _CartScreenState extends State<CartScreen> {
                                                     "schedule".tr;
                                                 BottomPicker.dateTime(
                                                   initialDateTime: controller
-                                                      .scheduleDateTime.value,
+                                                      .scheduleDateTime
+                                                      .value,
                                                   onSubmit: (index) {
-                                                    controller.scheduleDateTime
-                                                        .value = index;
+                                                    controller
+                                                            .scheduleDateTime
+                                                            .value =
+                                                        index;
                                                   },
                                                   minDateTime: controller
-                                                      .scheduleDateTime.value,
+                                                      .scheduleDateTime
+                                                      .value,
                                                   displaySubmitButton: true,
-                                                  pickerTitle:
-                                                      Text('Schedule Time'.tr),
+                                                  pickerTitle: Text(
+                                                    'Schedule Time'.tr,
+                                                  ),
                                                   buttonSingleColor:
                                                       AppThemeData.primary300,
                                                 ).show(context);
                                               },
-                                            )
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -559,9 +545,7 @@ class _CartScreenState extends State<CartScreen> {
                             ),
                           ),
                         ),
-                        const SizedBox(
-                          height: 20,
-                        ),
+                        const SizedBox(height: 20),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Column(
@@ -572,20 +556,17 @@ class _CartScreenState extends State<CartScreen> {
                                 textAlign: TextAlign.start,
                                 style: TextStyle(
                                   fontFamily: AppThemeData.semiBold,
-                                  color: themeChange.getThem()
-                                      ? AppThemeData.grey50
-                                      : AppThemeData.grey900,
+                                  color: AppThemeData.grey900,
                                   fontSize: 16,
                                 ),
                               ),
-                              const SizedBox(
-                                height: 10,
-                              ),
+                              const SizedBox(height: 10),
                               InkWell(
                                 onTap: () async {
                                   // Show loading indicator while fetching coupons
                                   ShowToastDialog.showLoader(
-                                      "Loading coupons...");
+                                    "Loading coupons...",
+                                  );
                                   await controller.getCartData();
                                   ShowToastDialog.closeLoader();
                                   Get.to(const CouponListScreen());
@@ -593,23 +574,24 @@ class _CartScreenState extends State<CartScreen> {
                                 child: Container(
                                   width: Responsive.width(100, context),
                                   decoration: ShapeDecoration(
-                                    color: themeChange.getThem()
-                                        ? AppThemeData.grey900
-                                        : AppThemeData.grey50,
+                                    color: AppThemeData.grey50,
                                     shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8)),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
                                     shadows: const [
                                       BoxShadow(
                                         color: Color(0x14000000),
                                         blurRadius: 52,
                                         offset: Offset(0, 0),
                                         spreadRadius: 0,
-                                      )
+                                      ),
                                     ],
                                   ),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 14),
+                                      horizontal: 10,
+                                      vertical: 14,
+                                    ),
                                     child: Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -620,17 +602,13 @@ class _CartScreenState extends State<CartScreen> {
                                             textAlign: TextAlign.start,
                                             style: TextStyle(
                                               fontFamily: AppThemeData.semiBold,
-                                              color: themeChange.getThem()
-                                                  ? AppThemeData.grey50
-                                                  : AppThemeData.grey900,
+                                              color: AppThemeData.grey900,
                                               fontSize: 16,
                                             ),
                                           ),
                                         ),
-                                        const SizedBox(
-                                          height: 5,
-                                        ),
-                                        const Icon(Icons.keyboard_arrow_right)
+                                        const SizedBox(height: 5),
+                                        const Icon(Icons.keyboard_arrow_right),
                                       ],
                                     ),
                                   ),
@@ -639,63 +617,54 @@ class _CartScreenState extends State<CartScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(
-                          height: 20,
-                        ),
-                        billCartWidget(
-                          themeChange,
-                          controller,
-                          context,
-                        ),
+                        const SizedBox(height: 20),
+                        billCartWidget(controller, context),
                         controller.selectedFoodType.value == 'TakeAway' ||
                                 (controller.vendorModel.value.isSelfDelivery ==
                                         true &&
                                     Constant.isSelfDeliveryFeature == true)
                             ? const SizedBox()
                             : Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const SizedBox(
-                                      height: 20,
-                                    ),
+                                    const SizedBox(height: 20),
                                     Text(
                                       "Thanks with a tip!".tr,
                                       textAlign: TextAlign.start,
                                       style: TextStyle(
                                         fontFamily: AppThemeData.semiBold,
-                                        color: themeChange.getThem()
-                                            ? AppThemeData.grey50
-                                            : AppThemeData.grey900,
+                                        color: AppThemeData.grey900,
                                         fontSize: 16,
                                       ),
                                     ),
-                                    const SizedBox(
-                                      height: 10,
-                                    ),
+                                    const SizedBox(height: 10),
                                     Container(
                                       width: Responsive.width(100, context),
                                       decoration: ShapeDecoration(
-                                        color: themeChange.getThem()
-                                            ? AppThemeData.grey900
-                                            : AppThemeData.grey50,
+                                        color: AppThemeData.grey50,
                                         shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(8)),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
                                         shadows: const [
                                           BoxShadow(
                                             color: Color(0x14000000),
                                             blurRadius: 52,
                                             offset: Offset(0, 0),
                                             spreadRadius: 0,
-                                          )
+                                          ),
                                         ],
                                       ),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(
-                                            horizontal: 10, vertical: 14),
+                                          horizontal: 10,
+                                          vertical: 14,
+                                        ),
                                         child: Column(
                                           children: [
                                             Row(
@@ -710,73 +679,64 @@ class _CartScreenState extends State<CartScreen> {
                                                     style: TextStyle(
                                                       fontFamily:
                                                           AppThemeData.medium,
-                                                      color: themeChange
-                                                              .getThem()
-                                                          ? AppThemeData.grey300
-                                                          : AppThemeData
-                                                              .grey600,
+                                                      color:
+                                                          AppThemeData.grey600,
                                                     ),
                                                   ),
                                                 ),
-                                                const SizedBox(
-                                                  width: 10,
-                                                ),
+                                                const SizedBox(width: 10),
                                                 SvgPicture.asset(
-                                                    "assets/images/ic_tips.svg")
+                                                  "assets/images/ic_tips.svg",
+                                                ),
                                               ],
                                             ),
-                                            const SizedBox(
-                                              height: 20,
-                                            ),
+                                            const SizedBox(height: 20),
                                             Row(
                                               children: [
                                                 Expanded(
                                                   child: InkWell(
                                                     onTap: () {
-                                                      controller.deliveryTips
-                                                          .value = 05;
+                                                      controller
+                                                              .deliveryTips
+                                                              .value =
+                                                          05;
                                                       controller
                                                           .calculatePrice();
                                                     },
                                                     child: Container(
-                                                      decoration:
-                                                          ShapeDecoration(
-                                                        shape:
-                                                            RoundedRectangleBorder(
+                                                      decoration: ShapeDecoration(
+                                                        shape: RoundedRectangleBorder(
                                                           side: BorderSide(
-                                                              width: 1,
-                                                              color: controller
-                                                                          .deliveryTips
-                                                                          .value ==
-                                                                      05
-                                                                  ? AppThemeData
+                                                            width: 1,
+                                                            color:
+                                                                controller
+                                                                        .deliveryTips
+                                                                        .value ==
+                                                                    05
+                                                                ? AppThemeData
                                                                       .primary300
-                                                                  : themeChange
-                                                                          .getThem()
-                                                                      ? AppThemeData
-                                                                          .grey800
-                                                                      : AppThemeData
-                                                                          .grey100),
+                                                                : AppThemeData
+                                                                      .grey100,
+                                                          ),
                                                           borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8),
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
                                                         ),
                                                       ),
                                                       child: Padding(
                                                         padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 10),
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 10,
+                                                            ),
                                                         child: Center(
                                                           child: Text(
                                                             Constant.amountShow(
-                                                                amount: "05"),
+                                                              amount: "05",
+                                                            ),
                                                             style: TextStyle(
-                                                              color: themeChange
-                                                                      .getThem()
-                                                                  ? AppThemeData
-                                                                      .grey50
-                                                                  : AppThemeData
+                                                              color:
+                                                                  AppThemeData
                                                                       .grey900,
                                                               fontSize: 14,
                                                               fontFamily:
@@ -792,56 +752,51 @@ class _CartScreenState extends State<CartScreen> {
                                                     ),
                                                   ),
                                                 ),
-                                                const SizedBox(
-                                                  width: 10,
-                                                ),
+                                                const SizedBox(width: 10),
                                                 Expanded(
                                                   child: InkWell(
                                                     onTap: () {
-                                                      controller.deliveryTips
-                                                          .value = 10;
+                                                      controller
+                                                              .deliveryTips
+                                                              .value =
+                                                          10;
                                                       controller
                                                           .calculatePrice();
                                                     },
                                                     child: Container(
-                                                      decoration:
-                                                          ShapeDecoration(
-                                                        shape:
-                                                            RoundedRectangleBorder(
+                                                      decoration: ShapeDecoration(
+                                                        shape: RoundedRectangleBorder(
                                                           side: BorderSide(
-                                                              width: 1,
-                                                              color: controller
-                                                                          .deliveryTips
-                                                                          .value ==
-                                                                      10
-                                                                  ? AppThemeData
+                                                            width: 1,
+                                                            color:
+                                                                controller
+                                                                        .deliveryTips
+                                                                        .value ==
+                                                                    10
+                                                                ? AppThemeData
                                                                       .primary300
-                                                                  : themeChange
-                                                                          .getThem()
-                                                                      ? AppThemeData
-                                                                          .grey800
-                                                                      : AppThemeData
-                                                                          .grey100),
+                                                                : AppThemeData
+                                                                      .grey100,
+                                                          ),
                                                           borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8),
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
                                                         ),
                                                       ),
                                                       child: Padding(
                                                         padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 10),
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 10,
+                                                            ),
                                                         child: Center(
                                                           child: Text(
                                                             Constant.amountShow(
-                                                                amount: "10"),
+                                                              amount: "10",
+                                                            ),
                                                             style: TextStyle(
-                                                              color: themeChange
-                                                                      .getThem()
-                                                                  ? AppThemeData
-                                                                      .grey50
-                                                                  : AppThemeData
+                                                              color:
+                                                                  AppThemeData
                                                                       .grey900,
                                                               fontSize: 14,
                                                               fontFamily:
@@ -857,56 +812,51 @@ class _CartScreenState extends State<CartScreen> {
                                                     ),
                                                   ),
                                                 ),
-                                                const SizedBox(
-                                                  width: 10,
-                                                ),
+                                                const SizedBox(width: 10),
                                                 Expanded(
                                                   child: InkWell(
                                                     onTap: () {
-                                                      controller.deliveryTips
-                                                          .value = 15;
+                                                      controller
+                                                              .deliveryTips
+                                                              .value =
+                                                          15;
                                                       controller
                                                           .calculatePrice();
                                                     },
                                                     child: Container(
-                                                      decoration:
-                                                          ShapeDecoration(
-                                                        shape:
-                                                            RoundedRectangleBorder(
+                                                      decoration: ShapeDecoration(
+                                                        shape: RoundedRectangleBorder(
                                                           side: BorderSide(
-                                                              width: 1,
-                                                              color: controller
-                                                                          .deliveryTips
-                                                                          .value ==
-                                                                      15
-                                                                  ? AppThemeData
+                                                            width: 1,
+                                                            color:
+                                                                controller
+                                                                        .deliveryTips
+                                                                        .value ==
+                                                                    15
+                                                                ? AppThemeData
                                                                       .primary300
-                                                                  : themeChange
-                                                                          .getThem()
-                                                                      ? AppThemeData
-                                                                          .grey800
-                                                                      : AppThemeData
-                                                                          .grey100),
+                                                                : AppThemeData
+                                                                      .grey100,
+                                                          ),
                                                           borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8),
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
                                                         ),
                                                       ),
                                                       child: Padding(
                                                         padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 10),
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 10,
+                                                            ),
                                                         child: Center(
                                                           child: Text(
                                                             Constant.amountShow(
-                                                                amount: "15"),
+                                                              amount: "15",
+                                                            ),
                                                             style: TextStyle(
-                                                              color: themeChange
-                                                                      .getThem()
-                                                                  ? AppThemeData
-                                                                      .grey50
-                                                                  : AppThemeData
+                                                              color:
+                                                                  AppThemeData
                                                                       .grey900,
                                                               fontSize: 14,
                                                               fontFamily:
@@ -922,54 +872,48 @@ class _CartScreenState extends State<CartScreen> {
                                                     ),
                                                   ),
                                                 ),
-                                                const SizedBox(
-                                                  width: 10,
-                                                ),
+                                                const SizedBox(width: 10),
                                                 Expanded(
                                                   child: InkWell(
                                                     onTap: () {
                                                       showDialog(
                                                         context: context,
-                                                        builder: (BuildContext
-                                                            context) {
-                                                          return tipsDialog(
-                                                              controller,
-                                                              themeChange);
-                                                        },
+                                                        builder:
+                                                            (
+                                                              BuildContext
+                                                              context,
+                                                            ) {
+                                                              return tipsDialog(
+                                                                controller,
+                                                              );
+                                                            },
                                                       );
                                                     },
                                                     child: Container(
-                                                      decoration:
-                                                          ShapeDecoration(
-                                                        shape:
-                                                            RoundedRectangleBorder(
+                                                      decoration: ShapeDecoration(
+                                                        shape: RoundedRectangleBorder(
                                                           side: BorderSide(
-                                                              width: 1,
-                                                              color: themeChange
-                                                                      .getThem()
-                                                                  ? AppThemeData
-                                                                      .grey800
-                                                                  : AppThemeData
-                                                                      .grey100),
+                                                            width: 1,
+                                                            color: AppThemeData
+                                                                .grey100,
+                                                          ),
                                                           borderRadius:
-                                                              BorderRadius
-                                                                  .circular(8),
+                                                              BorderRadius.circular(
+                                                                8,
+                                                              ),
                                                         ),
                                                       ),
                                                       child: Padding(
                                                         padding:
-                                                            const EdgeInsets
-                                                                .symmetric(
-                                                                vertical: 10),
+                                                            const EdgeInsets.symmetric(
+                                                              vertical: 10,
+                                                            ),
                                                         child: Center(
                                                           child: Text(
                                                             'Other'.tr,
                                                             style: TextStyle(
-                                                              color: themeChange
-                                                                      .getThem()
-                                                                  ? AppThemeData
-                                                                      .grey50
-                                                                  : AppThemeData
+                                                              color:
+                                                                  AppThemeData
                                                                       .grey900,
                                                               fontSize: 14,
                                                               fontFamily:
@@ -986,7 +930,7 @@ class _CartScreenState extends State<CartScreen> {
                                                   ),
                                                 ),
                                               ],
-                                            )
+                                            ),
                                           ],
                                         ),
                                       ),
@@ -994,9 +938,7 @@ class _CartScreenState extends State<CartScreen> {
                                   ],
                                 ),
                               ),
-                        const SizedBox(
-                          height: 20,
-                        ),
+                        const SizedBox(height: 20),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           child: Column(
@@ -1016,15 +958,11 @@ class _CartScreenState extends State<CartScreen> {
             //changed here
             bottomNavigationBar: cartItem.isEmpty
                 ? null
-                :
-                  cartNavigationBarWidget(
-                      themeChange,
-                      controller,
-                      context,
-                    ),
-                ),
-      );
-    });
+                : cartNavigationBarWidget(controller, context),
+          ),
+        );
+      },
+    );
   }
 
   /// Reusable method to build delivery fee UI for different order types

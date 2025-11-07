@@ -14,34 +14,38 @@ class ScanQrCodeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<ScanQrCodeProvider>(
-      builder: (context,controller,_) {
+      builder: (context, controller, _) {
         return Scaffold(
           appBar: AppBar(
             centerTitle: false,
             titleSpacing: 0,
-            backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
+            backgroundColor: AppThemeData.surface,
             title: Text(
               "Scan QRcode".tr,
               style: TextStyle(
                 fontSize: 16,
-                color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                color: AppThemeData.grey900,
                 fontFamily: AppThemeData.medium,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
           body: QRCodeDartScanView(
-            typeScan: TypeScan.live, // if TypeScan.takePicture will try decode when click to take a picture(default TypeScan.live)
+            typeScan: TypeScan.live,
+            // if TypeScan.takePicture will try decode when click to take a picture(default TypeScan.live)
             onCapture: (Result result) {
               Get.back();
               ShowToastDialog.showLoader("Please wait".tr);
               if (controller.allNearestRestaurant.isNotEmpty) {
-                for (VendorModel storeModel in controller.allNearestRestaurant) {
+                for (VendorModel storeModel
+                    in controller.allNearestRestaurant) {
                   if (storeModel.id == result.text) {
                     Get.back();
-                    Get.to(const RestaurantDetailsScreen(), arguments: {"vendorModel": storeModel});
+                    Get.to(
+                      const RestaurantDetailsScreen(),
+                      arguments: {"vendorModel": storeModel},
+                    );
                   }
                 }
               } else {

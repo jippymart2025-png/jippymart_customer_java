@@ -14,7 +14,6 @@ class OtpScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     final LoginProvider loginProvider = Provider.of<LoginProvider>(
       context,
       listen: false,
@@ -77,9 +76,7 @@ class OtpScreen extends StatelessWidget {
                       Text(
                         "Verify Your Number 📱".tr,
                         style: TextStyle(
-                          color: themeChange.getThem()
-                              ? AppThemeData.grey50
-                              : AppThemeData.grey900,
+                          color: AppThemeData.grey900,
                           fontSize: 22,
                           fontFamily: AppThemeData.semiBold,
                         ),
@@ -88,9 +85,7 @@ class OtpScreen extends StatelessWidget {
                         "${'Enter the OTP sent to your mobile number.'.tr} ${controller.countryCode} ${Constant.maskingString(controller.phoneNumber, 3)}",
                         textAlign: TextAlign.start,
                         style: TextStyle(
-                          color: themeChange.getThem()
-                              ? AppThemeData.grey200
-                              : AppThemeData.grey700,
+                          color: AppThemeData.grey700,
                           fontSize: 16,
                           fontFamily: AppThemeData.regular,
                           fontWeight: FontWeight.w400,
@@ -109,39 +104,21 @@ class OtpScreen extends StatelessWidget {
                               enablePinAutofill: true,
                               hintCharacter: "-",
                               textStyle: TextStyle(
-                                color: themeChange.getThem()
-                                    ? AppThemeData.grey50
-                                    : AppThemeData.grey900,
+                                color: AppThemeData.grey900,
                                 fontFamily: AppThemeData.regular,
                               ),
                               pinTheme: PinTheme(
                                 fieldHeight: 50,
                                 fieldWidth: 40,
-                                inactiveFillColor: themeChange.getThem()
-                                    ? AppThemeData.grey900
-                                    : AppThemeData.grey50,
-                                selectedFillColor: themeChange.getThem()
-                                    ? AppThemeData.grey900
-                                    : AppThemeData.grey50,
-                                activeFillColor: themeChange.getThem()
-                                    ? AppThemeData.grey900
-                                    : AppThemeData.grey50,
-                                selectedColor: themeChange.getThem()
-                                    ? AppThemeData.grey900
-                                    : AppThemeData.grey50,
-                                activeColor: themeChange.getThem()
-                                    ? AppThemeData.primary300
-                                    : AppThemeData.primary300,
-                                inactiveColor: themeChange.getThem()
-                                    ? AppThemeData.grey900
-                                    : AppThemeData.grey50,
-                                disabledColor: themeChange.getThem()
-                                    ? AppThemeData.grey900
-                                    : AppThemeData.grey50,
+                                inactiveFillColor: AppThemeData.grey50,
+                                selectedFillColor: AppThemeData.grey50,
+                                activeFillColor: AppThemeData.grey50,
+                                selectedColor: AppThemeData.grey50,
+                                activeColor: AppThemeData.primary300,
+                                inactiveColor: AppThemeData.grey50,
+                                disabledColor: AppThemeData.grey50,
                                 shape: PinCodeFieldShape.box,
-                                errorBorderColor: themeChange.getThem()
-                                    ? AppThemeData.grey600
-                                    : AppThemeData.grey300,
+                                errorBorderColor: AppThemeData.grey300,
                                 borderRadius: const BorderRadius.all(
                                   Radius.circular(10),
                                 ),
@@ -149,9 +126,7 @@ class OtpScreen extends StatelessWidget {
                               cursorColor: AppThemeData.primary300,
                               enableActiveFill: true,
                               controller: controller.otpEditingController,
-                              onCompleted: (v) async {
-                                // Optionally, you can auto-verify here
-                              },
+                              onCompleted: (v) async {},
                               onChanged: (value) {},
                             ),
                           ),
@@ -179,9 +154,7 @@ class OtpScreen extends StatelessWidget {
                             fontWeight: FontWeight.w500,
                             fontSize: 14,
                             fontFamily: AppThemeData.medium,
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey100
-                                : AppThemeData.grey800,
+                            color: AppThemeData.grey800,
                           ),
                           children: <TextSpan>[
                             TextSpan(

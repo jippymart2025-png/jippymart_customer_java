@@ -7,6 +7,7 @@ import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
 import 'package:jippymart_customer/app/home_screen/provider/map_view_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/category_restaurant_screen/category_restaurant_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/best_restaurant_section_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/restaurant_list_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/story_view_screen/story_view.dart';
 import 'package:jippymart_customer/app/home_screen/screen/view_all_category_screen/view_all_category_screen.dart';
@@ -60,6 +61,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../discount_restaurant_list_screen/discount_restaurant_list_screen.dart';
+import 'widgets/category_view_widget.dart';
 
 class HomeScreenTwo extends StatelessWidget {
   const HomeScreenTwo({super.key});
@@ -104,7 +106,6 @@ class HomeScreenTwo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<HomeProvider>(
       builder: (context, controller, _) {
         return Scaffold(
@@ -117,7 +118,7 @@ class HomeScreenTwo extends StatelessWidget {
             ),
             child: RefreshIndicator(
               onRefresh: controller.getRefresh,
-              child: controller.isLoading.value
+              child: controller.isLoading
                   ? const RestaurantLoadingWidget()
                   : Constant.isZoneAvailable == false
                   ? Padding(
@@ -136,9 +137,7 @@ class HomeScreenTwo extends StatelessWidget {
                                 ? "Service Not Available in Your Area".tr
                                 : "No Restaurants Found in Your Area".tr,
                             style: TextStyle(
-                              color: themeChange.getThem()
-                                  ? AppThemeData.grey100
-                                  : AppThemeData.grey800,
+                              color: AppThemeData.grey800,
                               fontSize: 22,
                               fontFamily: AppThemeData.semiBold,
                             ),
@@ -152,9 +151,7 @@ class HomeScreenTwo extends StatelessWidget {
                                       .tr,
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: themeChange.getThem()
-                                  ? AppThemeData.grey50
-                                  : AppThemeData.grey500,
+                              color: AppThemeData.grey500,
                               fontSize: 16,
                               fontFamily: AppThemeData.bold,
                             ),
@@ -177,7 +174,7 @@ class HomeScreenTwo extends StatelessWidget {
                       padding: EdgeInsets.only(
                         top: MediaQuery.of(context).viewPadding.top,
                       ),
-                      child: controller.isListView.value == false
+                      child: controller.isListView == false
                           ? const MapView()
                           : Column(
                               children: [
@@ -297,32 +294,23 @@ class HomeScreenTwo extends StatelessWidget {
                                                             fontFamily:
                                                                 AppThemeData
                                                                     .medium,
-                                                            color:
-                                                                themeChange
-                                                                    .getThem()
-                                                                ? AppThemeData
-                                                                      .grey50
-                                                                : AppThemeData
-                                                                      .grey900,
+                                                            color: AppThemeData
+                                                                .grey900,
                                                             fontSize: 12,
                                                           ),
                                                         ),
                                                       )
                                                     : Text(
-                                                        "${Constant.userModel!.fullName()}",
+                                                        Constant.userModel!
+                                                            .fullName(),
                                                         textAlign:
                                                             TextAlign.center,
                                                         style: TextStyle(
                                                           fontFamily:
                                                               AppThemeData
                                                                   .medium,
-                                                          color:
-                                                              themeChange
-                                                                  .getThem()
-                                                              ? AppThemeData
-                                                                    .grey50
-                                                              : AppThemeData
-                                                                    .grey900,
+                                                          color: AppThemeData
+                                                              .grey900,
                                                           fontSize: 12,
                                                         ),
                                                       ),
@@ -511,13 +499,8 @@ class HomeScreenTwo extends StatelessWidget {
                                                             overflow:
                                                                 TextOverflow
                                                                     .ellipsis,
-                                                            color:
-                                                                themeChange
-                                                                    .getThem()
-                                                                ? AppThemeData
-                                                                      .grey50
-                                                                : AppThemeData
-                                                                      .grey900,
+                                                            color: AppThemeData
+                                                                .grey900,
                                                             fontSize: 14,
                                                           ),
                                                         ),
@@ -616,27 +599,6 @@ class HomeScreenTwo extends StatelessWidget {
                                           interval: const Duration(seconds: 2),
                                         ),
                                       ),
-
-                                      //Old search bar
-                                      // InkWell(
-                                      //   onTap: () {
-                                      //     Get.to(const SwiggySearchScreen())
-                                      //         });
-                                      //   },
-                                      //   child: TextFieldWidget(
-                                      //     hintText:
-                                      //         'Search the dish, restaurant, food, meals'
-                                      //             .tr,
-                                      //     controller: null,
-                                      //     enable: false,
-                                      //     prefix: Padding(
-                                      //       padding: const EdgeInsets.symmetric(
-                                      //           horizontal: 16),
-                                      //       child: SvgPicture.asset(
-                                      //           "assets/icons/ic_search.svg"),
-                                      //     ),
-                                      //   ),
-                                      //  ),
                                       const SizedBox(height: 10),
                                     ],
                                   ),
@@ -661,91 +623,14 @@ class HomeScreenTwo extends StatelessWidget {
                                           padding: const EdgeInsets.symmetric(
                                             horizontal: 16,
                                           ),
-                                          child: CategoryView(
-                                            controller: controller,
-                                          ),
+                                          child: CategoryView(),
                                         ),
-                                        // controller
-                                        //         .couponRestaurantList.isEmpty
-                                        //     ? const SizedBox()
-                                        //     : Padding(
-                                        //         padding: const EdgeInsets
-                                        //             .symmetric(
-                                        //             horizontal: 16),
-                                        //         child: Column(
-                                        //           children: [
-                                        //             const SizedBox(
-                                        //               height: 20,
-                                        //             ),
-                                        //             OfferView(
-                                        //                 controller:
-                                        //                     controller),
-                                        //           ],
-                                        //         ),
-                                        //       ),
+
                                         controller.storyList.isEmpty ||
                                                 (Constant.storyEnable ==
                                                         false &&
                                                     !kDebugMode)
-                                            ? Column(
-                                                children: [
-                                                  // Debug information
-                                                  if (kDebugMode) ...[
-                                                    Container(
-                                                      margin:
-                                                          const EdgeInsets.all(
-                                                            16,
-                                                          ),
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                            16,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.orange
-                                                            .withOpacity(0.1),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              8,
-                                                            ),
-                                                        border: Border.all(
-                                                          color: Colors.orange,
-                                                        ),
-                                                      ),
-                                                      child: Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
-                                                        children: [
-                                                          Text(
-                                                            'Stories Debug Info:',
-                                                            style: TextStyle(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
-                                                              color:
-                                                                  Colors.orange,
-                                                            ),
-                                                          ),
-                                                          SizedBox(height: 8),
-                                                          Text(
-                                                            'Story List Empty: ${controller.storyList.isEmpty}',
-                                                          ),
-                                                          Text(
-                                                            'Story Enable: ${Constant.storyEnable}',
-                                                          ),
-                                                          Text(
-                                                            'Story Count: ${controller.storyList.length}',
-                                                          ),
-                                                          Text(
-                                                            'Story Enable Value: ${Constant.storyEnable}',
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                  ],
-                                                  const SizedBox(),
-                                                ],
-                                              )
+                                            ? SizedBox()
                                             : Padding(
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -813,13 +698,8 @@ class HomeScreenTwo extends StatelessWidget {
                                                                             .semiBold,
                                                                     fontSize:
                                                                         16,
-                                                                    color:
-                                                                        themeChange
-                                                                            .getThem()
-                                                                        ? AppThemeData
-                                                                              .grey50
-                                                                        : AppThemeData
-                                                                              .grey900,
+                                                                    color: AppThemeData
+                                                                        .grey900,
                                                                   ),
                                                                 ),
                                                               ),
@@ -843,13 +723,8 @@ class HomeScreenTwo extends StatelessWidget {
                                                                     fontFamily:
                                                                         AppThemeData
                                                                             .regular,
-                                                                    color:
-                                                                        themeChange
-                                                                            .getThem()
-                                                                        ? AppThemeData
-                                                                              .primary300
-                                                                        : AppThemeData
-                                                                              .primary300,
+                                                                    color: AppThemeData
+                                                                        .primary300,
                                                                   ),
                                                                 ),
                                                               ),
@@ -1001,267 +876,6 @@ class HomeScreenTwo extends StatelessWidget {
   }
 }
 
-class CategoryView extends StatelessWidget {
-  final HomeProvider controller;
-
-  const CategoryView({super.key, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 10),
-          Padding(
-            padding: EdgeInsets.all(0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "Our Categories",
-                        style: TextStyle(
-                          fontFamily: AppThemeData.montserratRegular,
-                          color: themeChange.getThem()
-                              ? AppThemeData.grey50
-                              : AppThemeData.grey900,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16),
-                      child: InkWell(
-                        onTap: () {
-                          Get.to(const ViewAllCategoryScreen());
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "See all".tr,
-                                style: TextStyle(
-                                  fontFamily: AppThemeData.semiBold,
-                                  color: themeChange.getThem()
-                                      ? AppThemeData.primary300
-                                      : AppThemeData.primary300,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Icon(
-                                Icons.arrow_forward_rounded,
-                                size: 16,
-                                color: themeChange.getThem()
-                                    ? AppThemeData.primary300
-                                    : AppThemeData.primary300,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    // Padding(
-                    //   padding: const EdgeInsets.only(left: 16),
-                    //   child: InkWell(
-                    //     onTap: () {
-                    //       Get.to(const ViewAllCategoryScreen());
-                    //     },
-                    //     child: Text(
-                    //       "See all".tr,
-                    //       textAlign: TextAlign.center,
-                    //       style: TextStyle(
-                    //         fontFamily: AppThemeData.medium,
-                    //         color: themeChange.getThem()
-                    //             ? AppThemeData.primary300
-                    //             : AppThemeData.primary300,
-                    //         fontSize: 14,
-                    //       ),
-                    //     ),
-                    //   ),
-                    // ),
-                  ],
-                ),
-                Text(
-                  "Best Serving Food".tr,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontFamily: AppThemeData.montserrat,
-                    // fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // const SizedBox(
-          //   height: 20,
-          // ),
-          // SizedBox(
-          //   height: 100,
-          //   child: ListView.builder(
-          //     scrollDirection:  Axis.horizontal,
-          //     padding: EdgeInsets.zero,
-          //     // gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          //     //     crossAxisCount: 4, childAspectRatio: 0.8),
-          //     itemCount: controller.vendorCategoryModel.length >= 8
-          //         ? 8
-          //         : controller.vendorCategoryModel.length,
-          //     // physics: const NeverScrollableScrollPhysics(),
-          //     shrinkWrap: true,
-          //     itemBuilder: (context, index) {
-          //       VendorCategoryModel vendorCategoryModel =
-          //           controller.vendorCategoryModel[index];
-          //       return InkWell(
-          //         onTap: () {
-          //           Get.to(const CategoryRestaurantScreen(), arguments: {
-          //             "vendorCategoryModel": vendorCategoryModel,
-          //             "dineIn": false
-          //           });
-          //         },
-          //         child: Padding(
-          //           padding: const EdgeInsets.only(left: 12),
-          //           child: Column(
-          //             children: [
-          //               ClipOval(
-          //                 child: SizedBox(
-          //                   width: 60,
-          //                   height: 60,
-          //                   child: NetworkImageWidget(
-          //                       imageUrl: vendorCategoryModel.photo.toString(),
-          //                       fit: BoxFit.cover),
-          //                 ),
-          //               ),
-          //               Text(
-          //                 "${vendorCategoryModel.title}",
-          //                 textAlign: TextAlign.center,
-          //                 style: TextStyle(
-          //                   fontFamily: AppThemeData.medium,
-          //                   color: themeChange.getThem()
-          //                       ? AppThemeData.grey50
-          //                       : AppThemeData.grey900,
-          //                   fontSize: 12,
-          //                 ),
-          //               ),
-          //             ],
-          //           ),
-          //         ),
-          //       );
-          //     },
-          //   ),
-          // ),
-          SizedBox(
-            height: 120,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-              itemCount: controller.vendorCategoryModel.length >= 8
-                  ? 8
-                  : controller.vendorCategoryModel.length,
-              shrinkWrap: true,
-              itemBuilder: (context, index) {
-                VendorCategoryModel vendorCategoryModel =
-                    controller.vendorCategoryModel[index];
-
-                return GestureDetector(
-                  onTap: () {
-                    Get.to(
-                      const CategoryRestaurantScreen(),
-                      arguments: {
-                        "vendorCategoryModel": vendorCategoryModel,
-                        "dineIn": false,
-                      },
-                    );
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 0),
-                    padding: const EdgeInsets.only(right: 8),
-                    // decoration: BoxDecoration(
-                    //   color: Colors.white,
-                    //   borderRadius: BorderRadius.circular(16),
-                    //   // border: Border.all(
-                    //   //   color: Colors.greenAccent,
-                    //   //   width: 1.2,
-                    //   // ),
-                    //   boxShadow: [
-                    //     BoxShadow(
-                    //       color: Colors.grey.withOpacity(0.15),
-                    //       blurRadius: 6,
-                    //       spreadRadius: 2,
-                    //       offset: const Offset(2, 3),
-                    //     ),
-                    //   ],
-                    // ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          // decoration: BoxDecoration(
-                          //   shape: BoxShape.circle,
-                          //   gradient: LinearGradient(
-                          //     colors: [
-                          //       const Color(0xFF81C784), // light green
-                          //       const Color(0xFFA5D6A7).withOpacity(0.8),
-                          //     ],
-                          //     begin: Alignment.topLeft,
-                          //     end: Alignment.bottomRight,
-                          //   ),
-                          // ),
-                          padding: const EdgeInsets.all(3),
-                          child: ClipOval(
-                            child: SizedBox(
-                              width: 55,
-                              height: 55,
-                              child: NetworkImageWidget(
-                                imageUrl: vendorCategoryModel.photo.toString(),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        SizedBox(
-                          width: 65,
-                          child: Text(
-                            vendorCategoryModel.title ?? '',
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontFamily: AppThemeData.medium,
-                              color: themeChange.getThem()
-                                  ? AppThemeData.grey50
-                                  : AppThemeData.grey900,
-                              fontSize: 12,
-                              height: 1.2,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class OfferView extends StatelessWidget {
   final HomeProvider controller;
 
@@ -1269,12 +883,9 @@ class OfferView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Container(
       decoration: ShapeDecoration(
-        color: themeChange.getThem()
-            ? AppThemeData.grey900
-            : AppThemeData.grey50,
+        color: AppThemeData.grey50,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       ),
       child: Padding(
@@ -1295,9 +906,7 @@ class OfferView extends StatelessWidget {
                           "Large Discounts".tr,
                           style: TextStyle(
                             fontFamily: AppThemeData.semiBold,
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey50
-                                : AppThemeData.grey900,
+                            color: AppThemeData.grey900,
                             fontSize: 18,
                           ),
                         ),
@@ -1318,9 +927,7 @@ class OfferView extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: AppThemeData.medium,
-                            color: themeChange.getThem()
-                                ? AppThemeData.primary300
-                                : AppThemeData.primary300,
+                            color: AppThemeData.primary300,
                             fontSize: 14,
                           ),
                         ),
@@ -1420,9 +1027,7 @@ class OfferView extends StatelessWidget {
                                           fontSize: 18,
                                           overflow: TextOverflow.ellipsis,
                                           fontFamily: AppThemeData.semiBold,
-                                          color: themeChange.getThem()
-                                              ? AppThemeData.grey50
-                                              : AppThemeData.grey50,
+                                          color: AppThemeData.grey50,
                                         ),
                                       ),
                                       const SizedBox(height: 5),
@@ -1473,7 +1078,7 @@ class BannerView extends StatelessWidget {
         onPanEnd: (_) => controller.startBannerTimer(),
         child: PageView.builder(
           physics: const BouncingScrollPhysics(),
-          controller: controller.pageController.value,
+          controller: controller.pageController,
           scrollDirection: Axis.horizontal,
           itemCount: controller.bannerModel.length,
           padEnds: false,
@@ -1486,10 +1091,10 @@ class BannerView extends StatelessWidget {
             return InkWell(
               onTap: () async {
                 controller.stopBannerTimer();
-                if (bannerModel.redirect_type == "store") {
+                if (bannerModel.redirectType == "store") {
                   ShowToastDialog.showLoader("Please wait".tr);
                   VendorModel? vendorModel = await FireStoreUtils.getVendorById(
-                    bannerModel.redirect_id.toString(),
+                    bannerModel.redirectId.toString(),
                   );
 
                   if (vendorModel!.zoneId == Constant.selectedZone!.id) {
@@ -1505,11 +1110,11 @@ class BannerView extends StatelessWidget {
                           .tr,
                     );
                   }
-                } else if (bannerModel.redirect_type == "product") {
+                } else if (bannerModel.redirectType == "product") {
                   ShowToastDialog.showLoader("Please wait".tr);
                   ProductModel? productModel =
                       await FireStoreUtils.getProductById(
-                        bannerModel.redirect_id.toString(),
+                        bannerModel.redirectId.toString(),
                       );
                   VendorModel? vendorModel = await FireStoreUtils.getVendorById(
                     productModel!.vendorID.toString(),
@@ -1528,8 +1133,8 @@ class BannerView extends StatelessWidget {
                           .tr,
                     );
                   }
-                } else if (bannerModel.redirect_type == "external_link") {
-                  final uri = Uri.parse(bannerModel.redirect_id.toString());
+                } else if (bannerModel.redirectType == "external_link") {
+                  final uri = Uri.parse(bannerModel.redirectId.toString());
                   if (await canLaunchUrl(uri)) {
                     await launchUrl(uri);
                   } else {
@@ -1562,14 +1167,10 @@ class StoryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Container(
       height: Responsive.height(32, context),
       decoration: const BoxDecoration(
         borderRadius: BorderRadius.all(Radius.circular(20)),
-        // image: DecorationImage(
-        //     image: AssetImage("assets/images/story_bg.png"),
-        //     fit: BoxFit.cover)
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1586,9 +1187,7 @@ class StoryView extends StatelessWidget {
                         "Stories".tr,
                         style: TextStyle(
                           fontFamily: AppThemeData.montserrat,
-                          color: themeChange.getThem()
-                              ? AppThemeData.success400
-                              : AppThemeData.success400,
+                          color: AppThemeData.success400,
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -1758,882 +1357,811 @@ class StoryView extends StatelessWidget {
   }
 }
 
-class BestRestaurantsSection extends StatefulWidget {
-  final List<VendorModel> restaurantList;
-
-  const BestRestaurantsSection({Key? key, required this.restaurantList})
-    : super(key: key);
-
-  @override
-  State<BestRestaurantsSection> createState() => _BestRestaurantsSectionState();
-}
-
-class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
-  Set<FilterType> selectedFilters = {};
-  late List<VendorModel> filteredList;
-
-  double _parseRestaurantCost(String? cost) {
-    if (cost == null || cost.isEmpty) return double.infinity;
-    final parsed = double.tryParse(cost);
-    return parsed ?? double.infinity;
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // **SORT RESTAURANTS - CLOSED AT BOTTOM**
-    filteredList = sortRestaurantsWithClosedAtBottom(widget.restaurantList);
-  }
-
-  void onFilterToggled(FilterType filter) {
-    setState(() {
-      if (selectedFilters.contains(filter)) {
-        selectedFilters.remove(filter);
-      } else {
-        selectedFilters.add(filter);
-      }
-
-      // Start with the full list
-      filteredList = List.from(widget.restaurantList);
-
-      // Apply each selected filter in order
-      for (var selected in selectedFilters) {
-        switch (selected) {
-          case FilterType.distance:
-            filteredList.sort(
-              (a, b) => (a.distance ?? double.infinity).compareTo(
-                b.distance ?? double.infinity,
-              ),
-            );
-            break;
-          case FilterType.priceLowToHigh:
-            filteredList.sort(
-              (a, b) => _parseRestaurantCost(
-                a.restaurantCost,
-              ).compareTo(_parseRestaurantCost(b.restaurantCost)),
-            );
-            break;
-          case FilterType.priceHighToLow:
-            filteredList.sort(
-              (a, b) => _parseRestaurantCost(
-                b.restaurantCost,
-              ).compareTo(_parseRestaurantCost(a.restaurantCost)),
-            );
-            break;
-          case FilterType.rating:
-            filteredList.sort(
-              (a, b) => (b.reviewsSum ?? 0).compareTo(a.reviewsSum ?? 0),
-            );
-            break;
-        }
-      }
-
-      // **FINAL SORT: CLOSED RESTAURANTS AT BOTTOM**
-      filteredList = sortRestaurantsWithClosedAtBottom(filteredList);
-    });
-  }
-
-  Widget _buildSmallStatusBadge(VendorModel vendor) {
-    final status = RestaurantStatusUtils.getRestaurantStatus(vendor);
-    final isClosed = !RestaurantStatusUtils.canAcceptOrders(vendor);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-      decoration: BoxDecoration(
-        color: isClosed ? Colors.red[600] : status['statusColor'],
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            isClosed ? Icons.lock : status['statusIcon'],
-            color: Colors.white,
-            size: 12, // Keep original size
-          ),
-          const SizedBox(width: 3), // Keep original spacing
-          Text(
-            isClosed ? 'Closed' : status['statusText'],
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 10, // Keep original size
-              fontWeight: FontWeight.bold, // Keep original weight
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  "Best Restaurants".tr,
-                  style: TextStyle(
-                    fontFamily: AppThemeData.medium,
-                    color: themeChange.getThem()
-                        ? AppThemeData.grey50
-                        : AppThemeData.grey900,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              InkWell(
-                onTap: () {
-                  Get.to(
-                    const RestaurantListScreen(),
-                    arguments: {
-                      "vendorList": widget.restaurantList,
-                      "title": "Best Restaurants",
-                    },
-                  );
-                },
-                child: Text(
-                  "See all".tr,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: AppThemeData.medium,
-                    color: themeChange.getThem()
-                        ? AppThemeData.primary300
-                        : AppThemeData.primary300,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-          child: FilterBar(
-            selectedFilters: selectedFilters,
-            onFilterToggled: onFilterToggled,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return GridView.builder(
-                shrinkWrap: true,
-                primary: false,
-                padding: EdgeInsets.zero,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredList.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 16,
-                  childAspectRatio: 0.65,
-                ),
-                itemBuilder: (BuildContext context, int index) {
-                  final vendorModel = filteredList[index];
-                  final isClosed = !RestaurantStatusUtils.canAcceptOrders(
-                    vendorModel,
-                  );
-
-                  return InkWell(
-                    onTap: isClosed
-                        ? null
-                        : () {
-                            Get.to(
-                              const RestaurantDetailsScreen(),
-                              arguments: {"vendorModel": vendorModel},
-                            );
-                          },
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: themeChange.getThem()
-                            ? AppThemeData.grey900
-                            : AppThemeData.grey50,
-                        borderRadius: BorderRadius.circular(16),
-                        // border: Border.all(
-                        //   color: AppThemeData.primary300.withOpacity(0.3),
-                        //   width: 1,
-                        // ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          // Main Content
-                          Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // 🖼 Image Section
-                                AspectRatio(
-                                  aspectRatio: 1,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      color: AppThemeData.grey200.withOpacity(
-                                        0.5,
-                                      ),
-                                    ),
-                                    child: Stack(
-                                      children: [
-                                        // Restaurant Image
-                                        ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            12,
-                                          ),
-                                          child: RestaurantImageWithStatus(
-                                            vendorModel: vendorModel,
-                                            height: double.infinity,
-                                            width: double.infinity,
-                                          ),
-                                        ),
-
-                                        // Status Badge
-                                        Positioned(
-                                          top: 6,
-                                          left: 6,
-                                          child: _buildEnhancedStatusBadge(
-                                            vendorModel,
-                                          ),
-                                        ),
-
-                                        // Rating Chip
-                                        // Positioned(
-                                        //   top: 6,
-                                        //   right: 6,
-                                        //   child: _buildRatingChip(vendorModel),
-                                        // ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-
-                                const SizedBox(height: 10),
-
-                                // 🏷 Restaurant Name
-                                Text(
-                                  vendorModel.title ?? 'Restaurant',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontFamily: AppThemeData.semiBold,
-                                    color: themeChange.getThem()
-                                        ? AppThemeData.grey50
-                                        : AppThemeData.grey900,
-                                    height: 1.2,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                // 📍 Category/Location
-                                // Text(
-                                //   vendorModel.category ?? vendorModel.location ?? 'Restaurant',
-                                //   style: TextStyle(
-                                //     fontSize: 11,
-                                //     fontFamily: AppThemeData.medium,
-                                //     color: AppThemeData.grey500,
-                                //   ),
-                                //   maxLines: 1,
-                                //   overflow: TextOverflow.ellipsis,
-                                // ),
-                                const Spacer(),
-                                // ⭐ Rating & Distance Row
-                                _buildBottomInfoRow(vendorModel, themeChange),
-                              ],
-                            ),
-                          ),
-
-                          // Closed Overlay
-                          if (isClosed) ...[
-                            Positioned.fill(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.4),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Center(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.7),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      'CLOSED',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontFamily: AppThemeData.bold,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
-            },
-          ),
-        ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(horizontal: 16),
-        //   child: LayoutBuilder(
-        //     builder: (context, constraints) {
-        //       return GridView.builder(
-        //         // ✅ Prevent vertical overflow safely
-        //         shrinkWrap: true,
-        //         primary: false,
-        //         padding: EdgeInsets.zero,
-        //         physics: const NeverScrollableScrollPhysics(),
-        //         itemCount: filteredList.length,
-        //
-        //         // ✅ Responsive grid layout
-        //         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        //           crossAxisCount: 3, // 3 items per row
-        //           crossAxisSpacing: 14,
-        //           mainAxisSpacing: 20,
-        //           childAspectRatio: 0.64, // Adjust to prevent height overflow
-        //         ),
-        //
-        //         itemBuilder: (BuildContext context, int index) {
-        //           final vendorModel = filteredList[index];
-        //
-        //           return InkWell(
-        //             onTap: () {
-        //               Get.to(
-        //                 const RestaurantDetailsScreen(),
-        //                 arguments: {"vendorModel": vendorModel},
-        //               );
-        //             },
-        //             child: _buildRestaurantCardWithFilter(
-        //               vendorModel: vendorModel,
-        //               themeChange: themeChange,
-        //               child: Container(
-        //                 decoration: ShapeDecoration(
-        //                   color: themeChange.getThem()
-        //                       ? AppThemeData.grey900
-        //                       : AppThemeData.grey50,
-        //                   // shape: RoundedRectangleBorder(
-        //                   //   borderRadius: BorderRadius.circular(16),
-        //                   // ),
-        //                   shape: RoundedRectangleBorder(
-        //                     borderRadius: BorderRadius.circular(16),
-        //                     side: BorderSide(
-        //                       color: AppThemeData.primary300, // 🔴 Border color
-        //                       width: 0.8, // Border thickness
-        //                     ),
-        //                   ),
-        //                 ),
-        //                 padding: const EdgeInsets.all(8),
-        //                 child: Column(
-        //                   crossAxisAlignment: CrossAxisAlignment.start,
-        //                   children: [
-        //                     // 🖼 Restaurant Image with Status
-        //                     AspectRatio(
-        //                       aspectRatio: 1, // Keeps square image in grid
-        //                       child: Stack(
-        //                         children: [
-        //                           ClipRRect(
-        //                             borderRadius: BorderRadius.circular(8),
-        //                             child: RestaurantImageWithStatus(
-        //                               vendorModel: vendorModel,
-        //                               height: double.infinity,
-        //                               width: double.infinity,
-        //                             ),
-        //                           ),
-        //                           Positioned(
-        //                             left: 4,
-        //                             top: 4,
-        //                             child: _buildSmallStatusBadge(vendorModel),
-        //                           ),
-        //                         ],
-        //                       ),
-        //                     ),
-        //                     const SizedBox(height: 8),
-        //                     // 🏷 Vendor Title
-        //                     Text(
-        //                       vendorModel.title ?? '',
-        //                       textAlign: TextAlign.start,
-        //                       maxLines: 1,
-        //                       overflow: TextOverflow.ellipsis,
-        //                       style: TextStyle(
-        //                         fontSize: 14,
-        //                         fontFamily: AppThemeData.semiBold,
-        //                         color: themeChange.getThem()
-        //                             ? AppThemeData.grey50
-        //                             : AppThemeData.grey900,
-        //                       ),
-        //                     ),
-        //                     // 📍 Vendor Location
-        //                     // Text(
-        //                     //   vendorModel.location ?? '',
-        //                     //   textAlign: TextAlign.start,
-        //                     //   maxLines: 1,
-        //                     //   overflow: TextOverflow.ellipsis,
-        //                     //   style: TextStyle(
-        //                     //     fontFamily: AppThemeData.medium,
-        //                     //     fontWeight: FontWeight.w500,
-        //                     //     fontSize: 12,
-        //                     //     color: AppThemeData.grey400,
-        //                     //   ),
-        //                     // ),
-        //                     // ⭐ Rating Row
-        //                     Row(
-        //                       crossAxisAlignment: CrossAxisAlignment.center,
-        //                       children: [
-        //                         SvgPicture.asset(
-        //                           "assets/icons/ic_star.svg",
-        //                           width: 14,
-        //                           colorFilter: ColorFilter.mode(
-        //                             AppThemeData.primary300,
-        //                             BlendMode.srcIn,
-        //                           ),
-        //                         ),
-        //                         const SizedBox(width: 4),
-        //                         Expanded(
-        //                           child: Text(
-        //                             "${Constant.calculateReview(
-        //                               reviewCount:
-        //                                   vendorModel.reviewsCount.toString(),
-        //                               reviewSum:
-        //                                   vendorModel.reviewsSum.toString(),
-        //                             )} (${vendorModel.reviewsCount?.toStringAsFixed(0) ?? '0'})",
-        //                             maxLines: 1,
-        //                             overflow: TextOverflow.ellipsis,
-        //                             style: TextStyle(
-        //                               fontFamily: AppThemeData.medium,
-        //                               fontWeight: FontWeight.w500,
-        //                               fontSize: 12,
-        //                               color: AppThemeData.grey400,
-        //                             ),
-        //                           ),
-        //                         ),
-        //                       ],
-        //                     ),
-        //
-        //                     // const SizedBox(height: 4),
-        //                     //
-        //                     // // 📏 Distance
-        //                     Text(
-        //                       "${(vendorModel.distance ?? 0).toStringAsFixed(2)} km",
-        //                       textAlign: TextAlign.start,
-        //                       maxLines: 1,
-        //                       overflow: TextOverflow.ellipsis,
-        //                       style: TextStyle(
-        //                         fontFamily: AppThemeData.medium,
-        //                         fontWeight: FontWeight.w500,
-        //                         fontSize: 12,
-        //                         color: AppThemeData.grey400,
-        //                       ),
-        //                     ),
-        //                   ],
-        //                 ),
-        //               ),
-        //             ),
-        //           );
-        //         },
-        //       );
-        //     },
-        //   ),
-        // ),
-        // Padding(
-        //   padding: const EdgeInsets.symmetric(horizontal: 16),
-        //   child: ListView.builder(
-        //     shrinkWrap: true,
-        //     padding: EdgeInsets.zero,
-        //     physics: const NeverScrollableScrollPhysics(),
-        //     scrollDirection: Axis.vertical,
-        //     itemCount: filteredList.length,
-        //     itemBuilder: (BuildContext context, int index) {
-        //       VendorModel vendorModel = filteredList[index];
-        //       return InkWell(
-        //         onTap:
-        //             // !RestaurantStatusUtils.canAcceptOrders(vendorModel)
-        //             // ? () {
-        //             //     // Show closed message
-        //             //     final status = RestaurantStatusUtils.getRestaurantStatus(vendorModel);
-        //             //     ScaffoldMessenger.of(context).showSnackBar(
-        //             //       SnackBar(content: Text(status['reason'])),
-        //             //     );
-        //             //   } :
-        //             () {
-        //           Get.to(const RestaurantDetailsScreen(),
-        //               arguments: {"vendorModel": vendorModel});
-        //         },
-        //         child: Padding(
-        //           padding: const EdgeInsets.only(bottom: 20),
-        //           child: _buildRestaurantCardWithFilter(
-        //             vendorModel: vendorModel,
-        //             themeChange: themeChange,
-        //             child: Container(
-        //               decoration: ShapeDecoration(
-        //                 color: themeChange.getThem()
-        //                     ? AppThemeData.grey900
-        //                     : AppThemeData.grey50,
-        //                 shape: RoundedRectangleBorder(
-        //                     borderRadius: BorderRadius.circular(16)),
-        //               ),
-        //               child: Row(
-        //                 crossAxisAlignment: CrossAxisAlignment.start,
-        //                 children: [
-        //                   Stack(
-        //                     children: [
-        //                       ClipRRect(
-        //                         borderRadius: BorderRadius.circular(8),
-        //                         child: RestaurantImageWithStatus(
-        //                           vendorModel: vendorModel,
-        //                           height: 100,
-        //                           width: 100,
-        //                         ),
-        //                       ),
-        //                       // Status badge using new failproof system (smaller size)
-        //                       Positioned(
-        //                         left: 4,
-        //                         top: 4,
-        //                         child: _buildSmallStatusBadge(vendorModel),
-        //                       ),
-        //                     ],
-        //                   ),
-        //                   const SizedBox(width: 15),
-        //                   Expanded(
-        //                     child: Column(
-        //                       mainAxisAlignment: MainAxisAlignment.center,
-        //                       crossAxisAlignment: CrossAxisAlignment.start,
-        //                       children: [
-        //                         Text(
-        //                           vendorModel.title ?? '',
-        //                           textAlign: TextAlign.start,
-        //                           maxLines: 1,
-        //                           overflow: TextOverflow.ellipsis,
-        //                           style: TextStyle(
-        //                             fontSize: 18,
-        //                             fontFamily: AppThemeData.semiBold,
-        //                             color: themeChange.getThem()
-        //                                 ? AppThemeData.grey50
-        //                                 : AppThemeData.grey900,
-        //                           ),
-        //                         ),
-        //                         // Order ID display
-        //                         if (vendorModel.id != null &&
-        //                             vendorModel.id!.isNotEmpty)
-        //                           // Text(
-        //                           //   'Order ID:  ${vendorModel.id}',
-        //                           //   style: TextStyle(
-        //                           //     fontSize: 14,
-        //                           //     fontWeight: FontWeight.w500,
-        //                           //     color: themeChange.getThem() ? AppThemeData.primary300 : AppThemeData.primary300,
-        //                           //   ),
-        //                           // ),
-        //                           Text(
-        //                             vendorModel.location ?? '',
-        //                             textAlign: TextAlign.start,
-        //                             maxLines: 2,
-        //                             overflow: TextOverflow.ellipsis,
-        //                             style: TextStyle(
-        //                               fontFamily: AppThemeData.medium,
-        //                               fontWeight: FontWeight.w500,
-        //                               color: themeChange.getThem()
-        //                                   ? AppThemeData.grey400
-        //                                   : AppThemeData.grey400,
-        //                             ),
-        //                           ),
-        //                         const SizedBox(height: 5),
-        //                         Row(
-        //                           children: [
-        //                             Visibility(
-        //                               visible:
-        //                                   (vendorModel.isSelfDelivery == true &&
-        //                                       Constant.isSelfDeliveryFeature ==
-        //                                           true),
-        //                               child: Row(
-        //                                 children: [
-        //                                   SvgPicture.asset(
-        //                                     "assets/icons/ic_free_delivery.svg",
-        //                                     width: 18,
-        //                                   ),
-        //                                   const SizedBox(width: 5),
-        //                                   Text(
-        //                                     "Free Delivery".tr,
-        //                                     overflow: TextOverflow.ellipsis,
-        //                                     style: TextStyle(
-        //                                       fontFamily: AppThemeData.medium,
-        //                                       fontWeight: FontWeight.w500,
-        //                                       color: themeChange.getThem()
-        //                                           ? AppThemeData.grey400
-        //                                           : AppThemeData.grey400,
-        //                                     ),
-        //                                   ),
-        //                                 ],
-        //                               ),
-        //                             ),
-        //                             Row(
-        //                               children: [
-        //                                 Padding(
-        //                                   padding: const EdgeInsets.symmetric(
-        //                                       horizontal: 10),
-        //                                   child: SvgPicture.asset(
-        //                                     "assets/icons/ic_star.svg",
-        //                                     width: 18,
-        //                                     colorFilter: ColorFilter.mode(
-        //                                         AppThemeData.primary300,
-        //                                         BlendMode.srcIn),
-        //                                   ),
-        //                                 ),
-        //                                 Text(
-        //                                   "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount?.toStringAsFixed(0) ?? '0'})",
-        //                                   textAlign: TextAlign.start,
-        //                                   maxLines: 1,
-        //                                   overflow: TextOverflow.ellipsis,
-        //                                   style: TextStyle(
-        //                                     fontFamily: AppThemeData.medium,
-        //                                     fontWeight: FontWeight.w500,
-        //                                     color: themeChange.getThem()
-        //                                         ? AppThemeData.grey400
-        //                                         : AppThemeData.grey400,
-        //                                   ),
-        //                                 ),
-        //                               ],
-        //                             ),
-        //                             Row(
-        //                               children: [
-        //                                 Padding(
-        //                                   padding: const EdgeInsets.symmetric(
-        //                                       horizontal: 10),
-        //                                   child: Icon(
-        //                                     Icons.circle,
-        //                                     size: 5,
-        //                                     color: themeChange.getThem()
-        //                                         ? AppThemeData.grey400
-        //                                         : AppThemeData.grey500,
-        //                                   ),
-        //                                 ),
-        //                                 Text(
-        //                                   "${(vendorModel.distance ?? 0).toStringAsFixed(2)} km",
-        //                                   textAlign: TextAlign.start,
-        //                                   maxLines: 1,
-        //                                   overflow: TextOverflow.ellipsis,
-        //                                   style: TextStyle(
-        //                                     fontFamily: AppThemeData.medium,
-        //                                     fontWeight: FontWeight.w500,
-        //                                     color: themeChange.getThem()
-        //                                         ? AppThemeData.grey400
-        //                                         : AppThemeData.grey400,
-        //                                   ),
-        //                                 ),
-        //                               ],
-        //                             ),
-        //                           ],
-        //                         ),
-        //                       ],
-        //                     ),
-        //                   ),
-        //                   const SizedBox(width: 10),
-        //                 ],
-        //               ),
-        //             ),
-        //           ),
-        //         ),
-        //       );
-        //     },
-        //   ),
-        // ),
-      ],
-    );
-  }
-}
+// class BestRestaurantsSection extends StatefulWidget {
+//   final List<VendorModel> restaurantList;
+//
+//   const BestRestaurantsSection({Key? key, required this.restaurantList})
+//     : super(key: key);
+//
+//   @override
+//   State<BestRestaurantsSection> createState() => _BestRestaurantsSectionState();
+// }
+//
+// class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
+//   Set<FilterType> selectedFilters = {};
+//   late List<VendorModel> filteredList;
+//
+//   double _parseRestaurantCost(String? cost) {
+//     if (cost == null || cost.isEmpty) return double.infinity;
+//     final parsed = double.tryParse(cost);
+//     return parsed ?? double.infinity;
+//   }
+//
+//   @override
+//   void initState() {
+//     super.initState();
+//     // **SORT RESTAURANTS - CLOSED AT BOTTOM**
+//     filteredList = sortRestaurantsWithClosedAtBottom(widget.restaurantList);
+//   }
+//
+//   void onFilterToggled(FilterType filter) {
+//     setState(() {
+//       if (selectedFilters.contains(filter)) {
+//         selectedFilters.remove(filter);
+//       } else {
+//         selectedFilters.add(filter);
+//       }
+//
+//       // Start with the full list
+//       filteredList = List.from(widget.restaurantList);
+//
+//       // Apply each selected filter in order
+//       for (var selected in selectedFilters) {
+//         switch (selected) {
+//           case FilterType.distance:
+//             filteredList.sort(
+//               (a, b) => (a.distance ?? double.infinity).compareTo(
+//                 b.distance ?? double.infinity,
+//               ),
+//             );
+//             break;
+//           case FilterType.priceLowToHigh:
+//             filteredList.sort(
+//               (a, b) => _parseRestaurantCost(
+//                 a.restaurantCost,
+//               ).compareTo(_parseRestaurantCost(b.restaurantCost)),
+//             );
+//             break;
+//           case FilterType.priceHighToLow:
+//             filteredList.sort(
+//               (a, b) => _parseRestaurantCost(
+//                 b.restaurantCost,
+//               ).compareTo(_parseRestaurantCost(a.restaurantCost)),
+//             );
+//             break;
+//           case FilterType.rating:
+//             filteredList.sort(
+//               (a, b) => (b.reviewsSum ?? 0).compareTo(a.reviewsSum ?? 0),
+//             );
+//             break;
+//         }
+//       }
+//
+//       // **FINAL SORT: CLOSED RESTAURANTS AT BOTTOM**
+//       filteredList = sortRestaurantsWithClosedAtBottom(filteredList);
+//     });
+//   }
+//
+//   Widget _buildSmallStatusBadge(VendorModel vendor) {
+//     final status = RestaurantStatusUtils.getRestaurantStatus(vendor);
+//     final isClosed = !RestaurantStatusUtils.canAcceptOrders(vendor);
+//
+//     return Container(
+//       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+//       decoration: BoxDecoration(
+//         color: isClosed ? Colors.red[600] : status['statusColor'],
+//         borderRadius: BorderRadius.circular(12),
+//       ),
+//       child: Row(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           Icon(
+//             isClosed ? Icons.lock : status['statusIcon'],
+//             color: Colors.white,
+//             size: 12, // Keep original size
+//           ),
+//           const SizedBox(width: 3), // Keep original spacing
+//           Text(
+//             isClosed ? 'Closed' : status['statusText'],
+//             style: const TextStyle(
+//               color: Colors.white,
+//               fontSize: 10, // Keep original size
+//               fontWeight: FontWeight.bold, // Keep original weight
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Padding(
+//           padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+//           child: Row(
+//             children: [
+//               Expanded(
+//                 child: Text(
+//                   "Best Restaurants".tr,
+//                   style: TextStyle(
+//                     fontFamily: AppThemeData.medium,
+//                     color: AppThemeData.grey900,
+//                     fontSize: 18,
+//                     fontWeight: FontWeight.bold,
+//                   ),
+//                 ),
+//               ),
+//               InkWell(
+//                 onTap: () {
+//                   Get.to(
+//                     const RestaurantListScreen(),
+//                     arguments: {
+//                       "vendorList": widget.restaurantList,
+//                       "title": "Best Restaurants",
+//                     },
+//                   );
+//                 },
+//                 child: Text(
+//                   "See all".tr,
+//                   textAlign: TextAlign.center,
+//                   style: TextStyle(
+//                     fontFamily: AppThemeData.medium,
+//                     color: AppThemeData.primary300,
+//                     fontSize: 12,
+//                   ),
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//         Padding(
+//           padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+//           child: FilterBar(
+//             selectedFilters: selectedFilters,
+//             onFilterToggled: onFilterToggled,
+//           ),
+//         ),
+//         Padding(
+//           padding: const EdgeInsets.symmetric(horizontal: 16),
+//           child: LayoutBuilder(
+//             builder: (context, constraints) {
+//               return GridView.builder(
+//                 shrinkWrap: true,
+//                 primary: false,
+//                 padding: EdgeInsets.zero,
+//                 physics: const NeverScrollableScrollPhysics(),
+//                 itemCount: filteredList.length,
+//                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+//                   crossAxisCount: 3,
+//                   crossAxisSpacing: 12,
+//                   mainAxisSpacing: 16,
+//                   childAspectRatio: 0.65,
+//                 ),
+//                 itemBuilder: (BuildContext context, int index) {
+//                   final vendorModel = filteredList[index];
+//                   final isClosed = !RestaurantStatusUtils.canAcceptOrders(
+//                     vendorModel,
+//                   );
+//
+//                   return InkWell(
+//                     onTap: isClosed
+//                         ? null
+//                         : () {
+//                             Get.to(
+//                               const RestaurantDetailsScreen(),
+//                               arguments: {"vendorModel": vendorModel},
+//                             );
+//                           },
+//                     borderRadius: BorderRadius.circular(16),
+//                     child: Container(
+//                       decoration: BoxDecoration(
+//                         color: AppThemeData.grey50,
+//                         borderRadius: BorderRadius.circular(16),
+//                         // border: Border.all(
+//                         //   color: AppThemeData.primary300.withOpacity(0.3),
+//                         //   width: 1,
+//                         // ),
+//                         boxShadow: [
+//                           BoxShadow(
+//                             color: Colors.black.withOpacity(0.05),
+//                             blurRadius: 8,
+//                             offset: const Offset(0, 2),
+//                           ),
+//                         ],
+//                       ),
+//                       child: Stack(
+//                         children: [
+//                           // Main Content
+//                           Padding(
+//                             padding: const EdgeInsets.all(10),
+//                             child: Column(
+//                               crossAxisAlignment: CrossAxisAlignment.start,
+//                               children: [
+//                                 // 🖼 Image Section
+//                                 AspectRatio(
+//                                   aspectRatio: 1,
+//                                   child: Container(
+//                                     decoration: BoxDecoration(
+//                                       borderRadius: BorderRadius.circular(12),
+//                                       color: AppThemeData.grey200.withOpacity(
+//                                         0.5,
+//                                       ),
+//                                     ),
+//                                     child: Stack(
+//                                       children: [
+//                                         // Restaurant Image
+//                                         ClipRRect(
+//                                           borderRadius: BorderRadius.circular(
+//                                             12,
+//                                           ),
+//                                           child: RestaurantImageWithStatus(
+//                                             vendorModel: vendorModel,
+//                                             height: double.infinity,
+//                                             width: double.infinity,
+//                                           ),
+//                                         ),
+//
+//                                         // Status Badge
+//                                         Positioned(
+//                                           top: 6,
+//                                           left: 6,
+//                                           child: _buildEnhancedStatusBadge(
+//                                             vendorModel,
+//                                           ),
+//                                         ),
+//                                       ],
+//                                     ),
+//                                   ),
+//                                 ),
+//                                 const SizedBox(height: 10),
+//                                 Text(
+//                                   vendorModel.title ?? 'Restaurant',
+//                                   style: TextStyle(
+//                                     fontSize: 14,
+//                                     fontFamily: AppThemeData.semiBold,
+//                                     color: AppThemeData.grey900,
+//                                     height: 1.2,
+//                                   ),
+//                                   maxLines: 1,
+//                                   overflow: TextOverflow.ellipsis,
+//                                 ),
+//                                 const SizedBox(height: 4),
+//                                 const Spacer(),
+//                                 _buildBottomInfoRow(vendorModel),
+//                               ],
+//                             ),
+//                           ),
+//                           if (isClosed) ...[
+//                             Positioned.fill(
+//                               child: Container(
+//                                 decoration: BoxDecoration(
+//                                   color: Colors.black.withOpacity(0.4),
+//                                   borderRadius: BorderRadius.circular(16),
+//                                 ),
+//                                 child: Center(
+//                                   child: Container(
+//                                     padding: const EdgeInsets.symmetric(
+//                                       horizontal: 8,
+//                                       vertical: 4,
+//                                     ),
+//                                     decoration: BoxDecoration(
+//                                       color: Colors.black.withOpacity(0.7),
+//                                       borderRadius: BorderRadius.circular(8),
+//                                     ),
+//                                     child: Text(
+//                                       'CLOSED',
+//                                       style: TextStyle(
+//                                         color: Colors.white,
+//                                         fontSize: 10,
+//                                         fontFamily: AppThemeData.bold,
+//                                         letterSpacing: 0.5,
+//                                       ),
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+//                             ),
+//                           ],
+//                         ],
+//                       ),
+//                     ),
+//                   );
+//                 },
+//               );
+//             },
+//           ),
+//         ),
+//         // Padding(
+//         //   padding: const EdgeInsets.symmetric(horizontal: 16),
+//         //   child: LayoutBuilder(
+//         //     builder: (context, constraints) {
+//         //       return GridView.builder(
+//         //         // ✅ Prevent vertical overflow safely
+//         //         shrinkWrap: true,
+//         //         primary: false,
+//         //         padding: EdgeInsets.zero,
+//         //         physics: const NeverScrollableScrollPhysics(),
+//         //         itemCount: filteredList.length,
+//         //
+//         //         // ✅ Responsive grid layout
+//         //         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+//         //           crossAxisCount: 3, // 3 items per row
+//         //           crossAxisSpacing: 14,
+//         //           mainAxisSpacing: 20,
+//         //           childAspectRatio: 0.64, // Adjust to prevent height overflow
+//         //         ),
+//         //
+//         //         itemBuilder: (BuildContext context, int index) {
+//         //           final vendorModel = filteredList[index];
+//         //
+//         //           return InkWell(
+//         //             onTap: () {
+//         //               Get.to(
+//         //                 const RestaurantDetailsScreen(),
+//         //                 arguments: {"vendorModel": vendorModel},
+//         //               );
+//         //             },
+//         //             child: _buildRestaurantCardWithFilter(
+//         //               vendorModel: vendorModel,
+//         //               themeChange: themeChange,
+//         //               child: Container(
+//         //                 decoration: ShapeDecoration(
+//         //                   color: themeChange.getThem()
+//         //                       ? AppThemeData.grey900
+//         //                       : AppThemeData.grey50,
+//         //                   // shape: RoundedRectangleBorder(
+//         //                   //   borderRadius: BorderRadius.circular(16),
+//         //                   // ),
+//         //                   shape: RoundedRectangleBorder(
+//         //                     borderRadius: BorderRadius.circular(16),
+//         //                     side: BorderSide(
+//         //                       color: AppThemeData.primary300, // 🔴 Border color
+//         //                       width: 0.8, // Border thickness
+//         //                     ),
+//         //                   ),
+//         //                 ),
+//         //                 padding: const EdgeInsets.all(8),
+//         //                 child: Column(
+//         //                   crossAxisAlignment: CrossAxisAlignment.start,
+//         //                   children: [
+//         //                     // 🖼 Restaurant Image with Status
+//         //                     AspectRatio(
+//         //                       aspectRatio: 1, // Keeps square image in grid
+//         //                       child: Stack(
+//         //                         children: [
+//         //                           ClipRRect(
+//         //                             borderRadius: BorderRadius.circular(8),
+//         //                             child: RestaurantImageWithStatus(
+//         //                               vendorModel: vendorModel,
+//         //                               height: double.infinity,
+//         //                               width: double.infinity,
+//         //                             ),
+//         //                           ),
+//         //                           Positioned(
+//         //                             left: 4,
+//         //                             top: 4,
+//         //                             child: _buildSmallStatusBadge(vendorModel),
+//         //                           ),
+//         //                         ],
+//         //                       ),
+//         //                     ),
+//         //                     const SizedBox(height: 8),
+//         //                     // 🏷 Vendor Title
+//         //                     Text(
+//         //                       vendorModel.title ?? '',
+//         //                       textAlign: TextAlign.start,
+//         //                       maxLines: 1,
+//         //                       overflow: TextOverflow.ellipsis,
+//         //                       style: TextStyle(
+//         //                         fontSize: 14,
+//         //                         fontFamily: AppThemeData.semiBold,
+//         //                         color: themeChange.getThem()
+//         //                             ? AppThemeData.grey50
+//         //                             : AppThemeData.grey900,
+//         //                       ),
+//         //                     ),
+//         //                     // 📍 Vendor Location
+//         //                     // Text(
+//         //                     //   vendorModel.location ?? '',
+//         //                     //   textAlign: TextAlign.start,
+//         //                     //   maxLines: 1,
+//         //                     //   overflow: TextOverflow.ellipsis,
+//         //                     //   style: TextStyle(
+//         //                     //     fontFamily: AppThemeData.medium,
+//         //                     //     fontWeight: FontWeight.w500,
+//         //                     //     fontSize: 12,
+//         //                     //     color: AppThemeData.grey400,
+//         //                     //   ),
+//         //                     // ),
+//         //                     // ⭐ Rating Row
+//         //                     Row(
+//         //                       crossAxisAlignment: CrossAxisAlignment.center,
+//         //                       children: [
+//         //                         SvgPicture.asset(
+//         //                           "assets/icons/ic_star.svg",
+//         //                           width: 14,
+//         //                           colorFilter: ColorFilter.mode(
+//         //                             AppThemeData.primary300,
+//         //                             BlendMode.srcIn,
+//         //                           ),
+//         //                         ),
+//         //                         const SizedBox(width: 4),
+//         //                         Expanded(
+//         //                           child: Text(
+//         //                             "${Constant.calculateReview(
+//         //                               reviewCount:
+//         //                                   vendorModel.reviewsCount.toString(),
+//         //                               reviewSum:
+//         //                                   vendorModel.reviewsSum.toString(),
+//         //                             )} (${vendorModel.reviewsCount?.toStringAsFixed(0) ?? '0'})",
+//         //                             maxLines: 1,
+//         //                             overflow: TextOverflow.ellipsis,
+//         //                             style: TextStyle(
+//         //                               fontFamily: AppThemeData.medium,
+//         //                               fontWeight: FontWeight.w500,
+//         //                               fontSize: 12,
+//         //                               color: AppThemeData.grey400,
+//         //                             ),
+//         //                           ),
+//         //                         ),
+//         //                       ],
+//         //                     ),
+//         //
+//         //                     // const SizedBox(height: 4),
+//         //                     //
+//         //                     // // 📏 Distance
+//         //                     Text(
+//         //                       "${(vendorModel.distance ?? 0).toStringAsFixed(2)} km",
+//         //                       textAlign: TextAlign.start,
+//         //                       maxLines: 1,
+//         //                       overflow: TextOverflow.ellipsis,
+//         //                       style: TextStyle(
+//         //                         fontFamily: AppThemeData.medium,
+//         //                         fontWeight: FontWeight.w500,
+//         //                         fontSize: 12,
+//         //                         color: AppThemeData.grey400,
+//         //                       ),
+//         //                     ),
+//         //                   ],
+//         //                 ),
+//         //               ),
+//         //             ),
+//         //           );
+//         //         },
+//         //       );
+//         //     },
+//         //   ),
+//         // ),
+//         // Padding(
+//         //   padding: const EdgeInsets.symmetric(horizontal: 16),
+//         //   child: ListView.builder(
+//         //     shrinkWrap: true,
+//         //     padding: EdgeInsets.zero,
+//         //     physics: const NeverScrollableScrollPhysics(),
+//         //     scrollDirection: Axis.vertical,
+//         //     itemCount: filteredList.length,
+//         //     itemBuilder: (BuildContext context, int index) {
+//         //       VendorModel vendorModel = filteredList[index];
+//         //       return InkWell(
+//         //         onTap:
+//         //             // !RestaurantStatusUtils.canAcceptOrders(vendorModel)
+//         //             // ? () {
+//         //             //     // Show closed message
+//         //             //     final status = RestaurantStatusUtils.getRestaurantStatus(vendorModel);
+//         //             //     ScaffoldMessenger.of(context).showSnackBar(
+//         //             //       SnackBar(content: Text(status['reason'])),
+//         //             //     );
+//         //             //   } :
+//         //             () {
+//         //           Get.to(const RestaurantDetailsScreen(),
+//         //               arguments: {"vendorModel": vendorModel});
+//         //         },
+//         //         child: Padding(
+//         //           padding: const EdgeInsets.only(bottom: 20),
+//         //           child: _buildRestaurantCardWithFilter(
+//         //             vendorModel: vendorModel,
+//         //             themeChange: themeChange,
+//         //             child: Container(
+//         //               decoration: ShapeDecoration(
+//         //                 color: themeChange.getThem()
+//         //                     ? AppThemeData.grey900
+//         //                     : AppThemeData.grey50,
+//         //                 shape: RoundedRectangleBorder(
+//         //                     borderRadius: BorderRadius.circular(16)),
+//         //               ),
+//         //               child: Row(
+//         //                 crossAxisAlignment: CrossAxisAlignment.start,
+//         //                 children: [
+//         //                   Stack(
+//         //                     children: [
+//         //                       ClipRRect(
+//         //                         borderRadius: BorderRadius.circular(8),
+//         //                         child: RestaurantImageWithStatus(
+//         //                           vendorModel: vendorModel,
+//         //                           height: 100,
+//         //                           width: 100,
+//         //                         ),
+//         //                       ),
+//         //                       // Status badge using new failproof system (smaller size)
+//         //                       Positioned(
+//         //                         left: 4,
+//         //                         top: 4,
+//         //                         child: _buildSmallStatusBadge(vendorModel),
+//         //                       ),
+//         //                     ],
+//         //                   ),
+//         //                   const SizedBox(width: 15),
+//         //                   Expanded(
+//         //                     child: Column(
+//         //                       mainAxisAlignment: MainAxisAlignment.center,
+//         //                       crossAxisAlignment: CrossAxisAlignment.start,
+//         //                       children: [
+//         //                         Text(
+//         //                           vendorModel.title ?? '',
+//         //                           textAlign: TextAlign.start,
+//         //                           maxLines: 1,
+//         //                           overflow: TextOverflow.ellipsis,
+//         //                           style: TextStyle(
+//         //                             fontSize: 18,
+//         //                             fontFamily: AppThemeData.semiBold,
+//         //                             color: themeChange.getThem()
+//         //                                 ? AppThemeData.grey50
+//         //                                 : AppThemeData.grey900,
+//         //                           ),
+//         //                         ),
+//         //                         // Order ID display
+//         //                         if (vendorModel.id != null &&
+//         //                             vendorModel.id!.isNotEmpty)
+//         //                           // Text(
+//         //                           //   'Order ID:  ${vendorModel.id}',
+//         //                           //   style: TextStyle(
+//         //                           //     fontSize: 14,
+//         //                           //     fontWeight: FontWeight.w500,
+//         //                           //     color: themeChange.getThem() ? AppThemeData.primary300 : AppThemeData.primary300,
+//         //                           //   ),
+//         //                           // ),
+//         //                           Text(
+//         //                             vendorModel.location ?? '',
+//         //                             textAlign: TextAlign.start,
+//         //                             maxLines: 2,
+//         //                             overflow: TextOverflow.ellipsis,
+//         //                             style: TextStyle(
+//         //                               fontFamily: AppThemeData.medium,
+//         //                               fontWeight: FontWeight.w500,
+//         //                               color: themeChange.getThem()
+//         //                                   ? AppThemeData.grey400
+//         //                                   : AppThemeData.grey400,
+//         //                             ),
+//         //                           ),
+//         //                         const SizedBox(height: 5),
+//         //                         Row(
+//         //                           children: [
+//         //                             Visibility(
+//         //                               visible:
+//         //                                   (vendorModel.isSelfDelivery == true &&
+//         //                                       Constant.isSelfDeliveryFeature ==
+//         //                                           true),
+//         //                               child: Row(
+//         //                                 children: [
+//         //                                   SvgPicture.asset(
+//         //                                     "assets/icons/ic_free_delivery.svg",
+//         //                                     width: 18,
+//         //                                   ),
+//         //                                   const SizedBox(width: 5),
+//         //                                   Text(
+//         //                                     "Free Delivery".tr,
+//         //                                     overflow: TextOverflow.ellipsis,
+//         //                                     style: TextStyle(
+//         //                                       fontFamily: AppThemeData.medium,
+//         //                                       fontWeight: FontWeight.w500,
+//         //                                       color: themeChange.getThem()
+//         //                                           ? AppThemeData.grey400
+//         //                                           : AppThemeData.grey400,
+//         //                                     ),
+//         //                                   ),
+//         //                                 ],
+//         //                               ),
+//         //                             ),
+//         //                             Row(
+//         //                               children: [
+//         //                                 Padding(
+//         //                                   padding: const EdgeInsets.symmetric(
+//         //                                       horizontal: 10),
+//         //                                   child: SvgPicture.asset(
+//         //                                     "assets/icons/ic_star.svg",
+//         //                                     width: 18,
+//         //                                     colorFilter: ColorFilter.mode(
+//         //                                         AppThemeData.primary300,
+//         //                                         BlendMode.srcIn),
+//         //                                   ),
+//         //                                 ),
+//         //                                 Text(
+//         //                                   "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount?.toStringAsFixed(0) ?? '0'})",
+//         //                                   textAlign: TextAlign.start,
+//         //                                   maxLines: 1,
+//         //                                   overflow: TextOverflow.ellipsis,
+//         //                                   style: TextStyle(
+//         //                                     fontFamily: AppThemeData.medium,
+//         //                                     fontWeight: FontWeight.w500,
+//         //                                     color: themeChange.getThem()
+//         //                                         ? AppThemeData.grey400
+//         //                                         : AppThemeData.grey400,
+//         //                                   ),
+//         //                                 ),
+//         //                               ],
+//         //                             ),
+//         //                             Row(
+//         //                               children: [
+//         //                                 Padding(
+//         //                                   padding: const EdgeInsets.symmetric(
+//         //                                       horizontal: 10),
+//         //                                   child: Icon(
+//         //                                     Icons.circle,
+//         //                                     size: 5,
+//         //                                     color: themeChange.getThem()
+//         //                                         ? AppThemeData.grey400
+//         //                                         : AppThemeData.grey500,
+//         //                                   ),
+//         //                                 ),
+//         //                                 Text(
+//         //                                   "${(vendorModel.distance ?? 0).toStringAsFixed(2)} km",
+//         //                                   textAlign: TextAlign.start,
+//         //                                   maxLines: 1,
+//         //                                   overflow: TextOverflow.ellipsis,
+//         //                                   style: TextStyle(
+//         //                                     fontFamily: AppThemeData.medium,
+//         //                                     fontWeight: FontWeight.w500,
+//         //                                     color: themeChange.getThem()
+//         //                                         ? AppThemeData.grey400
+//         //                                         : AppThemeData.grey400,
+//         //                                   ),
+//         //                                 ),
+//         //                               ],
+//         //                             ),
+//         //                           ],
+//         //                         ),
+//         //                       ],
+//         //                     ),
+//         //                   ),
+//         //                   const SizedBox(width: 10),
+//         //                 ],
+//         //               ),
+//         //             ),
+//         //           ),
+//         //         ),
+//         //       );
+//         //     },
+//         //   ),
+//         // ),
+//       ],
+//     );
+//   }
+// }
 
 // Enhanced Status Badge
-Widget _buildEnhancedStatusBadge(VendorModel vendorModel) {
-  final isOpen = RestaurantStatusUtils.canAcceptOrders(vendorModel);
+// Widget _buildEnhancedStatusBadge(VendorModel vendorModel) {
+//   final isOpen = RestaurantStatusUtils.canAcceptOrders(vendorModel);
+//
+//   return Container(
+//     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+//     decoration: BoxDecoration(
+//       color: isOpen
+//           ? Colors.green.withOpacity(0.9)
+//           : Colors.red.withOpacity(0.9),
+//       borderRadius: BorderRadius.circular(6),
+//       boxShadow: [
+//         BoxShadow(
+//           color: Colors.black.withOpacity(0.1),
+//           blurRadius: 4,
+//           offset: const Offset(0, 1),
+//         ),
+//       ],
+//     ),
+//     child: Row(
+//       mainAxisSize: MainAxisSize.min,
+//       children: [
+//         Icon(
+//           isOpen ? Icons.circle : Icons.circle_outlined,
+//           size: 6,
+//           color: Colors.white,
+//         ),
+//         const SizedBox(width: 4),
+//         Text(
+//           isOpen ? 'OPEN' : 'CLOSED',
+//           style: const TextStyle(
+//             color: Colors.white,
+//             fontSize: 8,
+//             fontFamily: AppThemeData.bold,
+//             height: 1,
+//           ),
+//         ),
+//       ],
+//     ),
+//   );
+// }
+//
+// // Rating Chip
+// Widget _buildRatingChip(VendorModel vendorModel) {
+//   final rating = Constant.calculateReview(
+//     reviewCount: vendorModel.reviewsCount.toString(),
+//     reviewSum: vendorModel.reviewsSum.toString(),
+//   );
+//
+//   return Container(
+//     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+//     decoration: BoxDecoration(
+//       color: Colors.black.withOpacity(0.7),
+//       borderRadius: BorderRadius.circular(6),
+//     ),
+//     child: Row(
+//       mainAxisSize: MainAxisSize.min,
+//       children: [
+//         Icon(Icons.star, size: 10, color: AppThemeData.primary300),
+//         const SizedBox(width: 2),
+//         Text(
+//           rating,
+//           style: const TextStyle(
+//             color: Colors.white,
+//             fontSize: 9,
+//             fontFamily: AppThemeData.semiBold,
+//             height: 1,
+//           ),
+//         ),
+//       ],
+//     ),
+//   );
+// }
 
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-    decoration: BoxDecoration(
-      color: isOpen
-          ? Colors.green.withOpacity(0.9)
-          : Colors.red.withOpacity(0.9),
-      borderRadius: BorderRadius.circular(6),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 4,
-          offset: const Offset(0, 1),
-        ),
-      ],
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          isOpen ? Icons.circle : Icons.circle_outlined,
-          size: 6,
-          color: Colors.white,
-        ),
-        const SizedBox(width: 4),
-        Text(
-          isOpen ? 'OPEN' : 'CLOSED',
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 8,
-            fontFamily: AppThemeData.bold,
-            height: 1,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-// Rating Chip
-Widget _buildRatingChip(VendorModel vendorModel) {
-  final rating = Constant.calculateReview(
-    reviewCount: vendorModel.reviewsCount.toString(),
-    reviewSum: vendorModel.reviewsSum.toString(),
-  );
-
-  return Container(
-    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
-    decoration: BoxDecoration(
-      color: Colors.black.withOpacity(0.7),
-      borderRadius: BorderRadius.circular(6),
-    ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(Icons.star, size: 10, color: AppThemeData.primary300),
-        const SizedBox(width: 2),
-        Text(
-          rating,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 9,
-            fontFamily: AppThemeData.semiBold,
-            height: 1,
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-// Bottom Info Row
-Widget _buildBottomInfoRow(
-  VendorModel vendorModel,
-  DarkThemeProvider themeChange,
-) {
-  return Row(
-    children: [
-      // Rating
-      Expanded(
-        child: Row(
-          children: [
-            Icon(Icons.star, size: 12, color: AppThemeData.primary300),
-            const SizedBox(width: 2),
-            Expanded(
-              child: Text(
-                "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount?.toStringAsFixed(0) ?? '0'})",
-                style: TextStyle(
-                  fontSize: 10,
-                  fontFamily: AppThemeData.medium,
-                  color: AppThemeData.grey500,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-
-      // Distance (if available)
-      if (vendorModel.distance != null) ...[
-        const SizedBox(width: 4),
-        Expanded(
-          child: Row(
-            children: [
-              Icon(
-                Icons.location_on_outlined,
-                size: 10,
-                color: AppThemeData.grey400,
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: Text(
-                  "${(vendorModel.distance ?? 0).toStringAsFixed(1)} km",
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontFamily: AppThemeData.medium,
-                    color: AppThemeData.grey500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ],
-  );
-}
-
-/// **REUSABLE HELPER METHOD FOR WHOLE CARD BLACK & WHITE FILTER**
-Widget _buildRestaurantCardWithFilter({
-  required VendorModel vendorModel,
-  required DarkThemeProvider themeChange,
-  required Widget child,
-}) {
-  // **CHECK IF RESTAURANT IS CLOSED**
-  final isRestaurantClosed = !RestaurantStatusUtils.canAcceptOrders(
-    vendorModel,
-  );
-
-  return isRestaurantClosed
-      ? Stack(
-          children: [
-            ColorFiltered(
-              colorFilter: const ColorFilter.matrix([
-                0.33, 0.33, 0.33, 0, 0, // Red channel
-                0.33, 0.33, 0.33, 0, 0, // Green channel
-                0.33, 0.33, 0.33, 0, 0, // Blue channel
-                0, 0, 0, 1, 0, // Alpha channel
-              ]),
-              child: child,
-            ),
-            // **SUBTLE OVERLAY FOR CLOSED RESTAURANTS**
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-            ),
-          ],
-        )
-      : child;
-}
+// // Bottom Info Row
+// Widget _buildBottomInfoRow(VendorModel vendorModel) {
+//   return Row(
+//     children: [
+//       // Rating
+//       Expanded(
+//         child: Row(
+//           children: [
+//             Icon(Icons.star, size: 12, color: AppThemeData.primary300),
+//             const SizedBox(width: 2),
+//             Expanded(
+//               child: Text(
+//                 "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount?.toStringAsFixed(0) ?? '0'})",
+//                 style: TextStyle(
+//                   fontSize: 10,
+//                   fontFamily: AppThemeData.medium,
+//                   color: AppThemeData.grey500,
+//                 ),
+//                 maxLines: 1,
+//                 overflow: TextOverflow.ellipsis,
+//               ),
+//             ),
+//           ],
+//         ),
+//       ),
+//
+//       // Distance (if available)
+//       if (vendorModel.distance != null) ...[
+//         const SizedBox(width: 4),
+//         Expanded(
+//           child: Row(
+//             children: [
+//               Icon(
+//                 Icons.location_on_outlined,
+//                 size: 10,
+//                 color: AppThemeData.grey400,
+//               ),
+//               const SizedBox(width: 2),
+//               Expanded(
+//                 child: Text(
+//                   "${(vendorModel.distance ?? 0).toStringAsFixed(1)} km",
+//                   style: TextStyle(
+//                     fontSize: 9,
+//                     fontFamily: AppThemeData.medium,
+//                     color: AppThemeData.grey500,
+//                   ),
+//                   maxLines: 1,
+//                   overflow: TextOverflow.ellipsis,
+//                 ),
+//               ),
+//             ],
+//           ),
+//         ),
+//       ],
+//     ],
+//   );
+// }
 
 class AdvertisementHomeCard extends StatelessWidget {
   final AdvertisementModel model;
@@ -2647,7 +2175,6 @@ class AdvertisementHomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return InkWell(
       onTap: () async {
         ShowToastDialog.showLoader("Please wait".tr);
@@ -2664,16 +2191,14 @@ class AdvertisementHomeCard extends StatelessWidget {
         margin: EdgeInsets.only(right: 16),
         width: Responsive.width(70, context),
         decoration: BoxDecoration(
-          color: themeChange.getThem()
-              ? AppThemeData.info600
-              : AppThemeData.surface,
+          color: AppThemeData.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
-              blurRadius: themeChange.getThem() ? 6 : 2,
+              blurRadius: 2,
               spreadRadius: 0,
-              offset: Offset(0, themeChange.getThem() ? 3 : 1),
+              offset: Offset(0, 1),
             ),
           ],
         ),
@@ -2720,9 +2245,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                             VendorModel vendorModel = snapshot.data!;
                             return Container(
                               decoration: ShapeDecoration(
-                                color: themeChange.getThem()
-                                    ? AppThemeData.primary600
-                                    : AppThemeData.primary50,
+                                color: AppThemeData.primary50,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(120),
                                 ),
@@ -2746,9 +2269,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                                       "${model.showRating == true ? Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString()) : ''} ${model.showReview == true ? '(${vendorModel.reviewsCount!.toStringAsFixed(0)})' : ''}",
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: themeChange.getThem()
-                                            ? AppThemeData.primary300
-                                            : AppThemeData.primary300,
+                                        color: AppThemeData.primary300,
                                         fontFamily: AppThemeData.semiBold,
                                         fontWeight: FontWeight.w600,
                                       ),
@@ -2787,9 +2308,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                         Text(
                           model.title ?? '',
                           style: TextStyle(
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey50
-                                : AppThemeData.grey900,
+                            color: AppThemeData.grey900,
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
@@ -2800,9 +2319,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: 12,
                             fontFamily: AppThemeData.medium,
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey400
-                                : AppThemeData.grey600,
+                            color: AppThemeData.grey600,
                           ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 2,
@@ -2825,9 +2342,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                                 : SvgPicture.asset(
                                     "assets/icons/ic_like.svg",
                                     colorFilter: ColorFilter.mode(
-                                      themeChange.getThem()
-                                          ? AppThemeData.grey400
-                                          : AppThemeData.grey600,
+                                      AppThemeData.grey600,
                                       BlendMode.srcIn,
                                     ),
                                   ),
@@ -2862,9 +2377,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                         )
                       : Container(
                           decoration: ShapeDecoration(
-                            color: themeChange.getThem()
-                                ? AppThemeData.primary600
-                                : AppThemeData.primary50,
+                            color: AppThemeData.primary50,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(5),
                             ),
@@ -2904,7 +2417,7 @@ class BannerBottomView extends StatelessWidget {
           height: 150,
           child: PageView.builder(
             physics: const BouncingScrollPhysics(),
-            controller: controller.pageBottomController.value,
+            controller: controller.pageBottomController,
             scrollDirection: Axis.horizontal,
             itemCount: controller.bannerBottomModel.length,
             padEnds: false,
@@ -2917,11 +2430,11 @@ class BannerBottomView extends StatelessWidget {
               BannerModel bannerModel = controller.bannerBottomModel[index];
               return InkWell(
                 onTap: () async {
-                  if (bannerModel.redirect_type == "store") {
+                  if (bannerModel.redirectType == "store") {
                     ShowToastDialog.showLoader("Please wait".tr);
                     VendorModel? vendorModel =
                         await FireStoreUtils.getVendorById(
-                          bannerModel.redirect_id.toString(),
+                          bannerModel.redirectId.toString(),
                         );
 
                     if (vendorModel!.zoneId == Constant.selectedZone!.id) {
@@ -2937,11 +2450,11 @@ class BannerBottomView extends StatelessWidget {
                             .tr,
                       );
                     }
-                  } else if (bannerModel.redirect_type == "product") {
+                  } else if (bannerModel.redirectType == "product") {
                     ShowToastDialog.showLoader("Please wait".tr);
                     ProductModel? productModel =
                         await FireStoreUtils.getProductById(
-                          bannerModel.redirect_id.toString(),
+                          bannerModel.redirectId.toString(),
                         );
                     VendorModel? vendorModel =
                         await FireStoreUtils.getVendorById(
@@ -2961,8 +2474,8 @@ class BannerBottomView extends StatelessWidget {
                             .tr,
                       );
                     }
-                  } else if (bannerModel.redirect_type == "external_link") {
-                    final uri = Uri.parse(bannerModel.redirect_id.toString());
+                  } else if (bannerModel.redirectType == "external_link") {
+                    final uri = Uri.parse(bannerModel.redirectId.toString());
                     if (await canLaunchUrl(uri)) {
                       await launchUrl(uri);
                     } else {
@@ -3019,7 +2532,6 @@ class MapView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<MapViewProvider>(
       builder: (context, controller, _) {
         return Stack(
@@ -3159,9 +2671,7 @@ class MapView extends StatelessWidget {
                                       ),
                                       child: Container(
                                         decoration: BoxDecoration(
-                                          color: themeChange.getThem()
-                                              ? AppThemeData.grey900
-                                              : AppThemeData.grey50,
+                                          color: AppThemeData.grey50,
                                           borderRadius: const BorderRadius.all(
                                             Radius.circular(16),
                                           ),
@@ -3331,13 +2841,8 @@ class MapView extends StatelessWidget {
                                                     children: [
                                                       Container(
                                                         decoration: ShapeDecoration(
-                                                          color:
-                                                              themeChange
-                                                                  .getThem()
-                                                              ? AppThemeData
-                                                                    .primary600
-                                                              : AppThemeData
-                                                                    .primary50,
+                                                          color: AppThemeData
+                                                              .primary50,
                                                           shape: RoundedRectangleBorder(
                                                             borderRadius:
                                                                 BorderRadius.circular(
@@ -3369,13 +2874,8 @@ class MapView extends StatelessWidget {
                                                               Text(
                                                                 "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
                                                                 style: TextStyle(
-                                                                  color:
-                                                                      themeChange
-                                                                          .getThem()
-                                                                      ? AppThemeData
-                                                                            .primary300
-                                                                      : AppThemeData
-                                                                            .primary300,
+                                                                  color: AppThemeData
+                                                                      .primary300,
                                                                   fontFamily:
                                                                       AppThemeData
                                                                           .semiBold,
@@ -3391,13 +2891,8 @@ class MapView extends StatelessWidget {
                                                       const SizedBox(width: 10),
                                                       Container(
                                                         decoration: ShapeDecoration(
-                                                          color:
-                                                              themeChange
-                                                                  .getThem()
-                                                              ? AppThemeData
-                                                                    .secondary600
-                                                              : AppThemeData
-                                                                    .secondary50,
+                                                          color: AppThemeData
+                                                              .secondary50,
                                                           shape: RoundedRectangleBorder(
                                                             borderRadius:
                                                                 BorderRadius.circular(
@@ -3429,13 +2924,8 @@ class MapView extends StatelessWidget {
                                                               Text(
                                                                 "${Constant.getDistance(lat1: vendorModel.latitude.toString(), lng1: vendorModel.longitude.toString(), lat2: Constant.selectedLocation.location!.latitude.toString(), lng2: Constant.selectedLocation.location!.longitude.toString())} ${Constant.distanceType}",
                                                                 style: TextStyle(
-                                                                  color:
-                                                                      themeChange
-                                                                          .getThem()
-                                                                      ? AppThemeData
-                                                                            .secondary300
-                                                                      : AppThemeData
-                                                                            .secondary300,
+                                                                  color: AppThemeData
+                                                                      .secondary300,
                                                                   fontFamily:
                                                                       AppThemeData
                                                                           .semiBold,
@@ -3475,10 +2965,7 @@ class MapView extends StatelessWidget {
                                                       fontFamily:
                                                           AppThemeData.semiBold,
                                                       color:
-                                                          themeChange.getThem()
-                                                          ? AppThemeData.grey50
-                                                          : AppThemeData
-                                                                .grey900,
+                                                          AppThemeData.grey900,
                                                     ),
                                                   ),
                                                   Text(
@@ -3494,10 +2981,7 @@ class MapView extends StatelessWidget {
                                                       fontWeight:
                                                           FontWeight.w500,
                                                       color:
-                                                          themeChange.getThem()
-                                                          ? AppThemeData.grey400
-                                                          : AppThemeData
-                                                                .grey400,
+                                                          AppThemeData.grey400,
                                                     ),
                                                   ),
                                                 ],

@@ -3,7 +3,9 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
+import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:http/http.dart' as http;
@@ -25,6 +27,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:provider/provider.dart';
 
 class HomeProvider extends ChangeNotifier {
   /// Get current zone by coordinates
@@ -33,6 +36,7 @@ class HomeProvider extends ChangeNotifier {
     double longitude,
   ) async {
     try {
+      final headers = await getHeaders();
       print('[ZONE_API] Getting current zone for: $latitude, $longitude');
       final response = await http.get(
         Uri.parse(
@@ -43,9 +47,7 @@ class HomeProvider extends ChangeNotifier {
       print('[ZONE_API] Response status: ${response.statusCode}');
       print('[ZONE_API] Response body: ${response.body}');
       if (response.statusCode == 200) {
-        // Parse using your ZoneModel.fromJson
         final zoneModel = zoneModelFromJson(response.body);
-
         if (zoneModel.success == true) {
           return zoneModel;
         } else {
@@ -68,14 +70,12 @@ class HomeProvider extends ChangeNotifier {
   static Future<String?> detectZoneId(double latitude, double longitude) async {
     try {
       print('[ZONE_API] Detecting zone ID for: $latitude, $longitude');
-
       final response = await http.get(
         Uri.parse(
           '${AppConst.baseUrl}zones/detect-id?latitude=$latitude&longitude=$longitude',
         ),
         headers: headers,
       );
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
@@ -125,9 +125,7 @@ class HomeProvider extends ChangeNotifier {
   static Zone? convertToOldZoneModel(ZoneModel apiZoneModel) {
     try {
       if (apiZoneModel.zone == null) return null;
-
       final zone = apiZoneModel.zone!;
-      // Convert area from Area class to List<Area>
       List<Area> areaList = [];
       if (zone.area != null && zone.area!.isNotEmpty) {
         for (var areaPoint in zone.area!) {
@@ -139,7 +137,6 @@ class HomeProvider extends ChangeNotifier {
           );
         }
       }
-
       return Zone(
         area: areaList.isNotEmpty ? areaList : null,
         publish: zone.publish ?? false,
@@ -163,22 +160,21 @@ class HomeProvider extends ChangeNotifier {
     print(
       '[DEBUG] getZone() called - User location: ${Constant.selectedLocation.location?.latitude}, ${Constant.selectedLocation.location?.longitude}',
     );
-
     final double latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
     final double longitude =
         Constant.selectedLocation.location?.longitude ?? 0.0;
-
     // Get current zone from Laravel API
     final zoneModel = await getCurrentZone(latitude, longitude);
-
+    notifyListeners();
     if (zoneModel != null && zoneModel.success == true) {
       if (zoneModel.zone != null) {
-        // Convert API response to your old ZoneModel format
         final detectedZone = convertToOldZoneModel(zoneModel);
         if (detectedZone != null) {
           Constant.selectedZone = detectedZone;
           Constant.isZoneAvailable = zoneModel.isZoneAvailable == true;
-          print('[DEBUG] User location: $latitude, $longitude');
+          print(
+            '[DEBUG] User location:  ${Constant.isZoneAvailable} $latitude, $longitude',
+          );
           print(
             '[DEBUG] Zone detected: ${detectedZone.name} (${detectedZone.id})',
           );
@@ -219,9 +215,7 @@ class HomeProvider extends ChangeNotifier {
   ) async {
     try {
       final isInServiceArea = await checkServiceArea(latitude, longitude);
-
       if (isInServiceArea) {
-        // If in service area, also set the zone
         final zoneModel = await getCurrentZone(latitude, longitude);
         if (zoneModel != null && zoneModel.zone != null) {
           final zone = convertToOldZoneModel(zoneModel);
@@ -231,7 +225,6 @@ class HomeProvider extends ChangeNotifier {
           }
         }
       }
-
       return isInServiceArea;
     } catch (e) {
       log('[LOCATION_SERVICE] Error checking service area: $e');
@@ -277,8 +270,6 @@ class HomeProvider extends ChangeNotifier {
             print(
               '[DEBUG] Using fallback zone: ${fallbackZoneModel.name} (${fallbackZoneModel.id})',
             );
-
-            // Set fallback address if no valid location
             if (Constant.selectedLocation.location?.latitude == null ||
                 Constant.selectedLocation.location?.longitude == null) {
               Constant.selectedLocation = ShippingAddress(
@@ -337,35 +328,6 @@ class HomeProvider extends ChangeNotifier {
     return areaList;
   }
 
-  /// Convert GeoPoint to Area (if you need this for other purposes)
-  List<Area> _convertGeoPointsToArea(List<GeoPoint> geoPoints) {
-    return geoPoints
-        .map(
-          (geoPoint) =>
-              Area(latitude: geoPoint.latitude, longitude: geoPoint.longitude),
-        )
-        .toList();
-  }
-
-  /// Debug method to test API connection
-  static Future<void> testConnection() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}zones/debug'),
-        headers: headers,
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        print('[ZONE_API] Debug info: $data');
-      } else {
-        print('[ZONE_API] Debug connection failed: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('[ZONE_API] Debug connection error: $e');
-    }
-  }
-
   final CartProvider cartProvider = CartProvider();
   final ScrollController scrollController = ScrollController();
   RxBool isNavBarVisible = true.obs;
@@ -375,26 +337,30 @@ class HomeProvider extends ChangeNotifier {
       cartItem.clear();
       cartItem.addAll(event);
     });
+  }
+
+  bool isLoading = true;
+
+  void isLoadingFunction(bool value) {
+    isLoading = value;
     notifyListeners();
   }
 
-  RxBool isLoading = true.obs;
-  RxBool isListView = true.obs;
-  RxBool isPopular = true.obs;
-  RxString selectedOrderTypeValue = "Delivery".tr.obs;
-
-  Rx<PageController> pageController = PageController(viewportFraction: 1.0).obs;
-  Rx<PageController> pageBottomController = PageController(
-    viewportFraction: 1.0,
-  ).obs;
+  bool isListView = true;
+  bool isPopular = true;
+  String selectedOrderTypeValue = "Delivery";
+  PageController pageController = PageController(viewportFraction: 1.0);
+  PageController pageBottomController = PageController(viewportFraction: 1.0);
   RxInt currentPage = 0.obs;
   RxInt currentBottomPage = 0.obs;
 
   Timer? _bannerTimer;
 
   var selectedIndex = 0.obs;
+  late CategoryViewProvider categoryViewProvider;
 
-  void initFunction() {
+  void initFunction({required BuildContext context}) {
+    categoryViewProvider = Provider.of(context, listen: false);
     _loadAllDataInParallel();
     scrollController.addListener(() {
       if (scrollController.position.userScrollDirection.toString() ==
@@ -408,17 +374,14 @@ class HomeProvider extends ChangeNotifier {
     startBannerTimer();
   }
 
-  // void onReady() {
-  // startBannerTimer();
-  // }
   void onClose() {
     _bannerTimer?.cancel();
     try {
-      if (pageController.value.hasClients) {
-        pageController.value.dispose();
+      if (pageController.hasClients) {
+        pageController.dispose();
       }
-      if (pageBottomController.value.hasClients) {
-        pageBottomController.value.dispose();
+      if (pageBottomController.hasClients) {
+        pageBottomController.dispose();
       }
     } catch (e) {}
   }
@@ -426,7 +389,7 @@ class HomeProvider extends ChangeNotifier {
   void startBannerTimer() {
     _bannerTimer?.cancel();
     _bannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      if (pageController.value.hasClients) {
+      if (pageController.hasClients) {
         timer.cancel();
         return;
       }
@@ -437,12 +400,12 @@ class HomeProvider extends ChangeNotifier {
 
       if (nextPage >= bannerModel.length) {
         // Instead of animating back to 0, jump instantly without animation
-        pageController.value.jumpToPage(0);
+        pageController.jumpToPage(0);
         currentPage.value = 0;
       } else {
         currentPage.value = nextPage;
         try {
-          await pageController.value.animateToPage(
+          await pageController.animateToPage(
             currentPage.value,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
@@ -454,47 +417,11 @@ class HomeProvider extends ChangeNotifier {
     });
   }
 
-  // void startBannerTimer() {
-  //   _bannerTimer?.cancel();
-  //   _bannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-  //     // Check if controller is still valid and widget is mounted
-  //     if (!Get.isRegistered<HomeController>() ||
-  //         !pageController.value.hasClients) {
-  //       timer.cancel();
-  //       return;
-  //     }
-  //
-  //     if (bannerModel.isNotEmpty) {
-  //       if (currentPage.value < bannerModel.length - 1) {
-  //         currentPage.value++;
-  //       } else {
-  //         currentPage.value = 0;
-  //       }
-  //
-  //       // Only animate if attached
-  //       try {
-  //         if (pageController.value.hasClients) {
-  //           pageController.value.animateToPage(
-  //             currentPage.value,
-  //             duration: const Duration(milliseconds: 500),
-  //             curve: Curves.easeInOut,
-  //           );
-  //         }
-  //       } catch (e) {
-  //         // If any error occurs, cancel the timer
-  //         timer.cancel();
-  //       }
-  //     }
-  //   });
-  // }
-
   void stopBannerTimer() {
     _bannerTimer?.cancel();
   }
 
   late TabController tabController;
-
-  RxList<VendorCategoryModel> vendorCategoryModel = <VendorCategoryModel>[].obs;
 
   RxList<VendorModel> allNearestRestaurant = <VendorModel>[].obs;
   RxList<VendorModel> newArrivalRestaurantList = <VendorModel>[].obs;
@@ -511,71 +438,143 @@ class HomeProvider extends ChangeNotifier {
 
   // Optimized parallel data loading
   Future<void> _loadAllDataInParallel() async {
+    log(" _loadAllDataInParallel  second ");
+
     return PerformanceOptimizer.measureAsync('parallel_data_fetch', () async {
-      isLoading.value = true;
-      // Load cart data first (needed for UI)
+      isLoadingFunction(true);
       getCartData();
-      // **CRITICAL: Load location and zone first, then load other data in parallel**
       await _ensureUserModelIsLoaded();
       await _ensureUserLocationIsSet();
       await getZone();
-      // Now load other data in parallel
       await Future.wait([
-        _loadVendorCategories(),
+        categoryViewProvider.loadVendorCategories(),
         _loadBanners(),
         _loadFavorites(),
         _loadRestaurantsAndRelatedData(),
       ]);
-      // startBannerTimer();
       print('[DEBUG] All parallel data fetch completed');
-
       setLoading();
     });
   }
 
   // Load vendor categories in parallel
-  Future<void> _loadVendorCategories() async {
-    print('[DEBUG] Loading vendor categories');
-    await FireStoreUtils.getHomeVendorCategory().then((value) {
-      vendorCategoryModel.value = value;
-      print('[DEBUG] Vendor categories loaded: ${value.length}');
-    });
+
+  // Get top banners
+  static Future<List<BannerModel>> getHomeTopBanner(String type) async {
+    try {
+      String? customerZoneId = Constant.selectedZone?.id;
+      // Build URL with zone_id parameter
+      String url = '${AppConst.baseUrl}menu-items/banners/$type';
+      if (customerZoneId != null && customerZoneId.isNotEmpty) {
+        url += '?zone_id=$customerZoneId';
+      }
+      final headers = await getHeaders();
+      log('[BANNER_API] Fetching top banners from: $url');
+      final response = await http.get(Uri.parse(url), headers: headers);
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        log(' getHomeTopBanner  ${response.body}');
+        if (jsonResponse['success'] == true) {
+          List<dynamic> data = jsonResponse['data'];
+          List<BannerModel> banners = data
+              .map((item) => BannerModel.fromJson(item))
+              .toList();
+          log(
+            '[BANNER_API] Top banners fetched successfully: ${banners.length}',
+          );
+          return banners;
+        } else {
+          log('[BANNER_API] API returned success: false');
+          return [];
+        }
+      } else {
+        log('[BANNER_API] HTTP error: ${response.statusCode}');
+        throw Exception('Failed to load top banners: ${response.statusCode}');
+      }
+    } catch (e) {
+      log('[BANNER_API] Error fetching top banners: $e');
+      rethrow;
+    }
   }
 
-  // Load banners in parallel
-  Future<void> _loadBanners() async {
-    print('[DEBUG] Loading banners');
+  // Get bottom banners
+  // static Future<List<BannerModel>> getHomeBottomBanner() async {
+  //   try {
+  //     String? customerZoneId = Constant.selectedZone?.id;
+  //
+  //     // Build URL with zone_id parameter
+  //     String url = '${AppConst.baseUrl}menu-items/banners/middle';
+  //     if (customerZoneId != null && customerZoneId.isNotEmpty) {
+  //       url += '?zone_id=$customerZoneId';
+  //     }
+  //
+  //     log('[BANNER_API] Fetching bottom banners from: $url');
+  //
+  //     final response = await http.get(Uri.parse(url));
+  //
+  //     if (response.statusCode == 200) {
+  //       final jsonResponse = json.decode(response.body);
+  //
+  //       if (jsonResponse['success'] == true) {
+  //         List<dynamic> data = jsonResponse['data'];
+  //         List<BannerModel> banners = data
+  //             .map((item) => BannerModel.fromJson(item))
+  //             .toList();
+  //
+  //         return banners;
+  //       } else {
+  //         return [];
+  //       }
+  //     } else {
+  //       log('[BANNER_API] HTTP error: ${response.statusCode}');
+  //       throw Exception(
+  //         'Failed to load bottom banners: ${response.statusCode}',
+  //       );
+  //     }
+  //   } catch (e) {
+  //     log('[BANNER_API] Error fetching bottom banners: $e');
+  //     rethrow;
+  //   }
+  // }
 
-    // Log current zone information (should be set by now)
+  // Load banners in parallel using API
+  Future<void> _loadBanners() async {
+    print('[DEBUG] Loading banners from API');
+
+    // Log current zone information
     String? currentZoneId = Constant.selectedZone?.id;
     String? currentZoneTitle = Constant.selectedZone?.name;
     print(
       '[BANNER_LOADING] Current customer zone - ID: $currentZoneId, Title: $currentZoneTitle',
     );
 
-    await Future.wait([
-      FireStoreUtils.getHomeTopBanner().then((value) {
-        bannerModel.value = value;
-        print('[BANNER_LOADING] Top banners loaded: ${value.length}');
-        print(
-          '[BANNER_LOADING] Top banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
-        );
-      }),
-      FireStoreUtils.getHomeBottomBanner().then((value) {
-        bannerBottomModel.value = value;
-        print('[BANNER_LOADING] Bottom banners loaded: ${value.length}');
-        print(
-          '[BANNER_LOADING] Bottom banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
-        );
-      }),
-    ]);
-    // ✅ Start timer AFTER banners are loaded and only if not empty
-    if (bannerModel.isNotEmpty) {
-      startBannerTimer();
+    try {
+      await Future.wait([
+        getHomeTopBanner("top").then((value) {
+          bannerModel.value = value;
+          print('[BANNER_LOADING] Top banners loaded: ${value.length}');
+          print(
+            '[BANNER_LOADING] Top banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
+          );
+        }),
+        getHomeTopBanner("middle").then((value) {
+          bannerBottomModel.value = value;
+          print('[BANNER_LOADING] Bottom banners loaded: ${value.length}');
+          print(
+            '[BANNER_LOADING] Bottom banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
+          );
+        }),
+      ]);
+      if (bannerModel.isNotEmpty) {
+        startBannerTimer();
+      }
+      print(
+        '[BANNER_LOADING] Total banners loaded - Top: ${bannerModel.length}, Bottom: ${bannerBottomModel.length}',
+      );
+    } catch (e) {
+      print('[BANNER_LOADING] Error loading banners: $e');
+      // Handle error appropriately (show error message, etc.)
     }
-    print(
-      '[BANNER_LOADING] Total banners loaded - Top: ${bannerModel.length}, Bottom: ${bannerBottomModel.length}',
-    );
   }
 
   // Load favorites in parallel
@@ -589,48 +588,137 @@ class HomeProvider extends ChangeNotifier {
     }
   }
 
-  // Load restaurants and related data in parallel
+  static Future<List<VendorModel>> getNearestRestaurants({
+    required String zoneId,
+    required double latitude,
+    required double longitude,
+    double radius = 20,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      final url = Uri.parse(
+        '${AppConst.baseUrl}restaurants/nearest?'
+        'zone_id=$zoneId&'
+        'latitude=$latitude&'
+        'longitude=$longitude&'
+        'radius=$radius',
+      );
+
+      print('[RESTAURANT_API] Fetching restaurants from: $url');
+
+      final response = await http.get(url, headers: headers);
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        print('getNearestRestaurants ${response.body}');
+        if (jsonResponse['success'] == true) {
+          List<dynamic> data = jsonResponse['data'];
+          List<VendorModel> restaurants = data
+              .map((item) => VendorModel.fromJson(item))
+              .toList();
+          print(
+            '[RESTAURANT_API] Restaurants fetched successfully: ${restaurants.length}',
+          );
+          return restaurants;
+        } else {
+          print('[RESTAURANT_API] API returned success: false');
+          return [];
+        }
+      } else {
+        print('[RESTAURANT_API] HTTP error: ${response.statusCode}');
+        throw Exception('Failed to load restaurants: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('[RESTAURANT_API] Error fetching restaurants: $e');
+      rethrow;
+    }
+  }
+
   Future<void> _loadRestaurantsAndRelatedData() async {
-    print('[DEBUG] Loading restaurants and related data');
+    print('[DEBUG] Loading restaurants from API');
 
-    // **CRITICAL: Add initial delay to ensure splash screen has finished**
     await Future.delayed(Duration(milliseconds: 100));
+    final String? zoneId = Constant.selectedZone?.id;
+    final double latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
+    final double longitude =
+        Constant.selectedLocation.location?.longitude ?? 0.0;
 
-    // Location and zone should already be set by the main loading process
+    if (zoneId == null || zoneId.isEmpty) {
+      print('[DEBUG] No zone ID available, skipping restaurant fetch');
+      return;
+    }
 
-    // Start restaurant stream and load related data in parallel
-    FireStoreUtils.getAllNearestRestaurant().listen((event) async {
-      print('[DEBUG] Restaurant stream received ${event.length} restaurants');
-
+    try {
+      // Fetch restaurants from API
+      final restaurants = await getNearestRestaurants(
+        zoneId: zoneId,
+        latitude: latitude,
+        longitude: longitude,
+        radius: double.parse(Constant.radius),
+      );
       // Clear lists efficiently
       popularRestaurantList.clear();
       newArrivalRestaurantList.clear();
       allNearestRestaurant.clear();
       advertisementList.clear();
-
       // Add all restaurants at once
-      allNearestRestaurant.addAll(event);
-      newArrivalRestaurantList.addAll(event);
-      popularRestaurantList.addAll(event);
+      allNearestRestaurant.addAll(restaurants);
+      newArrivalRestaurantList.addAll(restaurants);
+      popularRestaurantList.addAll(restaurants);
       Constant.restaurantList = allNearestRestaurant;
-
       // Load related data in parallel
       await _loadRelatedDataInParallel(allNearestRestaurant);
-
       // Calculate distances and sort
       await _processRestaurantData(allNearestRestaurant);
 
       // **DEBUG: Log restaurant diagnostics**
       logRestaurantDiagnostics();
-    });
+    } catch (e) {
+      print('[DEBUG] Error fetching restaurants from API: $e');
+      // You might want to show an error message or use fallback data
+    }
   }
+
+  // Load restaurants and related data in parallel
+  // Future<void> _loadRestaurantsAndRelatedData() async {
+  //   print('[DEBUG] Loading restaurants and related data');
+  //
+  //   // **CRITICAL: Add initial delay to ensure splash screen has finished**
+  //   await Future.delayed(Duration(milliseconds: 100));
+  //
+  //   // Location and zone should already be set by the main loading process
+  //
+  //   // Start restaurant stream and load related data in parallel
+  //   FireStoreUtils.getAllNearestRestaurant().listen((event) async {
+  //     print('[DEBUG] Restaurant stream received ${event.length} restaurants');
+  //
+  //     // Clear lists efficiently
+  //     popularRestaurantList.clear();
+  //     newArrivalRestaurantList.clear();
+  //     allNearestRestaurant.clear();
+  //     advertisementList.clear();
+  //
+  //     // Add all restaurants at once
+  //     allNearestRestaurant.addAll(event);
+  //     newArrivalRestaurantList.addAll(event);
+  //     popularRestaurantList.addAll(event);
+  //     Constant.restaurantList = allNearestRestaurant;
+  //
+  //     // Load related data in parallel
+  //     await _loadRelatedDataInParallel(allNearestRestaurant);
+  //
+  //     // Calculate distances and sort
+  //     await _processRestaurantData(allNearestRestaurant);
+  //
+  //     // **DEBUG: Log restaurant diagnostics**
+  //     logRestaurantDiagnostics();
+  //   });
+  // }
 
   // Load related data (coupons, stories, ads) in parallel
   Future<void> _loadRelatedDataInParallel(List<VendorModel> restaurants) async {
     print('[DEBUG] Loading related data in parallel');
-
     final futures = <Future<void>>[];
-
     // Load coupons
     futures.add(
       FireStoreUtils.getHomeCoupon().then((value) {
@@ -694,7 +782,7 @@ class HomeProvider extends ChangeNotifier {
   Future<void> _processRestaurantData(List<VendorModel> restaurants) async {
     print('[DEBUG] Processing restaurant data');
 
-    // Calculate distances in batches for better performance
+    // Calculate distances in batches
     await _calculateDistancesInBatches(restaurants);
 
     // Sort by distance, then by rating
@@ -713,12 +801,14 @@ class HomeProvider extends ChangeNotifier {
       );
       int distanceCompare = distanceA.compareTo(distanceB);
       if (distanceCompare != 0) return distanceCompare;
+
       // If distance is the same, compare by rating (higher first)
       double ratingA = double.tryParse(a.reviewsSum?.toString() ?? '0') ?? 0;
       double ratingB = double.tryParse(b.reviewsSum?.toString() ?? '0') ?? 0;
       return ratingB.compareTo(ratingA);
     });
 
+    // Sort popular restaurants by review rating
     popularRestaurantList.sort(
       (a, b) =>
           Constant.calculateReview(
@@ -732,14 +822,106 @@ class HomeProvider extends ChangeNotifier {
           ),
     );
 
-    newArrivalRestaurantList.sort(
-      (a, b) => (b.createdAt ?? Timestamp.now()).toDate().compareTo(
-        (a.createdAt ?? Timestamp.now()).toDate(),
-      ),
-    );
+    // **FIXED: Sort new arrivals by createdAt timestamp**
+    newArrivalRestaurantList.sort((a, b) {
+      DateTime dateA = _parseDateTime(a.createdAt);
+      DateTime dateB = _parseDateTime(b.createdAt);
+      return dateB.compareTo(dateA); // Newest first
+    });
 
     print('[DEBUG] Restaurant data processing completed');
   }
+
+  // Helper method to parse DateTime from various timestamp formats
+  DateTime _parseDateTime(dynamic timestamp) {
+    if (timestamp == null) {
+      return DateTime.now(); // Fallback to current time
+    }
+
+    // If it's a Firebase Timestamp
+    if (timestamp is Timestamp) {
+      return timestamp.toDate();
+    }
+
+    // If it's a DateTime object
+    if (timestamp is DateTime) {
+      return timestamp;
+    }
+
+    // If it's a String from API
+    if (timestamp is String) {
+      try {
+        // Remove quotes if they exist
+        String cleanTimestamp = timestamp.replaceAll('"', '');
+        return DateTime.parse(cleanTimestamp);
+      } catch (e) {
+        print('Error parsing DateTime from string: $timestamp, error: $e');
+        return DateTime.now(); // Fallback to current time
+      }
+    }
+
+    // If it's a Map (Firestore format)
+    if (timestamp is Map<String, dynamic>) {
+      try {
+        final seconds = timestamp['_seconds'] ?? 0;
+        final nanoseconds = timestamp['_nanoseconds'] ?? 0;
+        return DateTime.fromMillisecondsSinceEpoch(
+          seconds * 1000 + (nanoseconds / 1000000).round(),
+        );
+      } catch (e) {
+        print('Error parsing DateTime from map: $e');
+        return DateTime.now(); // Fallback to current time
+      }
+    }
+
+    // Default fallback
+    return DateTime.now();
+  }
+
+  // Process restaurant data (distances and sorting)
+  // Future<void> _processRestaurantData(List<VendorModel> restaurants) async {
+  //   print('[DEBUG] Processing restaurant data');
+  //   await _calculateDistancesInBatches(restaurants);
+  //   // Sort by distance, then by rating
+  //   allNearestRestaurant.sort((a, b) {
+  //     double distanceA = Constant.calculateDistance(
+  //       Constant.selectedLocation.location!.latitude!,
+  //       Constant.selectedLocation.location!.longitude!,
+  //       a.latitude!,
+  //       a.longitude!,
+  //     );
+  //     double distanceB = Constant.calculateDistance(
+  //       Constant.selectedLocation.location!.latitude!,
+  //       Constant.selectedLocation.location!.longitude!,
+  //       b.latitude!,
+  //       b.longitude!,
+  //     );
+  //     int distanceCompare = distanceA.compareTo(distanceB);
+  //     if (distanceCompare != 0) return distanceCompare;
+  //     double ratingA = double.tryParse(a.reviewsSum?.toString() ?? '0') ?? 0;
+  //     double ratingB = double.tryParse(b.reviewsSum?.toString() ?? '0') ?? 0;
+  //     return ratingB.compareTo(ratingA);
+  //   });
+  //   popularRestaurantList.sort(
+  //     (a, b) =>
+  //         Constant.calculateReview(
+  //           reviewCount: b.reviewsCount.toString(),
+  //           reviewSum: b.reviewsSum.toString(),
+  //         ).compareTo(
+  //           Constant.calculateReview(
+  //             reviewCount: a.reviewsCount.toString(),
+  //             reviewSum: a.reviewsSum.toString(),
+  //           ),
+  //         ),
+  //   );
+  //   newArrivalRestaurantList.sort(
+  //     (a, b) => (b.createdAt ?? Timestamp.now()).toDate().compareTo(
+  //       (a.createdAt ?? Timestamp.now()).toDate(),
+  //     ),
+  //   );
+  //
+  //   print('[DEBUG] Restaurant data processing completed');
+  // }
 
   /// **ENSURE USER MODEL IS LOADED BEFORE LOCATION DETECTION**
   Future<void> _ensureUserModelIsLoaded() async {
@@ -757,7 +939,6 @@ class HomeProvider extends ChangeNotifier {
         );
         return;
       }
-
       if (attempt < 5) {
         print(
           '[DEBUG] User model not loaded yet, waiting 200ms before retry...',
@@ -794,18 +975,15 @@ class HomeProvider extends ChangeNotifier {
     print(
       '[DEBUG] Current location: ${Constant.selectedLocation.location?.latitude}, ${Constant.selectedLocation.location?.longitude}',
     );
-
     // If location is already set, return
     if (Constant.selectedLocation.location?.latitude != null &&
         Constant.selectedLocation.location?.longitude != null) {
       print('[DEBUG] Location already set, proceeding with zone detection');
       return;
     }
-
     // **RETRY MECHANISM: Try multiple times with delays**
     for (int attempt = 1; attempt <= 3; attempt++) {
       print('[DEBUG] Location detection attempt $attempt/3');
-
       // Try to get location from user model
       if (Constant.userModel != null &&
           Constant.userModel!.shippingAddress != null &&
@@ -814,7 +992,6 @@ class HomeProvider extends ChangeNotifier {
           (a) => a.isDefault == true,
           orElse: () => Constant.userModel!.shippingAddress!.first,
         );
-
         if (defaultAddress.location?.latitude != null &&
             defaultAddress.location?.longitude != null) {
           Constant.selectedLocation = defaultAddress;
@@ -824,7 +1001,6 @@ class HomeProvider extends ChangeNotifier {
           return;
         }
       }
-
       // Try to get location from local storage
       try {
         final box = GetStorage();
@@ -832,14 +1008,10 @@ class HomeProvider extends ChangeNotifier {
         if (savedLocation != null &&
             savedLocation['latitude'] != null &&
             savedLocation['longitude'] != null) {
-          // Check if we have saved address information
           String savedAddress = savedLocation['address'] ?? '';
           String savedLocality = savedLocation['locality'] ?? '';
-
-          // If we don't have address info, try to get it from GPS cache first
           if (savedAddress.isEmpty || savedLocality.isEmpty) {
             try {
-              // First try to get from GPS cache
               final gpsCacheInfo =
                   await GpsLocationService.getCachedAddressInfo();
               if (gpsCacheInfo != null &&
@@ -1195,13 +1367,13 @@ class HomeProvider extends ChangeNotifier {
           '[DEBUG] setLoading() - No restaurants found, extending loading time',
         );
         await Future.delayed(Duration(seconds: 2), () {
-          isLoading.value = false;
+          isLoadingFunction(false);
         });
       } else {
         print(
           '[DEBUG] setLoading() - Restaurants found, setting loading to false',
         );
-        isLoading.value = false;
+        isLoadingFunction(false);
       }
       notifyListeners();
     });
@@ -1215,13 +1387,6 @@ class HomeProvider extends ChangeNotifier {
     await _loadAllDataInParallel();
   }
 
-  getVendorCategory() async {
-    print(
-      '[DEBUG] getVendorCategory() called - using parallel loading instead',
-    );
-    _loadVendorCategories();
-  }
-
   getFavouriteRestaurant() async {
     if (Constant.userModel != null) {
       await FireStoreUtils.getFavouriteRestaurant().then((value) {
@@ -1233,13 +1398,11 @@ class HomeProvider extends ChangeNotifier {
   // Optimized distance calculation in batches
   Future<void> _calculateDistancesInBatches(List<VendorModel> vendors) async {
     const int batchSize = 10; // Process 10 vendors at a time
-
     for (int i = 0; i < vendors.length; i += batchSize) {
       final end = (i + batchSize < vendors.length)
           ? i + batchSize
           : vendors.length;
       final batch = vendors.sublist(i, end);
-
       // Process batch
       for (var vendor in batch) {
         if (vendor.latitude != null && vendor.longitude != null) {

@@ -31,7 +31,6 @@ class LocationPermissionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<LocationPermissionProvider>(
       builder: (context, controller, _) {
         return Scaffold(
@@ -52,9 +51,7 @@ class LocationPermissionScreen extends StatelessWidget {
                   Text(
                     "Enable Location Services 📍".tr,
                     style: TextStyle(
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey900
-                          : AppThemeData.grey900,
+                      color: AppThemeData.grey900,
                       fontSize: 22,
                       fontFamily: AppThemeData.semiBold,
                     ),
@@ -64,9 +61,7 @@ class LocationPermissionScreen extends StatelessWidget {
                         .tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: themeChange.getThem()
-                          ? AppThemeData.grey50
-                          : AppThemeData.grey900,
+                      color: AppThemeData.grey900,
                       fontSize: 16,
                       fontFamily: AppThemeData.regular,
                     ),

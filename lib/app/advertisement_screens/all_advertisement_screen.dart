@@ -22,81 +22,83 @@ class AllAdvertisementScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<AllAdvertisementProvider>(
-        builder: (context,controller, _) {
-          return Scaffold(
-              appBar: AppBar(
-                backgroundColor: themeChange.getThem()
-                    ? AppThemeData.surfaceDark
-                    : AppThemeData.surface,
-                centerTitle: false,
-                titleSpacing: 0,
-                title: Text(
-                  "Highlights for you".tr,
-                  textAlign: TextAlign.start,
-                  style: TextStyle(
-                    fontFamily: AppThemeData.medium,
-                    fontSize: 16,
-                    color: themeChange.getThem()
-                        ? AppThemeData.grey50
-                        : AppThemeData.grey900,
+      builder: (context, controller, _) {
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: AppThemeData.surface,
+            centerTitle: false,
+            titleSpacing: 0,
+            title: Text(
+              "Highlights for you".tr,
+              textAlign: TextAlign.start,
+              style: TextStyle(
+                fontFamily: AppThemeData.medium,
+                fontSize: 16,
+                color: AppThemeData.grey900,
+              ),
+            ),
+          ),
+          body: controller.isLoading
+              ? Constant.loader()
+              : controller.advertisementList.isEmpty
+              ? Constant.showEmptyView(message: "Highlights for you not found.")
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ListView.builder(
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: controller.advertisementList.length,
+                    padding: EdgeInsets.all(0),
+                    itemBuilder: (BuildContext context, int index) {
+                      return AdvertisementCard(
+                        controller: controller,
+                        model: controller.advertisementList[index],
+                      );
+                    },
                   ),
                 ),
-              ),
-              body: controller.isLoading
-                  ? Constant.loader()
-                  : controller.advertisementList.isEmpty
-                      ? Constant.showEmptyView(
-                          message: "Highlights for you not found.")
-                      : Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: ListView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            itemCount: controller.advertisementList.length,
-                            padding: EdgeInsets.all(0),
-                            itemBuilder: (BuildContext context, int index) {
-                              return AdvertisementCard(
-                                  controller: controller,
-                                  model: controller.advertisementList[index]);
-                            },
-                          )));
-        });
+        );
+      },
+    );
   }
 }
+
 class AdvertisementCard extends StatelessWidget {
   final AdvertisementModel model;
   final AllAdvertisementProvider controller;
 
-  const AdvertisementCard(
-      {super.key, required this.controller, required this.model});
+  const AdvertisementCard({
+    super.key,
+    required this.controller,
+    required this.model,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return InkWell(
       onTap: () async {
         ShowToastDialog.showLoader("Please wait".tr);
-        VendorModel? vendorModel =
-            await FireStoreUtils.getVendorById(model.vendorId!);
+        VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+          model.vendorId!,
+        );
         ShowToastDialog.closeLoader();
-        Get.to(const RestaurantDetailsScreen(),
-            arguments: {"vendorModel": vendorModel});
+        Get.to(
+          const RestaurantDetailsScreen(),
+          arguments: {"vendorModel": vendorModel},
+        );
       },
       child: Container(
         margin: EdgeInsets.only(bottom: 16),
         width: Responsive.width(80, context),
         decoration: BoxDecoration(
-          color: themeChange.getThem()
-              ? AppThemeData.info600
-              : AppThemeData.surface,
+          color: AppThemeData.surface,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: ColorUtils.withOpacity(Colors.black, 0.1),
-              blurRadius: themeChange.getThem() ? 6 : 2,
+              blurRadius: 2,
               spreadRadius: 0,
-              offset: Offset(0, themeChange.getThem() ? 3 : 1),
+              offset: Offset(0, 1),
             ),
           ],
         ),
@@ -107,8 +109,9 @@ class AdvertisementCard extends StatelessWidget {
               children: [
                 model.type == 'restaurant_promotion'
                     ? ClipRRect(
-                        borderRadius:
-                            BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(16),
+                        ),
                         child: NetworkImageWidget(
                           imageUrl: model.coverImage ?? '',
                           height: 150,
@@ -128,57 +131,56 @@ class AdvertisementCard extends StatelessWidget {
                     bottom: 8,
                     right: 8,
                     child: FutureBuilder(
-                        future: FireStoreUtils.getVendorById(model.vendorId!),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
+                      future: FireStoreUtils.getVendorById(model.vendorId!),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const SizedBox();
+                        } else {
+                          if (snapshot.hasError) {
+                            return const SizedBox();
+                          } else if (snapshot.data == null) {
                             return const SizedBox();
                           } else {
-                            if (snapshot.hasError) {
-                              return const SizedBox();
-                            } else if (snapshot.data == null) {
-                              return const SizedBox();
-                            } else {
-                              VendorModel vendorModel = snapshot.data!;
-                              return Container(
-                                decoration: ShapeDecoration(
-                                  color: themeChange.getThem()
-                                      ? AppThemeData.primary600
-                                      : AppThemeData.primary50,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(120)),
+                            VendorModel vendorModel = snapshot.data!;
+                            return Container(
+                              decoration: ShapeDecoration(
+                                color: AppThemeData.primary50,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(120),
                                 ),
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 8),
-                                  child: Row(
-                                    children: [
-                                      SvgPicture.asset(
-                                        "assets/icons/ic_star.svg",
-                                        colorFilter: ColorFilter.mode(
-                                            AppThemeData.primary300,
-                                            BlendMode.srcIn),
-                                      ),
-                                      const SizedBox(
-                                        width: 5,
-                                      ),
-                                      Text(
-                                        "${model.showRating == true ? Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString()) : ''}${model.showRating == true && model.showReview == true ? ' ' : ''}${model.showReview == true ? '(${vendorModel.reviewsCount!.toStringAsFixed(0)})' : ''}",
-                                        style: TextStyle(
-                                          color: themeChange.getThem()
-                                              ? AppThemeData.primary300
-                                              : AppThemeData.primary300,
-                                          fontFamily: AppThemeData.semiBold,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
                                 ),
-                              );
-                            }
+                                child: Row(
+                                  children: [
+                                    SvgPicture.asset(
+                                      "assets/icons/ic_star.svg",
+                                      colorFilter: ColorFilter.mode(
+                                        AppThemeData.primary300,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      "${model.showRating == true ? Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString()) : ''}${model.showRating == true && model.showReview == true ? ' ' : ''}${model.showReview == true ? '(${vendorModel.reviewsCount!.toStringAsFixed(0)})' : ''}",
+                                      style: TextStyle(
+                                        color: AppThemeData.primary300,
+                                        fontFamily: AppThemeData.semiBold,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
                           }
-                        }),
+                        }
+                      },
+                    ),
                   ),
               ],
             ),
@@ -205,9 +207,7 @@ class AdvertisementCard extends StatelessWidget {
                         Text(
                           model.title ?? '',
                           style: TextStyle(
-                            color: themeChange.getThem()
-                                ? AppThemeData.grey50
-                                : AppThemeData.grey900,
+                            color: AppThemeData.grey900,
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -216,11 +216,10 @@ class AdvertisementCard extends StatelessWidget {
                         Text(
                           model.description ?? '',
                           style: TextStyle(
-                              fontSize: 14,
-                              fontFamily: AppThemeData.medium,
-                              color: themeChange.getThem()
-                                  ? AppThemeData.grey400
-                                  : AppThemeData.grey600),
+                            fontSize: 14,
+                            fontFamily: AppThemeData.medium,
+                            color: AppThemeData.grey600,
+                          ),
                           overflow: TextOverflow.ellipsis,
                           maxLines: 2,
                         ),
@@ -230,9 +229,11 @@ class AdvertisementCard extends StatelessWidget {
                   model.type == 'restaurant_promotion'
                       ? Obx(
                           () => IconButton(
-                            icon: controller.favouriteList
-                                    .where((p0) =>
-                                        p0.restaurantId == model.vendorId)
+                            icon:
+                                controller.favouriteList
+                                    .where(
+                                      (p0) => p0.restaurantId == model.vendorId,
+                                    )
                                     .isNotEmpty
                                 ? SvgPicture.asset(
                                     "assets/icons/ic_like_fill.svg",
@@ -240,47 +241,58 @@ class AdvertisementCard extends StatelessWidget {
                                 : SvgPicture.asset(
                                     "assets/icons/ic_like.svg",
                                     colorFilter: ColorFilter.mode(
-                                        themeChange.getThem()
-                                            ? AppThemeData.grey400
-                                            : AppThemeData.grey600,
-                                        BlendMode.srcIn),
+                                      AppThemeData.grey600,
+                                      BlendMode.srcIn,
+                                    ),
                                   ),
                             onPressed: () async {
                               if (controller.favouriteList
                                   .where(
-                                      (p0) => p0.restaurantId == model.vendorId)
+                                    (p0) => p0.restaurantId == model.vendorId,
+                                  )
                                   .isNotEmpty) {
                                 FavouriteModel favouriteModel = FavouriteModel(
-                                    restaurantId: model.vendorId,
-                                    userId: FireStoreUtils.getCurrentUid());
-                                controller.favouriteList.removeWhere((item) =>
-                                    item.restaurantId == model.vendorId);
+                                  restaurantId: model.vendorId,
+                                  userId: FireStoreUtils.getCurrentUid(),
+                                );
+                                controller.favouriteList.removeWhere(
+                                  (item) => item.restaurantId == model.vendorId,
+                                );
                                 await FireStoreUtils.removeFavouriteRestaurant(
-                                    favouriteModel);
+                                  favouriteModel,
+                                );
                               } else {
                                 FavouriteModel favouriteModel = FavouriteModel(
-                                    restaurantId: model.vendorId,
-                                    userId: FireStoreUtils.getCurrentUid());
+                                  restaurantId: model.vendorId,
+                                  userId: FireStoreUtils.getCurrentUid(),
+                                );
                                 controller.favouriteList.add(favouriteModel);
                                 await FireStoreUtils.setFavouriteRestaurant(
-                                    favouriteModel);
+                                  favouriteModel,
+                                );
                               }
                             },
                           ),
                         )
                       : Container(
                           decoration: ShapeDecoration(
-                            color: themeChange.getThem()
-                                ? AppThemeData.primary600
-                                : AppThemeData.primary50,
+                            color: AppThemeData.primary50,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(5)),
+                              borderRadius: BorderRadius.circular(5),
+                            ),
                           ),
                           child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 4),
-                              child: Icon(Icons.arrow_forward,
-                                  size: 20, color: AppThemeData.primary300))),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            child: Icon(
+                              Icons.arrow_forward,
+                              size: 20,
+                              color: AppThemeData.primary300,
+                            ),
+                          ),
+                        ),
                 ],
               ),
             ),

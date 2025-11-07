@@ -23,8 +23,6 @@ class QuantityControlWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
-    
     return Container(
       width: width ?? 80,
       height: height ?? 32,
@@ -35,7 +33,7 @@ class QuantityControlWidget extends StatelessWidget {
         maxHeight: 40,
       ),
       decoration: ShapeDecoration(
-        color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+        color: AppThemeData.grey50,
         shape: RoundedRectangleBorder(
           side: const BorderSide(width: 1, color: Color(0xFFD1D5DB)),
           borderRadius: BorderRadius.circular(200),
@@ -57,14 +55,12 @@ class QuantityControlWidget extends StatelessWidget {
                 child: Icon(
                   Icons.remove,
                   size: 16,
-                  color: isEnabled 
-                    ? (themeChange.getThem() ? AppThemeData.grey100 : AppThemeData.grey800)
-                    : AppThemeData.grey400,
+                  color: AppThemeData.grey400,
                 ),
               ),
             ),
           ),
-          
+
           // Quantity text
           Flexible(
             flex: 2,
@@ -79,12 +75,12 @@ class QuantityControlWidget extends StatelessWidget {
                   fontSize: 14,
                   fontFamily: AppThemeData.medium,
                   fontWeight: FontWeight.w500,
-                  color: themeChange.getThem() ? AppThemeData.grey100 : AppThemeData.grey800,
+                  color: AppThemeData.grey800,
                 ),
               ),
             ),
           ),
-          
+
           // Increment button
           Flexible(
             flex: 1,
@@ -93,13 +89,7 @@ class QuantityControlWidget extends StatelessWidget {
               borderRadius: BorderRadius.circular(200),
               child: Container(
                 padding: const EdgeInsets.all(4),
-                child: Icon(
-                  Icons.add,
-                  size: 16,
-                  color: isEnabled 
-                    ? (themeChange.getThem() ? AppThemeData.grey100 : AppThemeData.grey800)
-                    : AppThemeData.grey400,
-                ),
+                child: Icon(Icons.add, size: 16, color: AppThemeData.grey400),
               ),
             ),
           ),
@@ -107,4 +97,4 @@ class QuantityControlWidget extends StatelessWidget {
       ),
     );
   }
-} 
+}

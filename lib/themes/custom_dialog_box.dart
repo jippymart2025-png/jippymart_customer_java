@@ -10,22 +10,21 @@ class CustomDialogBox extends StatelessWidget {
   final Function() positiveClick;
   final Function() negativeClick;
 
-  const CustomDialogBox(
-      {super.key,
-      required this.title,
-      required this.descriptions,
-      required this.img,
-      required this.positiveClick,
-      required this.negativeClick,
-      required this.positiveString,
-      required this.negativeString});
+  const CustomDialogBox({
+    super.key,
+    required this.title,
+    required this.descriptions,
+    required this.img,
+    required this.positiveClick,
+    required this.negativeClick,
+    required this.positiveString,
+    required this.negativeString,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       elevation: 0,
       backgroundColor: Colors.transparent,
       child: contentBox(context),
@@ -33,38 +32,43 @@ class CustomDialogBox extends StatelessWidget {
   }
 
   contentBox(context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Container(
       padding: const EdgeInsets.only(left: 20, top: 20, right: 20, bottom: 20),
-      decoration: BoxDecoration(shape: BoxShape.rectangle, color: themeChange.getThem() ? AppThemeData.grey800 : AppThemeData.grey100, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        shape: BoxShape.rectangle,
+        color: AppThemeData.grey100,
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           img ?? const SizedBox(),
-          const SizedBox(
-            height: 20,
-          ),
+          const SizedBox(height: 20),
           Visibility(
             visible: title.isNotEmpty,
             child: Text(
               title,
-              style: TextStyle(fontSize: 20, fontFamily: AppThemeData.semiBold, color: themeChange.getThem() ? AppThemeData.grey100 : AppThemeData.grey800),
+              style: TextStyle(
+                fontSize: 20,
+                fontFamily: AppThemeData.semiBold,
+                color: AppThemeData.grey800,
+              ),
             ),
           ),
-          const SizedBox(
-            height: 5,
-          ),
+          const SizedBox(height: 5),
           Visibility(
             visible: descriptions.isNotEmpty,
             child: Text(
               descriptions,
-              style: TextStyle(fontSize: 14, fontFamily: AppThemeData.regular, color: themeChange.getThem() ? AppThemeData.grey200 : AppThemeData.grey700),
+              style: TextStyle(
+                fontSize: 14,
+                fontFamily: AppThemeData.regular,
+                color: AppThemeData.grey700,
+              ),
               textAlign: TextAlign.center,
             ),
           ),
-          const SizedBox(
-            height: 20,
-          ),
+          const SizedBox(height: 20),
           Row(
             children: [
               Expanded(
@@ -76,7 +80,7 @@ class CustomDialogBox extends StatelessWidget {
                     width: Responsive.width(100, context),
                     height: Responsive.height(5, context),
                     decoration: ShapeDecoration(
-                      color: themeChange.getThem() ? AppThemeData.grey700 : AppThemeData.grey200,
+                      color: AppThemeData.grey200,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(200),
                       ),
@@ -90,7 +94,7 @@ class CustomDialogBox extends StatelessWidget {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontFamily: AppThemeData.medium,
-                            color: themeChange.getThem() ? AppThemeData.grey100 : AppThemeData.grey900,
+                            color: AppThemeData.grey900,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
                           ),
@@ -100,9 +104,7 @@ class CustomDialogBox extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(
-                width: 10,
-              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: InkWell(
                   onTap: () {
@@ -137,7 +139,7 @@ class CustomDialogBox extends StatelessWidget {
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );

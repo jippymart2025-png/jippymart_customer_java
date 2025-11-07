@@ -9,14 +9,18 @@ import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-Widget cartNavigationBarWidget(DarkThemeProvider themeChange,
-    CartControllerProvider controller, BuildContext context) {
+Widget cartNavigationBarWidget(
+  CartControllerProvider controller,
+  BuildContext context,
+) {
   return Container(
     decoration: BoxDecoration(
-        color:
-            themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
-        borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+      color: AppThemeData.grey50,
+      borderRadius: const BorderRadius.only(
+        topLeft: Radius.circular(20),
+        topRight: Radius.circular(20),
+      ),
+    ),
     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
     child: Padding(
       padding: const EdgeInsets.only(bottom: 30),
@@ -177,7 +181,8 @@ Widget cartNavigationBarWidget(DarkThemeProvider themeChange,
               onPress: () async {
                 if (controller.isProcessingOrder.value) {
                   ShowToastDialog.showToast(
-                      "Please wait, order is being processed...".tr);
+                    "Please wait, order is being processed...".tr,
+                  );
                   return;
                 }
                 // print("${controller.vendorModel.value.author.toString()} "
@@ -406,9 +411,12 @@ Widget cartNavigationBarWidget(DarkThemeProvider themeChange,
       ),
     ),
   );
-
 }
-Future<void> _processPayment(CartControllerProvider controller, BuildContext context) async {
+
+Future<void> _processPayment(
+  CartControllerProvider controller,
+  BuildContext context,
+) async {
   // Run bulletproof validation
   final validationStartTime = DateTime.now();
   final canProceed = await controller.validateAndPlaceOrderBulletproof();
@@ -419,70 +427,96 @@ Future<void> _processPayment(CartControllerProvider controller, BuildContext con
   if ((controller.couponAmount.value >= 1) &&
       (controller.couponAmount.value > controller.totalAmount.value)) {
     ShowToastDialog.showToast(
-        "The total price must be greater than or equal to the coupon discount value for the code to apply. Please review your cart total."
-            .tr);
+      "The total price must be greater than or equal to the coupon discount value for the code to apply. Please review your cart total."
+          .tr,
+    );
     return;
   }
   if ((controller.specialDiscountAmount.value >= 1) &&
       (controller.specialDiscountAmount.value > controller.totalAmount.value)) {
     ShowToastDialog.showToast(
-        "The total price must be greater than or equal to the special discount value for the code to apply. Please review your cart total."
-            .tr);
+      "The total price must be greater than or equal to the special discount value for the code to apply. Please review your cart total."
+          .tr,
+    );
     return;
   }
   // Process based on selected payment method
   if (controller.selectedPaymentMethod.value == PaymentGateway.stripe.name) {
     ShowToastDialog.showToast("Stripe payment is disabled".tr);
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.paypal.name) {
-    controller.paypalPaymentSheet(controller.totalAmount.value.toString(), context);
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.payStack.name) {
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.paypal.name) {
+    controller.paypalPaymentSheet(
+      controller.totalAmount.value.toString(),
+      context,
+    );
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.payStack.name) {
     controller.payStackPayment(controller.totalAmount.value.toString());
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.mercadoPago.name) {
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.mercadoPago.name) {
     controller.mercadoPagoMakePayment(
-        context: context,
-        amount: controller.totalAmount.value.toString());
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.flutterWave.name) {
+      context: context,
+      amount: controller.totalAmount.value.toString(),
+    );
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.flutterWave.name) {
     controller.flutterWaveInitiatePayment(
-        context: context,
-        amount: controller.totalAmount.value.toString());
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.payFast.name) {
+      context: context,
+      amount: controller.totalAmount.value.toString(),
+    );
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.payFast.name) {
     controller.payFastPayment(
-        context: context,
-        amount: controller.totalAmount.value.toString());
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.paytm.name) {
-    controller.getPaytmCheckSum(context,
-        amount: double.parse(controller.totalAmount.value.toString()));
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.cod.name) {
+      context: context,
+      amount: controller.totalAmount.value.toString(),
+    );
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.paytm.name) {
+    controller.getPaytmCheckSum(
+      context,
+      amount: double.parse(controller.totalAmount.value.toString()),
+    );
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.cod.name) {
     controller.placeOrder();
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.wallet.name) {
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.wallet.name) {
     controller.placeOrder();
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.midTrans.name) {
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.midTrans.name) {
     controller.midtransMakePayment(
-        context: context,
-        amount: controller.totalAmount.value.toString());
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.orangeMoney.name) {
+      context: context,
+      amount: controller.totalAmount.value.toString(),
+    );
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.orangeMoney.name) {
     controller.orangeMakePayment(
-        context: context,
-        amount: controller.totalAmount.value.toString());
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.xendit.name) {
+      context: context,
+      amount: controller.totalAmount.value.toString(),
+    );
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.xendit.name) {
     controller.xenditPayment(context, controller.totalAmount.value.toString());
-  } else if (controller.selectedPaymentMethod.value == PaymentGateway.razorpay.name) {
+  } else if (controller.selectedPaymentMethod.value ==
+      PaymentGateway.razorpay.name) {
     print("Razorpay payment started");
     RazorPayController()
         .createOrderRazorPay(
-        amount: double.parse(controller.totalAmount.value.toString()),
-        razorpayModel: controller.razorPayModel.value)
+          amount: double.parse(controller.totalAmount.value.toString()),
+          razorpayModel: controller.razorPayModel.value,
+        )
         .then((value) async {
-      if (value == null) {
-        Get.back();
-        ShowToastDialog.showToast("Something went wrong, please contact admin.".tr);
-      } else {
-        CreateRazorPayOrderModel result = value;
-        controller.openCheckout(amount: value.amount, orderId: result.id);
-      }
-    });
+          if (value == null) {
+            Get.back();
+            ShowToastDialog.showToast(
+              "Something went wrong, please contact admin.".tr,
+            );
+          } else {
+            CreateRazorPayOrderModel result = value;
+            controller.openCheckout(amount: value.amount, orderId: result.id);
+          }
+        });
   } else {
     ShowToastDialog.showToast("Please select payment method".tr);
   }
-
 }

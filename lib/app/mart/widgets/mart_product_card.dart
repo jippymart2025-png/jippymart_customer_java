@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
@@ -21,7 +20,10 @@ class MartProductCard extends StatelessWidget {
     required this.screenWidth,
   });
 
-  String _getSubcategoryName(dynamic subcategoryID,CategoryDetailsProvider controller) {
+  String _getSubcategoryName(
+    dynamic subcategoryID,
+    CategoryDetailsProvider controller,
+  ) {
     if (subcategoryID == null) return 'General';
 
     // Try to find the subcategory by ID in the controller's subcategories list
@@ -45,18 +47,22 @@ class MartProductCard extends StatelessWidget {
   }
 
   Future<void> _handleAddToCart(
-      BuildContext context, MartItemModel product,CategoryDetailsProvider controller) async {
+    BuildContext context,
+    MartItemModel product,
+    CategoryDetailsProvider controller,
+  ) async {
     try {
       // Prepare cart item data
       final cartItem = {
         'id': product.id,
         'name': product.name,
-        'price': product.disPrice ??
+        'price':
+            product.disPrice ??
             product.price, // Use discounted price if available
         'originalPrice': product.price,
         'image': product.photo,
         'description': product.description,
-        'category': _getSubcategoryName(product.subcategoryID,controller),
+        'category': _getSubcategoryName(product.subcategoryID, controller),
         'quantity': 1,
         'hasOptions': product.has_options ?? false,
         'optionsCount': product.options_count ?? 0,
@@ -103,7 +109,8 @@ class MartProductCard extends StatelessWidget {
       // No need to show loading state - the toast will handle the feedback
 
       // Get the cart controller
-      CartControllerProvider cartControllerProvider =  Provider.of<CartControllerProvider>(context,listen:false);
+      CartControllerProvider cartControllerProvider =
+          Provider.of<CartControllerProvider>(context, listen: false);
 
       // Convert MartItemModel to CartProductModel
       // For mart items, we need to modify the vendorID to be recognized as a mart item
@@ -116,9 +123,10 @@ class MartProductCard extends StatelessWidget {
         price: product.price?.toString() ?? '0',
         discountPrice:
             product.disPrice?.toString() ?? product.price?.toString() ?? '0',
-        vendorID: martVendorID, // Prefix with "mart_" to identify as mart item
-        vendorName:
-            "Jippy Mart", // Add vendor name to satisfy NOT NULL constraint
+        vendorID: martVendorID,
+        // Prefix with "mart_" to identify as mart item
+        vendorName: "Jippy Mart",
+        // Add vendor name to satisfy NOT NULL constraint
         categoryId: product.categoryID,
         quantity: 1,
         extrasPrice: '0',
@@ -128,9 +136,11 @@ class MartProductCard extends StatelessWidget {
       );
 
       print(
-          '[CART] Cart product prepared: ${cartProduct.name} (ID: ${cartProduct.id})');
+        '[CART] Cart product prepared: ${cartProduct.name} (ID: ${cartProduct.id})',
+      );
       print(
-          '[CART] Price: ${cartProduct.price}, Discount Price: ${cartProduct.discountPrice}');
+        '[CART] Price: ${cartProduct.price}, Discount Price: ${cartProduct.discountPrice}',
+      );
       print('[CART] Original VendorID: ${product.vendorID}');
       print('[CART] Modified VendorID (mart): ${martVendorID}');
       print('[CART] CategoryID: ${product.categoryID}');
@@ -189,9 +199,7 @@ class MartProductCard extends StatelessWidget {
           backgroundColor: Colors.green.shade600,
           duration: Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           margin: EdgeInsets.all(16),
           action: SnackBarAction(
             label: 'View Cart',
@@ -224,9 +232,7 @@ class MartProductCard extends StatelessWidget {
           backgroundColor: Colors.red.shade600,
           duration: Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
           margin: EdgeInsets.all(16),
         ),
       );
@@ -250,24 +256,31 @@ class MartProductCard extends StatelessWidget {
     );
   }
 
-  Future<void> _handleAddOptionToCart(BuildContext context,
-      MartItemModel product, Map<String, dynamic> selectedOption) async {
+  Future<void> _handleAddOptionToCart(
+    BuildContext context,
+    MartItemModel product,
+    Map<String, dynamic> selectedOption,
+  ) async {
     try {
       // Get the cart controller
-      CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+      CartControllerProvider cartControllerProvider =
+          Provider.of<CartControllerProvider>(context, listen: false);
 
       // Convert MartItemModel to CartProductModel with option details
       final cartProduct = CartProductModel(
-        id: "${product.id}_${selectedOption['id']}", // Unique ID for this option
+        id: "${product.id}_${selectedOption['id']}",
+        // Unique ID for this option
         name: "${product.name} - ${selectedOption['option_title']}",
         photo: selectedOption['image']?.isNotEmpty == true
             ? selectedOption['image']
             : product.photo,
-        price: selectedOption['original_price']?.toString() ??
+        price:
+            selectedOption['original_price']?.toString() ??
             selectedOption['price']?.toString() ??
             product.price?.toString() ??
             '0',
-        discountPrice: selectedOption['price']?.toString() ??
+        discountPrice:
+            selectedOption['price']?.toString() ??
             product.disPrice?.toString() ??
             product.price?.toString() ??
             '0',
@@ -283,7 +296,8 @@ class MartProductCard extends StatelessWidget {
 
       print('[CART] Adding option to cart: ${cartProduct.name}');
       print(
-          '[CART] Original Price: ${cartProduct.price}, Discounted Price: ${cartProduct.discountPrice}');
+        '[CART] Original Price: ${cartProduct.price}, Discounted Price: ${cartProduct.discountPrice}',
+      );
 
       // Add to cart using cart controller
       final success = await cartControllerProvider.addToCart(
@@ -294,7 +308,8 @@ class MartProductCard extends StatelessWidget {
 
       if (!success) {
         print(
-            '[CART] Failed to add option to cart - not showing success message');
+          '[CART] Failed to add option to cart - not showing success message',
+        );
         return;
       }
 
@@ -421,7 +436,7 @@ class MartProductCard extends StatelessWidget {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       elevation: 4,
-      color:ColorConst.white,
+      color: ColorConst.white,
       child: Padding(
         padding: const EdgeInsets.all(8), // 🔑 Reduced padding from 12 to 8
         child: Column(
@@ -434,9 +449,7 @@ class MartProductCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     // Navigate to product details screen
-                    Get.to(() => MartProductDetailsScreen(
-                          product: product,
-                        ));
+                    Get.to(() => MartProductDetailsScreen(product: product));
                   },
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(10),
@@ -445,7 +458,7 @@ class MartProductCard extends StatelessWidget {
                             height: _getResponsiveImageHeight(screenWidth),
                             width: double.infinity,
                             decoration: BoxDecoration(
-                              color:  ColorConst.white,
+                              color: ColorConst.white,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: ClipRRect(
@@ -456,8 +469,9 @@ class MartProductCard extends StatelessWidget {
                                 width: double.infinity,
                                 fit: BoxFit.cover,
                                 errorWidget: Container(
-                                  height:
-                                      _getResponsiveImageHeight(screenWidth),
+                                  height: _getResponsiveImageHeight(
+                                    screenWidth,
+                                  ),
                                   width: double.infinity,
                                   decoration: BoxDecoration(
                                     color: const Color(0xFFF8F8FF),
@@ -492,7 +506,7 @@ class MartProductCard extends StatelessWidget {
                   ),
                 ),
                 Consumer<CategoryDetailsProvider>(
-                  builder: (context,controller,_) {
+                  builder: (context, controller, _) {
                     return Positioned(
                       bottom: 4,
                       right: 4,
@@ -501,7 +515,7 @@ class MartProductCard extends StatelessWidget {
                           if (product.has_options == true) {
                             _showProductOptionsModal(context, product);
                           } else {
-                            _handleAddToCart(context, product,controller);
+                            _handleAddToCart(context, product, controller);
                           }
                         },
                         child: Container(
@@ -510,12 +524,13 @@ class MartProductCard extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color:  ColorConst.orangeLight),
+                            border: Border.all(color: ColorConst.orangeLight),
                           ),
                           child: Builder(
                             builder: (context) {
                               print(
-                                  '[DEBUG] Product: ${product.name}, has_options: ${product.has_options}');
+                                '[DEBUG] Product: ${product.name}, has_options: ${product.has_options}',
+                              );
                               return (product.has_options == true)
                                   ? Column(
                                       children: [
@@ -544,15 +559,20 @@ class MartProductCard extends StatelessWidget {
                                           child: Container(
                                             decoration: BoxDecoration(
                                               color: ColorConst.orangeLight,
-                                              borderRadius: const BorderRadius.only(
-                                                bottomLeft: Radius.circular(8),
-                                                bottomRight: Radius.circular(8),
-                                              ),
+                                              borderRadius:
+                                                  const BorderRadius.only(
+                                                    bottomLeft: Radius.circular(
+                                                      8,
+                                                    ),
+                                                    bottomRight:
+                                                        Radius.circular(8),
+                                                  ),
                                             ),
                                             child: Center(
                                               child: Padding(
                                                 padding: const EdgeInsets.only(
-                                                    bottom: 2),
+                                                  bottom: 2,
+                                                ),
                                                 child: Text(
                                                   "(${product.options_count ?? 0})options",
                                                   style: TextStyle(
@@ -582,7 +602,7 @@ class MartProductCard extends StatelessWidget {
                         ),
                       ),
                     );
-                  }
+                  },
                 ),
               ],
             ),
@@ -590,8 +610,9 @@ class MartProductCard extends StatelessWidget {
             // Content below image with left and right padding (flexible based on content)
             Padding(
               padding: EdgeInsets.symmetric(
-                horizontal:
-                    screenWidth > 600 ? 8.0 : (screenWidth > 400 ? 6.0 : 3.0),
+                horizontal: screenWidth > 600
+                    ? 8.0
+                    : (screenWidth > 400 ? 6.0 : 3.0),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -602,10 +623,8 @@ class MartProductCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
-                          height: screenWidth < 360
-                              ? 1.0
-                              : 2.0), // 🔑 Reduced spacing
-
+                        height: screenWidth < 360 ? 1.0 : 2.0,
+                      ), // 🔑 Reduced spacing
                       // Price and Savings Row - Compact with Proper Alignment
                       Row(
                         children: [
@@ -619,7 +638,9 @@ class MartProductCard extends StatelessWidget {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: _getResponsiveFontSize(
-                                        screenWidth, 12.0),
+                                      screenWidth,
+                                      12.0,
+                                    ),
                                     color: Colors.black87,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -647,7 +668,9 @@ class MartProductCard extends StatelessWidget {
                           if (hasDiscount)
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 3, vertical: 1),
+                                horizontal: 3,
+                                vertical: 1,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.green.shade100,
                                 borderRadius: BorderRadius.circular(4),
@@ -680,9 +703,10 @@ class MartProductCard extends StatelessWidget {
                       Text(
                         product.name ?? "Unknown Product",
                         style: TextStyle(
-                            fontSize: _getResponsiveFontSize(screenWidth, 14.0),
-                            fontWeight: FontWeight.w800,
-                            color: Colors.grey),
+                          fontSize: _getResponsiveFontSize(screenWidth, 14.0),
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -713,7 +737,7 @@ class MartProductCard extends StatelessWidget {
 
                       // Info chips
                       Consumer<CategoryDetailsProvider>(
-                        builder: (context,controller,_) {
+                        builder: (context, controller, _) {
                           return Padding(
                             padding: EdgeInsets.symmetric(
                               horizontal: screenWidth > 600
@@ -739,10 +763,15 @@ class MartProductCard extends StatelessWidget {
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
-                                      _getSubcategoryName(product.subcategoryID,controller),
+                                      _getSubcategoryName(
+                                        product.subcategoryID,
+                                        controller,
+                                      ),
                                       style: TextStyle(
                                         fontSize: _getResponsiveFontSize(
-                                            screenWidth, 9.0),
+                                          screenWidth,
+                                          9.0,
+                                        ),
                                         color: Colors.blue.shade800,
                                         fontWeight: FontWeight.w500,
                                       ),
@@ -753,14 +782,17 @@ class MartProductCard extends StatelessWidget {
                                 ),
 
                                 SizedBox(
-                                    width: screenWidth < 360
-                                        ? 6.0
-                                        : (screenWidth > 600 ? 12.0 : 8.0)),
+                                  width: screenWidth < 360
+                                      ? 6.0
+                                      : (screenWidth > 600 ? 12.0 : 8.0),
+                                ),
 
                                 // Delivery time tag
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 4, vertical: 2),
+                                    horizontal: 4,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.grey.shade200,
                                     borderRadius: BorderRadius.circular(8),
@@ -774,27 +806,29 @@ class MartProductCard extends StatelessWidget {
                                         color: Colors.grey.shade700,
                                       ),
                                       const SizedBox(width: 2),
-                                      Text('15 mins',
-                                          style: TextStyle(
-                                            fontSize: _getResponsiveFontSize(
-                                                screenWidth, 9.0),
-                                            color: Colors.black87,
-                                            fontWeight: FontWeight.w500,
-                                          )),
+                                      Text(
+                                        '15 mins',
+                                        style: TextStyle(
+                                          fontSize: _getResponsiveFontSize(
+                                            screenWidth,
+                                            9.0,
+                                          ),
+                                          color: Colors.black87,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
                               ],
                             ),
                           );
-                        }
+                        },
                       ),
 
                       // Add spacing after info chips
-                      SizedBox(
-                          height: screenWidth < 360
-                              ? 1.0
-                              : 2.0), // 🔑 Reduced spacing
+                      SizedBox(height: screenWidth < 360 ? 1.0 : 2.0),
+                      // 🔑 Reduced spacing
                     ],
                   ),
 
@@ -806,13 +840,17 @@ class MartProductCard extends StatelessWidget {
                       builder: (context) {
                         print('[RATING DEBUG] Product: ${product.name}');
                         print(
-                            '[RATING DEBUG] Original Rating: ${product.averageRating}');
+                          '[RATING DEBUG] Original Rating: ${product.averageRating}',
+                        );
                         print(
-                            '[RATING DEBUG] Display Rating: ${_getDisplayRating()}');
+                          '[RATING DEBUG] Display Rating: ${_getDisplayRating()}',
+                        );
                         print(
-                            '[RATING DEBUG] Original Reviews: ${product.totalReviews}');
+                          '[RATING DEBUG] Original Reviews: ${product.totalReviews}',
+                        );
                         print(
-                            '[RATING DEBUG] Display Reviews: ${_getDisplayReviewCount()}');
+                          '[RATING DEBUG] Display Reviews: ${_getDisplayReviewCount()}',
+                        );
                         return const SizedBox.shrink();
                       },
                     ),
@@ -830,7 +868,9 @@ class MartProductCard extends StatelessWidget {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 6, vertical: 2),
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.amber.shade100,
                               borderRadius: BorderRadius.circular(6),
@@ -848,7 +888,9 @@ class MartProductCard extends StatelessWidget {
                                   '${_getDisplayRating().toStringAsFixed(1)}',
                                   style: TextStyle(
                                     fontSize: _getResponsiveFontSize(
-                                        screenWidth, 9.0),
+                                      screenWidth,
+                                      9.0,
+                                    ),
                                     color: Colors.amber.shade800,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -860,8 +902,10 @@ class MartProductCard extends StatelessWidget {
                           Text(
                             '(${_getDisplayReviewCount()})',
                             style: TextStyle(
-                              fontSize:
-                                  _getResponsiveFontSize(screenWidth, 9.0),
+                              fontSize: _getResponsiveFontSize(
+                                screenWidth,
+                                9.0,
+                              ),
                               color: Colors.grey.shade700,
                               fontWeight: FontWeight.w500,
                             ),
@@ -959,7 +1003,7 @@ class ProductOptionsModal extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(20),
             child: Text(
-              product.name ?? "Product Options",
+              product.name,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -977,12 +1021,13 @@ class ProductOptionsModal extends StatelessWidget {
               itemCount: product.options?.length ?? 0,
               itemBuilder: (context, index) {
                 final option = product.options![index];
-                final hasDiscount = option['original_price'] != null &&
+                final hasDiscount =
+                    option['original_price'] != null &&
                     option['price'] != null &&
                     option['original_price'] > option['price'];
                 final savings = hasDiscount
                     ? (option['original_price'] - option['price'])
-                        .toStringAsFixed(0)
+                          .toStringAsFixed(0)
                     : '0';
 
                 return Container(
@@ -1005,7 +1050,8 @@ class ProductOptionsModal extends StatelessWidget {
                       // Main content row
                       Padding(
                         padding: const EdgeInsets.only(
-                            top: 16), // Reduced top padding for savings badge
+                          top: 16,
+                        ), // Reduced top padding for savings badge
                         child: Row(
                           children: [
                             // 1. Product Image
@@ -1082,14 +1128,16 @@ class ProductOptionsModal extends StatelessWidget {
                                           // Original Price (if discounted) - Flexible
                                           if (hasDiscount) ...[
                                             SizedBox(
-                                                width: isVerySmall ? 4 : 6),
+                                              width: isVerySmall ? 4 : 6,
+                                            ),
                                             Flexible(
                                               flex: 1,
                                               child: Text(
                                                 '₹${option['original_price']?.toString() ?? '0'}',
                                                 style: TextStyle(
-                                                  fontSize:
-                                                      isVerySmall ? 9 : 10,
+                                                  fontSize: isVerySmall
+                                                      ? 9
+                                                      : 10,
                                                   color: Colors.grey.shade600,
                                                   decoration: TextDecoration
                                                       .lineThrough,
@@ -1169,7 +1217,9 @@ class ProductOptionsModal extends StatelessWidget {
                           child: Center(
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 1),
+                                horizontal: 6,
+                                vertical: 1,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.green.shade600,
                                 borderRadius: BorderRadius.circular(4),

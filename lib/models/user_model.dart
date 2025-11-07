@@ -11,6 +11,7 @@ class UserModel {
   String? profilePictureURL;
   String? fcmToken;
   String? countryCode;
+  String? firebaseId;
   String? phoneNumber;
   int? walletAmount;
   bool? active;
@@ -36,6 +37,7 @@ class UserModel {
   SubscriptionPlanModel? subscriptionPlan;
 
   UserModel({
+    this.firebaseId,
     this.id,
     this.firstName,
     this.lastName,
@@ -111,6 +113,7 @@ class UserModel {
 
       return UserModel(
         id: json['id']?.toString(),
+        firebaseId: json['firebase_id'].toString(),
         email: json['email']?.toString(),
         firstName: json['firstName']?.toString(),
         lastName: json['lastName']?.toString(),
@@ -139,6 +142,7 @@ class UserModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'firebase_id': firebaseId,
       'id': id,
       'email': email,
       'firstName': firstName,

@@ -13,13 +13,12 @@ class SelectPaymentScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<CartControllerProvider>(
-      builder: (context,controller,_) {
+      builder: (context, controller, _) {
         return Scaffold(
-          backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
+          backgroundColor: AppThemeData.surface,
           appBar: AppBar(
-            backgroundColor: themeChange.getThem() ? AppThemeData.surfaceDark : AppThemeData.surface,
+            backgroundColor: AppThemeData.surface,
             centerTitle: false,
             titleSpacing: 0,
             title: Text(
@@ -28,7 +27,7 @@ class SelectPaymentScreen extends StatelessWidget {
               style: TextStyle(
                 fontFamily: AppThemeData.medium,
                 fontSize: 16,
-                color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                color: AppThemeData.grey900,
               ),
             ),
           ),
@@ -44,16 +43,16 @@ class SelectPaymentScreen extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: AppThemeData.semiBold,
                       fontSize: 16,
-                      color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                      color: AppThemeData.grey900,
                     ),
                   ),
-                  const SizedBox(
-                    height: 10,
-                  ),
-                  if (controller.walletSettingModel.value.isEnabled == true || controller.cashOnDeliverySettingModel.value.isEnabled == true)
+                  const SizedBox(height: 10),
+                  if (controller.walletSettingModel.value.isEnabled == true ||
+                      controller.cashOnDeliverySettingModel.value.isEnabled ==
+                          true)
                     Container(
                       decoration: ShapeDecoration(
-                        color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                        color: AppThemeData.grey50,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -63,7 +62,7 @@ class SelectPaymentScreen extends StatelessWidget {
                             blurRadius: 20,
                             offset: Offset(0, 0),
                             spreadRadius: 0,
-                          )
+                          ),
                         ],
                       ),
                       child: Padding(
@@ -72,37 +71,57 @@ class SelectPaymentScreen extends StatelessWidget {
                           children: [
                             Visibility(
                               visible: false, // Hide wallet option
-                              child: cardDecoration(controller, PaymentGateway.wallet, themeChange, "assets/images/ic_wallet.png"),
+                              child: cardDecoration(
+                                controller,
+                                PaymentGateway.wallet,
+                                "assets/images/ic_wallet.png",
+                              ),
                             ),
                             Visibility(
-                              visible: controller.cashOnDeliverySettingModel.value.isEnabled == true && 
-                                       controller.subTotal.value <= 599 && 
-                                       !controller.hasPromotionalItems(),
-                              child: cardDecoration(controller, PaymentGateway.cod, themeChange, "assets/images/ic_cash.png"),
+                              visible:
+                                  controller
+                                          .cashOnDeliverySettingModel
+                                          .value
+                                          .isEnabled ==
+                                      true &&
+                                  controller.subTotal.value <= 599 &&
+                                  !controller.hasPromotionalItems(),
+                              child: cardDecoration(
+                                controller,
+                                PaymentGateway.cod,
+                                "assets/images/ic_cash.png",
+                              ),
                             ),
                             Visibility(
-                              visible: controller.cashOnDeliverySettingModel.value.isEnabled == true && controller.subTotal.value > 599,
+                              visible:
+                                  controller
+                                          .cashOnDeliverySettingModel
+                                          .value
+                                          .isEnabled ==
+                                      true &&
+                                  controller.subTotal.value > 599,
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: themeChange.getThem() ? AppThemeData.grey800 : AppThemeData.grey100,
+                                  color: AppThemeData.grey100,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.info_outline,
-                                      color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey600,
+                                      color: AppThemeData.grey600,
                                       size: 20,
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        "Cash on Delivery is not available for orders above ₹599".tr,
+                                        "Cash on Delivery is not available for orders above ₹599"
+                                            .tr,
                                         style: TextStyle(
                                           fontFamily: AppThemeData.medium,
                                           fontSize: 14,
-                                          color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey600,
+                                          color: AppThemeData.grey600,
                                         ),
                                       ),
                                     ),
@@ -111,30 +130,36 @@ class SelectPaymentScreen extends StatelessWidget {
                               ),
                             ),
                             Visibility(
-                              visible: controller.cashOnDeliverySettingModel.value.isEnabled == true && 
-                                       controller.subTotal.value <= 599 && 
-                                       controller.hasPromotionalItems(),
+                              visible:
+                                  controller
+                                          .cashOnDeliverySettingModel
+                                          .value
+                                          .isEnabled ==
+                                      true &&
+                                  controller.subTotal.value <= 599 &&
+                                  controller.hasPromotionalItems(),
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: themeChange.getThem() ? AppThemeData.grey800 : AppThemeData.grey100,
+                                  color: AppThemeData.grey100,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
                                   children: [
                                     Icon(
                                       Icons.info_outline,
-                                      color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey600,
+                                      color: AppThemeData.grey600,
                                       size: 20,
                                     ),
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        "Cash on Delivery is not available for promotional items. Please use online payment.".tr,
+                                        "Cash on Delivery is not available for promotional items. Please use online payment."
+                                            .tr,
                                         style: TextStyle(
                                           fontFamily: AppThemeData.medium,
                                           fontSize: 14,
-                                          color: themeChange.getThem() ? AppThemeData.grey400 : AppThemeData.grey600,
+                                          color: AppThemeData.grey600,
                                         ),
                                       ),
                                     ),
@@ -146,29 +171,27 @@ class SelectPaymentScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (controller.walletSettingModel.value.isEnabled == true || controller.cashOnDeliverySettingModel.value.isEnabled == true)
+                  if (controller.walletSettingModel.value.isEnabled == true ||
+                      controller.cashOnDeliverySettingModel.value.isEnabled ==
+                          true)
                     Column(
                       children: [
-                        const SizedBox(
-                          height: 10,
-                        ),
+                        const SizedBox(height: 10),
                         Text(
                           "Other Payment Options".tr,
                           textAlign: TextAlign.start,
                           style: TextStyle(
                             fontFamily: AppThemeData.semiBold,
                             fontSize: 16,
-                            color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                            color: AppThemeData.grey900,
                           ),
                         ),
-                        const SizedBox(
-                          height: 10,
-                        ),
+                        const SizedBox(height: 10),
                       ],
                     ),
                   Container(
                     decoration: ShapeDecoration(
-                      color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
+                      color: AppThemeData.grey50,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -178,7 +201,7 @@ class SelectPaymentScreen extends StatelessWidget {
                           blurRadius: 20,
                           offset: Offset(0, 0),
                           spreadRadius: 0,
-                        )
+                        ),
                       ],
                     ),
                     child: Padding(
@@ -187,65 +210,126 @@ class SelectPaymentScreen extends StatelessWidget {
                         children: [
                           Visibility(
                             visible: false,
-                            child: cardDecoration(controller, PaymentGateway.stripe, themeChange, "assets/images/stripe.png"),
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.stripe,
+                              "assets/images/stripe.png",
+                            ),
                           ),
                           Visibility(
-                            visible: controller.paytmModel.value.isEnabled == true,
-                            child: cardDecoration(controller, PaymentGateway.paypal, themeChange, "assets/images/paypal.png"),
+                            visible:
+                                controller.paytmModel.value.isEnabled == true,
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.paypal,
+                              "assets/images/paypal.png",
+                            ),
                           ),
                           Visibility(
-                            visible: controller.payStackModel.value.isEnable == true,
-                            child: cardDecoration(controller, PaymentGateway.payStack, themeChange, "assets/images/paystack.png"),
+                            visible:
+                                controller.payStackModel.value.isEnable == true,
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.payStack,
+                              "assets/images/paystack.png",
+                            ),
                           ),
                           Visibility(
-                            visible: controller.mercadoPagoModel.value.isEnabled == true,
-                            child: cardDecoration(controller, PaymentGateway.mercadoPago, themeChange, "assets/images/mercado-pago.png"),
+                            visible:
+                                controller.mercadoPagoModel.value.isEnabled ==
+                                true,
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.mercadoPago,
+                              "assets/images/mercado-pago.png",
+                            ),
                           ),
                           Visibility(
                             visible: false,
-                            child: cardDecoration(controller, PaymentGateway.flutterWave, themeChange, "assets/images/flutterwave_logo.png"),
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.flutterWave,
+                              "assets/images/flutterwave_logo.png",
+                            ),
                           ),
                           Visibility(
                             visible: false,
-                            child: cardDecoration(controller, PaymentGateway.payFast, themeChange, "assets/images/payfast.png"),
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.payFast,
+                              "assets/images/payfast.png",
+                            ),
                           ),
                           Visibility(
-                            visible: controller.paytmModel.value.isEnabled == true,
-                            child: cardDecoration(controller, PaymentGateway.paytm, themeChange, "assets/images/paytm.png"),
+                            visible:
+                                controller.paytmModel.value.isEnabled == true,
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.paytm,
+                              "assets/images/paytm.png",
+                            ),
                           ),
                           Visibility(
-                            visible: controller.razorPayModel.value.isEnabled == true,
-                            child: cardDecoration(controller, PaymentGateway.razorpay, themeChange, "assets/images/razorpay.png"),
+                            visible:
+                                controller.razorPayModel.value.isEnabled ==
+                                true,
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.razorpay,
+                              "assets/images/razorpay.png",
+                            ),
                           ),
                           Visibility(
-                            visible: controller.midTransModel.value.enable == true,
-                            child: cardDecoration(controller, PaymentGateway.midTrans, themeChange, "assets/images/midtrans.png"),
+                            visible:
+                                controller.midTransModel.value.enable == true,
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.midTrans,
+                              "assets/images/midtrans.png",
+                            ),
                           ),
                           Visibility(
-                            visible: controller.orangeMoneyModel.value.enable == true,
-                            child: cardDecoration(controller, PaymentGateway.orangeMoney, themeChange, "assets/images/orange_money.png"),
+                            visible:
+                                controller.orangeMoneyModel.value.enable ==
+                                true,
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.orangeMoney,
+                              "assets/images/orange_money.png",
+                            ),
                           ),
                           Visibility(
-                            visible: controller.xenditModel.value.enable == true,
-                            child: cardDecoration(controller, PaymentGateway.xendit, themeChange, "assets/images/xendit.png"),
+                            visible:
+                                controller.xenditModel.value.enable == true,
+                            child: cardDecoration(
+                              controller,
+                              PaymentGateway.xendit,
+                              "assets/images/xendit.png",
+                            ),
                           ),
                         ],
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
           ),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
-                color: themeChange.getThem() ? AppThemeData.grey900 : AppThemeData.grey50,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20))),
+              color: AppThemeData.grey50,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
             child: Padding(
               padding: const EdgeInsets.only(bottom: 20),
               child: RoundedButtonFill(
-                title: "${'Pay Now'.tr} | ${Constant.amountShow(amount: controller.totalAmount.value.toString())}".tr,
+                title:
+                    "${'Pay Now'.tr} | ${Constant.amountShow(amount: controller.totalAmount.value.toString())}"
+                        .tr,
                 height: 5,
                 color: AppThemeData.primary300,
                 textColor: AppThemeData.grey50,
@@ -261,7 +345,11 @@ class SelectPaymentScreen extends StatelessWidget {
     );
   }
 
-  Widget cardDecoration(CartControllerProvider controller, PaymentGateway value, themeChange, String image) {
+  Widget cardDecoration(
+    CartControllerProvider controller,
+    PaymentGateway value,
+    String image,
+  ) {
     return Obx(
       () => Padding(
         padding: const EdgeInsets.symmetric(vertical: 5),
@@ -278,20 +366,21 @@ class SelectPaymentScreen extends StatelessWidget {
                     height: 50,
                     decoration: ShapeDecoration(
                       shape: RoundedRectangleBorder(
-                        side: const BorderSide(width: 1, color: Color(0xFFE5E7EB)),
+                        side: const BorderSide(
+                          width: 1,
+                          color: Color(0xFFE5E7EB),
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: Padding(
-                      padding: EdgeInsets.all(value.name == "payFast" ? 0 : 8.0),
-                      child: Image.asset(
-                        image,
+                      padding: EdgeInsets.all(
+                        value.name == "payFast" ? 0 : 8.0,
                       ),
+                      child: Image.asset(image),
                     ),
                   ),
-                  const SizedBox(
-                    width: 10,
-                  ),
+                  const SizedBox(width: 10),
                   value.name == "wallet"
                       ? Expanded(
                           child: Column(
@@ -303,16 +392,23 @@ class SelectPaymentScreen extends StatelessWidget {
                                 style: TextStyle(
                                   fontFamily: AppThemeData.medium,
                                   fontSize: 16,
-                                  color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                                  color: AppThemeData.grey900,
                                 ),
                               ),
                               Text(
-                                Constant.amountShow(amount: controller.userModel.value.walletAmount == null ? '0.0' : controller.userModel.value.walletAmount.toString()),
+                                Constant.amountShow(
+                                  amount:
+                                      controller.userModel.value.walletAmount ==
+                                          null
+                                      ? '0.0'
+                                      : controller.userModel.value.walletAmount
+                                            .toString(),
+                                ),
                                 textAlign: TextAlign.start,
                                 style: TextStyle(
                                   fontFamily: AppThemeData.semiBold,
                                   fontSize: 16,
-                                  color: themeChange.getThem() ? AppThemeData.primary300 : AppThemeData.primary300,
+                                  color: AppThemeData.primary300,
                                 ),
                               ),
                             ],
@@ -325,21 +421,19 @@ class SelectPaymentScreen extends StatelessWidget {
                             style: TextStyle(
                               fontFamily: AppThemeData.medium,
                               fontSize: 16,
-                              color: themeChange.getThem() ? AppThemeData.grey50 : AppThemeData.grey900,
+                              color: AppThemeData.grey900,
                             ),
                           ),
                         ),
-                  const Expanded(
-                    child: SizedBox(),
-                  ),
+                  const Expanded(child: SizedBox()),
                   Radio(
                     value: value.name,
                     groupValue: controller.selectedPaymentMethod.value,
-                    activeColor: themeChange.getThem() ? AppThemeData.primary300 : AppThemeData.primary300,
+                    activeColor: AppThemeData.primary300,
                     onChanged: (value) {
                       controller.selectedPaymentMethod.value = value.toString();
                     },
-                  )
+                  ),
                 ],
               ),
             ),

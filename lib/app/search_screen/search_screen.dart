@@ -30,7 +30,6 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _searchFocusNode = FocusNode();
 
-    
     // Auto-focus the search field after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && _searchFocusNode.canRequestFocus) {
@@ -47,76 +46,64 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final themeChange = Provider.of<DarkThemeProvider>(context);
     return Consumer<SearchScreenProvider>(
-        builder: (context,controller,_) {
-
-          return Scaffold(
-            appBar: AppBar(
-              backgroundColor: themeChange.getThem()
-                  ? AppThemeData.surfaceDark
-                  : AppThemeData.surface,
-              centerTitle: false,
-              titleSpacing: 0,
-              title: Text(
-                "Search Food & Restaurant".tr,
-                textAlign: TextAlign.start,
-                style: TextStyle(
-                  fontFamily: AppThemeData.medium,
-                  fontSize: 16,
-                  color: themeChange.getThem()
-                      ? AppThemeData.grey50
-                      : AppThemeData.grey900,
-                ),
+      builder: (context, controller, _) {
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: AppThemeData.surface,
+            centerTitle: false,
+            titleSpacing: 0,
+            title: Text(
+              "Search Food & Restaurant".tr,
+              textAlign: TextAlign.start,
+              style: TextStyle(
+                fontFamily: AppThemeData.medium,
+                fontSize: 16,
+                color: AppThemeData.grey900,
               ),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(55),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: TextFieldWidget(
-                    hintText: 'Search the dish, restaurant, food, meals'.tr,
-                    prefix: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: SvgPicture.asset("assets/icons/ic_search.svg"),
-                    ),
-                    controller: controller.searchTextController,
-                    focusNode: _searchFocusNode,
-                    onchange: (value) {
-                      if (mounted) {
-                        controller.onSearchTextChanged(value);
-                      }
-                    },
+            ),
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(55),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: TextFieldWidget(
+                  hintText: 'Search the dish, restaurant, food, meals'.tr,
+                  prefix: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: SvgPicture.asset("assets/icons/ic_search.svg"),
                   ),
+                  controller: controller.searchTextController,
+                  focusNode: _searchFocusNode,
+                  onchange: (value) {
+                    if (mounted) {
+                      controller.onSearchTextChanged(value);
+                    }
+                  },
                 ),
               ),
             ),
-            body: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: _buildSearchContent(controller, themeChange),
-            ),
-          );
-        });
+          ),
+          body: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            child: _buildSearchContent(controller),
+          ),
+        );
+      },
+    );
   }
 
-  Widget _buildSearchContent(SearchScreenProvider controller, DarkThemeProvider themeChange) {
+  Widget _buildSearchContent(SearchScreenProvider controller) {
     // Show loading indicator when searching
     if (controller.isSearching.value) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              color: AppThemeData.primary300,
-            ),
+            CircularProgressIndicator(color: AppThemeData.primary300),
             const SizedBox(height: 16),
             Text(
               "Searching...".tr,
-              style: TextStyle(
-                fontSize: 16,
-                color: themeChange.getThem()
-                    ? AppThemeData.grey50
-                    : AppThemeData.grey900,
-              ),
+              style: TextStyle(fontSize: 16, color: AppThemeData.grey900),
             ),
           ],
         ),
@@ -124,8 +111,9 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     // Show suggestions while typing
-    if (controller.showSuggestions.value && controller.searchSuggestions.isNotEmpty) {
-      return _buildSuggestionsList(controller, themeChange);
+    if (controller.showSuggestions.value &&
+        controller.searchSuggestions.isNotEmpty) {
+      return _buildSuggestionsList(controller);
     }
 
     // Show initial state when no search has been performed
@@ -134,29 +122,20 @@ class _SearchScreenState extends State<SearchScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search,
-              size: 64,
-              color: AppThemeData.grey400,
-            ),
+            Icon(Icons.search, size: 64, color: AppThemeData.grey400),
             const SizedBox(height: 16),
             Text(
               "Search for restaurants and dishes".tr,
               style: TextStyle(
                 fontSize: 18,
                 fontFamily: AppThemeData.semiBold,
-                color: themeChange.getThem()
-                    ? AppThemeData.grey50
-                    : AppThemeData.grey900,
+                color: AppThemeData.grey900,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               "Type to start searching".tr,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppThemeData.grey400,
-              ),
+              style: TextStyle(fontSize: 14, color: AppThemeData.grey400),
             ),
           ],
         ),
@@ -164,36 +143,28 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     // Show "No results found" when search has no results
-    if (!controller.isSearching.value && 
-        controller.vendorSearchList.isEmpty && 
+    if (!controller.isSearching.value &&
+        controller.vendorSearchList.isEmpty &&
         controller.productSearchList.isEmpty &&
         controller.searchText.value.isNotEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.search_off,
-              size: 64,
-              color: AppThemeData.grey400,
-            ),
+            Icon(Icons.search_off, size: 64, color: AppThemeData.grey400),
             const SizedBox(height: 16),
             Text(
               "No results found".tr,
               style: TextStyle(
                 fontSize: 18,
                 fontFamily: AppThemeData.semiBold,
-                color: themeChange.getThem()
-                    ? AppThemeData.grey50
-                    : AppThemeData.grey900,
+                color: AppThemeData.grey900,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               "Try different keywords or check spelling".tr,
-              style: TextStyle(
-                color: AppThemeData.grey400,
-              ),
+              style: TextStyle(color: AppThemeData.grey400),
             ),
             const SizedBox(height: 20),
             // Debug buttons
@@ -208,7 +179,9 @@ class _SearchScreenState extends State<SearchScreen> {
                 const SizedBox(height: 8),
                 ElevatedButton(
                   onPressed: () {
-                    controller.forceSearchWithDebug(controller.searchText.value);
+                    controller.forceSearchWithDebug(
+                      controller.searchText.value,
+                    );
                   },
                   child: Text("Force Search with Debug".tr),
                 ),
@@ -234,11 +207,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
             child: Row(
               children: [
-                Icon(
-                  Icons.search,
-                  color: AppThemeData.primary300,
-                  size: 20,
-                ),
+                Icon(Icons.search, color: AppThemeData.primary300, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   "Found ${controller.vendorSearchList.length + controller.productSearchList.length} results for \"${controller.searchText.value}\"",
@@ -251,7 +220,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
-          
+
           // Restaurants section
           if (controller.vendorSearchList.isNotEmpty) ...[
             Text(
@@ -259,16 +228,14 @@ class _SearchScreenState extends State<SearchScreen> {
               style: TextStyle(
                 fontFamily: AppThemeData.semiBold,
                 fontSize: 18,
-                color: themeChange.getThem()
-                    ? AppThemeData.grey50
-                    : AppThemeData.grey900,
+                color: AppThemeData.grey900,
               ),
             ),
             const SizedBox(height: 12),
-            _buildRestaurantsList(controller, themeChange),
+            _buildRestaurantsList(controller),
             const SizedBox(height: 24),
           ],
-          
+
           // Products section
           if (controller.productSearchList.isNotEmpty) ...[
             Text(
@@ -276,46 +243,45 @@ class _SearchScreenState extends State<SearchScreen> {
               style: TextStyle(
                 fontFamily: AppThemeData.semiBold,
                 fontSize: 18,
-                color: themeChange.getThem()
-                    ? AppThemeData.grey50
-                    : AppThemeData.grey900,
+                color: AppThemeData.grey900,
               ),
             ),
             const SizedBox(height: 12),
-            _buildProductsList(controller, themeChange),
+            _buildProductsList(controller),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildRestaurantsList(SearchScreenProvider controller, DarkThemeProvider themeChange) {
+  Widget _buildRestaurantsList(SearchScreenProvider controller) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: controller.vendorSearchList.length,
       itemBuilder: (context, index) {
         VendorModel vendorModel = controller.vendorSearchList[index];
-        return _buildRestaurantItem(vendorModel, themeChange);
+        return _buildRestaurantItem(vendorModel);
       },
     );
   }
 
-  Widget _buildRestaurantItem(VendorModel vendorModel, DarkThemeProvider themeChange) {
+  Widget _buildRestaurantItem(VendorModel vendorModel) {
     return InkWell(
       onTap: () {
-        Get.to(() => const RestaurantDetailsScreen(),
-            arguments: {"vendorModel": vendorModel});
+        Get.to(
+          () => const RestaurantDetailsScreen(),
+          arguments: {"vendorModel": vendorModel},
+        );
       },
       child: Padding(
         padding: const EdgeInsets.only(bottom: 20),
         child: Container(
           decoration: ShapeDecoration(
-            color: themeChange.getThem()
-                ? AppThemeData.grey900
-                : AppThemeData.grey50,
+            color: AppThemeData.grey50,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -329,9 +295,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     child: Stack(
                       children: [
-                        RestaurantImageView(
-                          vendorModel: vendorModel,
-                        ),
+                        RestaurantImageView(vendorModel: vendorModel),
                         Container(
                           height: Responsive.height(20, context),
                           width: Responsive.width(100, context),
@@ -341,7 +305,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               end: const Alignment(0, 1),
                               colors: [
                                 Colors.black.withOpacity(0),
-                                const Color(0xFF111827)
+                                const Color(0xFF111827),
                               ],
                             ),
                           ),
@@ -349,7 +313,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ],
                     ),
                   ),
-                  _buildRestaurantBadges(vendorModel, themeChange),
+                  _buildRestaurantBadges(vendorModel),
                 ],
               ),
               Padding(
@@ -362,13 +326,12 @@ class _SearchScreenState extends State<SearchScreen> {
                       style: TextStyle(
                         fontSize: 18,
                         fontFamily: AppThemeData.semiBold,
-                        color: themeChange.getThem()
-                            ? AppThemeData.grey50
-                            : AppThemeData.grey900,
+                        color: AppThemeData.grey900,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (vendorModel.location != null && vendorModel.location!.isNotEmpty)
+                    if (vendorModel.location != null &&
+                        vendorModel.location!.isNotEmpty)
                       Row(
                         children: [
                           Icon(
@@ -398,20 +361,25 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildRestaurantBadges(VendorModel vendorModel, DarkThemeProvider themeChange) {
+  Widget _buildRestaurantBadges(VendorModel vendorModel) {
     return Transform.translate(
       offset: Offset(
-          Responsive.width(-3, context),
-          Responsive.height(17.5, context)),
+        Responsive.width(-3, context),
+        Responsive.height(17.5, context),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (vendorModel.isSelfDelivery == true && Constant.isSelfDeliveryFeature == true)
+          if (vendorModel.isSelfDelivery == true &&
+              Constant.isSelfDeliveryFeature == true)
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 7,
+                  ),
                   decoration: BoxDecoration(
                     color: AppThemeData.lightGreen,
                     borderRadius: BorderRadius.circular(120),
@@ -438,27 +406,26 @@ class _SearchScreenState extends State<SearchScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: ShapeDecoration(
-              color: themeChange.getThem()
-                  ? AppThemeData.primary600
-                  : AppThemeData.primary50,
+              color: AppThemeData.primary50,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(120)),
+                borderRadius: BorderRadius.circular(120),
+              ),
             ),
             child: Row(
               children: [
                 SvgPicture.asset(
                   "assets/icons/ic_star.svg",
                   colorFilter: ColorFilter.mode(
-                      AppThemeData.primary300, BlendMode.srcIn),
+                    AppThemeData.primary300,
+                    BlendMode.srcIn,
+                  ),
                 ),
                 const SizedBox(width: 5),
                 Text(
                   "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
                   style: TextStyle(
                     fontSize: 14,
-                    color: themeChange.getThem()
-                        ? AppThemeData.primary300
-                        : AppThemeData.primary300,
+                    color: AppThemeData.primary300,
                     fontFamily: AppThemeData.semiBold,
                     fontWeight: FontWeight.w600,
                   ),
@@ -470,32 +437,26 @@ class _SearchScreenState extends State<SearchScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             decoration: ShapeDecoration(
-              color: themeChange.getThem()
-                  ? AppThemeData.secondary600
-                  : AppThemeData.secondary50,
+              color: AppThemeData.secondary50,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(120)),
+                borderRadius: BorderRadius.circular(120),
+              ),
             ),
             child: Row(
               children: [
                 SvgPicture.asset(
                   "assets/icons/ic_map_distance.svg",
                   colorFilter: const ColorFilter.mode(
-                      AppThemeData.secondary300, BlendMode.srcIn),
+                    AppThemeData.secondary300,
+                    BlendMode.srcIn,
+                  ),
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  "${Constant.getDistance(
-                    lat1: vendorModel.latitude.toString(),
-                    lng1: vendorModel.longitude.toString(),
-                    lat2: Constant.selectedLocation.location!.latitude.toString(),
-                    lng2: Constant.selectedLocation.location!.longitude.toString(),
-                  )} km",
+                  "${Constant.getDistance(lat1: vendorModel.latitude.toString(), lng1: vendorModel.longitude.toString(), lat2: Constant.selectedLocation.location!.latitude.toString(), lng2: Constant.selectedLocation.location!.longitude.toString())} km",
                   style: TextStyle(
                     fontSize: 14,
-                    color: themeChange.getThem()
-                        ? AppThemeData.secondary300
-                        : AppThemeData.secondary300,
+                    color: AppThemeData.secondary300,
                     fontFamily: AppThemeData.semiBold,
                     fontWeight: FontWeight.w600,
                   ),
@@ -508,12 +469,14 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildProductsList(SearchScreenProvider controller, DarkThemeProvider themeChange) {
-    print("DEBUG: Building products list with ${controller.productSearchList.length} products");
+  Widget _buildProductsList(SearchScreenProvider controller) {
+    print(
+      "DEBUG: Building products list with ${controller.productSearchList.length} products",
+    );
     if (controller.productSearchList.isNotEmpty) {
       print("DEBUG: First product: ${controller.productSearchList.first.name}");
     }
-    
+
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -521,12 +484,12 @@ class _SearchScreenState extends State<SearchScreen> {
       itemBuilder: (context, index) {
         ProductModel productModel = controller.productSearchList[index];
         print("DEBUG: Building product item $index: ${productModel.name}");
-        return _buildProductItem(productModel, themeChange);
+        return _buildProductItem(productModel);
       },
     );
   }
 
-  Widget _buildProductItem(ProductModel productModel, DarkThemeProvider themeChange) {
+  Widget _buildProductItem(ProductModel productModel) {
     // SIMPLE PRODUCT DISPLAY - NO FUTURE BUILDER
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -534,25 +497,27 @@ class _SearchScreenState extends State<SearchScreen> {
         onTap: () async {
           print("DEBUG: Product tapped: ${productModel.name}");
           // Get the vendor details for this product
-          VendorModel? vendorModel = await FireStoreUtils.getVendorById(productModel.vendorID.toString());
+          VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+            productModel.vendorID.toString(),
+          );
           if (vendorModel != null) {
-            print("DEBUG: Navigating to restaurant with product: ${productModel.id}");
+            print(
+              "DEBUG: Navigating to restaurant with product: ${productModel.id}",
+            );
             // Navigate to restaurant details screen with the product ID to scroll to
-            Get.to(() => RestaurantDetailsScreen(
-              scrollToProductId: productModel.id,
-            ), arguments: {
-              'vendorModel': vendorModel,
-            });
+            Get.to(
+              () => RestaurantDetailsScreen(scrollToProductId: productModel.id),
+              arguments: {'vendorModel': vendorModel},
+            );
           }
         },
         borderRadius: BorderRadius.circular(16),
         child: Container(
           decoration: ShapeDecoration(
-            color: themeChange.getThem()
-                ? AppThemeData.grey900
-                : AppThemeData.grey50,
+            color: AppThemeData.grey50,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -579,13 +544,12 @@ class _SearchScreenState extends State<SearchScreen> {
                         style: TextStyle(
                           fontSize: 16,
                           fontFamily: AppThemeData.semiBold,
-                          color: themeChange.getThem()
-                              ? AppThemeData.grey50
-                              : AppThemeData.grey900,
+                          color: AppThemeData.grey900,
                         ),
                       ),
                       const SizedBox(height: 4),
-                      if (productModel.description != null && productModel.description!.isNotEmpty)
+                      if (productModel.description != null &&
+                          productModel.description!.isNotEmpty)
                         Text(
                           productModel.description!,
                           maxLines: 2,
@@ -606,7 +570,8 @@ class _SearchScreenState extends State<SearchScreen> {
                               color: AppThemeData.primary300,
                             ),
                           ),
-                          if (productModel.disPrice != null && productModel.disPrice != productModel.price)
+                          if (productModel.disPrice != null &&
+                              productModel.disPrice != productModel.price)
                             Padding(
                               padding: const EdgeInsets.only(left: 8),
                               child: Text(
@@ -631,7 +596,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildSuggestionsList(SearchScreenProvider controller, DarkThemeProvider themeChange) {
+  Widget _buildSuggestionsList(SearchScreenProvider controller) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -639,18 +604,10 @@ class _SearchScreenState extends State<SearchScreen> {
       itemBuilder: (context, index) {
         String suggestion = controller.searchSuggestions[index];
         return ListTile(
-          leading: Icon(
-            Icons.search,
-            color: AppThemeData.grey400,
-          ),
+          leading: Icon(Icons.search, color: AppThemeData.grey400),
           title: Text(
             suggestion,
-            style: TextStyle(
-              fontSize: 16,
-              color: themeChange.getThem()
-                  ? AppThemeData.grey50
-                  : AppThemeData.grey900,
-            ),
+            style: TextStyle(fontSize: 16, color: AppThemeData.grey900),
           ),
           onTap: () {
             controller.selectSuggestion(suggestion);
@@ -658,131 +615,5 @@ class _SearchScreenState extends State<SearchScreen> {
         );
       },
     );
-  }
-
-  Widget _buildProductCard(ProductModel productModel, Map<String, dynamic> priceData, DarkThemeProvider themeChange) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: InkWell(
-        onTap: () async {
-          // Get the vendor details for this product
-          VendorModel? vendorModel = await FireStoreUtils.getVendorById(productModel.vendorID.toString());
-          if (vendorModel != null) {
-            // Navigate to restaurant details screen with the product ID to scroll to
-            Get.to(() => RestaurantDetailsScreen(
-              scrollToProductId: productModel.id,
-            ), arguments: {
-              'vendorModel': vendorModel,
-            });
-          }
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: ShapeDecoration(
-            color: themeChange.getThem()
-                ? AppThemeData.grey900
-                : AppThemeData.grey50,
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: SizedBox(
-                    width: 80,
-                    height: 80,
-                    child: NetworkImageWidget(
-                      imageUrl: productModel.photo ?? '',
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        productModel.name ?? '',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontFamily: AppThemeData.semiBold,
-                          color: themeChange.getThem()
-                              ? AppThemeData.grey50
-                              : AppThemeData.grey900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      if (productModel.description != null && productModel.description!.isNotEmpty)
-                        Text(
-                          productModel.description!,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppThemeData.grey400,
-                          ),
-                        ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Text(
-                            "₹${priceData['price'] ?? '0'}",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontFamily: AppThemeData.semiBold,
-                              color: AppThemeData.primary300,
-                            ),
-                          ),
-                          if (priceData['discountPrice'] != null && priceData['discountPrice'] != priceData['price'])
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8),
-                              child: Text(
-                                "₹${priceData['discountPrice']}",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  decoration: TextDecoration.lineThrough,
-                                  color: AppThemeData.grey400,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<Map<String, dynamic>> _getPrice(ProductModel productModel) async {
-    String price = "0.0";
-    String disPrice = "0.0";
-    List<String> selectedVariants = [];
-    List<String> selectedIndexVariants = [];
-    List<String> selectedIndexArray = [];
-
-    VendorModel? vendorModel =
-        await FireStoreUtils.getVendorById(productModel.vendorID.toString());
-    
-    if (vendorModel != null) {
-      price = productModel.price ?? "0.0";
-      disPrice = productModel.disPrice ?? "0.0";
-    }
-
-    return {
-      'price': price,
-      'discountPrice': disPrice,
-      'selectedVariants': selectedVariants,
-      'selectedIndexVariants': selectedIndexVariants,
-      'selectedIndexArray': selectedIndexArray,
-    };
   }
 }

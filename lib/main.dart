@@ -60,6 +60,7 @@ import 'app/gift_card/screens/redeem_gift_card_screen/provider/redeem_gift_card_
 import 'app/home_screen/provider/map_view_provider.dart';
 import 'app/home_screen/screen/category_restaurant_screen/provider/category_resaurant_provider.dart';
 import 'app/home_screen/screen/discount_restaurant_list_screen/provider/discount_resaurant_list_provider.dart';
+import 'app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'app/home_screen/screen/story_view_screen/provider/story_provider.dart';
 import 'app/location_permission_screen/provider/location_permission_provider.dart';
 import 'app/mart/mart_home_screen/provider/mart_provider.dart';
@@ -169,7 +170,6 @@ void _initializeSmartLookInBackground() {
             region: SmartlookConfig.region,
           )
           .timeout(const Duration(seconds: 3));
-
       if (smartlookService.isInitialized) {
         if (SmartlookConfig.enableSensitiveDataMasking) {
           smartlookService.setSensitiveDataMasking(true);
@@ -226,11 +226,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
-  DarkThemeProvider themeChangeProvider = DarkThemeProvider();
-
   @override
   void initState() {
-    getCurrentAppTheme();
     _initializeHeavyServicesInBackground();
     _initializeDeepLinkServicesInBackground(context);
     _initializeSmartLookInBackground();
@@ -257,21 +254,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    getCurrentAppTheme();
-  }
-
-  void getCurrentAppTheme() async {
-    themeChangeProvider.darkTheme = await themeChangeProvider
-        .darkThemePreference
-        .getTheme();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => themeChangeProvider),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => HomeProvider()),
         ChangeNotifierProvider(create: (_) => CategoryRestaurantProvider()),
@@ -315,39 +300,21 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => OrderPlacingProvider()),
         ChangeNotifierProvider(create: (_) => SignupProvider()),
         ChangeNotifierProvider(create: (_) => SplashProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryViewProvider()),
       ],
-      child: Consumer<DarkThemeProvider>(
-        builder: (context, value, child) {
-          Widget appWidget = GetMaterialApp(
-            navigatorKey: GlobalDeeplinkHandler.navigatorKey,
-            title: 'JippyMart Customer'.tr,
-            debugShowCheckedModeBanner: false,
-            theme: Styles.themeData(
-              themeChangeProvider.darkTheme == 0
-                  ? true
-                  : themeChangeProvider.darkTheme == 1
-                  ? false
-                  : false,
-              context,
-            ),
-            localizationsDelegates: const [CountryLocalizations.delegate],
-            locale: LocalizationService.locale,
-            fallbackLocale: LocalizationService.locale,
-            translations: LocalizationService(),
-            builder: EasyLoading.init(),
-            home: Consumer<GlobalSettingsProvider>(
-              builder: (context, controller, _) {
-                controller.initFunction(context);
-                return const VideoSplashScreen();
-              },
-            ),
-          );
-          try {
-            return SmartlookRecordingWidget(child: appWidget);
-          } catch (e) {
-            return appWidget;
-          }
-        },
+      child: GetMaterialApp(
+        navigatorKey: GlobalDeeplinkHandler.navigatorKey,
+        title: 'JippyMart Customer'.tr,
+        debugShowCheckedModeBanner: false,
+        localizationsDelegates: const [CountryLocalizations.delegate],
+        locale: LocalizationService.locale,
+        builder: EasyLoading.init(),
+        home: Consumer<GlobalSettingsProvider>(
+          builder: (context, controller, _) {
+            controller.initFunction(context);
+            return const VideoSplashScreen();
+          },
+        ),
       ),
     );
   }

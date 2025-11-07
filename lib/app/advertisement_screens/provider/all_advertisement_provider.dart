@@ -5,9 +5,9 @@ import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 
-class AllAdvertisementProvider extends ChangeNotifier{
-
+class AllAdvertisementProvider extends ChangeNotifier {
   bool isLoading = true;
+
   void initFunction() {
     getAdvertisementList();
     getFavouriteRestaurant();
@@ -23,7 +23,11 @@ class AllAdvertisementProvider extends ChangeNotifier{
       await FireStoreUtils.getAllAdvertisement().then((value) {
         List<AdvertisementModel> adsList = value;
         advertisementList.addAll(
-          adsList.where((ads) => allNearestRestaurant.any((restaurant) => restaurant.id == ads.vendorId)),
+          adsList.where(
+            (ads) => allNearestRestaurant.any(
+              (restaurant) => restaurant.id == ads.vendorId,
+            ),
+          ),
         );
       });
       isLoading = false;
@@ -35,12 +39,9 @@ class AllAdvertisementProvider extends ChangeNotifier{
 
   getFavouriteRestaurant() async {
     if (Constant.userModel != null) {
-      await FireStoreUtils.getFavouriteRestaurant().then(
-            (value) {
-          favouriteList = value;
-        },
-      );
+      await FireStoreUtils.getFavouriteRestaurant().then((value) {
+        favouriteList = value;
+      });
     }
   }
-
 }
