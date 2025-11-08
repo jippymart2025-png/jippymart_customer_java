@@ -856,7 +856,12 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                         .start,
                                                                 children: [
                                                                   Text(
-                                                                    "${controller.orderModel.value.vendor?.title ?? 'Jippy Mart'}",
+                                                                    controller
+                                                                            .orderModel
+                                                                            .value
+                                                                            .vendor
+                                                                            ?.title ??
+                                                                        'Jippy Mart',
                                                                     textAlign:
                                                                         TextAlign
                                                                             .start,
@@ -893,46 +898,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                 ],
                                                               ),
                                                             ),
-                                                            // InkWell(
-                                                            //   onTap: () {
-                                                            //     Constant.makePhoneCall(controller
-                                                            //         .orderModel
-                                                            //         .value
-                                                            //         .vendor!
-                                                            //         .phonenumber
-                                                            //         .toString());
-                                                            //   },
-                                                            //   child:
-                                                            //       Container(
-                                                            //     width: 42,
-                                                            //     height: 42,
-                                                            //     decoration:
-                                                            //         ShapeDecoration(
-                                                            //       shape:
-                                                            //           RoundedRectangleBorder(
-                                                            //         side: BorderSide(
-                                                            //             width:
-                                                            //                 1,
-                                                            //             color: themeChange.getThem()
-                                                            //                 ? AppThemeData.grey700
-                                                            //                 : AppThemeData.grey200),
-                                                            //         borderRadius:
-                                                            //             BorderRadius.circular(
-                                                            //                 120),
-                                                            //       ),
-                                                            //     ),
-                                                            //     child:
-                                                            //         Padding(
-                                                            //       padding:
-                                                            //           const EdgeInsets
-                                                            //               .all(
-                                                            //               8.0),
-                                                            //       child: SvgPicture
-                                                            //           .asset(
-                                                            //               "assets/icons/ic_phone_call.svg"),
-                                                            //     ),
-                                                            //   ),
-                                                            // ),
                                                             const SizedBox(
                                                               width: 10,
                                                             ),

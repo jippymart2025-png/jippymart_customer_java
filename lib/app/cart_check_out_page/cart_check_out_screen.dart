@@ -42,7 +42,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     // Future.delayed(const Duration(seconds: 3), () {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 3), () {
-        _refreshCartData();
+        _refreshCartData(context);
       });
     });
     // });
@@ -53,17 +53,17 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     super.didChangeDependencies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 3), () {
-        _refreshCartData();
+        _refreshCartData(context);
       });
     });
   }
 
-  void _refreshCartData() {
+  void _refreshCartData(BuildContext context) {
     print('DEBUG: Refreshing cart data...');
     controller.forceRefreshCart();
     if (controller.selectedAddress.value == null) {
       // Trigger address initialization by calling the public method
-      controller.initializeAddress();
+      controller.initializeAddress(context);
     }
     // Ensure payment method is set correctly based on order total
     Future.delayed(const Duration(milliseconds: 500), () {

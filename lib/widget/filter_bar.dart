@@ -9,26 +9,35 @@ enum FilterType { distance, priceLowToHigh, priceHighToLow, rating }
 class FilterBar extends StatelessWidget {
   final Set<FilterType> selectedFilters;
   final ValueChanged<FilterType> onFilterToggled;
+  final List<String> availableFilters;
+  final String? currentFilter;
 
   const FilterBar({
     Key? key,
     required this.selectedFilters,
     required this.onFilterToggled,
+    required this.availableFilters,
+    this.currentFilter,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
+    // Map API filter names to FilterType enum and only show available ones
+    final availableFilterTypes = _getAvailableFilterTypes();
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: FilterType.values.map((filter) {
-          final isSelected = selectedFilters.contains(filter);
+        children: availableFilterTypes.map((filter) {
+          final isSelected = _isFilterSelected(filter);
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: ChoiceChip(backgroundColor: ColorConst.white,
+            child: ChoiceChip(
+              backgroundColor: ColorConst.white,
               label: Text(
-                capitalize(filter.toString().split('.').last),
+                _getFilterDisplayText(filter),
                 style: TextStyle(
                   color: isSelected
                       ? Colors.white
@@ -37,15 +46,57 @@ class FilterBar extends StatelessWidget {
               ),
               selected: isSelected,
               selectedColor: theme.primaryColor,
-              onSelected: (_) => onFilterToggled(filter), // 🔹 Remove border completely
+              onSelected: (_) => onFilterToggled(filter),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: BorderSide(color: Colors.transparent), // removes border
+                side: const BorderSide(color: Colors.transparent),
               ),
             ),
           );
         }).toList(),
       ),
     );
+  }
+
+  List<FilterType> _getAvailableFilterTypes() {
+    final availableTypes = <FilterType>[];
+
+    for (var apiFilter in availableFilters) {
+      switch (apiFilter) {
+        case 'distance':
+          availableTypes.add(FilterType.distance);
+          break;
+        case 'rating':
+          availableTypes.add(FilterType.rating);
+          break;
+      }
+    }
+
+    return availableTypes;
+  }
+
+  bool _isFilterSelected(FilterType filter) {
+    switch (filter) {
+      case FilterType.distance:
+        return currentFilter == 'distance';
+      case FilterType.rating:
+        return currentFilter == 'rating';
+      case FilterType.priceLowToHigh:
+      case FilterType.priceHighToLow:
+        return false; // These are not supported by API
+    }
+  }
+
+  String _getFilterDisplayText(FilterType filter) {
+    switch (filter) {
+      case FilterType.distance:
+        return 'Distance';
+      case FilterType.rating:
+        return 'Rating';
+      case FilterType.priceLowToHigh:
+        return 'Price: Low to High';
+      case FilterType.priceHighToLow:
+        return 'Price: High to Low';
+    }
   }
 }

@@ -69,7 +69,7 @@ class _CartScreenState extends State<CartScreen> {
   void _refreshCartData() {
     controller.forceRefreshCart();
     if (controller.selectedAddress.value == null) {
-      controller.initializeAddress();
+      controller.initializeAddress(context);
     }
     Future.delayed(const Duration(milliseconds: 500), () {
       controller.checkAndUpdatePaymentMethod();

@@ -60,8 +60,10 @@ import 'app/gift_card/screens/redeem_gift_card_screen/provider/redeem_gift_card_
 import 'app/home_screen/provider/map_view_provider.dart';
 import 'app/home_screen/screen/category_restaurant_screen/provider/category_resaurant_provider.dart';
 import 'app/home_screen/screen/discount_restaurant_list_screen/provider/discount_resaurant_list_provider.dart';
+import 'app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'app/home_screen/screen/story_view_screen/provider/story_provider.dart';
+import 'app/home_screen/screen/view_all_category_screen/provider/view_all_categroy_provider.dart';
 import 'app/location_permission_screen/provider/location_permission_provider.dart';
 import 'app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'app/mart/provider/category_details_provider.dart';
@@ -301,6 +303,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => SignupProvider()),
         ChangeNotifierProvider(create: (_) => SplashProvider()),
         ChangeNotifierProvider(create: (_) => CategoryViewProvider()),
+        ChangeNotifierProvider(create: (_) => BestRestaurantProvider()),
+        ChangeNotifierProvider(create: (_) => ViewAllCategoryProvider()),
       ],
       child: GetMaterialApp(
         navigatorKey: GlobalDeeplinkHandler.navigatorKey,

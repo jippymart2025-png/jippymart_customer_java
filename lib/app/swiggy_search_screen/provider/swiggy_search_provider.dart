@@ -12,10 +12,6 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SwiggySearchProvider extends ChangeNotifier {
-
-
-  ////SEEAR
-
   /// **CLEAR RECENT SEARCHES**
   void clearRecentSearches() {
     try {
@@ -28,7 +24,6 @@ class SwiggySearchProvider extends ChangeNotifier {
       _clearRecentSearchesFromStorage();
 
       print("✅ Recent searches cleared successfully");
-
     } catch (e) {
       print("❌ Error clearing recent searches: $e");
     }
@@ -44,6 +39,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("❌ Error clearing recent searches from storage: $e");
     }
   }
+
   final TrieSearch trieSearch = TrieSearch();
 
   // **OBSERVABLE VARIABLES**
@@ -87,23 +83,31 @@ class SwiggySearchProvider extends ChangeNotifier {
   // **CONSTANTS - MEMORY SAFE LIMITS TO PREVENT CRASHES**
   static const int MAX_RECENT_SEARCHES = 10;
   static const int MAX_SUGGESTIONS = 8;
-  static const int INITIAL_PRODUCTS = 100; // Show only 8 products initially to ensure Load More button shows
-  static const int INITIAL_RESTAURANTS = 10; // Show only 5 restaurants initially to ensure Load More button shows
+  static const int INITIAL_PRODUCTS =
+      100; // Show only 8 products initially to ensure Load More button shows
+  static const int INITIAL_RESTAURANTS =
+      10; // Show only 5 restaurants initially to ensure Load More button shows
   static const int LOAD_MORE_RESULTS = 10; // Load 5 more at a time
-  static const int MAX_TOTAL_RESULTS = 1000; // Increased to match admin panel results
+  static const int MAX_TOTAL_RESULTS =
+      1000; // Increased to match admin panel results
   static const Duration DEBOUNCE_DELAY = Duration(milliseconds: 300);
 
   // **MEMORY SAFE LIMITS - INCREASED TO MATCH ADMIN PANEL**
   static const int FAST_VENDOR_LIMIT = 500; // Increased to show more vendors
   static const int FAST_PRODUCT_LIMIT = 800; // Increased to show more products
-  static const int MAX_VENDORS_PER_SEARCH = 500; // Increased to show more vendors in search
-  static const int MAX_PRODUCTS_PER_SEARCH = 800; // Increased to show more products in search
+  static const int MAX_VENDORS_PER_SEARCH =
+      500; // Increased to show more vendors in search
+  static const int MAX_PRODUCTS_PER_SEARCH =
+      800; // Increased to show more products in search
   static const int SUGGESTION_LIMIT = 10; // Maximum suggestions to show
 
   // **ENHANCED MULTI-COLLECTION SEARCH LIMITS - INCREASED TO MATCH ADMIN PANEL**
-  static const int RESTAURANT_SEARCH_LIMIT = 500; // Restaurants per search (increased from 50)
-  static const int PRODUCT_SEARCH_LIMIT = 800; // Products per search (increased from 100)
-  static const int CATEGORY_SEARCH_LIMIT = 200; // Categories per search (increased from 20)
+  static const int RESTAURANT_SEARCH_LIMIT =
+      500; // Restaurants per search (increased from 50)
+  static const int PRODUCT_SEARCH_LIMIT =
+      800; // Products per search (increased from 100)
+  static const int CATEGORY_SEARCH_LIMIT =
+      200; // Categories per search (increased from 20)
 
   void initFunction() {
     _initializeSearch();
@@ -113,6 +117,7 @@ class SwiggySearchProvider extends ChangeNotifier {
     _debounceTimer?.cancel();
     _searchTimer?.cancel();
   }
+
   /// **INITIALIZE SEARCH SYSTEM**
   Future<void> _initializeSearch() async {
     try {
@@ -131,7 +136,6 @@ class SwiggySearchProvider extends ChangeNotifier {
       _loadAndIndexDataInBackground();
 
       print("✅ Swiggy Search initialized successfully");
-
     } catch (e) {
       print("❌ Search initialization failed: $e");
       isLoadingData.value = false;
@@ -149,7 +153,9 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // Check if data was loaded successfully
       if (trieSearch.itemCount == 0) {
-        print("⚠️ No data loaded from database - search will use direct Firestore queries");
+        print(
+          "⚠️ No data loaded from database - search will use direct Firestore queries",
+        );
       }
 
       // Test the Trie with a simple search
@@ -161,7 +167,6 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("❌ Background data loading failed: $e");
     }
   }
-
 
   /// **TEST TRIE SEARCH**
   void _testTrieSearch() {
@@ -175,82 +180,57 @@ class SwiggySearchProvider extends ChangeNotifier {
         var results = trieSearch.search(query);
         print("🧪 Test search '$query': ${results.length} results");
       }
-
     } catch (e) {
       print("❌ Trie test failed: $e");
     }
   }
 
-  /// **DIRECT SEARCH FALLBACK - ENHANCED**
-  List<dynamic> _directSearch(String query) {
-    try {
-      print("🔍 Performing enhanced direct search for: '$query'");
-      List<dynamic> results = [];
-      final lowerQuery = query.toLowerCase();
-
-      // Search in current results first
-      for (var product in productResults) {
-        if (product.name != null && product.name!.toLowerCase().contains(lowerQuery)) {
-          results.add(product);
-        }
-      }
-
-      for (var restaurant in restaurantResults) {
-        if (restaurant.title != null && restaurant.title!.toLowerCase().contains(lowerQuery)) {
-          results.add(restaurant);
-        }
-      }
-
-      // If no results in current lists, try to fetch fresh data
-      if (results.isEmpty) {
-        print("🔍 No results in current lists, trying fresh data fetch...");
-        _performFreshDataSearch(query, results);
-      }
-
-      print("🔍 Enhanced direct search found ${results.length} results");
-      return results;
-
-    } catch (e) {
-      print("❌ Enhanced direct search failed: $e");
-      return [];
-    }
-  }
-
   /// **PERFORM FRESH DATA SEARCH**
-  Future<void> _performFreshDataSearch(String query, List<dynamic> results) async {
+  Future<void> _performFreshDataSearch(
+    String query,
+    List<dynamic> results,
+  ) async {
     try {
       final lowerQuery = query.toLowerCase();
       // Try to get fresh products
       try {
-        List<ProductModel> freshProducts = await FireStoreUtils.getAllProducts(limit: 200);
+        List<ProductModel> freshProducts = await FireStoreUtils.getAllProducts(
+          limit: 200,
+        );
         for (var product in freshProducts) {
-          if (product.name != null && product.name!.toLowerCase().contains(lowerQuery)) {
+          if (product.name != null &&
+              product.name!.toLowerCase().contains(lowerQuery)) {
             results.add(product);
           }
         }
-        print("🔍 Fresh products search found ${results.where((r) => r is ProductModel).length} products");
+        print(
+          "🔍 Fresh products search found ${results.where((r) => r is ProductModel).length} products",
+        );
       } catch (e) {
         print("❌ Fresh products search failed: $e");
       }
 
       // Try to get fresh vendors
       try {
-        List<VendorModel> freshVendors = await FireStoreUtils.getAllVendors(limit: 100);
+        List<VendorModel> freshVendors = await FireStoreUtils.getAllVendors(
+          limit: 100,
+        );
         for (var vendor in freshVendors) {
-          if (vendor.title != null && vendor.title!.toLowerCase().contains(lowerQuery)) {
+          if (vendor.title != null &&
+              vendor.title!.toLowerCase().contains(lowerQuery)) {
             results.add(vendor);
           }
         }
-        print("🔍 Fresh vendors search found ${results.where((r) => r is VendorModel).length} vendors");
+        print(
+          "🔍 Fresh vendors search found ${results.where((r) => r is VendorModel).length} vendors",
+        );
       } catch (e) {
         print("❌ Fresh vendors search failed: $e");
       }
-
     } catch (e) {
       print("❌ Fresh data search failed: $e");
     }
   }
-
 
   /// **LOAD MORE DATA PROGRESSIVELY IN BACKGROUND - MEMORY OPTIMIZED**
   Future<void> _loadMoreDataProgressively() async {
@@ -259,7 +239,9 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // **MEMORY SAFE: Use smaller limits for progressive loading**
       // Load more vendors with strict limits
-      List<VendorModel> moreVendors = await FireStoreUtils.getAllVendors(limit: 10); // Reduced from 30 to 10
+      List<VendorModel> moreVendors = await FireStoreUtils.getAllVendors(
+        limit: 10,
+      ); // Reduced from 30 to 10
       for (var vendor in moreVendors) {
         if (vendor.title != null && vendor.title!.isNotEmpty) {
           trieSearch.insert(vendor.title!, vendor, relevanceScore: 1.5);
@@ -267,7 +249,9 @@ class SwiggySearchProvider extends ChangeNotifier {
       }
 
       // Load more products with strict limits
-      List<ProductModel> moreProducts = await FireStoreUtils.getAllProducts(limit: 15); // Reduced from 50 to 15
+      List<ProductModel> moreProducts = await FireStoreUtils.getAllProducts(
+        limit: 15,
+      ); // Reduced from 50 to 15
       for (var product in moreProducts) {
         if (product.name != null && product.name!.isNotEmpty) {
           trieSearch.insert(product.name!, product, relevanceScore: 2.0);
@@ -279,7 +263,9 @@ class SwiggySearchProvider extends ChangeNotifier {
     } catch (e) {
       print("❌ Progressive data loading failed: $e");
       if (e.toString().contains('OutOfMemoryError')) {
-        print("🚨 OutOfMemoryError detected! Stopping progressive loading to prevent crash.");
+        print(
+          "🚨 OutOfMemoryError detected! Stopping progressive loading to prevent crash.",
+        );
       }
     }
   }
@@ -299,7 +285,6 @@ class SwiggySearchProvider extends ChangeNotifier {
       await _loadProductsInBatches();
 
       print("✅ Data loading completed successfully");
-
     } catch (e) {
       print("❌ Error loading data: $e");
       // Don't rethrow to prevent app crash
@@ -312,8 +297,12 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("🔄 Loading vendors in batches (memory optimized)...");
 
       // **MEMORY SAFETY: Use strict limits to prevent OutOfMemoryError**
-      List<VendorModel> vendors = await FireStoreUtils.getAllVendors(limit: FAST_VENDOR_LIMIT);
-      print("📊 Loaded ${vendors.length} vendors (memory safe limit: $FAST_VENDOR_LIMIT)");
+      List<VendorModel> vendors = await FireStoreUtils.getAllVendors(
+        limit: FAST_VENDOR_LIMIT,
+      );
+      print(
+        "📊 Loaded ${vendors.length} vendors (memory safe limit: $FAST_VENDOR_LIMIT)",
+      );
 
       // Debug: Print first few vendor names
       if (vendors.isNotEmpty) {
@@ -332,20 +321,31 @@ class SwiggySearchProvider extends ChangeNotifier {
           trieSearch.insert(vendor.title!, vendor, relevanceScore: 1.5);
 
           // **OPTIMIZED: Only index location if it's not too long (memory safety)**
-          if (vendor.location != null && vendor.location!.isNotEmpty && vendor.location!.length < 50) {
+          if (vendor.location != null &&
+              vendor.location!.isNotEmpty &&
+              vendor.location!.length < 50) {
             trieSearch.insert(vendor.location!, vendor, relevanceScore: 1.5);
           }
 
           // **OPTIMIZED: Only index description if it's short (memory safety)**
-          if (vendor.description != null && vendor.description!.isNotEmpty && vendor.description!.length < 100) {
+          if (vendor.description != null &&
+              vendor.description!.isNotEmpty &&
+              vendor.description!.length < 100) {
             trieSearch.insert(vendor.description!, vendor, relevanceScore: 1.3);
           }
 
           // **OPTIMIZED: Limit category indexing to prevent memory bloat**
-          if (vendor.categoryTitle != null && vendor.categoryTitle!.isNotEmpty) {
-            for (var category in vendor.categoryTitle!.take(3)) { // Limit to 3 categories
-              if (category.toString().length < 30) { // Only short category names
-                trieSearch.insert(category.toString(), vendor, relevanceScore: 1.4);
+          if (vendor.categoryTitle != null &&
+              vendor.categoryTitle!.isNotEmpty) {
+            for (var category in vendor.categoryTitle!.take(3)) {
+              // Limit to 3 categories
+              if (category.toString().length < 30) {
+                // Only short category names
+                trieSearch.insert(
+                  category.toString(),
+                  vendor,
+                  relevanceScore: 1.4,
+                );
               }
             }
           }
@@ -354,11 +354,12 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       print("✅ Indexed ${vendors.length} vendors (memory optimized)");
       print("🔍 Total Trie items after vendors: ${trieSearch.itemCount}");
-
     } catch (e) {
       print("❌ Error loading vendors: $e");
       if (e.toString().contains('OutOfMemoryError')) {
-        print("🚨 OutOfMemoryError detected! Skipping vendor indexing to prevent crash.");
+        print(
+          "🚨 OutOfMemoryError detected! Skipping vendor indexing to prevent crash.",
+        );
       }
     }
   }
@@ -369,8 +370,12 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("🔄 Loading products in batches (memory optimized)...");
 
       // **MEMORY SAFETY: Use strict limits to prevent OutOfMemoryError**
-      List<ProductModel> products = await FireStoreUtils.getAllProducts(limit: FAST_PRODUCT_LIMIT);
-      print("📊 Loaded ${products.length} products (memory safe limit: $FAST_PRODUCT_LIMIT)");
+      List<ProductModel> products = await FireStoreUtils.getAllProducts(
+        limit: FAST_PRODUCT_LIMIT,
+      );
+      print(
+        "📊 Loaded ${products.length} products (memory safe limit: $FAST_PRODUCT_LIMIT)",
+      );
 
       for (var product in products) {
         if (product.name != null && product.name!.isNotEmpty) {
@@ -378,27 +383,51 @@ class SwiggySearchProvider extends ChangeNotifier {
           trieSearch.insert(product.name!, product, relevanceScore: 2.0);
 
           // **OPTIMIZED: Only index description if it's short (memory safety)**
-          if (product.description != null && product.description!.isNotEmpty && product.description!.length < 100) {
-            trieSearch.insert(product.description!, product, relevanceScore: 1.8);
+          if (product.description != null &&
+              product.description!.isNotEmpty &&
+              product.description!.length < 100) {
+            trieSearch.insert(
+              product.description!,
+              product,
+              relevanceScore: 1.8,
+            );
           }
 
           // **OPTIMIZED: Only index category if it's not too long**
-          if (product.categoryID != null && product.categoryID!.isNotEmpty && product.categoryID!.length < 30) {
-            trieSearch.insert(product.categoryID!, product, relevanceScore: 1.7);
+          if (product.categoryID != null &&
+              product.categoryID!.isNotEmpty &&
+              product.categoryID!.length < 30) {
+            trieSearch.insert(
+              product.categoryID!,
+              product,
+              relevanceScore: 1.7,
+            );
           }
 
           // **OPTIMIZED: Limit add-ons indexing to prevent memory bloat**
           if (product.addOnsTitle != null && product.addOnsTitle!.isNotEmpty) {
-            for (var addon in product.addOnsTitle!.take(2)) { // Limit to 2 add-ons
-              if (addon.toString().length < 20) { // Only short add-on names
-                trieSearch.insert(addon.toString(), product, relevanceScore: 1.6);
+            for (var addon in product.addOnsTitle!.take(2)) {
+              // Limit to 2 add-ons
+              if (addon.toString().length < 20) {
+                // Only short add-on names
+                trieSearch.insert(
+                  addon.toString(),
+                  product,
+                  relevanceScore: 1.6,
+                );
               }
             }
           }
 
           // **OPTIMIZED: Only index specifications if they're short**
-          if (product.productSpecification != null && product.productSpecification!.isNotEmpty && product.productSpecification.toString().length < 50) {
-            trieSearch.insert(product.productSpecification.toString(), product, relevanceScore: 1.5);
+          if (product.productSpecification != null &&
+              product.productSpecification!.isNotEmpty &&
+              product.productSpecification.toString().length < 50) {
+            trieSearch.insert(
+              product.productSpecification.toString(),
+              product,
+              relevanceScore: 1.5,
+            );
           }
 
           // **OPTIMIZED: Index veg/non-veg (these are short and useful)**
@@ -415,11 +444,12 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       print("✅ Indexed ${products.length} products (memory optimized)");
       print("🔍 Total Trie items after products: ${trieSearch.itemCount}");
-
     } catch (e) {
       print("❌ Error loading products: $e");
       if (e.toString().contains('OutOfMemoryError')) {
-        print("🚨 OutOfMemoryError detected! Skipping product indexing to prevent crash.");
+        print(
+          "🚨 OutOfMemoryError detected! Skipping product indexing to prevent crash.",
+        );
       }
     }
   }
@@ -434,9 +464,21 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("❌ Error loading trending searches: $e");
       // Fallback to static trending searches
       trendingSearches.assignAll([
-        "Pizza", "Biryani", "Burgers", "Coffee", "Ice Cream",
-        "Chinese", "Italian", "South Indian", "Fast Food", "Desserts",
-        "Chicken", "Vegetarian", "Spicy", "Sweet", "Healthy"
+        "Pizza",
+        "Biryani",
+        "Burgers",
+        "Coffee",
+        "Ice Cream",
+        "Chinese",
+        "Italian",
+        "South Indian",
+        "Fast Food",
+        "Desserts",
+        "Chicken",
+        "Vegetarian",
+        "Spicy",
+        "Sweet",
+        "Healthy",
       ]);
     }
   }
@@ -472,10 +514,11 @@ class SwiggySearchProvider extends ChangeNotifier {
     }
 
     try {
-      print("🔍 Searching for: '$query' (using enhanced multi-collection search)");
+      print(
+        "🔍 Searching for: '$query' (using enhanced multi-collection search)",
+      );
       // **ENHANCED: Use multi-collection search with grouped results**
       performEnhancedMultiCollectionSearch(query);
-
     } catch (e) {
       print("❌ Search error: $e");
       isSearching.value = false;
@@ -518,20 +561,31 @@ class SwiggySearchProvider extends ChangeNotifier {
     categoryResults.assignAll(categories);
 
     // Update counts
-    currentResultCount.value = initialProducts.length + initialRestaurants.length + categories.length;
+    currentResultCount.value =
+        initialProducts.length + initialRestaurants.length + categories.length;
     totalAvailableResults.value = results.length;
 
     // Check if there are more results
-    hasMoreResults.value = _remainingProducts.isNotEmpty || _remainingRestaurants.isNotEmpty || _remainingCategories.isNotEmpty;
+    hasMoreResults.value =
+        _remainingProducts.isNotEmpty ||
+        _remainingRestaurants.isNotEmpty ||
+        _remainingCategories.isNotEmpty;
 
     // Fallback: If we have any results, show Load More button (for better UX)
-    if (!hasMoreResults.value && (initialProducts.isNotEmpty || initialRestaurants.isNotEmpty || categories.isNotEmpty)) {
+    if (!hasMoreResults.value &&
+        (initialProducts.isNotEmpty ||
+            initialRestaurants.isNotEmpty ||
+            categories.isNotEmpty)) {
       hasMoreResults.value = true;
       print("📊 Fallback: Showing Load More button for better UX");
     }
 
-    print("📊 Search results: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${categories.length} categories");
-    print("📊 Remaining: ${_remainingProducts.length} products, ${_remainingRestaurants.length} restaurants, ${_remainingCategories.length} categories");
+    print(
+      "📊 Search results: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${categories.length} categories",
+    );
+    print(
+      "📊 Remaining: ${_remainingProducts.length} products, ${_remainingRestaurants.length} restaurants, ${_remainingCategories.length} categories",
+    );
     print("📊 Has more results: ${hasMoreResults.value}");
   }
 
@@ -579,9 +633,13 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       print("Total restaurants loaded: ${allRestaurants.length}");
 
-      var matches = allRestaurants.where((r) =>
-      (r.title != null && r.title!.toLowerCase().contains(lowerQuery))
-      ).toList();
+      var matches = allRestaurants
+          .where(
+            (r) =>
+                (r.title != null &&
+                r.title!.toLowerCase().contains(lowerQuery)),
+          )
+          .toList();
 
       print("Restaurants matching '$query': ${matches.length}");
       for (var r in matches) {
@@ -590,7 +648,11 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       if (matches.isEmpty) {
         print("No matches found. Sample restaurant titles:");
-        for (int i = 0; i < (allRestaurants.length > 5 ? 5 : allRestaurants.length); i++) {
+        for (
+          int i = 0;
+          i < (allRestaurants.length > 5 ? 5 : allRestaurants.length);
+          i++
+        ) {
           print("  ${i + 1}. '${allRestaurants[i].title}'");
         }
       }
@@ -607,11 +669,12 @@ class SwiggySearchProvider extends ChangeNotifier {
     }
 
     try {
-      print("🔄 Loading more results (using enhanced multi-collection search)...");
+      print(
+        "🔄 Loading more results (using enhanced multi-collection search)...",
+      );
 
       // **ENHANCED: Use multi-collection search with increased limits**
       loadMoreResultsEnhanced();
-
     } catch (e) {
       print("❌ Error loading more results: $e");
     }
@@ -660,7 +723,6 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // **OPTIMIZED: Use Firestore prefix search for suggestions**
       _updateSuggestionsOptimized(query);
-
     } catch (e) {
       print("❌ Suggestions failed: $e");
       showSuggestions.value = false;
@@ -731,14 +793,22 @@ class SwiggySearchProvider extends ChangeNotifier {
       // **MEMORY SAFE: Use strict limits to prevent OutOfMemoryError**
       try {
         // **CRITICAL: Use memory-safe limits to prevent crashes**
-        allRestaurants = await FireStoreUtils.getAllVendors(limit: MAX_VENDORS_PER_SEARCH); // Limit to 25 restaurants
-        allProducts = await FireStoreUtils.getAllProductsInZone(limit: MAX_PRODUCTS_PER_SEARCH); // Limit to 40 products
+        allRestaurants = await FireStoreUtils.getAllVendors(
+          limit: MAX_VENDORS_PER_SEARCH,
+        ); // Limit to 25 restaurants
+        allProducts = await FireStoreUtils.getAllProductsInZone(
+          limit: MAX_PRODUCTS_PER_SEARCH,
+        ); // Limit to 40 products
         allCategories = await FireStoreUtils.getVendorCategory();
-        print("🔍 Loaded ${allRestaurants.length} restaurants, ${allProducts.length} products, ${allCategories.length} categories (memory safe)");
+        print(
+          "🔍 Loaded ${allRestaurants.length} restaurants, ${allProducts.length} products, ${allCategories.length} categories (memory safe)",
+        );
       } catch (e) {
         print("❌ Error loading fresh data: $e");
         if (e.toString().contains('OutOfMemoryError')) {
-          print("🚨 OutOfMemoryError detected! Using minimal data to prevent crash.");
+          print(
+            "🚨 OutOfMemoryError detected! Using minimal data to prevent crash.",
+          );
           // **FALLBACK: Use even smaller limits to prevent further crashes**
           allRestaurants = restaurantResults.take(5).toList();
           allProducts = productResults.take(10).toList();
@@ -753,50 +823,85 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // ✅ COMPREHENSIVE SEARCH - search in ALL relevant fields based on actual model structure
       var filteredRestaurants = allRestaurants
-          .where((r) =>
-      (r.title != null && r.title!.toLowerCase().contains(lowerQuery)) ||
-          (r.description != null && r.description!.toLowerCase().contains(lowerQuery)) ||
-          (r.location != null && r.location!.toLowerCase().contains(lowerQuery)) ||
-          (r.categoryTitle != null && r.categoryTitle!.any((cat) => cat.toLowerCase().contains(lowerQuery))) ||
-          (r.id != null && r.id!.toLowerCase().contains(lowerQuery)) ||
-          (r.phonenumber != null && r.phonenumber!.toLowerCase().contains(lowerQuery)) ||
-          (r.vType != null && r.vType!.toLowerCase().contains(lowerQuery))
-      )
+          .where(
+            (r) =>
+                (r.title != null &&
+                    r.title!.toLowerCase().contains(lowerQuery)) ||
+                (r.description != null &&
+                    r.description!.toLowerCase().contains(lowerQuery)) ||
+                (r.location != null &&
+                    r.location!.toLowerCase().contains(lowerQuery)) ||
+                (r.categoryTitle != null &&
+                    r.categoryTitle!.any(
+                      (cat) => cat.toLowerCase().contains(lowerQuery),
+                    )) ||
+                (r.id != null && r.id!.toLowerCase().contains(lowerQuery)) ||
+                (r.phonenumber != null &&
+                    r.phonenumber!.toLowerCase().contains(lowerQuery)) ||
+                (r.vType != null &&
+                    r.vType!.toLowerCase().contains(lowerQuery)),
+          )
           .toList();
 
       var filteredProducts = allProducts
-          .where((p) =>
-      (p.name != null && p.name!.toLowerCase().contains(lowerQuery)) ||
-          (p.description != null && p.description!.toLowerCase().contains(lowerQuery)) ||
-          (p.categoryID != null && p.categoryID!.toLowerCase().contains(lowerQuery)) ||
-          (p.vendorID != null && p.vendorID!.toLowerCase().contains(lowerQuery)) ||
-          (p.id != null && p.id!.toLowerCase().contains(lowerQuery)) ||
-          (p.price != null && p.price!.toLowerCase().contains(lowerQuery)) ||
-          (p.disPrice != null && p.disPrice!.toLowerCase().contains(lowerQuery))
-      )
+          .where(
+            (p) =>
+                (p.name != null &&
+                    p.name!.toLowerCase().contains(lowerQuery)) ||
+                (p.description != null &&
+                    p.description!.toLowerCase().contains(lowerQuery)) ||
+                (p.categoryID != null &&
+                    p.categoryID!.toLowerCase().contains(lowerQuery)) ||
+                (p.vendorID != null &&
+                    p.vendorID!.toLowerCase().contains(lowerQuery)) ||
+                (p.id != null && p.id!.toLowerCase().contains(lowerQuery)) ||
+                (p.price != null &&
+                    p.price!.toLowerCase().contains(lowerQuery)) ||
+                (p.disPrice != null &&
+                    p.disPrice!.toLowerCase().contains(lowerQuery)),
+          )
           .toList();
 
       var filteredCategories = allCategories
-          .where((c) =>
-      (c.title != null && c.title!.toLowerCase().contains(lowerQuery)) ||
-          (c.description != null && c.description!.toLowerCase().contains(lowerQuery)) ||
-          (c.id != null && c.id!.toLowerCase().contains(lowerQuery))
-      )
+          .where(
+            (c) =>
+                (c.title != null &&
+                    c.title!.toLowerCase().contains(lowerQuery)) ||
+                (c.description != null &&
+                    c.description!.toLowerCase().contains(lowerQuery)) ||
+                (c.id != null && c.id!.toLowerCase().contains(lowerQuery)),
+          )
           .toList();
 
       // Debug: Show comprehensive filtering results
       print("🔍 COMPREHENSIVE SEARCH RESULTS for '$query':");
-      print("  📍 RESTAURANT MATCHES: ${filteredRestaurants.length} out of ${allRestaurants.length}");
-      print("    - Searched in: title, description, location, categoryTitle, id, phonenumber, vType");
-      print("  🍕 PRODUCT MATCHES: ${filteredProducts.length} out of ${allProducts.length}");
-      print("    - Searched in: name, description, categoryID, vendorID, id, price, disPrice");
-      print("  📂 CATEGORY MATCHES: ${filteredCategories.length} out of ${allCategories.length}");
+      print(
+        "  📍 RESTAURANT MATCHES: ${filteredRestaurants.length} out of ${allRestaurants.length}",
+      );
+      print(
+        "    - Searched in: title, description, location, categoryTitle, id, phonenumber, vType",
+      );
+      print(
+        "  🍕 PRODUCT MATCHES: ${filteredProducts.length} out of ${allProducts.length}",
+      );
+      print(
+        "    - Searched in: name, description, categoryID, vendorID, id, price, disPrice",
+      );
+      print(
+        "  📂 CATEGORY MATCHES: ${filteredCategories.length} out of ${allCategories.length}",
+      );
       print("    - Searched in: title, description, id");
 
       // Enhanced debugging for restaurant search issues
       if (filteredRestaurants.isEmpty && allRestaurants.isNotEmpty) {
-        print("🔍 DEBUG: No restaurant matches found. Checking sample restaurant data:");
-        for (int i = 0; i < (allRestaurants.length > 3 ? 3 : allRestaurants.length); i++) {
+        print(
+          "🔍 DEBUG: No restaurant matches found. Checking sample restaurant data:",
+        );
+        for (
+          int i = 0;
+          i < (allRestaurants.length > 3 ? 3 : allRestaurants.length);
+          i++
+        ) {
           var r = allRestaurants[i];
           print("  Restaurant ${i + 1}:");
           print("    - Title: '${r.title}'");
@@ -807,15 +912,23 @@ class SwiggySearchProvider extends ChangeNotifier {
           print("    - Phone: '${r.phonenumber}'");
           print("    - vType: '${r.vType}'");
           print("    - Query: '$lowerQuery'");
-          print("    - Title contains query: ${r.title?.toLowerCase().contains(lowerQuery) ?? false}");
-          print("    - Description contains query: ${r.description?.toLowerCase().contains(lowerQuery) ?? false}");
+          print(
+            "    - Title contains query: ${r.title?.toLowerCase().contains(lowerQuery) ?? false}",
+          );
+          print(
+            "    - Description contains query: ${r.description?.toLowerCase().contains(lowerQuery) ?? false}",
+          );
         }
       }
 
       // Show sample matches for debugging
       if (filteredRestaurants.isNotEmpty) {
         print("  📍 Sample restaurant matches:");
-        for (int i = 0; i < (filteredRestaurants.length > 3 ? 3 : filteredRestaurants.length); i++) {
+        for (
+          int i = 0;
+          i < (filteredRestaurants.length > 3 ? 3 : filteredRestaurants.length);
+          i++
+        ) {
           var r = filteredRestaurants[i];
           print("    - ${r.title} (${r.location})");
         }
@@ -823,7 +936,11 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       if (filteredProducts.isNotEmpty) {
         print("  🍕 Sample product matches:");
-        for (int i = 0; i < (filteredProducts.length > 3 ? 3 : filteredProducts.length); i++) {
+        for (
+          int i = 0;
+          i < (filteredProducts.length > 3 ? 3 : filteredProducts.length);
+          i++
+        ) {
           var p = filteredProducts[i];
           print("    - ${p.name} (₹${p.price})");
         }
@@ -831,50 +948,74 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       if (filteredCategories.isNotEmpty) {
         print("  📂 Sample category matches:");
-        for (int i = 0; i < (filteredCategories.length > 3 ? 3 : filteredCategories.length); i++) {
+        for (
+          int i = 0;
+          i < (filteredCategories.length > 3 ? 3 : filteredCategories.length);
+          i++
+        ) {
           var c = filteredCategories[i];
           print("    - ${c.title}");
         }
       }
 
       // If no results found, try partial/fuzzy matching
-      if (filteredRestaurants.isEmpty && filteredProducts.isEmpty && filteredCategories.isEmpty) {
+      if (filteredRestaurants.isEmpty &&
+          filteredProducts.isEmpty &&
+          filteredCategories.isEmpty) {
         print("🔍 No exact matches found, trying partial/fuzzy matching...");
 
         // Try partial word matching
         var words = lowerQuery.split(' ');
         for (String word in words) {
-          if (word.length > 2) { // Only search words longer than 2 characters
+          if (word.length > 2) {
+            // Only search words longer than 2 characters
             // Partial restaurant matches
             var partialRestaurants = allRestaurants
-                .where((r) =>
-            (r.title != null && r.title!.toLowerCase().contains(word)) ||
-                (r.description != null && r.description!.toLowerCase().contains(word)) ||
-                (r.location != null && r.location!.toLowerCase().contains(word)) ||
-                (r.categoryTitle != null && r.categoryTitle!.any((cat) => cat.toLowerCase().contains(word))) ||
-                (r.phonenumber != null && r.phonenumber!.toLowerCase().contains(word)) ||
-                (r.vType != null && r.vType!.toLowerCase().contains(word))
-            )
+                .where(
+                  (r) =>
+                      (r.title != null &&
+                          r.title!.toLowerCase().contains(word)) ||
+                      (r.description != null &&
+                          r.description!.toLowerCase().contains(word)) ||
+                      (r.location != null &&
+                          r.location!.toLowerCase().contains(word)) ||
+                      (r.categoryTitle != null &&
+                          r.categoryTitle!.any(
+                            (cat) => cat.toLowerCase().contains(word),
+                          )) ||
+                      (r.phonenumber != null &&
+                          r.phonenumber!.toLowerCase().contains(word)) ||
+                      (r.vType != null &&
+                          r.vType!.toLowerCase().contains(word)),
+                )
                 .toList();
             filteredRestaurants.addAll(partialRestaurants);
 
             // Partial product matches
             var partialProducts = allProducts
-                .where((p) =>
-            (p.name != null && p.name!.toLowerCase().contains(word)) ||
-                (p.description != null && p.description!.toLowerCase().contains(word)) ||
-                (p.price != null && p.price!.toLowerCase().contains(word)) ||
-                (p.disPrice != null && p.disPrice!.toLowerCase().contains(word))
-            )
+                .where(
+                  (p) =>
+                      (p.name != null &&
+                          p.name!.toLowerCase().contains(word)) ||
+                      (p.description != null &&
+                          p.description!.toLowerCase().contains(word)) ||
+                      (p.price != null &&
+                          p.price!.toLowerCase().contains(word)) ||
+                      (p.disPrice != null &&
+                          p.disPrice!.toLowerCase().contains(word)),
+                )
                 .toList();
             filteredProducts.addAll(partialProducts);
 
             // Partial category matches
             var partialCategories = allCategories
-                .where((c) =>
-            (c.title != null && c.title!.toLowerCase().contains(word)) ||
-                (c.description != null && c.description!.toLowerCase().contains(word))
-            )
+                .where(
+                  (c) =>
+                      (c.title != null &&
+                          c.title!.toLowerCase().contains(word)) ||
+                      (c.description != null &&
+                          c.description!.toLowerCase().contains(word)),
+                )
                 .toList();
             filteredCategories.addAll(partialCategories);
           }
@@ -891,15 +1032,23 @@ class SwiggySearchProvider extends ChangeNotifier {
         print("  - Partial category matches: ${filteredCategories.length}");
 
         // If still no results, log the issue
-        if (filteredRestaurants.isEmpty && filteredProducts.isEmpty && filteredCategories.isEmpty) {
-          print("🔍 No matches found in database - this is expected if no data is loaded");
+        if (filteredRestaurants.isEmpty &&
+            filteredProducts.isEmpty &&
+            filteredCategories.isEmpty) {
+          print(
+            "🔍 No matches found in database - this is expected if no data is loaded",
+          );
         }
       }
 
       // Sort results by relevance (products first, then restaurants, then categories)
       filteredProducts.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
-      filteredRestaurants.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
-      filteredCategories.sort((a, b) => (a.title ?? '').compareTo(b.title ?? ''));
+      filteredRestaurants.sort(
+        (a, b) => (a.title ?? '').compareTo(b.title ?? ''),
+      );
+      filteredCategories.sort(
+        (a, b) => (a.title ?? '').compareTo(b.title ?? ''),
+      );
 
       // Show ALL matching results - no artificial limits
       // For initial display, show a reasonable number but keep ALL results available
@@ -907,13 +1056,21 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // Take initial results for display (but keep ALL results available)
       var initialProducts = filteredProducts.take(initialDisplayLimit).toList();
-      var initialRestaurants = filteredRestaurants.take(initialDisplayLimit).toList();
-      var initialCategories = filteredCategories.take(initialDisplayLimit).toList();
+      var initialRestaurants = filteredRestaurants
+          .take(initialDisplayLimit)
+          .toList();
+      var initialCategories = filteredCategories
+          .take(initialDisplayLimit)
+          .toList();
 
       // Store ALL remaining results for pagination (no artificial limits)
       _remainingProducts = filteredProducts.skip(initialDisplayLimit).toList();
-      _remainingRestaurants = filteredRestaurants.skip(initialDisplayLimit).toList();
-      _remainingCategories = filteredCategories.skip(initialDisplayLimit).toList();
+      _remainingRestaurants = filteredRestaurants
+          .skip(initialDisplayLimit)
+          .toList();
+      _remainingCategories = filteredCategories
+          .skip(initialDisplayLimit)
+          .toList();
 
       // Update observable lists
       productResults.assignAll(initialProducts);
@@ -921,11 +1078,20 @@ class SwiggySearchProvider extends ChangeNotifier {
       categoryResults.assignAll(initialCategories);
 
       // Update counts
-      currentResultCount.value = initialProducts.length + initialRestaurants.length + initialCategories.length;
-      totalAvailableResults.value = filteredProducts.length + filteredRestaurants.length + filteredCategories.length;
+      currentResultCount.value =
+          initialProducts.length +
+          initialRestaurants.length +
+          initialCategories.length;
+      totalAvailableResults.value =
+          filteredProducts.length +
+          filteredRestaurants.length +
+          filteredCategories.length;
 
       // Check if there are more results
-      hasMoreResults.value = _remainingProducts.isNotEmpty || _remainingRestaurants.isNotEmpty || _remainingCategories.isNotEmpty;
+      hasMoreResults.value =
+          _remainingProducts.isNotEmpty ||
+          _remainingRestaurants.isNotEmpty ||
+          _remainingCategories.isNotEmpty;
 
       // Debug: Print comprehensive search results
       print("📊 Comprehensive Search Results:");
@@ -933,21 +1099,29 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("  - ALL products found: ${filteredProducts.length}");
       print("  - ALL restaurants found: ${filteredRestaurants.length}");
       print("  - ALL categories found: ${filteredCategories.length}");
-      print("  - Initial display: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${initialCategories.length} categories");
+      print(
+        "  - Initial display: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${initialCategories.length} categories",
+      );
       print("  - Remaining products: ${_remainingProducts.length}");
       print("  - Remaining restaurants: ${_remainingRestaurants.length}");
       print("  - Remaining categories: ${_remainingCategories.length}");
       print("  - Has more results: ${hasMoreResults.value}");
 
       // Fallback: If we have any results but no remaining, still show Load More for better UX
-      if (!hasMoreResults.value && (initialProducts.isNotEmpty || initialRestaurants.isNotEmpty || filteredCategories.isNotEmpty)) {
+      if (!hasMoreResults.value &&
+          (initialProducts.isNotEmpty ||
+              initialRestaurants.isNotEmpty ||
+              filteredCategories.isNotEmpty)) {
         hasMoreResults.value = true;
         print("📊 Fallback: Showing Load More button for better UX");
       }
 
       // Suggestions (optional with TrieSearch)
       try {
-        searchSuggestions.value = trieSearch.getSuggestions(lowerQuery, maxSuggestions: MAX_SUGGESTIONS);
+        searchSuggestions.value = trieSearch.getSuggestions(
+          lowerQuery,
+          maxSuggestions: MAX_SUGGESTIONS,
+        );
       } catch (e) {
         print("❌ Error getting suggestions: $e");
         searchSuggestions.clear();
@@ -956,12 +1130,13 @@ class SwiggySearchProvider extends ChangeNotifier {
       // Save to recent searches
       _saveRecentSearch(query);
 
-      print("📊 Enhanced search results: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${filteredCategories.length} categories");
+      print(
+        "📊 Enhanced search results: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${filteredCategories.length} categories",
+      );
       print("📊 Total available: ${totalAvailableResults.value} results");
 
       // **MEMORY MONITORING: Log memory usage after search**
       logMemoryUsage("After Search Completion");
-
     } catch (e) {
       print("❌ Enhanced search error: $e");
       if (e.toString().contains('OutOfMemoryError')) {
@@ -1016,7 +1191,8 @@ class SwiggySearchProvider extends ChangeNotifier {
   bool _isMemoryUsageSafe() {
     try {
       // Check if we're approaching memory limits
-      int totalItems = trieSearch.itemCount +
+      int totalItems =
+          trieSearch.itemCount +
           restaurantResults.length +
           productResults.length +
           categoryResults.length +
@@ -1064,14 +1240,15 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // Clear some Trie data if it's too large
       if (trieSearch.itemCount > 100) {
-        print("⚠️ Trie has ${trieSearch.itemCount} items, clearing to prevent memory issues");
+        print(
+          "⚠️ Trie has ${trieSearch.itemCount} items, clearing to prevent memory issues",
+        );
         trieSearch.clear();
         dataLoaded.value = false;
       }
 
       print("✅ Emergency cleanup completed");
       logMemoryUsage("After Emergency Cleanup");
-
     } catch (e) {
       print("❌ Error during emergency cleanup: $e");
     }
@@ -1205,7 +1382,10 @@ class SwiggySearchProvider extends ChangeNotifier {
           .collection('vendors')
           .where('isActive', isEqualTo: true)
           .where('title', isGreaterThanOrEqualTo: query)
-          .where('title', isLessThan: query + '\uf8ff') // \uf8ff is the highest Unicode character
+          .where(
+            'title',
+            isLessThan: query + '\uf8ff',
+          ) // \uf8ff is the highest Unicode character
           .limit(limit ~/ 2); // Half the limit for vendors
 
       QuerySnapshot vendorSnapshot = await vendorQuery.get();
@@ -1249,7 +1429,10 @@ class SwiggySearchProvider extends ChangeNotifier {
     return (vendor.title?.toLowerCase().contains(lowerQuery) ?? false) ||
         (vendor.description?.toLowerCase().contains(lowerQuery) ?? false) ||
         (vendor.location?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (vendor.categoryTitle?.any((cat) => cat.toLowerCase().contains(lowerQuery)) ?? false) ||
+        (vendor.categoryTitle?.any(
+              (cat) => cat.toLowerCase().contains(lowerQuery),
+            ) ??
+            false) ||
         (vendor.id?.toLowerCase().contains(lowerQuery) ?? false) ||
         (vendor.phonenumber?.toLowerCase().contains(lowerQuery) ?? false) ||
         (vendor.vType?.toLowerCase().contains(lowerQuery) ?? false);
@@ -1286,8 +1469,14 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // **PARALLEL SEARCH: Search vendors and products simultaneously using Firestore**
       final futures = await Future.wait([
-        _searchVendorsWithFirestore(query: query, limit: MAX_VENDORS_PER_SEARCH),
-        _searchProductsWithFirestore(query: query, limit: MAX_PRODUCTS_PER_SEARCH),
+        _searchVendorsWithFirestore(
+          query: query,
+          limit: MAX_VENDORS_PER_SEARCH,
+        ),
+        _searchProductsWithFirestore(
+          query: query,
+          limit: MAX_PRODUCTS_PER_SEARCH,
+        ),
         FireStoreUtils.getVendorCategory(), // Categories are usually small
       ]);
 
@@ -1308,7 +1497,8 @@ class SwiggySearchProvider extends ChangeNotifier {
       categoryResults.assignAll(filteredCategories);
 
       // Check if there are more results - FIXED: hasMoreResults should be true when we haven't reached limits yet
-      hasMoreResults.value = vendorResults.length < MAX_VENDORS_PER_SEARCH ||
+      hasMoreResults.value =
+          vendorResults.length < MAX_VENDORS_PER_SEARCH ||
           productResults.length < MAX_PRODUCTS_PER_SEARCH;
 
       // Save to recent searches
@@ -1326,7 +1516,6 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // **MEMORY MONITORING: Log memory usage after search**
       logMemoryUsage("After Optimized Search");
-
     } catch (e) {
       print("❌ Optimized search error: $e");
       if (e.toString().contains('OutOfMemoryError')) {
@@ -1375,12 +1564,16 @@ class SwiggySearchProvider extends ChangeNotifier {
       productResults.addAll(moreProducts);
 
       // Update pagination state - FIXED: hasMoreResults should be true when we haven't reached limits yet
-      hasMoreResults.value = moreVendors.length < MAX_VENDORS_PER_SEARCH ||
+      hasMoreResults.value =
+          moreVendors.length < MAX_VENDORS_PER_SEARCH ||
           moreProducts.length < MAX_PRODUCTS_PER_SEARCH;
 
-      print("📊 Loaded more results via Firestore: ${moreVendors.length} vendors, ${moreProducts.length} products");
-      print("📊 Total results: ${restaurantResults.length} vendors, ${productResults.length} products");
-
+      print(
+        "📊 Loaded more results via Firestore: ${moreVendors.length} vendors, ${moreProducts.length} products",
+      );
+      print(
+        "📊 Total results: ${restaurantResults.length} vendors, ${productResults.length} products",
+      );
     } catch (e) {
       print("❌ Error loading more results via Firestore: $e");
     } finally {
@@ -1415,12 +1608,14 @@ class SwiggySearchProvider extends ChangeNotifier {
       }
 
       // Remove duplicates and limit
-      final uniqueSuggestions = suggestionStrings.toSet().take(MAX_SUGGESTIONS).toList();
+      final uniqueSuggestions = suggestionStrings
+          .toSet()
+          .take(MAX_SUGGESTIONS)
+          .toList();
       searchSuggestions.assignAll(uniqueSuggestions);
       showSuggestions.value = uniqueSuggestions.isNotEmpty;
 
       print("💡 Showing ${uniqueSuggestions.length} suggestions via Firestore");
-
     } catch (e) {
       print("❌ Suggestions failed: $e");
       showSuggestions.value = false;
@@ -1454,8 +1649,9 @@ class SwiggySearchProvider extends ChangeNotifier {
       }
       // Save to recent searches
       _saveRecentSearch(query);
-      print("📊 Enhanced search completed: ${restaurantResults.length} restaurants, ${productResults.length} products, ${categoryResults.length} categories");
-
+      print(
+        "📊 Enhanced search completed: ${restaurantResults.length} restaurants, ${productResults.length} products, ${categoryResults.length} categories",
+      );
     } catch (e) {
       print("❌ Enhanced search failed: $e");
       // Fallback to current method
@@ -1483,11 +1679,19 @@ class SwiggySearchProvider extends ChangeNotifier {
         'vendors': vendorResults,
         'products': productResults,
         'categories': categoryResults,
-        'totalResults': vendorResults.length + productResults.length + categoryResults.length,
+        'totalResults':
+            vendorResults.length +
+            productResults.length +
+            categoryResults.length,
       };
     } catch (e) {
       print("❌ Primary search failed: $e");
-      return {'vendors': <VendorModel>[], 'products': <ProductModel>[], 'categories': <VendorCategoryModel>[], 'totalResults': 0};
+      return {
+        'vendors': <VendorModel>[],
+        'products': <ProductModel>[],
+        'categories': <VendorCategoryModel>[],
+        'totalResults': 0,
+      };
     }
   }
 
@@ -1510,16 +1714,27 @@ class SwiggySearchProvider extends ChangeNotifier {
         'vendors': vendorResults,
         'products': productResults,
         'categories': categoryResults,
-        'totalResults': vendorResults.length + productResults.length + categoryResults.length,
+        'totalResults':
+            vendorResults.length +
+            productResults.length +
+            categoryResults.length,
       };
     } catch (e) {
       print("❌ Fallback search failed: $e");
-      return {'vendors': <VendorModel>[], 'products': <ProductModel>[], 'categories': <VendorCategoryModel>[], 'totalResults': 0};
+      return {
+        'vendors': <VendorModel>[],
+        'products': <ProductModel>[],
+        'categories': <VendorCategoryModel>[],
+        'totalResults': 0,
+      };
     }
   }
 
   /// **OPTIMIZED VENDOR SEARCH - Main fields**
-  Future<List<VendorModel>> _searchVendorsOptimized(String query, int limit) async {
+  Future<List<VendorModel>> _searchVendorsOptimized(
+    String query,
+    int limit,
+  ) async {
     try {
       print("🔍 Optimized vendor search for: '$query' (limit: $limit)");
 
@@ -1553,7 +1768,11 @@ class SwiggySearchProvider extends ChangeNotifier {
       return [];
     }
   }
-  Future<List<ProductModel>> _searchProductsOptimized(String query, int limit) async {
+
+  Future<List<ProductModel>> _searchProductsOptimized(
+    String query,
+    int limit,
+  ) async {
     try {
       print("🔍 Optimized product search for: '$query' (limit: $limit)");
 
@@ -1566,15 +1785,16 @@ class SwiggySearchProvider extends ChangeNotifier {
             .where('zoneId', isEqualTo: Constant.selectedZone!.id.toString())
             .get();
 
-        allowedVendorIds =
-            vendorSnapshot.docs.map((e) => e.id.toString()).toList();
+        allowedVendorIds = vendorSnapshot.docs
+            .map((e) => e.id.toString())
+            .toList();
         print("✅ Found ${allowedVendorIds.length} vendors in this zone");
       }
 
       // ✅ STEP 2: Query published products only
       Query firestoreQuery = FirebaseFirestore.instance
           .collection(CollectionName.vendorProducts)
-      // .where('publish', isEqualTo: true)
+          // .where('publish', isEqualTo: true)
           .limit(limit);
 
       QuerySnapshot querySnapshot = await firestoreQuery.get();
@@ -1601,7 +1821,9 @@ class SwiggySearchProvider extends ChangeNotifier {
         }
       }
 
-      print("✅ Found ${results.length} zone-filtered products via optimized search");
+      print(
+        "✅ Found ${results.length} zone-filtered products via optimized search",
+      );
       return results;
     } catch (e) {
       print("❌ Optimized product search failed: $e");
@@ -1646,7 +1868,10 @@ class SwiggySearchProvider extends ChangeNotifier {
   // }
 
   /// **OPTIMIZED CATEGORY SEARCH - Main fields**
-  Future<List<VendorCategoryModel>> _searchCategoriesOptimized(String query, int limit) async {
+  Future<List<VendorCategoryModel>> _searchCategoriesOptimized(
+    String query,
+    int limit,
+  ) async {
     try {
       print("🔍 Optimized category search for: '$query' (limit: $limit)");
 
@@ -1681,7 +1906,10 @@ class SwiggySearchProvider extends ChangeNotifier {
   }
 
   /// **FALLBACK VENDOR SEARCH - Description fields**
-  Future<List<VendorModel>> _searchVendorsByDescription(String query, int limit) async {
+  Future<List<VendorModel>> _searchVendorsByDescription(
+    String query,
+    int limit,
+  ) async {
     try {
       print("🔍 Fallback vendor search in descriptions for: '$query'");
 
@@ -1716,7 +1944,10 @@ class SwiggySearchProvider extends ChangeNotifier {
   }
 
   /// **FALLBACK PRODUCT SEARCH - Description fields**
-  Future<List<ProductModel>> _searchProductsByDescription(String query, int limit) async {
+  Future<List<ProductModel>> _searchProductsByDescription(
+    String query,
+    int limit,
+  ) async {
     try {
       print("🔍 Fallback product search in descriptions for: '$query'");
 
@@ -1751,7 +1982,10 @@ class SwiggySearchProvider extends ChangeNotifier {
   }
 
   /// **FALLBACK CATEGORY SEARCH - Description fields**
-  Future<List<VendorCategoryModel>> _searchCategoriesByDescription(String query, int limit) async {
+  Future<List<VendorCategoryModel>> _searchCategoriesByDescription(
+    String query,
+    int limit,
+  ) async {
     try {
       print("🔍 Fallback category search in descriptions for: '$query'");
 
@@ -1788,7 +2022,10 @@ class SwiggySearchProvider extends ChangeNotifier {
   bool _vendorMatchesPrimaryQuery(VendorModel vendor, String lowerQuery) {
     return (vendor.title?.toLowerCase().contains(lowerQuery) ?? false) ||
         (vendor.location?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (vendor.categoryTitle?.any((cat) => cat.toLowerCase().contains(lowerQuery)) ?? false);
+        (vendor.categoryTitle?.any(
+              (cat) => cat.toLowerCase().contains(lowerQuery),
+            ) ??
+            false);
   }
 
   bool _productMatchesPrimaryQuery(ProductModel product, String lowerQuery) {
@@ -1796,7 +2033,10 @@ class SwiggySearchProvider extends ChangeNotifier {
         (product.categoryID?.toLowerCase().contains(lowerQuery) ?? false);
   }
 
-  bool _categoryMatchesPrimaryQuery(VendorCategoryModel category, String lowerQuery) {
+  bool _categoryMatchesPrimaryQuery(
+    VendorCategoryModel category,
+    String lowerQuery,
+  ) {
     return (category.title?.toLowerCase().contains(lowerQuery) ?? false);
   }
 
@@ -1810,12 +2050,18 @@ class SwiggySearchProvider extends ChangeNotifier {
     return (product.description?.toLowerCase().contains(lowerQuery) ?? false);
   }
 
-  bool _categoryMatchesFallbackQuery(VendorCategoryModel category, String lowerQuery) {
+  bool _categoryMatchesFallbackQuery(
+    VendorCategoryModel category,
+    String lowerQuery,
+  ) {
     return (category.description?.toLowerCase().contains(lowerQuery) ?? false);
   }
 
   /// **MERGE SEARCH RESULTS**
-  void _mergeSearchResults(Map<String, dynamic> primary, Map<String, dynamic> fallback) {
+  void _mergeSearchResults(
+    Map<String, dynamic> primary,
+    Map<String, dynamic> fallback,
+  ) {
     // Combine primary and fallback results, avoiding duplicates
     final combinedVendors = <VendorModel>[];
     final combinedProducts = <ProductModel>[];
@@ -1824,7 +2070,9 @@ class SwiggySearchProvider extends ChangeNotifier {
     // Add primary results
     combinedVendors.addAll(primary['vendors'] as List<VendorModel>);
     combinedProducts.addAll(primary['products'] as List<ProductModel>);
-    combinedCategories.addAll(primary['categories'] as List<VendorCategoryModel>);
+    combinedCategories.addAll(
+      primary['categories'] as List<VendorCategoryModel>,
+    );
 
     // Add fallback results (avoiding duplicates)
     for (var vendor in fallback['vendors'] as List<VendorModel>) {
@@ -1851,17 +2099,22 @@ class SwiggySearchProvider extends ChangeNotifier {
       'categories': combinedCategories,
     });
 
-    print("📊 Merged search results: ${combinedVendors.length} vendors, ${combinedProducts.length} products, ${combinedCategories.length} categories");
+    print(
+      "📊 Merged search results: ${combinedVendors.length} vendors, ${combinedProducts.length} products, ${combinedCategories.length} categories",
+    );
   }
 
   /// **UPDATE SEARCH RESULTS**
   void _updateSearchResults(Map<String, dynamic> results) {
     restaurantResults.assignAll(results['vendors'] as List<VendorModel>);
     productResults.assignAll(results['products'] as List<ProductModel>);
-    categoryResults.assignAll(results['categories'] as List<VendorCategoryModel>);
+    categoryResults.assignAll(
+      results['categories'] as List<VendorCategoryModel>,
+    );
 
     // **FIX: Update counts properly**
-    final totalResults = (results['vendors'] as List).length +
+    final totalResults =
+        (results['vendors'] as List).length +
         (results['products'] as List).length +
         (results['categories'] as List).length;
 
@@ -1869,11 +2122,14 @@ class SwiggySearchProvider extends ChangeNotifier {
     totalAvailableResults.value = totalResults;
 
     // Update pagination state - FIXED: hasMoreResults should be true when we haven't reached limits yet
-    hasMoreResults.value = (results['vendors'] as List).length < RESTAURANT_SEARCH_LIMIT ||
+    hasMoreResults.value =
+        (results['vendors'] as List).length < RESTAURANT_SEARCH_LIMIT ||
         (results['products'] as List).length < PRODUCT_SEARCH_LIMIT ||
         (results['categories'] as List).length < CATEGORY_SEARCH_LIMIT;
 
-    print("📊 Updated search results: ${restaurantResults.length} restaurants, ${productResults.length} products, ${categoryResults.length} categories");
+    print(
+      "📊 Updated search results: ${restaurantResults.length} restaurants, ${productResults.length} products, ${categoryResults.length} categories",
+    );
     print("📊 Total results: $totalResults");
   }
 
@@ -1941,19 +2197,27 @@ class SwiggySearchProvider extends ChangeNotifier {
       }
 
       // **UPDATE COUNTS**
-      final totalResults = restaurantResults.length + productResults.length + categoryResults.length;
+      final totalResults =
+          restaurantResults.length +
+          productResults.length +
+          categoryResults.length;
       currentResultCount.value = totalResults;
       totalAvailableResults.value = totalResults;
 
       // **UPDATE PAGINATION STATE - FIXED: hasMoreResults should be false if we got no new results**
-      final totalNewResults = newVendorsAdded + newProductsAdded + newCategoriesAdded;
-      hasMoreResults.value = totalNewResults > 0; // Only true if we actually got new results
+      final totalNewResults =
+          newVendorsAdded + newProductsAdded + newCategoriesAdded;
+      hasMoreResults.value =
+          totalNewResults > 0; // Only true if we actually got new results
 
-      print("📊 Load more completed: ${restaurantResults.length} restaurants, ${productResults.length} products, ${categoryResults.length} categories");
-      print("📊 New results added: $newVendorsAdded vendors, $newProductsAdded products, $newCategoriesAdded categories");
+      print(
+        "📊 Load more completed: ${restaurantResults.length} restaurants, ${productResults.length} products, ${categoryResults.length} categories",
+      );
+      print(
+        "📊 New results added: $newVendorsAdded vendors, $newProductsAdded products, $newCategoriesAdded categories",
+      );
       print("📊 Total results after load more: $totalResults");
       print("📊 Has more results: ${hasMoreResults.value}");
-
     } catch (e) {
       print("❌ Load more enhanced failed: $e");
     } finally {
@@ -1961,17 +2225,3 @@ class SwiggySearchProvider extends ChangeNotifier {
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-

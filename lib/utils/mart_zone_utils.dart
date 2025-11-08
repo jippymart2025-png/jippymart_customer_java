@@ -275,11 +275,6 @@ class MartZoneUtils {
   ) async {
     print(" getZoneIdForCoordinates ${latitude} $longitude ");
     try {
-      HomeProvider homeProvider = Provider.of<HomeProvider>(
-        context,
-        listen: false,
-      );
-
       // Get current zone using the API
       final zoneModel = await HomeProvider.getCurrentZone(latitude, longitude);
 

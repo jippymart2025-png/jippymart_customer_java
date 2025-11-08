@@ -170,7 +170,6 @@ class RestaurantStatusManager {
       statusIcon = Icons.check_circle;
       statusText = 'Open';
     }
-
     return {
       'isOpen': isOpenNow,
       'isManuallyClosed': isOpen == false,

@@ -76,7 +76,6 @@ class DashBoardProvider extends ChangeNotifier {
             Constant.userModel!.shippingAddress != null &&
             Constant.userModel!.shippingAddress!.isNotEmpty;
         print('[DASHBOARD] Address check - Has addresses: $hasAddresses');
-
         if (!hasAddresses) {
           print('[DASHBOARD] User has no shipping addresses - showing alert');
           _showAddressRequiredAlert();
@@ -220,7 +219,7 @@ class DashBoardProvider extends ChangeNotifier {
                       child: ElevatedButton(
                         onPressed: () {
                           Get.back();
-                         
+
                           Get.to(() => const AddressListScreen());
                         },
                         style: ElevatedButton.styleFrom(

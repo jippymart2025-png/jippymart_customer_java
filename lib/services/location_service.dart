@@ -208,32 +208,6 @@ class LocationService {
     }
   }
 
-  /// Check if location is within service area
-  // static Future<bool> isLocationInServiceArea(double latitude, double longitude) async {
-  //   try {
-  //     // Get zones and check if location is within any zone
-  //     List<ZoneModel>? zones = await FireStoreUtils.getZone();
-  //
-  //     if (zones != null) {
-  //       for (ZoneModel zone in zones) {
-  //         if (zone.area != null && Constant.isPointInPolygon(
-  //           LatLng(latitude, longitude),
-  //           zone.area!,
-  //         )) {
-  //           Constant.selectedZone = zone;
-  //           Constant.isZoneAvailable = true;
-  //           return true;
-  //         }
-  //       }
-  //     }
-  //
-  //     return false;
-  //   } catch (e) {
-  //     log('[LOCATION_SERVICE] Error checking service area: $e');
-  //     return false;
-  //   }
-  // }
-
   /// 🔑 DETECT ZONE ID FOR COORDINATES
   ///
   /// This method detects the zone ID for given coordinates by checking

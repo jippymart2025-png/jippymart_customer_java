@@ -51,11 +51,11 @@ class RestaurantListScreen extends StatelessWidget {
                             ? () {
                                 // Show closed message
                                 final status =
-                                    RestaurantStatusUtils.getRestaurantStatus(
+                                    RestaurantStatusUtils.canAcceptOrders(
                                       vendorModel,
                                     );
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(status['reason'])),
+                                  SnackBar(content: Text('Closed')),
                                 );
                               }
                             : () {
@@ -166,22 +166,20 @@ class RestaurantListScreen extends StatelessWidget {
                                                   );
                                                 }
                                               },
-                                              child: Obx(
-                                                () =>
-                                                    controller.favouriteList
-                                                        .where(
-                                                          (p0) =>
-                                                              p0.restaurantId ==
-                                                              vendorModel.id,
-                                                        )
-                                                        .isNotEmpty
-                                                    ? SvgPicture.asset(
-                                                        "assets/icons/ic_like_fill.svg",
+                                              child:
+                                                  controller.favouriteList
+                                                      .where(
+                                                        (p0) =>
+                                                            p0.restaurantId ==
+                                                            vendorModel.id,
                                                       )
-                                                    : SvgPicture.asset(
-                                                        "assets/icons/ic_like.svg",
-                                                      ),
-                                              ),
+                                                      .isNotEmpty
+                                                  ? SvgPicture.asset(
+                                                      "assets/icons/ic_like_fill.svg",
+                                                    )
+                                                  : SvgPicture.asset(
+                                                      "assets/icons/ic_like.svg",
+                                                    ),
                                             ),
                                           ),
                                         ],

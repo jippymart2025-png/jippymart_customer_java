@@ -418,8 +418,7 @@ Future<void> _processPayment(
   BuildContext context,
 ) async {
   // Run bulletproof validation
-  final validationStartTime = DateTime.now();
-  final canProceed = await controller.validateAndPlaceOrderBulletproof();
+  final canProceed = await controller.validateAndPlaceOrderBulletproof(context);
   if (!canProceed) {
     return;
   }
@@ -444,59 +443,8 @@ Future<void> _processPayment(
   if (controller.selectedPaymentMethod.value == PaymentGateway.stripe.name) {
     ShowToastDialog.showToast("Stripe payment is disabled".tr);
   } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.paypal.name) {
-    controller.paypalPaymentSheet(
-      controller.totalAmount.value.toString(),
-      context,
-    );
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.payStack.name) {
-    controller.payStackPayment(controller.totalAmount.value.toString());
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.mercadoPago.name) {
-    controller.mercadoPagoMakePayment(
-      context: context,
-      amount: controller.totalAmount.value.toString(),
-    );
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.flutterWave.name) {
-    controller.flutterWaveInitiatePayment(
-      context: context,
-      amount: controller.totalAmount.value.toString(),
-    );
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.payFast.name) {
-    controller.payFastPayment(
-      context: context,
-      amount: controller.totalAmount.value.toString(),
-    );
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.paytm.name) {
-    controller.getPaytmCheckSum(
-      context,
-      amount: double.parse(controller.totalAmount.value.toString()),
-    );
-  } else if (controller.selectedPaymentMethod.value ==
       PaymentGateway.cod.name) {
-    controller.placeOrder();
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.wallet.name) {
-    controller.placeOrder();
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.midTrans.name) {
-    controller.midtransMakePayment(
-      context: context,
-      amount: controller.totalAmount.value.toString(),
-    );
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.orangeMoney.name) {
-    controller.orangeMakePayment(
-      context: context,
-      amount: controller.totalAmount.value.toString(),
-    );
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.xendit.name) {
-    controller.xenditPayment(context, controller.totalAmount.value.toString());
+    controller.placeOrder(context);
   } else if (controller.selectedPaymentMethod.value ==
       PaymentGateway.razorpay.name) {
     print("Razorpay payment started");

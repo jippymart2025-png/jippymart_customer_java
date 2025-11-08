@@ -99,8 +99,7 @@ class ProductDetailsView extends StatelessWidget {
                                         FavouriteItemModel
                                         favouriteModel = FavouriteItemModel(
                                           productId: productModel.id,
-                                          storeId:
-                                              controller.vendorModel.value.id,
+                                          storeId: controller.vendorModel.id,
                                           userId:
                                               FireStoreUtils.getCurrentUid(),
                                         );
@@ -117,8 +116,7 @@ class ProductDetailsView extends StatelessWidget {
                                         FavouriteItemModel
                                         favouriteModel = FavouriteItemModel(
                                           productId: productModel.id,
-                                          storeId:
-                                              controller.vendorModel.value.id,
+                                          storeId: controller.vendorModel.id,
                                           userId:
                                               FireStoreUtils.getCurrentUid(),
                                         );
@@ -541,9 +539,7 @@ class ProductDetailsView extends StatelessWidget {
                                             Constant.amountShow(
                                               amount:
                                                   Constant.productCommissionPrice(
-                                                    controller
-                                                        .vendorModel
-                                                        .value,
+                                                    controller.vendorModel,
                                                     price,
                                                   ),
                                             ),
@@ -779,7 +775,7 @@ class ProductDetailsView extends StatelessWidget {
                                     // Check for promotional price
                                     String finalPrice =
                                         Constant.productCommissionPrice(
-                                          controller.vendorModel.value,
+                                          controller.vendorModel,
                                           productModel.price.toString(),
                                         );
                                     String finalDiscountPrice =
@@ -789,7 +785,7 @@ class ProductDetailsView extends StatelessWidget {
                                             0
                                         ? "0"
                                         : Constant.productCommissionPrice(
-                                            controller.vendorModel.value,
+                                            controller.vendorModel,
                                             productModel.disPrice.toString(),
                                           );
 
@@ -800,7 +796,7 @@ class ProductDetailsView extends StatelessWidget {
                                               .toString();
                                       finalDiscountPrice =
                                           Constant.productCommissionPrice(
-                                            controller.vendorModel.value,
+                                            controller.vendorModel,
                                             productModel.price.toString(),
                                           ); // original price for strikethrough
                                     }
@@ -825,7 +821,7 @@ class ProductDetailsView extends StatelessWidget {
                                         .isNotEmpty) {
                                       variantPrice =
                                           Constant.productCommissionPrice(
-                                            controller.vendorModel.value,
+                                            controller.vendorModel,
                                             productModel
                                                     .itemAttribute!
                                                     .variants!

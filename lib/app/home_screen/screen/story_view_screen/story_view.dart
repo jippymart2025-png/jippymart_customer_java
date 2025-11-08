@@ -13,7 +13,6 @@ import 'package:get/get.dart';
 
 import '../../../../widget/story_view/widgets/story_view.dart';
 
-
 // ignore: must_be_immutable
 class MoreStories extends StatefulWidget {
   final List<StoryModel> storyList;
@@ -53,7 +52,6 @@ class MoreStoriesState extends State<MoreStories> {
               Navigator.pop(context);
             }
           }
-
           // Swipe to previous story
           if (details.primaryVelocity != null && details.primaryVelocity! > 0) {
             if (widget.index > 0) {
@@ -70,76 +68,79 @@ class MoreStoriesState extends State<MoreStories> {
         child: Stack(
           children: [
             StoryView(
-                key: ValueKey(widget.index),
-                storyItems: List.generate(
-                  widget.storyList[widget.index].videoUrl.length,
-                  (i) {
-                    return StoryItem.pageVideo(
-                      widget.storyList[widget.index].videoUrl[i],
-                      controller: storyController,
-                    );
-                  },
-                ).toList(),
-                onComplete: () {
-                  debugPrint("--------->");
-                  debugPrint(widget.storyList.length.toString());
-                  debugPrint(widget.index.toString());
-                  if (widget.storyList.length - 1 != widget.index) {
-                    setState(() {
-                      widget.index = widget.index + 1;
-                    });
-                  } else {
-                    Navigator.pop(context);
-                  }
+              key: ValueKey(widget.index),
+              storyItems: List.generate(
+                widget.storyList[widget.index].videoUrl?.length ?? 0,
+                (i) {
+                  return StoryItem.pageVideo(
+                    widget.storyList[widget.index].videoUrl?[i] ?? "",
+                    controller: storyController,
+                  );
                 },
-                progressPosition: ProgressPosition.top,
-                repeat: true,
-                controller: storyController,
-                onVerticalSwipeComplete: (direction) {
-                  if (direction == Direction.down) {
-                    Navigator.pop(context);
-                  }
-                }),
+              ).toList(),
+              onComplete: () {
+                debugPrint("--------->");
+                debugPrint(widget.storyList.length.toString());
+                debugPrint(widget.index.toString());
+                if (widget.storyList.length - 1 != widget.index) {
+                  setState(() {
+                    widget.index = widget.index + 1;
+                  });
+                } else {
+                  Navigator.pop(context);
+                }
+              },
+              progressPosition: ProgressPosition.top,
+              repeat: true,
+              controller: storyController,
+              onVerticalSwipeComplete: (direction) {
+                if (direction == Direction.down) {
+                  Navigator.pop(context);
+                }
+              },
+            ),
             Padding(
               padding: EdgeInsets.only(
-                  top: MediaQuery.of(context).viewPadding.top + 30,
-                  left: 16,
-                  right: 16),
+                top: MediaQuery.of(context).viewPadding.top + 30,
+                left: 16,
+                right: 16,
+              ),
               child: FutureBuilder(
-                  future: FireStoreUtils.getVendorById(
-                      widget.storyList[widget.index].vendorID.toString()),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return SizedBox();
+                future: FireStoreUtils.getVendorById(
+                  widget.storyList[widget.index].vendorID.toString(),
+                ),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return SizedBox();
+                  } else {
+                    if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else if (snapshot.data == null) {
+                      return const SizedBox();
                     } else {
-                      if (snapshot.hasError) {
-                        return Center(child: Text('Error: ${snapshot.error}'));
-                      } else if (snapshot.data == null) {
-                        return const SizedBox();
-                      } else {
-                        VendorModel vendorModel = snapshot.data!;
-                        return InkWell(
-                          onTap: () {
-                            Get.to(const RestaurantDetailsScreen(),
-                                arguments: {"vendorModel": vendorModel});
-                          },
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ClipOval(
-                                child: NetworkImageWidget(
-                                  imageUrl: vendorModel.photo.toString(),
-                                  width: 50,
-                                  height: 50,
-                                  fit: BoxFit.cover,
-                                ),
+                      VendorModel vendorModel = snapshot.data!;
+                      return InkWell(
+                        onTap: () {
+                          Get.to(
+                            const RestaurantDetailsScreen(),
+                            arguments: {"vendorModel": vendorModel},
+                          );
+                        },
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ClipOval(
+                              child: NetworkImageWidget(
+                                imageUrl: vendorModel.photo.toString(),
+                                width: 50,
+                                height: 50,
+                                fit: BoxFit.cover,
                               ),
-                              const SizedBox(
-                                width: 10,
-                              ),
-                              Expanded(
-                                  child: Column(
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
                                 mainAxisAlignment: MainAxisAlignment.start,
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -157,10 +158,9 @@ class MoreStoriesState extends State<MoreStories> {
                                   Row(
                                     children: [
                                       SvgPicture.asset(
-                                          "assets/icons/ic_star.svg"),
-                                      const SizedBox(
-                                        width: 5,
+                                        "assets/icons/ic_star.svg",
                                       ),
+                                      const SizedBox(width: 5),
                                       Text(
                                         "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} reviews",
                                         textAlign: TextAlign.center,
@@ -175,29 +175,34 @@ class MoreStoriesState extends State<MoreStories> {
                                     ],
                                   ),
                                 ],
-                              )),
-                              InkWell(
-                                onTap: () async {
-                                  Get.back();
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.all(10.0),
-                                  decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(30),
-                                      color: Colors.grey),
-                                  child: SvgPicture.asset(
-                                    "assets/icons/ic_close.svg",
-                                    colorFilter: ColorFilter.mode(
-                                        AppThemeData.grey800, BlendMode.srcIn),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                Get.back();
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.all(10.0),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(30),
+                                  color: Colors.grey,
+                                ),
+                                child: SvgPicture.asset(
+                                  "assets/icons/ic_close.svg",
+                                  colorFilter: ColorFilter.mode(
+                                    AppThemeData.grey800,
+                                    BlendMode.srcIn,
                                   ),
                                 ),
                               ),
-                            ],
-                          ),
-                        );
-                      }
+                            ),
+                          ],
+                        ),
+                      );
                     }
-                  }),
+                  }
+                },
+              ),
             ),
           ],
         ),

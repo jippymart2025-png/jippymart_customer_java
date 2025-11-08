@@ -1346,24 +1346,24 @@ class FireStoreUtils {
     }
   }
 
-  static Future<List<StoryModel>> getStory() async {
-    List<StoryModel> storyList = [];
-    await fireStore
-        .collection(CollectionName.story)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            StoryModel walletTransactionModel = StoryModel.fromJson(
-              element.data(),
-            );
-            storyList.add(walletTransactionModel);
-          }
-        })
-        .catchError((error) {
-          log(error.toString());
-        });
-    return storyList;
-  }
+  // static Future<List<StoryModel>> getStory() async {
+  //   List<StoryModel> storyList = [];
+  //   await fireStore
+  //       .collection(CollectionName.story)
+  //       .get()
+  //       .then((value) {
+  //         for (var element in value.docs) {
+  //           StoryModel walletTransactionModel = StoryModel.fromJson(
+  //             element.data(),
+  //           );
+  //           storyList.add(walletTransactionModel);
+  //         }
+  //       })
+  //       .catchError((error) {
+  //         log(error.toString());
+  //       });
+  //   return storyList;
+  // }
 
   static Future<List<CouponModel>> getHomeCoupon() async {
     List<CouponModel> list = [];
@@ -2174,7 +2174,6 @@ class FireStoreUtils {
           defaultValue: "Delivery".tr,
         );
         List<ProductModel> list = [];
-
         // **PERFORMANCE OPTIMIZATION: Add timeout and limit**
         final queryTimeout = const Duration(seconds: 15); // Increased timeout
         const int maxProducts =
@@ -2189,7 +2188,6 @@ class FireStoreUtils {
               .limit(maxProducts) // **PERFORMANCE: Limit results**
               .get()
               .timeout(queryTimeout); // **PERFORMANCE: Add timeout**
-
           for (var element in value.docs) {
             try {
               ProductModel productModel = ProductModel.fromJson(element.data());

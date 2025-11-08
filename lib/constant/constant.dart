@@ -7,6 +7,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
@@ -24,7 +25,6 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/widget/permission_dialog.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
@@ -35,8 +35,6 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
-
-import '../app/home_screen/model/zone_model.dart' show ZoneModel, Zone;
 
 RxList<CartProductModel> cartItem = <CartProductModel>[].obs;
 
@@ -553,65 +551,6 @@ class Constant {
     }
   }
 
-  /// Enhanced Point-in-Polygon algorithm using ray casting
-  /// Returns true if the point is inside the polygon, false otherwise
-  static bool isPointInPolygon(LatLng point, List<GeoPoint> polygon) {
-    // Input validation
-    if (polygon.isEmpty || polygon.length < 3) {
-      print('[ZONE_DEBUG] Invalid polygon: empty or less than 3 points');
-      return false;
-    }
-
-    // Check for null coordinates
-    if (point.latitude == null || point.longitude == null) {
-      print('[ZONE_DEBUG] Invalid point: null coordinates');
-      return false;
-    }
-
-    int crossings = 0;
-    int n = polygon.length;
-
-    for (int i = 0; i < n; i++) {
-      int j = (i + 1) % n;
-
-      double lat1 = polygon[i].latitude!;
-      double lng1 = polygon[i].longitude!;
-      double lat2 = polygon[j].latitude!;
-      double lng2 = polygon[j].longitude!;
-
-      // Check if ray crosses this edge
-      if (((lat1 <= point.latitude) && (lat2 > point.latitude)) ||
-          ((lat1 > point.latitude) && (lat2 <= point.latitude))) {
-        // Calculate intersection point
-        double edgeLat = lat2 - lat1;
-
-        // Avoid division by zero
-        if (edgeLat == 0) {
-          continue;
-        }
-
-        double interpol = (point.latitude - lat1) / edgeLat;
-        double intersectionLng = lng1 + interpol * (lng2 - lng1);
-
-        // Count crossing if intersection is to the right of the point
-        if (point.longitude < intersectionLng) {
-          crossings++;
-        }
-      }
-    }
-
-    bool isInside = (crossings % 2 == 1);
-
-    // Debug logging for troubleshooting
-    if (kDebugMode) {
-      print(
-        '[ZONE_DEBUG] Point (${point.latitude}, ${point.longitude}) -> $crossings crossings -> $isInside',
-      );
-    }
-
-    return isInside;
-  }
-
   static final smtpServer = SmtpServer(
     mailSettings!.host.toString(),
     username: mailSettings!.userName.toString(),
@@ -961,6 +900,71 @@ class Constant {
     double averageSpeed = 40.0;
     double estimatedTime = (distance / averageSpeed) * 60;
     return "${estimatedTime.toStringAsFixed(2)} minutes";
+  }
+
+  static bool isPointInPolygon(LatLng point, List<GeoPoint> polygon) {
+    // Input validation
+    if (polygon.isEmpty || polygon.length < 3) {
+      print('[ZONE_DEBUG] Invalid polygon: empty or less than 3 points');
+      return false;
+    }
+
+    // Check for null coordinates
+    if (point.latitude == null || point.longitude == null) {
+      print('[ZONE_DEBUG] Invalid point: null coordinates');
+      return false;
+    }
+
+    int crossings = 0;
+    int n = polygon.length;
+
+    for (int i = 0; i < n; i++) {
+      int j = (i + 1) % n;
+
+      // Skip if any coordinate is null
+      if (polygon[i].latitude == null ||
+          polygon[i].longitude == null ||
+          polygon[j].latitude == null ||
+          polygon[j].longitude == null) {
+        continue;
+      }
+
+      double lat1 = polygon[i].latitude!;
+      double lng1 = polygon[i].longitude!;
+      double lat2 = polygon[j].latitude!;
+      double lng2 = polygon[j].longitude!;
+
+      // Check if ray crosses this edge
+      if (((lat1 <= point.latitude) && (lat2 > point.latitude)) ||
+          ((lat1 > point.latitude) && (lat2 <= point.latitude))) {
+        // Calculate intersection point
+        double edgeLat = lat2 - lat1;
+
+        // Avoid division by zero
+        if (edgeLat == 0) {
+          continue;
+        }
+
+        double interpol = (point.latitude - lat1) / edgeLat;
+        double intersectionLng = lng1 + interpol * (lng2 - lng1);
+
+        // Count crossing if intersection is to the right of the point
+        if (point.longitude < intersectionLng) {
+          crossings++;
+        }
+      }
+    }
+
+    bool isInside = (crossings % 2 == 1);
+
+    // Debug logging for troubleshooting
+    if (kDebugMode) {
+      print(
+        '[ZONE_DEBUG] Point (${point.latitude}, ${point.longitude}) -> $crossings crossings -> $isInside',
+      );
+    }
+
+    return isInside;
   }
 }
 

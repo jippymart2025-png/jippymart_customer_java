@@ -701,7 +701,7 @@ class MartProductCard extends StatelessWidget {
 
                       // Title
                       Text(
-                        product.name ?? "Unknown Product",
+                        product.name,
                         style: TextStyle(
                           fontSize: _getResponsiveFontSize(screenWidth, 14.0),
                           fontWeight: FontWeight.w800,

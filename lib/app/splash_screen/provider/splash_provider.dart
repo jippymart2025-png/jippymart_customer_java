@@ -5,7 +5,6 @@ import 'package:jippymart_customer/app/address_screens/provider/address_list_pro
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
-import 'dart:async';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -49,8 +48,9 @@ class SplashProvider extends ChangeNotifier {
         return;
       }
       addressListProvider.initFunction();
-      await _loadUserDataFromStorage();
       homeProvider.initFunction(context: context);
+      await _loadUserDataFromStorage();
+
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => DashBoardScreen()),
         (Route<dynamic> route) => false,

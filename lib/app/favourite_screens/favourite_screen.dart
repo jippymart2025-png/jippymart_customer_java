@@ -40,7 +40,7 @@ class FavouriteScreen extends StatelessWidget {
                     fit: BoxFit.cover, // can use contain, fill, repeat
                   ),
                 ),
-                child: controller.isLoading.value
+                child: controller.isLoading
                     ? const AppLoadingWidget(
                         title: "🍕 Loading Your Favorites",
                         subtitle:
@@ -155,15 +155,13 @@ class FavouriteScreen extends StatelessWidget {
                                                     child: InkWell(
                                                       onTap: () {
                                                         controller
-                                                                .favouriteRestaurant
-                                                                .value =
+                                                                .favouriteRestaurant =
                                                             true;
                                                       },
                                                       child: Container(
                                                         decoration:
                                                             controller
-                                                                    .favouriteRestaurant
-                                                                    .value ==
+                                                                    .favouriteRestaurant ==
                                                                 false
                                                             ? null
                                                             : ShapeDecoration(
@@ -196,8 +194,7 @@ class FavouriteScreen extends StatelessWidget {
                                                                       .semiBold,
                                                               color:
                                                                   controller
-                                                                          .favouriteRestaurant
-                                                                          .value ==
+                                                                          .favouriteRestaurant ==
                                                                       true
                                                                   ? AppThemeData
                                                                         .surface
@@ -219,15 +216,13 @@ class FavouriteScreen extends StatelessWidget {
                                                     child: InkWell(
                                                       onTap: () {
                                                         controller
-                                                                .favouriteRestaurant
-                                                                .value =
+                                                                .favouriteRestaurant =
                                                             false;
                                                       },
                                                       child: Container(
                                                         decoration:
                                                             controller
-                                                                    .favouriteRestaurant
-                                                                    .value ==
+                                                                    .favouriteRestaurant ==
                                                                 true
                                                             ? null
                                                             : ShapeDecoration(
@@ -260,8 +255,7 @@ class FavouriteScreen extends StatelessWidget {
                                                                       .semiBold,
                                                               color:
                                                                   controller
-                                                                          .favouriteRestaurant
-                                                                          .value ==
+                                                                          .favouriteRestaurant ==
                                                                       true
                                                                   ? AppThemeData
                                                                         .grey500
@@ -285,9 +279,7 @@ class FavouriteScreen extends StatelessWidget {
                                               horizontal: 18,
                                             ),
                                             child:
-                                                controller
-                                                    .favouriteRestaurant
-                                                    .value
+                                                controller.favouriteRestaurant
                                                 ? controller
                                                           .favouriteVendorList
                                                           .isEmpty

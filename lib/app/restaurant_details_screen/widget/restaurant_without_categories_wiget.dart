@@ -63,7 +63,7 @@ Widget buildProductsWithoutCategories(
               )
               .isNotEmpty) {
             price = Constant.productCommissionPrice(
-              controller.vendorModel.value,
+              controller.vendorModel,
               productModel.itemAttribute!.variants!
                       .where(
                         (element) =>
@@ -77,13 +77,13 @@ Widget buildProductsWithoutCategories(
           }
         } else {
           price = Constant.productCommissionPrice(
-            controller.vendorModel.value,
+            controller.vendorModel,
             productModel.price.toString(),
           );
           disPrice = double.parse(productModel.disPrice.toString()) <= 0
               ? "0"
               : Constant.productCommissionPrice(
-                  controller.vendorModel.value,
+                  controller.vendorModel,
                   productModel.disPrice.toString(),
                 );
         }
@@ -215,7 +215,7 @@ Widget buildProductsWithoutCategories(
                                     child: Text(
                                       Constant.amountShow(
                                         amount: Constant.productCommissionPrice(
-                                          controller.vendorModel.value,
+                                          controller.vendorModel,
                                           productModel.price.toString(),
                                         ),
                                       ),
@@ -406,7 +406,7 @@ Widget buildProductsWithoutCategories(
                           FavouriteItemModel favouriteModel =
                               FavouriteItemModel(
                                 productId: productModel.id,
-                                storeId: controller.vendorModel.value.id,
+                                storeId: controller.vendorModel.id,
                                 userId: FireStoreUtils.getCurrentUid(),
                               );
                           controller.favouriteItemList.removeWhere(
@@ -419,7 +419,7 @@ Widget buildProductsWithoutCategories(
                           FavouriteItemModel favouriteModel =
                               FavouriteItemModel(
                                 productId: productModel.id,
-                                storeId: controller.vendorModel.value.id,
+                                storeId: controller.vendorModel.id,
                                 userId: FireStoreUtils.getCurrentUid(),
                               );
                           controller.favouriteItemList.add(favouriteModel);
@@ -437,7 +437,7 @@ Widget buildProductsWithoutCategories(
                       ),
                     ),
                   ),
-                  controller.isOpen.value == false || Constant.userModel == null
+                  !controller.canAcceptOrders() || Constant.userModel == null
                       ? const SizedBox()
                       : Positioned(
                           bottom: 10,
@@ -590,8 +590,7 @@ Widget buildProductsWithoutCategories(
                                                             finalDiscountPrice =
                                                                 Constant.productCommissionPrice(
                                                                   controller
-                                                                      .vendorModel
-                                                                      .value,
+                                                                      .vendorModel,
                                                                   productModel
                                                                       .price
                                                                       .toString(),
@@ -762,8 +761,7 @@ Widget buildProductsWithoutCategories(
                                                               finalDiscountPrice =
                                                                   Constant.productCommissionPrice(
                                                                     controller
-                                                                        .vendorModel
-                                                                        .value,
+                                                                        .vendorModel,
                                                                     productModel
                                                                         .price
                                                                         .toString(),
@@ -871,8 +869,7 @@ Widget buildProductsWithoutCategories(
                                                       finalDiscountPrice =
                                                           Constant.productCommissionPrice(
                                                             controller
-                                                                .vendorModel
-                                                                .value,
+                                                                .vendorModel,
                                                             productModel.price
                                                                 .toString(),
                                                           ); // original price for strikethrough

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/home_screen/screen/category_restaurant_screen/category_restaurant_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/view_all_category_screen/provider/view_all_categroy_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/view_all_category_screen/view_all_category_screen.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -13,8 +14,8 @@ class CategoryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CategoryViewProvider>(
-      builder: (context, controller, _) {
+    return Consumer2<CategoryViewProvider, ViewAllCategoryProvider>(
+      builder: (context, controller, viewAllCategoryProvider, _) {
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 0),
           child: Column(
@@ -43,6 +44,7 @@ class CategoryView extends StatelessWidget {
                           padding: const EdgeInsets.only(left: 16),
                           child: InkWell(
                             onTap: () {
+                              viewAllCategoryProvider.initFunction();
                               Get.to(const ViewAllCategoryScreen());
                             },
                             borderRadius: BorderRadius.circular(12),

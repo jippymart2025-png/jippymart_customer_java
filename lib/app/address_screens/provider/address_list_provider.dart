@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/services/location_service.dart';
@@ -212,6 +213,64 @@ class AddressListProvider extends ChangeNotifier {
     } catch (e) {
       print('Error converting timestamp: $e');
       return null;
+    }
+  }
+
+  Future<bool> updateUser(UserModel userModel) async {
+    try {
+      final userId = await SqlStorageConst.getFirebaseId();
+      if (userId == null || userId.isEmpty) {
+        print('updateUser: No user ID available');
+        return false;
+      }
+      final headers = await getHeaders();
+      final url =
+          '${AppConst.baseUrl}users/$userId/shipping-address?merge=true';
+      print('🔄 [API] Updating user shipping address: $url');
+      // Convert shipping addresses to API format
+      final shippingAddresses =
+          userModel.shippingAddress?.map((address) {
+            return {
+              'id': address.id,
+              'label': address.addressAs,
+              'address': address.address,
+              'locality': address.locality,
+              'landmark': address.landmark,
+              'city': '', // Add if available in your model
+              'pincode': '', // Add if available in your model
+              'latitude': address.location?.latitude,
+              'longitude': address.location?.longitude,
+              'isDefault': address.isDefault ?? false,
+              'zoneId': address.zoneId,
+            };
+          }).toList() ??
+          [];
+
+      final requestBody = {'shippingAddress': shippingAddresses};
+      print('📦 [API] Request body: ${json.encode(requestBody)}');
+      final response = await http
+          .put(Uri.parse(url), headers: headers, body: json.encode(requestBody))
+          .timeout(const Duration(seconds: 30));
+      print('📡 [API] Response status: ${response.statusCode}');
+      print('📡 [API] Response body: ${response.body}');
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          print('✅ [API] User shipping address updated successfully');
+          Constant.userModel = userModel;
+          notifyListeners();
+          return true;
+        } else {
+          print('❌ [API] Update failed: ${responseData['message']}');
+          return false;
+        }
+      } else {
+        print('❌ [API] HTTP error: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('❌ [API] Exception in updateUser: $e');
+      return false;
     }
   }
 }

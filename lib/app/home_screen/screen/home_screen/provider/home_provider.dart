@@ -2,7 +2,10 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
@@ -358,10 +361,20 @@ class HomeProvider extends ChangeNotifier {
 
   var selectedIndex = 0.obs;
   late CategoryViewProvider categoryViewProvider;
+  late BestRestaurantProvider bestRestaurantProvider;
+  late DashBoardProvider dashBoardProvider;
 
   void initFunction({required BuildContext context}) {
-    categoryViewProvider = Provider.of(context, listen: false);
-    _loadAllDataInParallel();
+    categoryViewProvider = Provider.of<CategoryViewProvider>(
+      context,
+      listen: false,
+    );
+    bestRestaurantProvider = Provider.of<BestRestaurantProvider>(
+      context,
+      listen: false,
+    );
+    dashBoardProvider = Provider.of<DashBoardProvider>(context, listen: false);
+    _loadAllDataInParallel(context);
     scrollController.addListener(() {
       if (scrollController.position.userScrollDirection.toString() ==
           'ScrollDirection.reverse') {
@@ -423,21 +436,12 @@ class HomeProvider extends ChangeNotifier {
 
   late TabController tabController;
 
-  RxList<VendorModel> allNearestRestaurant = <VendorModel>[].obs;
-  RxList<VendorModel> newArrivalRestaurantList = <VendorModel>[].obs;
-  RxList<AdvertisementModel> advertisementList = <AdvertisementModel>[].obs;
-  RxList<VendorModel> popularRestaurantList = <VendorModel>[].obs;
-  RxList<VendorModel> couponRestaurantList = <VendorModel>[].obs;
-  RxList<CouponModel> couponList = <CouponModel>[].obs;
-
-  RxList<StoryModel> storyList = <StoryModel>[].obs;
   RxList<BannerModel> bannerModel = <BannerModel>[].obs;
   RxList<BannerModel> bannerBottomModel = <BannerModel>[].obs;
-
   RxList<FavouriteModel> favouriteList = <FavouriteModel>[].obs;
 
   // Optimized parallel data loading
-  Future<void> _loadAllDataInParallel() async {
+  Future<void> _loadAllDataInParallel(BuildContext context) async {
     log(" _loadAllDataInParallel  second ");
 
     return PerformanceOptimizer.measureAsync('parallel_data_fetch', () async {
@@ -450,10 +454,41 @@ class HomeProvider extends ChangeNotifier {
         categoryViewProvider.loadVendorCategories(),
         _loadBanners(),
         _loadFavorites(),
-        _loadRestaurantsAndRelatedData(),
+        bestRestaurantProvider.loadRestaurantsAndRelatedData(),
       ]);
       print('[DEBUG] All parallel data fetch completed');
+
+      dashBoardProvider.initFunction(context);
       setLoading();
+    });
+  }
+
+  setLoading() async {
+    await Future.delayed(Duration(seconds: 1), () async {
+      print(
+        '[DEBUG] setLoading() - Restaurant count: ${bestRestaurantProvider.allNearestRestaurant.length}',
+      );
+      print(
+        '[DEBUG] setLoading() - Zone available: ${Constant.isZoneAvailable}',
+      );
+      print(
+        '[DEBUG] setLoading() - Selected zone: ${Constant.selectedZone?.name}',
+      );
+
+      if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
+        print(
+          '[DEBUG] setLoading() - No restaurants found, extending loading time',
+        );
+        await Future.delayed(Duration(seconds: 2), () {
+          isLoadingFunction(false);
+        });
+      } else {
+        print(
+          '[DEBUG] setLoading() - Restaurants found, setting loading to false',
+        );
+        isLoadingFunction(false);
+      }
+      notifyListeners();
     });
   }
 
@@ -497,47 +532,6 @@ class HomeProvider extends ChangeNotifier {
     }
   }
 
-  // Get bottom banners
-  // static Future<List<BannerModel>> getHomeBottomBanner() async {
-  //   try {
-  //     String? customerZoneId = Constant.selectedZone?.id;
-  //
-  //     // Build URL with zone_id parameter
-  //     String url = '${AppConst.baseUrl}menu-items/banners/middle';
-  //     if (customerZoneId != null && customerZoneId.isNotEmpty) {
-  //       url += '?zone_id=$customerZoneId';
-  //     }
-  //
-  //     log('[BANNER_API] Fetching bottom banners from: $url');
-  //
-  //     final response = await http.get(Uri.parse(url));
-  //
-  //     if (response.statusCode == 200) {
-  //       final jsonResponse = json.decode(response.body);
-  //
-  //       if (jsonResponse['success'] == true) {
-  //         List<dynamic> data = jsonResponse['data'];
-  //         List<BannerModel> banners = data
-  //             .map((item) => BannerModel.fromJson(item))
-  //             .toList();
-  //
-  //         return banners;
-  //       } else {
-  //         return [];
-  //       }
-  //     } else {
-  //       log('[BANNER_API] HTTP error: ${response.statusCode}');
-  //       throw Exception(
-  //         'Failed to load bottom banners: ${response.statusCode}',
-  //       );
-  //     }
-  //   } catch (e) {
-  //     log('[BANNER_API] Error fetching bottom banners: $e');
-  //     rethrow;
-  //   }
-  // }
-
-  // Load banners in parallel using API
   Future<void> _loadBanners() async {
     print('[DEBUG] Loading banners from API');
 
@@ -588,97 +582,6 @@ class HomeProvider extends ChangeNotifier {
     }
   }
 
-  static Future<List<VendorModel>> getNearestRestaurants({
-    required String zoneId,
-    required double latitude,
-    required double longitude,
-    double radius = 20,
-  }) async {
-    try {
-      final headers = await getHeaders();
-      final url = Uri.parse(
-        '${AppConst.baseUrl}restaurants/nearest?'
-        'zone_id=$zoneId&'
-        'latitude=$latitude&'
-        'longitude=$longitude&'
-        'radius=$radius',
-      );
-
-      print('[RESTAURANT_API] Fetching restaurants from: $url');
-
-      final response = await http.get(url, headers: headers);
-
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        print('getNearestRestaurants ${response.body}');
-        if (jsonResponse['success'] == true) {
-          List<dynamic> data = jsonResponse['data'];
-          List<VendorModel> restaurants = data
-              .map((item) => VendorModel.fromJson(item))
-              .toList();
-          print(
-            '[RESTAURANT_API] Restaurants fetched successfully: ${restaurants.length}',
-          );
-          return restaurants;
-        } else {
-          print('[RESTAURANT_API] API returned success: false');
-          return [];
-        }
-      } else {
-        print('[RESTAURANT_API] HTTP error: ${response.statusCode}');
-        throw Exception('Failed to load restaurants: ${response.statusCode}');
-      }
-    } catch (e) {
-      print('[RESTAURANT_API] Error fetching restaurants: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> _loadRestaurantsAndRelatedData() async {
-    print('[DEBUG] Loading restaurants from API');
-
-    await Future.delayed(Duration(milliseconds: 100));
-    final String? zoneId = Constant.selectedZone?.id;
-    final double latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
-    final double longitude =
-        Constant.selectedLocation.location?.longitude ?? 0.0;
-
-    if (zoneId == null || zoneId.isEmpty) {
-      print('[DEBUG] No zone ID available, skipping restaurant fetch');
-      return;
-    }
-
-    try {
-      // Fetch restaurants from API
-      final restaurants = await getNearestRestaurants(
-        zoneId: zoneId,
-        latitude: latitude,
-        longitude: longitude,
-        radius: double.parse(Constant.radius),
-      );
-      // Clear lists efficiently
-      popularRestaurantList.clear();
-      newArrivalRestaurantList.clear();
-      allNearestRestaurant.clear();
-      advertisementList.clear();
-      // Add all restaurants at once
-      allNearestRestaurant.addAll(restaurants);
-      newArrivalRestaurantList.addAll(restaurants);
-      popularRestaurantList.addAll(restaurants);
-      Constant.restaurantList = allNearestRestaurant;
-      // Load related data in parallel
-      await _loadRelatedDataInParallel(allNearestRestaurant);
-      // Calculate distances and sort
-      await _processRestaurantData(allNearestRestaurant);
-
-      // **DEBUG: Log restaurant diagnostics**
-      logRestaurantDiagnostics();
-    } catch (e) {
-      print('[DEBUG] Error fetching restaurants from API: $e');
-      // You might want to show an error message or use fallback data
-    }
-  }
-
   // Load restaurants and related data in parallel
   // Future<void> _loadRestaurantsAndRelatedData() async {
   //   print('[DEBUG] Loading restaurants and related data');
@@ -715,168 +618,7 @@ class HomeProvider extends ChangeNotifier {
   //   });
   // }
 
-  // Load related data (coupons, stories, ads) in parallel
-  Future<void> _loadRelatedDataInParallel(List<VendorModel> restaurants) async {
-    print('[DEBUG] Loading related data in parallel');
-    final futures = <Future<void>>[];
-    // Load coupons
-    futures.add(
-      FireStoreUtils.getHomeCoupon().then((value) {
-        couponRestaurantList.clear();
-        couponList.clear();
-        for (var element1 in value) {
-          for (var element in restaurants) {
-            if (element1.resturantId == element.id &&
-                element1.expiresAt!.toDate().isAfter(DateTime.now())) {
-              couponList.add(element1);
-              couponRestaurantList.add(element);
-            }
-          }
-        }
-        print('[DEBUG] Coupons loaded: ${couponList.length}');
-      }),
-    );
-
-    // Load stories
-    futures.add(
-      FireStoreUtils.getStory().then((value) {
-        print('[DEBUG] Raw stories from Firebase: ${value.length}');
-        storyList.clear();
-        for (var element1 in value) {
-          print('[DEBUG] Story vendor ID: ${element1.vendorID}');
-          for (var element in restaurants) {
-            if (element1.vendorID == element.id) {
-              storyList.add(element1);
-              print('[DEBUG] Added story for restaurant: ${element.title}');
-            }
-          }
-        }
-        print('[DEBUG] Stories loaded: ${storyList.length}');
-        print('[DEBUG] Story enable setting: ${Constant.storyEnable}');
-      }),
-    );
-
-    // Load advertisements (if enabled)
-    if (Constant.isEnableAdsFeature == true) {
-      futures.add(
-        FireStoreUtils.getAllAdvertisement().then((value) {
-          advertisementList.clear();
-          for (var element1 in value) {
-            for (var element in restaurants) {
-              if (element1.vendorId == element.id) {
-                advertisementList.add(element1);
-              }
-            }
-          }
-          print('[DEBUG] Advertisements loaded: ${advertisementList.length}');
-        }),
-      );
-    }
-
-    // Wait for all related data to load
-    await Future.wait(futures);
-    print('[DEBUG] All related data loaded');
-  }
-
-  // Process restaurant data (distances and sorting)
-  Future<void> _processRestaurantData(List<VendorModel> restaurants) async {
-    print('[DEBUG] Processing restaurant data');
-
-    // Calculate distances in batches
-    await _calculateDistancesInBatches(restaurants);
-
-    // Sort by distance, then by rating
-    allNearestRestaurant.sort((a, b) {
-      double distanceA = Constant.calculateDistance(
-        Constant.selectedLocation.location!.latitude!,
-        Constant.selectedLocation.location!.longitude!,
-        a.latitude!,
-        a.longitude!,
-      );
-      double distanceB = Constant.calculateDistance(
-        Constant.selectedLocation.location!.latitude!,
-        Constant.selectedLocation.location!.longitude!,
-        b.latitude!,
-        b.longitude!,
-      );
-      int distanceCompare = distanceA.compareTo(distanceB);
-      if (distanceCompare != 0) return distanceCompare;
-
-      // If distance is the same, compare by rating (higher first)
-      double ratingA = double.tryParse(a.reviewsSum?.toString() ?? '0') ?? 0;
-      double ratingB = double.tryParse(b.reviewsSum?.toString() ?? '0') ?? 0;
-      return ratingB.compareTo(ratingA);
-    });
-
-    // Sort popular restaurants by review rating
-    popularRestaurantList.sort(
-      (a, b) =>
-          Constant.calculateReview(
-            reviewCount: b.reviewsCount.toString(),
-            reviewSum: b.reviewsSum.toString(),
-          ).compareTo(
-            Constant.calculateReview(
-              reviewCount: a.reviewsCount.toString(),
-              reviewSum: a.reviewsSum.toString(),
-            ),
-          ),
-    );
-
-    // **FIXED: Sort new arrivals by createdAt timestamp**
-    newArrivalRestaurantList.sort((a, b) {
-      DateTime dateA = _parseDateTime(a.createdAt);
-      DateTime dateB = _parseDateTime(b.createdAt);
-      return dateB.compareTo(dateA); // Newest first
-    });
-
-    print('[DEBUG] Restaurant data processing completed');
-  }
-
   // Helper method to parse DateTime from various timestamp formats
-  DateTime _parseDateTime(dynamic timestamp) {
-    if (timestamp == null) {
-      return DateTime.now(); // Fallback to current time
-    }
-
-    // If it's a Firebase Timestamp
-    if (timestamp is Timestamp) {
-      return timestamp.toDate();
-    }
-
-    // If it's a DateTime object
-    if (timestamp is DateTime) {
-      return timestamp;
-    }
-
-    // If it's a String from API
-    if (timestamp is String) {
-      try {
-        // Remove quotes if they exist
-        String cleanTimestamp = timestamp.replaceAll('"', '');
-        return DateTime.parse(cleanTimestamp);
-      } catch (e) {
-        print('Error parsing DateTime from string: $timestamp, error: $e');
-        return DateTime.now(); // Fallback to current time
-      }
-    }
-
-    // If it's a Map (Firestore format)
-    if (timestamp is Map<String, dynamic>) {
-      try {
-        final seconds = timestamp['_seconds'] ?? 0;
-        final nanoseconds = timestamp['_nanoseconds'] ?? 0;
-        return DateTime.fromMillisecondsSinceEpoch(
-          seconds * 1000 + (nanoseconds / 1000000).round(),
-        );
-      } catch (e) {
-        print('Error parsing DateTime from map: $e');
-        return DateTime.now(); // Fallback to current time
-      }
-    }
-
-    // Default fallback
-    return DateTime.now();
-  }
 
   // Process restaurant data (distances and sorting)
   // Future<void> _processRestaurantData(List<VendorModel> restaurants) async {
@@ -1085,13 +827,11 @@ class HomeProvider extends ChangeNotifier {
                 gpsLocation['latitude']!,
                 gpsLocation['longitude']!,
               );
-
           // 🔑 CRITICAL: Detect zone ID for GPS location
           String? detectedZoneId = await _detectZoneIdForCoordinates(
             gpsLocation['latitude']!,
             gpsLocation['longitude']!,
           );
-
           Constant.selectedLocation = ShippingAddress(
             id: 'gps_location_${DateTime.now().millisecondsSinceEpoch}',
             // 🔑 Add unique ID
@@ -1145,140 +885,44 @@ class HomeProvider extends ChangeNotifier {
     double latitude,
     double longitude,
   ) async {
-    // try {
-    //   print(
-    //       '[DEBUG] Starting zone detection for coordinates: $latitude, $longitude');
-    //
-    //   // Get all zones from Firestore
-    //   List<ZoneModel>? zones = await FireStoreUtils.getZone();
-    //
-    //   if (zones == null || zones.isEmpty) {
-    //     print('[DEBUG] No zones available in database');
-    //     return null;
-    //   }
-    //
-    //   print('[DEBUG] Found ${zones.length} zones to check');
-    //
-    //   // Check if coordinates fall within any zone polygon
-    //   for (ZoneModel zone in zones) {
-    //     if (zone.area != null && zone.area!.isNotEmpty) {
-    //       print('[DEBUG] Checking zone: ${zone.name} (${zone.id})');
-    //
-    //       // Use the existing polygon validation logic
-    //       if (Constant.isPointInPolygon(
-    //         LatLng(latitude, longitude),
-    //         zone.area!,
-    //       )) {
-    //         print('[DEBUG] Zone detected: ${zone.name} (${zone.id})');
-    //         return zone.id;
-    //       }
-    //     }
-    //   }
-    //
-    //   print('[DEBUG] Coordinates not within any service zone');
-    //   return null;
-    // } catch (e) {
-    //   print('[DEBUG] Error detecting zone: $e');
-    //   return null;
-    // }
+    try {
+      print(
+        '[DEBUG] Starting zone detection for coordinates: $latitude, $longitude',
+      );
+
+      // If you need to get all zones from Firestore/API, you'd need a separate method
+      // For example: final List<Zone> zones = await getAllZones();
+
+      // For now, using your existing getCurrentZone method
+      final zoneModel = await getCurrentZone(latitude, longitude);
+
+      if (zoneModel == null || zoneModel.zone == null) {
+        print('[DEBUG] No zone available');
+        return null;
+      }
+
+      final zone = zoneModel.zone!;
+      print('[DEBUG] Checking zone: ${zone.name} (${zone.id})');
+
+      // Check if coordinates fall within the zone polygon
+      if (zone.area != null && zone.area!.isNotEmpty) {
+        if (Constant.isPointInPolygon(
+          LatLng(latitude, longitude),
+          zone.area!.cast<GeoPoint>(),
+        )) {
+          print('[DEBUG] Zone detected: ${zone.name} (${zone.id})');
+          return zone.id;
+        }
+      }
+      print('[DEBUG] Coordinates not within the service zone');
+      return null;
+    } catch (e) {
+      print('[DEBUG] Error detecting zone: $e');
+      return null;
+    }
   }
 
   /// **GET LOCATION NAME FROM GPS COORDINATES**
-  String _getLocationNameFromCoordinates(double latitude, double longitude) {
-    // Indian location mappings for better user experience
-    // You can expand this list with more Indian locations as needed
-
-    // Mumbai area
-    if (latitude >= 19.0 &&
-        latitude <= 19.1 &&
-        longitude >= 72.8 &&
-        longitude <= 72.9) {
-      return 'Mumbai, India';
-    }
-
-    // Delhi area
-    if (latitude >= 28.6 &&
-        latitude <= 28.7 &&
-        longitude >= 77.2 &&
-        longitude <= 77.3) {
-      return 'Delhi, India';
-    }
-
-    // Bangalore area
-    if (latitude >= 12.9 &&
-        latitude <= 13.0 &&
-        longitude >= 77.6 &&
-        longitude <= 77.7) {
-      return 'Bangalore, India';
-    }
-
-    // Chennai area
-    if (latitude >= 13.0 &&
-        latitude <= 13.1 &&
-        longitude >= 80.2 &&
-        longitude <= 80.3) {
-      return 'Chennai, India';
-    }
-
-    // Hyderabad area
-    if (latitude >= 17.4 &&
-        latitude <= 17.5 &&
-        longitude >= 78.4 &&
-        longitude <= 78.5) {
-      return 'Hyderabad, India';
-    }
-
-    // Pune area
-    if (latitude >= 18.5 &&
-        latitude <= 18.6 &&
-        longitude >= 73.8 &&
-        longitude <= 73.9) {
-      return 'Pune, India';
-    }
-
-    // Kolkata area
-    if (latitude >= 22.5 &&
-        latitude <= 22.6 &&
-        longitude >= 88.3 &&
-        longitude <= 88.4) {
-      return 'Kolkata, India';
-    }
-
-    // Ahmedabad area
-    if (latitude >= 23.0 &&
-        latitude <= 23.1 &&
-        longitude >= 72.6 &&
-        longitude <= 72.7) {
-      return 'Ahmedabad, India';
-    }
-
-    // Jaipur area
-    if (latitude >= 26.9 &&
-        latitude <= 27.0 &&
-        longitude >= 75.8 &&
-        longitude <= 75.9) {
-      return 'Jaipur, India';
-    }
-
-    // Kochi area
-    if (latitude >= 9.9 &&
-        latitude <= 10.0 &&
-        longitude >= 76.2 &&
-        longitude <= 76.3) {
-      return 'Kochi, India';
-    }
-
-    // Goa area
-    if (latitude >= 15.4 &&
-        latitude <= 15.5 &&
-        longitude >= 73.8 &&
-        longitude <= 73.9) {
-      return 'Goa, India';
-    }
-
-    // If no specific location matches, return a generic location name
-    return 'Current Location';
-  }
 
   /// **DEBUG ALL LOCATION SOURCES**
   Future<void> _debugLocationSources() async {
@@ -1331,60 +975,13 @@ class HomeProvider extends ChangeNotifier {
   }
 
   /// **RESTAURANT VISIBILITY DIAGNOSTICS**
-  void logRestaurantDiagnostics() {
-    if (!kDebugMode) return;
 
-    print('\n🔍 RESTAURANT VISIBILITY DIAGNOSTICS:');
-    print('📋 Zone Available: ${Constant.isZoneAvailable}');
-    print(
-      '📍 Selected Zone: ${Constant.selectedZone?.name ?? "None"} (ID: ${Constant.selectedZone?.id ?? "None"})',
-    );
-    print(
-      '🌍 User Location: ${Constant.selectedLocation.location?.latitude}, ${Constant.selectedLocation.location?.longitude}',
-    );
-    print('📏 Search Radius: ${Constant.radius}km');
-    print('🏪 Total Restaurants: ${allNearestRestaurant.length}');
-    print('🍽️ Popular Restaurants: ${popularRestaurantList.length}');
-    print('🆕 New Arrivals: ${newArrivalRestaurantList.length}');
-    print('💳 Subscription Model: ${Constant.isSubscriptionModelApplied}');
-    print('🔍 END RESTAURANT DIAGNOSTICS\n');
+  getData(BuildContext context) async {
+    await _loadAllDataInParallel(context);
   }
 
-  setLoading() async {
-    await Future.delayed(Duration(seconds: 1), () async {
-      print(
-        '[DEBUG] setLoading() - Restaurant count: ${allNearestRestaurant.length}',
-      );
-      print(
-        '[DEBUG] setLoading() - Zone available: ${Constant.isZoneAvailable}',
-      );
-      print(
-        '[DEBUG] setLoading() - Selected zone: ${Constant.selectedZone?.name}',
-      );
-
-      if (allNearestRestaurant.isEmpty) {
-        print(
-          '[DEBUG] setLoading() - No restaurants found, extending loading time',
-        );
-        await Future.delayed(Duration(seconds: 2), () {
-          isLoadingFunction(false);
-        });
-      } else {
-        print(
-          '[DEBUG] setLoading() - Restaurants found, setting loading to false',
-        );
-        isLoadingFunction(false);
-      }
-      notifyListeners();
-    });
-  }
-
-  getData() async {
-    await _loadAllDataInParallel();
-  }
-
-  Future<void> getRefresh() async {
-    await _loadAllDataInParallel();
+  Future<void> getRefresh(BuildContext context) async {
+    await _loadAllDataInParallel(context);
   }
 
   getFavouriteRestaurant() async {
@@ -1396,31 +993,4 @@ class HomeProvider extends ChangeNotifier {
   }
 
   // Optimized distance calculation in batches
-  Future<void> _calculateDistancesInBatches(List<VendorModel> vendors) async {
-    const int batchSize = 10; // Process 10 vendors at a time
-    for (int i = 0; i < vendors.length; i += batchSize) {
-      final end = (i + batchSize < vendors.length)
-          ? i + batchSize
-          : vendors.length;
-      final batch = vendors.sublist(i, end);
-      // Process batch
-      for (var vendor in batch) {
-        if (vendor.latitude != null && vendor.longitude != null) {
-          vendor.distance = Constant.calculateDistance(
-            Constant.selectedLocation.location!.latitude!,
-            Constant.selectedLocation.location!.longitude!,
-            vendor.latitude!,
-            vendor.longitude!,
-          );
-        } else {
-          vendor.distance = null;
-        }
-      }
-
-      // Allow UI to update between batches
-      if (i + batchSize < vendors.length) {
-        await Future.delayed(Duration(milliseconds: 10));
-      }
-    }
-  }
 }

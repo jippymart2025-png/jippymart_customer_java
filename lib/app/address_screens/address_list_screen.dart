@@ -253,73 +253,102 @@ class AddressListScreen extends StatelessWidget {
   ) {
     showCupertinoModalPopup<void>(
       context: context,
-      builder: (BuildContext context) => CupertinoActionSheet(
-        actions: <CupertinoActionSheetAction>[
-          CupertinoActionSheetAction(
-            onPressed: () async {
-              ShowToastDialog.showLoader("Please wait".tr);
-              List<ShippingAddress> tempShippingAddress = [];
-              for (var element in controller.shippingAddressList) {
-                ShippingAddress addressModel = element;
-                if (addressModel.id ==
-                    controller.shippingAddressList[index].id) {
-                  addressModel.isDefault = true;
-                } else {
-                  addressModel.isDefault = false;
-                }
-                tempShippingAddress.add(element);
-              }
-              controller.userModel.shippingAddress = tempShippingAddress;
-              await FireStoreUtils.updateUser(controller.userModel).then((
-                value,
-              ) {
-                ShowToastDialog.closeLoader();
-                controller.getUser();
+      builder: (BuildContext context) => Consumer<AddressListProvider>(
+        builder: (context, addressListProvider, _) {
+          return CupertinoActionSheet(
+            actions: <CupertinoActionSheetAction>[
+              CupertinoActionSheetAction(
+                onPressed: () async {
+                  ShowToastDialog.showLoader("Please wait".tr);
+                  try {
+                    List<ShippingAddress> tempShippingAddress = [];
+                    for (var element in controller.shippingAddressList) {
+                      ShippingAddress addressModel = element;
+                      if (addressModel.id ==
+                          controller.shippingAddressList[index].id) {
+                        addressModel.isDefault = true;
+                      } else {
+                        addressModel.isDefault = false;
+                      }
+                      tempShippingAddress.add(element);
+                    }
+                    controller.userModel.shippingAddress = tempShippingAddress;
+                    final success = await addressListProvider.updateUser(
+                      controller.userModel,
+                    );
+                    if (success) {
+                      controller.getUser(); // Refresh from API
+                      ShowToastDialog.closeLoader();
+                      Get.back();
+                      ShowToastDialog.showToast("Default address updated".tr);
+                    } else {
+                      ShowToastDialog.closeLoader();
+                      ShowToastDialog.showToast(
+                        "Failed to update default address".tr,
+                      );
+                    }
+                  } catch (e) {
+                    ShowToastDialog.closeLoader();
+                    print('Error setting default address: $e');
+                  }
+                },
+                child: Text(
+                  'Default'.tr,
+                  style: const TextStyle(color: Colors.blue),
+                ),
+              ),
+              CupertinoActionSheetAction(
+                onPressed: () async {
+                  Get.back();
+                  controller.clearData();
+                  controller.setData(controller.shippingAddressList[index]);
+                  AddressListScreen.addAddressBottomSheet(
+                    context,
+                    controller,
+                    index: index,
+                  );
+                },
+                child: const Text('Edit', style: TextStyle(color: Colors.blue)),
+              ),
+              CupertinoActionSheetAction(
+                onPressed: () async {
+                  ShowToastDialog.showLoader("Please wait".tr);
+                  try {
+                    controller.shippingAddressList.removeAt(index);
+                    controller.userModel.shippingAddress =
+                        controller.shippingAddressList;
+                    final success = await addressListProvider.updateUser(
+                      controller.userModel,
+                    );
+                    if (success) {
+                      controller.getUser(); // Refresh from API
+                      ShowToastDialog.closeLoader();
+                      Get.back();
+                      ShowToastDialog.showToast("Address deleted".tr);
+                    } else {
+                      ShowToastDialog.closeLoader();
+                      ShowToastDialog.showToast("Failed to delete address".tr);
+                    }
+                  } catch (e) {
+                    ShowToastDialog.closeLoader();
+                    print('Error deleting address: $e');
+                  }
+                },
+                child: Text(
+                  'Delete'.tr,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+            cancelButton: CupertinoActionSheetAction(
+              isDefaultAction: true,
+              onPressed: () {
                 Get.back();
-              });
-            },
-            child: Text(
-              'Default'.tr,
-              style: const TextStyle(color: Colors.blue),
+              },
+              child: Text('Cancel'.tr),
             ),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () async {
-              Get.back();
-              controller.clearData();
-              controller.setData(controller.shippingAddressList[index]);
-              AddressListScreen.addAddressBottomSheet(
-                context,
-                controller,
-                index: index,
-              );
-            },
-            child: const Text('Edit', style: TextStyle(color: Colors.blue)),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () async {
-              ShowToastDialog.showLoader("Please wait".tr);
-              controller.shippingAddressList.removeAt(index);
-              controller.userModel.shippingAddress =
-                  controller.shippingAddressList;
-              await FireStoreUtils.updateUser(controller.userModel).then((
-                value,
-              ) {
-                controller.getUser();
-                ShowToastDialog.closeLoader();
-                Get.back();
-              });
-            },
-            child: Text('Delete'.tr, style: const TextStyle(color: Colors.red)),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          isDefaultAction: true,
-          onPressed: () {
-            Get.back();
-          },
-          child: Text('Cancel'.tr),
-        ),
+          );
+        },
       ),
     );
   }
@@ -727,123 +756,258 @@ class AddressListScreen extends StatelessWidget {
                   horizontal: 16,
                   vertical: 20,
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.only(bottom: 20),
-                  child: RoundedButtonFill(
-                    isEnabled: !controller.isLoading,
-                    title: "Save Address Details".tr,
-                    height: 5.5,
-                    color: AppThemeData.primary300,
-                    fontSizes: 16,
-                    onPress: () async {
-                      if (controller.location.latitude == null ||
-                          controller.location.longitude == null) {
-                        ShowToastDialog.showToast("Please select Location".tr);
-                      } else if (controller
-                          .houseBuildingTextEditingController
-                          .value
-                          .text
-                          .isEmpty) {
-                        ShowToastDialog.showToast(
-                          "Please Enter Flat / House / Flore / Building".tr,
-                        );
-                      } else if (controller
-                          .localityEditingController
-                          .value
-                          .text
-                          .isEmpty) {
-                        ShowToastDialog.showToast(
-                          "Please Enter Area / Sector / locality".tr,
-                        );
-                      } else {
-                        controller.isLoading = true;
-                        ShowToastDialog.showLoader("Please wait".tr);
-                        if (controller.shippingModel.id != null &&
-                            index != null) {
-                          controller.shippingModel.location =
-                              controller.location;
-                          controller.shippingModel.addressAs =
-                              controller.selectedSaveAs;
-                          controller.shippingModel.address = controller
+                child: Consumer<AddressListProvider>(
+                  builder: (context, addressListProvider, _) {
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 20),
+                      child: RoundedButtonFill(
+                        isEnabled: !controller.isLoading,
+                        title: "Save Address Details".tr,
+                        height: 5.5,
+                        color: AppThemeData.primary300,
+                        fontSizes: 16,
+                        // Replace the existing save button onPress section:
+                        onPress: () async {
+                          if (controller.location.latitude == null ||
+                              controller.location.longitude == null) {
+                            ShowToastDialog.showToast(
+                              "Please select Location".tr,
+                            );
+                          } else if (controller
                               .houseBuildingTextEditingController
                               .value
-                              .text;
-                          controller.shippingModel.locality =
-                              controller.localityEditingController.value.text;
-                          controller.shippingModel.landmark =
-                              controller.landmarkEditingController.value.text;
-                          // 🔑 ZONE DETECTION: Detect and assign zone ID for updated address coordinates
-                          if (controller.location.latitude != null &&
-                              controller.location.longitude != null) {
-                            try {
-                              final zoneId =
-                                  await MartZoneUtils.getZoneIdForCoordinates(
-                                    controller.location.latitude ?? 0.0,
-                                    controller.location.longitude!,
-                                    context,
-                                  );
-                              if (zoneId.isNotEmpty) {
-                                controller.shippingModel.zoneId = zoneId;
-                              } else {}
-                            } catch (e) {}
-                          } else {}
-
-                          controller.shippingAddressList.removeAt(index);
-                          controller.shippingAddressList.insert(
-                            index,
-                            controller.shippingModel,
-                          );
-                        } else {
-                          controller.shippingModel.id = Constant.getUuid();
-                          controller.shippingModel.location =
-                              controller.location;
-                          controller.shippingModel.addressAs =
-                              controller.selectedSaveAs;
-                          controller.shippingModel.address = controller
-                              .houseBuildingTextEditingController
+                              .text
+                              .isEmpty) {
+                            ShowToastDialog.showToast(
+                              "Please Enter Flat / House / Flore / Building".tr,
+                            );
+                          } else if (controller
+                              .localityEditingController
                               .value
-                              .text;
-                          controller.shippingModel.locality =
-                              controller.localityEditingController.value.text;
-                          controller.shippingModel.landmark =
-                              controller.landmarkEditingController.value.text;
-                          controller.shippingModel.isDefault =
-                              controller.shippingAddressList.isEmpty
-                              ? true
-                              : false;
+                              .text
+                              .isEmpty) {
+                            ShowToastDialog.showToast(
+                              "Please Enter Area / Sector / locality".tr,
+                            );
+                          } else {
+                            controller.setLoading(true);
+                            ShowToastDialog.showLoader("Please wait".tr);
 
-                          if (controller.location.latitude != null &&
-                              controller.location.longitude != null) {
                             try {
-                              print(
-                                '🔍 [ADDRESS_SAVE] Starting zone detection for new address...',
+                              // Prepare the shipping address model
+                              final shippingModel = ShippingAddress(
+                                id:
+                                    controller.shippingModel.id ??
+                                    Constant.getUuid(),
+                                location: controller.location,
+                                addressAs: controller.selectedSaveAs,
+                                address: controller
+                                    .houseBuildingTextEditingController
+                                    .value
+                                    .text,
+                                locality: controller
+                                    .localityEditingController
+                                    .value
+                                    .text,
+                                landmark: controller
+                                    .landmarkEditingController
+                                    .value
+                                    .text,
+                                isDefault:
+                                    controller.shippingAddressList.isEmpty
+                                    ? true
+                                    : false,
                               );
-                              final zoneId =
-                                  await MartZoneUtils.getZoneIdForCoordinates(
-                                    controller.location.latitude ?? 0.0,
-                                    controller.location.longitude ?? 0.0,
-                                    context,
-                                  );
 
-                              if (zoneId.isNotEmpty) {
-                                controller.shippingModel.zoneId = zoneId;
-                              } else {}
-                            } catch (e) {}
-                          } else {}
-                          controller.shippingAddressList.add(
-                            controller.shippingModel,
-                          );
-                        }
-                        setState(() {});
-                        controller.userModel.shippingAddress =
-                            controller.shippingAddressList;
-                        await FireStoreUtils.updateUser(controller.userModel);
-                        controller.isLoading = false;
-                        ShowToastDialog.closeLoader();
-                        Get.back();
-                      }
-                    },
-                  ),
+                              // Get zone ID if coordinates are available
+                              if (controller.location.latitude != null &&
+                                  controller.location.longitude != null) {
+                                try {
+                                  print(
+                                    '🔍 [ADDRESS_SAVE] Starting zone detection...',
+                                  );
+                                  final zoneId =
+                                      await MartZoneUtils.getZoneIdForCoordinates(
+                                        controller.location.latitude ?? 0.0,
+                                        controller.location.longitude ?? 0.0,
+                                        context,
+                                      );
+
+                                  if (zoneId.isNotEmpty) {
+                                    shippingModel.zoneId = zoneId;
+                                    print(
+                                      '✅ [ADDRESS_SAVE] Zone ID assigned: $zoneId',
+                                    );
+                                  } else {
+                                    print('⚠️ [ADDRESS_SAVE] No zone ID found');
+                                  }
+                                } catch (e) {
+                                  print(
+                                    '❌ [ADDRESS_SAVE] Zone detection error: $e',
+                                  );
+                                }
+                              }
+
+                              // Update the address list
+                              List<ShippingAddress> updatedAddressList;
+
+                              if (controller.shippingModel.id != null &&
+                                  index != null) {
+                                // Editing existing address
+                                updatedAddressList = List<ShippingAddress>.from(
+                                  controller.shippingAddressList,
+                                );
+                                updatedAddressList[index] = shippingModel;
+                              } else {
+                                // Adding new address
+                                updatedAddressList = List<ShippingAddress>.from(
+                                  controller.shippingAddressList,
+                                );
+                                updatedAddressList.add(shippingModel);
+                              }
+
+                              // Update user model
+                              controller.userModel.shippingAddress =
+                                  updatedAddressList;
+
+                              // Call API to update user
+                              final success = await addressListProvider
+                                  .updateUser(controller.userModel);
+
+                              if (success) {
+                                controller.shippingAddressList =
+                                    updatedAddressList;
+                                controller.getUser();
+                                ShowToastDialog.closeLoader();
+                                Get.back();
+                                ShowToastDialog.showToast(
+                                  "Address saved successfully".tr,
+                                );
+                              } else {
+                                ShowToastDialog.closeLoader();
+                                ShowToastDialog.showToast(
+                                  "Failed to save address".tr,
+                                );
+                              }
+                            } catch (e) {
+                              ShowToastDialog.closeLoader();
+                              print('❌ [ADDRESS_SAVE] Error: $e');
+                              ShowToastDialog.showToast(
+                                "Error saving address".tr,
+                              );
+                            } finally {
+                              controller.setLoading(false);
+                            }
+                          }
+                        },
+                        // onPress: () async {
+                        //   if (controller.location.latitude == null ||
+                        //       controller.location.longitude == null) {
+                        //     ShowToastDialog.showToast("Please select Location".tr);
+                        //   } else if (controller
+                        //       .houseBuildingTextEditingController
+                        //       .value
+                        //       .text
+                        //       .isEmpty) {
+                        //     ShowToastDialog.showToast(
+                        //       "Please Enter Flat / House / Flore / Building".tr,
+                        //     );
+                        //   } else if (controller
+                        //       .localityEditingController
+                        //       .value
+                        //       .text
+                        //       .isEmpty) {
+                        //     ShowToastDialog.showToast(
+                        //       "Please Enter Area / Sector / locality".tr,
+                        //     );
+                        //   } else {
+                        //     controller.isLoading = true;
+                        //     ShowToastDialog.showLoader("Please wait".tr);
+                        //     if (controller.shippingModel.id != null &&
+                        //         index != null) {
+                        //       controller.shippingModel.location =
+                        //           controller.location;
+                        //       controller.shippingModel.addressAs =
+                        //           controller.selectedSaveAs;
+                        //       controller.shippingModel.address = controller
+                        //           .houseBuildingTextEditingController
+                        //           .value
+                        //           .text;
+                        //       controller.shippingModel.locality =
+                        //           controller.localityEditingController.value.text;
+                        //       controller.shippingModel.landmark =
+                        //           controller.landmarkEditingController.value.text;
+                        //       if (controller.location.latitude != null &&
+                        //           controller.location.longitude != null) {
+                        //         try {
+                        //           final zoneId =
+                        //               await MartZoneUtils.getZoneIdForCoordinates(
+                        //                 controller.location.latitude ?? 0.0,
+                        //                 controller.location.longitude!,
+                        //                 context,
+                        //               );
+                        //           if (zoneId.isNotEmpty) {
+                        //             controller.shippingModel.zoneId = zoneId;
+                        //           } else {}
+                        //         } catch (e) {}
+                        //       } else {}
+                        //       controller.shippingAddressList.removeAt(index);
+                        //       controller.shippingAddressList.insert(
+                        //         index,
+                        //         controller.shippingModel,
+                        //       );
+                        //     } else {
+                        //       controller.shippingModel.id = Constant.getUuid();
+                        //       controller.shippingModel.location =
+                        //           controller.location;
+                        //       controller.shippingModel.addressAs =
+                        //           controller.selectedSaveAs;
+                        //       controller.shippingModel.address = controller
+                        //           .houseBuildingTextEditingController
+                        //           .value
+                        //           .text;
+                        //       controller.shippingModel.locality =
+                        //           controller.localityEditingController.value.text;
+                        //       controller.shippingModel.landmark =
+                        //           controller.landmarkEditingController.value.text;
+                        //       controller.shippingModel.isDefault =
+                        //           controller.shippingAddressList.isEmpty
+                        //           ? true
+                        //           : false;
+                        //       if (controller.location.latitude != null &&
+                        //           controller.location.longitude != null) {
+                        //         try {
+                        //           print(
+                        //             '🔍 [ADDRESS_SAVE] Starting zone detection for new address...',
+                        //           );
+                        //           final zoneId =
+                        //               await MartZoneUtils.getZoneIdForCoordinates(
+                        //                 controller.location.latitude ?? 0.0,
+                        //                 controller.location.longitude ?? 0.0,
+                        //                 context,
+                        //               );
+                        //
+                        //           if (zoneId.isNotEmpty) {
+                        //             controller.shippingModel.zoneId = zoneId;
+                        //           } else {}
+                        //         } catch (e) {}
+                        //       } else {}
+                        //       controller.shippingAddressList.add(
+                        //         controller.shippingModel,
+                        //       );
+                        //     }
+                        //     setState(() {});
+                        //     controller.userModel.shippingAddress =
+                        //         controller.shippingAddressList;
+                        //     await FireStoreUtils.updateUser(controller.userModel);
+                        //     controller.isLoading = false;
+                        //     ShowToastDialog.closeLoader();
+                        //     Get.back();
+                        //   }
+                        // },
+                      ),
+                    );
+                  },
                 ),
               ),
             );

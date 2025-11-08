@@ -46,8 +46,9 @@ class PlaytimeProductCard extends StatelessWidget {
       // No need to show loading state - the toast will handle the feedback
 
       // Get the cart controller
-      CartControllerProvider cartControllerProvider =  Provider.of<CartControllerProvider>(context,listen:false);
-      final cartProvider = Provider.of<CartProvider>(context,listen:false);
+      CartControllerProvider cartControllerProvider =
+          Provider.of<CartControllerProvider>(context, listen: false);
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
       // Convert MartItemModel to CartProductModel
       final martVendorID = "mart_${product!.vendorID ?? 'unknown'}";
 
@@ -55,9 +56,9 @@ class PlaytimeProductCard extends StatelessWidget {
         id: product!.id,
         name: product!.name,
         photo: product!.photo,
-        price: product!.price.toString() ?? '0',
+        price: product!.price.toString(),
         discountPrice:
-            product!.disPrice?.toString() ?? product!.price.toString() ?? '0',
+            product!.disPrice?.toString() ?? product!.price.toString(),
         vendorID: martVendorID,
         vendorName: "Jippy Mart",
         categoryId: product!.categoryID,
@@ -108,25 +109,25 @@ class PlaytimeProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return  SizedBox(
+    return SizedBox(
       width: 150,
       child: Card(
-        elevation: 5, // Shadow depth
-        shadowColor: Colors.black26, // Optional: soft shadow
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        elevation: 5,
+        // Shadow depth
+        shadowColor: Colors.black26,
+        // Optional: soft shadow
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         clipBehavior: Clip.antiAlias,
-        color: Colors.white, // Card background
+        color: Colors.white,
+        // Card background
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             GestureDetector(
               onTap: () {
                 if (product != null) {
-                  Get.to(() => MartProductDetailsScreen(
-                    product: product!,
-                  ));
+                  Get.to(() => MartProductDetailsScreen(product: product!));
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
@@ -148,109 +149,115 @@ class PlaytimeProductCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(9),
                   child: imageUrl != null && imageUrl!.isNotEmpty
                       ? NetworkImageWidget(
-                    imageUrl: imageUrl!,
-                    width: 140,
-                    height: 131,
-                    fit: BoxFit.fill,
-                    errorWidget: Container(
-                      width: 140,
-                      height: 131,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFECEAFD),
-                      ),
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported,
-                          color: Colors.grey,
-                          size: 24,
-                        ),
-                      ),
-                    ),
-                  )
+                          imageUrl: imageUrl!,
+                          width: 140,
+                          height: 131,
+                          fit: BoxFit.fill,
+                          errorWidget: Container(
+                            width: 140,
+                            height: 131,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFECEAFD),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_not_supported,
+                                color: Colors.grey,
+                                size: 24,
+                              ),
+                            ),
+                          ),
+                        )
                       : Container(
-                    width:  140,
-                    height: 131,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFECEAFD),
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey,
-                        size: 24,
-                      ),
-                    ),
-                  ),
+                          width: 140,
+                          height: 131,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFECEAFD),
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey,
+                              size: 24,
+                            ),
+                          ),
+                        ),
                 ),
               ),
             ),
-        Padding(
-          padding: const EdgeInsets.only(left: 5,right: 5),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(height: 5,),
-            Text(
-              productName,
-              style: const TextStyle(
-        fontFamily: 'Montserrat',
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-        height: 15 / 12, // line-height: 15px
-        color: Color(0xFF000000),
+            Padding(
+              padding: const EdgeInsets.only(left: 5, right: 5),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: 5),
+                  Text(
+                    productName,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 15 / 12,
+                      // line-height: 15px
+                      color: Color(0xFF000000),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    discount,
+                    style: const TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      height: 15 / 12,
+                      // line-height: 15px
+                      color: Color(0xFF3C720E),
+                    ),
+                  ),
+                  SizedBox(
+                    width: 140,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          currentPrice,
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            height: 15 / 12,
+                            // line-height: 15px
+                            color: Color(0xFFFF0000), // Red color
+                          ),
+                        ),
+                        const SizedBox(width: 8), // Space between prices
+                        GestureDetector(
+                          onTap: () => _handleAddToCart(context),
+                          child: CircleAvatar(
+                            radius: 12,
+                            child: Icon(Icons.add),
+                          ),
+                          // child: const Center(
+                          //   child: Text(
+                          //     'Add',
+                          //     style: TextStyle(
+                          //       fontFamily: 'Montserrat',
+                          //       fontSize: 14,
+                          //       fontWeight: FontWeight.w700,
+                          //       height: 17 / 14, // line-height: 17px
+                          //       color: Colors.white, // White text on purple background
+                          //     ),
+                          //   ),
+                          // ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
             ),
-              Text(
-        discount,
-        style: const TextStyle(
-          fontFamily: 'Montserrat',
-          fontSize: 12,
-          fontWeight: FontWeight.w700,
-          height: 15 / 12, // line-height: 15px
-          color: Color(0xFF3C720E),
-        ),
-              ),
-              SizedBox(
-        width: 140,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              currentPrice,
-              style: const TextStyle(
-                fontFamily: 'Montserrat',
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                height: 15 / 12, // line-height: 15px
-                color: Color(0xFFFF0000), // Red color
-              ),
-            ),
-            const SizedBox(width: 8), // Space between prices
-            GestureDetector(
-              onTap: () => _handleAddToCart(context),
-              child: CircleAvatar(radius: 12,
-                child: Icon(Icons.add,),
-              ),
-              // child: const Center(
-              //   child: Text(
-              //     'Add',
-              //     style: TextStyle(
-              //       fontFamily: 'Montserrat',
-              //       fontSize: 14,
-              //       fontWeight: FontWeight.w700,
-              //       height: 17 / 14, // line-height: 17px
-              //       color: Colors.white, // White text on purple background
-              //     ),
-              //   ),
-              // ),
-            ),
-          ],
-        ),
-              ),
-          ],),
-        )
             // Volume text (600 ml)
             // Positioned(
             //   left: 26, // 42 - 16 (container left offset)

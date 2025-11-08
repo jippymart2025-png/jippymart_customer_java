@@ -20,10 +20,10 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = Provider.of<DashBoardProvider>(context, listen: false);
-      provider.initFunction(context);
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //   final provider = Provider.of<DashBoardProvider>(context, listen: false);
+    //   provider.initFunction(context);
+    // });
   }
 
   @override

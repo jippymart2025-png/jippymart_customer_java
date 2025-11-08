@@ -5,8 +5,11 @@ import 'dart:io';
 import 'dart:math' as maths;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
+import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -59,13 +62,14 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 class CartControllerProvider extends ChangeNotifier {
   Future<void> showPaymentMethodDialog(BuildContext context) async {
-    final canProceed = await validateAndPlaceOrderBulletproof();
+    final canProceed = await validateAndPlaceOrderBulletproof(context);
     if (!canProceed) {
       return;
     }
@@ -459,8 +463,8 @@ class CartControllerProvider extends ChangeNotifier {
   RxDouble originalDeliveryFee = 0.0.obs;
 
   /// Public method to initialize address (for external calls)
-  Future<void> initializeAddress() async {
-    await _initializeAddressWithPriority();
+  Future<void> initializeAddress(BuildContext context) async {
+    await _initializeAddressWithPriority(context);
   }
 
   // void initialLiseSurgeValue(double lat, double lon) async {
@@ -475,10 +479,11 @@ class CartControllerProvider extends ChangeNotifier {
     Map<String, dynamic> weather = await getWeather(lat, lon);
     Map<String, dynamic> rules = await getSurgeRules();
     surgePercent.value = calculateSurgeFee(weather, rules);
+    notifyListeners();
   }
 
   /// 🔑 NEW ADDRESS PRIORITY SYSTEM: saved address > current location > BLOCK ORDER
-  Future<void> _initializeAddressWithPriority() async {
+  Future<void> _initializeAddressWithPriority(BuildContext context) async {
     try {
       print('🏠 [ADDRESS_PRIORITY] ==========================================');
       print('🏠 [ADDRESS_PRIORITY] ADDRESS INITIALIZATION STARTED');
@@ -527,7 +532,7 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '🏠 [ADDRESS_PRIORITY] PRIORITY 2: Attempting to get address from home screen...',
       );
-      final homeScreenAddress = await _getCurrentLocationAddress();
+      final homeScreenAddress = await _getCurrentLocationAddress(context);
 
       if (homeScreenAddress != null) {
         selectedAddress.value = homeScreenAddress;
@@ -575,7 +580,9 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Get home screen address (Constant.selectedLocation) as address
-  Future<ShippingAddress?> _getCurrentLocationAddress() async {
+  Future<ShippingAddress?> _getCurrentLocationAddress(
+    BuildContext context,
+  ) async {
     try {
       print(
         '📍 [HOME_SCREEN_ADDRESS] Attempting to get address from home screen...',
@@ -616,7 +623,11 @@ class CartControllerProvider extends ChangeNotifier {
           print('📍 [HOME_SCREEN_ADDRESS] Coordinates: lat=$lat, lng=$lng');
 
           // 🔑 CRITICAL: Detect zone ID for current location address
-          String? detectedZoneId = await _detectZoneIdForCoordinates(lat, lng);
+          String? detectedZoneId = await _detectZoneIdForCoordinates(
+            lat,
+            lng,
+            context,
+          );
           print(
             '📍 [HOME_SCREEN_ADDRESS] Detected zone ID: ${detectedZoneId ?? "NULL"}',
           );
@@ -689,47 +700,46 @@ class CartControllerProvider extends ChangeNotifier {
   Future<String?> _detectZoneIdForCoordinates(
     double latitude,
     double longitude,
+    BuildContext context,
   ) async {
-    return null;
+    try {
+      print(
+        '[DEBUG] Starting zone detection for coordinates: $latitude, $longitude',
+      );
+      HomeProvider homeProvider = Provider.of<HomeProvider>(
+        context,
+        listen: false,
+      );
+      // If you need to get all zones from Firestore/API, you'd need a separate method
+      // For example: final List<Zone> zones = await getAllZones();
 
-    // try {
-    //   print(
-    //       '🗺️ [ZONE_DETECTION] Starting zone detection for coordinates: $latitude, $longitude');
-    //
-    //   // Get all zones from Firestore
-    //   List<ZoneModel>? zones = await FireStoreUtils.getZone();
-    //
-    //   if (zones == null || zones.isEmpty) {
-    //     print('🗺️ [ZONE_DETECTION] ❌ No zones available in database');
-    //     return null;
-    //   }
-    //
-    //   print('🗺️ [ZONE_DETECTION] Found ${zones.length} zones to check');
-    //
-    //   // Check if coordinates fall within any zone polygon
-    //   for (ZoneModel zone in zones) {
-    //     if (zone.area != null && zone.area!.isNotEmpty) {
-    //       print(
-    //           '🗺️ [ZONE_DETECTION] Checking zone: ${zone.name} (${zone.id})');
-    //
-    //       // Use the existing polygon validation logic
-    //       if (Constant.isPointInPolygon(
-    //         LatLng(latitude, longitude),
-    //         zone.area!,
-    //       )) {
-    //         print(
-    //             '🗺️ [ZONE_DETECTION] ✅ Zone detected: ${zone.name} (${zone.id})');
-    //         return zone.id;
-    //       }
-    //     }
-    //   }
-    //
-    //   print('🗺️ [ZONE_DETECTION] ❌ Coordinates not within any service zone');
-    //   return null;
-    // } catch (e) {
-    //   print('🗺️ [ZONE_DETECTION] ❌ Error detecting zone: $e');
-    //   return null;
-    // }
+      // For now, using your existing getCurrentZone method
+      final zoneModel = await HomeProvider.getCurrentZone(latitude, longitude);
+
+      if (zoneModel == null || zoneModel.zone == null) {
+        print('[DEBUG] No zone available');
+        return null;
+      }
+
+      final zone = zoneModel.zone!;
+      print('[DEBUG] Checking zone: ${zone.name} (${zone.id})');
+
+      // Check if coordinates fall within the zone polygon
+      if (zone.area != null && zone.area!.isNotEmpty) {
+        if (Constant.isPointInPolygon(
+          LatLng(latitude, longitude),
+          zone.area!.cast<GeoPoint>(),
+        )) {
+          print('[DEBUG] Zone detected: ${zone.name} (${zone.id})');
+          return zone.id;
+        }
+      }
+      print('[DEBUG] Coordinates not within the service zone');
+      return null;
+    } catch (e) {
+      print('[DEBUG] Error detecting zone: $e');
+      return null;
+    }
   }
 
   /// Get fallback zone address if user is in service area - DEPRECATED
@@ -861,14 +871,14 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  void initFunction() {
+  void initFunction(BuildContext context) {
     Future.delayed(const Duration(seconds: 3), () {
       _restorePaymentState().then((_) {
         if (isPaymentInProgress.value && _lastPaymentId != null) {
           _checkPendingPaymentAndRecover();
         }
       });
-      _initializeAddressWithPriority();
+      _initializeAddressWithPriority(context);
       getCartData();
       getPaymentSettings();
       validateUserProfile();
@@ -1141,7 +1151,7 @@ class CartControllerProvider extends ChangeNotifier {
   */
 
   /// 🔑 BULLETPROOF ORDER VALIDATION - NEVER FAILS
-  Future<bool> validateAndPlaceOrderBulletproof() async {
+  Future<bool> validateAndPlaceOrderBulletproof(BuildContext context) async {
     final startTime = DateTime.now();
     print('🚀 [BULLETPROOF_ORDER] ==========================================');
     print(
@@ -1174,18 +1184,18 @@ class CartControllerProvider extends ChangeNotifier {
       final user = userModel.value;
       List<String> missingFields = [];
 
-      if (user?.firstName == null ||
-          user!.firstName!.trim().isEmpty ||
+      if (user.firstName == null ||
+          user.firstName!.trim().isEmpty ||
           user.firstName!.trim().length < 2) {
         missingFields.add("First Name (minimum 2 characters)");
       }
-      if (user?.phoneNumber == null ||
-          user!.phoneNumber!.trim().isEmpty ||
+      if (user.phoneNumber == null ||
+          user.phoneNumber!.trim().isEmpty ||
           user.phoneNumber!.trim().length < 10) {
         missingFields.add("Phone Number (minimum 10 digits)");
       }
-      if (user?.email == null ||
-          user!.email!.trim().isEmpty ||
+      if (user.email == null ||
+          user.email!.trim().isEmpty ||
           !user.email!.contains('@')) {
         missingFields.add("Valid Email Address");
       }
@@ -1222,7 +1232,7 @@ class CartControllerProvider extends ChangeNotifier {
     print('🚀 [BULLETPROOF_ORDER] STEP 2: Starting address validation...');
     final addressStartTime = DateTime.now();
 
-    final addressValid = await _validateAddressBulletproof();
+    final addressValid = await _validateAddressBulletproof(context);
 
     final addressDuration = DateTime.now().difference(addressStartTime);
     print(
@@ -1308,8 +1318,8 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Enhanced validation method that ensures fresh data before order placement (LEGACY - USE BULLETPROOF VERSION)
-  Future<bool> validateAndPlaceOrder() async {
-    return await validateAndPlaceOrderBulletproof();
+  Future<bool> validateAndPlaceOrder(BuildContext context) async {
+    return await validateAndPlaceOrderBulletproof(context);
   }
 
   /*
@@ -1451,15 +1461,6 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (e) {
       print('DEBUG: Error caching promotional data for $cacheKey: $e');
     }
-  }
-
-  // **INSTANT METHOD TO GET CACHED PROMOTIONAL DATA (ZERO ASYNC)**
-  Map<String, dynamic>? _getCachedPromotionalData(
-    String productId,
-    String restaurantId,
-  ) {
-    final cacheKey = '$productId-$restaurantId';
-    return _promotionalCalculationCache[cacheKey];
   }
 
   // **INSTANT METHOD TO GET CACHED FREE DELIVERY KM (ZERO ASYNC)**
@@ -3457,282 +3458,6 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Calculate mart delivery charge with Firestore settings
-  void _calculateMartDeliveryWithSettings(Map<String, dynamic> settings) {
-    print('[MART_DELIVERY] 🧮 CALCULATING DELIVERY CHARGE WITH SETTINGS');
-    print('[MART_DELIVERY] ==========================================');
-
-    final baseDeliveryCharge =
-        (settings['base_delivery_charge'] as num?)?.toDouble() ?? 23.0;
-    final freeDeliveryDistanceKm =
-        (settings['free_delivery_distance_km'] as num?)?.toDouble() ?? 7.0;
-    final perKmChargeAboveFreeDistance =
-        (settings['per_km_charge_above_free_distance'] as num?)?.toDouble() ??
-        8.0;
-    final itemTotalThreshold =
-        (settings['item_total_threshold'] as num?)?.toDouble() ?? 99.0;
-    final minimumDeliveryCharges =
-        (settings['minimum_delivery_charges'] as num?)?.toDouble();
-    final minimumDeliveryChargesWithinKm =
-        (settings['minimum_delivery_charges_within_km'] as num?)?.toDouble();
-
-    // Store mart delivery settings for minimum order validation
-    _martDeliverySettings = settings;
-
-    print('[MART_DELIVERY] 📊 DELIVERY CALCULATION PARAMETERS:');
-    print('[MART_DELIVERY]   - Base charge: ₹$baseDeliveryCharge');
-    print(
-      '[MART_DELIVERY]   - Free delivery distance: ${freeDeliveryDistanceKm} km',
-    );
-    print(
-      '[MART_DELIVERY]   - Per km charge above free: ₹$perKmChargeAboveFreeDistance',
-    );
-    print('[MART_DELIVERY]   - Item total threshold: ₹$itemTotalThreshold');
-    print(
-      '[MART_DELIVERY]   - Min delivery charges: ${minimumDeliveryCharges ?? 'Not set'}',
-    );
-    print(
-      '[MART_DELIVERY]   - Min delivery charges within km: ${minimumDeliveryChargesWithinKm ?? 'Not set'}',
-    );
-    print('[MART_DELIVERY]   - Current distance: ${totalDistance.value} km');
-    print('[MART_DELIVERY]   - Current subtotal: ₹${subTotal.value}');
-    print(
-      '[MART_DELIVERY]   - Is self delivery: ${vendorModel.value.isSelfDelivery}',
-    );
-    print(
-      '[MART_DELIVERY]   - Self delivery feature enabled: ${Constant.isSelfDeliveryFeature}',
-    );
-
-    print('[MART_DELIVERY] 🔍 DELIVERY LOGIC ANALYSIS:');
-    print(
-      '[MART_DELIVERY]   - Subtotal (₹${subTotal.value}) >= Threshold (₹$itemTotalThreshold): ${subTotal.value >= itemTotalThreshold}',
-    );
-    print(
-      '[MART_DELIVERY]   - Distance (${totalDistance.value} km) <= Free Distance (${freeDeliveryDistanceKm} km): ${totalDistance.value <= freeDeliveryDistanceKm}',
-    );
-    print(
-      '[MART_DELIVERY]   - Self Delivery: ${vendorModel.value.isSelfDelivery == true && Constant.isSelfDeliveryFeature == true}',
-    );
-
-    if (vendorModel.value.isSelfDelivery == true &&
-        Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = 0.0;
-      print('[MART_DELIVERY] ✅ RESULT: Self delivery - NO CHARGE');
-      print(
-        '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-      );
-      print(
-        '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-      );
-    } else if (subTotal.value >= itemTotalThreshold) {
-      print(
-        '[MART_DELIVERY] 🎯 CASE: Above threshold (₹${subTotal.value} >= ₹$itemTotalThreshold)',
-      );
-      // Above threshold - free delivery within distance
-      if (totalDistance.value <= freeDeliveryDistanceKm) {
-        deliveryCharges.value = 0.0;
-        originalDeliveryFee.value = baseDeliveryCharge;
-        print(
-          '[MART_DELIVERY] ✅ RESULT: FREE DELIVERY - Above threshold and within free distance',
-        );
-        print(
-          '[MART_DELIVERY]   - Distance: ${totalDistance.value} km <= ${freeDeliveryDistanceKm} km (free distance)',
-        );
-        print(
-          '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-        );
-      } else {
-        double extraKm = (totalDistance.value - freeDeliveryDistanceKm)
-            .ceilToDouble();
-        deliveryCharges.value = extraKm * perKmChargeAboveFreeDistance;
-        originalDeliveryFee.value = baseDeliveryCharge + deliveryCharges.value;
-        print(
-          '[MART_DELIVERY] ✅ RESULT: PARTIAL CHARGE - Above threshold but beyond free distance',
-        );
-        print(
-          '[MART_DELIVERY]   - Distance: ${totalDistance.value} km > ${freeDeliveryDistanceKm} km (free distance)',
-        );
-        print('[MART_DELIVERY]   - Extra km: ${extraKm} km');
-        print(
-          '[MART_DELIVERY]   - Extra charge: ${extraKm} km × ₹$perKmChargeAboveFreeDistance = ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-        );
-      }
-    } else {
-      print(
-        '[MART_DELIVERY] 🎯 CASE: Below threshold (₹${subTotal.value} < ₹$itemTotalThreshold)',
-      );
-      // Below threshold - always charge delivery
-      if (totalDistance.value <= freeDeliveryDistanceKm) {
-        deliveryCharges.value = baseDeliveryCharge;
-        originalDeliveryFee.value = baseDeliveryCharge;
-        print(
-          '[MART_DELIVERY] ✅ RESULT: BASE CHARGE - Below threshold, within free distance',
-        );
-        print(
-          '[MART_DELIVERY]   - Distance: ${totalDistance.value} km <= ${freeDeliveryDistanceKm} km (free distance)',
-        );
-        print(
-          '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-        );
-      } else {
-        double extraKm = (totalDistance.value - freeDeliveryDistanceKm)
-            .ceilToDouble();
-        deliveryCharges.value =
-            baseDeliveryCharge + (extraKm * perKmChargeAboveFreeDistance);
-        originalDeliveryFee.value = deliveryCharges.value;
-        print(
-          '[MART_DELIVERY] ✅ RESULT: FULL CHARGE - Below threshold, beyond free distance',
-        );
-        print(
-          '[MART_DELIVERY]   - Distance: ${totalDistance.value} km > ${freeDeliveryDistanceKm} km (free distance)',
-        );
-        print('[MART_DELIVERY]   - Extra km: ${extraKm} km');
-        print('[MART_DELIVERY]   - Base charge: ₹$baseDeliveryCharge');
-        print(
-          '[MART_DELIVERY]   - Extra charge: ${extraKm} km × ₹$perKmChargeAboveFreeDistance = ₹${extraKm * perKmChargeAboveFreeDistance}',
-        );
-        print(
-          '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-        );
-      }
-    }
-
-    // Apply minimum delivery charges if specified
-    print('[MART_DELIVERY] 🔧 APPLYING MINIMUM DELIVERY CHARGES:');
-    if (minimumDeliveryCharges != null &&
-        deliveryCharges.value < minimumDeliveryCharges) {
-      print(
-        '[MART_DELIVERY]   - Current charge (₹${deliveryCharges.value}) < Min charge (₹$minimumDeliveryCharges)',
-      );
-      deliveryCharges.value = minimumDeliveryCharges;
-      print(
-        '[MART_DELIVERY] ✅ Applied minimum delivery charge: ₹$minimumDeliveryCharges',
-      );
-    } else {
-      print(
-        '[MART_DELIVERY]   - No minimum delivery charge applied (not set or not needed)',
-      );
-    }
-
-    if (minimumDeliveryChargesWithinKm != null &&
-        totalDistance.value <= freeDeliveryDistanceKm &&
-        deliveryCharges.value < minimumDeliveryChargesWithinKm) {
-      print(
-        '[MART_DELIVERY]   - Within free distance and current charge (₹${deliveryCharges.value}) < Min charge within km (₹$minimumDeliveryChargesWithinKm)',
-      );
-      deliveryCharges.value = minimumDeliveryChargesWithinKm;
-      print(
-        '[MART_DELIVERY] ✅ Applied minimum delivery charge within free distance: ₹$minimumDeliveryChargesWithinKm',
-      );
-    } else {
-      print(
-        '[MART_DELIVERY]   - No minimum delivery charge within km applied (not set or not needed)',
-      );
-    }
-
-    print('[MART_DELIVERY] ==========================================');
-    print('[MART_DELIVERY] 🎉 FINAL DELIVERY CALCULATION RESULT:');
-    print(
-      '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-    );
-    print(
-      '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-    );
-    print(
-      '[MART_DELIVERY]   - Is delivery free: ${deliveryCharges.value == 0.0 ? 'YES' : 'NO'}',
-    );
-    print('[MART_DELIVERY] ==========================================');
-  }
-
-  /// Calculate mart delivery charge with default values (fallback)
-  void _calculateMartDeliveryWithDefaults() {
-    final baseCharge = 23.0;
-    final perKmCharge = 8.0;
-    final freeDeliveryKm = 7.0;
-    final itemThreshold = 99.0;
-
-    print('[MART_DELIVERY] Using default mart delivery charge calculation');
-    print(
-      '[MART_DELIVERY] Base charge: ₹$baseCharge, Per km: ₹$perKmCharge, Free km: ${freeDeliveryKm}km, Threshold: ₹$itemThreshold, Distance: ${totalDistance.value} km',
-    );
-
-    if (vendorModel.value.isSelfDelivery == true &&
-        Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = 0.0;
-      print('[MART_DELIVERY] Self delivery - no charge');
-    } else if (subTotal.value >= itemThreshold) {
-      // Above threshold - free delivery within distance
-      if (totalDistance.value <= freeDeliveryKm) {
-        deliveryCharges.value = 0.0;
-        originalDeliveryFee.value = baseCharge;
-        print(
-          '[MART_DELIVERY] Default: Free delivery - above threshold and within free distance',
-        );
-      } else {
-        double extraKm = (totalDistance.value - freeDeliveryKm).ceilToDouble();
-        deliveryCharges.value = extraKm * perKmCharge;
-        originalDeliveryFee.value = baseCharge + deliveryCharges.value;
-        print(
-          '[MART_DELIVERY] Default: Above threshold but beyond free distance: ${extraKm} km × ₹$perKmCharge = ₹${deliveryCharges.value}',
-        );
-      }
-    } else {
-      // Below threshold - always charge delivery
-      if (totalDistance.value <= freeDeliveryKm) {
-        deliveryCharges.value = baseCharge;
-        originalDeliveryFee.value = baseCharge;
-        print(
-          '[MART_DELIVERY] Default: Below threshold, within free distance: ₹$baseCharge',
-        );
-      } else {
-        double extraKm = (totalDistance.value - freeDeliveryKm).ceilToDouble();
-        deliveryCharges.value = baseCharge + (extraKm * perKmCharge);
-        originalDeliveryFee.value = deliveryCharges.value;
-        print(
-          '[MART_DELIVERY] Default: Below threshold, beyond free distance: ₹$baseCharge + (${extraKm} km × ₹$perKmCharge) = ₹${deliveryCharges.value}',
-        );
-      }
-    }
-
-    /* OLD CODE - KEPT FOR REFERENCE
-    print('[MART_DELIVERY] Calculating mart delivery charge');
-
-    print('[MART_DELIVERY] Mart delivery settings - Free km: $freeDeliveryKm, Per km charge: $perKmCharge, Distance: ${totalDistance.value} km');
-
-    if (vendorModel.value.isSelfDelivery == true && Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = 0.0;
-      print('[MART_DELIVERY] Self delivery - no charge');
-    } else if (totalDistance.value <= freeDeliveryKm) {
-      // Free delivery within mart distance - show original fee with strikethrough
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = baseCharge.toDouble();
-      print('[MART_DELIVERY] Free delivery within mart distance - showing original fee: ₹$baseCharge');
-    } else {
-      // Calculate extra charge for distance beyond free delivery
-      double extraKm = (totalDistance.value - freeDeliveryKm).ceilToDouble();
-      deliveryCharges.value = extraKm * perKmCharge;
-      originalDeliveryFee.value = deliveryCharges.value;
-      print('[MART_DELIVERY] Extra delivery charge: $extraKm km × ₹$perKmCharge = ₹${deliveryCharges.value}');
-    }
-    */
-  }
 
   /// Calculate delivery charge for promotional items (OLD SLOW VERSION - DEPRECATED)
   Future<void> calculatePromotionalDeliveryCharge() async {
@@ -3953,7 +3678,7 @@ class CartControllerProvider extends ChangeNotifier {
   /// Enhanced place order with idempotency and state management
   ///
   /// finder
-  placeOrder() async {
+  placeOrder(BuildContext context) async {
     print('DEBUG: Starting placeOrder process');
     // Check idempotency - prevent duplicate orders
     if (_isOrderInProgress()) {
@@ -3976,7 +3701,7 @@ class CartControllerProvider extends ChangeNotifier {
 
     try {
       // Validate order before payment
-      if (!await validateOrderBeforePayment()) {
+      if (!await validateOrderBeforePayment(context)) {
         print('DEBUG: Order validation failed');
         _endOrderProcessing();
         return;
@@ -4052,7 +3777,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Validate order before payment to prevent payment without order
-  Future<bool> validateOrderBeforePayment() async {
+  Future<bool> validateOrderBeforePayment(BuildContext context) async {
     try {
       print('DEBUG: Validating order before payment...');
       print('DEBUG: Cart items count: ${cartItem.length}');
@@ -4077,7 +3802,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       // 🔑 BULLETPROOF ADDRESS VALIDATION - NEVER SKIPS
-      final addressValid = await _validateAddressBulletproof();
+      final addressValid = await _validateAddressBulletproof(context);
       if (!addressValid) {
         print('DEBUG: ❌ Order validation failed - address validation failed');
         return false;
@@ -4661,13 +4386,10 @@ class CartControllerProvider extends ChangeNotifier {
       orderModel.couponCode = selectedCouponModel.value.code ?? '';
       orderModel.discount = couponAmount.value;
       orderModel.deliveryCharge = deliveryCharges.value.toString();
-      orderModel.tipAmount = deliveryTips.value.toString() ?? '0.0';
+      orderModel.tipAmount = deliveryTips.value.toString();
       orderModel.toPayAmount = totalAmount.value;
-      orderModel.scheduleTime = scheduleDateTime.value != null
-          ? Timestamp.fromDate(scheduleDateTime.value!)
-          : null;
+      orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime.value);
       orderModel.surgeFee = "${surgePercent.value + int.parse(admin_fee)}";
-      // Calculate distance (stored in vendor model for reference)
       if (vendorModel.value.id != null &&
           vendorModel.value.latitude != null &&
           vendorModel.value.longitude != null) {
@@ -4790,7 +4512,6 @@ class CartControllerProvider extends ChangeNotifier {
         );
       }
 
-      // Rollback failed order
       if (orderId != null) {
         await rollbackFailedOrder(orderId, orderedProducts);
       }
@@ -4815,387 +4536,29 @@ class CartControllerProvider extends ChangeNotifier {
 
   getPaymentSettings() async {
     await FireStoreUtils.getPaymentSettingsData().then((value) {
-      // stripeModel.value = StripeModel.fromJson(
-      //     jsonDecode(Preferences.getString(Preferences.stripeSettings)));
-      payPalModel.value = PayPalModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.paypalSettings)),
-      );
-      payStackModel.value = PayStackModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.payStack)),
-      );
-      mercadoPagoModel.value = MercadoPagoModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.mercadoPago)),
-      );
-      flutterWaveModel.value = FlutterWaveModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.flutterWave)),
-      );
-      paytmModel.value = PaytmModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.paytmSettings)),
-      );
-      payFastModel.value = PayFastModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.payFastSettings)),
-      );
       razorPayModel.value = RazorPayModel.fromJson(
         jsonDecode(Preferences.getString(Preferences.razorpaySettings)),
-      );
-
-      // 🔑 DEBUG RAZORPAY CONFIGURATION
-      print('🔑 RAZORPAY CONFIGURATION DEBUG:');
-      print('DEBUG: Razorpay enabled: ${razorPayModel.value.isEnabled}');
-      print('DEBUG: Razorpay key: ${razorPayModel.value.razorpayKey}');
-      print('DEBUG: Sandbox enabled: ${razorPayModel.value.isSandboxEnabled}');
-      midTransModel.value = MidTrans.fromJson(
-        jsonDecode(Preferences.getString(Preferences.midTransSettings)),
-      );
-      orangeMoneyModel.value = OrangeMoney.fromJson(
-        jsonDecode(Preferences.getString(Preferences.orangeMoneySettings)),
-      );
-      xenditModel.value = Xendit.fromJson(
-        jsonDecode(Preferences.getString(Preferences.xenditSettings)),
-      );
-      walletSettingModel.value = WalletSettingModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.walletSettings)),
       );
       cashOnDeliverySettingModel.value = CodSettingModel.fromJson(
         jsonDecode(Preferences.getString(Preferences.codSettings)),
       );
-
       if (walletSettingModel.value.isEnabled == true) {
         selectedPaymentMethod.value = PaymentGateway.wallet.name;
       } else if (cashOnDeliverySettingModel.value.isEnabled == true &&
           subTotal.value <= 599 &&
           !hasMartItemsInCart()) {
         selectedPaymentMethod.value = PaymentGateway.cod.name;
-        // } else if (stripeModel.value.isEnabled == true) {
-        //   selectedPaymentMethod.value = PaymentGateway.stripe.name;
-      } else if (payPalModel.value.isEnabled == true) {
-        selectedPaymentMethod.value = PaymentGateway.paypal.name;
-      } else if (payStackModel.value.isEnable == true) {
-        selectedPaymentMethod.value = PaymentGateway.payStack.name;
-      } else if (mercadoPagoModel.value.isEnabled == true) {
-        selectedPaymentMethod.value = PaymentGateway.mercadoPago.name;
-      } else if (flutterWaveModel.value.isEnable == true) {
-        selectedPaymentMethod.value = PaymentGateway.flutterWave.name;
-      } else if (paytmModel.value.isEnabled == true) {
-        selectedPaymentMethod.value = PaymentGateway.paytm.name;
-      } else if (payFastModel.value.isEnable == true) {
-        selectedPaymentMethod.value = PaymentGateway.payFast.name;
       } else if (razorPayModel.value.isEnabled == true) {
         selectedPaymentMethod.value = PaymentGateway.razorpay.name;
-      } else if (midTransModel.value.enable == true) {
-        selectedPaymentMethod.value = PaymentGateway.midTrans.name;
-      } else if (orangeMoneyModel.value.enable == true) {
-        selectedPaymentMethod.value = PaymentGateway.orangeMoney.name;
-      } else if (xenditModel.value.enable == true) {
-        selectedPaymentMethod.value = PaymentGateway.xendit.name;
       }
-      // Stripe.publishableKey =
-      //     stripeModel.value.clientpublishableKey.toString();
-      // Stripe.merchantIdentifier = 'Foodie Customer';
-      // Stripe.instance.applySettings();
-      setRef();
-
       razorPay?.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlePaymentSuccess);
       razorPay?.on(Razorpay.EVENT_EXTERNAL_WALLET, handleExternalWaller);
       razorPay?.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
-
-      // Check and update payment method after settings are loaded
       checkAndUpdatePaymentMethod();
     });
   }
 
-  mercadoPagoMakePayment({
-    required BuildContext context,
-    required String amount,
-  }) async {
-    // Validate order before payment
-    if (!await validateOrderBeforePayment()) {
-      print('DEBUG: Order validation failed for MercadoPago');
-      return;
-    }
-
-    final headers = {
-      'Authorization': 'Bearer ${mercadoPagoModel.value.accessToken}',
-      'Content-Type': 'application/json',
-    };
-
-    final body = jsonEncode({
-      "items": [
-        {
-          "title": "Test",
-          "description": "Test Payment",
-          "quantity": 1,
-          "currency_id": "BRL", // or your preferred currency
-          "unit_price": double.parse(amount),
-        },
-      ],
-      "payer": {"email": userModel.value.email},
-      "back_urls": {
-        "failure": "${Constant.globalUrl}payment/failure",
-        "pending": "${Constant.globalUrl}payment/pending",
-        "success": "${Constant.globalUrl}payment/success",
-      },
-      "auto_return":
-          "approved", // Automatically return after payment is approved
-    });
-
-    final response = await http.post(
-      Uri.parse("https://api.mercadopago.com/checkout/preferences"),
-      headers: headers,
-      body: body,
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final data = jsonDecode(response.body);
-      Get.to(MercadoPagoScreen(initialURl: data['init_point']))!.then((value) {
-        if (value) {
-          ShowToastDialog.showToast("Payment Successful!!".tr);
-          placeOrderAfterPayment();
-        } else {
-          ShowToastDialog.showToast("Payment UnSuccessful!!".tr);
-        }
-      });
-    } else {
-      ShowToastDialog.showToast(
-        "Something went wrong, please contact admin.".tr,
-      );
-    }
-  }
-
-  //flutter wave Payment Method
-  flutterWaveInitiatePayment({
-    required BuildContext context,
-    required String amount,
-  }) async {
-    // Validate order before payment
-    if (!await validateOrderBeforePayment()) {
-      print('DEBUG: Order validation failed for FlutterWave');
-      return;
-    }
-
-    final url = Uri.parse('https://api.flutterwave.com/v3/payments');
-    final headers = {
-      'Authorization': 'Bearer ${flutterWaveModel.value.secretKey}',
-      'Content-Type': 'application/json',
-    };
-
-    final body = jsonEncode({
-      "tx_ref": _ref,
-      "amount": amount,
-      "currency": "NGN",
-      "redirect_url": "${Constant.globalUrl}payment/success",
-      "payment_options": "ussd, card, barter, payattitude",
-      "customer": {
-        "email": userModel.value.email.toString(),
-        "phonenumber": userModel.value.phoneNumber, // Add a real phone number
-        "name": userModel.value.fullName(), // Add a real customer name
-      },
-      "customizations": {
-        "title": "Payment for Services",
-        "description": "Payment for XYZ services",
-      },
-    });
-
-    final response = await http.post(url, headers: headers, body: body);
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      Get.to(MercadoPagoScreen(initialURl: data['data']['link']))!.then((
-        value,
-      ) {
-        if (value) {
-          ShowToastDialog.showToast("Payment Successful!!".tr);
-          placeOrderAfterPayment();
-        } else {
-          ShowToastDialog.showToast("Payment UnSuccessful!!".tr);
-        }
-      });
-    } else {
-      print('Payment initialization failed: ${response.body}');
-      return null;
-    }
-  }
-
-  String? _ref;
-
-  setRef() {
-    maths.Random numRef = maths.Random();
-    int year = DateTime.now().year;
-    int refNumber = numRef.nextInt(20000);
-    if (Platform.isAndroid) {
-      _ref = "AndroidRef$year$refNumber";
-    } else if (Platform.isIOS) {
-      _ref = "IOSRef$year$refNumber";
-    }
-  }
-
-  // payFast
-  payFastPayment({required BuildContext context, required String amount}) {
-    PayStackURLGen.getPayHTML(
-      payFastSettingData: payFastModel.value,
-      amount: amount.toString(),
-      userModel: userModel.value,
-    ).then((String? value) async {
-      bool isDone = await Get.to(
-        PayFastScreen(htmlData: value!, payFastSettingData: payFastModel.value),
-      );
-      if (isDone) {
-        Get.back();
-        ShowToastDialog.showToast("Payment successfully".tr);
-        placeOrder();
-      } else {
-        Get.back();
-        ShowToastDialog.showToast("Payment Failed".tr);
-      }
-    });
-  }
-
-  ///Paytm payment function
-  getPaytmCheckSum(context, {required double amount}) async {
-    final String orderId = DateTime.now().millisecondsSinceEpoch.toString();
-    String getChecksum = "${Constant.globalUrl}payments/getpaytmchecksum";
-
-    final response = await http.post(
-      Uri.parse(getChecksum),
-      headers: {},
-      body: {
-        "mid": paytmModel.value.paytmMID.toString(),
-        "order_id": orderId,
-        "key_secret": paytmModel.value.pAYTMMERCHANTKEY.toString(),
-      },
-    );
-
-    final data = jsonDecode(response.body);
-    await verifyCheckSum(
-      checkSum: data["code"],
-      amount: amount,
-      orderId: orderId,
-    ).then((value) {
-      initiatePayment(amount: amount, orderId: orderId).then((value) {
-        String callback = "";
-        if (paytmModel.value.isSandboxEnabled == true) {
-          callback =
-              "${callback}https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
-        } else {
-          callback =
-              "${callback}https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
-        }
-
-        GetPaymentTxtTokenModel result = value;
-        startTransaction(
-          context,
-          txnTokenBy: result.body.txnToken,
-          orderId: orderId,
-          amount: amount,
-          callBackURL: callback,
-          isStaging: paytmModel.value.isSandboxEnabled,
-        );
-      });
-    });
-  }
-
-  Future<void> startTransaction(
-    context, {
-    required String txnTokenBy,
-    required orderId,
-    required double amount,
-    required callBackURL,
-    required isStaging,
-  }) async {
-    // try {
-    //   var response = AllInOneSdk.startTransaction(
-    //     paytmModel.value.paytmMID.toString(),
-    //     orderId,
-    //     amount.toString(),
-    //     txnTokenBy,
-    //     callBackURL,
-    //     isStaging,
-    //     true,
-    //     true,
-    //   );
-    //
-    //   response.then((value) {
-    //     if (value!["RESPMSG"] == "Txn Success") {
-    //       print("txt done!!");
-    //       ShowToastDialog.showToast("Payment Successful!!");
-    //       placeOrder();
-    //     }
-    //   }).catchError((onError) {
-    //     if (onError is PlatformException) {
-    //       Get.back();
-    //
-    //       ShowToastDialog.showToast(onError.message.toString());
-    //     } else {
-    //       log("======>>2");
-    //       Get.back();
-    //       ShowToastDialog.showToast(onError.message.toString());
-    //     }
-    //   });
-    // } catch (err) {
-    //   Get.back();
-    //   ShowToastDialog.showToast(err.toString());
-    // }
-  }
-
-  Future verifyCheckSum({
-    required String checkSum,
-    required double amount,
-    required orderId,
-  }) async {
-    String getChecksum = "${Constant.globalUrl}payments/validatechecksum";
-    final response = await http.post(
-      Uri.parse(getChecksum),
-      headers: {},
-      body: {
-        "mid": paytmModel.value.paytmMID.toString(),
-        "order_id": orderId,
-        "key_secret": paytmModel.value.pAYTMMERCHANTKEY.toString(),
-        "checksum_value": checkSum,
-      },
-    );
-    final data = jsonDecode(response.body);
-    return data['status'];
-  }
-
-  Future<GetPaymentTxtTokenModel> initiatePayment({
-    required double amount,
-    required orderId,
-  }) async {
-    String initiateURL = "${Constant.globalUrl}payments/initiatepaytmpayment";
-    String callback = "";
-    if (paytmModel.value.isSandboxEnabled == true) {
-      callback =
-          "${callback}https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
-    } else {
-      callback =
-          "${callback}https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
-    }
-    final response = await http.post(
-      Uri.parse(initiateURL),
-      headers: {},
-      body: {
-        "mid": paytmModel.value.paytmMID,
-        "order_id": orderId,
-        "key_secret": paytmModel.value.pAYTMMERCHANTKEY,
-        "amount": amount.toString(),
-        "currency": "INR",
-        "callback_url": callback,
-        "custId": FireStoreUtils.getCurrentUid(),
-        "issandbox": paytmModel.value.isSandboxEnabled == true ? "1" : "2",
-      },
-    );
-    log(response.body);
-    final data = jsonDecode(response.body);
-    if (data["body"]["txnToken"] == null ||
-        data["body"]["txnToken"].toString().isEmpty) {
-      Get.back();
-      ShowToastDialog.showToast(
-        "something went wrong, please contact admin.".tr,
-      );
-    }
-    return GetPaymentTxtTokenModel.fromJson(data);
-  }
-
+  ///Paytm paym
   ///RazorPay payment function with crash prevention
   final RazorpayCrashPrevention _razorpayCrashPrevention =
       RazorpayCrashPrevention();
@@ -5297,9 +4660,7 @@ class CartControllerProvider extends ChangeNotifier {
         'wallets': ['paytm'],
       },
     };
-
     print('🔑 Razorpay options: $options');
-
     try {
       print('🔑 Opening Razorpay payment gateway with crash prevention...');
       final success = await _razorpayCrashPrevention.safeOpenPayment(options);
@@ -5988,31 +5349,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  midtransMakePayment({
-    required String amount,
-    required BuildContext context,
-  }) async {
-    // Validate order before payment
-    if (!await validateOrderBeforePayment()) {
-      print('DEBUG: Order validation failed for Midtrans');
-      return;
-    }
-
-    await createPaymentLink(amount: amount).then((url) {
-      ShowToastDialog.closeLoader();
-      if (url != '') {
-        Get.to(() => MidtransScreen(initialURl: url))!.then((value) {
-          if (value == true) {
-            ShowToastDialog.showToast("Payment Successful!!".tr);
-            placeOrderAfterPayment();
-          } else {
-            ShowToastDialog.showToast("Payment Unsuccessful!!".tr);
-          }
-        });
-      }
-    });
-  }
-
   Future<String> createPaymentLink({required var amount}) async {
     var ordersId = const Uuid().v1();
     final url = Uri.parse(
@@ -6091,7 +5427,7 @@ class CartControllerProvider extends ChangeNotifier {
       )!.then((value) {
         if (value == true) {
           ShowToastDialog.showToast("Payment Successful!!".tr);
-          placeOrder();
+          placeOrder(context);
           ();
         }
       });
@@ -6198,69 +5534,6 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   //XenditPayment
-  xenditPayment(context, amount) async {
-    // Validate order before payment
-    if (!await validateOrderBeforePayment()) {
-      print('DEBUG: Order validation failed for Xendit');
-      return;
-    }
-
-    await createXenditInvoice(amount: amount).then((model) {
-      ShowToastDialog.closeLoader();
-      if (model != null && model.id != null) {
-        Get.to(
-          () => XenditScreen(
-            initialURl: model.invoiceUrl ?? '',
-            transId: model.id ?? '',
-            apiKey: xenditModel.value.apiKey!.toString(),
-          ),
-        )!.then((value) {
-          if (value == true) {
-            ShowToastDialog.showToast("Payment Successful!!".tr);
-            placeOrderAfterPayment();
-          } else {
-            ShowToastDialog.showToast("Payment Unsuccessful!!".tr);
-          }
-        });
-      }
-    });
-  }
-
-  Future<XenditModel?> createXenditInvoice({required var amount}) async {
-    const url = 'https://api.xendit.co/v2/invoices';
-    var headers = {
-      'Content-Type': 'application/json',
-      'Authorization': generateBasicAuthHeader(
-        xenditModel.value.apiKey!.toString(),
-      ),
-      // 'Cookie': '__cf_bm=yERkrx3xDITyFGiou0bbKY1bi7xEwovHNwxV1vCNbVc-1724155511-1.0.1.1-jekyYQmPCwY6vIJ524K0V6_CEw6O.dAwOmQnHtwmaXO_MfTrdnmZMka0KZvjukQgXu5B.K_6FJm47SGOPeWviQ',
-    };
-
-    final body = jsonEncode({
-      'external_id': const Uuid().v1(),
-      'amount': amount,
-      'payer_email': 'customer@domain.com',
-      'description': 'Test - VA Successful invoice payment',
-      'currency': 'IDR', //IDR, PHP, THB, VND, MYR
-    });
-
-    try {
-      final response = await http.post(
-        Uri.parse(url),
-        headers: headers,
-        body: body,
-      );
-
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        XenditModel model = XenditModel.fromJson(jsonDecode(response.body));
-        return model;
-      } else {
-        return XenditModel();
-      }
-    } catch (e) {
-      return XenditModel();
-    }
-  }
 
   // Add this method to mark a coupon as used for the current user
   Future<void> markCouponAsUsed(String couponId) async {
@@ -6316,114 +5589,6 @@ class CartControllerProvider extends ChangeNotifier {
     //         }),
     //   ),
     // );
-  }
-
-  ///PayStack Payment Method
-  payStackPayment(String totalAmount) async {
-    // Validate order before payment
-    if (!await validateOrderBeforePayment()) {
-      print('DEBUG: Order validation failed for PayStack');
-      return;
-    }
-
-    await PayStackURLGen.payStackURLGen(
-      amount: (double.parse(totalAmount) * 100).toString(),
-      currency: "ZAR",
-      secretKey: payStackModel.value.secretKey.toString(),
-      userModel: userModel.value,
-    ).then((value) async {
-      if (value != null) {
-        PayStackUrlModel payStackModel0 = value;
-        Get.to(
-          PayStackScreen(
-            secretKey: payStackModel.value.secretKey.toString(),
-            callBackUrl: payStackModel.value.callbackURL.toString(),
-            initialURl: payStackModel0.data.authorizationUrl,
-            amount: totalAmount,
-            reference: payStackModel0.data.reference,
-          ),
-        )!.then((value) {
-          if (value) {
-            ShowToastDialog.showToast("Payment Successful!!".tr);
-            placeOrderAfterPayment();
-          } else {
-            ShowToastDialog.showToast("Payment UnSuccessful!!".tr);
-          }
-        });
-      } else {
-        ShowToastDialog.showToast(
-          "Something went wrong, please contact admin.".tr,
-        );
-      }
-    });
-  }
-
-  /// Check if cart meets minimum order requirement (for UI display)
-  Future<bool> isMinimumOrderMet(BuildContext context) async {
-    try {
-      // Check if cart contains any mart items
-      bool hasMartItems = cartItem.any(
-        (item) => item.vendorID?.startsWith('mart_') == true,
-      );
-
-      if (!hasMartItems) {
-        return true; // No mart items, so minimum order doesn't apply
-      }
-
-      // Get mart controller instance
-      final martController = Provider.of<MartProvider>(context, listen: false);
-
-      // Fetch delivery settings if not already loaded
-      if (martController.deliverySettings.value == null) {
-        await martController.fetchDeliverySettings();
-      }
-
-      // Check if minimum order is enabled
-      if (!martController.isMinOrderEnabled) {
-        return true; // Minimum order validation is disabled
-      }
-
-      // Get minimum order value and current subtotal
-      final minOrderValue = martController.minOrderValue;
-      final currentSubTotal = subTotal.value;
-
-      return currentSubTotal >= minOrderValue;
-    } catch (e) {
-      print('DEBUG: Error checking minimum order requirement: $e');
-      return true; // Default to true on error to not block the user
-    }
-  }
-
-  /// Get minimum order message for display
-  Future<String> getMinimumOrderMessage(BuildContext context) async {
-    try {
-      // Check if cart contains any mart items
-      bool hasMartItems = cartItem.any(
-        (item) => item.vendorID?.startsWith('mart_') == true,
-      );
-
-      if (!hasMartItems) {
-        return ''; // No mart items, no message needed
-      }
-
-      // Get mart controller instance
-      final martController = Provider.of<MartProvider>(context, listen: false);
-
-      // Fetch delivery settings if not already loaded
-      if (martController.deliverySettings.value == null) {
-        await martController.fetchDeliverySettings();
-      }
-
-      // Check if minimum order is enabled
-      if (!martController.isMinOrderEnabled) {
-        return ''; // Minimum order validation is disabled
-      }
-
-      return martController.minOrderMessage;
-    } catch (e) {
-      print('DEBUG: Error getting minimum order message: $e');
-      return ''; // Return empty string on error
-    }
   }
 
   /// Validate minimum order value for mart items
@@ -6606,7 +5771,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// 🔑 BULLETPROOF ADDRESS VALIDATION - NEVER FAILS
-  Future<bool> _validateAddressBulletproof() async {
+  Future<bool> _validateAddressBulletproof(BuildContext context) async {
     final startTime = DateTime.now();
 
     try {
@@ -6851,6 +6016,7 @@ class CartControllerProvider extends ChangeNotifier {
         String? detectedZoneId = await _detectZoneIdForCoordinates(
           address.location!.latitude!,
           address.location!.longitude!,
+          context,
         );
 
         if (detectedZoneId != null) {

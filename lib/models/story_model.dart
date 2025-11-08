@@ -1,26 +1,44 @@
+// models/story_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class StoryModel {
-  String? videoThumbnail;
-  List<dynamic> videoUrl = [];
+  String? id;
   String? vendorID;
-  Timestamp? createdAt;
+  String? videoThumbnail;
+  String? videoUrl;
+  DateTime? createdAt;
 
-  StoryModel({this.videoThumbnail, this.videoUrl = const [], this.vendorID, this.createdAt});
+  StoryModel({
+    this.id,
+    this.vendorID,
+    this.videoThumbnail,
+    this.videoUrl,
+    this.createdAt,
+  });
 
   StoryModel.fromJson(Map<String, dynamic> json) {
-    videoThumbnail = json['videoThumbnail'] ?? '';
-    videoUrl = json['videoUrl'] ?? [];
-    vendorID = json['vendorID'] ?? '';
-    createdAt = json['createdAt'] ?? Timestamp.now();
+    id = json['id'];
+    vendorID = json['vendorID'];
+    videoThumbnail = json['videoThumbnail'];
+    videoUrl = json['videoUrl'];
+
+    // Parse createdAt from string
+    if (json['createdAt'] != null) {
+      if (json['createdAt'] is String) {
+        createdAt = DateTime.parse(json['createdAt']);
+      } else if (json['createdAt'] is Timestamp) {
+        createdAt = (json['createdAt'] as Timestamp).toDate();
+      }
+    }
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
+    data['id'] = id;
+    data['vendorID'] = vendorID;
     data['videoThumbnail'] = videoThumbnail;
     data['videoUrl'] = videoUrl;
-    data['vendorID'] = vendorID;
-    data['createdAt'] = createdAt;
+    data['createdAt'] = createdAt?.toIso8601String();
     return data;
   }
 }

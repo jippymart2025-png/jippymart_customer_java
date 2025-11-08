@@ -236,7 +236,11 @@ class RestaurantDetailsScreen extends StatelessWidget {
           ),
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           body: RefreshIndicator(
-            onRefresh: controller.getArgument,
+            onRefresh: () async {
+              await controller.getArgument(
+                vendorModels: controller.vendorModel,
+              );
+            },
             child: NestedScrollView(
               // controller: controller.scrollControllerProduct,
               // physics: NeverScrollableScrollPhysics(),
@@ -263,7 +267,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                controller.vendorModel.value.title ?? "",
+                                controller.vendorModel.title ?? "",
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -279,19 +283,12 @@ class RestaurantDetailsScreen extends StatelessWidget {
                         flexibleSpace: FlexibleSpaceBar(
                           background: Stack(
                             children: [
-                              controller.vendorModel.value.photos == null ||
-                                      controller
-                                          .vendorModel
-                                          .value
-                                          .photos!
-                                          .isEmpty
+                              controller.vendorModel.photos == null ||
+                                      controller.vendorModel.photos!.isEmpty
                                   ? Stack(
                                       children: [
                                         NetworkImageWidget(
-                                          imageUrl: controller
-                                              .vendorModel
-                                              .value
-                                              .photo
+                                          imageUrl: controller.vendorModel.photo
                                               .toString(),
                                           fit: BoxFit.cover,
                                           width: Responsive.width(100, context),
@@ -322,11 +319,8 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                       controller:
                                           controller.pageController.value,
                                       scrollDirection: Axis.horizontal,
-                                      itemCount: controller
-                                          .vendorModel
-                                          .value
-                                          .photos!
-                                          .length,
+                                      itemCount:
+                                          controller.vendorModel.photos!.length,
                                       padEnds: false,
                                       pageSnapping: true,
                                       allowImplicitScrolling: true,
@@ -334,7 +328,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                           (BuildContext context, int index) {
                                             String image = controller
                                                 .vendorModel
-                                                .value
                                                 .photos![index];
                                             return Stack(
                                               children: [
@@ -381,24 +374,20 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   crossAxisAlignment: CrossAxisAlignment.center,
                                   children: List.generate(
-                                    controller.vendorModel.value.photos!.length,
+                                    controller.vendorModel.photos?.length ?? 0,
                                     (index) {
-                                      return Obx(
-                                        () => Container(
-                                          margin: const EdgeInsets.only(
-                                            right: 5,
-                                          ),
-                                          alignment: Alignment.centerLeft,
-                                          height: 9,
-                                          width: 9,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            color:
-                                                controller.currentPage.value ==
-                                                    index
-                                                ? AppThemeData.primary300
-                                                : AppThemeData.grey300,
-                                          ),
+                                      return Container(
+                                        margin: const EdgeInsets.only(right: 5),
+                                        alignment: Alignment.centerLeft,
+                                        height: 9,
+                                        width: 9,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color:
+                                              controller.currentPage.value ==
+                                                  index
+                                              ? AppThemeData.primary300
+                                              : AppThemeData.grey300,
                                         ),
                                       );
                                     },
@@ -445,7 +434,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                               CrossAxisAlignment.start,
                                           children: [
                                             Text(
-                                              controller.vendorModel.value.title
+                                              controller.vendorModel.title
                                                   .toString(),
                                               textAlign: TextAlign.start,
                                               maxLines: 1,
@@ -464,10 +453,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                 context,
                                               ),
                                               child: Text(
-                                                controller
-                                                    .vendorModel
-                                                    .value
-                                                    .location
+                                                controller.vendorModel.location
                                                     .toString(),
                                                 textAlign: TextAlign.start,
                                                 style: TextStyle(
@@ -513,12 +499,10 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                     Constant.calculateReview(
                                                       reviewCount: controller
                                                           .vendorModel
-                                                          .value
                                                           .reviewsCount!
                                                           .toStringAsFixed(0),
                                                       reviewSum: controller
                                                           .vendorModel
-                                                          .value
                                                           .reviewsSum
                                                           .toString(),
                                                     ),
@@ -540,14 +524,13 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                               Get.to(
                                                 const ReviewListScreen(),
                                                 arguments: {
-                                                  "vendorModel": controller
-                                                      .vendorModel
-                                                      .value,
+                                                  "vendorModel":
+                                                      controller.vendorModel,
                                                 },
                                               );
                                             },
                                             child: Text(
-                                              "${controller.vendorModel.value.reviewsCount} ${'Ratings'.tr}",
+                                              "${controller.vendorModel.reviewsCount} ${'Ratings'.tr}",
                                               style: TextStyle(
                                                 decoration:
                                                     TextDecoration.underline,
@@ -563,40 +546,39 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                   ),
                                   Row(
                                     children: [
-                                      Obx(() {
-                                        final statusInfo = controller
-                                            .getRestaurantStatusInfo();
-                                        return Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 4,
+                                      Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: controller
+                                              .getRestaurantStatusInfo()['statusColor'],
+                                          borderRadius: BorderRadius.circular(
+                                            24,
                                           ),
-                                          decoration: BoxDecoration(
-                                            color: statusInfo['statusColor'],
-                                            borderRadius: BorderRadius.circular(
-                                              24,
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              controller
+                                                  .getRestaurantStatusInfo()['statusIcon'],
+                                              color: Colors.white,
+                                              size: 16,
                                             ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                statusInfo['statusIcon'],
+                                            SizedBox(width: 6),
+                                            Text(
+                                              controller
+                                                  .getRestaurantStatusInfo()['statusText'],
+                                              style: TextStyle(
                                                 color: Colors.white,
-                                                size: 16,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                              SizedBox(width: 6),
-                                              Text(
-                                                statusInfo['statusText'],
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                       Padding(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 10,
@@ -611,7 +593,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                         onTap: () {
                                           if (controller
                                               .vendorModel
-                                              .value
                                               .workingHours!
                                               .isEmpty) {
                                             ShowToastDialog.showToast(
@@ -644,16 +625,13 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                  controller.vendorModel.value.dineInActive ==
-                                              true ||
+                                  controller.vendorModel.dineInActive == true ||
                                           (controller
                                                       .vendorModel
-                                                      .value
                                                       .openDineTime !=
                                                   null &&
                                               controller
                                                   .vendorModel
-                                                  .value
                                                   .openDineTime!
                                                   .isNotEmpty)
                                       ? const SizedBox() // Permanently hide Table Booking
@@ -1287,12 +1265,10 @@ class RestaurantDetailsScreen extends StatelessWidget {
                         shrinkWrap: true,
                         physics: const BouncingScrollPhysics(),
                         itemCount:
-                            productModel.vendorModel.value.workingHours!.length,
+                            productModel.vendorModel.workingHours!.length,
                         itemBuilder: (context, dayIndex) {
-                          WorkingHours workingHours = productModel
-                              .vendorModel
-                              .value
-                              .workingHours![dayIndex];
+                          WorkingHours workingHours =
+                              productModel.vendorModel.workingHours![dayIndex];
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 10),
                             child: Column(
@@ -1419,72 +1395,3 @@ class RestaurantDetailsScreen extends StatelessWidget {
 /// Builds the "No products available" message widget
 
 // Menu Item Widget
-Widget _buildMenuItem(String title, int count, {bool isNew = false}) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 12),
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-    decoration: BoxDecoration(
-      color: Colors.grey[900],
-      borderRadius: BorderRadius.circular(8),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  title,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
-                ),
-              ),
-              if (isNew) ...[
-                const SizedBox(width: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: const Text(
-                    'NEW',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 8,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(width: 8), // Small fixed spacing
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          // decoration: BoxDecoration(
-          //   color: Colors.grey[700],
-          //   borderRadius: BorderRadius.circular(12),
-          // ),
-          child: Text(
-            '$count items',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}

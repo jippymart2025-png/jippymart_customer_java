@@ -11,23 +11,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 
 class FavouriteProvider extends ChangeNotifier {
-  RxBool favouriteRestaurant = true.obs;
+  bool favouriteRestaurant = true;
   RxList<FavouriteModel> favouriteList = <FavouriteModel>[].obs;
   RxList<VendorModel> favouriteVendorList = <VendorModel>[].obs;
 
   RxList<FavouriteItemModel> favouriteItemList = <FavouriteItemModel>[].obs;
   RxList<ProductModel> favouriteFoodList = <ProductModel>[].obs;
 
-  RxBool isLoading = true.obs;
+  bool isLoading = true;
 
   // **STREAMING VARIABLES FOR FAST LOADING**
   StreamSubscription<QuerySnapshot>? _favouriteRestaurantStream;
   StreamSubscription<QuerySnapshot>? _favouriteItemStream;
-  Map<String, StreamSubscription<DocumentSnapshot>> _vendorStreams = {};
-  Map<String, StreamSubscription<DocumentSnapshot>> _productStreams = {};
+  final Map<String, StreamSubscription<DocumentSnapshot>> _vendorStreams = {};
+  final Map<String, StreamSubscription<DocumentSnapshot>> _productStreams = {};
 
   void initFunction() {
-    isLoading.value = true;
+    isLoading = true;
     try {
       startStreamingData();
     } catch (e) {
@@ -39,8 +39,12 @@ class FavouriteProvider extends ChangeNotifier {
   void onClose() {
     _favouriteRestaurantStream?.cancel();
     _favouriteItemStream?.cancel();
-    _vendorStreams.values.forEach((stream) => stream.cancel());
-    _productStreams.values.forEach((stream) => stream.cancel());
+    for (var stream in _vendorStreams.values) {
+      stream.cancel();
+    }
+    for (var stream in _productStreams.values) {
+      stream.cancel();
+    }
     _vendorStreams.clear();
     _productStreams.clear();
     notifyListeners();
@@ -54,20 +58,17 @@ class FavouriteProvider extends ChangeNotifier {
   // **ULTRA-FAST STREAMING DATA LOADING**
   void startStreamingData() {
     print('[DEBUG] FavouriteController: Starting streaming data loading...');
-    isLoading.value = true;
-
+    isLoading = true;
     if (Constant.userModel == null) {
       print('[DEBUG] User not logged in, skipping data loading');
-      isLoading.value = false;
+      isLoading = false;
       return;
     }
-
     // Clear existing data
     favouriteList.clear();
     favouriteItemList.clear();
     favouriteVendorList.clear();
     favouriteFoodList.clear();
-
     // Start streaming favourite restaurants
     _startFavouriteRestaurantStream();
 
@@ -82,28 +83,32 @@ class FavouriteProvider extends ChangeNotifier {
         .collection(CollectionName.favoriteRestaurant)
         .where('user_id', isEqualTo: FireStoreUtils.getCurrentUid())
         .snapshots()
-        .listen((snapshot) {
-      print(
-          '[DEBUG] Favourite restaurant stream update: ${snapshot.docs.length} items');
+        .listen(
+          (snapshot) {
+            print(
+              '[DEBUG] Favourite restaurant stream update: ${snapshot.docs.length} items',
+            );
 
-      favouriteList.clear();
-      for (var doc in snapshot.docs) {
-        print('[DEBUG] Processing favourite doc: ${doc.data()}');
-        favouriteList.add(FavouriteModel.fromJson(doc.data()));
-      }
+            favouriteList.clear();
+            for (var doc in snapshot.docs) {
+              print('[DEBUG] Processing favourite doc: ${doc.data()}');
+              favouriteList.add(FavouriteModel.fromJson(doc.data()));
+            }
 
-      // Start streaming vendor data for each restaurant
-      _startVendorStreams();
+            // Start streaming vendor data for each restaurant
+            _startVendorStreams();
 
-      // Hide loading after first data arrives
-      if (isLoading.value) {
-        isLoading.value = false;
-        print('[DEBUG] Initial data loaded, hiding loading indicator');
-      }
-    }, onError: (error) {
-      print('[ERROR] Favourite restaurant stream error: $error');
-      isLoading.value = false;
-    });
+            // Hide loading after first data arrives
+            if (isLoading) {
+              isLoading = false;
+              print('[DEBUG] Initial data loaded, hiding loading indicator');
+            }
+          },
+          onError: (error) {
+            print('[ERROR] Favourite restaurant stream error: $error');
+            isLoading = false;
+          },
+        );
   }
 
   void _startFavouriteItemStream() {
@@ -112,33 +117,37 @@ class FavouriteProvider extends ChangeNotifier {
         .collection(CollectionName.favoriteItem)
         .where('user_id', isEqualTo: FireStoreUtils.getCurrentUid())
         .snapshots()
-        .listen((snapshot) {
-      print(
-          '[DEBUG] Favourite item stream update: ${snapshot.docs.length} items');
+        .listen(
+          (snapshot) {
+            print(
+              '[DEBUG] Favourite item stream update: ${snapshot.docs.length} items',
+            );
 
-      favouriteItemList.clear();
-      for (var doc in snapshot.docs) {
-        favouriteItemList.add(FavouriteItemModel.fromJson(doc.data()));
-      }
+            favouriteItemList.clear();
+            for (var doc in snapshot.docs) {
+              favouriteItemList.add(FavouriteItemModel.fromJson(doc.data()));
+            }
 
-      // Start streaming product data for each item
-      _startProductStreams();
+            // Start streaming product data for each item
+            _startProductStreams();
 
-      // Hide loading after first data arrives
-      if (isLoading.value) {
-        isLoading.value = false;
-        print('[DEBUG] Initial data loaded, hiding loading indicator');
-      }
-    }, onError: (error) {
-      print('[ERROR] Favourite item stream error: $error');
-      isLoading.value = false;
-    });
+            // Hide loading after first data arrives
+            if (isLoading) {
+              isLoading = false;
+              print('[DEBUG] Initial data loaded, hiding loading indicator');
+            }
+          },
+          onError: (error) {
+            print('[ERROR] Favourite item stream error: $error');
+            isLoading = false;
+          },
+        );
   }
 
   void _startVendorStreams() {
     print(
-        '[DEBUG] Starting vendor streams for ${favouriteList.length} restaurants...');
-
+      '[DEBUG] Starting vendor streams for ${favouriteList.length} restaurants...',
+    );
     // Cancel existing vendor streams
     _vendorStreams.values.forEach((stream) => stream.cancel());
     _vendorStreams.clear();
@@ -152,29 +161,33 @@ class FavouriteProvider extends ChangeNotifier {
             .collection(CollectionName.vendors)
             .doc(restaurantId)
             .snapshots()
-            .listen((snapshot) {
-          if (snapshot.exists) {
-            final vendor = VendorModel.fromJson(snapshot.data()!);
+            .listen(
+              (snapshot) {
+                if (snapshot.exists) {
+                  final vendor = VendorModel.fromJson(snapshot.data()!);
 
-            // Check subscription status
-            if (_isVendorAvailable(vendor)) {
-              // Remove if already exists and add new
-              favouriteVendorList.removeWhere((v) => v.id == vendor.id);
-              favouriteVendorList.add(vendor);
-              print('[DEBUG] Added vendor: ${vendor.title}');
-              notifyListeners();
-            }
-          }
-        }, onError: (error) {
-          print('[ERROR] Vendor stream error for $restaurantId: $error');
-        });
+                  // Check subscription status
+                  if (_isVendorAvailable(vendor)) {
+                    // Remove if already exists and add new
+                    favouriteVendorList.removeWhere((v) => v.id == vendor.id);
+                    favouriteVendorList.add(vendor);
+                    print('[DEBUG] Added vendor: ${vendor.title}');
+                    notifyListeners();
+                  }
+                }
+              },
+              onError: (error) {
+                print('[ERROR] Vendor stream error for $restaurantId: $error');
+              },
+            );
       }
     }
   }
 
   void _startProductStreams() {
     print(
-        '[DEBUG] Starting product streams for ${favouriteItemList.length} items...');
+      '[DEBUG] Starting product streams for ${favouriteItemList.length} items...',
+    );
 
     // Cancel existing product streams
     _productStreams.values.forEach((stream) => stream.cancel());
@@ -189,55 +202,60 @@ class FavouriteProvider extends ChangeNotifier {
             .collection(CollectionName.vendorProducts)
             .doc(productId)
             .snapshots()
-            .listen((snapshot) async {
-          if (snapshot.exists) {
-            final product = ProductModel.fromJson(snapshot.data()!);
+            .listen(
+              (snapshot) async {
+                if (snapshot.exists) {
+                  final product = ProductModel.fromJson(snapshot.data()!);
 
-            // Check vendor subscription status
-            if (Constant.isSubscriptionModelApplied == true ||
-                Constant.adminCommission?.isEnabled == true) {
-              final vendorDoc = await FirebaseFirestore.instance
-                  .collection(CollectionName.vendors)
-                  .doc(product.vendorID.toString())
-                  .get();
+                  // Check vendor subscription status
+                  if (Constant.isSubscriptionModelApplied == true ||
+                      Constant.adminCommission?.isEnabled == true) {
+                    final vendorDoc = await FirebaseFirestore.instance
+                        .collection(CollectionName.vendors)
+                        .doc(product.vendorID.toString())
+                        .get();
 
-              if (vendorDoc.exists) {
-                final vendor = VendorModel.fromJson(vendorDoc.data()!);
-                if (_isVendorAvailable(vendor)) {
-                  // Remove if already exists and add new
-                  favouriteFoodList.removeWhere((p) => p.id == product.id);
-                  favouriteFoodList.add(product);
-                  notifyListeners();
-                  print('¸ ${product.name}');
+                    if (vendorDoc.exists) {
+                      final vendor = VendorModel.fromJson(vendorDoc.data()!);
+                      if (_isVendorAvailable(vendor)) {
+                        // Remove if already exists and add new
+                        favouriteFoodList.removeWhere(
+                          (p) => p.id == product.id,
+                        );
+                        favouriteFoodList.add(product);
+                        notifyListeners();
+                        print('¸ ${product.name}');
+                      }
+                    }
+                  } else {
+                    // Remove if already exists and add new
+                    favouriteFoodList.removeWhere((p) => p.id == product.id);
+                    favouriteFoodList.add(product);
+                    notifyListeners();
+                    print('[DEBUG] Added product: ${product.name}');
+                  }
                 }
-              }
-            } else {
-              // Remove if already exists and add new
-              favouriteFoodList.removeWhere((p) => p.id == product.id);
-              favouriteFoodList.add(product);
-              notifyListeners();
-              print('[DEBUG] Added product: ${product.name}');
-            }
-          }
-        }, onError: (error) {
-          print('[ERROR] Product stream error for $productId: $error');
-        });
+              },
+              onError: (error) {
+                print('[ERROR] Product stream error for $productId: $error');
+              },
+            );
       }
     }
   }
 
   bool _isVendorAvailable(VendorModel vendor) {
     if ((Constant.isSubscriptionModelApplied == true ||
-        Constant.adminCommission?.isEnabled == true) &&
+            Constant.adminCommission?.isEnabled == true) &&
         vendor.subscriptionPlan != null) {
       if (vendor.subscriptionTotalOrders == "-1") {
         return true;
       } else {
         if ((vendor.subscriptionExpiryDate != null &&
-            vendor.subscriptionExpiryDate!
-                .toDate()
-                .isBefore(DateTime.now()) ==
-                false) ||
+                vendor.subscriptionExpiryDate!.toDate().isBefore(
+                      DateTime.now(),
+                    ) ==
+                    false) ||
             vendor.subscriptionPlan?.expiryDay == '-1') {
           return vendor.subscriptionTotalOrders != '0';
         }
@@ -256,15 +274,17 @@ class FavouriteProvider extends ChangeNotifier {
       if (Constant.userModel != null) {
         print('[DEBUG] Using legacy getFavouriteRestaurant method...');
         final restaurantFavourites =
-        await FireStoreUtils.getFavouriteRestaurant();
+            await FireStoreUtils.getFavouriteRestaurant();
         favouriteList.value = restaurantFavourites;
         print(
-            '[DEBUG] Legacy method found ${restaurantFavourites.length} restaurant favourites');
+          '[DEBUG] Legacy method found ${restaurantFavourites.length} restaurant favourites',
+        );
 
         final itemFavourites = await FireStoreUtils.getFavouriteItem();
         favouriteItemList.value = itemFavourites;
         print(
-            '[DEBUG] Legacy method found ${itemFavourites.length} item favourites');
+          '[DEBUG] Legacy method found ${itemFavourites.length} item favourites',
+        );
 
         // Load vendor and product data
         await _loadVendorAndProductData();
@@ -272,11 +292,12 @@ class FavouriteProvider extends ChangeNotifier {
     } catch (e) {
       print('[ERROR] Legacy method failed: $e');
     } finally {
-      isLoading.value = false;
+      isLoading = false;
     }
   }
 
-/* <<<<<<<<<<<<<<  ✨ Windsurf Command ⭐ >>>>>>>>>>>>>>>> */
+  /* <<<<<<<<<<<<<<  ✨ Windsurf Command ⭐ >>>>>>>>>>>>>>>> */
+
   /// Loads vendor and product data for the favourite items and restaurants.
   ///
   /// This method iterates over the favourite restaurants and items, loading
@@ -294,13 +315,14 @@ class FavouriteProvider extends ChangeNotifier {
   /// Returns a Future<void> which completes when the vendor and product data
   /// has been loaded successfully.
   ///
-/* <<<<<<<<<<  d1b16885-51cf-4603-bf78-4282c9a37cb5  >>>>>>>>>>> */
+  /* <<<<<<<<<<  d1b16885-51cf-4603-bf78-4282c9a37cb5  >>>>>>>>>>> */
   Future<void> _loadVendorAndProductData() async {
     // Load vendor data for restaurants
     for (var element in favouriteList) {
       try {
-        final vendor =
-        await FireStoreUtils.getVendorById(element.restaurantId.toString());
+        final vendor = await FireStoreUtils.getVendorById(
+          element.restaurantId.toString(),
+        );
         if (vendor != null && _isVendorAvailable(vendor)) {
           favouriteVendorList.add(vendor);
           notifyListeners();
@@ -314,14 +336,16 @@ class FavouriteProvider extends ChangeNotifier {
     // Load product data for items
     for (var element in favouriteItemList) {
       try {
-        final product =
-        await FireStoreUtils.getProductById(element.productId.toString());
+        final product = await FireStoreUtils.getProductById(
+          element.productId.toString(),
+        );
         if (product != null) {
           // Check vendor subscription status
           if (Constant.isSubscriptionModelApplied == true ||
               Constant.adminCommission?.isEnabled == true) {
-            final vendor =
-            await FireStoreUtils.getVendorById(product.vendorID.toString());
+            final vendor = await FireStoreUtils.getVendorById(
+              product.vendorID.toString(),
+            );
             if (vendor != null && _isVendorAvailable(vendor)) {
               favouriteFoodList.add(product);
               print('[DEBUG] Added product: ${product.name}');

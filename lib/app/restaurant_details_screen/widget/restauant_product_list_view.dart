@@ -179,7 +179,7 @@ class ProductListView extends StatelessWidget {
           .where((element) => element.variantSku == selectedVariants.join('-'))
           .isNotEmpty) {
         price = Constant.productCommissionPrice(
-          controller.vendorModel.value,
+          controller.vendorModel,
           productModel.itemAttribute!.variants!
                   .where(
                     (element) =>
@@ -193,13 +193,13 @@ class ProductListView extends StatelessWidget {
       }
     } else {
       price = Constant.productCommissionPrice(
-        controller.vendorModel.value,
+        controller.vendorModel,
         productModel.price.toString(),
       );
       disPrice = double.parse(productModel.disPrice.toString()) <= 0
           ? "0"
           : Constant.productCommissionPrice(
-              controller.vendorModel.value,
+              controller.vendorModel,
               productModel.disPrice.toString(),
             );
     }
@@ -292,7 +292,7 @@ class ProductListView extends StatelessWidget {
                         );
                         final hasPromo = promo != null;
                         final promoPrice = hasPromo
-                            ? (promo!['special_price'] as num).toString()
+                            ? (promo['special_price'] as num).toString()
                             : null;
 
                         if (hasPromo) {
@@ -318,7 +318,7 @@ class ProductListView extends StatelessWidget {
                                 child: Text(
                                   Constant.amountShow(
                                     amount: Constant.productCommissionPrice(
-                                      controller.vendorModel.value,
+                                      controller.vendorModel,
                                       productModel.price.toString(),
                                     ),
                                   ),
@@ -539,7 +539,7 @@ class ProductListView extends StatelessWidget {
                         .isNotEmpty) {
                       FavouriteItemModel favouriteModel = FavouriteItemModel(
                         productId: productModel.id,
-                        storeId: controller.vendorModel.value.id,
+                        storeId: controller.vendorModel.id,
                         userId: FireStoreUtils.getCurrentUid(),
                       );
                       controller.favouriteItemList.removeWhere(
@@ -549,7 +549,7 @@ class ProductListView extends StatelessWidget {
                     } else {
                       FavouriteItemModel favouriteModel = FavouriteItemModel(
                         productId: productModel.id,
-                        storeId: controller.vendorModel.value.id,
+                        storeId: controller.vendorModel.id,
                         userId: FireStoreUtils.getCurrentUid(),
                       );
                       controller.favouriteItemList.add(favouriteModel);
@@ -567,7 +567,7 @@ class ProductListView extends StatelessWidget {
                   ),
                 ),
               ),
-              controller.isOpen.value == false || Constant.userModel == null
+              !controller.canAcceptOrders() || Constant.userModel == null
                   ? const SizedBox()
                   : Positioned(
                       bottom: 10,
@@ -738,8 +738,7 @@ class ProductListView extends StatelessWidget {
                                                         finalDiscountPrice =
                                                             Constant.productCommissionPrice(
                                                               controller
-                                                                  .vendorModel
-                                                                  .value,
+                                                                  .vendorModel,
                                                               productModel.price
                                                                   .toString(),
                                                             ); // original price for strikethrough
@@ -884,8 +883,7 @@ class ProductListView extends StatelessWidget {
                                                           finalDiscountPrice =
                                                               Constant.productCommissionPrice(
                                                                 controller
-                                                                    .vendorModel
-                                                                    .value,
+                                                                    .vendorModel,
                                                                 productModel
                                                                     .price
                                                                     .toString(),
@@ -961,9 +959,7 @@ class ProductListView extends StatelessWidget {
                                                           .toString();
                                                   finalDiscountPrice =
                                                       Constant.productCommissionPrice(
-                                                        controller
-                                                            .vendorModel
-                                                            .value,
+                                                        controller.vendorModel,
                                                         productModel.price
                                                             .toString(),
                                                       ); // original price for strikethrough

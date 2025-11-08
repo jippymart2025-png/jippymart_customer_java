@@ -1,5 +1,3 @@
-
-
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:flutter/material.dart';
@@ -21,12 +19,13 @@ class MartProductCardHome extends StatelessWidget {
     required this.screenWidth,
   });
 
-
-
   Future<void> _handleAddToCart(
-      BuildContext context, MartItemModel product) async {
+    BuildContext context,
+    MartItemModel product,
+  ) async {
     try {
-      CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+      CartControllerProvider cartControllerProvider =
+          Provider.of<CartControllerProvider>(context, listen: false);
       final martVendorID = "mart_${product.vendorID ?? 'unknown'}";
 
       final cartProduct = CartProductModel(
@@ -35,7 +34,7 @@ class MartProductCardHome extends StatelessWidget {
         photo: product.photo,
         price: product.price?.toString() ?? '0',
         discountPrice:
-        product.disPrice?.toString() ?? product.price?.toString() ?? '0',
+            product.disPrice?.toString() ?? product.price?.toString() ?? '0',
         vendorID: martVendorID,
         vendorName: "Jippy Mart",
         categoryId: product.categoryID,
@@ -67,7 +66,11 @@ class MartProductCardHome extends StatelessWidget {
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.check, color: Colors.green.shade600, size: 20),
+                  child: Icon(
+                    Icons.check,
+                    color: Colors.green.shade600,
+                    size: 20,
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -100,7 +103,9 @@ class MartProductCardHome extends StatelessWidget {
           backgroundColor: Colors.green.shade600,
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
           action: SnackBarAction(
             label: 'View Cart',
@@ -127,7 +132,9 @@ class MartProductCardHome extends StatelessWidget {
           backgroundColor: Colors.red.shade600,
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -148,21 +155,27 @@ class MartProductCardHome extends StatelessWidget {
     );
   }
 
-  Future<void> _handleAddOptionToCart(BuildContext context,
-      MartItemModel product, Map<String, dynamic> selectedOption) async {
+  Future<void> _handleAddOptionToCart(
+    BuildContext context,
+    MartItemModel product,
+    Map<String, dynamic> selectedOption,
+  ) async {
     try {
-      CartControllerProvider  cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+      CartControllerProvider cartControllerProvider =
+          Provider.of<CartControllerProvider>(context, listen: false);
       final cartProduct = CartProductModel(
         id: "${product.id}_${selectedOption['id']}",
         name: "${product.name} - ${selectedOption['option_title']}",
         photo: selectedOption['image']?.isNotEmpty == true
             ? selectedOption['image']
             : product.photo,
-        price: selectedOption['original_price']?.toString() ??
+        price:
+            selectedOption['original_price']?.toString() ??
             selectedOption['price']?.toString() ??
             product.price?.toString() ??
             '0',
-        discountPrice: selectedOption['price']?.toString() ??
+        discountPrice:
+            selectedOption['price']?.toString() ??
             product.disPrice?.toString() ??
             product.price?.toString() ??
             '0',
@@ -261,13 +274,10 @@ class MartProductCardHome extends StatelessWidget {
     final savings = hasDiscount ? (originalPrice - discountedPrice) : 0;
 
     return Container(
-
       // margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
       child: Card(
         elevation: 6,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         shadowColor: Colors.black.withOpacity(0.1),
         surfaceTintColor: Colors.white,
         child: ClipRRect(
@@ -296,7 +306,9 @@ class MartProductCardHome extends StatelessWidget {
                       // Product Image with enhanced styling
                       GestureDetector(
                         onTap: () {
-                          Get.to(() => MartProductDetailsScreen(product: product));
+                          Get.to(
+                            () => MartProductDetailsScreen(product: product),
+                          );
                         },
                         child: Container(
                           height: _getResponsiveImageHeight(screenWidth),
@@ -316,12 +328,14 @@ class MartProductCardHome extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                             child: product.photo.isNotEmpty
                                 ? NetworkImageWidget(
-                              imageUrl: product.photo,
-                              height: _getResponsiveImageHeight(screenWidth),
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorWidget: _buildImageErrorWidget(),
-                            )
+                                    imageUrl: product.photo,
+                                    height: _getResponsiveImageHeight(
+                                      screenWidth,
+                                    ),
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                    errorWidget: _buildImageErrorWidget(),
+                                  )
                                 : _buildImageErrorWidget(),
                           ),
                         ),
@@ -333,10 +347,16 @@ class MartProductCardHome extends StatelessWidget {
                           top: 8,
                           left: 8,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
-                                colors: [Colors.red.shade500, Colors.red.shade400],
+                                colors: [
+                                  Colors.red.shade500,
+                                  Colors.red.shade400,
+                                ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
@@ -359,79 +379,6 @@ class MartProductCardHome extends StatelessWidget {
                             ),
                           ),
                         ),
-
-                      // Add to Cart Button - Enhanced Design
-                      // Positioned(
-                      //   bottom: 8,
-                      //   right: 8,
-                      //   child: GestureDetector(
-                      //     onTap: () {
-                      //       if (product.has_options == true) {
-                      //         _showProductOptionsModal(context, product);
-                      //       } else {
-                      //         _handleAddToCart(context, product);
-                      //       }
-                      //     },
-                      //     child: Container(
-                      //       width: 68,
-                      //       height: 36,
-                      //       decoration: BoxDecoration(
-                      //         gradient: LinearGradient(
-                      //           colors: [Colors.green.shade600, Colors.green.shade500],
-                      //           begin: Alignment.topCenter,
-                      //           end: Alignment.bottomCenter,
-                      //         ),
-                      //         borderRadius: BorderRadius.circular(10),
-                      //         boxShadow: [
-                      //           BoxShadow(
-                      //             color: Colors.green.withOpacity(0.3),
-                      //             blurRadius: 6,
-                      //             offset: const Offset(0, 3),
-                      //           ),
-                      //         ],
-                      //       ),
-                      //       child: product.has_options == true
-                      //           ? Column(
-                      //         mainAxisAlignment: MainAxisAlignment.center,
-                      //         children: [
-                      //           Text(
-                      //             "ADD",
-                      //             style: TextStyle(
-                      //               color: Colors.white,
-                      //               fontWeight: FontWeight.w800,
-                      //               fontSize: 10,
-                      //               letterSpacing: 0.5,
-                      //             ),
-                      //           ),
-                      //           Container(
-                      //             margin: const EdgeInsets.symmetric(horizontal: 4),
-                      //             height: 1,
-                      //             color: Colors.white.withOpacity(0.3),
-                      //           ),
-                      //           Text(
-                      //             "(${product.options_count ?? 0})",
-                      //             style: TextStyle(
-                      //               color: Colors.white.withOpacity(0.9),
-                      //               fontWeight: FontWeight.w700,
-                      //               fontSize: 8,
-                      //             ),
-                      //           ),
-                      //         ],
-                      //       )
-                      //           : Center(
-                      //         child: Text(
-                      //           "ADD",
-                      //           style: TextStyle(
-                      //             color: Colors.white,
-                      //             fontWeight: FontWeight.w800,
-                      //             fontSize: 12,
-                      //             letterSpacing: 0.5,
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -442,7 +389,7 @@ class MartProductCardHome extends StatelessWidget {
                       SizedBox(
                         height: 25,
                         child: Text(
-                          product.name ?? "Unknown Product",
+                          product.name,
                           style: TextStyle(
                             fontSize: _getResponsiveFontSize(screenWidth, 12.0),
                             fontWeight: FontWeight.w700,
@@ -454,19 +401,27 @@ class MartProductCardHome extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 6),
-                      if (_getDisplayRating() > 0 && _getDisplayReviewCount() > 0)
-                        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      if (_getDisplayRating() > 0 &&
+                          _getDisplayReviewCount() > 0)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
                               '20 mins',
                               style: TextStyle(
-                                fontSize: _getResponsiveFontSize(screenWidth, 10.0),
+                                fontSize: _getResponsiveFontSize(
+                                  screenWidth,
+                                  10.0,
+                                ),
                                 color: Colors.grey.shade600,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
                               // decoration: BoxDecoration(
                               //   color: Colors.amber.shade50,
                               //   borderRadius: BorderRadius.circular(8),
@@ -484,7 +439,10 @@ class MartProductCardHome extends StatelessWidget {
                                   Text(
                                     '${_getDisplayRating().toStringAsFixed(1)}',
                                     style: TextStyle(
-                                      fontSize: _getResponsiveFontSize(screenWidth, 11.0),
+                                      fontSize: _getResponsiveFontSize(
+                                        screenWidth,
+                                        11.0,
+                                      ),
                                       color: Colors.amber.shade800,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -512,7 +470,10 @@ class MartProductCardHome extends StatelessWidget {
                             '₹${discountedPrice.toStringAsFixed(0)}',
                             style: TextStyle(
                               fontWeight: FontWeight.w800,
-                              fontSize: _getResponsiveFontSize(screenWidth, 12.0),
+                              fontSize: _getResponsiveFontSize(
+                                screenWidth,
+                                12.0,
+                              ),
                               color: Colors.green.shade700,
                             ),
                           ),
@@ -521,7 +482,10 @@ class MartProductCardHome extends StatelessWidget {
                             Text(
                               '₹${originalPrice.toStringAsFixed(0)}',
                               style: TextStyle(
-                                fontSize: _getResponsiveFontSize(screenWidth, 12.0),
+                                fontSize: _getResponsiveFontSize(
+                                  screenWidth,
+                                  12.0,
+                                ),
                                 color: Colors.grey.shade500,
                                 decoration: TextDecoration.lineThrough,
                                 fontWeight: FontWeight.w500,
@@ -559,40 +523,47 @@ class MartProductCardHome extends StatelessWidget {
                                 // ),
                                 child: product.has_options == true
                                     ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Text(
-                                    //   "ADD",
-                                    //   style: TextStyle(
-                                    //     color: Colors.white,
-                                    //     fontWeight: FontWeight.w800,
-                                    //     fontSize: 10,
-                                    //     letterSpacing: 0.5,
-                                    //   ),
-                                    // ),
-                                    CircleAvatar(radius: 12,
-                                      child: Icon(Icons.add,),
-                                    ),
-                                    Container(
-                                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                                      height: 1,
-                                      color: Colors.white.withOpacity(0.3),
-                                    ),
-                                    Text(
-                                      "(${product.options_count ?? 0})",
-                                      style: TextStyle(
-                                        color: Colors.white.withOpacity(0.9),
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 8,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          // Text(
+                                          //   "ADD",
+                                          //   style: TextStyle(
+                                          //     color: Colors.white,
+                                          //     fontWeight: FontWeight.w800,
+                                          //     fontSize: 10,
+                                          //     letterSpacing: 0.5,
+                                          //   ),
+                                          // ),
+                                          CircleAvatar(
+                                            radius: 12,
+                                            child: Icon(Icons.add),
+                                          ),
+                                          Container(
+                                            margin: const EdgeInsets.symmetric(
+                                              horizontal: 4,
+                                            ),
+                                            height: 1,
+                                            color: Colors.white.withOpacity(
+                                              0.3,
+                                            ),
+                                          ),
+                                          Text(
+                                            "(${product.options_count ?? 0})",
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(
+                                                0.9,
+                                              ),
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 8,
+                                            ),
+                                          ),
+                                        ],
+                                      )
+                                    : CircleAvatar(
+                                        radius: 12,
+                                        child: Icon(Icons.add),
                                       ),
-                                    ),
-                                  ],
-                                )
-                                    : 
-                                
-                                CircleAvatar(radius: 12,
-                                  child: Icon(Icons.add,),
-                                )
                                 // Center(
                                 //   child: Text(
                                 //     "ADD",
@@ -823,7 +794,7 @@ class ProductOptionsModal extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  product.name ?? "Product Options",
+                  product.name,
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -845,7 +816,8 @@ class ProductOptionsModal extends StatelessWidget {
               itemCount: product.options?.length ?? 0,
               itemBuilder: (context, index) {
                 final option = product.options![index];
-                final hasDiscount = option['original_price'] != null &&
+                final hasDiscount =
+                    option['original_price'] != null &&
                     option['price'] != null &&
                     option['original_price'] > option['price'];
 
@@ -887,17 +859,17 @@ class ProductOptionsModal extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(8),
                                 child: option['image']?.isNotEmpty == true
                                     ? NetworkImageWidget(
-                                  imageUrl: option['image'],
-                                  width: 60,
-                                  height: 60,
-                                  fit: BoxFit.cover,
-                                )
+                                        imageUrl: option['image'],
+                                        width: 60,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                      )
                                     : NetworkImageWidget(
-                                  imageUrl: product.photo,
-                                  width: 60,
-                                  height: 60,
-                                  fit: BoxFit.cover,
-                                ),
+                                        imageUrl: product.photo,
+                                        width: 60,
+                                        height: 60,
+                                        fit: BoxFit.cover,
+                                      ),
                               ),
                             ),
 
@@ -934,7 +906,7 @@ class ProductOptionsModal extends StatelessWidget {
                                     children: [
                                       Text(
                                         '₹${option['price']?.toString() ?? '0'}',
-                                        style:  TextStyle(
+                                        style: TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w700,
                                           color: Colors.green.shade700,
@@ -947,7 +919,8 @@ class ProductOptionsModal extends StatelessWidget {
                                           style: TextStyle(
                                             fontSize: 12,
                                             color: Colors.grey.shade500,
-                                            decoration: TextDecoration.lineThrough,
+                                            decoration:
+                                                TextDecoration.lineThrough,
                                           ),
                                         ),
                                     ],
@@ -962,14 +935,19 @@ class ProductOptionsModal extends StatelessWidget {
                               height: 36,
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [ColorConst.martPrimary, ColorConst.martPrimary],
+                                  colors: [
+                                    ColorConst.martPrimary,
+                                    ColorConst.martPrimary,
+                                  ],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
                                 borderRadius: BorderRadius.circular(10),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: ColorConst.martPrimary.withOpacity(0.3),
+                                    color: ColorConst.martPrimary.withOpacity(
+                                      0.3,
+                                    ),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),

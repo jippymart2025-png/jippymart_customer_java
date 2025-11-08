@@ -1,12 +1,10 @@
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/widget/osm_map/map_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:get/get.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:provider/provider.dart';
 
 class MapPickerPage extends StatelessWidget {
   final OSMMapController controller = Get.put(OSMMapController());
