@@ -1,11 +1,13 @@
 import 'dart:developer';
 
 import 'package:flutter/cupertino.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 
 class MyProfileProvider extends ChangeNotifier {
   RxBool isLoading = true.obs;
@@ -34,9 +36,16 @@ class MyProfileProvider extends ChangeNotifier {
       log('[PROFILE_SCREEN] Starting to load user data');
       // Load user data if not already loaded
       if (Constant.userModel == null) {
-        log('[PROFILE_SCREEN] Constant.userModel is null, fetching from Firestore');
-        final userModel = await FireStoreUtils.getUserProfile(FireStoreUtils.getCurrentUid());
-        log('[PROFILE_SCREEN] getUserProfile result: ${userModel != null ? "SUCCESS" : "NULL"}');
+        log(
+          '[PROFILE_SCREEN] Constant.userModel is null, fetching from Firestore',
+        );
+        final userId = await SqlStorageConst.getFirebaseId();
+        final userModel = await AddressListProvider.getUserProfile(
+          userId.toString(),
+        );
+        log(
+          '[PROFILE_SCREEN] getUserProfile result: ${userModel != null ? "SUCCESS" : "NULL"}',
+        );
         if (userModel != null) {
           Constant.userModel = userModel;
           log('[PROFILE_SCREEN] Set Constant.userModel: ${userModel.toJson()}');
@@ -44,7 +53,9 @@ class MyProfileProvider extends ChangeNotifier {
           log('[PROFILE_SCREEN] Failed to load user model');
         }
       } else {
-        log('[PROFILE_SCREEN] Constant.userModel already exists: ${Constant.userModel?.toJson()}');
+        log(
+          '[PROFILE_SCREEN] Constant.userModel already exists: ${Constant.userModel?.toJson()}',
+        );
       }
     } catch (e) {
       log('[PROFILE_SCREEN] Error loading user data: $e');
@@ -56,13 +67,9 @@ class MyProfileProvider extends ChangeNotifier {
 
   Future<bool> deleteUserFromServer() async {
     var url = '${Constant.websiteUrl}/api/delete-user';
+    final userId = await SqlStorageConst.getFirebaseId();
     try {
-      var response = await http.post(
-        Uri.parse(url),
-        body: {
-          'uuid': FireStoreUtils.getCurrentUid(),
-        },
-      );
+      var response = await http.post(Uri.parse(url), body: {'uuid': userId});
       log("deleteUserFromServer :: ${response.body}");
       if (response.statusCode == 200) {
         return true;

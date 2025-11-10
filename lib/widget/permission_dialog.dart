@@ -1,5 +1,4 @@
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';

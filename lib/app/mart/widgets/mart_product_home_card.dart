@@ -27,14 +27,12 @@ class MartProductCardHome extends StatelessWidget {
       CartControllerProvider cartControllerProvider =
           Provider.of<CartControllerProvider>(context, listen: false);
       final martVendorID = "mart_${product.vendorID ?? 'unknown'}";
-
       final cartProduct = CartProductModel(
         id: product.id,
         name: product.name,
         photo: product.photo,
-        price: product.price?.toString() ?? '0',
-        discountPrice:
-            product.disPrice?.toString() ?? product.price?.toString() ?? '0',
+        price: product.price.toString(),
+        discountPrice: product.disPrice?.toString() ?? product.price.toString(),
         vendorID: martVendorID,
         vendorName: "Jippy Mart",
         categoryId: product.categoryID,

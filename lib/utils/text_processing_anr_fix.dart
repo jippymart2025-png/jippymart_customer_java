@@ -34,7 +34,10 @@ class TextProcessingANRFix {
       if (useIsolate) {
         // Move heavy text processing to isolate
         return await _executeTextProcessingInIsolate(
-            operationName, textOperation, timeout);
+          operationName,
+          textOperation,
+          timeout,
+        );
       } else {
         // Execute with timeout
         return await textOperation().timeout(
@@ -108,7 +111,9 @@ class TextProcessingANRFix {
           .where((word) => word.isNotEmpty)
           .toList();
     } catch (e) {
-      log('TEXT_PROCESSING_ANR_FIX: Tokenization failed for $operationName: $e');
+      log(
+        'TEXT_PROCESSING_ANR_FIX: Tokenization failed for $operationName: $e',
+      );
       return [];
     }
   }
@@ -172,38 +177,21 @@ class TextProcessingANRFix {
     );
   }
 
-  /// **Safe text action queries**
-  ///
-  /// Prevents ANR during text action queries (ProcessTextPlugin)
-  static Future<List<String>> safeTextActionQuery(
-    String text,
-    String operationName,
-  ) async {
-    return await safeTextProcessing(
-      'TextAction_$operationName',
-      () async {
-        // This would wrap the actual ProcessTextPlugin.queryTextActions call
-        // For now, simulate the operation
-        await Future.delayed(const Duration(milliseconds: 50));
-        return <String>['copy', 'paste', 'select_all'];
-      },
-      timeout: _maxTextActionTime,
-    );
-  }
-
   /// **Start monitoring text processing operations**
   static void startTextProcessingMonitoring() {
     if (_isMonitoring) return;
 
     _isMonitoring = true;
-    _textProcessingMonitor =
-        Timer.periodic(const Duration(seconds: 1), (timer) {
+    _textProcessingMonitor = Timer.periodic(const Duration(seconds: 1), (
+      timer,
+    ) {
       _checkForTextProcessingANR();
     });
 
     log('TEXT_PROCESSING_ANR_FIX: Started text processing monitoring');
-    FirebaseCrashlytics.instance
-        .log('TEXT_PROCESSING_ANR_FIX: Started text processing monitoring');
+    FirebaseCrashlytics.instance.log(
+      'TEXT_PROCESSING_ANR_FIX: Started text processing monitoring',
+    );
   }
 
   /// **Stop monitoring text processing operations**
@@ -231,7 +219,9 @@ class TextProcessingANRFix {
 
   /// **Report text processing ANR**
   static void _reportTextProcessingANR(
-      String operationName, Duration duration) {
+    String operationName,
+    Duration duration,
+  ) {
     final message =
         'TEXT_PROCESSING_ANR: $operationName blocked for ${duration.inMilliseconds}ms';
     log(message);
@@ -260,7 +250,9 @@ class TextProcessingANRFix {
 
   /// **Report text processing isolate error**
   static void _reportTextProcessingIsolateError(
-      String operationName, dynamic error) {
+    String operationName,
+    dynamic error,
+  ) {
     final message =
         'TEXT_PROCESSING_ISOLATE_ERROR: $operationName failed in isolate - $error';
     log(message);
@@ -355,10 +347,7 @@ mixin TextProcessingANRPreventionMixin {
   }
 
   /// **Safe text tokenization**
-  Future<List<String>> safeTokenize(
-    String text,
-    String operationName,
-  ) async {
+  Future<List<String>> safeTokenize(String text, String operationName) async {
     return await TextProcessingANRFix.safeTokenize(text, operationName);
   }
 

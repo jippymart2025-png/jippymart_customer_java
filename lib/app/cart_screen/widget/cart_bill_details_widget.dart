@@ -1,12 +1,9 @@
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
-
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
-
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

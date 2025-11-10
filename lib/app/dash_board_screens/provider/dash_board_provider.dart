@@ -27,11 +27,8 @@ class DashBoardProvider extends ChangeNotifier {
   String currentTheme = "theme_1";
   DateTime? currentBackPressTime;
   bool canPopNow = false;
-  bool _isInitialized = false;
 
-  void initFunction(BuildContext context) {
-    if (_isInitialized) return;
-    _isInitialized = true;
+  Future<void> initFunction(BuildContext context) async {
     loadUserData(context);
     currentTheme = Constant.theme;
     _initializePageList();

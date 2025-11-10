@@ -6,7 +6,6 @@ import 'package:jippymart_customer/app/change%20langauge/change_language_screen.
 import 'package:jippymart_customer/app/chat_screens/driver_inbox_screen.dart';
 import 'package:jippymart_customer/app/chat_screens/restaurant_inbox_screen.dart';
 import 'package:jippymart_customer/app/edit_profile_screen/edit_profile_screen.dart';
-import 'package:jippymart_customer/app/gift_card/screens/gift_card_screen/gift_card_screen.dart';
 import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -15,15 +14,14 @@ import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:in_app_review/in_app_review.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -252,9 +250,13 @@ class ProfileScreen extends StatelessWidget {
                                                 controller,
                                                 "assets/icons/ic_restaurant_chat.svg",
                                                 "Restaurant Inbox",
-                                                () {
+                                                () async {
+                                                  final userId =
+                                                      await SqlStorageConst.getFirebaseId();
                                                   Get.to(
-                                                    const RestaurantInboxScreen(),
+                                                    RestaurantInboxScreen(
+                                                      userId: userId,
+                                                    ),
                                                   );
                                                 },
                                               ),
@@ -262,9 +264,13 @@ class ProfileScreen extends StatelessWidget {
                                                 controller,
                                                 "assets/icons/ic_restaurant_driver.svg",
                                                 "Driver Inbox",
-                                                () {
+                                                () async {
+                                                  final userId =
+                                                      await SqlStorageConst.getFirebaseId();
                                                   Get.to(
-                                                    const DriverInboxScreen(),
+                                                    DriverInboxScreen(
+                                                      userId: userId.toString(),
+                                                    ),
                                                   );
                                                 },
                                               ),
@@ -434,14 +440,9 @@ class ProfileScreen extends StatelessWidget {
                                                             'DEBUG: Profile logout - Error clearing cart: $e',
                                                           );
                                                         }
-
-                                                        // Delete all controllers except splash/login
                                                         Get.deleteAll(
                                                           force: true,
                                                         );
-                                                        await FirebaseAuth
-                                                            .instance
-                                                            .signOut();
                                                         Get.offAll(
                                                           const PhoneNumberScreen(),
                                                         );
@@ -488,7 +489,6 @@ class ProfileScreen extends StatelessWidget {
                                               ShowToastDialog.showLoader(
                                                 "Please wait".tr,
                                               );
-
                                               // Clear cart data before account deletion
                                               try {
                                                 CartControllerProvider
@@ -499,27 +499,6 @@ class ProfileScreen extends StatelessWidget {
                                                 await cartControllerProvider
                                                     .clearCart();
                                               } catch (_) {}
-
-                                              await controller
-                                                  .deleteUserFromServer();
-                                              await FireStoreUtils.deleteUser().then((
-                                                value,
-                                              ) {
-                                                ShowToastDialog.closeLoader();
-                                                if (value == true) {
-                                                  ShowToastDialog.showToast(
-                                                    "Account deleted successfully"
-                                                        .tr,
-                                                  );
-                                                  Get.offAll(
-                                                    const PhoneNumberScreen(),
-                                                  );
-                                                } else {
-                                                  ShowToastDialog.showToast(
-                                                    "Contact Administrator".tr,
-                                                  );
-                                                }
-                                              });
                                             },
                                             negativeClick: () {
                                               Get.back();

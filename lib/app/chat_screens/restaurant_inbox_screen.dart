@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/chat_screens/chat_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -7,9 +8,9 @@ import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/firebase_pagination/src/firestore_pagination.dart';
 import 'package:jippymart_customer/widget/firebase_pagination/src/models/view_type.dart';
 import 'package:flutter/material.dart';
@@ -17,7 +18,9 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 class RestaurantInboxScreen extends StatelessWidget {
-  const RestaurantInboxScreen({super.key});
+  const RestaurantInboxScreen({super.key, required this.userId});
+
+  final String? userId;
 
   @override
   Widget build(BuildContext context) {
@@ -46,21 +49,22 @@ class RestaurantInboxScreen extends StatelessWidget {
             onTap: () async {
               ShowToastDialog.showLoader("Please wait".tr);
 
-              UserModel? customer = await FireStoreUtils.getUserProfile(
+              UserModel? customer = await AddressListProvider.getUserProfile(
                 inboxModel.customerId.toString(),
               );
-              UserModel? restaurantUser = await FireStoreUtils.getUserProfile(
-                inboxModel.restaurantId.toString(),
-              );
+              UserModel? restaurantUser =
+                  await AddressListProvider.getUserProfile(
+                    inboxModel.restaurantId.toString(),
+                  );
               VendorModel? vendorModel = await FireStoreUtils.getVendorById(
                 restaurantUser!.vendorID.toString(),
               );
               ShowToastDialog.closeLoader();
-
+              final userId = await SqlStorageConst.getFirebaseId();
               Get.to(
-                const ChatScreen(),
+                ChatScreen(userId: userId),
                 arguments: {
-                  "customerName": '${customer!.fullName()}',
+                  "customerName": customer!.fullName(),
                   "restaurantName": vendorModel!.title,
                   "orderId": inboxModel.orderId,
                   "restaurantId": restaurantUser.id,
@@ -153,7 +157,7 @@ class RestaurantInboxScreen extends StatelessWidget {
         // orderBy is compulsory to enable pagination
         query: FirebaseFirestore.instance
             .collection('chat_restaurant')
-            .where("customerId", isEqualTo: FireStoreUtils.getCurrentUid())
+            .where("customerId", isEqualTo: userId)
             .orderBy('createdAt', descending: true),
         //Change types customerId
         viewType: ViewType.list,

@@ -6,7 +6,6 @@ import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 
 import 'package:jippymart_customer/widget/cart_animation_widget.dart';

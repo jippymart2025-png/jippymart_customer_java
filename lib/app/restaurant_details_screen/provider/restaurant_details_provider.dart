@@ -462,11 +462,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         _applySmartSorting();
         print("DEBUG: Using cached products: ${cachedProducts.length} items");
       } else {
-        // Cache miss or empty - clear potentially corrupted cache
         if (cachedProducts != null && cachedProducts.isEmpty) {
           CacheManager.clear(cacheKey);
         }
-
         // **SINGLE QUERY FOR ALL PRODUCTS**
         final products = await FireStoreUtils.getProductByVendorId(
           vendorModel.id.toString(),

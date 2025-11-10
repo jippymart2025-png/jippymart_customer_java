@@ -1,7 +1,6 @@
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/svg.dart';

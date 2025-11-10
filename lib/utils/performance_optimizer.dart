@@ -18,7 +18,9 @@ import 'package:get/get.dart';
 class PerformanceOptimizer {
   static final PerformanceOptimizer _instance =
       PerformanceOptimizer._internal();
+
   factory PerformanceOptimizer() => _instance;
+
   PerformanceOptimizer._internal();
 
   // **PERFORMANCE TRACKING**
@@ -53,13 +55,17 @@ class PerformanceOptimizer {
       final duration = DateTime.now().difference(startTime);
       _durations[operationName] = duration;
       _startTimes.remove(operationName);
-      log('✅ PerformanceOptimizer - Completed: $operationName in ${duration.inMilliseconds}ms');
+      log(
+        '✅ PerformanceOptimizer - Completed: $operationName in ${duration.inMilliseconds}ms',
+      );
     }
   }
 
   /// **MEASURE ASYNC OPERATION**
   static Future<T> measureAsync<T>(
-      String operationName, Future<T> Function() operation) async {
+    String operationName,
+    Future<T> Function() operation,
+  ) async {
     startTracking(operationName);
     try {
       final result = await operation();
@@ -209,42 +215,6 @@ class PerformanceOptimizer {
     );
   }
 
-  static Widget optimizedGridView<T>({
-    required List<T> items,
-    required Widget Function(BuildContext, T, int) itemBuilder,
-    required String cacheKey,
-    required SliverGridDelegate gridDelegate,
-    int? itemCount,
-    ScrollController? controller,
-    bool shrinkWrap = false,
-    bool primary = true,
-    ScrollPhysics? physics,
-  }) {
-    return GridView.builder(
-      key: PageStorageKey(cacheKey),
-      itemCount: itemCount ?? items.length,
-      gridDelegate: gridDelegate,
-      controller: controller,
-      shrinkWrap: shrinkWrap,
-      primary: primary,
-      physics: physics ?? const AlwaysScrollableScrollPhysics(),
-      itemBuilder: (context, index) {
-        final item = items[index];
-        final itemId = '$cacheKey-$index';
-
-        // Lazy load if needed
-        if (shouldLazyLoad(itemId)) {
-          addToLazyLoadQueue(itemId);
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            markAsLazyLoaded(itemId);
-          });
-        }
-
-        return itemBuilder(context, item, index);
-      },
-    );
-  }
-
   /// **MEMORY MANAGEMENT**
   static void optimizeMemory() {
     // Clear old cache entries
@@ -282,7 +252,9 @@ class PerformanceOptimizer {
     log('\n📊 **OVERVIEW**');
     log('Active operations: ${_startTimes.length}');
     log('Completed operations: ${_durations.length}');
-    log('Total calls: ${_callCounts.values.fold(0, (sum, count) => sum + count)}');
+    log(
+      'Total calls: ${_callCounts.values.fold(0, (sum, count) => sum + count)}',
+    );
     log('Cached items: ${_memoryCache.length}');
     log('Preloaded images: ${_preloadedImages.length}');
     log('Lazy loaded items: ${_lazyLoadedItems.length}');
@@ -296,7 +268,9 @@ class PerformanceOptimizer {
       log('Slowest operations:');
       for (int i = 0; i < sortedOperations.length && i < 5; i++) {
         final op = sortedOperations[i];
-        log('${i + 1}. ${op.key}: ${op.value.inMilliseconds}ms (${_callCounts[op.key] ?? 0} calls)');
+        log(
+          '${i + 1}. ${op.key}: ${op.value.inMilliseconds}ms (${_callCounts[op.key] ?? 0} calls)',
+        );
       }
     }
 
@@ -309,40 +283,6 @@ class PerformanceOptimizer {
     log('\n' + '=' * 50);
     log('Report generated at: ${DateTime.now()}');
     log('=' * 50 + '\n');
-  }
-
-  /// **CLEAR ALL DATA**
-  static void clearAllData() {
-    _startTimes.clear();
-    _durations.clear();
-    _callCounts.clear();
-    _memoryCache.clear();
-    _cacheTimestamps.clear();
-    _imageCache.clear();
-    _preloadedImages.clear();
-    _lazyLoadedItems.clear();
-    _pendingLazyLoads.clear();
-    log('🧹 PerformanceOptimizer - All data cleared');
-  }
-
-  /// **INITIALIZATION**
-  static Future<void> initialize() async {
-    startTracking('initialization');
-
-    // Set up periodic memory optimization
-    Timer.periodic(const Duration(minutes: 5), (_) {
-      optimizeMemory();
-    });
-
-    // Preload common images
-    await preloadImages([
-      'assets/images/simmer_gif.gif',
-      'assets/images/ic_logo.png',
-      // Add more common images here
-    ]);
-
-    endTracking('initialization');
-    log('🚀 PerformanceOptimizer initialized successfully');
   }
 }
 
@@ -483,10 +423,7 @@ class _PerformanceMonitorWidgetState extends State<PerformanceMonitorWidget> {
               ),
               child: Text(
                 'Performance Monitor Active',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                ),
+                style: TextStyle(color: Colors.white, fontSize: 12),
               ),
             ),
           ),

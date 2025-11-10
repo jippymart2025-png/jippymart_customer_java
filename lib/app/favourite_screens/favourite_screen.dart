@@ -11,10 +11,10 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/restaurant_image_view.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
 import 'package:flutter/material.dart';
@@ -411,9 +411,10 @@ class FavouriteScreen extends StatelessWidget {
                                                                                                     vendorModel.id,
                                                                                               )
                                                                                               .isNotEmpty) {
+                                                                                            final userId = await SqlStorageConst.getFirebaseId();
                                                                                             FavouriteModel favouriteModel = FavouriteModel(
                                                                                               restaurantId: vendorModel.id,
-                                                                                              userId: FireStoreUtils.getCurrentUid(),
+                                                                                              userId: userId,
                                                                                             );
                                                                                             controller.favouriteList.removeWhere(
                                                                                               (
@@ -429,9 +430,10 @@ class FavouriteScreen extends StatelessWidget {
                                                                                               favouriteModel,
                                                                                             );
                                                                                           } else {
+                                                                                            final userId = await SqlStorageConst.getFirebaseId();
                                                                                             FavouriteModel favouriteModel = FavouriteModel(
                                                                                               restaurantId: vendorModel.id,
-                                                                                              userId: FireStoreUtils.getCurrentUid(),
+                                                                                              userId: userId,
                                                                                             );
                                                                                             controller.favouriteList.add(
                                                                                               favouriteModel,
@@ -990,10 +992,11 @@ class FavouriteScreen extends StatelessWidget {
                                                                                                 productModel.id,
                                                                                           )
                                                                                           .isNotEmpty) {
+                                                                                        final userId = await SqlStorageConst.getFirebaseId();
                                                                                         FavouriteItemModel favouriteModel = FavouriteItemModel(
                                                                                           productId: productModel.id,
                                                                                           storeId: productModel.vendorID,
-                                                                                          userId: FireStoreUtils.getCurrentUid(),
+                                                                                          userId: userId,
                                                                                         );
                                                                                         controller.favouriteItemList.removeWhere(
                                                                                           (
@@ -1009,10 +1012,11 @@ class FavouriteScreen extends StatelessWidget {
                                                                                           favouriteModel,
                                                                                         );
                                                                                       } else {
+                                                                                        final userId = await SqlStorageConst.getFirebaseId();
                                                                                         FavouriteItemModel favouriteModel = FavouriteItemModel(
                                                                                           productId: productModel.id,
                                                                                           storeId: productModel.vendorID,
-                                                                                          userId: FireStoreUtils.getCurrentUid(),
+                                                                                          userId: userId,
                                                                                         );
                                                                                         controller.favouriteItemList.add(
                                                                                           favouriteModel,

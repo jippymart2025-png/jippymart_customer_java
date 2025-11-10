@@ -185,53 +185,6 @@ class SwiggySearchProvider extends ChangeNotifier {
     }
   }
 
-  /// **PERFORM FRESH DATA SEARCH**
-  Future<void> _performFreshDataSearch(
-    String query,
-    List<dynamic> results,
-  ) async {
-    try {
-      final lowerQuery = query.toLowerCase();
-      // Try to get fresh products
-      try {
-        List<ProductModel> freshProducts = await FireStoreUtils.getAllProducts(
-          limit: 200,
-        );
-        for (var product in freshProducts) {
-          if (product.name != null &&
-              product.name!.toLowerCase().contains(lowerQuery)) {
-            results.add(product);
-          }
-        }
-        print(
-          "🔍 Fresh products search found ${results.where((r) => r is ProductModel).length} products",
-        );
-      } catch (e) {
-        print("❌ Fresh products search failed: $e");
-      }
-
-      // Try to get fresh vendors
-      try {
-        List<VendorModel> freshVendors = await FireStoreUtils.getAllVendors(
-          limit: 100,
-        );
-        for (var vendor in freshVendors) {
-          if (vendor.title != null &&
-              vendor.title!.toLowerCase().contains(lowerQuery)) {
-            results.add(vendor);
-          }
-        }
-        print(
-          "🔍 Fresh vendors search found ${results.where((r) => r is VendorModel).length} vendors",
-        );
-      } catch (e) {
-        print("❌ Fresh vendors search failed: $e");
-      }
-    } catch (e) {
-      print("❌ Fresh data search failed: $e");
-    }
-  }
-
   /// **LOAD MORE DATA PROGRESSIVELY IN BACKGROUND - MEMORY OPTIMIZED**
   Future<void> _loadMoreDataProgressively() async {
     try {
@@ -523,70 +476,6 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("❌ Search error: $e");
       isSearching.value = false;
     }
-  }
-
-  /// **PROCESS SEARCH RESULTS AND SEPARATE BY TYPE**
-  void _processSearchResults(List<dynamic> results) {
-    // Separate results by type
-    List<VendorModel> restaurants = [];
-    List<ProductModel> products = [];
-    List<VendorCategoryModel> categories = [];
-
-    for (var result in results) {
-      if (result is VendorModel) {
-        restaurants.add(result);
-      } else if (result is ProductModel) {
-        products.add(result);
-      } else if (result is VendorCategoryModel) {
-        categories.add(result);
-      }
-    }
-
-    // Sort products first, then restaurants
-    products.sort((a, b) => (b.name ?? '').compareTo(a.name ?? ''));
-    restaurants.sort((a, b) => (b.title ?? '').compareTo(a.title ?? ''));
-
-    // Take initial results
-    var initialProducts = products.take(INITIAL_PRODUCTS).toList();
-    var initialRestaurants = restaurants.take(INITIAL_RESTAURANTS).toList();
-
-    // Store remaining for pagination
-    _remainingProducts = products.skip(INITIAL_PRODUCTS).toList();
-    _remainingRestaurants = restaurants.skip(INITIAL_RESTAURANTS).toList();
-    _remainingCategories = categories;
-
-    // Update observable lists
-    productResults.assignAll(initialProducts);
-    restaurantResults.assignAll(initialRestaurants);
-    categoryResults.assignAll(categories);
-
-    // Update counts
-    currentResultCount.value =
-        initialProducts.length + initialRestaurants.length + categories.length;
-    totalAvailableResults.value = results.length;
-
-    // Check if there are more results
-    hasMoreResults.value =
-        _remainingProducts.isNotEmpty ||
-        _remainingRestaurants.isNotEmpty ||
-        _remainingCategories.isNotEmpty;
-
-    // Fallback: If we have any results, show Load More button (for better UX)
-    if (!hasMoreResults.value &&
-        (initialProducts.isNotEmpty ||
-            initialRestaurants.isNotEmpty ||
-            categories.isNotEmpty)) {
-      hasMoreResults.value = true;
-      print("📊 Fallback: Showing Load More button for better UX");
-    }
-
-    print(
-      "📊 Search results: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${categories.length} categories",
-    );
-    print(
-      "📊 Remaining: ${_remainingProducts.length} products, ${_remainingRestaurants.length} restaurants, ${_remainingCategories.length} categories",
-    );
-    print("📊 Has more results: ${hasMoreResults.value}");
   }
 
   /// **CLEAR SEARCH RESULTS**

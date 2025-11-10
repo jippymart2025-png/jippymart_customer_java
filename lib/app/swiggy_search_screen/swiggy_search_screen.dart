@@ -4,7 +4,6 @@ import 'package:jippymart_customer/app/swiggy_search_screen/provider/swiggy_sear
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';

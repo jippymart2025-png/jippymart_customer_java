@@ -1,7 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 
 class AppLoadingWidget extends StatelessWidget {

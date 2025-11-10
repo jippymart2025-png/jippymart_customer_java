@@ -13,7 +13,9 @@ import 'package:flutter/foundation.dart';
 /// - Automatic recovery mechanisms
 class CrashPrevention {
   static final CrashPrevention _instance = CrashPrevention._internal();
+
   factory CrashPrevention() => _instance;
+
   CrashPrevention._internal();
 
   // **MEMORY MANAGEMENT**
@@ -88,33 +90,9 @@ class CrashPrevention {
 
   /// **DEEP LINK SAFE PROCESSING**
   ///
-  /// Special handling for deep link operations
-  static Future<void> safeDeepLinkProcess(
-    String deepLinkUrl,
-    Future<void> Function() processFunction,
-  ) async {
-    final instance = CrashPrevention();
-    await instance._safeDeepLinkProcessInternal(
-      deepLinkUrl,
-      processFunction,
-    );
-  }
-
-  /// **CLEANUP RESOURCES**
-  ///
-  /// Call this when app is closing or memory is low
-  static void cleanup() {
-    final instance = CrashPrevention();
-    instance._cleanup();
-  }
 
   /// **GET SYSTEM STATUS**
   ///
-  /// Returns current system health status
-  static Map<String, dynamic> getSystemStatus() {
-    final instance = CrashPrevention();
-    return instance._getSystemStatus();
-  }
 
   // **INTERNAL IMPLEMENTATION**
 
@@ -127,13 +105,17 @@ class CrashPrevention {
     try {
       // Check if we're in error recovery mode
       if (_isInErrorRecoveryMode()) {
-        log('CRASH_PREVENTION: In error recovery mode, skipping operation: $operationName');
+        log(
+          'CRASH_PREVENTION: In error recovery mode, skipping operation: $operationName',
+        );
         throw Exception('System in error recovery mode');
       }
 
       // Check memory pressure
       if (_isMemoryPressureHigh()) {
-        log('CRASH_PREVENTION: Memory pressure high, delaying operation: $operationName');
+        log(
+          'CRASH_PREVENTION: Memory pressure high, delaying operation: $operationName',
+        );
         await Future.delayed(_memoryCooldown);
       }
 
@@ -155,8 +137,12 @@ class CrashPrevention {
       if (allowRetry && _consecutiveErrors < _maxConsecutiveErrors) {
         log('CRASH_PREVENTION: Retrying operation: $operationName');
         await Future.delayed(Duration(milliseconds: 500 * _consecutiveErrors));
-        return _safeExecuteInternal(operationName, operation,
-            timeout: timeout, allowRetry: false);
+        return _safeExecuteInternal(
+          operationName,
+          operation,
+          timeout: timeout,
+          allowRetry: false,
+        );
       }
 
       rethrow;
@@ -196,33 +182,14 @@ class CrashPrevention {
 
     if (lastTime != null && now.difference(lastTime) < cooldownDuration) {
       final waitTime = cooldownDuration - now.difference(lastTime);
-      log('CRASH_PREVENTION: Rate limiting operation: $operationName, waiting ${waitTime.inMilliseconds}ms');
+      log(
+        'CRASH_PREVENTION: Rate limiting operation: $operationName, waiting ${waitTime.inMilliseconds}ms',
+      );
       await Future.delayed(waitTime);
     }
 
     _lastOperationTimes[operationName] = now;
     return await operation();
-  }
-
-  Future<void> _safeDeepLinkProcessInternal(
-    String deepLinkUrl,
-    Future<void> Function() processFunction,
-  ) async {
-    try {
-      log('CRASH_PREVENTION: Processing deep link: $deepLinkUrl');
-
-      // Rate limit deep link processing
-      await _rateLimitedExecuteInternal(
-        'deep_link_processing',
-        processFunction,
-        cooldown: const Duration(milliseconds: 1000),
-      );
-
-      log('CRASH_PREVENTION: Deep link processed successfully: $deepLinkUrl');
-    } catch (e) {
-      log('CRASH_PREVENTION: Deep link processing failed: $deepLinkUrl - $e');
-      // Don't rethrow for deep links - they should fail gracefully
-    }
   }
 
   bool _isInErrorRecoveryMode() {
@@ -266,107 +233,11 @@ class CrashPrevention {
       print('CRASH_PREVENTION: Error details: $error');
     }
   }
-
-  void _cleanup() {
-    // Cancel all timers
-    for (final timer in _operationTimers.values) {
-      timer.cancel();
-    }
-    _operationTimers.clear();
-
-    // Reset counters
-    _currentMemoryOperations = 0;
-    _consecutiveErrors = 0;
-    _lastMemoryReset = null;
-    _lastErrorTime = null;
-    _lastOperationTimes.clear();
-
-    log('CRASH_PREVENTION: Cleanup completed');
-  }
-
-  Map<String, dynamic> _getSystemStatus() {
-    return {
-      'memoryOperations': _currentMemoryOperations,
-      'maxMemoryOperations': _maxMemoryOperations,
-      'consecutiveErrors': _consecutiveErrors,
-      'maxConsecutiveErrors': _maxConsecutiveErrors,
-      'isInErrorRecovery': _isInErrorRecoveryMode(),
-      'isMemoryPressureHigh': _isMemoryPressureHigh(),
-      'lastErrorTime': _lastErrorTime?.toIso8601String(),
-      'lastMemoryReset': _lastMemoryReset?.toIso8601String(),
-    };
-  }
 }
 
 /// **CRASH PREVENTION MIXIN**
 ///
 /// Add this mixin to controllers that need crash prevention
-mixin CrashPreventionMixin {
-  final List<Timer> _crashPreventionTimers = [];
-  final List<Completer<void>> _crashPreventionOperations = [];
-
-  /// **SAFE CONTROLLER OPERATION**
-  ///
-  /// Wraps controller operations with crash prevention
-  Future<T> safeControllerOperation<T>(
-    String operationName,
-    Future<T> Function() operation, {
-    Duration? timeout,
-  }) async {
-    return CrashPrevention.safeExecute(
-      operationName,
-      operation,
-      timeout: timeout,
-    );
-  }
-
-  /// **MEMORY-SAFE CONTROLLER OPERATION**
-  ///
-  /// For memory-intensive controller operations
-  Future<T> memorySafeControllerOperation<T>(
-    String operationName,
-    Future<T> Function() operation, {
-    Duration? timeout,
-  }) async {
-    return CrashPrevention.memorySafeExecute(
-      operationName,
-      operation,
-      timeout: timeout,
-    );
-  }
-
-  /// **RATE-LIMITED CONTROLLER OPERATION**
-  ///
-  /// For operations that should be rate-limited
-  Future<T> rateLimitedControllerOperation<T>(
-    String operationName,
-    Future<T> Function() operation, {
-    Duration? cooldown,
-  }) async {
-    return CrashPrevention.rateLimitedExecute(
-      operationName,
-      operation,
-      cooldown: cooldown,
-    );
-  }
-
-  /// **CLEANUP**
-  ///
-  /// Call this in onClose()
-  void cleanupCrashPrevention() {
-    for (final timer in _crashPreventionTimers) {
-      timer.cancel();
-    }
-    _crashPreventionTimers.clear();
-
-    for (final completer in _crashPreventionOperations) {
-      if (!completer.isCompleted) {
-        completer.completeError('Operation cancelled during cleanup');
-      }
-    }
-    _crashPreventionOperations.clear();
-  }
-}
 
 /// **DEEP LINK CRASH PREVENTION**
 ///
@@ -390,13 +261,17 @@ class DeepLinkCrashPrevention {
       final lastTime = _lastDeepLinkTimes[deepLinkUrl];
 
       if (lastTime != null && now.difference(lastTime) < _deepLinkCooldown) {
-        log('DEEP_LINK_CRASH_PREVENTION: Rate limiting deep link: $deepLinkUrl');
+        log(
+          'DEEP_LINK_CRASH_PREVENTION: Rate limiting deep link: $deepLinkUrl',
+        );
         return;
       }
 
       // Check error recovery
       if (_consecutiveDeepLinkErrors >= _maxConsecutiveDeepLinkErrors) {
-        log('DEEP_LINK_CRASH_PREVENTION: Too many consecutive errors, skipping: $deepLinkUrl');
+        log(
+          'DEEP_LINK_CRASH_PREVENTION: Too many consecutive errors, skipping: $deepLinkUrl',
+        );
         return;
       }
 
@@ -413,21 +288,14 @@ class DeepLinkCrashPrevention {
 
       // Reset error count on success
       _consecutiveDeepLinkErrors = 0;
-      log('DEEP_LINK_CRASH_PREVENTION: Deep link processed successfully: $deepLinkUrl');
+      log(
+        'DEEP_LINK_CRASH_PREVENTION: Deep link processed successfully: $deepLinkUrl',
+      );
     } catch (e) {
       _consecutiveDeepLinkErrors++;
       log('DEEP_LINK_CRASH_PREVENTION: Deep link error: $deepLinkUrl - $e');
 
       // Don't rethrow - deep links should fail gracefully
     }
-  }
-
-  /// **CLEANUP DEEP LINK PREVENTION**
-  ///
-  /// Call this when app is closing
-  static void cleanup() {
-    _lastDeepLinkTimes.clear();
-    _consecutiveDeepLinkErrors = 0;
-    log('DEEP_LINK_CRASH_PREVENTION: Cleanup completed');
   }
 }

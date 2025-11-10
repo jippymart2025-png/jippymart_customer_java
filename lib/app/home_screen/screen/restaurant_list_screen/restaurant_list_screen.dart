@@ -7,6 +7,7 @@ import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/restaurant_image_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -127,6 +128,8 @@ class RestaurantListScreen extends StatelessWidget {
                                             top: 10,
                                             child: InkWell(
                                               onTap: () async {
+                                                final userId =
+                                                    await SqlStorageConst.getFirebaseId();
                                                 if (controller.favouriteList
                                                     .where(
                                                       (p0) =>
@@ -135,12 +138,12 @@ class RestaurantListScreen extends StatelessWidget {
                                                     )
                                                     .isNotEmpty) {
                                                   FavouriteModel
-                                                  favouriteModel = FavouriteModel(
-                                                    restaurantId:
-                                                        vendorModel.id,
-                                                    userId:
-                                                        FireStoreUtils.getCurrentUid(),
-                                                  );
+                                                  favouriteModel =
+                                                      FavouriteModel(
+                                                        restaurantId:
+                                                            vendorModel.id,
+                                                        userId: userId,
+                                                      );
                                                   controller.favouriteList
                                                       .removeWhere(
                                                         (item) =>
@@ -151,13 +154,15 @@ class RestaurantListScreen extends StatelessWidget {
                                                     favouriteModel,
                                                   );
                                                 } else {
+                                                  final userId =
+                                                      await SqlStorageConst.getFirebaseId();
                                                   FavouriteModel
-                                                  favouriteModel = FavouriteModel(
-                                                    restaurantId:
-                                                        vendorModel.id,
-                                                    userId:
-                                                        FireStoreUtils.getCurrentUid(),
-                                                  );
+                                                  favouriteModel =
+                                                      FavouriteModel(
+                                                        restaurantId:
+                                                            vendorModel.id,
+                                                        userId: userId,
+                                                      );
                                                   controller.favouriteList.add(
                                                     favouriteModel,
                                                   );

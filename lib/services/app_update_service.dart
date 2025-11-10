@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'dart:io';
@@ -503,7 +503,7 @@ class AppUpdateService {
     // Check if user is logged in and navigate accordingly
     const FlutterSecureStorage secureStorage = FlutterSecureStorage();
     final apiToken = await secureStorage.read(key: 'api_token');
-    final firebaseUser = FirebaseAuth.instance.currentUser;
+    final firebaseUser = await SqlStorageConst.getFirebaseId();
 
     if (apiToken != null && apiToken.isNotEmpty && firebaseUser != null) {
       Get.offAll(

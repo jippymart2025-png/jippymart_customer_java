@@ -9,7 +9,6 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -1056,19 +1055,15 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                           ),
                                         ),
                                         const SizedBox(width: 6),
-                                        // Clear Filter Button
                                         Builder(
                                           builder: (context) {
                                             try {
                                               final hasActiveFilters =
-                                                  (controller.isVag.value ??
-                                                      false) ||
-                                                  (controller.isNonVag.value ??
-                                                      false) ||
+                                                  (controller.isVag.value) ||
+                                                  (controller.isNonVag.value) ||
                                                   (controller
-                                                          .isOfferFilter
-                                                          .value ??
-                                                      false) ||
+                                                      .isOfferFilter
+                                                      .value) ||
                                                   (controller
                                                       .searchEditingController
                                                       .value

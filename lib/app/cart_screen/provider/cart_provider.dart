@@ -7,6 +7,7 @@ import 'dart:math' as maths;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
 import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
@@ -56,6 +57,7 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/razorpay_crash_prevention.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widgets/delivery_zone_alert_dialog.dart'
     show DeliveryZoneAlertDialog;
 import 'package:flutter/material.dart';
@@ -655,21 +657,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  /// Reverse geocode coordinates to get address - DEPRECATED
-  /// We don't want to fall back to coordinates, only use real addresses
-  Future<String?> _reverseGeocodeCoordinates(double lat, double lng) async {
-    try {
-      // This method is deprecated - we only want real addresses, not coordinate-based addresses
-      print(
-        '📍 [REVERSE_GEOCODE] ❌ DEPRECATED - Not creating coordinate-based addresses',
-      );
-      return null;
-    } catch (e) {
-      print('📍 [REVERSE_GEOCODE] ❌ Error in reverse geocoding: $e');
-      return null;
-    }
-  }
-
   /// Show alert when address is required
   void _showAddressRequiredAlert() {
     Get.dialog(
@@ -742,134 +729,7 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  /// Get fallback zone address if user is in service area - DEPRECATED
-  // Future<void> _setFallbackZoneAddressIfInServiceArea() async {
-  //   try {
-  //     print('DEBUG: Checking if user is in service area for fallback zone...');
-  //
-  //     // First check if user has current location
-  //     if (Constant.selectedLocation.location?.latitude == null ||
-  //         Constant.selectedLocation.location?.longitude == null) {
-  //       print('DEBUG: No current location available - address is mandatory');
-  //       selectedAddress.value = null;
-  //       return;
-  //     }
-  //
-  //     // Get all zones to check if user is in service area
-  //     final zones = await FireStoreUtils.getZone();
-  //     if (zones == null || zones.isEmpty) {
-  //       print('DEBUG: No zones available - address is mandatory');
-  //       selectedAddress.value = null;
-  //       return;
-  //     }
-  //
-  //     // Check if user is in any service zone
-  //     bool isInServiceArea = false;
-  //     for (var zone in zones) {
-  //       if (zone.area != null &&
-  //           Constant.isPointInPolygon(
-  //               LatLng(Constant.selectedLocation.location!.latitude!,
-  //                   Constant.selectedLocation.location!.longitude!),
-  //               zone.area!)) {
-  //         isInServiceArea = true;
-  //         Constant.selectedZone = zone;
-  //         Constant.isZoneAvailable = true;
-  //         print('DEBUG: User is in service zone: ${zone.name}');
-  //         break;
-  //       }
-  //     }
-  //
-  //     if (!isInServiceArea) {
-  //       print('DEBUG: User is not in service area - address is mandatory');
-  //       selectedAddress.value = null;
-  //       return;
-  //     }
-  //
-  //     // User is in service area - get fallback zone address
-  //     final fallbackZone = await _getFallbackZoneAddress();
-  //     if (fallbackZone != null) {
-  //       selectedAddress.value = fallbackZone;
-  //       print('DEBUG: Using fallback zone address: ${fallbackZone.address}');
-  //     } else {
-  //       print('DEBUG: Fallback zone not available - address is mandatory');
-  //       selectedAddress.value = null;
-  //     }
-  //   } catch (e) {
-  //     print('DEBUG: Error checking service area: $e');
-  //     selectedAddress.value = null;
-  //   }
-  // }
-
   /// Get fallback zone address from Firestore
-  Future<ShippingAddress?> _getFallbackZoneAddress() async {
-    try {
-      print('DEBUG: Fetching fallback zone from Firestore...');
-
-      final doc = await FirebaseFirestore.instance
-          .collection('fallback_zone')
-          .doc('ongole_fallback_zone')
-          .get();
-
-      if (!doc.exists) {
-        print('DEBUG: Fallback zone document does not exist');
-        return null;
-      }
-
-      final data = doc.data();
-      if (data == null) {
-        print('DEBUG: Fallback zone document has no data');
-        return null;
-      }
-
-      // Check if fallback zone is enabled
-      if (data['enabled'] != true) {
-        print('DEBUG: Fallback zone is disabled');
-        return null;
-      }
-
-      final zoneId = data['zone_id'] as String?;
-      if (zoneId == null || zoneId.isEmpty) {
-        print('DEBUG: Fallback zone has no zone_id');
-        return null;
-      }
-
-      // Get the zone details
-      final zoneDoc = await FirebaseFirestore.instance
-          .collection('zone')
-          .doc(zoneId)
-          .get();
-
-      if (!zoneDoc.exists) {
-        print('DEBUG: Zone document does not exist for zone_id: $zoneId');
-        return null;
-      }
-
-      final zoneData = zoneDoc.data();
-      if (zoneData == null) {
-        print('DEBUG: Zone document has no data');
-        return null;
-      }
-
-      // Create fallback address from zone data
-      final fallbackAddress = ShippingAddress(
-        id: 'fallback_zone_${zoneId}',
-        addressAs: 'Service Area',
-        address: zoneData['name'] ?? 'Service Area',
-        locality: zoneData['name'] ?? 'Service Area',
-        location: UserLocation(
-          latitude: zoneData['latitude'] ?? 15.41813013195468,
-          longitude: zoneData['longitude'] ?? 80.05922178576178,
-        ),
-        isDefault: false,
-      );
-
-      print('DEBUG: Created fallback zone address: ${fallbackAddress.address}');
-      return fallbackAddress;
-    } catch (e) {
-      print('DEBUG: Error fetching fallback zone: $e');
-      return null;
-    }
-  }
 
   void initFunction(BuildContext context) {
     Future.delayed(const Duration(seconds: 3), () {
@@ -903,9 +763,7 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '🔒 [BULLETPROOF_PROFILE] VALIDATION STARTED at ${startTime.toIso8601String()}',
       );
-      print(
-        '🔒 [BULLETPROOF_PROFILE] User ID: ${FireStoreUtils.getCurrentUid()}',
-      );
+
       print(
         '🔒 [BULLETPROOF_PROFILE] Current user model: ${userModel.value.firstName ?? 'NULL'}',
       );
@@ -930,11 +788,10 @@ class CartControllerProvider extends ChangeNotifier {
             '🔒 [BULLETPROOF_PROFILE] Strategy 1: Fresh Firestore fetch (10s timeout)',
           );
           final fetchStart = DateTime.now();
-
-          user = await FireStoreUtils.getUserProfile(
-            FireStoreUtils.getCurrentUid(),
+          final userId = await SqlStorageConst.getFirebaseId();
+          user = await AddressListProvider.getUserProfile(
+            userId.toString(),
           ).timeout(const Duration(seconds: 10));
-
           final fetchDuration = DateTime.now().difference(fetchStart);
           print(
             '🔒 [BULLETPROOF_PROFILE] Firestore fetch completed in ${fetchDuration.inMilliseconds}ms',
@@ -1644,13 +1501,13 @@ class CartControllerProvider extends ChangeNotifier {
   // Method to check for recent duplicate orders
   Future<bool> hasRecentOrder() async {
     try {
-      final currentUser = FireStoreUtils.getCurrentUid();
+      final userId = await SqlStorageConst.getFirebaseId();
       final now = DateTime.now();
       final fiveMinutesAgo = now.subtract(const Duration(minutes: 5));
 
       final querySnapshot = await FirebaseFirestore.instance
           .collection('restaurant_orders')
-          .where('author', isEqualTo: currentUser)
+          .where('author', isEqualTo: userId)
           .where('createdAt', isGreaterThan: Timestamp.fromDate(fiveMinutesAgo))
           .orderBy('createdAt', descending: true)
           .limit(1)
@@ -2048,9 +1905,8 @@ class CartControllerProvider extends ChangeNotifier {
 
     // Load user profile (only if not cached)
     if (userModel.value.id == null) {
-      await FireStoreUtils.getUserProfile(FireStoreUtils.getCurrentUid()).then((
-        value,
-      ) {
+      final userId = await SqlStorageConst.getFirebaseId();
+      await AddressListProvider.getUserProfile(userId.toString()).then((value) {
         if (value != null) {
           userModel.value = value;
         }
@@ -2565,9 +2421,10 @@ class CartControllerProvider extends ChangeNotifier {
   // Separate method to mark used coupons
   Future<void> _markUsedCoupons() async {
     try {
+      final userId = await SqlStorageConst.getFirebaseId();
       final usedCouponsSnapshot = await FirebaseFirestore.instance
           .collection('used_coupons')
-          .where('userId', isEqualTo: FireStoreUtils.getCurrentUid())
+          .where('userId', isEqualTo: userId)
           .get();
       final usedCouponIds = usedCouponsSnapshot.docs
           .map((doc) => doc['couponId'] as String)
@@ -4256,7 +4113,7 @@ class CartControllerProvider extends ChangeNotifier {
       // Set order details using correct field names
       // Address is already validated above - no fallbacks needed
       orderModel.address = selectedAddress.value;
-      orderModel.authorID = FireStoreUtils.getCurrentUid();
+      orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel.value;
 
       print(
@@ -4441,7 +4298,7 @@ class CartControllerProvider extends ChangeNotifier {
       // Send notifications and email
       if (orderModel.vendor != null && orderModel.vendor!.author != null) {
         additionalTasks.add(
-          FireStoreUtils.getUserProfile(
+          AddressListProvider.getUserProfile(
             orderModel.vendor!.author.toString(),
           ).then((value) {
             if (value != null) {
@@ -4925,83 +4782,6 @@ class CartControllerProvider extends ChangeNotifier {
     });
   }
 
-  // 🔑 SAVE PAYMENT STATE SYNCHRONOUSLY (IMMEDIATE)
-  void _savePaymentStateSync() {
-    try {
-      print('🔑 SAVING PAYMENT STATE SYNCHRONOUSLY...');
-      print('🔑 Payment in progress: ${isPaymentInProgress.value}');
-      print('🔑 Payment ID: $_lastPaymentId');
-      print('🔑 Payment Method: ${selectedPaymentMethod.value}');
-
-      // Use the existing Preferences class for immediate saving
-      Preferences.setString(
-        _paymentStateKey,
-        isPaymentInProgress.value.toString(),
-      );
-      if (_lastPaymentId != null) {
-        Preferences.setString(_paymentIdKey, _lastPaymentId!);
-      }
-      if (_lastPaymentSignature != null) {
-        Preferences.setString(_paymentSignatureKey, _lastPaymentSignature!);
-      }
-      if (_lastPaymentTime != null) {
-        Preferences.setString(
-          _paymentTimeKey,
-          _lastPaymentTime!.millisecondsSinceEpoch.toString(),
-        );
-      }
-      if (selectedPaymentMethod.value.isNotEmpty) {
-        Preferences.setString(_paymentMethodKey, selectedPaymentMethod.value);
-      }
-      print('🔑 Payment state saved synchronously');
-    } catch (e) {
-      print('🔑 ERROR: Failed to save payment state synchronously: $e');
-    }
-  }
-
-  // 🔑 SAVE PAYMENT STATE TO PERSISTENT STORAGE
-  Future<void> _savePaymentState() async {
-    try {
-      print('🔑 SAVING PAYMENT STATE TO PERSISTENT STORAGE...');
-      print('🔑 Payment in progress: ${isPaymentInProgress.value}');
-      print('🔑 Payment ID: $_lastPaymentId');
-      print('🔑 Payment Signature: $_lastPaymentSignature');
-      print('🔑 Payment Time: $_lastPaymentTime');
-      print('🔑 Payment Method: ${selectedPaymentMethod.value}');
-
-      await Preferences.setString(
-        _paymentStateKey,
-        isPaymentInProgress.value.toString(),
-      );
-      if (_lastPaymentId != null) {
-        await Preferences.setString(_paymentIdKey, _lastPaymentId!);
-      }
-      if (_lastPaymentSignature != null) {
-        await Preferences.setString(
-          _paymentSignatureKey,
-          _lastPaymentSignature!,
-        );
-      }
-      if (_lastPaymentTime != null) {
-        await Preferences.setString(
-          _paymentTimeKey,
-          _lastPaymentTime!.millisecondsSinceEpoch.toString(),
-        );
-      }
-      // 🔑 SAVE PAYMENT METHOD TO PERSISTENT STORAGE
-      if (selectedPaymentMethod.value.isNotEmpty) {
-        await Preferences.setString(
-          _paymentMethodKey,
-          selectedPaymentMethod.value,
-        );
-        print('🔑 Payment method saved: ${selectedPaymentMethod.value}');
-      }
-      print('🔑 Payment state saved to persistent storage successfully');
-    } catch (e) {
-      print('🔑 ERROR: Failed to save payment state: $e');
-    }
-  }
-
   // 🔑 RESTORE PAYMENT STATE FROM PERSISTENT STORAGE
   Future<void> _restorePaymentState() async {
     try {
@@ -5035,9 +4815,7 @@ class CartControllerProvider extends ChangeNotifier {
         }
 
         // 🔑 RESTORE PAYMENT METHOD FROM PERSISTENT STORAGE
-        if (paymentMethodStr != null &&
-            paymentMethodStr.isNotEmpty &&
-            paymentMethodStr != '') {
+        if (paymentMethodStr.isNotEmpty && paymentMethodStr != '') {
           selectedPaymentMethod.value = paymentMethodStr;
           print('🔑 Payment method restored: ${selectedPaymentMethod.value}');
         } else if (_lastPaymentId != null && _lastPaymentId!.isNotEmpty) {
@@ -5537,7 +5315,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Add this method to mark a coupon as used for the current user
   Future<void> markCouponAsUsed(String couponId) async {
-    final userId = FireStoreUtils.getCurrentUid();
+    final userId = await SqlStorageConst.getFirebaseId();
     await FirebaseFirestore.instance.collection('used_coupons').add({
       'userId': userId,
       'couponId': couponId,

@@ -1,16 +1,17 @@
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
+import 'package:jippymart_customer/app/auth_screen/provider/login_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_address_screen/mart_address_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_edit_profile_screen/mart_edit_profile_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 
 class MartProfileScreen extends StatelessWidget {
@@ -25,7 +26,7 @@ class MartProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: const Color(0xFFF6F6FF),
       body: Consumer<MartProvider>(
-        builder: (context,controller,_) {
+        builder: (context, controller, _) {
           return CustomScrollView(
             slivers: [
               SliverAppBar(
@@ -33,7 +34,8 @@ class MartProfileScreen extends StatelessWidget {
                 floating: false,
                 pinned: true,
                 backgroundColor: ColorConst.martPrimary,
-                automaticallyImplyLeading: false, // Remove back arrow
+                automaticallyImplyLeading: false,
+                // Remove back arrow
                 flexibleSpace: FlexibleSpaceBar(
                   title: const Padding(
                     padding: EdgeInsets.only(left: 16.0),
@@ -46,11 +48,14 @@ class MartProfileScreen extends StatelessWidget {
                     ),
                   ),
                   background: Container(
-                    decoration:  BoxDecoration(
+                    decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
-                        colors: [ColorConst.martPrimary, ColorConst.martPrimary],
+                        colors: [
+                          ColorConst.martPrimary,
+                          ColorConst.martPrimary,
+                        ],
                       ),
                     ),
                   ),
@@ -119,11 +124,13 @@ class MartProfileScreen extends StatelessWidget {
           CircleAvatar(
             radius: 40,
             backgroundColor: ColorConst.martPrimary,
-            backgroundImage: userModel?.profilePictureURL != null &&
+            backgroundImage:
+                userModel?.profilePictureURL != null &&
                     userModel!.profilePictureURL!.isNotEmpty
                 ? NetworkImage(userModel.profilePictureURL!)
                 : null,
-            child: userModel?.profilePictureURL == null ||
+            child:
+                userModel?.profilePictureURL == null ||
                     userModel!.profilePictureURL!.isEmpty
                 ? Text(
                     _getUserInitials(userModel),
@@ -155,22 +162,21 @@ class MartProfileScreen extends StatelessWidget {
                   userModel?.email ??
                       userModel?.phoneNumber ??
                       'No contact info',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
                 const SizedBox(height: 8),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF5D56F3).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
                     userModel?.role?.toUpperCase() ?? 'CUSTOMER',
-                    style:  TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: ColorConst.orangeLight,
@@ -186,10 +192,7 @@ class MartProfileScreen extends StatelessWidget {
             onPressed: () {
               Get.to(() => const MartEditProfileScreen());
             },
-            icon:  Icon(
-              Icons.edit,
-              color: ColorConst.orangeLight,
-            ),
+            icon: Icon(Icons.edit, color: ColorConst.orangeLight),
           ),
         ],
       ),
@@ -206,7 +209,7 @@ class MartProfileScreen extends StatelessWidget {
             icon: Icons.shopping_bag,
             title: 'Orders',
             value: userModel?.inProgressOrderID?.length.toString() ?? '0',
-            color:  ColorConst.martPrimary,
+            color: ColorConst.martPrimary,
           ),
         ),
         const SizedBox(width: 12),
@@ -252,11 +255,7 @@ class MartProfileScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(
-            icon,
-            color: color,
-            size: 24,
-          ),
+          Icon(icon, color: color, size: 24),
           const SizedBox(height: 8),
           Text(
             value,
@@ -267,13 +266,7 @@ class MartProfileScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
         ],
       ),
     );
@@ -405,7 +398,7 @@ class MartProfileScreen extends StatelessWidget {
     return ListTile(
       leading: Icon(
         icon,
-        color: isDestructive ? Colors.red :ColorConst.martPrimary,
+        color: isDestructive ? Colors.red : ColorConst.martPrimary,
         size: 24,
       ),
       title: Text(
@@ -417,10 +410,7 @@ class MartProfileScreen extends StatelessWidget {
       ),
       subtitle: Text(
         subtitle,
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 12,
-        ),
+        style: TextStyle(color: Colors.grey[600], fontSize: 12),
       ),
       trailing: const Icon(
         Icons.arrow_forward_ios,
@@ -446,92 +436,40 @@ class MartProfileScreen extends StatelessWidget {
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
         actions: [
-          TextButton(
-            onPressed: () => Get.back(),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Get.back();
-              await _performLogout();
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          Consumer<LoginProvider>(
+            builder: (context, loginProvider, _) {
+              return TextButton(
+                onPressed: () async {
+                  loginProvider.logout(context);
+                },
+                child: const Text(
+                  'Logout',
+                  style: TextStyle(color: Colors.red),
+                ),
+              );
             },
-            child: const Text(
-              'Logout',
-              style: TextStyle(color: Colors.red),
-            ),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _performLogout() async {
-    try {
-      // 1. Clear user data from memory
-      Constant.userModel = null;
-      Constant.selectedLocation = ShippingAddress();
-
-      // 2. Sign out from Firebase Auth
-      await FirebaseAuth.instance.signOut();
-
-      // 3. Clear all secure storage
-      const storage = FlutterSecureStorage();
-      await storage.deleteAll(); // Clear all secure storage
-
-      // 4. Clear all SharedPreferences
-      await Preferences.clearSharPreference();
-
-      // 5. Clear GetStorage
-      final box = GetStorage();
-      await box.erase();
-
-      // 6. Clear any GetX stored data
-      Get.deleteAll();
-
-      // 7. Navigate to login screen with fresh start
-      Get.offAll(() => const PhoneNumberScreen(),
-          transition: Transition.fadeIn,
-          duration: const Duration(milliseconds: 1200));
-
-      // 8. Show success message after navigation
-      Future.delayed(const Duration(milliseconds: 1500), () {
-        Get.snackbar(
-          'Logged Out',
-          'You have been successfully logged out',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.green.withValues(alpha: 0.1),
-          colorText: Colors.green,
-          duration: const Duration(seconds: 3),
-        );
-      });
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to logout: $e',
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.red.withValues(alpha: 0.1),
-        colorText: Colors.red,
-        duration: const Duration(seconds: 4),
-      );
-    }
-  }
-
-  void _ensureUserDataLoaded() {
+  void _ensureUserDataLoaded() async {
     if (Constant.userModel == null) {
-      // Try to get user data from Firebase
-      final firebaseUser = FirebaseAuth.instance.currentUser;
+      final firebaseUser = await SqlStorageConst.getFirebaseId();
       if (firebaseUser != null) {
-        // User is logged in but data not loaded, show loading
         Get.snackbar(
           'Loading Profile',
           'Please wait while we load your profile data...',
           snackPosition: SnackPosition.BOTTOM,
         );
       } else {
-        // No user logged in, redirect to login
-        Get.offAll(() => const PhoneNumberScreen(),
-            transition: Transition.fadeIn,
-            duration: const Duration(milliseconds: 1200));
+        Get.offAll(
+          () => const PhoneNumberScreen(),
+          transition: Transition.fadeIn,
+          duration: const Duration(milliseconds: 1200),
+        );
       }
     }
   }
@@ -542,8 +480,9 @@ class MartProfileScreen extends StatelessWidget {
     String firstName = userModel.firstName?.trim() ?? '';
     String lastName = userModel.lastName?.trim() ?? '';
 
-    String firstInitial =
-        firstName.isNotEmpty ? firstName[0].toUpperCase() : '';
+    String firstInitial = firstName.isNotEmpty
+        ? firstName[0].toUpperCase()
+        : '';
     String lastInitial = lastName.isNotEmpty ? lastName[0].toUpperCase() : '';
 
     if (firstInitial.isNotEmpty && lastInitial.isNotEmpty) {

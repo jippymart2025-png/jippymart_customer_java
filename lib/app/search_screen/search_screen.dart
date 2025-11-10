@@ -6,7 +6,6 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/widget/restaurant_image_view.dart';

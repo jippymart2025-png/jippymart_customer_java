@@ -909,30 +909,16 @@ class Constant {
       return false;
     }
 
-    // Check for null coordinates
-    if (point.latitude == null || point.longitude == null) {
-      print('[ZONE_DEBUG] Invalid point: null coordinates');
-      return false;
-    }
-
     int crossings = 0;
     int n = polygon.length;
 
     for (int i = 0; i < n; i++) {
       int j = (i + 1) % n;
 
-      // Skip if any coordinate is null
-      if (polygon[i].latitude == null ||
-          polygon[i].longitude == null ||
-          polygon[j].latitude == null ||
-          polygon[j].longitude == null) {
-        continue;
-      }
-
-      double lat1 = polygon[i].latitude!;
-      double lng1 = polygon[i].longitude!;
-      double lat2 = polygon[j].latitude!;
-      double lng2 = polygon[j].longitude!;
+      double lat1 = polygon[i].latitude;
+      double lng1 = polygon[i].longitude;
+      double lat2 = polygon[j].latitude;
+      double lng2 = polygon[j].longitude;
 
       // Check if ray crosses this edge
       if (((lat1 <= point.latitude) && (lat2 > point.latitude)) ||

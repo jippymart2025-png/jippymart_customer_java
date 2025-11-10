@@ -5,7 +5,6 @@ import 'package:jippymart_customer/payment/createRazorPayOrderModel.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 

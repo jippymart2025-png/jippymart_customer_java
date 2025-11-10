@@ -3,6 +3,8 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart'
+    show AddressListProvider;
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
@@ -15,21 +17,16 @@ import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'dart:async';
 import 'package:jippymart_customer/models/BannerModel.dart';
-import 'package:jippymart_customer/models/advertisement_model.dart';
-import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/favourite_model.dart';
-import 'package:jippymart_customer/models/story_model.dart';
-import 'package:jippymart_customer/models/vendor_category_model.dart';
-import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/gps_location_service.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/performance_optimizer.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 
 class HomeProvider extends ChangeNotifier {
@@ -363,6 +360,7 @@ class HomeProvider extends ChangeNotifier {
   late CategoryViewProvider categoryViewProvider;
   late BestRestaurantProvider bestRestaurantProvider;
   late DashBoardProvider dashBoardProvider;
+  late AddressListProvider addressListProvider;
 
   void initFunction({required BuildContext context}) {
     categoryViewProvider = Provider.of<CategoryViewProvider>(
@@ -374,6 +372,10 @@ class HomeProvider extends ChangeNotifier {
       listen: false,
     );
     dashBoardProvider = Provider.of<DashBoardProvider>(context, listen: false);
+    addressListProvider = Provider.of<AddressListProvider>(
+      context,
+      listen: false,
+    );
     _loadAllDataInParallel(context);
     scrollController.addListener(() {
       if (scrollController.position.userScrollDirection.toString() ==
@@ -443,7 +445,6 @@ class HomeProvider extends ChangeNotifier {
   // Optimized parallel data loading
   Future<void> _loadAllDataInParallel(BuildContext context) async {
     log(" _loadAllDataInParallel  second ");
-
     return PerformanceOptimizer.measureAsync('parallel_data_fetch', () async {
       isLoadingFunction(true);
       getCartData();
@@ -456,9 +457,8 @@ class HomeProvider extends ChangeNotifier {
         _loadFavorites(),
         bestRestaurantProvider.loadRestaurantsAndRelatedData(),
       ]);
-      print('[DEBUG] All parallel data fetch completed');
-
       dashBoardProvider.initFunction(context);
+      print('[DEBUG] All parallel data fetch completed');
       setLoading();
     });
   }
@@ -673,41 +673,42 @@ class HomeProvider extends ChangeNotifier {
       print('[DEBUG] User model already loaded: ${Constant.userModel!.id}');
       return;
     }
-    for (int attempt = 1; attempt <= 5; attempt++) {
-      print('[DEBUG] User model loading attempt $attempt/5');
-      if (Constant.userModel != null) {
-        print(
-          '[DEBUG] User model loaded successfully: ${Constant.userModel!.id}',
-        );
-        return;
-      }
-      if (attempt < 5) {
-        print(
-          '[DEBUG] User model not loaded yet, waiting 200ms before retry...',
-        );
-        await Future.delayed(Duration(milliseconds: 200));
-      }
-    }
+    // for (int attempt = 1; attempt <= 5; attempt++) {
+    //   print('[DEBUG] User model loading attempt $attempt/5');
+    //   if (Constant.userModel != null) {
+    //     print(
+    //       '[DEBUG] User model loaded successfully: ${Constant.userModel!.id}',
+    //     );
+    //     return;
+    //   }
+    //   if (attempt < 5) {
+    //     print(
+    //       '[DEBUG] User model not loaded yet, waiting 200ms before retry...',
+    //     );
+    //     await Future.delayed(Duration(milliseconds: 200));
+    //   }
+    // }
     print(
       '[DEBUG] User model not loaded after 5 attempts, trying to load fresh...',
     );
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser != null) {
-        print('[DEBUG] Attempting to load user model fresh from Firestore...');
-        final userModel = await FireStoreUtils.getUserProfile(currentUser.uid);
-        if (userModel != null) {
-          Constant.userModel = userModel;
-          print(
-            '[DEBUG] User model loaded fresh from Firestore: ${userModel.id}',
-          );
-          return;
-        }
+      final userId = await SqlStorageConst.getFirebaseId();
+      print(
+        '[DEBUG] Attempting to load user model fresh from Firestore... $userId',
+      );
+      final userModel = await AddressListProvider.getUserProfile(
+        userId.toString(),
+      );
+      if (userModel != null) {
+        Constant.userModel = userModel;
+        print(
+          '[DEBUG] User model loaded fresh from Firestore: ${userModel.id}',
+        );
+        return;
       }
     } catch (e) {
       print('[DEBUG] Error loading user model fresh: $e');
     }
-
     print('[DEBUG] User model not available, proceeding anyway');
   }
 

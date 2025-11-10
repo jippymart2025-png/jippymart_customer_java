@@ -21,15 +21,21 @@ class SendNotification {
     await getCharacters().then((response) {
       jsonData = json.decode(response.body);
     });
-    final serviceAccountCredentials =
-        ServiceAccountCredentials.fromJson(jsonData);
-    final client =
-        await clientViaServiceAccount(serviceAccountCredentials, _scopes);
+    final serviceAccountCredentials = ServiceAccountCredentials.fromJson(
+      jsonData,
+    );
+    final client = await clientViaServiceAccount(
+      serviceAccountCredentials,
+      _scopes,
+    );
     return client.credentials.accessToken.data;
   }
 
   static Future<bool> sendFcmMessage(
-      String type, String token, Map<String, dynamic>? payload) async {
+    String type,
+    String token,
+    Map<String, dynamic>? payload,
+  ) async {
     print(type);
     try {
       final String accessToken = await getAccessToken();
@@ -37,37 +43,37 @@ class SendNotification {
       debugPrint(accessToken);
       NotificationModel? notificationModel =
           await FireStoreUtils.getNotificationContent(type);
-
       final response = await http.post(
         Uri.parse(
-            'https://fcm.googleapis.com/v1/projects/${Constant.senderId}/messages:send'),
+          'https://fcm.googleapis.com/v1/projects/${Constant.senderId}/messages:send',
+        ),
         headers: <String, String>{
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',
         },
-        body: jsonEncode(
-          <String, dynamic>{
-            'message': {
-              'token': token,
+        body: jsonEncode(<String, dynamic>{
+          'message': {
+            'token': token,
+            'notification': {
+              'body': notificationModel?.message ?? '',
+              'title': notificationModel?.subject ?? '',
+            },
+            'android': {
+              'priority': 'high',
               'notification': {
-                'body': notificationModel?.message ?? '',
-                'title': notificationModel?.subject ?? ''
+                'channel_id': 'order_channel',
+                // ✅ must match your local channel ID
+                'sound': 'order_ringtone',
+                // ✅ custom sound file in res/raw
+                'default_sound': false,
+                'default_vibrate_timings': true,
+                'default_light_settings': true,
+                'click_action': 'FLUTTER_NOTIFICATION_CLICK',
               },
-              'android': {
-                'priority': 'high',
-                'notification': {
-                  'channel_id': 'order_channel', // ✅ must match your local channel ID
-                  'sound': 'order_ringtone', // ✅ custom sound file in res/raw
-                  'default_sound': false,
-                  'default_vibrate_timings': true,
-                  'default_light_settings': true,
-                  'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-                },
-              },
-              'data': payload,
-            }
+            },
+            'data': payload,
           },
-        ),
+        }),
       );
 
       debugPrint("Notification=======>");
@@ -80,11 +86,12 @@ class SendNotification {
     }
   }
 
-  static sendOneNotification(
-      {required String token,
-      required String title,
-      required String body,
-      required Map<String, dynamic> payload}) async {
+  static sendOneNotification({
+    required String token,
+    required String title,
+    required String body,
+    required Map<String, dynamic> payload,
+  }) async {
     try {
       final String accessToken = await getAccessToken();
       debugPrint("accessToken=======>");
@@ -92,20 +99,19 @@ class SendNotification {
 
       final response = await http.post(
         Uri.parse(
-            'https://fcm.googleapis.com/v1/projects/${Constant.senderId}/messages:send'),
+          'https://fcm.googleapis.com/v1/projects/${Constant.senderId}/messages:send',
+        ),
         headers: <String, String>{
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',
         },
-        body: jsonEncode(
-          <String, dynamic>{
-            'message': {
-              'token': token,
-              'notification': {'body': body, 'title': title},
-              'data': payload,
-            }
+        body: jsonEncode(<String, dynamic>{
+          'message': {
+            'token': token,
+            'notification': {'body': body, 'title': title},
+            'data': payload,
           },
-        ),
+        }),
       );
 
       debugPrint("Notification=======>");
@@ -118,26 +124,29 @@ class SendNotification {
     }
   }
 
-  static Future<bool> sendChatFcmMessage(String title, String message,
-      String token, Map<String, dynamic>? payload) async {
+  static Future<bool> sendChatFcmMessage(
+    String title,
+    String message,
+    String token,
+    Map<String, dynamic>? payload,
+  ) async {
     try {
       final String accessToken = await getAccessToken();
       final response = await http.post(
         Uri.parse(
-            'https://fcm.googleapis.com/v1/projects/${Constant.senderId}/messages:send'),
+          'https://fcm.googleapis.com/v1/projects/${Constant.senderId}/messages:send',
+        ),
         headers: <String, String>{
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $accessToken',
         },
-        body: jsonEncode(
-          <String, dynamic>{
-            'message': {
-              'token': token,
-              'notification': {'body': message, 'title': title},
-              'data': payload,
-            }
+        body: jsonEncode(<String, dynamic>{
+          'message': {
+            'token': token,
+            'notification': {'body': message, 'title': title},
+            'data': payload,
           },
-        ),
+        }),
       );
       debugPrint("Notification=======>");
       debugPrint(response.statusCode.toString());

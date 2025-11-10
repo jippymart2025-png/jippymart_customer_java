@@ -8,7 +8,6 @@ import 'package:jippymart_customer/app/chat_screens/provider/chat_provider.dart'
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/conversation_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/widget/firebase_pagination/src/firestore_pagination.dart';
@@ -24,7 +23,9 @@ import 'package:provider/provider.dart';
 import 'ChatVideoContainer.dart';
 
 class ChatScreen extends StatelessWidget {
-  const ChatScreen({super.key});
+  const ChatScreen({super.key, required this.userId});
+
+  final String? userId;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +61,7 @@ class ChatScreen extends StatelessWidget {
                         documentSnapshots[index].data() as Map<String, dynamic>,
                       );
                       return chatItemView(
-                        inboxModel.senderId == FireStoreUtils.getCurrentUid(),
+                        inboxModel.senderId == userId,
                         inboxModel,
                       );
                     },

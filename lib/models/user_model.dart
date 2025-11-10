@@ -73,6 +73,71 @@ class UserModel {
     return "${firstName ?? ''} ${lastName ?? ''}";
   }
 
+  // factory UserModel.fromJson(Map<String, dynamic> json) {
+  //   try {
+  //     List<ShippingAddress>? addresses;
+  //     if (json['shippingAddress'] != null) {
+  //       if (json['shippingAddress'] is List) {
+  //         addresses = (json['shippingAddress'] as List).map((e) {
+  //           if (e is Map<String, dynamic>) {
+  //             return ShippingAddress.fromJson(e);
+  //           } else if (e is String) {
+  //             try {
+  //               return ShippingAddress.fromJson(jsonDecode(e));
+  //             } catch (e) {
+  //               log('Error parsing shipping address string: $e');
+  //               return ShippingAddress();
+  //             }
+  //           }
+  //           return ShippingAddress();
+  //         }).toList();
+  //       } else if (json['shippingAddress'] is Map) {
+  //         addresses = [
+  //           ShippingAddress.fromJson(
+  //             json['shippingAddress'] as Map<String, dynamic>,
+  //           ),
+  //         ];
+  //       } else if (json['shippingAddress'] is String) {
+  //         try {
+  //           addresses = [
+  //             ShippingAddress.fromJson(jsonDecode(json['shippingAddress'])),
+  //           ];
+  //         } catch (e) {
+  //           log('Error parsing shipping address string: $e');
+  //           addresses = [];
+  //         }
+  //       } else {
+  //         addresses = [];
+  //       }
+  //     }
+  //     return UserModel(
+  //       id: json['id']?.toString(),
+  //       firebaseId: json['firebase_id'].toString(),
+  //       email: json['email']?.toString(),
+  //       firstName: json['firstName']?.toString(),
+  //       lastName: json['lastName']?.toString(),
+  //       profilePictureURL: json['profilePictureURL']?.toString(),
+  //       fcmToken: json['fcmToken']?.toString(),
+  //       countryCode: json['countryCode']?.toString(),
+  //       phoneNumber: json['phoneNumber']?.toString(),
+  //       walletAmount: (json['wallet_amount'] is num)
+  //           ? (json['wallet_amount'] as num).toInt()
+  //           : 0,
+  //       createdAt: json['createdAt'] as Timestamp?,
+  //       active: json['active'] as bool?,
+  //       isActive: json['isActive'] as bool?,
+  //       role: json['role']?.toString(),
+  //       isDocumentVerify: json['isDocumentVerify'] as bool?,
+  //       zoneId: json['zoneId']?.toString(),
+  //       appIdentifier: json['appIdentifier']?.toString(),
+  //       provider: json['provider']?.toString(),
+  //       shippingAddress: addresses,
+  //     );
+  //   } catch (e) {
+  //     log('Error converting user data: $e');
+  //     rethrow;
+  //   }
+  // }
   factory UserModel.fromJson(Map<String, dynamic> json) {
     try {
       List<ShippingAddress>? addresses;
@@ -113,7 +178,8 @@ class UserModel {
 
       return UserModel(
         id: json['id']?.toString(),
-        firebaseId: json['firebase_id'].toString(),
+        firebaseId: json['firebase_id']?.toString(),
+        // Added null safety
         email: json['email']?.toString(),
         firstName: json['firstName']?.toString(),
         lastName: json['lastName']?.toString(),
@@ -172,8 +238,18 @@ class UserLocation {
   UserLocation({this.latitude, this.longitude});
 
   UserLocation.fromJson(Map<String, dynamic> json) {
-    latitude = json['latitude'];
-    longitude = json['longitude'];
+    // Handle both int and double types for latitude and longitude
+    latitude = _convertToDouble(json['latitude']);
+    longitude = _convertToDouble(json['longitude']);
+  }
+
+  // Helper method to convert dynamic values to double
+  static double? _convertToDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {

@@ -12,7 +12,9 @@ import 'package:razorpay_flutter/razorpay_flutter.dart';
 class RazorpayCrashPrevention {
   static final RazorpayCrashPrevention _instance =
       RazorpayCrashPrevention._internal();
+
   factory RazorpayCrashPrevention() => _instance;
+
   RazorpayCrashPrevention._internal();
 
   Razorpay? _razorpay;
@@ -32,7 +34,9 @@ class RazorpayCrashPrevention {
 
       // ✅ CRITICAL: Check if Razorpay can be safely initialized
       if (!await _canSafelyInitializeRazorpay()) {
-        log('RAZORPAY_CRASH_PREVENTION: Razorpay initialization not safe, skipping...');
+        log(
+          'RAZORPAY_CRASH_PREVENTION: Razorpay initialization not safe, skipping...',
+        );
         return false;
       }
 
@@ -40,36 +44,49 @@ class RazorpayCrashPrevention {
       _razorpay = Razorpay();
 
       // Set up event handlers with error protection
-      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS,
-          (PaymentSuccessResponse response) {
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, (
+        PaymentSuccessResponse response,
+      ) {
         try {
           log('RAZORPAY_CRASH_PREVENTION: Payment success received');
           log('RAZORPAY_CRASH_PREVENTION: Payment ID: ${response.paymentId}');
-          log('RAZORPAY_CRASH_PREVENTION: Payment signature: ${response.signature}');
+          log(
+            'RAZORPAY_CRASH_PREVENTION: Payment signature: ${response.signature}',
+          );
           log('RAZORPAY_CRASH_PREVENTION: Payment data: ${response.data}');
           onSuccess(response);
         } catch (e) {
-          log('RAZORPAY_CRASH_PREVENTION: Error in payment success handler: $e');
+          log(
+            'RAZORPAY_CRASH_PREVENTION: Error in payment success handler: $e',
+          );
         }
       });
 
-      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR,
-          (PaymentFailureResponse response) {
+      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, (
+        PaymentFailureResponse response,
+      ) {
         try {
-          log('RAZORPAY_CRASH_PREVENTION: Payment error received: ${response.message}');
+          log(
+            'RAZORPAY_CRASH_PREVENTION: Payment error received: ${response.message}',
+          );
           onFailure(response);
         } catch (e) {
-          log('RAZORPAY_CRASH_PREVENTION: Error in payment failure handler: $e');
+          log(
+            'RAZORPAY_CRASH_PREVENTION: Error in payment failure handler: $e',
+          );
         }
       });
 
-      _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET,
-          (ExternalWalletResponse response) {
+      _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, (
+        ExternalWalletResponse response,
+      ) {
         try {
           log('RAZORPAY_CRASH_PREVENTION: External wallet response received');
           onExternalWallet(response);
         } catch (e) {
-          log('RAZORPAY_CRASH_PREVENTION: Error in external wallet handler: $e');
+          log(
+            'RAZORPAY_CRASH_PREVENTION: Error in external wallet handler: $e',
+          );
         }
       });
 
@@ -92,7 +109,9 @@ class RazorpayCrashPrevention {
   Future<bool> safeOpenPayment(Map<String, dynamic> options) async {
     try {
       if (!_isInitialized || !_isInitializationSafe) {
-        log('RAZORPAY_CRASH_PREVENTION: Razorpay not safely initialized, cannot open payment');
+        log(
+          'RAZORPAY_CRASH_PREVENTION: Razorpay not safely initialized, cannot open payment',
+        );
         return false;
       }
       // ✅ CRITICAL: Validate options before opening payment
@@ -158,7 +177,9 @@ class RazorpayCrashPrevention {
         // If we can access these constants without crashing, it's safe
         for (String constant in constants) {
           if (constant.isEmpty) {
-            log('RAZORPAY_CRASH_PREVENTION: Empty constant detected: $constant');
+            log(
+              'RAZORPAY_CRASH_PREVENTION: Empty constant detected: $constant',
+            );
             return false;
           }
         }
@@ -173,7 +194,9 @@ class RazorpayCrashPrevention {
         return false;
       }
     } catch (e) {
-      log('RAZORPAY_CRASH_PREVENTION: ❌ Razorpay instantiation test failed: $e');
+      log(
+        'RAZORPAY_CRASH_PREVENTION: ❌ Razorpay instantiation test failed: $e',
+      );
       return false;
     }
   }
@@ -201,14 +224,20 @@ class RazorpayCrashPrevention {
         amountValue = amount;
       } else if (amount is double) {
         amountValue = amount.round();
-        log('RAZORPAY_CRASH_PREVENTION: Converted double amount to int: $amountValue');
+        log(
+          'RAZORPAY_CRASH_PREVENTION: Converted double amount to int: $amountValue',
+        );
       } else {
-        log('RAZORPAY_CRASH_PREVENTION: Invalid amount type: ${amount.runtimeType}, value: $amount');
+        log(
+          'RAZORPAY_CRASH_PREVENTION: Invalid amount type: ${amount.runtimeType}, value: $amount',
+        );
         return false;
       }
 
       if (amountValue <= 0) {
-        log('RAZORPAY_CRASH_PREVENTION: Invalid amount: $amountValue (must be > 0)');
+        log(
+          'RAZORPAY_CRASH_PREVENTION: Invalid amount: $amountValue (must be > 0)',
+        );
         return false;
       }
 
@@ -220,130 +249,19 @@ class RazorpayCrashPrevention {
       }
 
       if (!key.startsWith('rzp_')) {
-        log('RAZORPAY_CRASH_PREVENTION: Invalid Razorpay key format: $key (should start with rzp_)');
+        log(
+          'RAZORPAY_CRASH_PREVENTION: Invalid Razorpay key format: $key (should start with rzp_)',
+        );
         return false;
       }
 
-      log('RAZORPAY_CRASH_PREVENTION: ✅ Payment options validated successfully');
+      log(
+        'RAZORPAY_CRASH_PREVENTION: ✅ Payment options validated successfully',
+      );
       return true;
     } catch (e) {
       log('RAZORPAY_CRASH_PREVENTION: ❌ Payment options validation failed: $e');
       return false;
     }
-  }
-}
-
-/// **RAZORPAY CRASH PREVENTION MIXIN**
-///
-/// Add this mixin to controllers that use Razorpay
-mixin RazorpayCrashPreventionMixin {
-  final RazorpayCrashPrevention _razorpayCrashPrevention =
-      RazorpayCrashPrevention();
-
-  /// **SAFE RAZORPAY INITIALIZATION**
-  Future<bool> safeInitializeRazorpay({
-    required Function(PaymentSuccessResponse) onSuccess,
-    required Function(PaymentFailureResponse) onFailure,
-    required Function(ExternalWalletResponse) onExternalWallet,
-  }) async {
-    return await _razorpayCrashPrevention.safeInitialize(
-      onSuccess: onSuccess,
-      onFailure: onFailure,
-      onExternalWallet: onExternalWallet,
-    );
-  }
-
-  /// **SAFE PAYMENT OPENING**
-  Future<bool> safeOpenRazorpayPayment(Map<String, dynamic> options) async {
-    return await _razorpayCrashPrevention.safeOpenPayment(options);
-  }
-
-  /// **SAFE CLEANUP**
-  void safeCleanupRazorpay() {
-    _razorpayCrashPrevention.safeCleanup();
-  }
-
-  /// **CHECK IF RAZORPAY IS SAFE**
-  bool get isRazorpaySafe => _razorpayCrashPrevention.isInitialized;
-
-  /// **GET RAZORPAY INSTANCE**
-  Razorpay? get razorpayInstance => _razorpayCrashPrevention.razorpayInstance;
-}
-
-/// **RAZORPAY ERROR RECOVERY**
-///
-/// Handles specific Razorpay errors and provides recovery
-class RazorpayErrorRecovery {
-  static int _consecutiveErrors = 0;
-  static const int _maxConsecutiveErrors = 3;
-  static DateTime? _lastErrorTime;
-  static const Duration _errorCooldown = Duration(minutes: 5);
-
-  /// **HANDLE RAZORPAY ERROR**
-  ///
-  /// Provides recovery strategies for Razorpay errors
-  static Future<bool> handleError(dynamic error) async {
-    try {
-      _consecutiveErrors++;
-      _lastErrorTime = DateTime.now();
-
-      log('RAZORPAY_ERROR_RECOVERY: Handling error: $error');
-
-      // Check if we should attempt recovery
-      if (_consecutiveErrors > _maxConsecutiveErrors) {
-        final now = DateTime.now();
-        if (_lastErrorTime != null &&
-            now.difference(_lastErrorTime!) < _errorCooldown) {
-          log('RAZORPAY_ERROR_RECOVERY: Too many consecutive errors, skipping recovery');
-          return false;
-        } else {
-          // Reset error count after cooldown
-          _consecutiveErrors = 0;
-        }
-      }
-
-      // Try recovery strategies
-      if (await _attemptRecovery(error)) {
-        log('RAZORPAY_ERROR_RECOVERY: ✅ Recovery successful');
-        _consecutiveErrors = 0;
-        return true;
-      } else {
-        log('RAZORPAY_ERROR_RECOVERY: ❌ Recovery failed');
-        return false;
-      }
-    } catch (e) {
-      log('RAZORPAY_ERROR_RECOVERY: ❌ Error handling failed: $e');
-      return false;
-    }
-  }
-
-  /// **ATTEMPT RECOVERY**
-  static Future<bool> _attemptRecovery(dynamic error) async {
-    try {
-      // Strategy 1: Clean up and reinitialize
-      log('RAZORPAY_ERROR_RECOVERY: Attempting cleanup and reinitialization...');
-
-      // Wait a bit before retrying
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Strategy 2: Check if it's a version compatibility issue
-      if (error.toString().contains('NoSuchFieldError') ||
-          error.toString().contains('activity_result_invalid_parameters')) {
-        log('RAZORPAY_ERROR_RECOVERY: Detected version compatibility issue');
-        return false; // This requires dependency update
-      }
-
-      return true;
-    } catch (e) {
-      log('RAZORPAY_ERROR_RECOVERY: Recovery attempt failed: $e');
-      return false;
-    }
-  }
-
-  /// **RESET ERROR COUNT**
-  static void resetErrorCount() {
-    _consecutiveErrors = 0;
-    _lastErrorTime = null;
-    log('RAZORPAY_ERROR_RECOVERY: Error count reset');
   }
 }

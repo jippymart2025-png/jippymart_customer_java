@@ -41,7 +41,11 @@ class TrieSearch {
         print('ERROR: Failed to insert word "$word" into trie: $e');
       }
       // Log to Crashlytics for production monitoring
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Trie insert failed');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Trie insert failed',
+      );
     }
   }
 
@@ -64,7 +68,11 @@ class TrieSearch {
       if (kDebugMode) {
         print('ERROR: Failed to search prefix "$prefix" in trie: $e');
       }
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Trie search failed');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Trie search failed',
+      );
       return [];
     }
   }
@@ -90,7 +98,9 @@ class TrieSearch {
 
         // Sort children by relevance for better results
         var sortedChildren = currentNode.children.entries.toList()
-          ..sort((a, b) => b.value.relevanceScore.compareTo(a.value.relevanceScore));
+          ..sort(
+            (a, b) => b.value.relevanceScore.compareTo(a.value.relevanceScore),
+          );
 
         for (var entry in sortedChildren) {
           traverse(entry.value);
@@ -104,7 +114,11 @@ class TrieSearch {
       if (kDebugMode) {
         print('ERROR: Failed to collect words from trie: $e');
       }
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Trie word collection failed');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Trie word collection failed',
+      );
       return [];
     }
   }
@@ -118,7 +132,11 @@ class TrieSearch {
       if (kDebugMode) {
         print('ERROR: Failed to get ID from data: $e');
       }
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Trie ID extraction failed');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Trie ID extraction failed',
+      );
       return '';
     }
   }
@@ -145,12 +163,21 @@ class TrieSearch {
       if (kDebugMode) {
         print('ERROR: Failed to get suggestions for "$prefix": $e');
       }
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Trie suggestions failed');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Trie suggestions failed',
+      );
       return [];
     }
   }
 
-  void _collectSuggestions(TrieNode node, String currentWord, List<String> suggestions, int maxSuggestions) {
+  void _collectSuggestions(
+    TrieNode node,
+    String currentWord,
+    List<String> suggestions,
+    int maxSuggestions,
+  ) {
     try {
       if (suggestions.length >= maxSuggestions) return;
 
@@ -159,13 +186,22 @@ class TrieSearch {
       }
 
       for (var entry in node.children.entries) {
-        _collectSuggestions(entry.value, currentWord + entry.key, suggestions, maxSuggestions);
+        _collectSuggestions(
+          entry.value,
+          currentWord + entry.key,
+          suggestions,
+          maxSuggestions,
+        );
       }
     } catch (e) {
       if (kDebugMode) {
         print('ERROR: Failed to collect suggestions: $e');
       }
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Trie suggestion collection failed');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Trie suggestion collection failed',
+      );
     }
   }
 }
@@ -253,13 +289,16 @@ class SearchScreenProvider extends ChangeNotifier {
   static List<VendorModel> _cachedVendorList = [];
   static List<ProductModel> _cachedProductList = [];
   static DateTime? _lastCacheTime;
-  static const Duration cacheExpiry = Duration(minutes: 30); // Extended cache time
+  static const Duration cacheExpiry = Duration(
+    minutes: 30,
+  ); // Extended cache time
 
   // **PERFORMANCE FLAGS - STATIC FOR PERSISTENCE**
   static bool _productsLoaded = false;
   static bool _isLoadingProducts = false;
   static bool _trieBuilt = false;
-  static const int _largeDatasetThreshold = 10000; // Threshold for isolate-based search
+  static const int _largeDatasetThreshold =
+      10000; // Threshold for isolate-based search
 
   // **BACKEND SEARCH FALLBACK**
   bool _useBackendSearch = false;
@@ -302,21 +341,10 @@ class SearchScreenProvider extends ChangeNotifier {
     _loadTimeoutTimer?.cancel();
     if (_searchCount > 0) {
       final slowSearchPercentage = (_slowSearchCount / _searchCount) * 100;
-      print('PERFORMANCE: Search metrics - Total: $_searchCount, Slow: $_slowSearchCount (${slowSearchPercentage.toStringAsFixed(1)}%)');
+      print(
+        'PERFORMANCE: Search metrics - Total: $_searchCount, Slow: $_slowSearchCount (${slowSearchPercentage.toStringAsFixed(1)}%)',
+      );
     }
-  }
-
-
-
-  // **CRITICAL: ANR PREVENTION METHODS**
-  void _startSearchTimeout() {
-    _searchTimeoutTimer?.cancel();
-    _searchTimeoutTimer = Timer(_maxSearchTime, () {
-      if (!_isDisposed) {
-        print('WARNING: Search operation timed out, stopping search');
-        isSearching.value = false;
-      }
-    });
   }
 
   void _startLoadTimeout() {
@@ -376,7 +404,9 @@ class SearchScreenProvider extends ChangeNotifier {
     if (_isDisposed || _productsLoaded || _isLoadingProducts) return;
 
     _isLoadingProducts = true;
-    print("DEBUG: Starting immediate product loading for comprehensive search...");
+    print(
+      "DEBUG: Starting immediate product loading for comprehensive search...",
+    );
 
     // **CRITICAL: Start timeout to prevent ANR**
     _startLoadTimeout();
@@ -398,25 +428,40 @@ class SearchScreenProvider extends ChangeNotifier {
       _cachedProductList.clear();
 
       // Load products from all vendors
-      print("DEBUG: Loading products from ${_cachedVendorList.length} vendors...");
+      print(
+        "DEBUG: Loading products from ${_cachedVendorList.length} vendors...",
+      );
       for (var vendor in _cachedVendorList) {
         if (_isDisposed) return;
 
         try {
-          print("DEBUG: Loading products for vendor: ${vendor.title} (ID: ${vendor.id})");
+          print(
+            "DEBUG: Loading products for vendor: ${vendor.title} (ID: ${vendor.id})",
+          );
           // **CRITICAL: Add timeout for each vendor request**
-          final products = await FireStoreUtils.getProductByVendorId(vendor.id.toString())
-              .timeout(const Duration(seconds: 5), onTimeout: () {
-            print("WARNING: Timeout loading products for vendor ${vendor.title}");
-            return <ProductModel>[];
-          });
+          final products =
+              await FireStoreUtils.getProductByVendorId(
+                vendor.id.toString(),
+              ).timeout(
+                const Duration(seconds: 5),
+                onTimeout: () {
+                  print(
+                    "WARNING: Timeout loading products for vendor ${vendor.title}",
+                  );
+                  return <ProductModel>[];
+                },
+              );
 
           List<ProductModel> filteredProducts;
-          if ((Constant.isSubscriptionModelApplied == true || Constant.adminCommission?.isEnabled == true) && vendor.subscriptionPlan != null) {
+          if ((Constant.isSubscriptionModelApplied == true ||
+                  Constant.adminCommission?.isEnabled == true) &&
+              vendor.subscriptionPlan != null) {
             if (vendor.subscriptionPlan?.itemLimit == '-1') {
               filteredProducts = products;
             } else {
-              int selectedProduct = products.length < int.parse(vendor.subscriptionPlan?.itemLimit ?? '0')
+              int selectedProduct =
+                  products.length <
+                      int.parse(vendor.subscriptionPlan?.itemLimit ?? '0')
                   ? (products.isEmpty ? 0 : products.length)
                   : int.parse(vendor.subscriptionPlan?.itemLimit ?? '0');
               filteredProducts = products.sublist(0, selectedProduct);
@@ -425,13 +470,19 @@ class SearchScreenProvider extends ChangeNotifier {
             filteredProducts = products;
           }
 
-          print("DEBUG: Found ${products.length} products for vendor ${vendor.title}");
-          print("DEBUG: Added ${filteredProducts.length} products from vendor ${vendor.title}");
+          print(
+            "DEBUG: Found ${products.length} products for vendor ${vendor.title}",
+          );
+          print(
+            "DEBUG: Added ${filteredProducts.length} products from vendor ${vendor.title}",
+          );
 
           if (!_isDisposed) {
             productList.addAll(filteredProducts);
             _productCache[vendor.id.toString()] = filteredProducts;
-            print("DEBUG: Product list now has ${productList.length} items after adding ${filteredProducts.length} from ${vendor.title}");
+            print(
+              "DEBUG: Product list now has ${productList.length} items after adding ${filteredProducts.length} from ${vendor.title}",
+            );
           }
         } catch (e) {
           print("ERROR: Failed to load products for vendor ${vendor.id}: $e");
@@ -440,7 +491,9 @@ class SearchScreenProvider extends ChangeNotifier {
 
       // Build product trie after loading
       if (!_isDisposed) {
-        print("DEBUG: About to build trie. Product list has ${productList.length} items");
+        print(
+          "DEBUG: About to build trie. Product list has ${productList.length} items",
+        );
         if (productList.isNotEmpty) {
           _buildProductTrie();
           _cachedProductList = List.from(productList);
@@ -448,7 +501,9 @@ class SearchScreenProvider extends ChangeNotifier {
           _productsLoaded = true;
           _isLoadingProducts = false;
           _cancelTimeouts(); // Cancel timeout since we succeeded
-          print("DEBUG: Successfully loaded ${productList.length} products and built trie");
+          print(
+            "DEBUG: Successfully loaded ${productList.length} products and built trie",
+          );
 
           // **DEBUG: Check cached data state after loading**
           debugCachedData();
@@ -533,7 +588,9 @@ class SearchScreenProvider extends ChangeNotifier {
               wordsForThisProduct++;
             }
             if (nameWords.isNotEmpty) {
-              print("DEBUG: Indexed product '${product.name}' with words: $nameWords");
+              print(
+                "DEBUG: Indexed product '${product.name}' with words: $nameWords",
+              );
             }
           }
 
@@ -556,7 +613,8 @@ class SearchScreenProvider extends ChangeNotifier {
           }
 
           // Index product attributes if available
-          if (product.itemAttribute != null && product.itemAttribute!.attributes != null) {
+          if (product.itemAttribute != null &&
+              product.itemAttribute!.attributes != null) {
             try {
               for (var attribute in product.itemAttribute!.attributes!) {
                 if (attribute.attributeId != null) {
@@ -578,7 +636,9 @@ class SearchScreenProvider extends ChangeNotifier {
                 }
               }
             } catch (e) {
-              print("ERROR: Failed to index product ${product.id} attributes: $e");
+              print(
+                "ERROR: Failed to index product ${product.id} attributes: $e",
+              );
             }
           }
 
@@ -596,17 +656,25 @@ class SearchScreenProvider extends ChangeNotifier {
 
       print("DEBUG: Built product trie for $indexedProducts products");
       print("DEBUG: Total words indexed: $totalWordsIndexed");
-      print("DEBUG: Product trie total indexed items: ${_productTrie.totalIndexedItems}");
+      print(
+        "DEBUG: Product trie total indexed items: ${_productTrie.totalIndexedItems}",
+      );
 
       // Test the trie immediately with various searches
       var testResults = _productTrie.search("test");
-      print("DEBUG: Product trie test search 'test' returned ${testResults.length} results");
+      print(
+        "DEBUG: Product trie test search 'test' returned ${testResults.length} results",
+      );
 
       var pizzaResults = _productTrie.search("pizza");
-      print("DEBUG: Product trie test search 'pizza' returned ${pizzaResults.length} results");
+      print(
+        "DEBUG: Product trie test search 'pizza' returned ${pizzaResults.length} results",
+      );
 
       var biryaniResults = _productTrie.search("biryani");
-      print("DEBUG: Product trie test search 'biryani' returned ${biryaniResults.length} results");
+      print(
+        "DEBUG: Product trie test search 'biryani' returned ${biryaniResults.length} results",
+      );
 
       _trieBuilt = true;
     } catch (e) {
@@ -619,7 +687,8 @@ class SearchScreenProvider extends ChangeNotifier {
   List<String> _tokenize(String text) {
     if (text.isEmpty) return [];
 
-    return text.toLowerCase()
+    return text
+        .toLowerCase()
         .split(RegExp(r'[\s\-_.,!?()]+'))
         .where((word) => word.length >= 2)
         .map((word) => word.trim())
@@ -652,7 +721,6 @@ class SearchScreenProvider extends ChangeNotifier {
           _performSimpleSearch(cleaned);
         }
       });
-
     } catch (e) {
       print('❌ Search text change failed: $e');
       if (!_isDisposed) {
@@ -665,7 +733,9 @@ class SearchScreenProvider extends ChangeNotifier {
   void _performSimpleSearch(String query) {
     try {
       print("🔍 Searching for: '$query'");
-      print("📊 Available data - Restaurants: ${_cachedVendorList.length}, Products: ${_cachedProductList.length}");
+      print(
+        "📊 Available data - Restaurants: ${_cachedVendorList.length}, Products: ${_cachedProductList.length}",
+      );
 
       final queryLower = query.toLowerCase().trim();
       if (queryLower.isEmpty) {
@@ -699,19 +769,23 @@ class SearchScreenProvider extends ChangeNotifier {
         }
 
         // Check product description
-        if (!matches && product.description?.toLowerCase().contains(queryLower) == true) {
+        if (!matches &&
+            product.description?.toLowerCase().contains(queryLower) == true) {
           matches = true;
           matchReason = "description";
         }
 
         // Check category ID
-        if (!matches && product.categoryID?.toLowerCase().contains(queryLower) == true) {
+        if (!matches &&
+            product.categoryID?.toLowerCase().contains(queryLower) == true) {
           matches = true;
           matchReason = "category";
         }
 
         // Check add-ons (if available)
-        if (!matches && product.addOnsTitle != null && product.addOnsTitle!.isNotEmpty) {
+        if (!matches &&
+            product.addOnsTitle != null &&
+            product.addOnsTitle!.isNotEmpty) {
           for (var addon in product.addOnsTitle!) {
             if (addon.toString().toLowerCase().contains(queryLower)) {
               matches = true;
@@ -725,7 +799,10 @@ class SearchScreenProvider extends ChangeNotifier {
         if (!matches && product.productSpecification != null) {
           for (var key in product.productSpecification!.keys) {
             if (key.toLowerCase().contains(queryLower) ||
-                product.productSpecification![key].toString().toLowerCase().contains(queryLower)) {
+                product.productSpecification![key]
+                    .toString()
+                    .toLowerCase()
+                    .contains(queryLower)) {
               matches = true;
               matchReason = "specification: $key";
               break;
@@ -750,7 +827,9 @@ class SearchScreenProvider extends ChangeNotifier {
         }
       }
 
-      print("📈 Search Results - Restaurants: ${vendorResults.length}, Products: ${productResults.length}");
+      print(
+        "📈 Search Results - Restaurants: ${vendorResults.length}, Products: ${productResults.length}",
+      );
 
       // Debug: Show sample products if no matches
       if (productResults.isEmpty && _cachedProductList.isNotEmpty) {
@@ -767,9 +846,10 @@ class SearchScreenProvider extends ChangeNotifier {
         productSearchList.value = productResults;
         isSearching.value = false;
         showSuggestions.value = false; // Hide suggestions when showing results
-        print("🎯 UI Updated - Vendor list: ${vendorSearchList.length}, Product list: ${productSearchList.length}");
+        print(
+          "🎯 UI Updated - Vendor list: ${vendorSearchList.length}, Product list: ${productSearchList.length}",
+        );
       }
-
     } catch (e) {
       print("❌ Search failed: $e");
       if (!_isDisposed) {
@@ -785,33 +865,56 @@ class SearchScreenProvider extends ChangeNotifier {
 
       print("DEBUG: Searching vendor trie for: '$cleaned'");
       final vendorMatches = _vendorTrie.search(cleaned);
-      print("DEBUG: Vendor trie search returned: ${vendorMatches.length} results");
+      print(
+        "DEBUG: Vendor trie search returned: ${vendorMatches.length} results",
+      );
 
       print("DEBUG: Searching product trie for: '$cleaned'");
       final productMatches = _productTrie.search(cleaned);
-      print("DEBUG: Product trie search returned: ${productMatches.length} results");
+      print(
+        "DEBUG: Product trie search returned: ${productMatches.length} results",
+      );
 
       // Debug: Check what products are in the trie
       if (productMatches.isEmpty) {
-        print("DEBUG: No products found in trie search, checking trie contents...");
-        print("DEBUG: Product trie total indexed items: ${_productTrie.totalIndexedItems}");
-        print("DEBUG: Cached product list length: ${_cachedProductList.length}");
+        print(
+          "DEBUG: No products found in trie search, checking trie contents...",
+        );
+        print(
+          "DEBUG: Product trie total indexed items: ${_productTrie.totalIndexedItems}",
+        );
+        print(
+          "DEBUG: Cached product list length: ${_cachedProductList.length}",
+        );
 
         // Test with a simple search
         var testSearch = _productTrie.search("test");
-        print("DEBUG: Test search 'test' returned: ${testSearch.length} results");
+        print(
+          "DEBUG: Test search 'test' returned: ${testSearch.length} results",
+        );
 
         // Check if any products contain the search term
-        var productsWithTerm = _cachedProductList.where((p) =>
-        p.name?.toLowerCase().contains(cleaned.toLowerCase()) == true ||
-            p.description?.toLowerCase().contains(cleaned.toLowerCase()) == true
-        ).toList();
-        print("DEBUG: Products containing '$cleaned': ${productsWithTerm.length}");
+        var productsWithTerm = _cachedProductList
+            .where(
+              (p) =>
+                  p.name?.toLowerCase().contains(cleaned.toLowerCase()) ==
+                      true ||
+                  p.description?.toLowerCase().contains(
+                        cleaned.toLowerCase(),
+                      ) ==
+                      true,
+            )
+            .toList();
+        print(
+          "DEBUG: Products containing '$cleaned': ${productsWithTerm.length}",
+        );
 
         if (productsWithTerm.isNotEmpty) {
           print("DEBUG: Sample products with '$cleaned':");
           for (int i = 0; i < productsWithTerm.take(3).length; i++) {
-            print("DEBUG: - ${productsWithTerm[i].name} (${productsWithTerm[i].description})");
+            print(
+              "DEBUG: - ${productsWithTerm[i].name} (${productsWithTerm[i].description})",
+            );
           }
         } else {
           // Show some sample products to verify they exist
@@ -824,26 +927,34 @@ class SearchScreenProvider extends ChangeNotifier {
       }
 
       // Fallback: If trie search returns no products, try direct search
-      List<ProductModel> finalProductMatches = productMatches.cast<ProductModel>().toList();
+      List<ProductModel> finalProductMatches = productMatches
+          .cast<ProductModel>()
+          .toList();
       if (finalProductMatches.isEmpty && _cachedProductList.isNotEmpty) {
-        print("DEBUG: Trie search returned no products, trying direct search...");
         finalProductMatches = _performDirectProductSearch(cleaned);
-        print("DEBUG: Direct search returned: ${finalProductMatches.length} products");
       }
-
-      print("DEBUG: Final search results - Vendors: ${vendorMatches.length}, Products: ${finalProductMatches.length}");
 
       // Convert to proper types and remove duplicates
       final uniqueVendors = vendorMatches.cast<VendorModel>().toSet().toList();
       final uniqueProducts = finalProductMatches.toSet().toList();
 
       // Sort by relevance (prefix matches first)
-      final sortedVendors = _sortByRelevance(uniqueVendors, cleaned, (v) => v.title ?? '');
-      final sortedProducts = _sortByRelevance(uniqueProducts, cleaned, (p) => p.name ?? '');
+      final sortedVendors = _sortByRelevance(
+        uniqueVendors,
+        cleaned,
+        (v) => v.title ?? '',
+      );
+      final sortedProducts = _sortByRelevance(
+        uniqueProducts,
+        cleaned,
+        (p) => p.name ?? '',
+      );
 
       // Update results
       if (!_isDisposed) {
-        print("DEBUG: Updating UI with ${sortedVendors.length} vendors and ${sortedProducts.length} products");
+        print(
+          "DEBUG: Updating UI with ${sortedVendors.length} vendors and ${sortedProducts.length} products",
+        );
         vendorSearchList.value = sortedVendors;
         productSearchList.value = sortedProducts;
         isSearching.value = false;
@@ -854,56 +965,18 @@ class SearchScreenProvider extends ChangeNotifier {
       }
     } catch (e) {
       print("ERROR: Trie search failed: $e");
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Trie search failed');
-      if (!_isDisposed) {
-        isSearching.value = false;
-        _cancelTimeouts();
-      }
-    }
-  }
-
-  // **ISOLATE-BASED SEARCH FOR LARGE DATASETS**
-  void _performIsolateSearch(String cleaned) async {
-    try {
-      final searchStartTime = DateTime.now();
-
-      print("DEBUG: Performing isolate search for: '$cleaned'");
-
-      // Prepare search data
-      final searchData = SearchData(
-        vendors: _cachedVendorList,
-        products: _cachedProductList,
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Trie search failed',
       );
-
-      // Perform search in isolate
-      final results = await compute(_searchIsolate, {'searchData': searchData, 'query': cleaned});
-
-      // Process results
-      final vendorMatches = results.whereType<VendorModel>().toList();
-      final productMatches = results.whereType<ProductModel>().toList();
-
-      print("DEBUG: Isolate search returned - Vendors: ${vendorMatches.length}, Products: ${productMatches.length}");
-
-      // Update UI safely
       if (!_isDisposed) {
-        vendorSearchList.value = vendorMatches;
-        productSearchList.value = productMatches;
         isSearching.value = false;
         _cancelTimeouts();
-
-        // **PERFORMANCE MONITORING**
-        _recordSearchPerformance(searchStartTime);
       }
-    } catch (e) {
-      print("ERROR: Isolate search failed: $e");
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Isolate search failed');
-
-      // Fallback to local search
-      _performTrieSearch(cleaned);
     }
   }
 
-  // **PERFORMANCE MONITORING**
   void _recordSearchPerformance([DateTime? searchStartTime]) {
     try {
       final endTime = DateTime.now();
@@ -912,10 +985,14 @@ class SearchScreenProvider extends ChangeNotifier {
 
       if (duration > _performanceThreshold) {
         _slowSearchCount++;
-        print('PERFORMANCE: Slow search detected - ${duration.inMilliseconds}ms');
+        print(
+          'PERFORMANCE: Slow search detected - ${duration.inMilliseconds}ms',
+        );
 
         // Log to Crashlytics for monitoring
-        FirebaseCrashlytics.instance.log('Slow search: ${duration.inMilliseconds}ms');
+        FirebaseCrashlytics.instance.log(
+          'Slow search: ${duration.inMilliseconds}ms',
+        );
       }
 
       print('PERFORMANCE: Search completed in ${duration.inMilliseconds}ms');
@@ -930,7 +1007,9 @@ class SearchScreenProvider extends ChangeNotifier {
 
     try {
       print("DEBUG: Performing direct product search for: '$searchQuery'");
-      print("DEBUG: Searching through ${_cachedProductList.length} cached products");
+      print(
+        "DEBUG: Searching through ${_cachedProductList.length} cached products",
+      );
 
       final query = searchQuery.toLowerCase();
 
@@ -938,24 +1017,27 @@ class SearchScreenProvider extends ChangeNotifier {
         bool productMatches = false;
 
         // Check product name (highest priority)
-        if (product.name != null && product.name!.toLowerCase().contains(query)) {
+        if (product.name != null &&
+            product.name!.toLowerCase().contains(query)) {
           productMatches = true;
           print("DEBUG: Product '${product.name}' matches by name");
         }
 
         // Check product description
-        if (!productMatches && product.description != null && product.description!.toLowerCase().contains(query)) {
+        if (!productMatches &&
+            product.description != null &&
+            product.description!.toLowerCase().contains(query)) {
           productMatches = true;
           print("DEBUG: Product '${product.name}' matches by description");
         }
 
         // Check product category
-        if (!productMatches && product.categoryID != null && product.categoryID!.toLowerCase().contains(query)) {
+        if (!productMatches &&
+            product.categoryID != null &&
+            product.categoryID!.toLowerCase().contains(query)) {
           productMatches = true;
           print("DEBUG: Product '${product.name}' matches by category");
         }
-
-
 
         if (productMatches) {
           matches.add(product);
@@ -969,17 +1051,25 @@ class SearchScreenProvider extends ChangeNotifier {
         print("DEBUG: No exact matches, trying partial matching...");
         for (var product in _cachedProductList) {
           if (product.name != null &&
-              product.name!.toLowerCase().split(' ').any((word) => word.startsWith(query))) {
+              product.name!
+                  .toLowerCase()
+                  .split(' ')
+                  .any((word) => word.startsWith(query))) {
             matches.add(product);
             print("DEBUG: Partial match found: ${product.name}");
           }
         }
-        print("DEBUG: Partial matching found ${matches.length} additional products");
+        print(
+          "DEBUG: Partial matching found ${matches.length} additional products",
+        );
       }
-
     } catch (e) {
       print("ERROR: Direct product search failed: $e");
-      FirebaseCrashlytics.instance.recordError(e, StackTrace.current, reason: 'Direct product search failed');
+      FirebaseCrashlytics.instance.recordError(
+        e,
+        StackTrace.current,
+        reason: 'Direct product search failed',
+      );
     }
 
     return matches;
@@ -1010,15 +1100,22 @@ class SearchScreenProvider extends ChangeNotifier {
           suggestions.add(product.name!);
         }
         // Check product description
-        else if (product.description?.toLowerCase().contains(queryLower) == true) {
-          suggestions.add(product.name!); // Add product name for description matches
+        else if (product.description?.toLowerCase().contains(queryLower) ==
+            true) {
+          suggestions.add(
+            product.name!,
+          ); // Add product name for description matches
         }
         // Check category
-        else if (product.categoryID?.toLowerCase().contains(queryLower) == true) {
-          suggestions.add(product.name!); // Add product name for category matches
+        else if (product.categoryID?.toLowerCase().contains(queryLower) ==
+            true) {
+          suggestions.add(
+            product.name!,
+          ); // Add product name for category matches
         }
         // Check add-ons
-        else if (product.addOnsTitle != null && product.addOnsTitle!.isNotEmpty) {
+        else if (product.addOnsTitle != null &&
+            product.addOnsTitle!.isNotEmpty) {
           for (var addon in product.addOnsTitle!) {
             if (addon.toString().toLowerCase().contains(queryLower)) {
               suggestions.add(product.name!);
@@ -1051,10 +1148,12 @@ class SearchScreenProvider extends ChangeNotifier {
     print("DEBUG: Backend search fallback for query: '$query'");
   }
 
-
-
   // **RELEVANCE-BASED SORTING**
-  List<T> _sortByRelevance<T>(List<T> items, String searchQuery, String Function(T) getter) {
+  List<T> _sortByRelevance<T>(
+    List<T> items,
+    String searchQuery,
+    String Function(T) getter,
+  ) {
     return items..sort((a, b) {
       final aVal = getter(a).toLowerCase();
       final bVal = getter(b).toLowerCase();
@@ -1112,7 +1211,9 @@ class SearchScreenProvider extends ChangeNotifier {
     if (directResults.isNotEmpty) {
       print("DEBUG: Sample products found:");
       for (int i = 0; i < directResults.take(3).length; i++) {
-        print("DEBUG: - ${directResults[i].name} (${directResults[i].description})");
+        print(
+          "DEBUG: - ${directResults[i].name} (${directResults[i].description})",
+        );
       }
     }
   }
@@ -1127,8 +1228,12 @@ class SearchScreenProvider extends ChangeNotifier {
     print("DEBUG: _trieBuilt = $_trieBuilt");
     print("DEBUG: _lastCacheTime = $_lastCacheTime");
     print("DEBUG: _isCacheValid() = ${_isCacheValid()}");
-    print("DEBUG: _vendorTrie.totalIndexedItems = ${_vendorTrie.totalIndexedItems}");
-    print("DEBUG: _productTrie.totalIndexedItems = ${_productTrie.totalIndexedItems}");
+    print(
+      "DEBUG: _vendorTrie.totalIndexedItems = ${_vendorTrie.totalIndexedItems}",
+    );
+    print(
+      "DEBUG: _productTrie.totalIndexedItems = ${_productTrie.totalIndexedItems}",
+    );
 
     if (_cachedProductList.isNotEmpty) {
       print("DEBUG: Sample products in cache:");
@@ -1204,4 +1309,3 @@ class SearchScreenProvider extends ChangeNotifier {
     _performSimpleSearch(query);
   }
 }
-

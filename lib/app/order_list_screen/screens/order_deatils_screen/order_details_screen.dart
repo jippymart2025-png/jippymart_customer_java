@@ -1,3 +1,4 @@
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/chat_screens/chat_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
@@ -11,9 +12,9 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -702,7 +703,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                 "Please wait".tr,
                                               );
                                               UserModel? customer =
-                                                  await FireStoreUtils.getUserProfile(
+                                                  await AddressListProvider.getUserProfile(
                                                     controller
                                                         .orderModel
                                                         .value
@@ -716,7 +717,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                           .vendor
                                                           ?.author !=
                                                       null
-                                                  ? await FireStoreUtils.getUserProfile(
+                                                  ? await AddressListProvider.getUserProfile(
                                                       controller
                                                           .orderModel
                                                           .value
@@ -743,8 +744,10 @@ class OrderDetailsScreen extends StatelessWidget {
                                               debugPrint(
                                                 'Customer: ${customer!.fullName()} (UserID: ${customer.id})',
                                               );
+                                              final userId =
+                                                  await SqlStorageConst.getFirebaseId();
                                               Get.to(
-                                                const ChatScreen(),
+                                                ChatScreen(userId: userId),
                                                 arguments: {
                                                   "customerName":
                                                       '${customer.fullName()}',
@@ -909,7 +912,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                 );
 
                                                                 UserModel?
-                                                                customer = await FireStoreUtils.getUserProfile(
+                                                                customer = await AddressListProvider.getUserProfile(
                                                                   controller
                                                                       .orderModel
                                                                       .value
@@ -918,7 +921,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                 );
                                                                 UserModel?
                                                                 restaurantUser =
-                                                                    await FireStoreUtils.getUserProfile(
+                                                                    await AddressListProvider.getUserProfile(
                                                                       controller
                                                                           .orderModel
                                                                           .value
@@ -932,14 +935,19 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                       .toString(),
                                                                 );
                                                                 ShowToastDialog.closeLoader();
-
+                                                                final userId =
+                                                                    await SqlStorageConst.getFirebaseId();
                                                                 Get.to(
-                                                                  const ChatScreen(),
+                                                                  ChatScreen(
+                                                                    userId:
+                                                                        userId,
+                                                                  ),
                                                                   arguments: {
                                                                     "customerName":
-                                                                        '${customer!.fullName()}',
+                                                                        customer!
+                                                                            .fullName(),
                                                                     "restaurantName":
-                                                                        restaurantUser!
+                                                                        restaurantUser
                                                                             .fullName(),
                                                                     "orderId":
                                                                         controller
@@ -1297,7 +1305,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                   );
 
                                                                   UserModel?
-                                                                  customer = await FireStoreUtils.getUserProfile(
+                                                                  customer = await AddressListProvider.getUserProfile(
                                                                     controller
                                                                         .orderModel
                                                                         .value
@@ -1305,7 +1313,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                         .toString(),
                                                                   );
                                                                   UserModel?
-                                                                  driverUser = await FireStoreUtils.getUserProfile(
+                                                                  driverUser = await AddressListProvider.getUserProfile(
                                                                     controller
                                                                         .orderModel
                                                                         .value
@@ -1314,9 +1322,13 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                   );
 
                                                                   ShowToastDialog.closeLoader();
-
+                                                                  final userId =
+                                                                      await SqlStorageConst.getFirebaseId();
                                                                   Get.to(
-                                                                    const ChatScreen(),
+                                                                    ChatScreen(
+                                                                      userId:
+                                                                          userId,
+                                                                    ),
                                                                     arguments: {
                                                                       "customerName":
                                                                           '${customer!.fullName()}',

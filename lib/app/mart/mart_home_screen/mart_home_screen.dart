@@ -3169,12 +3169,12 @@ PlaytimeProductCard _martItemToPlaytimeCard(
 
   // Format prices
   String currentPrice =
-      '₹${item.disPrice?.toStringAsFixed(0) ?? item.price.toStringAsFixed(0) ?? '0'}';
-  String originalPrice = '₹${item.price.toStringAsFixed(0) ?? '0'}';
+      '₹${item.disPrice?.toStringAsFixed(0) ?? item.price.toStringAsFixed(0)}';
+  String originalPrice = '₹${item.price.toStringAsFixed(0)}';
 
   return PlaytimeProductCard(
     volume: volume,
-    productName: item.name ?? 'Product',
+    productName: item.name,
     discount: discount,
     currentPrice: currentPrice,
     originalPrice: originalPrice,

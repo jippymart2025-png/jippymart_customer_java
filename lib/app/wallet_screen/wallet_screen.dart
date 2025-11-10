@@ -6,7 +6,6 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/wallet_transaction_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:flutter/material.dart';

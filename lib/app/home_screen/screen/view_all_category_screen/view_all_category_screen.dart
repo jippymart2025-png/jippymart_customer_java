@@ -3,7 +3,6 @@ import 'package:jippymart_customer/app/home_screen/screen/view_all_category_scre
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

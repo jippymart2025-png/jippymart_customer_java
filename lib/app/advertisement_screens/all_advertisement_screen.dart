@@ -7,9 +7,9 @@ import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -251,9 +251,11 @@ class AdvertisementCard extends StatelessWidget {
                                     (p0) => p0.restaurantId == model.vendorId,
                                   )
                                   .isNotEmpty) {
+                                final userId =
+                                    await SqlStorageConst.getFirebaseId();
                                 FavouriteModel favouriteModel = FavouriteModel(
                                   restaurantId: model.vendorId,
-                                  userId: FireStoreUtils.getCurrentUid(),
+                                  userId: userId,
                                 );
                                 controller.favouriteList.removeWhere(
                                   (item) => item.restaurantId == model.vendorId,
@@ -262,9 +264,11 @@ class AdvertisementCard extends StatelessWidget {
                                   favouriteModel,
                                 );
                               } else {
+                                final userId =
+                                    await SqlStorageConst.getFirebaseId();
                                 FavouriteModel favouriteModel = FavouriteModel(
                                   restaurantId: model.vendorId,
-                                  userId: FireStoreUtils.getCurrentUid(),
+                                  userId: userId,
                                 );
                                 controller.favouriteList.add(favouriteModel);
                                 await FireStoreUtils.setFavouriteRestaurant(

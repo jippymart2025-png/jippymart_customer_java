@@ -35,7 +35,9 @@ class SmartlookANRFix {
     try {
       // Note: setEventTrackingMode is not available in this version
       // Smartlook manages tracking automatically
-      log('SMARTLOOK_ANR_FIX: Event tracking mode configuration not available in current SDK version');
+      log(
+        'SMARTLOOK_ANR_FIX: Event tracking mode configuration not available in current SDK version',
+      );
 
       // Disable heavy operations that can cause ANR
       await _disableHeavyOperations();
@@ -53,7 +55,9 @@ class SmartlookANRFix {
     try {
       // Note: setEventTrackingMode is not available in this version
       // Smartlook manages tracking automatically
-      log('SMARTLOOK_ANR_FIX: Heavy operations configuration not available in current SDK version');
+      log(
+        'SMARTLOOK_ANR_FIX: Heavy operations configuration not available in current SDK version',
+      );
 
       log('SMARTLOOK_ANR_FIX: Heavy operations disabled');
     } catch (e) {
@@ -66,7 +70,9 @@ class SmartlookANRFix {
     try {
       // Note: setEventTrackingMode is not available in this version
       // Smartlook manages background processing automatically
-      log('SMARTLOOK_ANR_FIX: Background processing configuration not available in current SDK version');
+      log(
+        'SMARTLOOK_ANR_FIX: Background processing configuration not available in current SDK version',
+      );
 
       log('SMARTLOOK_ANR_FIX: Background processing configured');
     } catch (e) {
@@ -77,8 +83,10 @@ class SmartlookANRFix {
   /// **Safe event tracking**
   ///
   /// Tracks events without blocking the main thread
-  static Future<void> safeTrackEvent(String eventName,
-      {Map<String, dynamic>? properties}) async {
+  static Future<void> safeTrackEvent(
+    String eventName, {
+    Map<String, dynamic>? properties,
+  }) async {
     if (!_isEnabled || !_isConfigured) return;
 
     try {
@@ -127,54 +135,5 @@ class SmartlookANRFix {
     } catch (e) {
       log('SMARTLOOK_ANR_FIX: Failed to track navigation: $e');
     }
-  }
-
-  /// **Disable Smartlook if causing issues**
-  static void disableSmartlook() {
-    _isEnabled = false;
-    log('SMARTLOOK_ANR_FIX: Smartlook disabled due to ANR issues');
-  }
-
-  /// **Enable Smartlook after fixing issues**
-  static void enableSmartlook() {
-    _isEnabled = true;
-    log('SMARTLOOK_ANR_FIX: Smartlook enabled');
-  }
-
-  /// **Get Smartlook status**
-  static Map<String, dynamic> getStatus() {
-    return {
-      'isConfigured': _isConfigured,
-      'isEnabled': _isEnabled,
-      'isANRSafe': _isConfigured && _isEnabled,
-    };
-  }
-
-  /// **Cleanup Smartlook resources**
-  static void cleanup() {
-    _isConfigured = false;
-    _isEnabled = true;
-    log('SMARTLOOK_ANR_FIX: Cleanup completed');
-  }
-}
-
-/// **SMARTLOOK ANR PREVENTION MIXIN**
-///
-/// Add this mixin to controllers that use Smartlook
-mixin SmartlookANRPrevention {
-  /// **Safe Smartlook event tracking**
-  Future<void> safeTrackEvent(String eventName,
-      {Map<String, dynamic>? properties}) async {
-    await SmartlookANRFix.safeTrackEvent(eventName, properties: properties);
-  }
-
-  /// **Safe Smartlook navigation tracking**
-  Future<void> safeTrackNavigation(String screenName) async {
-    await SmartlookANRFix.safeTrackNavigation(screenName);
-  }
-
-  /// **Safe Smartlook user identification**
-  Future<void> safeSetUserIdentifier(String userId) async {
-    await SmartlookANRFix.safeSetUserIdentifier(userId);
   }
 }

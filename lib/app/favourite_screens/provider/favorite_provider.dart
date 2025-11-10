@@ -10,6 +10,8 @@ import 'package:get/get.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+
 class FavouriteProvider extends ChangeNotifier {
   bool favouriteRestaurant = true;
   RxList<FavouriteModel> favouriteList = <FavouriteModel>[].obs;
@@ -76,12 +78,13 @@ class FavouriteProvider extends ChangeNotifier {
     _startFavouriteItemStream();
   }
 
-  void _startFavouriteRestaurantStream() {
+  void _startFavouriteRestaurantStream() async {
     print('[DEBUG] Starting favourite restaurant stream...');
-    print('[DEBUG] Current user ID: ${FireStoreUtils.getCurrentUid()}');
+    // print('[DEBUG] Current user ID: ${FireStoreUtils.getCurrentUid()}');
+    final userId = await SqlStorageConst.getFirebaseId();
     _favouriteRestaurantStream = FirebaseFirestore.instance
         .collection(CollectionName.favoriteRestaurant)
-        .where('user_id', isEqualTo: FireStoreUtils.getCurrentUid())
+        .where('user_id', isEqualTo: userId)
         .snapshots()
         .listen(
           (snapshot) {
@@ -111,11 +114,12 @@ class FavouriteProvider extends ChangeNotifier {
         );
   }
 
-  void _startFavouriteItemStream() {
+  void _startFavouriteItemStream() async {
     print('[DEBUG] Starting favourite item stream...');
+    final userId = await SqlStorageConst.getFirebaseId();
     _favouriteItemStream = FirebaseFirestore.instance
         .collection(CollectionName.favoriteItem)
-        .where('user_id', isEqualTo: FireStoreUtils.getCurrentUid())
+        .where('user_id', isEqualTo: userId)
         .snapshots()
         .listen(
           (snapshot) {

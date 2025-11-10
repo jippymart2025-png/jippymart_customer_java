@@ -4,10 +4,10 @@ import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 
 import '../../../constant/constant.dart';
@@ -90,19 +90,21 @@ class ProductDetailsView extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   InkWell(
                                     onTap: () async {
+                                      final userId =
+                                          await SqlStorageConst.getFirebaseId();
                                       if (controller.favouriteItemList
                                           .where(
                                             (p0) =>
                                                 p0.productId == productModel.id,
                                           )
                                           .isNotEmpty) {
-                                        FavouriteItemModel
-                                        favouriteModel = FavouriteItemModel(
-                                          productId: productModel.id,
-                                          storeId: controller.vendorModel.id,
-                                          userId:
-                                              FireStoreUtils.getCurrentUid(),
-                                        );
+                                        FavouriteItemModel favouriteModel =
+                                            FavouriteItemModel(
+                                              productId: productModel.id,
+                                              storeId:
+                                                  controller.vendorModel.id,
+                                              userId: userId,
+                                            );
                                         controller.favouriteItemList
                                             .removeWhere(
                                               (item) =>
@@ -113,13 +115,13 @@ class ProductDetailsView extends StatelessWidget {
                                           favouriteModel,
                                         );
                                       } else {
-                                        FavouriteItemModel
-                                        favouriteModel = FavouriteItemModel(
-                                          productId: productModel.id,
-                                          storeId: controller.vendorModel.id,
-                                          userId:
-                                              FireStoreUtils.getCurrentUid(),
-                                        );
+                                        FavouriteItemModel favouriteModel =
+                                            FavouriteItemModel(
+                                              productId: productModel.id,
+                                              storeId:
+                                                  controller.vendorModel.id,
+                                              userId: userId,
+                                            );
                                         controller.favouriteItemList.add(
                                           favouriteModel,
                                         );

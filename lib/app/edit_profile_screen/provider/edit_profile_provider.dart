@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -8,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 
 class EditProfileProvider extends ChangeNotifier {
   RxBool isLoading = true.obs;
@@ -17,8 +19,9 @@ class EditProfileProvider extends ChangeNotifier {
   Rx<TextEditingController> lastNameController = TextEditingController().obs;
   Rx<TextEditingController> emailController = TextEditingController().obs;
   Rx<TextEditingController> phoneNumberController = TextEditingController().obs;
-  Rx<TextEditingController> countryCodeController =
-      TextEditingController(text: "+91").obs;
+  Rx<TextEditingController> countryCodeController = TextEditingController(
+    text: "+91",
+  ).obs;
 
   void initFunction() {
     getData();
@@ -34,19 +37,24 @@ class EditProfileProvider extends ChangeNotifier {
       // First try to use the global user model if available
       if (Constant.userModel != null) {
         print(
-            '[EDIT_PROFILE] Using global user model: ${Constant.userModel?.toJson()}');
+          '[EDIT_PROFILE] Using global user model: ${Constant.userModel?.toJson()}',
+        );
         userModel.value = Constant.userModel!;
       } else {
         print(
-            '[EDIT_PROFILE] Global user model is null, fetching from Firestore');
-        final value =
-        await FireStoreUtils.getUserProfile(FireStoreUtils.getCurrentUid());
+          '[EDIT_PROFILE] Global user model is null, fetching from Firestore',
+        );
+        final userId = await SqlStorageConst.getFirebaseId();
+        final value = await AddressListProvider.getUserProfile(
+          userId.toString(),
+        );
         if (value != null) {
           userModel.value = value;
           // Also update the global user model
           Constant.userModel = value;
           print(
-              '[EDIT_PROFILE] Loaded user model from Firestore: ${value.toJson()}');
+            '[EDIT_PROFILE] Loaded user model from Firestore: ${value.toJson()}',
+          );
         } else {
           print('[EDIT_PROFILE] Failed to load user model from Firestore');
         }
@@ -90,25 +98,22 @@ class EditProfileProvider extends ChangeNotifier {
       //   snackPosition: SnackPosition.BOTTOM,
       // );
     } else if (emailController.value.text.isEmpty) {
-      ShowToastDialog.showToast(
-        "Please enter the email".tr,
-      );
+      ShowToastDialog.showToast("Please enter the email".tr);
       // Get.snackbar(
       //   "Error",
       //   "Please enter the email",
       //   snackPosition: SnackPosition.BOTTOM,
       // );
     } else if (!isValidEmail(emailController.value.text)) {
-      ShowToastDialog.showToast(
-        "Invalid email format".tr,
-      );
+      ShowToastDialog.showToast("Invalid email format".tr);
     } else {
       ShowToastDialog.showLoader("Please wait".tr);
       if (Constant().hasValidUrl(profileImage.value) == false &&
           profileImage.value.isNotEmpty) {
+        final userId = await SqlStorageConst.getFirebaseId();
         profileImage.value = await Constant.uploadUserImageToFireStorage(
           File(profileImage.value),
-          "profileImage/${FireStoreUtils.getCurrentUid()}",
+          "profileImage/${userId}",
           File(profileImage.value).path.split('/').last,
         );
       }
@@ -121,7 +126,8 @@ class EditProfileProvider extends ChangeNotifier {
       await FireStoreUtils.updateUser(userModel.value).then((value) {
         Constant.userModel = userModel.value;
         print(
-            '[EDIT_PROFILE] Updated global user model: ${Constant.userModel?.toJson()}');
+          '[EDIT_PROFILE] Updated global user model: ${Constant.userModel?.toJson()}',
+        );
         ShowToastDialog.closeLoader();
         Get.back(result: true);
       });

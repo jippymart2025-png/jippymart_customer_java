@@ -4,7 +4,6 @@ import 'package:jippymart_customer/app/change%20langauge/provider/change_languag
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/services/localization_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:flutter/material.dart';

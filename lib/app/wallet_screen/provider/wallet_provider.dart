@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:math' as maths;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart'
+    show AddressListProvider;
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/payment_model/flutter_wave_model.dart';
@@ -15,6 +17,7 @@ import 'package:jippymart_customer/models/payment_model/pay_stack_model.dart';
 import 'package:jippymart_customer/models/payment_model/paypal_model.dart';
 import 'package:jippymart_customer/models/payment_model/paytm_model.dart';
 import 'package:jippymart_customer/models/payment_model/razorpay_model.dart';
+
 // import 'package:jippymart_customer/models/payment_model/stripe_model.dart';
 import 'package:jippymart_customer/models/payment_model/xendit.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -34,6 +37,7 @@ import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -42,11 +46,11 @@ class WalletProvider extends ChangeNotifier {
 
   Rx<TextEditingController> topUpAmountController = TextEditingController().obs;
 
-  RxList<WalletTransactionModel> walletTransactionList = <WalletTransactionModel>[].obs;
+  RxList<WalletTransactionModel> walletTransactionList =
+      <WalletTransactionModel>[].obs;
 
   Rx<UserModel> userModel = UserModel().obs;
   RxString selectedPaymentMethod = "".obs;
-
 
   void initFunction() {
     // TODO: implement onInit
@@ -57,6 +61,7 @@ class WalletProvider extends ChangeNotifier {
   Rx<PayFastModel> payFastModel = PayFastModel().obs;
   Rx<MercadoPagoModel> mercadoPagoModel = MercadoPagoModel().obs;
   Rx<PayPalModel> payPalModel = PayPalModel().obs;
+
   // Rx<StripeModel> stripeModel = StripeModel().obs;
   Rx<FlutterWaveModel> flutterWaveModel = FlutterWaveModel().obs;
   Rx<PayStackModel> payStackModel = PayStackModel().obs;
@@ -67,68 +72,90 @@ class WalletProvider extends ChangeNotifier {
   Rx<Xendit> xenditModel = Xendit().obs;
 
   getPaymentSettings() async {
-    await FireStoreUtils.getPaymentSettingsData().then(
-          (value) {
-        payFastModel.value = PayFastModel.fromJson(jsonDecode(Preferences.getString(Preferences.payFastSettings)));
-        mercadoPagoModel.value = MercadoPagoModel.fromJson(jsonDecode(Preferences.getString(Preferences.mercadoPago)));
-        payPalModel.value = PayPalModel.fromJson(jsonDecode(Preferences.getString(Preferences.paypalSettings)));
-        // stripeModel.value = StripeModel.fromJson(jsonDecode(Preferences.getString(Preferences.stripeSettings)));
-        flutterWaveModel.value = FlutterWaveModel.fromJson(jsonDecode(Preferences.getString(Preferences.flutterWave)));
-        payStackModel.value = PayStackModel.fromJson(jsonDecode(Preferences.getString(Preferences.payStack)));
-        paytmModel.value = PaytmModel.fromJson(jsonDecode(Preferences.getString(Preferences.paytmSettings)));
-        razorPayModel.value = RazorPayModel.fromJson(jsonDecode(Preferences.getString(Preferences.razorpaySettings)));
+    await FireStoreUtils.getPaymentSettingsData().then((value) {
+      payFastModel.value = PayFastModel.fromJson(
+        jsonDecode(Preferences.getString(Preferences.payFastSettings)),
+      );
+      mercadoPagoModel.value = MercadoPagoModel.fromJson(
+        jsonDecode(Preferences.getString(Preferences.mercadoPago)),
+      );
+      payPalModel.value = PayPalModel.fromJson(
+        jsonDecode(Preferences.getString(Preferences.paypalSettings)),
+      );
+      // stripeModel.value = StripeModel.fromJson(jsonDecode(Preferences.getString(Preferences.stripeSettings)));
+      flutterWaveModel.value = FlutterWaveModel.fromJson(
+        jsonDecode(Preferences.getString(Preferences.flutterWave)),
+      );
+      payStackModel.value = PayStackModel.fromJson(
+        jsonDecode(Preferences.getString(Preferences.payStack)),
+      );
+      paytmModel.value = PaytmModel.fromJson(
+        jsonDecode(Preferences.getString(Preferences.paytmSettings)),
+      );
+      razorPayModel.value = RazorPayModel.fromJson(
+        jsonDecode(Preferences.getString(Preferences.razorpaySettings)),
+      );
 
-        midTransModel.value = MidTrans.fromJson(jsonDecode(Preferences.getString(Preferences.midTransSettings)));
-        orangeMoneyModel.value = OrangeMoney.fromJson(json.decode(Preferences.getString(Preferences.orangeMoneySettings)));
-        xenditModel.value = Xendit.fromJson(jsonDecode(Preferences.getString(Preferences.xenditSettings)));
+      midTransModel.value = MidTrans.fromJson(
+        jsonDecode(Preferences.getString(Preferences.midTransSettings)),
+      );
+      orangeMoneyModel.value = OrangeMoney.fromJson(
+        json.decode(Preferences.getString(Preferences.orangeMoneySettings)),
+      );
+      xenditModel.value = Xendit.fromJson(
+        jsonDecode(Preferences.getString(Preferences.xenditSettings)),
+      );
 
-        // Stripe.publishableKey = stripeModel.value.clientpublishableKey.toString();
-        // Stripe.merchantIdentifier = 'GoRide';
-        // Stripe.instance.applySettings();
-        setRef();
+      // Stripe.publishableKey = stripeModel.value.clientpublishableKey.toString();
+      // Stripe.merchantIdentifier = 'GoRide';
+      // Stripe.instance.applySettings();
+      setRef();
 
-        razorPay.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlePaymentSuccess);
-        razorPay.on(Razorpay.EVENT_EXTERNAL_WALLET, handleExternalWaller);
-        razorPay.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
-      },
-    );
+      razorPay.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlePaymentSuccess);
+      razorPay.on(Razorpay.EVENT_EXTERNAL_WALLET, handleExternalWaller);
+      razorPay.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
+    });
   }
 
   getWalletTransaction() async {
+    final userId = await SqlStorageConst.getFirebaseId();
     if (Constant.userModel != null) {
-      await FireStoreUtils.getWalletTransaction().then(
-            (value) {
-          if (value != null) {
-            walletTransactionList.value = value;
-          }
-        },
-      );
-      await FireStoreUtils.getUserProfile(FireStoreUtils.getCurrentUid()).then(
-            (value) {
-          if (value != null) {
-            userModel.value = value;
-          }
-        },
-      );
+      await FireStoreUtils.getWalletTransaction().then((value) {
+        if (value != null) {
+          walletTransactionList.value = value;
+        }
+      });
+      await AddressListProvider.getUserProfile(userId.toString()).then((value) {
+        if (value != null) {
+          userModel.value = value;
+        }
+      });
     }
     isLoading.value = false;
   }
 
   walletTopUp() async {
+    final userId = await SqlStorageConst.getFirebaseId();
     WalletTransactionModel transactionModel = WalletTransactionModel(
-        id: Constant.getUuid(),
-        amount: double.parse(topUpAmountController.value.text),
-        date: Timestamp.now(),
-        paymentMethod: selectedPaymentMethod.value,
-        transactionUser: "user",
-        userId: FireStoreUtils.getCurrentUid(),
-        isTopup: true,
-        note: "Wallet Top-up",
-        paymentStatus: "success");
+      id: Constant.getUuid(),
+      amount: double.parse(topUpAmountController.value.text),
+      date: Timestamp.now(),
+      paymentMethod: selectedPaymentMethod.value,
+      transactionUser: "user",
+      userId: userId,
+      isTopup: true,
+      note: "Wallet Top-up",
+      paymentStatus: "success",
+    );
 
-    await FireStoreUtils.setWalletTransaction(transactionModel).then((value) async {
+    await FireStoreUtils.setWalletTransaction(transactionModel).then((
+      value,
+    ) async {
       if (value == true) {
-        await FireStoreUtils.updateUserWallet(amount: topUpAmountController.value.text, userId: FireStoreUtils.getCurrentUid()).then((value) {
+        await FireStoreUtils.updateUserWallet(
+          amount: topUpAmountController.value.text,
+          userId: userId.toString(),
+        ).then((value) {
           getWalletTransaction();
           Get.back();
         });
@@ -214,7 +241,10 @@ class WalletProvider extends ChangeNotifier {
   // }
 
   //mercadoo
-  mercadoPagoMakePayment({required BuildContext context, required String amount}) async {
+  mercadoPagoMakePayment({
+    required BuildContext context,
+    required String amount,
+  }) async {
     final headers = {
       'Authorization': 'Bearer ${mercadoPagoModel.value.accessToken}',
       'Content-Type': 'application/json',
@@ -228,7 +258,7 @@ class WalletProvider extends ChangeNotifier {
           "quantity": 1,
           "currency_id": "BRL", // or your preferred currency
           "unit_price": double.parse(amount),
-        }
+        },
       ],
       "payer": {"email": userModel.value.email},
       "back_urls": {
@@ -236,7 +266,8 @@ class WalletProvider extends ChangeNotifier {
         "pending": "${Constant.globalUrl}payment/pending",
         "success": "${Constant.globalUrl}payment/success",
       },
-      "auto_return": "approved" // Automatically return after payment is approved
+      "auto_return": "approved",
+      // Automatically return after payment is approved
     });
 
     final response = await http.post(
@@ -256,14 +287,18 @@ class WalletProvider extends ChangeNotifier {
         }
       });
     } else {
-      ShowToastDialog.showToast("Something want wrong please contact administrator".tr);
+      ShowToastDialog.showToast(
+        "Something want wrong please contact administrator".tr,
+      );
       print('Error creating preference: ${response.body}');
       return null;
     }
   }
 
   paypalPaymentSheet(String amount, context) {
-    ShowToastDialog.showToast("PayPal payment is disabled for APK size optimization".tr);
+    ShowToastDialog.showToast(
+      "PayPal payment is disabled for APK size optimization".tr,
+    );
     // Navigator.of(context).push(
     //   MaterialPageRoute(
     //     builder: (BuildContext context) => UsePaypal(
@@ -301,18 +336,22 @@ class WalletProvider extends ChangeNotifier {
   ///PayStack Payment Method
   payStackPayment(String totalAmount) async {
     await PayStackURLGen.payStackURLGen(
-        amount: (double.parse(totalAmount) * 100).toString(), currency: "ZAR", secretKey: payStackModel.value.secretKey.toString(), userModel: userModel.value)
-        .then((value) async {
+      amount: (double.parse(totalAmount) * 100).toString(),
+      currency: "ZAR",
+      secretKey: payStackModel.value.secretKey.toString(),
+      userModel: userModel.value,
+    ).then((value) async {
       if (value != null) {
         PayStackUrlModel payStackModel0 = value;
-        Get.to(PayStackScreen(
-          secretKey: payStackModel.value.secretKey.toString(),
-          callBackUrl: payStackModel.value.callbackURL.toString(),
-          initialURl: payStackModel0.data.authorizationUrl,
-          amount: totalAmount,
-          reference: payStackModel0.data.reference,
-        ))!
-            .then((value) {
+        Get.to(
+          PayStackScreen(
+            secretKey: payStackModel.value.secretKey.toString(),
+            callBackUrl: payStackModel.value.callbackURL.toString(),
+            initialURl: payStackModel0.data.authorizationUrl,
+            amount: totalAmount,
+            reference: payStackModel0.data.reference,
+          ),
+        )!.then((value) {
           if (value) {
             ShowToastDialog.showToast("Payment Successful!!".tr);
             walletTopUp();
@@ -321,13 +360,18 @@ class WalletProvider extends ChangeNotifier {
           }
         });
       } else {
-        ShowToastDialog.showToast("Something went wrong, please contact admin.".tr);
+        ShowToastDialog.showToast(
+          "Something went wrong, please contact admin.".tr,
+        );
       }
     });
   }
 
   //flutter wave Payment Method
-  flutterWaveInitiatePayment({required BuildContext context, required String amount}) async {
+  flutterWaveInitiatePayment({
+    required BuildContext context,
+    required String amount,
+  }) async {
     final url = Uri.parse('https://api.flutterwave.com/v3/payments');
     final headers = {
       'Authorization': 'Bearer ${flutterWaveModel.value.secretKey}',
@@ -348,14 +392,16 @@ class WalletProvider extends ChangeNotifier {
       "customizations": {
         "title": "Payment for Services",
         "description": "Payment for XYZ services",
-      }
+      },
     });
 
     final response = await http.post(url, headers: headers, body: body);
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      Get.to(MercadoPagoScreen(initialURl: data['data']['link']))!.then((value) {
+      Get.to(MercadoPagoScreen(initialURl: data['data']['link']))!.then((
+        value,
+      ) {
         if (value) {
           ShowToastDialog.showToast("Payment Successful!!".tr);
           walletTopUp();
@@ -384,8 +430,14 @@ class WalletProvider extends ChangeNotifier {
 
   // payFast
   payFastPayment({required BuildContext context, required String amount}) {
-    PayStackURLGen.getPayHTML(payFastSettingData: payFastModel.value, amount: amount.toString(), userModel: userModel.value).then((String? value) async {
-      bool isDone = await Get.to(PayFastScreen(htmlData: value!, payFastSettingData: payFastModel.value));
+    PayStackURLGen.getPayHTML(
+      payFastSettingData: payFastModel.value,
+      amount: amount.toString(),
+      userModel: userModel.value,
+    ).then((String? value) async {
+      bool isDone = await Get.to(
+        PayFastScreen(htmlData: value!, payFastSettingData: payFastModel.value),
+      );
       if (isDone) {
         Get.back();
         ShowToastDialog.showToast("Payment successfully".tr);
@@ -403,33 +455,52 @@ class WalletProvider extends ChangeNotifier {
     String getChecksum = "${Constant.globalUrl}payments/getpaytmchecksum";
 
     final response = await http.post(
-        Uri.parse(
-          getChecksum,
-        ),
-        headers: {},
-        body: {
-          "mid": paytmModel.value.paytmMID.toString(),
-          "order_id": orderId,
-          "key_secret": paytmModel.value.pAYTMMERCHANTKEY.toString(),
-        });
+      Uri.parse(getChecksum),
+      headers: {},
+      body: {
+        "mid": paytmModel.value.paytmMID.toString(),
+        "order_id": orderId,
+        "key_secret": paytmModel.value.pAYTMMERCHANTKEY.toString(),
+      },
+    );
 
     final data = jsonDecode(response.body);
-    await verifyCheckSum(checkSum: data["code"], amount: amount, orderId: orderId).then((value) {
+    await verifyCheckSum(
+      checkSum: data["code"],
+      amount: amount,
+      orderId: orderId,
+    ).then((value) {
       initiatePayment(amount: amount, orderId: orderId).then((value) {
         String callback = "";
         if (paytmModel.value.isSandboxEnabled == true) {
-          callback = "${callback}https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
+          callback =
+              "${callback}https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
         } else {
-          callback = "${callback}https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
+          callback =
+              "${callback}https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
         }
 
         GetPaymentTxtTokenModel result = value;
-        startTransaction(context, txnTokenBy: result.body.txnToken, orderId: orderId, amount: amount, callBackURL: callback, isStaging: paytmModel.value.isSandboxEnabled);
+        startTransaction(
+          context,
+          txnTokenBy: result.body.txnToken,
+          orderId: orderId,
+          amount: amount,
+          callBackURL: callback,
+          isStaging: paytmModel.value.isSandboxEnabled,
+        );
       });
     });
   }
 
-  Future<void> startTransaction(context, {required String txnTokenBy, required orderId, required double amount, required callBackURL, required isStaging}) async {
+  Future<void> startTransaction(
+    context, {
+    required String txnTokenBy,
+    required orderId,
+    required double amount,
+    required callBackURL,
+    required isStaging,
+  }) async {
     // try {
     //   var response = AllInOneSdk.startTransaction(
     //     paytmModel.value.paytmMID.toString(),
@@ -465,46 +536,62 @@ class WalletProvider extends ChangeNotifier {
     // }
   }
 
-  Future verifyCheckSum({required String checkSum, required double amount, required orderId}) async {
+  Future verifyCheckSum({
+    required String checkSum,
+    required double amount,
+    required orderId,
+  }) async {
     String getChecksum = "${Constant.globalUrl}payments/validatechecksum";
     final response = await http.post(
-        Uri.parse(
-          getChecksum,
-        ),
-        headers: {},
-        body: {
-          "mid": paytmModel.value.paytmMID.toString(),
-          "order_id": orderId,
-          "key_secret": paytmModel.value.pAYTMMERCHANTKEY.toString(),
-          "checksum_value": checkSum,
-        });
+      Uri.parse(getChecksum),
+      headers: {},
+      body: {
+        "mid": paytmModel.value.paytmMID.toString(),
+        "order_id": orderId,
+        "key_secret": paytmModel.value.pAYTMMERCHANTKEY.toString(),
+        "checksum_value": checkSum,
+      },
+    );
     final data = jsonDecode(response.body);
     return data['status'];
   }
 
-  Future<GetPaymentTxtTokenModel> initiatePayment({required double amount, required orderId}) async {
+  Future<GetPaymentTxtTokenModel> initiatePayment({
+    required double amount,
+    required orderId,
+  }) async {
+    final userId = await SqlStorageConst.getFirebaseId();
     String initiateURL = "${Constant.globalUrl}payments/initiatepaytmpayment";
     String callback = "";
     if (paytmModel.value.isSandboxEnabled == true) {
-      callback = "${callback}https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
+      callback =
+          "${callback}https://securegw-stage.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
     } else {
-      callback = "${callback}https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
+      callback =
+          "${callback}https://securegw.paytm.in/theia/paytmCallback?ORDER_ID=$orderId";
     }
-    final response = await http.post(Uri.parse(initiateURL), headers: {}, body: {
-      "mid": paytmModel.value.paytmMID,
-      "order_id": orderId,
-      "key_secret": paytmModel.value.pAYTMMERCHANTKEY,
-      "amount": amount.toString(),
-      "currency": "INR",
-      "callback_url": callback,
-      "custId": FireStoreUtils.getCurrentUid(),
-      "issandbox": paytmModel.value.isSandboxEnabled == true ? "1" : "2",
-    });
+    final response = await http.post(
+      Uri.parse(initiateURL),
+      headers: {},
+      body: {
+        "mid": paytmModel.value.paytmMID,
+        "order_id": orderId,
+        "key_secret": paytmModel.value.pAYTMMERCHANTKEY,
+        "amount": amount.toString(),
+        "currency": "INR",
+        "callback_url": callback,
+        "custId": userId,
+        "issandbox": paytmModel.value.isSandboxEnabled == true ? "1" : "2",
+      },
+    );
     log(response.body);
     final data = jsonDecode(response.body);
-    if (data["body"]["txnToken"] == null || data["body"]["txnToken"].toString().isEmpty) {
+    if (data["body"]["txnToken"] == null ||
+        data["body"]["txnToken"].toString().isEmpty) {
       Get.back();
-      ShowToastDialog.showToast("something went wrong, please contact admin.".tr);
+      ShowToastDialog.showToast(
+        "something went wrong, please contact admin.".tr,
+      );
     }
     return GetPaymentTxtTokenModel.fromJson(data);
   }
@@ -527,8 +614,8 @@ class WalletProvider extends ChangeNotifier {
         'email': userModel.value.email,
       },
       'external': {
-        'wallets': ['paytm']
-      }
+        'wallets': ['paytm'],
+      },
     };
 
     try {
@@ -555,14 +642,14 @@ class WalletProvider extends ChangeNotifier {
   }
 
   //Midtrans payment
-  midtransMakePayment({required String amount, required BuildContext context}) async {
+  midtransMakePayment({
+    required String amount,
+    required BuildContext context,
+  }) async {
     await createPaymentLink(amount: amount).then((url) {
       ShowToastDialog.closeLoader();
       if (url != '') {
-        Get.to(() => MidtransScreen(
-          initialURl: url,
-        ))!
-            .then((value) {
+        Get.to(() => MidtransScreen(initialURl: url))!.then((value) {
           if (value == true) {
             ShowToastDialog.showToast("Payment Successful!!".tr);
             walletTopUp();
@@ -576,14 +663,20 @@ class WalletProvider extends ChangeNotifier {
 
   Future<String> createPaymentLink({required var amount}) async {
     var ordersId = const Uuid().v1();
-    final url = Uri.parse(midTransModel.value.isSandbox! ? 'https://api.sandbox.midtrans.com/v1/payment-links' : 'https://api.midtrans.com/v1/payment-links');
+    final url = Uri.parse(
+      midTransModel.value.isSandbox!
+          ? 'https://api.sandbox.midtrans.com/v1/payment-links'
+          : 'https://api.midtrans.com/v1/payment-links',
+    );
 
     final response = await http.post(
       url,
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': generateBasicAuthHeader(midTransModel.value.serverKey!),
+        'Authorization': generateBasicAuthHeader(
+          midTransModel.value.serverKey!,
+        ),
       },
       body: jsonEncode({
         'transaction_details': {
@@ -591,7 +684,9 @@ class WalletProvider extends ChangeNotifier {
           'gross_amount': double.parse(amount.toString()).toInt(),
         },
         'usage_limit': 2,
-        "callbacks": {"finish": "https://www.google.com?merchant_order_id=$ordersId"},
+        "callbacks": {
+          "finish": "https://www.google.com?merchant_order_id=$ordersId",
+        },
       }),
     );
 
@@ -599,7 +694,9 @@ class WalletProvider extends ChangeNotifier {
       final responseData = jsonDecode(response.body);
       return responseData['payment_url'];
     } else {
-      ShowToastDialog.showToast("something went wrong, please contact admin.".tr);
+      ShowToastDialog.showToast(
+        "something went wrong, please contact admin.".tr,
+      );
       return '';
     }
   }
@@ -616,21 +713,30 @@ class WalletProvider extends ChangeNotifier {
   static String orderId = '';
   static String amount = '';
 
-  orangeMakePayment({required String amount, required BuildContext context}) async {
+  orangeMakePayment({
+    required String amount,
+    required BuildContext context,
+  }) async {
     reset();
     var id = const Uuid().v4();
-    var paymentURL = await fetchToken(context: context, orderId: id, amount: amount, currency: 'USD');
+    var paymentURL = await fetchToken(
+      context: context,
+      orderId: id,
+      amount: amount,
+      currency: 'USD',
+    );
     ShowToastDialog.closeLoader();
     if (paymentURL.toString() != '') {
-      Get.to(() => OrangeMoneyScreen(
-        initialURl: paymentURL,
-        accessToken: accessToken,
-        amount: amount,
-        orangePay: orangeMoneyModel.value,
-        orderId: orderId,
-        payToken: payToken,
-      ))!
-          .then((value) {
+      Get.to(
+        () => OrangeMoneyScreen(
+          initialURl: paymentURL,
+          accessToken: accessToken,
+          amount: amount,
+          orangePay: orangeMoneyModel.value,
+          orderId: orderId,
+          payToken: payToken,
+        ),
+      )!.then((value) {
         if (value == true) {
           ShowToastDialog.showToast("Payment Successful!!".tr);
           walletTopUp();
@@ -641,36 +747,54 @@ class WalletProvider extends ChangeNotifier {
     }
   }
 
-  Future fetchToken({required String orderId, required String currency, required BuildContext context, required String amount}) async {
+  Future fetchToken({
+    required String orderId,
+    required String currency,
+    required BuildContext context,
+    required String amount,
+  }) async {
     String apiUrl = 'https://api.orange.com/oauth/v3/token';
-    Map<String, String> requestBody = {
-      'grant_type': 'client_credentials',
-    };
+    Map<String, String> requestBody = {'grant_type': 'client_credentials'};
 
-    var response = await http.post(Uri.parse(apiUrl),
-        headers: <String, String>{
-          'Authorization': "Basic ${orangeMoneyModel.value.auth!}",
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/json',
-        },
-        body: requestBody);
+    var response = await http.post(
+      Uri.parse(apiUrl),
+      headers: <String, String>{
+        'Authorization': "Basic ${orangeMoneyModel.value.auth!}",
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Accept': 'application/json',
+      },
+      body: requestBody,
+    );
 
     if (response.statusCode == 200) {
       Map<String, dynamic> responseData = jsonDecode(response.body);
 
       accessToken = responseData['access_token'];
-      return await webpayment(context: context, amountData: amount, currency: currency, orderIdData: orderId);
+      return await webpayment(
+        context: context,
+        amountData: amount,
+        currency: currency,
+        orderIdData: orderId,
+      );
     } else {
-      ShowToastDialog.showToast("Something went wrong, please contact admin.".tr);
+      ShowToastDialog.showToast(
+        "Something went wrong, please contact admin.".tr,
+      );
       return '';
     }
   }
 
-  Future webpayment({required String orderIdData, required BuildContext context, required String currency, required String amountData}) async {
+  Future webpayment({
+    required String orderIdData,
+    required BuildContext context,
+    required String currency,
+    required String amountData,
+  }) async {
     orderId = orderIdData;
     amount = amountData;
-    String apiUrl =
-    orangeMoneyModel.value.isSandbox! == true ? 'https://api.orange.com/orange-money-webpay/dev/v1/webpayment' : 'https://api.orange.com/orange-money-webpay/cm/v1/webpayment';
+    String apiUrl = orangeMoneyModel.value.isSandbox! == true
+        ? 'https://api.orange.com/orange-money-webpay/dev/v1/webpayment'
+        : 'https://api.orange.com/orange-money-webpay/cm/v1/webpayment';
     Map<String, String> requestBody = {
       "merchant_key": orangeMoneyModel.value.merchantKey ?? '',
       "currency": orangeMoneyModel.value.isSandbox == true ? "OUV" : currency,
@@ -685,7 +809,11 @@ class WalletProvider extends ChangeNotifier {
 
     var response = await http.post(
       Uri.parse(apiUrl),
-      headers: <String, String>{'Authorization': 'Bearer $accessToken', 'Content-Type': 'application/json', 'Accept': 'application/json'},
+      headers: <String, String>{
+        'Authorization': 'Bearer $accessToken',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
       body: json.encode(requestBody),
     );
     print(response.statusCode);
@@ -701,7 +829,9 @@ class WalletProvider extends ChangeNotifier {
         return '';
       }
     } else {
-      ShowToastDialog.showToast("Something went wrong, please contact admin.".tr);
+      ShowToastDialog.showToast(
+        "Something went wrong, please contact admin.".tr,
+      );
       return '';
     }
   }
@@ -718,12 +848,13 @@ class WalletProvider extends ChangeNotifier {
     await createXenditInvoice(amount: amount).then((model) {
       ShowToastDialog.closeLoader();
       if (model.id != null) {
-        Get.to(() => XenditScreen(
-          initialURl: model.invoiceUrl ?? '',
-          transId: model.id ?? '',
-          apiKey: xenditModel.value.apiKey!.toString(),
-        ))!
-            .then((value) {
+        Get.to(
+          () => XenditScreen(
+            initialURl: model.invoiceUrl ?? '',
+            transId: model.id ?? '',
+            apiKey: xenditModel.value.apiKey!.toString(),
+          ),
+        )!.then((value) {
           if (value == true) {
             ShowToastDialog.showToast("Payment Successful!!".tr);
             walletTopUp();
@@ -739,7 +870,9 @@ class WalletProvider extends ChangeNotifier {
     const url = 'https://api.xendit.co/v2/invoices';
     var headers = {
       'Content-Type': 'application/json',
-      'Authorization': generateBasicAuthHeader(xenditModel.value.apiKey!.toString()),
+      'Authorization': generateBasicAuthHeader(
+        xenditModel.value.apiKey!.toString(),
+      ),
       // 'Cookie': '__cf_bm=yERkrx3xDITyFGiou0bbKY1bi7xEwovHNwxV1vCNbVc-1724155511-1.0.1.1-jekyYQmPCwY6vIJ524K0V6_CEw6O.dAwOmQnHtwmaXO_MfTrdnmZMka0KZvjukQgXu5B.K_6FJm47SGOPeWviQ',
     };
 
@@ -752,7 +885,11 @@ class WalletProvider extends ChangeNotifier {
     });
 
     try {
-      final response = await http.post(Uri.parse(url), headers: headers, body: body);
+      final response = await http.post(
+        Uri.parse(url),
+        headers: headers,
+        body: body,
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         XenditModel model = XenditModel.fromJson(jsonDecode(response.body));

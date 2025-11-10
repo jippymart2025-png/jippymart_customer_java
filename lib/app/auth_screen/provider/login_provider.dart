@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'dart:convert';
 import 'dart:developer';
 import 'package:jippymart_customer/app/auth_screen/otp_screen.dart';
+import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provider/signup_provider.dart';
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/signup_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
@@ -234,10 +235,8 @@ class LoginProvider extends ChangeNotifier {
     try {
       final userId = await secureStorage.read(key: 'user_id');
       if (userId == null) return null;
-
       final storedCountryCode =
           await secureStorage.read(key: 'user_countryCode') ?? '+91';
-
       return UserModel(
         id: userId,
         firstName: await secureStorage.read(key: 'user_firstName') ?? '',
@@ -266,6 +265,6 @@ class LoginProvider extends ChangeNotifier {
     await secureStorage.delete(key: 'user_email');
     await secureStorage.delete(key: 'user_phone');
     await secureStorage.delete(key: 'user_countryCode');
-    Get.offAllNamed('/LoginScreen');
+    Get.offAll(() => PhoneNumberScreen());
   }
 }

@@ -5,15 +5,11 @@ import 'package:jippymart_customer/app/address_screens/address_list_screen.dart'
 import 'package:jippymart_customer/app/advertisement_screens/all_advertisement_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
 import 'package:jippymart_customer/app/home_screen/provider/map_view_provider.dart';
-import 'package:jippymart_customer/app/home_screen/screen/category_restaurant_screen/category_restaurant_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart'
     show BestRestaurantProvider;
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/best_restaurant_section_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/story_view_widget.dart';
-import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/restaurant_list_screen.dart';
-import 'package:jippymart_customer/app/home_screen/screen/story_view_screen/story_view.dart';
-import 'package:jippymart_customer/app/home_screen/screen/view_all_category_screen/view_all_category_screen.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/profile_screen/profile_screen.dart';
@@ -23,30 +19,22 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/BannerModel.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
-import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
-import 'package:jippymart_customer/models/story_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
-import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
-import 'package:jippymart_customer/utils/restaurant_sorting_utils.dart';
-import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/animated_search_hint.dart';
-import 'package:jippymart_customer/widget/filter_bar.dart';
-import 'package:jippymart_customer/widget/gradiant_text.dart';
 import 'package:jippymart_customer/widget/initials_avatar.dart';
 import 'package:jippymart_customer/widget/mini_cart_bar.dart';
 import 'package:jippymart_customer/widget/osm_map/map_picker_page.dart';
-import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
 import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
 import 'package:jippymart_customer/widgets/coming_soon_dialog.dart';
@@ -63,7 +51,6 @@ import 'package:latlong2/latlong.dart' as location;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../discount_restaurant_list_screen/discount_restaurant_list_screen.dart';
 import 'widgets/category_view_widget.dart';
 
 class HomeScreenTwo extends StatelessWidget {
@@ -1180,6 +1167,8 @@ class AdvertisementHomeCard extends StatelessWidget {
                                   ),
                           ),
                           onPressed: () async {
+                            final userId =
+                                await SqlStorageConst.getFirebaseId();
                             if (controller.favouriteList
                                 .where(
                                   (p0) => p0.restaurantId == model.vendorId,
@@ -1187,7 +1176,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                                 .isNotEmpty) {
                               FavouriteModel favouriteModel = FavouriteModel(
                                 restaurantId: model.vendorId,
-                                userId: FireStoreUtils.getCurrentUid(),
+                                userId: userId,
                               );
                               controller.favouriteList.removeWhere(
                                 (item) => item.restaurantId == model.vendorId,
@@ -1198,7 +1187,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                             } else {
                               FavouriteModel favouriteModel = FavouriteModel(
                                 restaurantId: model.vendorId,
-                                userId: FireStoreUtils.getCurrentUid(),
+                                userId: userId,
                               );
                               controller.favouriteList.add(favouriteModel);
                               await FireStoreUtils.setFavouriteRestaurant(
@@ -1571,6 +1560,8 @@ class MapView extends StatelessWidget {
                                                         top: 10,
                                                         child: InkWell(
                                                           onTap: () async {
+                                                            final userId =
+                                                                await SqlStorageConst.getFirebaseId();
                                                             if (controller
                                                                 .homeController
                                                                 .favouriteList
@@ -1588,7 +1579,7 @@ class MapView extends StatelessWidget {
                                                                         vendorModel
                                                                             .id,
                                                                     userId:
-                                                                        FireStoreUtils.getCurrentUid(),
+                                                                        userId,
                                                                   );
                                                               controller
                                                                   .homeController
@@ -1610,7 +1601,7 @@ class MapView extends StatelessWidget {
                                                                         vendorModel
                                                                             .id,
                                                                     userId:
-                                                                        FireStoreUtils.getCurrentUid(),
+                                                                        userId,
                                                                   );
                                                               controller
                                                                   .homeController

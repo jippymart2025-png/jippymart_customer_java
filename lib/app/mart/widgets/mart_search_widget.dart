@@ -15,11 +15,12 @@ class MartSearchWidget extends StatefulWidget {
   final bool showCategories;
   final Function(MartItemModel)? onItemTap;
   final Function(MartCategoryModel)? onCategoryTap;
-  
+
   const MartSearchWidget({
     Key? key,
     this.showHistory = true,
-    this.showCategories = false, // Changed to false to hide categories by default
+    this.showCategories =
+        false, // Changed to false to hide categories by default
     this.onItemTap,
     this.onCategoryTap,
   }) : super(key: key);
@@ -32,12 +33,13 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   late final MartSearchProvider searchController;
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  
+
   // Real-time trending searches data
-  final RxList<Map<String, dynamic>> _trendingSearches = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> _trendingSearches =
+      <Map<String, dynamic>>[].obs;
   final RxBool _isLoadingTrending = false.obs;
   final RxString _lastUpdated = ''.obs;
-  
+
   // Utility function to remove emojis from text
   String _removeEmojis(String text) {
     // Comprehensive emoji removal regex pattern
@@ -47,24 +49,31 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
     );
     return text.replaceAll(emojiRegex, '').trim();
   }
-  
+
   // Load trending searches from API
   Future<void> _loadTrendingSearches() async {
     try {
       _isLoadingTrending.value = true;
-      
+
       // Try to get trending searches from API first
       final trendingFromAPI = await _getTrendingSearchesFromAPI();
-      
+
       if (trendingFromAPI.isNotEmpty) {
         _trendingSearches.value = trendingFromAPI;
-        _lastUpdated.value = DateTime.now().toString().substring(11, 19); // HH:MM:SS
-        print('[MART_SEARCH] ✅ Loaded ${trendingFromAPI.length} trending searches from API');
+        _lastUpdated.value = DateTime.now().toString().substring(
+          11,
+          19,
+        ); // HH:MM:SS
+        print(
+          '[MART_SEARCH] ✅ Loaded ${trendingFromAPI.length} trending searches from API',
+        );
       } else {
         // Fallback to static data
         _trendingSearches.value = _getStaticTrendingSearches();
         _lastUpdated.value = 'Static';
-        print('[MART_SEARCH] ⚠️ Using static trending searches (${_trendingSearches.length} items)');
+        print(
+          '[MART_SEARCH] ⚠️ Using static trending searches (${_trendingSearches.length} items)',
+        );
       }
     } catch (e) {
       print('[MART_SEARCH] ❌ Error loading trending searches: $e');
@@ -75,18 +84,22 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       _isLoadingTrending.value = false;
     }
   }
-  
+
   // Get trending searches from API
   Future<List<Map<String, dynamic>>> _getTrendingSearchesFromAPI() async {
     try {
       // Use the search controller to fetch trending searches
       final trendingData = await searchController.getTrendingSearches();
-      
+
       if (trendingData.isNotEmpty) {
-        print('[MART_SEARCH] ✅ Loaded ${trendingData.length} trending searches from API');
+        print(
+          '[MART_SEARCH] ✅ Loaded ${trendingData.length} trending searches from API',
+        );
         return trendingData;
       } else {
-        print('[MART_SEARCH] ⚠️ No trending data from API, will use static data');
+        print(
+          '[MART_SEARCH] ⚠️ No trending data from API, will use static data',
+        );
         return [];
       }
     } catch (e) {
@@ -94,96 +107,362 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       return [];
     }
   }
-  
+
   // Get static trending searches (fallback)
   List<Map<String, dynamic>> _getStaticTrendingSearches() {
     return [
       // Dairy & Eggs
-      {'text': '🥛 Milk & Dairy', 'color': Color(0xFF4CAF50), 'category': 'dairy', 'popularity': 95},
-      {'text': '🥚 Eggs & Poultry', 'color': Color(0xFF2196F3), 'category': 'dairy', 'popularity': 88},
-      {'text': '🧀 Cheese & Spreads', 'color': Color(0xFFE91E63), 'category': 'dairy', 'popularity': 82},
-      {'text': '🍦 Ice Cream & Desserts', 'color': Color(0xFF9C27B0), 'category': 'dairy', 'popularity': 75},
-      {'text': '🥛 Yogurt & Probiotics', 'color': Color(0xFF4CAF50), 'category': 'dairy', 'popularity': 70},
-      {'text': '🧈 Butter & Ghee', 'color': Color(0xFFFF9800), 'category': 'dairy', 'popularity': 68},
-      
+      {
+        'text': '🥛 Milk & Dairy',
+        'color': Color(0xFF4CAF50),
+        'category': 'dairy',
+        'popularity': 95,
+      },
+      {
+        'text': '🥚 Eggs & Poultry',
+        'color': Color(0xFF2196F3),
+        'category': 'dairy',
+        'popularity': 88,
+      },
+      {
+        'text': '🧀 Cheese & Spreads',
+        'color': Color(0xFFE91E63),
+        'category': 'dairy',
+        'popularity': 82,
+      },
+      {
+        'text': '🍦 Ice Cream & Desserts',
+        'color': Color(0xFF9C27B0),
+        'category': 'dairy',
+        'popularity': 75,
+      },
+      {
+        'text': '🥛 Yogurt & Probiotics',
+        'color': Color(0xFF4CAF50),
+        'category': 'dairy',
+        'popularity': 70,
+      },
+      {
+        'text': '🧈 Butter & Ghee',
+        'color': Color(0xFFFF9800),
+        'category': 'dairy',
+        'popularity': 68,
+      },
+
       // Fresh Produce
-      {'text': '🍎 Fresh Fruits', 'color': Color(0xFF4CAF50), 'category': 'produce', 'popularity': 92},
-      {'text': '🥕 Vegetables', 'color': Color(0xFF8BC34A), 'category': 'produce', 'popularity': 90},
-      {'text': '🍌 Organic Products', 'color': Color(0xFFFF5722), 'category': 'produce', 'popularity': 85},
-      {'text': '🥬 Leafy Greens', 'color': Color(0xFF4CAF50), 'category': 'produce', 'popularity': 78},
-      {'text': '🍅 Tomatoes & Onions', 'color': Color(0xFFE91E63), 'category': 'produce', 'popularity': 80},
-      {'text': '🥔 Root Vegetables', 'color': Color(0xFF8BC34A), 'category': 'produce', 'popularity': 72},
-      {'text': '🍇 Berries & Grapes', 'color': Color(0xFF9C27B0), 'category': 'produce', 'popularity': 65},
-      {'text': '🥒 Cucumbers & Peppers', 'color': Color(0xFF4CAF50), 'category': 'produce', 'popularity': 70},
-      
+      {
+        'text': '🍎 Fresh Fruits',
+        'color': Color(0xFF4CAF50),
+        'category': 'produce',
+        'popularity': 92,
+      },
+      {
+        'text': '🥕 Vegetables',
+        'color': Color(0xFF8BC34A),
+        'category': 'produce',
+        'popularity': 90,
+      },
+      {
+        'text': '🍌 Organic Products',
+        'color': Color(0xFFFF5722),
+        'category': 'produce',
+        'popularity': 85,
+      },
+      {
+        'text': '🥬 Leafy Greens',
+        'color': Color(0xFF4CAF50),
+        'category': 'produce',
+        'popularity': 78,
+      },
+      {
+        'text': '🍅 Tomatoes & Onions',
+        'color': Color(0xFFE91E63),
+        'category': 'produce',
+        'popularity': 80,
+      },
+      {
+        'text': '🥔 Root Vegetables',
+        'color': Color(0xFF8BC34A),
+        'category': 'produce',
+        'popularity': 72,
+      },
+      {
+        'text': '🍇 Berries & Grapes',
+        'color': Color(0xFF9C27B0),
+        'category': 'produce',
+        'popularity': 65,
+      },
+      {
+        'text': '🥒 Cucumbers & Peppers',
+        'color': Color(0xFF4CAF50),
+        'category': 'produce',
+        'popularity': 70,
+      },
+
       // Bakery & Grains
-      {'text': '🍞 Bread & Bakery', 'color': Color(0xFFFF9800), 'category': 'bakery', 'popularity': 87},
-      {'text': '🍰 Cakes & Pastries', 'color': Color(0xFFE91E63), 'category': 'bakery', 'popularity': 73},
-      {'text': '🥖 Artisan Breads', 'color': Color(0xFFFF9800), 'category': 'bakery', 'popularity': 60},
-      {'text': '🍪 Cookies & Biscuits', 'color': Color(0xFF9C27B0), 'category': 'bakery', 'popularity': 68},
-      {'text': '🌾 Rice & Grains', 'color': Color(0xFF8BC34A), 'category': 'grains', 'popularity': 85},
-      {'text': '🍝 Pasta & Noodles', 'color': Color(0xFFFF5722), 'category': 'grains', 'popularity': 75},
-      {'text': '🌽 Corn & Cereals', 'color': Color(0xFFFF9800), 'category': 'grains', 'popularity': 70},
-      
+      {
+        'text': '🍞 Bread & Bakery',
+        'color': Color(0xFFFF9800),
+        'category': 'bakery',
+        'popularity': 87,
+      },
+      {
+        'text': '🍰 Cakes & Pastries',
+        'color': Color(0xFFE91E63),
+        'category': 'bakery',
+        'popularity': 73,
+      },
+      {
+        'text': '🥖 Artisan Breads',
+        'color': Color(0xFFFF9800),
+        'category': 'bakery',
+        'popularity': 60,
+      },
+      {
+        'text': '🍪 Cookies & Biscuits',
+        'color': Color(0xFF9C27B0),
+        'category': 'bakery',
+        'popularity': 68,
+      },
+      {
+        'text': '🌾 Rice & Grains',
+        'color': Color(0xFF8BC34A),
+        'category': 'grains',
+        'popularity': 85,
+      },
+      {
+        'text': '🍝 Pasta & Noodles',
+        'color': Color(0xFFFF5722),
+        'category': 'grains',
+        'popularity': 75,
+      },
+      {
+        'text': '🌽 Corn & Cereals',
+        'color': Color(0xFFFF9800),
+        'category': 'grains',
+        'popularity': 70,
+      },
+
       // Meat & Seafood
-      {'text': '🥩 Fresh Meat', 'color': Color(0xFFE91E63), 'category': 'meat', 'popularity': 82},
-      {'text': '🐟 Fish & Seafood', 'color': Color(0xFF2196F3), 'category': 'seafood', 'popularity': 78},
-      {'text': '🍗 Chicken & Poultry', 'color': Color(0xFF4CAF50), 'category': 'meat', 'popularity': 85},
-      {'text': '🥓 Bacon & Sausages', 'color': Color(0xFFE91E63), 'category': 'meat', 'popularity': 65},
-      {'text': '🦐 Shrimp & Prawns', 'color': Color(0xFF2196F3), 'category': 'seafood', 'popularity': 60},
-      
+      {
+        'text': '🥩 Fresh Meat',
+        'color': Color(0xFFE91E63),
+        'category': 'meat',
+        'popularity': 82,
+      },
+      {
+        'text': '🐟 Fish & Seafood',
+        'color': Color(0xFF2196F3),
+        'category': 'seafood',
+        'popularity': 78,
+      },
+      {
+        'text': '🍗 Chicken & Poultry',
+        'color': Color(0xFF4CAF50),
+        'category': 'meat',
+        'popularity': 85,
+      },
+      {
+        'text': '🥓 Bacon & Sausages',
+        'color': Color(0xFFE91E63),
+        'category': 'meat',
+        'popularity': 65,
+      },
+      {
+        'text': '🦐 Shrimp & Prawns',
+        'color': Color(0xFF2196F3),
+        'category': 'seafood',
+        'popularity': 60,
+      },
+
       // Beverages
-      {'text': '🥤 Soft Drinks', 'color': Color(0xFF2196F3), 'category': 'beverages', 'popularity': 80},
-      {'text': '☕ Coffee & Tea', 'color': Color(0xFF8BC34A), 'category': 'beverages', 'popularity': 88},
-      {'text': '🧃 Juices & Smoothies', 'color': Color(0xFF4CAF50), 'category': 'beverages', 'popularity': 75},
-      {'text': '💧 Water & Hydration', 'color': Color(0xFF2196F3), 'category': 'beverages', 'popularity': 90},
-      {'text': '🍺 Beer & Wine', 'color': Color(0xFF9C27B0), 'category': 'beverages', 'popularity': 55},
-      {'text': '🥛 Energy Drinks', 'color': Color(0xFFFF5722), 'category': 'beverages', 'popularity': 62},
-      
+      {
+        'text': '🥤 Soft Drinks',
+        'color': Color(0xFF2196F3),
+        'category': 'beverages',
+        'popularity': 80,
+      },
+      {
+        'text': '☕ Coffee & Tea',
+        'color': Color(0xFF8BC34A),
+        'category': 'beverages',
+        'popularity': 88,
+      },
+      {
+        'text': '🧃 Juices & Smoothies',
+        'color': Color(0xFF4CAF50),
+        'category': 'beverages',
+        'popularity': 75,
+      },
+      {
+        'text': '💧 Water & Hydration',
+        'color': Color(0xFF2196F3),
+        'category': 'beverages',
+        'popularity': 90,
+      },
+      {
+        'text': '🍺 Beer & Wine',
+        'color': Color(0xFF9C27B0),
+        'category': 'beverages',
+        'popularity': 55,
+      },
+      {
+        'text': '🥛 Energy Drinks',
+        'color': Color(0xFFFF5722),
+        'category': 'beverages',
+        'popularity': 62,
+      },
+
       // Snacks & Confectionery
-      {'text': '🍿 Popcorn & Chips', 'color': Color(0xFFFF9800), 'category': 'snacks', 'popularity': 78},
-      {'text': '🍫 Chocolate & Candy', 'color': Color(0xFF8BC34A), 'category': 'snacks', 'popularity': 85},
-      {'text': '🥜 Nuts & Dried Fruits', 'color': Color(0xFF9C27B0), 'category': 'snacks', 'popularity': 70},
-      {'text': '🍪 Healthy Snacks', 'color': Color(0xFF4CAF50), 'category': 'snacks', 'popularity': 72},
-      {'text': '🍭 Gummies & Chews', 'color': Color(0xFFE91E63), 'category': 'snacks', 'popularity': 65},
-      
+      {
+        'text': '🍿 Popcorn & Chips',
+        'color': Color(0xFFFF9800),
+        'category': 'snacks',
+        'popularity': 78,
+      },
+      {
+        'text': '🍫 Chocolate & Candy',
+        'color': Color(0xFF8BC34A),
+        'category': 'snacks',
+        'popularity': 85,
+      },
+      {
+        'text': '🥜 Nuts & Dried Fruits',
+        'color': Color(0xFF9C27B0),
+        'category': 'snacks',
+        'popularity': 70,
+      },
+      {
+        'text': '🍪 Healthy Snacks',
+        'color': Color(0xFF4CAF50),
+        'category': 'snacks',
+        'popularity': 72,
+      },
+      {
+        'text': '🍭 Gummies & Chews',
+        'color': Color(0xFFE91E63),
+        'category': 'snacks',
+        'popularity': 65,
+      },
+
       // Household & Personal Care
-      {'text': '🧴 Cleaning Supplies', 'color': Color(0xFF9C27B0), 'category': 'household', 'popularity': 80},
-      {'text': '🧼 Personal Care', 'color': Color(0xFF2196F3), 'category': 'personal', 'popularity': 75},
-      {'text': '🧻 Paper Products', 'color': Color(0xFF4CAF50), 'category': 'household', 'popularity': 85},
-      {'text': '🦷 Oral Care', 'color': Color(0xFFE91E63), 'category': 'personal', 'popularity': 78},
-      {'text': '🧴 Laundry & Detergents', 'color': Color(0xFF9C27B0), 'category': 'household', 'popularity': 82},
-      {'text': '🛁 Bath & Body', 'color': Color(0xFF2196F3), 'category': 'personal', 'popularity': 70},
-      
+      {
+        'text': '🧴 Cleaning Supplies',
+        'color': Color(0xFF9C27B0),
+        'category': 'household',
+        'popularity': 80,
+      },
+      {
+        'text': '🧼 Personal Care',
+        'color': Color(0xFF2196F3),
+        'category': 'personal',
+        'popularity': 75,
+      },
+      {
+        'text': '🧻 Paper Products',
+        'color': Color(0xFF4CAF50),
+        'category': 'household',
+        'popularity': 85,
+      },
+      {
+        'text': '🦷 Oral Care',
+        'color': Color(0xFFE91E63),
+        'category': 'personal',
+        'popularity': 78,
+      },
+      {
+        'text': '🧴 Laundry & Detergents',
+        'color': Color(0xFF9C27B0),
+        'category': 'household',
+        'popularity': 82,
+      },
+      {
+        'text': '🛁 Bath & Body',
+        'color': Color(0xFF2196F3),
+        'category': 'personal',
+        'popularity': 70,
+      },
+
       // Baby & Kids
-      {'text': '🍼 Baby Food & Formula', 'color': Color(0xFF4CAF50), 'category': 'baby', 'popularity': 68},
-      {'text': '🧸 Baby Care Products', 'color': Color(0xFFE91E63), 'category': 'baby', 'popularity': 65},
-      {'text': '🍭 Kids Snacks', 'color': Color(0xFFFF9800), 'category': 'kids', 'popularity': 72},
-      
+      {
+        'text': '🍼 Baby Food & Formula',
+        'color': Color(0xFF4CAF50),
+        'category': 'baby',
+        'popularity': 68,
+      },
+      {
+        'text': '🧸 Baby Care Products',
+        'color': Color(0xFFE91E63),
+        'category': 'baby',
+        'popularity': 65,
+      },
+      {
+        'text': '🍭 Kids Snacks',
+        'color': Color(0xFFFF9800),
+        'category': 'kids',
+        'popularity': 72,
+      },
+
       // Health & Wellness
-      {'text': '💊 Vitamins & Supplements', 'color': Color(0xFF4CAF50), 'category': 'health', 'popularity': 75},
-      {'text': '🌿 Herbal & Natural', 'color': Color(0xFF8BC34A), 'category': 'health', 'popularity': 70},
-      {'text': '🏃‍♂️ Sports Nutrition', 'color': Color(0xFF2196F3), 'category': 'health', 'popularity': 60},
-      
+      {
+        'text': '💊 Vitamins & Supplements',
+        'color': Color(0xFF4CAF50),
+        'category': 'health',
+        'popularity': 75,
+      },
+      {
+        'text': '🌿 Herbal & Natural',
+        'color': Color(0xFF8BC34A),
+        'category': 'health',
+        'popularity': 70,
+      },
+      {
+        'text': '🏃‍♂️ Sports Nutrition',
+        'color': Color(0xFF2196F3),
+        'category': 'health',
+        'popularity': 60,
+      },
+
       // Frozen & Ready-to-Eat
-      {'text': '🧊 Frozen Foods', 'color': Color(0xFF2196F3), 'category': 'frozen', 'popularity': 78},
-      {'text': '🍕 Ready-to-Eat Meals', 'color': Color(0xFFE91E63), 'category': 'ready', 'popularity': 80},
-      {'text': '🥟 Frozen Snacks', 'color': Color(0xFF9C27B0), 'category': 'frozen', 'popularity': 65},
+      {
+        'text': '🧊 Frozen Foods',
+        'color': Color(0xFF2196F3),
+        'category': 'frozen',
+        'popularity': 78,
+      },
+      {
+        'text': '🍕 Ready-to-Eat Meals',
+        'color': Color(0xFFE91E63),
+        'category': 'ready',
+        'popularity': 80,
+      },
+      {
+        'text': '🥟 Frozen Snacks',
+        'color': Color(0xFF9C27B0),
+        'category': 'frozen',
+        'popularity': 65,
+      },
     ];
   }
-  
+
   @override
   void initState() {
     super.initState();
     try {
-      searchController = Provider.of<MartSearchProvider>(context,listen:false);
+      searchController = Provider.of<MartSearchProvider>(
+        context,
+        listen: false,
+      );
     } catch (e) {
-      searchController =  Provider.of<MartSearchProvider>(context,listen:false);
+      searchController = Provider.of<MartSearchProvider>(
+        context,
+        listen: false,
+      );
     }
     _textController.addListener(_onSearchChanged);
     _loadTrendingSearches();
   }
-  
+
   @override
   void dispose() {
     _textController.removeListener(_onSearchChanged);
@@ -191,7 +470,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
     _focusNode.dispose();
     super.dispose();
   }
-  
+
   void _onSearchChanged() {
     final query = _textController.text.trim();
     if (query.isNotEmpty) {
@@ -200,51 +479,45 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       searchController.clearResults();
     }
   }
-  
-  void _onItemTap(MartItemModel item) {
-    if (widget.onItemTap != null) {
-      widget.onItemTap!(item);
-    } else {
-      // Default navigation to product details
-      Get.to(() => MartProductDetailsScreen(product: item));
-    }
-  }
-  
+
   void _onCategoryTap(MartCategoryModel category) {
     if (widget.onCategoryTap != null) {
       widget.onCategoryTap!(category);
     } else {
       // Default navigation to category detail
-      Get.to(() => const MartCategoryDetailScreen(), arguments: {
-        'categoryId': category.id ?? '',
-        'categoryName': category.title ?? 'Category',
-      });
+      Get.to(
+        () => const MartCategoryDetailScreen(),
+        arguments: {
+          'categoryId': category.id ?? '',
+          'categoryName': category.title ?? 'Category',
+        },
+      );
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
         // Search Bar
         _buildSearchBar(),
-        
+
         // Search Results
         Expanded(
           child: Consumer<MartSearchProvider>(
-            builder: (context,controller,_) {
+            builder: (context, controller, _) {
               if (controller.isLoading.value) {
                 return _buildLoadingWidget();
               }
-              
+
               if (controller.errorMessage.value.isNotEmpty) {
                 return _buildErrorWidget();
               }
-              
+
               if (controller.searchQuery.value.isEmpty) {
                 return _buildEmptyState();
               }
-              
+
               return _buildSearchResults();
             },
           ),
@@ -252,7 +525,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       ],
     );
   }
-  
+
   Widget _buildSearchBar() {
     return Container(
       margin: const EdgeInsets.all(16),
@@ -260,10 +533,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white,
-            MartTheme.grayVeryLight,
-          ],
+          colors: [Colors.white, MartTheme.grayVeryLight],
         ),
         borderRadius: BorderRadius.circular(30),
         border: Border.all(color: MartTheme.brandGreen.withOpacity(0.3)),
@@ -274,10 +544,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
         focusNode: _focusNode,
         decoration: InputDecoration(
           hintText: '${MartEmojis.cart} Search products, categories...',
-          hintStyle: TextStyle(
-            color: MartTheme.grayMedium,
-            fontSize: 16,
-          ),
+          hintStyle: TextStyle(color: MartTheme.grayMedium, fontSize: 16),
           prefixIcon: Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -304,7 +571,10 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                 )
               : const SizedBox.shrink(),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
         onSubmitted: (value) {
           if (value.trim().isNotEmpty) {
@@ -314,7 +584,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       ),
     );
   }
-  
+
   Widget _buildLoadingWidget() {
     return Center(
       child: Column(
@@ -331,14 +601,12 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                   width: 80,
                   height: 80,
                   decoration: BoxDecoration(
-                    color: MartTheme.greenVeryLight, // Use mart theme green very light
+                    color: MartTheme.greenVeryLight,
+                    // Use mart theme green very light
                     shape: BoxShape.circle,
                   ),
                   child: const Center(
-                    child: Text(
-                      '🛒',
-                      style: TextStyle(fontSize: 32),
-                    ),
+                    child: Text('🛒', style: TextStyle(fontSize: 32)),
                   ),
                 ),
               );
@@ -348,7 +616,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
             },
           ),
           const SizedBox(height: 24),
-          
+
           // Animated loading text
           TweenAnimationBuilder<double>(
             duration: const Duration(milliseconds: 1500),
@@ -369,19 +637,16 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                     const SizedBox(height: 8),
                     Text(
                       'Finding the best deals for you!',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                   ],
                 ),
               );
             },
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Animated progress dots
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -410,7 +675,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       ),
     );
   }
-  
+
   Widget _buildErrorWidget() {
     return Center(
       child: Column(
@@ -441,7 +706,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       ),
     );
   }
-  
+
   Widget _buildEmptyState() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -451,22 +716,22 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
           // Welcome message with animation
           // _buildWelcomeMessage(),
           // const SizedBox(height: 24),
-          
+
           // Trending searches
           _buildTrendingSearches(),
           const SizedBox(height: 24),
-          
+
           // Popular categories
           _buildPopularCategories(),
           const SizedBox(height: 24),
-          
+
           // Search history
           if (widget.showHistory) _buildSearchHistory(),
         ],
       ),
     );
   }
-  
+
   // Widget _buildWelcomeMessage() {
   //   return TweenAnimationBuilder<double>(
   //     duration: const Duration(milliseconds: 1000),
@@ -525,23 +790,24 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   //     },
   //   );
   // }
-  
+
   Widget _buildTrendingSearches() {
     return Obx(() {
       if (_isLoadingTrending.value) {
         return _buildTrendingSearchesLoading();
       }
-      
+
       if (_trendingSearches.isEmpty) {
         return const SizedBox.shrink();
       }
-      
+
       // Sort by popularity and take top 40
-      final sortedSearches = List<Map<String, dynamic>>.from(_trendingSearches)
-        ..sort((a, b) => (b['popularity'] ?? 0).compareTo(a['popularity'] ?? 0));
-      
+      final sortedSearches = List<Map<String, dynamic>>.from(
+        _trendingSearches,
+      )..sort((a, b) => (b['popularity'] ?? 0).compareTo(a['popularity'] ?? 0));
+
       final topSearches = sortedSearches.take(40).toList();
-      
+
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -559,7 +825,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       );
     });
   }
-  
+
   Widget _buildTrendingSearchesLoading() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -589,7 +855,10 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                   child: Opacity(
                     opacity: value,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(20),
@@ -599,7 +868,9 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                         height: 16,
                         child: LinearProgressIndicator(
                           backgroundColor: Colors.transparent,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.grey),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.grey,
+                          ),
                         ),
                       ),
                     ),
@@ -612,22 +883,26 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       ],
     );
   }
-  
+
   Widget _buildTrendingSearchesGrid(List<Map<String, dynamic>> searches) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
         final horizontalPadding = 16.0;
         final spacing = 8.0; // 🔑 Reduced spacing for tighter layout
-        
+
         // 🔑 Calculate responsive grid columns - ensure at least 2 horizontally
         final availableWidth = screenWidth - (horizontalPadding * 2);
         final minItemWidth = 120.0; // Minimum width for each chip
         final maxColumns = (availableWidth / minItemWidth).floor();
-        final crossAxisCount = (maxColumns < 2) ? 2 : maxColumns; // 🔑 Ensure at least 2 columns
-        
-        final itemWidth = (availableWidth - (spacing * (crossAxisCount - 1))) / crossAxisCount;
-        
+        final crossAxisCount = (maxColumns < 2)
+            ? 2
+            : maxColumns; // 🔑 Ensure at least 2 columns
+
+        final itemWidth =
+            (availableWidth - (spacing * (crossAxisCount - 1))) /
+            crossAxisCount;
+
         return GridView.builder(
           padding: EdgeInsets.only(top: 10),
           shrinkWrap: true,
@@ -636,13 +911,14 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: spacing,
             mainAxisSpacing: spacing,
-            childAspectRatio: itemWidth / 45, // 🔑 Reduced height for smaller boxes
+            childAspectRatio:
+                itemWidth / 45, // 🔑 Reduced height for smaller boxes
           ),
           itemCount: searches.length,
           itemBuilder: (context, index) {
             final search = searches[index];
             final popularity = search['popularity'] ?? 0;
-        
+
             return TweenAnimationBuilder<double>(
               duration: Duration(milliseconds: 200 + (index * 50)),
               tween: Tween(begin: 0.0, end: 1.0),
@@ -653,26 +929,37 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                     opacity: value,
                     child: GestureDetector(
                       onTap: () {
-                        final cleanText = _removeEmojis(search['text'] as String);
+                        final cleanText = _removeEmojis(
+                          search['text'] as String,
+                        );
                         _textController.text = cleanText;
                         searchController.searchAll(cleanText);
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 6,
+                        ),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
                               (search['color'] as Color).withValues(alpha: 0.1),
-                              (search['color'] as Color).withValues(alpha: 0.05),
+                              (search['color'] as Color).withValues(
+                                alpha: 0.05,
+                              ),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: (search['color'] as Color).withValues(alpha: 0.3),
+                            color: (search['color'] as Color).withValues(
+                              alpha: 0.3,
+                            ),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: (search['color'] as Color).withValues(alpha: 0.1),
+                              color: (search['color'] as Color).withValues(
+                                alpha: 0.1,
+                              ),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             ),
@@ -702,14 +989,14 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       },
     );
   }
-  
+
   Widget _buildSearchHistory() {
-    return  Consumer<MartSearchProvider>(
-      builder: (context,controller,_) {
+    return Consumer<MartSearchProvider>(
+      builder: (context, controller, _) {
         if (controller.searchHistory.isEmpty) {
           return const SizedBox.shrink();
         }
-        
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -744,7 +1031,9 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                              color: const Color(
+                                0xFF4CAF50,
+                              ).withValues(alpha: 0.2),
                             ),
                             boxShadow: [
                               BoxShadow(
@@ -759,11 +1048,18 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
-                                  colors: [Color(0xFF4CAF50), Color(0xFF2196F3)],
+                                  colors: [
+                                    Color(0xFF4CAF50),
+                                    Color(0xFF2196F3),
+                                  ],
                                 ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
-                              child: const Icon(Icons.history, color: Colors.white, size: 16),
+                              child: const Icon(
+                                Icons.history,
+                                color: Colors.white,
+                                size: 16,
+                              ),
                             ),
                             title: Text(
                               query,
@@ -778,8 +1074,13 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: IconButton(
-                                icon: const Icon(Icons.close, size: 16, color: Colors.red),
-                                onPressed: () => searchController.removeFromHistory(query),
+                                icon: const Icon(
+                                  Icons.close,
+                                  size: 16,
+                                  color: Colors.red,
+                                ),
+                                onPressed: () =>
+                                    searchController.removeFromHistory(query),
                               ),
                             ),
                             onTap: () {
@@ -800,7 +1101,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       },
     );
   }
-  
+
   Widget _buildPopularCategories() {
     // This would typically come from an API or be predefined
     final popularCategories = [
@@ -811,7 +1112,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       'Beverages',
       'Snacks',
     ];
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -833,7 +1134,10 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                 searchController.searchAll(cleanText);
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.blue[50],
                   borderRadius: BorderRadius.circular(20),
@@ -851,33 +1155,32 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       ],
     );
   }
-  
+
   Widget _buildSearchResults() {
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Categories Section
-          if (widget.showCategories && searchController.categoryResults.isNotEmpty)
+          if (widget.showCategories &&
+              searchController.categoryResults.isNotEmpty)
             _buildCategoriesSection(),
-          
+
           // Items Section
-          if (searchController.searchResults.isNotEmpty)
-            _buildItemsSection(),
-          
+          if (searchController.searchResults.isNotEmpty) _buildItemsSection(),
+
           // Load More Button
-          if (searchController.hasMoreItems.value)
-            _buildLoadMoreButton(),
-          
+          if (searchController.hasMoreItems.value) _buildLoadMoreButton(),
+
           // No Results
-          if (searchController.categoryResults.isEmpty && 
+          if (searchController.categoryResults.isEmpty &&
               searchController.searchResults.isEmpty)
             _buildNoResultsWidget(),
         ],
       ),
     );
   }
-  
+
   Widget _buildCategoriesSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -897,11 +1200,11 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
             final category = searchController.categoryResults[index];
             return ListTile(
               leading: CircleAvatar(
-                backgroundImage: category.photo != null 
-                    ? NetworkImage(category.photo!) 
+                backgroundImage: category.photo != null
+                    ? NetworkImage(category.photo!)
                     : null,
-                child: category.photo == null 
-                    ? const Icon(Icons.category) 
+                child: category.photo == null
+                    ? const Icon(Icons.category)
                     : null,
               ),
               title: Text(category.title ?? ''),
@@ -915,7 +1218,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       ],
     );
   }
-  
+
   Widget _buildItemsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -927,69 +1230,74 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
         ),
-         LayoutBuilder(
-           builder: (context, constraints) {
-             final screenWidth = MediaQuery.of(context).size.width;
-             final isTablet = screenWidth > 768;
-             final isLargePhone = screenWidth > 400;
-             
-             final crossAxisCount = isTablet ? 3 : 2;
-             final spacing = isTablet ? 12.0 : (isLargePhone ? 8.0 : 4.0);
-             final horizontalPadding = isTablet ? 16.0 : (isLargePhone ? 8.0 : 4.0);
-             
-             // Calculate dynamic aspect ratio based on available space and card content
-             final availableWidth = constraints.maxWidth - (horizontalPadding * 2) - (spacing * (crossAxisCount - 1));
-             final cardWidth = availableWidth / crossAxisCount;
-             // More flexible aspect ratio to accommodate content-based card heights
-             final aspectRatio = isTablet ? 0.7 : (isLargePhone ? 0.65 : 0.6);
-             
-             // 🔑 Use Wrap instead of GridView to allow flexible heights
-             return Padding(
-               padding: EdgeInsets.only(
-                 left: horizontalPadding,
-                 right: horizontalPadding,
-                 bottom: MediaQuery.of(context).padding.bottom + 16,
-               ),
-               child: Wrap(
-                 alignment: WrapAlignment.start,
-                 crossAxisAlignment: WrapCrossAlignment.start,
-                 spacing: spacing,
-                 runSpacing: spacing,
-                 children: searchController.searchResults.map((item) {
-                   try {
-                     return SizedBox(
-                       width: cardWidth,
-                       child: MartProductCard(
-                         product: item,
-                         screenWidth: MediaQuery.of(context).size.width,
-                       ),
-                     );
-                   } catch (e) {
-                     return SizedBox(
-                       width: cardWidth,
-                       child: MartProductCard(
-                         product: item,
-                         screenWidth: MediaQuery.of(context).size.width,
-                       ),
-                     );
-                   }
-                 }).toList(),
-               ),
-             );
-           },
-         ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final screenWidth = MediaQuery.of(context).size.width;
+            final isTablet = screenWidth > 768;
+            final isLargePhone = screenWidth > 400;
+
+            final crossAxisCount = isTablet ? 3 : 2;
+            final spacing = isTablet ? 12.0 : (isLargePhone ? 8.0 : 4.0);
+            final horizontalPadding = isTablet
+                ? 16.0
+                : (isLargePhone ? 8.0 : 4.0);
+
+            // Calculate dynamic aspect ratio based on available space and card content
+            final availableWidth =
+                constraints.maxWidth -
+                (horizontalPadding * 2) -
+                (spacing * (crossAxisCount - 1));
+            final cardWidth = availableWidth / crossAxisCount;
+            // More flexible aspect ratio to accommodate content-based card heights
+            final aspectRatio = isTablet ? 0.7 : (isLargePhone ? 0.65 : 0.6);
+
+            // 🔑 Use Wrap instead of GridView to allow flexible heights
+            return Padding(
+              padding: EdgeInsets.only(
+                left: horizontalPadding,
+                right: horizontalPadding,
+                bottom: MediaQuery.of(context).padding.bottom + 16,
+              ),
+              child: Wrap(
+                alignment: WrapAlignment.start,
+                crossAxisAlignment: WrapCrossAlignment.start,
+                spacing: spacing,
+                runSpacing: spacing,
+                children: searchController.searchResults.map((item) {
+                  try {
+                    return SizedBox(
+                      width: cardWidth,
+                      child: MartProductCard(
+                        product: item,
+                        screenWidth: MediaQuery.of(context).size.width,
+                      ),
+                    );
+                  } catch (e) {
+                    return SizedBox(
+                      width: cardWidth,
+                      child: MartProductCard(
+                        product: item,
+                        screenWidth: MediaQuery.of(context).size.width,
+                      ),
+                    );
+                  }
+                }).toList(),
+              ),
+            );
+          },
+        ),
       ],
     );
   }
-  
+
   Widget _buildLoadMoreButton() {
     return Padding(
       padding: const EdgeInsets.all(16),
-      child:  Consumer<MartSearchProvider>(
-        builder: (context,controller,_) {
+      child: Consumer<MartSearchProvider>(
+        builder: (context, controller, _) {
           return ElevatedButton(
-            onPressed: controller.isLoading.value 
-                ? null 
+            onPressed: controller.isLoading.value
+                ? null
                 : () => controller.loadMoreItems(),
             child: controller.isLoading.value
                 ? const SizedBox(
@@ -1003,7 +1311,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       ),
     );
   }
-  
+
   Widget _buildNoResultsWidget() {
     return Center(
       child: Column(

@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import 'dart:math';
+
 Widget groceryComponent(Size size) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -50,9 +51,9 @@ Widget groceryComponent(Size size) {
         //     ],
         //   ),
         // ),
-SizedBox(height: 20,),
+        SizedBox(height: 20),
         Consumer<MartProvider>(
-          builder: (context,controller,_) {
+          builder: (context, controller, _) {
             // Loading State
             if (controller.isCategoryLoading.value) {
               return _buildCategoryShimmer();
@@ -74,7 +75,7 @@ SizedBox(height: 20,),
             }
 
             // Success State - Premium Categories Grid
-            return _buildCategoriesGrid(controller,size);
+            return _buildCategoriesGrid(controller, size);
           },
         ),
       ],
@@ -159,10 +160,7 @@ Widget _buildErrorState(MartProvider controller) {
     margin: const EdgeInsets.symmetric(vertical: 8),
     decoration: BoxDecoration(
       gradient: LinearGradient(
-        colors: [
-          Colors.red[50]!,
-          Colors.orange[50]!,
-        ],
+        colors: [Colors.red[50]!, Colors.orange[50]!],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
@@ -217,7 +215,10 @@ Widget _buildErrorState(MartProvider controller) {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 shadowColor: Colors.red.withOpacity(0.3),
               ),
               child: const Text(
@@ -243,10 +244,7 @@ Widget _buildEmptyState() {
     margin: const EdgeInsets.symmetric(vertical: 8),
     decoration: BoxDecoration(
       gradient: LinearGradient(
-        colors: [
-          Colors.grey[50]!,
-          Colors.grey[100]!,
-        ],
+        colors: [Colors.grey[50]!, Colors.grey[100]!],
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
       ),
@@ -264,11 +262,7 @@ Widget _buildEmptyState() {
               color: Colors.grey.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              Icons.category_outlined,
-              color: Colors.grey,
-              size: 24,
-            ),
+            child: Icon(Icons.category_outlined, color: Colors.grey, size: 24),
           ),
           const SizedBox(height: 12),
           const Text(
@@ -287,38 +281,44 @@ Widget _buildEmptyState() {
 }
 
 // Enhanced Categories Grid
-Widget _buildCategoriesGrid(MartProvider controller,Size size) {
+Widget _buildCategoriesGrid(MartProvider controller, Size size) {
   return SizedBox(
     height: 120,
-    child: ListView.separated(padding: EdgeInsets.zero,
+    child: ListView.separated(
+      padding: EdgeInsets.zero,
       scrollDirection: Axis.horizontal,
       // physics: NeverScrollableScrollPhysics(),
-      itemCount: controller.featuredCategories.length > 5 ? 5 : controller.featuredCategories.length,
+      itemCount: controller.featuredCategories.length > 5
+          ? 5
+          : controller.featuredCategories.length,
       separatorBuilder: (context, index) => const SizedBox(width: 30),
       itemBuilder: (context, index) {
         final category = controller.featuredCategories[index];
-        return _buildCategoryItem(category, index,size);
+        return _buildCategoryItem(category, index, size);
       },
     ),
   );
 }
 
 // Enhanced Category Item with Modern Design
-Widget _buildCategoryItem(MartCategoryModel category, int index,Size size) {
+Widget _buildCategoryItem(MartCategoryModel category, int index, Size size) {
   final categoryData = _getCategoryData(category.title ?? '');
   return AnimatedContainer(
     duration: Duration(milliseconds: 400 + (index * 100)),
     curve: Curves.easeOutBack,
     child: InkWell(
       onTap: () {
-        Get.to(() => const MartCategoryDetailScreen(), arguments: {
-          'categoryId': category.id ?? '',
-          'categoryName': category.title ?? 'Category',
-        });
+        Get.to(
+          () => const MartCategoryDetailScreen(),
+          arguments: {
+            'categoryId': category.id ?? '',
+            'categoryName': category.title ?? 'Category',
+          },
+        );
       },
       borderRadius: BorderRadius.circular(20),
       child: SizedBox(
-        width: size.width*0.11,
+        width: size.width * 0.11,
         // decoration: BoxDecoration(
         //   borderRadius: BorderRadius.circular(20),
         //   color: Colors.white,
@@ -402,7 +402,7 @@ Widget _buildCategoryItem(MartCategoryModel category, int index,Size size) {
                 category.title ?? 'Category',
                 style: TextStyle(
                   fontFamily: 'Montserrat',
-                  fontSize:9,
+                  fontSize: 9,
                   fontWeight: FontWeight.w700,
                   color: Color(0xFF2D3748),
                   height: 1.2,
@@ -445,10 +445,16 @@ Map<String, dynamic> _getCategoryData(String categoryTitle) {
     'snacks': {'icon': Icons.cookie_rounded, 'color': Color(0xFFFFB74D)},
     'frozen': {'icon': Icons.ac_unit_rounded, 'color': Color(0xFF4DD0E1)},
     'organic': {'icon': Icons.eco_rounded, 'color': Color(0xFF66BB6A)},
-    'pharmacy': {'icon': Icons.local_pharmacy_rounded, 'color': Color(0xFFF44336)},
+    'pharmacy': {
+      'icon': Icons.local_pharmacy_rounded,
+      'color': Color(0xFFF44336),
+    },
     'baby': {'icon': Icons.child_care_rounded, 'color': Color(0xFFCE93D8)},
     'pet': {'icon': Icons.pets_rounded, 'color': Color(0xFFA1887F)},
-    'cleaning': {'icon': Icons.cleaning_services_rounded, 'color': Color(0xFF90CAF9)},
+    'cleaning': {
+      'icon': Icons.cleaning_services_rounded,
+      'color': Color(0xFF90CAF9),
+    },
     'personal care': {'icon': Icons.spa_rounded, 'color': Color(0xFF80CBC4)},
   };
 
@@ -459,15 +465,5 @@ Map<String, dynamic> _getCategoryData(String categoryTitle) {
   }
 
   // Default category data
-  return {
-    'icon': Icons.category_rounded,
-    'color': ColorConst.martPrimary,
-  };
+  return {'icon': Icons.category_rounded, 'color': ColorConst.martPrimary};
 }
-
-// Helper function to generate random product count
-int _getRandomProductCount() {
-  final random = Random();
-  return 50 + random.nextInt(200); // Returns between 50-250 items
-}
-

@@ -13,7 +13,7 @@ import 'package:jippymart_customer/config/smartlook_config.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/firebase_options.dart';
 import 'package:jippymart_customer/models/language_model.dart';
-import 'package:jippymart_customer/services/api_service.dart';
+
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/services/final_deep_link_service.dart';
@@ -23,12 +23,10 @@ import 'package:jippymart_customer/services/mart_firestore_service.dart';
 import 'package:jippymart_customer/services/mobile_deep_link_service.dart';
 import 'package:jippymart_customer/services/pending_deep_link_handler.dart';
 import 'package:jippymart_customer/services/smartlook_service.dart';
-import 'package:jippymart_customer/themes/styles.dart';
 import 'package:jippymart_customer/utils/anr_monitor.dart';
 import 'package:jippymart_customer/utils/app_lifecycle_logger.dart';
 import 'package:jippymart_customer/utils/cache_manager.dart';
 import 'package:jippymart_customer/utils/crash_prevention.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/native_lock_prevention.dart';
 import 'package:jippymart_customer/utils/performance_optimizer.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
@@ -39,7 +37,6 @@ import 'package:jippymart_customer/utils/text_processing_anr_fix.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:flutter_smartlook/flutter_smartlook.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:provider/provider.dart';
@@ -54,9 +51,6 @@ import 'app/edit_profile_screen/provider/edit_profile_provider.dart'
     show EditProfileProvider;
 import 'app/favourite_screens/provider/favorite_provider.dart';
 import 'app/forgot_password_screen/provider/forgot_password_provider.dart';
-import 'app/gift_card/screens/gift_card_screen/provider/gift_card_provider.dart';
-import 'app/gift_card/screens/history_gift_card_screen/provider/history_gift_card_provider.dart';
-import 'app/gift_card/screens/redeem_gift_card_screen/provider/redeem_gift_card_provider.dart';
 import 'app/home_screen/provider/map_view_provider.dart';
 import 'app/home_screen/screen/category_restaurant_screen/provider/category_resaurant_provider.dart';
 import 'app/home_screen/screen/discount_restaurant_list_screen/provider/discount_resaurant_list_provider.dart';
@@ -76,7 +70,6 @@ import 'app/order_list_screen/screens/order_deatils_screen/provider/order_detail
 import 'app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'app/profile_screen/provider/my_profile_provider.dart';
 import 'app/rate_us_screen/provider/rate_product_provider.dart';
-import 'app/refer_friend_screen/provider/refer_friend_provider.dart';
 import 'app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'app/review_list_screen/provider/review_list_provider.dart';
 import 'app/scan_qrcode_screen/provider/scan_qr_code_provider.dart';
@@ -128,13 +121,9 @@ void _initializeHeavyServicesInBackground() {
     try {
       await Future.wait([
         Get.putAsync(
-          () => ApiService().init(),
-        ).timeout(const Duration(seconds: 5)),
-        Get.putAsync(
           () => MartFirestoreService().init(),
         ).timeout(const Duration(seconds: 5)),
         CacheManager.initialize().timeout(const Duration(seconds: 3)),
-        PerformanceOptimizer.initialize().timeout(const Duration(seconds: 2)),
         ProductionLogger.initialize().timeout(const Duration(seconds: 2)),
         AppLifecycleLogger.initialize().timeout(const Duration(seconds: 2)),
       ]);
@@ -275,10 +264,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => DashBoardProvider()),
         ChangeNotifierProvider(create: (_) => EditProfileProvider()),
         ChangeNotifierProvider(create: (_) => FavouriteProvider()),
-        ChangeNotifierProvider(create: (_) => ForgotPasswordProvider()),
-        ChangeNotifierProvider(create: (_) => GiftCardProvider()),
-        ChangeNotifierProvider(create: (_) => HistoryGiftCardProvider()),
-        ChangeNotifierProvider(create: (_) => RedeemGiftCardProvider()),
         ChangeNotifierProvider(create: (_) => LocationPermissionProvider()),
         ChangeNotifierProvider(create: (_) => MartProvider()),
         ChangeNotifierProvider(create: (_) => MartEditProfileProvider()),
@@ -288,7 +273,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => MyProfileProvider()),
         ChangeNotifierProvider(create: (_) => RateProductProvider()),
-        ChangeNotifierProvider(create: (_) => ReferFriendProvider()),
         ChangeNotifierProvider(create: (_) => RestaurantDetailsProvider()),
         ChangeNotifierProvider(create: (_) => ReviewListProvider()),
         ChangeNotifierProvider(create: (_) => ScanQrCodeProvider()),

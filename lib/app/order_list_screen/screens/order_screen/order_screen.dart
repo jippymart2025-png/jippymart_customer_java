@@ -10,7 +10,6 @@ import 'package:jippymart_customer/models/order_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';

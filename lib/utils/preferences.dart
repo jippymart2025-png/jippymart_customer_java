@@ -5,7 +5,7 @@ class Preferences {
   static const isFinishOnBoardingKey = "isFinishOnBoardingKey";
   static const foodDeliveryType = "foodDeliveryType";
   static const tokenKey = "tokenKey";
-  
+
   // Location preferences for tax calculation
   static const selectedLocationLat = "selectedLocationLat";
   static const selectedLocationLng = "selectedLocationLng";
@@ -38,10 +38,6 @@ class Preferences {
     return pref.getBool(key) ?? false;
   }
 
-  static Future<void> setBoolean(String key, bool value) async {
-    await pref.setBool(key, value);
-  }
-
   static String getString(String key, {String? defaultValue}) {
     return pref.getString(key) ?? defaultValue ?? "";
   }
@@ -50,19 +46,7 @@ class Preferences {
     await pref.setString(key, value);
   }
 
-  static int getInt(String key) {
-    return pref.getInt(key) ?? 0;
-  }
-
-  static Future<void> setInt(String key, int value) async {
-    await pref.setInt(key, value);
-  }
-
   static Future<void> clearSharPreference() async {
     await pref.clear();
-  }
-
-  static Future<void> clearKeyData(String key) async {
-    await pref.remove(key);
   }
 }

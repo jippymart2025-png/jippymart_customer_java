@@ -277,12 +277,12 @@ class MartProductCard extends StatelessWidget {
         price:
             selectedOption['original_price']?.toString() ??
             selectedOption['price']?.toString() ??
-            product.price?.toString() ??
+            product.price.toString() ??
             '0',
         discountPrice:
             selectedOption['price']?.toString() ??
             product.disPrice?.toString() ??
-            product.price?.toString() ??
+            product.price.toString() ??
             '0',
         vendorID: "mart_${product.vendorID ?? 'unknown'}",
         vendorName: "Jippy Mart",

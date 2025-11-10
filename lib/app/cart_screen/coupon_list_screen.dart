@@ -8,7 +8,6 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:dotted_border/dotted_border.dart';

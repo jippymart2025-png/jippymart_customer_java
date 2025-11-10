@@ -264,45 +264,6 @@ class BestRestaurantProvider extends ChangeNotifier {
     print('[DEBUG] Restaurant data processing completed');
   }
 
-  DateTime _parseDateTime(dynamic timestamp) {
-    if (timestamp == null) {
-      return DateTime.now();
-    }
-
-    if (timestamp is Timestamp) {
-      return timestamp.toDate();
-    }
-
-    if (timestamp is DateTime) {
-      return timestamp;
-    }
-
-    if (timestamp is String) {
-      try {
-        String cleanTimestamp = timestamp.replaceAll('"', '');
-        return DateTime.parse(cleanTimestamp);
-      } catch (e) {
-        print('Error parsing DateTime from string: $timestamp, error: $e');
-        return DateTime.now();
-      }
-    }
-
-    if (timestamp is Map<String, dynamic>) {
-      try {
-        final seconds = timestamp['_seconds'] ?? 0;
-        final nanoseconds = timestamp['_nanoseconds'] ?? 0;
-        return DateTime.fromMillisecondsSinceEpoch(
-          seconds * 1000 + (nanoseconds / 1000000).round(),
-        );
-      } catch (e) {
-        print('Error parsing DateTime from map: $e');
-        return DateTime.now();
-      }
-    }
-
-    return DateTime.now();
-  }
-
   Future<void> _calculateDistancesInBatches(List<VendorModel> vendors) async {
     const int batchSize = 10;
     for (int i = 0; i < vendors.length; i += batchSize) {

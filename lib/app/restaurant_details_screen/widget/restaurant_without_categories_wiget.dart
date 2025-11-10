@@ -7,9 +7,9 @@ import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/special_price_badge.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -400,6 +400,7 @@ Widget buildProductsWithoutCategories(
                     top: 10,
                     child: InkWell(
                       onTap: () async {
+                        final userId = await SqlStorageConst.getFirebaseId();
                         if (controller.favouriteItemList
                             .where((p0) => p0.productId == productModel.id)
                             .isNotEmpty) {
@@ -407,7 +408,7 @@ Widget buildProductsWithoutCategories(
                               FavouriteItemModel(
                                 productId: productModel.id,
                                 storeId: controller.vendorModel.id,
-                                userId: FireStoreUtils.getCurrentUid(),
+                                userId: userId,
                               );
                           controller.favouriteItemList.removeWhere(
                             (item) => item.productId == productModel.id,
@@ -420,7 +421,7 @@ Widget buildProductsWithoutCategories(
                               FavouriteItemModel(
                                 productId: productModel.id,
                                 storeId: controller.vendorModel.id,
-                                userId: FireStoreUtils.getCurrentUid(),
+                                userId: userId,
                               );
                           controller.favouriteItemList.add(favouriteModel);
 

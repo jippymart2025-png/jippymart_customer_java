@@ -5,7 +5,6 @@ import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
-import 'package:jippymart_customer/utils/dark_theme_provider.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:dotted_border/dotted_border.dart';
 import 'package:dotted_border/src/dotted_border_options.dart';
