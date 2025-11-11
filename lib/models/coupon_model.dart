@@ -1,34 +1,45 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class CouponModel {
   String? discountType;
   String? id;
   String? code;
   String? discount;
   String? image;
-  Timestamp? expiresAt;
+  dynamic expiresAt; // Changed from Timestamp to dynamic
   String? description;
   bool? isPublic;
   String? resturantId;
   bool? isEnabled;
   String? itemValue;
-  String? cType; // New field: "mart" or "restaurant"
+  String? cType;
 
-  CouponModel({this.discountType, this.id, this.code, this.discount, this.image, this.expiresAt, this.description, this.isPublic, this.resturantId, this.isEnabled, this.itemValue, this.cType});
+  CouponModel({
+    this.discountType,
+    this.id,
+    this.code,
+    this.discount,
+    this.image,
+    this.expiresAt,
+    this.description,
+    this.isPublic,
+    this.resturantId,
+    this.isEnabled,
+    this.itemValue,
+    this.cType,
+  });
 
   CouponModel.fromJson(Map<String, dynamic> json) {
     discountType = json['discountType'];
     id = json['id'];
     code = json['code'];
-    discount = json['discount'];
+    discount = json['discount']?.toString();
     image = json['image'];
-    expiresAt = json['expiresAt'];
+    expiresAt = json['expiresAt']; // Can be String or other format
     description = json['description'];
     isPublic = json['isPublic'];
-    resturantId = json['resturant_id'];
+    resturantId = json['resturantId'];
     isEnabled = json['isEnabled'];
     itemValue = json['item_value']?.toString();
-    cType = json['cType']; // New field mapping
+    cType = json['cType'];
   }
 
   Map<String, dynamic> toJson() {
@@ -41,10 +52,10 @@ class CouponModel {
     data['expiresAt'] = expiresAt;
     data['description'] = description;
     data['isPublic'] = isPublic;
-    data['resturant_id'] = resturantId;
+    data['resturantId'] = resturantId;
     data['isEnabled'] = isEnabled;
     data['item_value'] = itemValue;
-    data['cType'] = cType; // New field mapping
+    data['cType'] = cType;
     return data;
   }
 }

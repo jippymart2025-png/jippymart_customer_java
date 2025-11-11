@@ -541,45 +541,7 @@ class FavouriteScreen extends StatelessWidget {
       padding: EdgeInsets.zero,
       itemBuilder: (context, index) {
         ProductModel productModel = favouriteProvider.favouriteFoodList[index];
-        return FutureBuilder(
-          future: getPrice(productModel),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Center(
-                  child: AppLoadingWidget(
-                    title: "🍕 Loading Food Details",
-                    subtitle: "Getting price and details...",
-                    icon: Icons.local_pizza,
-                    backgroundColor: Color(0xFFFF5201),
-                    size: 100,
-                    showDots: true,
-                    showFunFact: false,
-                  ),
-                ),
-              );
-            } else {
-              if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              } else if (snapshot.data == null) {
-                return const SizedBox();
-              } else {
-                Map<String, dynamic> map = snapshot.data!;
-                String price = map['price'];
-                String disPrice = map['disPrice'];
-                return _buildFoodItem(
-                  productModel,
-                  favouriteProvider,
-                  index,
-                  context,
-                  price,
-                  disPrice,
-                );
-              }
-            }
-          },
-        );
+        return _buildFoodItem(productModel, favouriteProvider, index, context);
       },
     );
   }
@@ -589,215 +551,252 @@ class FavouriteScreen extends StatelessWidget {
     FavouriteProvider favouriteProvider,
     int index,
     BuildContext context,
-    String price,
-    String disPrice,
   ) {
-    return InkWell(
-      onTap: () async {
-        await FireStoreUtils.getVendorById(
-          productModel.vendorID.toString(),
-        ).then((value) {
-          if (value != null) {
-            if (value.zoneId == Constant.selectedZone!.id) {
-              ShowToastDialog.closeLoader();
-              Get.to(
-                const RestaurantDetailsScreen(),
-                arguments: {"vendorModel": value},
-              );
-            } else {
-              ShowToastDialog.closeLoader();
-              ShowToastDialog.showToast(
-                "Sorry, The Zone is not available in your area. change the other location first."
-                    .tr,
-              );
-            }
-          }
-        });
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Container(
-          decoration: ShapeDecoration(
-            color: AppThemeData.grey50,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+    return FutureBuilder(
+      future: getPrice(productModel),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 20),
+            child: Center(
+              child: AppLoadingWidget(
+                title: "🍕 Loading Food Details",
+                subtitle: "Getting price and details...",
+                icon: Icons.local_pizza,
+                backgroundColor: Color(0xFFFF5201),
+                size: 100,
+                showDots: true,
+                showFunFact: false,
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          productModel.nonveg == true
-                              ? SvgPicture.asset("assets/icons/ic_nonveg.svg")
-                              : SvgPicture.asset("assets/icons/ic_veg.svg"),
-                          const SizedBox(width: 5),
-                          Text(
-                            productModel.nonveg == true
-                                ? "Non Veg.".tr
-                                : "Pure veg.".tr,
-                            style: TextStyle(
-                              color: productModel.nonveg == true
-                                  ? AppThemeData.danger300
-                                  : AppThemeData.success400,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w600,
-                            ),
+          );
+        } else {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (snapshot.data == null) {
+            return const SizedBox();
+          } else {
+            Map<String, dynamic> map = snapshot.data!;
+            String price = map['price'];
+            String disPrice = map['disPrice'];
+
+            return Container(
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              decoration: ShapeDecoration(
+                color: AppThemeData.grey50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                shadows: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Food Image
+                    Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: NetworkImageWidget(
+                            imageUrl: productModel.photo.toString(),
+                            fit: BoxFit.cover,
+                            height: 100,
+                            width: 100,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        productModel.name.toString(),
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: AppThemeData.grey900,
-                          fontFamily: AppThemeData.semiBold,
-                          fontWeight: FontWeight.w600,
                         ),
-                      ),
-                      double.parse(disPrice) <= 0
-                          ? Text(
-                              Constant.amountShow(amount: price),
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: AppThemeData.grey900,
-                                fontFamily: AppThemeData.semiBold,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            )
-                          : Row(
-                              children: [
-                                Text(
-                                  Constant.amountShow(amount: disPrice),
+                        // Veg/Non-Veg Indicator
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.9),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: productModel.nonveg == true
+                                ? SvgPicture.asset(
+                                    "assets/icons/ic_nonveg.svg",
+                                    height: 12,
+                                  )
+                                : SvgPicture.asset(
+                                    "assets/icons/ic_veg.svg",
+                                    height: 12,
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Food Details
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  productModel.name.toString(),
                                   style: TextStyle(
-                                    fontSize: 16,
+                                    fontSize: 18,
                                     color: AppThemeData.grey900,
                                     fontFamily: AppThemeData.semiBold,
                                     fontWeight: FontWeight.w600,
                                   ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                const SizedBox(width: 5),
-                                Text(
-                                  Constant.amountShow(amount: price),
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    decoration: TextDecoration.lineThrough,
-                                    decorationColor: AppThemeData.grey400,
-                                    color: AppThemeData.grey400,
-                                    fontFamily: AppThemeData.semiBold,
-                                    fontWeight: FontWeight.w600,
+                              ),
+                              // Favorite remove button
+                              InkWell(
+                                onTap: () async {
+                                  try {
+                                    await favouriteProvider
+                                        .removeFavoriteFoodUI(
+                                          productModel.id!,
+                                          index,
+                                        );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Removed from favorites'.tr,
+                                        ),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to remove: Please try again'
+                                              .tr,
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: SvgPicture.asset(
+                                  "assets/icons/ic_like_fill.svg",
+                                  colorFilter: ColorFilter.mode(
+                                    AppThemeData.primary300,
+                                    BlendMode.srcIn,
                                   ),
                                 ),
-                              ],
-                            ),
-                      Row(
-                        children: [
-                          SvgPicture.asset(
-                            "assets/icons/ic_star.svg",
-                            colorFilter: const ColorFilter.mode(
-                              AppThemeData.warning300,
-                              BlendMode.srcIn,
-                            ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(height: 4),
+
+                          // Rating
+                          Row(
+                            children: [
+                              SvgPicture.asset(
+                                "assets/icons/ic_star.svg",
+                                colorFilter: const ColorFilter.mode(
+                                  AppThemeData.warning300,
+                                  BlendMode.srcIn,
+                                ),
+                                height: 16,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                "${Constant.calculateReview(reviewCount: productModel.reviewsCount!.toStringAsFixed(0), reviewSum: productModel.reviewsSum.toString())}",
+                                style: TextStyle(
+                                  color: AppThemeData.grey700,
+                                  fontFamily: AppThemeData.medium,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                " (${productModel.reviewsCount!.toStringAsFixed(0)})",
+                                style: TextStyle(
+                                  color: AppThemeData.grey500,
+                                  fontFamily: AppThemeData.regular,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+
+                          // Description
                           Text(
-                            "${Constant.calculateReview(reviewCount: productModel.reviewsCount!.toStringAsFixed(0), reviewSum: productModel.reviewsSum.toString())} (${productModel.reviewsCount!.toStringAsFixed(0)})",
+                            productModel.description ?? "",
                             style: TextStyle(
-                              color: AppThemeData.grey900,
+                              color: AppThemeData.grey600,
                               fontFamily: AppThemeData.regular,
-                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Price
+                          Row(
+                            children: [
+                              if (double.parse(disPrice) > 0 &&
+                                  double.parse(disPrice) < double.parse(price))
+                                Text(
+                                  Constant.amountShow(amount: disPrice),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    color: AppThemeData.primary300,
+                                    fontFamily: AppThemeData.bold,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              if (double.parse(disPrice) > 0 &&
+                                  double.parse(disPrice) < double.parse(price))
+                                const SizedBox(width: 8),
+                              Text(
+                                Constant.amountShow(amount: price),
+                                style: TextStyle(
+                                  fontSize:
+                                      double.parse(disPrice) > 0 &&
+                                          double.parse(disPrice) <
+                                              double.parse(price)
+                                      ? 14
+                                      : 18,
+                                  color:
+                                      double.parse(disPrice) > 0 &&
+                                          double.parse(disPrice) <
+                                              double.parse(price)
+                                      ? AppThemeData.grey500
+                                      : AppThemeData.primary300,
+                                  fontFamily: AppThemeData.bold,
+                                  fontWeight: FontWeight.w700,
+                                  decoration:
+                                      double.parse(disPrice) > 0 &&
+                                          double.parse(disPrice) <
+                                              double.parse(price)
+                                      ? TextDecoration.lineThrough
+                                      : TextDecoration.none,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      Text(
-                        "${productModel.description}",
-                        maxLines: 2,
-                        style: TextStyle(
-                          overflow: TextOverflow.ellipsis,
-                          color: AppThemeData.grey900,
-                          fontFamily: AppThemeData.regular,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 6),
-                ClipRRect(
-                  borderRadius: const BorderRadius.all(Radius.circular(16)),
-                  child: Stack(
-                    children: [
-                      NetworkImageWidget(
-                        imageUrl: productModel.photo.toString(),
-                        fit: BoxFit.cover,
-                        height: Responsive.height(16, context),
-                        width: Responsive.width(34, context),
-                      ),
-                      Container(
-                        height: Responsive.height(16, context),
-                        width: Responsive.width(34, context),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: const Alignment(-0.00, -1.00),
-                            end: const Alignment(0, 1),
-                            colors: [
-                              Colors.black.withOpacity(0),
-                              const Color(0xFF111827),
-                            ],
-                          ),
-                        ),
-                      ),
-                      // Favorite remove button for items
-                      Positioned(
-                        right: 10,
-                        top: 10,
-                        child: InkWell(
-                          onTap: () async {
-                            try {
-                              await favouriteProvider.removeFavoriteItemUI(
-                                productModel.id.toString(),
-                                index,
-                              );
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Removed from favorites'.tr),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            } catch (e) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    'Failed to remove: Please try again'.tr,
-                                  ),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          },
-                          child: SvgPicture.asset(
-                            "assets/icons/ic_like_fill.svg",
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+              ),
+            );
+          }
+        }
+      },
     );
   }
 
@@ -807,10 +806,6 @@ class FavouriteScreen extends StatelessWidget {
     List<String> selectedVariants = [];
     List<String> selectedIndexVariants = [];
     List<String> selectedIndexArray = [];
-
-    print("=======>");
-    print(productModel.price);
-    print(productModel.disPrice);
 
     VendorModel? vendorModel = await FireStoreUtils.getVendorById(
       productModel.vendorID.toString(),

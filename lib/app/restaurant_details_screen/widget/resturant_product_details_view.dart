@@ -1,3 +1,4 @@
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
@@ -111,8 +112,8 @@ class ProductDetailsView extends StatelessWidget {
                                                   item.productId ==
                                                   productModel.id,
                                             );
-                                        await FireStoreUtils.removeFavouriteItem(
-                                          favouriteModel,
+                                        await FavouriteProvider.removeFavouriteFood(
+                                          productModel.id.toString(),
                                         );
                                       } else {
                                         FavouriteItemModel favouriteModel =
@@ -125,28 +126,25 @@ class ProductDetailsView extends StatelessWidget {
                                         controller.favouriteItemList.add(
                                           favouriteModel,
                                         );
-
-                                        await FireStoreUtils.setFavouriteItem(
-                                          favouriteModel,
+                                        await FavouriteProvider.addFavouriteFood(
+                                          productModel.id.toString(),
                                         );
                                       }
                                     },
-                                    child: Obx(
-                                      () =>
-                                          controller.favouriteItemList
-                                              .where(
-                                                (p0) =>
-                                                    p0.productId ==
-                                                    productModel.id,
-                                              )
-                                              .isNotEmpty
-                                          ? SvgPicture.asset(
-                                              "assets/icons/ic_like_fill.svg",
+                                    child:
+                                        controller.favouriteItemList
+                                            .where(
+                                              (p0) =>
+                                                  p0.productId ==
+                                                  productModel.id,
                                             )
-                                          : SvgPicture.asset(
-                                              "assets/icons/ic_like.svg",
-                                            ),
-                                    ),
+                                            .isNotEmpty
+                                        ? SvgPicture.asset(
+                                            "assets/icons/ic_like_fill.svg",
+                                          )
+                                        : SvgPicture.asset(
+                                            "assets/icons/ic_like.svg",
+                                          ),
                                   ),
                                 ],
                               ),
@@ -556,31 +554,29 @@ class ProductDetailsView extends StatelessWidget {
                                             ),
                                           ),
                                           const SizedBox(width: 10),
-                                          Obx(
-                                            () => SizedBox(
-                                              height: 24.0,
-                                              width: 24.0,
-                                              child: Checkbox(
-                                                value: controller.selectedAddOns
-                                                    .contains(title),
-                                                activeColor:
-                                                    AppThemeData.primary300,
-                                                onChanged: isItemAvailable
-                                                    ? (value) {
-                                                        if (value != null) {
-                                                          if (value == true) {
-                                                            controller
-                                                                .selectedAddOns
-                                                                .add(title);
-                                                          } else {
-                                                            controller
-                                                                .selectedAddOns
-                                                                .remove(title);
-                                                          }
+                                          SizedBox(
+                                            height: 24.0,
+                                            width: 24.0,
+                                            child: Checkbox(
+                                              value: controller.selectedAddOns
+                                                  .contains(title),
+                                              activeColor:
+                                                  AppThemeData.primary300,
+                                              onChanged: isItemAvailable
+                                                  ? (value) {
+                                                      if (value != null) {
+                                                        if (value == true) {
+                                                          controller
+                                                              .selectedAddOns
+                                                              .add(title);
+                                                        } else {
+                                                          controller
+                                                              .selectedAddOns
+                                                              .remove(title);
                                                         }
                                                       }
-                                                    : null,
-                                              ),
+                                                    }
+                                                  : null,
                                             ),
                                           ),
                                         ],

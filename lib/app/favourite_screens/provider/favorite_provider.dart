@@ -32,6 +32,8 @@ class FavouriteProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ========== RESTAURANT FAVORITES API METHODS ==========
+
   // Add restaurant to favorites
   static Future<void> addFavouriteRestaurant(String restaurantId) async {
     try {
@@ -129,37 +131,61 @@ class FavouriteProvider extends ChangeNotifier {
     }
   }
 
-  // ========== ITEM FAVORITES API METHODS ==========
+  // ========== FOOD/ITEM FAVORITES API METHODS ==========
 
-  // Add item to favorites
-  Future<void> addFavouriteItem(String productId) async {
+  static Future<void> addFavouriteFood(String productId) async {
     try {
+      // Validate product ID before making the API call
+      if (productId.isEmpty || productId.length < 3) {
+        throw Exception('Invalid product ID: $productId');
+      }
+
       final userId = await SqlStorageConst.getFirebaseId();
+
+      // Additional validation
+      if (userId == null) {
+        throw Exception('User ID is required');
+      }
+
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}favorites/items'),
         headers: await getHeaders(),
         body: json.encode({"firebase_id": userId, "product_id": productId}),
       );
+
+      log(
+        "📱 addFavouriteFood request: productId: $productId, userId: $userId",
+      );
+      log("📱 addFavouriteFood response status: ${response.statusCode}");
+      log("📱 addFavouriteFood response body: ${response.body}");
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          log('✅ Item added to favorites: $productId');
+          log('✅ Food item added to favorites: $productId');
         } else {
-          throw Exception(
-            responseData['message'] ?? 'Failed to add favorite item',
-          );
+          // Handle API-specific errors
+          final errorMessage =
+              responseData['message'] ??
+              responseData['errors']?.toString() ??
+              'Failed to add favorite food';
+          throw Exception(errorMessage);
         }
+      } else if (response.statusCode == 422) {
+        final Map<String, dynamic> errorData = json.decode(response.body);
+        final errors = errorData['errors'] ?? {};
+        throw Exception('Validation error: ${errors.toString()}');
       } else {
-        throw Exception('Failed to add favorite item: ${response.statusCode}');
+        throw Exception('Failed to add favorite food: ${response.statusCode}');
       }
     } catch (e) {
-      log('❌ Error adding favorite item: $e');
+      log('❌ Error adding favorite food: $e');
       rethrow;
     }
   }
 
-  // Remove item from favorites
-  Future<void> removeFavouriteItem(String productId) async {
+  // Remove food item from favorites
+  static Future<void> removeFavouriteFood(String productId) async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
       final response = await http.delete(
@@ -168,28 +194,34 @@ class FavouriteProvider extends ChangeNotifier {
         body: json.encode({"firebase_id": userId, "product_id": productId}),
       );
 
+      log(
+        "📱 removeFavouriteFood request: productId: $productId, userId: $userId",
+      );
+      log("📱 removeFavouriteFood response status: ${response.statusCode}");
+      log("📱 removeFavouriteFood response body: ${response.body}");
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          log('✅ Item removed from favorites: $productId');
+          log('✅ Food item removed from favorites: $productId');
         } else {
           throw Exception(
-            responseData['message'] ?? 'Failed to remove favorite item',
+            responseData['message'] ?? 'Failed to remove favorite food',
           );
         }
       } else {
         throw Exception(
-          'Failed to remove favorite item: ${response.statusCode}',
+          'Failed to remove favorite food: ${response.statusCode}',
         );
       }
     } catch (e) {
-      log('❌ Error removing favorite item: $e');
+      log('❌ Error removing favorite food: $e');
       rethrow;
     }
   }
 
-  // Get user's favorite items
-  Future<List<ProductModel>> getFavouriteItems() async {
+  // Get user's favorite foods
+  static Future<List<ProductModel>> getFavouriteFoods() async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
       final response = await http.get(
@@ -197,24 +229,50 @@ class FavouriteProvider extends ChangeNotifier {
         headers: await getHeaders(),
       );
 
+      log(
+        "📱 getFavouriteFoods URL: ${AppConst.baseUrl}favorites/items/$userId",
+      );
+      log("📱 getFavouriteFoods response status: ${response.statusCode}");
+      log("📱 getFavouriteFoods response body: ${response.body}");
+
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
+        final decoded = json.decode(response.body);
+
+        if (decoded is! Map<String, dynamic>) {
+          throw Exception('Invalid response format');
+        }
+
+        final responseData = decoded;
         if (responseData['success'] == true) {
-          List<dynamic> itemsData = responseData['data'] ?? [];
-          return itemsData.map((item) => ProductModel.fromJson(item)).toList();
+          final List<dynamic> foodsData = responseData['data'] ?? [];
+
+          List<ProductModel> favoriteFoods = [];
+          for (var foodData in foodsData) {
+            try {
+              if (foodData is Map<String, dynamic>) {
+                // If the API returns product data directly
+                favoriteFoods.add(ProductModel.fromJson(foodData));
+              }
+            } catch (e) {
+              log('❌ Error parsing food item: $e');
+            }
+          }
+
+          log('✅ Loaded ${favoriteFoods.length} favorite foods');
+          return favoriteFoods;
         } else {
           throw Exception(
-            responseData['message'] ?? 'Failed to fetch favorite items',
+            responseData['message'] ?? 'Failed to fetch favorite foods',
           );
         }
       } else {
         throw Exception(
-          'Failed to fetch favorite items: ${response.statusCode}',
+          'Failed to fetch favorite foods: ${response.statusCode}',
         );
       }
-    } catch (e) {
-      log('❌ Error fetching favorite items: $e');
-      throw Exception('Failed to fetch favorite items: $e');
+    } catch (e, st) {
+      log('❌ Error fetching favorite foods: $e\n$st');
+      throw Exception('Failed to fetch favorite foods: $e');
     }
   }
 
@@ -245,8 +303,8 @@ class FavouriteProvider extends ChangeNotifier {
     }
   }
 
-  // Remove item from favorites (UI method)
-  Future<void> removeFavoriteItemUI(String productId, int index) async {
+  // Remove food item from favorites (UI method)
+  Future<void> removeFavoriteFoodUI(String productId, int index) async {
     try {
       // Remove from local lists immediately for fast UI response
       if (index >= 0 && index < favouriteFoodList.length) {
@@ -256,13 +314,32 @@ class FavouriteProvider extends ChangeNotifier {
       notifyListeners();
 
       // Call API in background
-      await removeFavouriteItem(productId);
+      await removeFavouriteFood(productId);
 
-      log('🎯 Item removed successfully from UI: $productId');
+      log('🎯 Food item removed successfully from UI: $productId');
     } catch (e) {
       // If API fails, reload data to sync with server
       await getData();
-      log('⚠️ Failed to remove item, reloading data: $e');
+      log('⚠️ Failed to remove food item, reloading data: $e');
+      rethrow;
+    }
+  }
+
+  // Add food item to favorites (UI method)
+  Future<void> addFavoriteFoodUI(String productId, ProductModel product) async {
+    try {
+      // Add to local lists immediately for fast UI response
+      if (!favouriteFoodList.any((item) => item.id == productId)) {
+        favouriteFoodList.add(product);
+      }
+      notifyListeners();
+      // Call API in background
+      await addFavouriteFood(productId);
+      log('🎯 Food item added successfully to UI: $productId');
+    } catch (e) {
+      // If API fails, reload data to sync with server
+      await getData();
+      log('⚠️ Failed to add food item, reloading data: $e');
       rethrow;
     }
   }
@@ -272,9 +349,26 @@ class FavouriteProvider extends ChangeNotifier {
     return favouriteVendorList.any((vendor) => vendor.id == restaurantId);
   }
 
-  // Check if item is favorite
-  bool isItemFavorite(String productId) {
+  // Check if food item is favorite
+  bool isFoodFavorite(String productId) {
     return favouriteFoodList.any((product) => product.id == productId);
+  }
+
+  // Toggle food favorite status
+  Future<void> toggleFoodFavorite(ProductModel product) async {
+    try {
+      if (isFoodFavorite(product.id!)) {
+        await removeFavoriteFoodUI(
+          product.id!,
+          favouriteFoodList.indexWhere((p) => p.id == product.id),
+        );
+      } else {
+        await addFavoriteFoodUI(product.id!, product);
+      }
+    } catch (e) {
+      log('❌ Error toggling food favorite: $e');
+      rethrow;
+    }
   }
 
   // ========== DATA LOADING ==========
@@ -296,13 +390,13 @@ class FavouriteProvider extends ChangeNotifier {
           );
         }
 
-        // Load favorite items
-        final itemFavourites = await getFavouriteItems();
-        favouriteFoodList = itemFavourites;
+        // Load favorite foods using the new API
+        final foodFavourites = await getFavouriteFoods();
+        favouriteFoodList = foodFavourites;
 
         // Convert to FavouriteItemModel list
         favouriteItemList.clear();
-        for (var product in itemFavourites) {
+        for (var product in foodFavourites) {
           favouriteItemList.add(
             FavouriteItemModel(
               productId: product.id,
@@ -313,7 +407,7 @@ class FavouriteProvider extends ChangeNotifier {
         }
 
         print(
-          '[SUCCESS] Loaded ${favouriteVendorList.length} favorite restaurants and ${favouriteFoodList.length} favorite items',
+          '[SUCCESS] Loaded ${favouriteVendorList.length} favorite restaurants and ${favouriteFoodList.length} favorite foods',
         );
       }
     } catch (e) {

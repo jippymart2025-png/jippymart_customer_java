@@ -28,6 +28,7 @@ class ProductModel {
   String? description;
   Timestamp? createdAt;
   bool? isAvailable;
+  String? categoryTitle;
 
   ProductModel({
     this.fats,
@@ -57,7 +58,36 @@ class ProductModel {
     this.description,
     this.createdAt,
     this.isAvailable,
+    this.categoryTitle,
   });
+
+  // Factory constructor for API JSON
+  factory ProductModel.fromApiJson(Map<String, dynamic> json) {
+    return ProductModel(
+      id: json['id'],
+      name: json['name'],
+      description: json['description'],
+      categoryID: json['category_id'],
+      categoryTitle: json['category_title'],
+      isAvailable: json['is_available'] ?? true,
+      nonveg: json['nonveg'] ?? false,
+      veg: json['veg'] ?? true,
+      photo: json['photo'],
+      photos: json['photos'] != null ? List<String>.from(json['photos']) : [],
+      addOnsTitle: json['add_ons_title'] ?? [],
+      addOnsPrice: json['add_ons_price'] ?? [],
+      itemAttribute: json['item_attribute'] != null
+          ? ItemAttribute.fromJson(json['item_attribute'])
+          : null,
+      productSpecification: json['product_specification'],
+      reviewsCount: json['reviews_count'] ?? 0,
+      reviewsSum: json['reviews_sum'] ?? 0,
+      quantity: json['quantity'] ?? -1,
+      price: json['original_price']?.toString() ?? '0',
+      disPrice: json['discount_price']?.toString() ?? '0',
+      // Add other fields as needed
+    );
+  }
 
   ProductModel.fromJson(Map<String, dynamic> json) {
     fats = json['fats'];
@@ -201,7 +231,13 @@ class Variants {
   String? variantQuantity;
   String? variantSku;
 
-  Variants({this.variantId, this.variantImage, this.variantPrice, this.variantQuantity, this.variantSku});
+  Variants({
+    this.variantId,
+    this.variantImage,
+    this.variantPrice,
+    this.variantQuantity,
+    this.variantSku,
+  });
 
   Variants.fromJson(Map<String, dynamic> json) {
     variantId = json['variant_id'];
@@ -226,10 +262,7 @@ class ReviewsAttribute {
   num? reviewsCount;
   num? reviewsSum;
 
-  ReviewsAttribute({
-    this.reviewsCount,
-    this.reviewsSum,
-  });
+  ReviewsAttribute({this.reviewsCount, this.reviewsSum});
 
   ReviewsAttribute.fromJson(Map<String, dynamic> json) {
     reviewsCount = json['reviewsCount'] ?? 0;
@@ -243,14 +276,6 @@ class ReviewsAttribute {
     return data;
   }
 }
-
-
-
-
-
-
-
-
 
 // import 'package:cloud_firestore/cloud_firestore.dart';
 //

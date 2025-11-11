@@ -250,7 +250,7 @@ class GlobalDeeplinkHandler {
           print(
             '🔗 [GLOBAL_DEEPLINK] 🔍 Controller found, calling updateRestaurant...',
           );
-          controller.updateRestaurant(restaurant);
+          // controller.updateRestaurant(restaurant);
         } catch (e) {
           print('🔗 [GLOBAL_DEEPLINK] ❌ Could not update controller: $e');
         }

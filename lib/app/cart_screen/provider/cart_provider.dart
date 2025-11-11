@@ -10,6 +10,7 @@ import 'package:jippymart_customer/app/address_screens/address_list_screen.dart'
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/send_notification.dart';
@@ -52,10 +53,8 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widgets/delivery_zone_alert_dialog.dart'
     show DeliveryZoneAlertDialog;
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
-import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:uuid/uuid.dart';
 
@@ -345,7 +344,6 @@ class CartControllerProvider extends ChangeNotifier {
     Map<String, dynamic> rules,
   ) {
     double surge = 0;
-
     // Weather condition (rain, clouds, etc.)
     String condition = weather['weather'][0]['main'].toLowerCase();
     if (condition.contains("rain")) surge += rules["rain"];
@@ -355,7 +353,6 @@ class CartControllerProvider extends ChangeNotifier {
     if (temp < 10) surge += rules["bad_weather"]; // cold/winter
     print(" newvaluevalue ${surge}");
     // if(surge > 0) surge+=rules["admin_surge_fee"];
-
     return surge; // percentage
   }
 
@@ -1925,7 +1922,8 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       // Load global coupons
-      final globalCoupons = await FireStoreUtils.getHomeCoupon();
+      final globalCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons();
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>
@@ -2033,7 +2031,8 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       // Load global coupons
-      final globalCoupons = await FireStoreUtils.getHomeCoupon();
+      final globalCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons();
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>
@@ -2277,7 +2276,8 @@ class CartControllerProvider extends ChangeNotifier {
       _detectCurrentContext();
 
       // Load global coupons
-      final globalCoupons = await FireStoreUtils.getHomeCoupon();
+      final globalCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons();
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>
@@ -2321,7 +2321,8 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       // Load global coupons
-      final globalCoupons = await FireStoreUtils.getHomeCoupon();
+      final globalCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons();
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>

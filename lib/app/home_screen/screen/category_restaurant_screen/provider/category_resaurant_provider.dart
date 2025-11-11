@@ -4,34 +4,28 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:get/get.dart';
 
-class CategoryRestaurantProvider extends ChangeNotifier{
+class CategoryRestaurantProvider extends ChangeNotifier {
   bool isLoading = true;
-  bool dineIn = true;
-  void initFunction() {
-    getArgument();
-  }
 
-  Rx<VendorCategoryModel> vendorCategoryModel = VendorCategoryModel().obs;
-  RxList<VendorModel> allNearestRestaurant = <VendorModel>[].obs;
+  VendorCategoryModel vendorCategoryModel = VendorCategoryModel();
+  List<VendorModel> allNearestRestaurant = <VendorModel>[];
 
-  getArgument() async {
-    dynamic argumentData = Get.arguments;
-    if (argumentData != null) {
-      vendorCategoryModel.value = argumentData['vendorCategoryModel'];
-      dineIn = argumentData['dineIn'];
-      await getZone();
-      await getRestaurant();
-    }
+  initFunction(VendorCategoryModel vendorCategoryModels) async {
+    vendorCategoryModel = vendorCategoryModels;
+    await getZone();
+    await getRestaurant();
     Future.delayed(Duration(seconds: 1), () {
       isLoading = false;
+      notifyListeners();
     });
+    notifyListeners();
   }
 
   Future getRestaurant() async {
     FireStoreUtils.getAllNearestRestaurantByCategoryId(
-        categoryId: vendorCategoryModel.value.id.toString(),
-        isDining: dineIn)
-        .listen((event) async {
+      categoryId: vendorCategoryModel.id.toString(),
+      isDining: false,
+    ).listen((event) async {
       allNearestRestaurant.clear();
       allNearestRestaurant.addAll(event);
     });

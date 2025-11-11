@@ -950,9 +950,7 @@ class FireStoreUtils {
                   catId.toString().trim() == categoryId.trim(),
             );
           }
-
           print("Has category: $hasCategory");
-
           if (hasCategory) {
             if ((Constant.isSubscriptionModelApplied == true ||
                     Constant.adminCommission?.isEnabled == true) &&
@@ -1010,27 +1008,27 @@ class FireStoreUtils {
     }
   }
 
-  static Future<List<CouponModel>> getHomeCoupon() async {
-    List<CouponModel> list = [];
-    await fireStore
-        .collection(CollectionName.coupons)
-        .where('expiresAt', isGreaterThanOrEqualTo: Timestamp.now())
-        .where("isEnabled", isEqualTo: true)
-        .where("isPublic", isEqualTo: true)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            CouponModel walletTransactionModel = CouponModel.fromJson(
-              element.data(),
-            );
-            list.add(walletTransactionModel);
-          }
-        })
-        .catchError((error) {
-          log(error.toString());
-        });
-    return list;
-  }
+  // static Future<List<CouponModel>> getHomeCoupon() async {
+  //   List<CouponModel> list = [];
+  //   await fireStore
+  //       .collection(CollectionName.coupons)
+  //       .where('expiresAt', isGreaterThanOrEqualTo: Timestamp.now())
+  //       .where("isEnabled", isEqualTo: true)
+  //       .where("isPublic", isEqualTo: true)
+  //       .get()
+  //       .then((value) {
+  //         for (var element in value.docs) {
+  //           CouponModel walletTransactionModel = CouponModel.fromJson(
+  //             element.data(),
+  //           );
+  //           list.add(walletTransactionModel);
+  //         }
+  //       })
+  //       .catchError((error) {
+  //         log(error.toString());
+  //       });
+  //   return list;
+  // }
 
   static Future<List<VendorCategoryModel>> getVendorCategory() async {
     List<VendorCategoryModel> list = [];
@@ -1289,23 +1287,23 @@ class FireStoreUtils {
   //   return favouriteList;
   // }
 
-  static Future<List<FavouriteItemModel>> getFavouriteItem() async {
-    final userId = await SqlStorageConst.getFirebaseId();
-    List<FavouriteItemModel> favouriteList = [];
-    await fireStore
-        .collection(CollectionName.favoriteItem)
-        .where('user_id', isEqualTo: userId)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            FavouriteItemModel favouriteModel = FavouriteItemModel.fromJson(
-              element.data(),
-            );
-            favouriteList.add(favouriteModel);
-          }
-        });
-    return favouriteList;
-  }
+  // static Future<List<FavouriteItemModel>> getFavouriteItem() async {
+  //   final userId = await SqlStorageConst.getFirebaseId();
+  //   List<FavouriteItemModel> favouriteList = [];
+  //   await fireStore
+  //       .collection(CollectionName.favoriteItem)
+  //       .where('user_id', isEqualTo: userId)
+  //       .get()
+  //       .then((value) {
+  //         for (var element in value.docs) {
+  //           FavouriteItemModel favouriteModel = FavouriteItemModel.fromJson(
+  //             element.data(),
+  //           );
+  //           favouriteList.add(favouriteModel);
+  //         }
+  //       });
+  //   return favouriteList;
+  // }
 
   // Get user's favorite restaurants (returns VendorModel list)
   static Future<List<VendorModel>> getFavouriteRestaurants() async {
@@ -1317,31 +1315,31 @@ class FireStoreUtils {
     }
   }
 
-  static Future<void> removeFavouriteItem(
-    FavouriteItemModel favouriteModel,
-  ) async {
-    try {
-      final favoriteCollection = fireStore.collection(
-        CollectionName.favoriteItem,
-      );
-      final querySnapshot = await favoriteCollection
-          .where("product_id", isEqualTo: favouriteModel.productId)
-          .get();
-      for (final doc in querySnapshot.docs) {
-        await favoriteCollection.doc(doc.id).delete();
-      }
-    } catch (e) {
-      print("Error removing favourite item: $e");
-    }
-  }
+  // static Future<void> removeFavouriteItem(
+  //   FavouriteItemModel favouriteModel,
+  // ) async {
+  //   try {
+  //     final favoriteCollection = fireStore.collection(
+  //       CollectionName.favoriteItem,
+  //     );
+  //     final querySnapshot = await favoriteCollection
+  //         .where("product_id", isEqualTo: favouriteModel.productId)
+  //         .get();
+  //     for (final doc in querySnapshot.docs) {
+  //       await favoriteCollection.doc(doc.id).delete();
+  //     }
+  //   } catch (e) {
+  //     print("Error removing favourite item: $e");
+  //   }
+  // }
 
-  static Future<void> setFavouriteItem(
-    FavouriteItemModel favouriteModel,
-  ) async {
-    await fireStore
-        .collection(CollectionName.favoriteItem)
-        .add(favouriteModel.toJson());
-  }
+  // static Future<void> setFavouriteItem(
+  //   FavouriteItemModel favouriteModel,
+  // ) async {
+  //   await fireStore
+  //       .collection(CollectionName.favoriteItem)
+  //       .add(favouriteModel.toJson());
+  // }
 
   static Future<List<ProductModel>> getProductByVendorId(
     String vendorId,
@@ -1455,24 +1453,6 @@ class FireStoreUtils {
       return null;
     }
     return vendorCategoryModel;
-  }
-
-  static Future<List<CouponModel>> getOfferByVendorId(String vendorId) async {
-    List<CouponModel> couponList = [];
-    await fireStore
-        .collection(CollectionName.coupons)
-        .where("resturant_id", isEqualTo: vendorId)
-        .where("isEnabled", isEqualTo: true)
-        .where("isPublic", isEqualTo: true)
-        .where('expiresAt', isGreaterThanOrEqualTo: Timestamp.now())
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            CouponModel favouriteModel = CouponModel.fromJson(element.data());
-            couponList.add(favouriteModel);
-          }
-        });
-    return couponList;
   }
 
   static Future<List<AttributesModel>?> getAttributes() async {

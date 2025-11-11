@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
@@ -41,7 +42,6 @@ class BestRestaurantProvider extends ChangeNotifier {
       print('[DEBUG] No zone ID available, skipping restaurant fetch');
       return;
     }
-
     try {
       // Fetch restaurants from API with optional filter
       final restaurants = await getNearestRestaurants(
@@ -146,7 +146,7 @@ class BestRestaurantProvider extends ChangeNotifier {
 
     // Load coupons
     futures.add(
-      FireStoreUtils.getHomeCoupon().then((value) {
+      RestaurantDetailsProvider.getRestaurantCoupons().then((value) {
         couponRestaurantList.clear();
         couponList.clear();
         for (var element1 in value) {

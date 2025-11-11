@@ -73,7 +73,7 @@ class CouponListView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            offerModel.description.toString(),
+                            offerModel.description ?? "Discount Coupon",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -131,8 +131,8 @@ class CouponListView extends StatelessWidget {
                                       const SizedBox(width: 5),
                                       Expanded(
                                         child: Text(
-                                          Constant.timestampToDateTime(
-                                            offerModel.expiresAt!,
+                                          _formatExpiryDate(
+                                            offerModel.expiresAt,
                                           ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -158,5 +158,22 @@ class CouponListView extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String _formatExpiryDate(dynamic expiresAt) {
+    if (expiresAt == null) return "No expiry";
+
+    if (expiresAt is String) {
+      try {
+        DateTime date = DateTime.parse(expiresAt);
+        return "${date.day}/${date.month}/${date.year}";
+      } catch (e) {
+        return expiresAt.toString();
+      }
+    } else if (expiresAt is DateTime) {
+      return "${expiresAt.day}/${expiresAt.month}/${expiresAt.year}";
+    }
+
+    return "No expiry";
   }
 }
