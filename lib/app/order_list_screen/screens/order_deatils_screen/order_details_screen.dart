@@ -2408,7 +2408,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                         : const SizedBox(),
                                     const SizedBox(height: 10),
                                     order.takeAway == true ||
-                                            vendor?.isSelfDelivery == true
+                                            vendor.isSelfDelivery == true
                                         ? const SizedBox()
                                         : Row(
                                             crossAxisAlignment:

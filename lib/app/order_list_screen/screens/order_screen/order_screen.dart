@@ -40,7 +40,7 @@ class OrderScreen extends StatelessWidget {
                   padding: EdgeInsets.only(
                     top: MediaQuery.of(context).viewPadding.top,
                   ),
-                  child: controller.isLoading.value
+                  child: controller.isLoading
                       ? const OrderLoadingWidget(
                           message: "🍽️ Loading Your Orders",
                         )

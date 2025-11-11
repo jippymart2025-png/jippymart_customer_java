@@ -1,31 +1,25 @@
 import 'package:flutter/cupertino.dart';
-import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/services/mart_vendor_service.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:provider/provider.dart';
 
 class MartZoneUtils {
   static List<MartVendorModel>? _cachedMartVendors;
   static DateTime? _lastFetchTime;
 
   static Future<List<MartVendorModel>> getCachedMartVendors() async {
-    // If cached within last 3 minutes, return cache
     if (_cachedMartVendors != null &&
         _lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!).inMinutes < 3) {
       return _cachedMartVendors!;
     }
-
     final zoneId = Constant.selectedZone?.id;
     if (zoneId == null) return [];
-
     final vendors = await MartVendorService.getMartVendorsByZone(zoneId);
-
     _cachedMartVendors = vendors;
     _lastFetchTime = DateTime.now();
+
     return vendors;
   }
 

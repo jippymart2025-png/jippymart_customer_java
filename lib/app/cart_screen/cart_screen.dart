@@ -67,7 +67,7 @@ class _CartScreenState extends State<CartScreen> {
 
   void _refreshCartData() {
     controller.forceRefreshCart();
-    if (controller.selectedAddress.value == null) {
+    if (controller.selectedAddress == null) {
       controller.initializeAddress(context);
     }
     Future.delayed(const Duration(milliseconds: 500), () {
@@ -206,7 +206,7 @@ class _CartScreenState extends State<CartScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        controller.selectedFoodType.value == 'TakeAway'
+                        controller.selectedFoodType == 'TakeAway'
                             ? const SizedBox()
                             : Padding(
                                 padding: const EdgeInsets.symmetric(
@@ -275,7 +275,7 @@ class _CartScreenState extends State<CartScreen> {
                                           );
                                         }
 
-                                        controller.selectedAddress.value =
+                                        controller.selectedAddress =
                                             addressModel;
                                         controller.calculatePrice();
                                       }
@@ -312,7 +312,6 @@ class _CartScreenState extends State<CartScreen> {
                                                     child: Text(
                                                       controller
                                                               .selectedAddress
-                                                              .value
                                                               ?.addressAs
                                                               ?.toString() ??
                                                           "No Address Selected",
@@ -334,8 +333,7 @@ class _CartScreenState extends State<CartScreen> {
                                               ),
                                               const SizedBox(height: 5),
                                               Text(
-                                                //changed here1
-                                                controller.selectedAddress.value
+                                                controller.selectedAddress
                                                         ?.getFullAddress() ??
                                                     "Please select a delivery address",
                                                 textAlign: TextAlign.start,
@@ -364,7 +362,7 @@ class _CartScreenState extends State<CartScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "${'Delivery Type'.tr} (${controller.selectedFoodType.value})"
+                                  "${'Delivery Type'.tr} (${controller.selectedFoodType})"
                                       .tr,
                                   textAlign: TextAlign.start,
                                   style: TextStyle(
@@ -374,7 +372,7 @@ class _CartScreenState extends State<CartScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 10),
-                                controller.selectedFoodType.value == 'TakeAway'
+                                controller.selectedFoodType == 'TakeAway'
                                     ? const SizedBox()
                                     : Container(
                                         width: Responsive.width(100, context),
@@ -424,16 +422,12 @@ class _CartScreenState extends State<CartScreen> {
                                                 ),
                                               ),
                                               Radio(
-                                                value: controller
-                                                    .deliveryType
-                                                    .value,
+                                                value: controller.deliveryType,
                                                 groupValue: "instant".tr,
                                                 activeColor:
                                                     AppThemeData.primary300,
                                                 onChanged: (value) {
-                                                  controller
-                                                          .deliveryType
-                                                          .value =
+                                                  controller.deliveryType =
                                                       "instant".tr;
                                                 },
                                               ),
@@ -454,12 +448,10 @@ class _CartScreenState extends State<CartScreen> {
                                     offstage: true,
                                     child: InkWell(
                                       onTap: () {
-                                        controller.deliveryType.value =
-                                            "schedule".tr;
+                                        controller.deliveryType = "schedule".tr;
                                         BottomPicker.dateTime(
                                           onSubmit: (index) {
-                                            controller.scheduleDateTime.value =
-                                                index;
+                                            controller.scheduleDateTime = index;
                                           },
                                           minDateTime: DateTime.now(),
                                           displaySubmitButton: true,
@@ -490,7 +482,7 @@ class _CartScreenState extends State<CartScreen> {
                                                   ),
                                                   const SizedBox(height: 5),
                                                   Text(
-                                                    "${'Your preferred time'.tr} ${controller.deliveryType.value == "schedule" ? Constant.timestampToDateTime(Timestamp.fromDate(controller.scheduleDateTime.value)) : ""}",
+                                                    "${'Your preferred time'.tr} ${controller.deliveryType == "schedule" ? Constant.timestampToDateTime(Timestamp.fromDate(controller.scheduleDateTime)) : ""}",
                                                     textAlign: TextAlign.start,
                                                     style: TextStyle(
                                                       fontFamily:
@@ -504,27 +496,23 @@ class _CartScreenState extends State<CartScreen> {
                                               ),
                                             ),
                                             Radio(
-                                              value:
-                                                  controller.deliveryType.value,
+                                              value: controller.deliveryType,
                                               groupValue: "schedule".tr,
                                               activeColor:
                                                   AppThemeData.primary300,
                                               onChanged: (value) {
-                                                controller.deliveryType.value =
+                                                controller.deliveryType =
                                                     "schedule".tr;
                                                 BottomPicker.dateTime(
                                                   initialDateTime: controller
-                                                      .scheduleDateTime
-                                                      .value,
+                                                      .scheduleDateTime,
                                                   onSubmit: (index) {
                                                     controller
-                                                            .scheduleDateTime
-                                                            .value =
+                                                            .scheduleDateTime =
                                                         index;
                                                   },
                                                   minDateTime: controller
-                                                      .scheduleDateTime
-                                                      .value,
+                                                      .scheduleDateTime,
                                                   displaySubmitButton: true,
                                                   pickerTitle: Text(
                                                     'Schedule Time'.tr,
@@ -618,8 +606,8 @@ class _CartScreenState extends State<CartScreen> {
                         ),
                         const SizedBox(height: 20),
                         billCartWidget(controller, context),
-                        controller.selectedFoodType.value == 'TakeAway' ||
-                                (controller.vendorModel.value.isSelfDelivery ==
+                        controller.selectedFoodType == 'TakeAway' ||
+                                (controller.vendorModel.isSelfDelivery ==
                                         true &&
                                     Constant.isSelfDeliveryFeature == true)
                             ? const SizedBox()
@@ -695,9 +683,7 @@ class _CartScreenState extends State<CartScreen> {
                                                 Expanded(
                                                   child: InkWell(
                                                     onTap: () {
-                                                      controller
-                                                              .deliveryTips
-                                                              .value =
+                                                      controller.deliveryTips =
                                                           05;
                                                       controller
                                                           .calculatePrice();
@@ -709,8 +695,7 @@ class _CartScreenState extends State<CartScreen> {
                                                             width: 1,
                                                             color:
                                                                 controller
-                                                                        .deliveryTips
-                                                                        .value ==
+                                                                        .deliveryTips ==
                                                                     05
                                                                 ? AppThemeData
                                                                       .primary300
@@ -755,9 +740,7 @@ class _CartScreenState extends State<CartScreen> {
                                                 Expanded(
                                                   child: InkWell(
                                                     onTap: () {
-                                                      controller
-                                                              .deliveryTips
-                                                              .value =
+                                                      controller.deliveryTips =
                                                           10;
                                                       controller
                                                           .calculatePrice();
@@ -769,8 +752,7 @@ class _CartScreenState extends State<CartScreen> {
                                                             width: 1,
                                                             color:
                                                                 controller
-                                                                        .deliveryTips
-                                                                        .value ==
+                                                                        .deliveryTips ==
                                                                     10
                                                                 ? AppThemeData
                                                                       .primary300
@@ -815,9 +797,7 @@ class _CartScreenState extends State<CartScreen> {
                                                 Expanded(
                                                   child: InkWell(
                                                     onTap: () {
-                                                      controller
-                                                              .deliveryTips
-                                                              .value =
+                                                      controller.deliveryTips =
                                                           15;
                                                       controller
                                                           .calculatePrice();
@@ -829,8 +809,7 @@ class _CartScreenState extends State<CartScreen> {
                                                             width: 1,
                                                             color:
                                                                 controller
-                                                                        .deliveryTips
-                                                                        .value ==
+                                                                        .deliveryTips ==
                                                                     15
                                                                 ? AppThemeData
                                                                       .primary300

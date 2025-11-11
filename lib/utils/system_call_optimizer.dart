@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 /// **SYSTEM CALL OPTIMIZER FOR ANR PREVENTION**
@@ -10,7 +9,6 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 /// they don't block the main thread.
 class SystemCallOptimizer {
   static const Duration _defaultTimeout = Duration(seconds: 2);
-  static const Duration _maxSystemCallTime = Duration(seconds: 5);
   static final Map<String, DateTime> _lastCallTimes = {};
   static const Duration _callCooldown = Duration(milliseconds: 100);
 

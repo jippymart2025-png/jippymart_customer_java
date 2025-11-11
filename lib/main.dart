@@ -28,7 +28,6 @@ import 'package:jippymart_customer/utils/app_lifecycle_logger.dart';
 import 'package:jippymart_customer/utils/cache_manager.dart';
 import 'package:jippymart_customer/utils/crash_prevention.dart';
 import 'package:jippymart_customer/utils/native_lock_prevention.dart';
-import 'package:jippymart_customer/utils/performance_optimizer.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/production_logger.dart';
 import 'package:jippymart_customer/utils/smartlook_anr_fix.dart';
@@ -50,7 +49,6 @@ import 'app/chat_screens/provider/chat_provider.dart' show ChatProvider;
 import 'app/edit_profile_screen/provider/edit_profile_provider.dart'
     show EditProfileProvider;
 import 'app/favourite_screens/provider/favorite_provider.dart';
-import 'app/forgot_password_screen/provider/forgot_password_provider.dart';
 import 'app/home_screen/provider/map_view_provider.dart';
 import 'app/home_screen/screen/category_restaurant_screen/provider/category_resaurant_provider.dart';
 import 'app/home_screen/screen/discount_restaurant_list_screen/provider/discount_resaurant_list_provider.dart';

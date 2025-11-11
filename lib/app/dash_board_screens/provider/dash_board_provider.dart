@@ -4,7 +4,6 @@ import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen
 import 'package:jippymart_customer/app/favourite_screens/favourite_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/home_screen_two.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/order_screen.dart';
-import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';

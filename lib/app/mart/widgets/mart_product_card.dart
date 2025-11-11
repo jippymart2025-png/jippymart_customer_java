@@ -52,70 +52,9 @@ class MartProductCard extends StatelessWidget {
     CategoryDetailsProvider controller,
   ) async {
     try {
-      // Prepare cart item data
-      final cartItem = {
-        'id': product.id,
-        'name': product.name,
-        'price':
-            product.disPrice ??
-            product.price, // Use discounted price if available
-        'originalPrice': product.price,
-        'image': product.photo,
-        'description': product.description,
-        'category': _getSubcategoryName(product.subcategoryID, controller),
-        'quantity': 1,
-        'hasOptions': product.has_options ?? false,
-        'optionsCount': product.options_count ?? 0,
-        'isVeg': product.veg,
-        'isNonVeg': product.nonveg,
-        'vendorId': product.vendorID,
-        'categoryId': product.categoryID,
-        'subcategoryId': product.subcategoryID,
-        'addOns': product.addOnsTitle ?? [],
-        'addOnsPrice': product.addOnsPrice ?? [],
-        'variants': product.variants ?? [],
-        'attributes': product.attributes,
-        'calories': product.calories,
-        'proteins': product.proteins,
-        'fats': product.fats,
-        'grams': product.grams,
-        'isBestSeller': product.isBestSeller ?? false,
-        'isFeatured': product.isFeature ?? false,
-        'isNew': product.isNew ?? false,
-        'isTrending': product.isTrending ?? false,
-        'isSeasonal': product.isSeasonal ?? false,
-        'isSpotlight': product.isSpotlight ?? false,
-        'isStealOfMoment': product.isStealOfMoment ?? false,
-        'rating': product.averageRating,
-        'reviewCount': product.totalReviews,
-        'stockQuantity': product.quantity,
-        'isAvailable': product.isAvailable,
-        'publish': product.publish,
-        'takeawayOption': product.takeawayOption ?? false,
-        'brand': product.brand,
-        'weight': product.weight,
-        'expiryDate': product.expiryDate,
-        'barcode': product.barcode,
-        'tags': product.tags,
-        'nutritionalInfo': product.nutritionalInfo,
-        'allergens': product.allergens,
-        'isOrganic': product.isOrganic,
-        'isGlutenFree': product.isGlutenFree,
-        'migratedBy': product.migratedBy,
-        'createdAt': product.createdAt,
-        'updatedAt': product.updatedAt,
-      };
-
-      // No need to show loading state - the toast will handle the feedback
-
-      // Get the cart controller
       CartControllerProvider cartControllerProvider =
           Provider.of<CartControllerProvider>(context, listen: false);
-
-      // Convert MartItemModel to CartProductModel
-      // For mart items, we need to modify the vendorID to be recognized as a mart item
       final martVendorID = "mart_${product.vendorID ?? 'unknown'}";
-
       final cartProduct = CartProductModel(
         id: product.id,
         name: product.name,
@@ -277,13 +216,11 @@ class MartProductCard extends StatelessWidget {
         price:
             selectedOption['original_price']?.toString() ??
             selectedOption['price']?.toString() ??
-            product.price.toString() ??
-            '0',
+            product.price.toString(),
         discountPrice:
             selectedOption['price']?.toString() ??
             product.disPrice?.toString() ??
-            product.price.toString() ??
-            '0',
+            product.price.toString(),
         vendorID: "mart_${product.vendorID ?? 'unknown'}",
         vendorName: "Jippy Mart",
         categoryId: product.categoryID,

@@ -1,17 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:io';
-import 'dart:math' as maths;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
-import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/send_notification.dart';
@@ -37,16 +35,9 @@ import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/payment/MercadoPagoScreen.dart';
-import 'package:jippymart_customer/payment/PayFastScreen.dart';
-import 'package:jippymart_customer/payment/getPaytmTxtToken.dart';
-import 'package:jippymart_customer/payment/midtrans_screen.dart';
+
 import 'package:jippymart_customer/payment/orangePayScreen.dart';
-import 'package:jippymart_customer/payment/paystack/pay_stack_screen.dart';
-import 'package:jippymart_customer/payment/paystack/pay_stack_url_model.dart';
-import 'package:jippymart_customer/payment/paystack/paystack_url_genrater.dart';
-import 'package:jippymart_customer/payment/xenditModel.dart';
-import 'package:jippymart_customer/payment/xenditScreen.dart';
+
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/coupon_filter_service.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
@@ -64,7 +55,6 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -78,7 +68,7 @@ class CartControllerProvider extends ChangeNotifier {
     await Get.dialog(
       WillPopScope(
         onWillPop: () async {
-          selectedPaymentMethod.value = '';
+          selectedPaymentMethod = '';
           return true;
         },
         child: AlertDialog(
@@ -149,9 +139,9 @@ class CartControllerProvider extends ChangeNotifier {
                       ],
                     ),
                     value: PaymentGateway.cod.name,
-                    groupValue: selectedPaymentMethod.value,
+                    groupValue: selectedPaymentMethod,
                     onChanged: (value) {
-                      selectedPaymentMethod.value = value!;
+                      selectedPaymentMethod = value!;
                     },
                     activeColor: Colors.orange,
                   ),
@@ -201,9 +191,9 @@ class CartControllerProvider extends ChangeNotifier {
                       ],
                     ),
                     value: PaymentGateway.razorpay.name,
-                    groupValue: selectedPaymentMethod.value,
+                    groupValue: selectedPaymentMethod,
                     onChanged: (value) {
-                      selectedPaymentMethod.value = value!;
+                      selectedPaymentMethod = value!;
                     },
                     activeColor: Colors.orange,
                   ),
@@ -211,7 +201,7 @@ class CartControllerProvider extends ChangeNotifier {
 
                 SizedBox(height: 10),
                 // Validation messages
-                if (subTotal.value > 599)
+                if (subTotal > 599)
                   Container(
                     padding: EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -266,7 +256,7 @@ class CartControllerProvider extends ChangeNotifier {
             // Cancel Button
             TextButton(
               onPressed: () {
-                selectedPaymentMethod.value = '';
+                selectedPaymentMethod = '';
                 Get.back();
               },
               style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
@@ -298,7 +288,7 @@ class CartControllerProvider extends ChangeNotifier {
   void _processSelectedPaymentMethod() {
     // The actual payment processing will happen when user clicks "Pay Now" again
     // This just sets the payment method and closes the dialog
-    print("Payment method selected: ${selectedPaymentMethod.value}");
+    print("Payment method selected: ${selectedPaymentMethod}");
   }
 
   Future<Map<String, dynamic>> getWeather(double lat, double lon) async {
@@ -379,11 +369,11 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Cache for mart delivery settings from martDeliveryCharge document
   Map<String, dynamic>? _martDeliverySettings;
-  Rx<TextEditingController> couponCodeController = TextEditingController().obs;
-  Rx<TextEditingController> tipsController = TextEditingController().obs;
+  TextEditingController couponCodeController = TextEditingController();
+  TextEditingController tipsController = TextEditingController();
 
   // Add debouncing mechanism to prevent duplicate orders
-  RxBool isProcessingOrder = false.obs;
+  bool isProcessingOrder = false;
   DateTime? lastOrderAttempt;
   static const Duration orderDebounceTime = Duration(seconds: 3);
 
@@ -392,8 +382,8 @@ class CartControllerProvider extends ChangeNotifier {
   bool _orderInProgress = false;
 
   // 🔑 RAZORPAY PAYMENT STATE MANAGEMENT
-  RxBool isPaymentInProgress = false.obs;
-  RxBool isPaymentCompleted = false.obs;
+  bool isPaymentInProgress = false;
+  bool isPaymentCompleted = false;
   String? _lastPaymentId;
   String? _lastPaymentSignature;
   DateTime? _lastPaymentTime;
@@ -430,61 +420,52 @@ class CartControllerProvider extends ChangeNotifier {
   List<TaxModel>? _cachedTaxList;
   bool _calculationCacheLoaded = false;
 
-  Rx<ShippingAddress?> selectedAddress = Rx<ShippingAddress?>(null);
-  Rx<VendorModel> vendorModel = VendorModel().obs;
-  Rx<DeliveryCharge> deliveryChargeModel = DeliveryCharge().obs;
-  Rx<UserModel> userModel = UserModel().obs;
-  RxList<CouponModel> couponList = <CouponModel>[].obs;
-  RxList<CouponModel> allCouponList = <CouponModel>[].obs;
-  RxString selectedFoodType = "Delivery".obs;
+  ShippingAddress? selectedAddress = ShippingAddress();
+  VendorModel vendorModel = VendorModel();
+  DeliveryCharge deliveryChargeModel = DeliveryCharge();
+  UserModel userModel = UserModel();
+  List<CouponModel> couponList = <CouponModel>[];
+  List<CouponModel> allCouponList = <CouponModel>[];
+  String selectedFoodType = "Delivery";
 
-  RxString selectedPaymentMethod = ''.obs;
+  String selectedPaymentMethod = '';
 
-  RxString deliveryType = "instant".obs;
-  Rx<DateTime> scheduleDateTime = DateTime.now().obs;
-  RxDouble totalDistance = 0.0.obs;
-  RxDouble deliveryCharges = 0.0.obs;
-  RxDouble subTotal = 0.0.obs;
-  RxDouble couponAmount = 0.0.obs;
+  String deliveryType = "instant";
+  DateTime scheduleDateTime = DateTime.now();
+  double totalDistance = 0.0;
+  double deliveryCharges = 0.0;
+  double subTotal = 0.0;
+  double couponAmount = 0.0;
 
-  RxDouble specialDiscountAmount = 0.0.obs;
-  RxDouble specialDiscount = 0.0.obs;
-  RxString specialType = "".obs;
+  double specialDiscountAmount = 0.0;
+  double specialDiscount = 0.0;
+  String specialType = "";
 
-  RxDouble deliveryTips = 0.0.obs;
-  RxDouble taxAmount = 0.0.obs;
-  RxDouble totalAmount = 0.0.obs;
-  RxDouble surgePercent = 0.0.obs;
+  double deliveryTips = 0.0;
+  double taxAmount = 0.0;
+  double totalAmount = 0.0;
+  double surgePercent = 0.0;
 
   // Add UI state management
-  RxBool isCartReady = false.obs;
-  RxBool isPaymentReady = false.obs;
-  RxBool isAddressValid = false.obs;
-  Rx<CouponModel> selectedCouponModel = CouponModel().obs;
+  bool isCartReady = false;
+  bool isPaymentReady = false;
+  bool isAddressValid = false;
+  CouponModel selectedCouponModel = CouponModel();
 
-  RxDouble originalDeliveryFee = 0.0.obs;
+  double originalDeliveryFee = 0.0;
 
   /// Public method to initialize address (for external calls)
   Future<void> initializeAddress(BuildContext context) async {
     await _initializeAddressWithPriority(context);
   }
 
-  // void initialLiseSurgeValue(double lat, double lon) async {
-  //   Map<String, dynamic> weather = await getWeather(
-  //     defaultAddress.location?.latitude ?? 0.0,
-  //     defaultAddress.location?.longitude ?? 0.0,
-  //   );
-  //   Map<String, dynamic> rules = await getSurgeRules();
-  //   surgePercent.value = calculateSurgeFee(weather, rules);
-  // }
   Future<void> initialLiseSurgeValue(double lat, double lon) async {
     Map<String, dynamic> weather = await getWeather(lat, lon);
     Map<String, dynamic> rules = await getSurgeRules();
-    surgePercent.value = calculateSurgeFee(weather, rules);
+    surgePercent = calculateSurgeFee(weather, rules);
     notifyListeners();
   }
 
-  /// 🔑 NEW ADDRESS PRIORITY SYSTEM: saved address > current location > BLOCK ORDER
   Future<void> _initializeAddressWithPriority(BuildContext context) async {
     try {
       print('🏠 [ADDRESS_PRIORITY] ==========================================');
@@ -498,7 +479,7 @@ class CartControllerProvider extends ChangeNotifier {
           (a) => a.isDefault == true,
           orElse: () => Constant.userModel!.shippingAddress!.first,
         );
-        selectedAddress.value = defaultAddress;
+        selectedAddress = defaultAddress;
         initialLiseSurgeValue(
           defaultAddress.location?.latitude ?? 0.0,
           defaultAddress.location?.longitude ?? 0.0,
@@ -537,7 +518,7 @@ class CartControllerProvider extends ChangeNotifier {
       final homeScreenAddress = await _getCurrentLocationAddress(context);
 
       if (homeScreenAddress != null) {
-        selectedAddress.value = homeScreenAddress;
+        selectedAddress = homeScreenAddress;
         initialLiseSurgeValue(
           homeScreenAddress.location?.latitude ?? 0.0,
           homeScreenAddress.location?.longitude ?? 0.0,
@@ -570,13 +551,13 @@ class CartControllerProvider extends ChangeNotifier {
         '🏠 [ADDRESS_PRIORITY] ❌ PRIORITY 3 - BLOCKING ORDER - No valid address available',
       );
       print('🏠 [ADDRESS_PRIORITY] ==========================================');
-      selectedAddress.value = null;
+      selectedAddress = null;
 
       // Show alert to add address
       _showAddressRequiredAlert();
     } catch (e) {
       print('🏠 [ADDRESS_PRIORITY] ❌ ERROR in address initialization: $e');
-      selectedAddress.value = null;
+      selectedAddress = null;
       _showAddressRequiredAlert();
     }
   }
@@ -693,10 +674,7 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '[DEBUG] Starting zone detection for coordinates: $latitude, $longitude',
       );
-      HomeProvider homeProvider = Provider.of<HomeProvider>(
-        context,
-        listen: false,
-      );
+
       // If you need to get all zones from Firestore/API, you'd need a separate method
       // For example: final List<Zone> zones = await getAllZones();
 
@@ -734,7 +712,7 @@ class CartControllerProvider extends ChangeNotifier {
   void initFunction(BuildContext context) {
     Future.delayed(const Duration(seconds: 3), () {
       _restorePaymentState().then((_) {
-        if (isPaymentInProgress.value && _lastPaymentId != null) {
+        if (isPaymentInProgress && _lastPaymentId != null) {
           _checkPendingPaymentAndRecover();
         }
       });
@@ -742,13 +720,15 @@ class CartControllerProvider extends ChangeNotifier {
       getCartData();
       getPaymentSettings();
       validateUserProfile();
-      ever(subTotal, (_) {
-        if (subTotal.value > 599 &&
-            selectedPaymentMethod.value == PaymentGateway.cod.name) {
-          selectedPaymentMethod.value = PaymentGateway.razorpay.name;
+
+      // Periodically check subtotal instead of ever()
+      Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (subTotal > 599 &&
+            selectedPaymentMethod == PaymentGateway.cod.name) {
+          selectedPaymentMethod = PaymentGateway.razorpay.name;
         }
       });
-    }); // });
+    });
   }
 
   /// 🔑 BULLETPROOF PROFILE VALIDATION - NEVER FAILS
@@ -762,10 +742,6 @@ class CartControllerProvider extends ChangeNotifier {
       );
       print(
         '🔒 [BULLETPROOF_PROFILE] VALIDATION STARTED at ${startTime.toIso8601String()}',
-      );
-
-      print(
-        '🔒 [BULLETPROOF_PROFILE] Current user model: ${userModel.value.firstName ?? 'NULL'}',
       );
       print(
         '🔒 [BULLETPROOF_PROFILE] Cached user model: ${Constant.userModel?.firstName ?? 'NULL'}',
@@ -911,7 +887,7 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       // Always update userModel with validated data
-      userModel.value = user;
+      userModel = user;
       Constant.userModel = user; // Update global cache
       print('🔒 [BULLETPROOF_PROFILE] User model updated with validated data');
 
@@ -1015,13 +991,7 @@ class CartControllerProvider extends ChangeNotifier {
       '🚀 [BULLETPROOF_ORDER] ORDER VALIDATION STARTED at ${startTime.toIso8601String()}',
     );
     print('🚀 [BULLETPROOF_ORDER] Cart items: ${cartItem.length}');
-    print('🚀 [BULLETPROOF_ORDER] Total amount: ₹${totalAmount.value}');
-    print(
-      '🚀 [BULLETPROOF_ORDER] Selected payment: ${selectedPaymentMethod.value}',
-    );
-    print(
-      '🚀 [BULLETPROOF_ORDER] Selected address: ${selectedAddress.value?.address ?? "NULL"}',
-    );
+
     // STEP 1: BULLETPROOF PROFILE VALIDATION
     print('🚀 [BULLETPROOF_ORDER] STEP 1: Starting profile validation...');
     final profileStartTime = DateTime.now();
@@ -1038,7 +1008,7 @@ class CartControllerProvider extends ChangeNotifier {
 
     if (!isProfileValid.value) {
       // Get specific missing fields for better user feedback
-      final user = userModel.value;
+      final user = userModel;
       List<String> missingFields = [];
 
       if (user.firstName == null ||
@@ -1473,7 +1443,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Method to check if order processing is allowed (debouncing)
   bool canProcessOrder() {
-    if (isProcessingOrder.value) {
+    if (isProcessingOrder) {
       return false;
     }
 
@@ -1489,7 +1459,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Method to start order processing
   void startOrderProcessing() {
-    isProcessingOrder.value = true;
+    isProcessingOrder = true;
     lastOrderAttempt = DateTime.now();
   }
 
@@ -1533,10 +1503,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Method to check and update payment method based on order total, promotional items, and mart items
   void checkAndUpdatePaymentMethod() {
-    print(
-      'DEBUG: checkAndUpdatePaymentMethod - SubTotal: ${subTotal.value}, Current Payment: ${selectedPaymentMethod.value}',
-    );
-
     // Check if cart has promotional items
     final hasPromoItems = hasPromotionalItems();
     print('DEBUG: Cart has promotional items: $hasPromoItems');
@@ -1547,22 +1513,20 @@ class CartControllerProvider extends ChangeNotifier {
 
     // Force Razorpay if cart has promotional items
     if (hasPromoItems) {
-      if (selectedPaymentMethod.value == PaymentGateway.cod.name ||
-          selectedPaymentMethod.value.isEmpty) {
+      if (selectedPaymentMethod == PaymentGateway.cod.name ||
+          selectedPaymentMethod.isEmpty) {
         print(
           'DEBUG: Switching from COD to Razorpay - Cart has promotional items',
         );
-        selectedPaymentMethod.value = PaymentGateway.razorpay.name;
+        selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
     }
     // Original logic for high-value orders
-    else if (subTotal.value > 599) {
-      if (selectedPaymentMethod.value == PaymentGateway.cod.name ||
-          selectedPaymentMethod.value.isEmpty) {
-        print(
-          'DEBUG: Switching from COD to Razorpay - SubTotal: ${subTotal.value}',
-        );
-        selectedPaymentMethod.value = PaymentGateway.razorpay.name;
+    else if (subTotal > 599) {
+      if (selectedPaymentMethod == PaymentGateway.cod.name ||
+          selectedPaymentMethod.isEmpty) {
+        print('DEBUG: Switching from COD to Razorpay - SubTotal: ${subTotal}');
+        selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
     }
   }
@@ -1570,20 +1534,16 @@ class CartControllerProvider extends ChangeNotifier {
   /// Check if cart is ready for payment
   bool isCartReadyForPayment() {
     final cartNotEmpty = cartItem.isNotEmpty;
-    final subTotalValid = subTotal.value > 0;
-    final totalValid = totalAmount.value > 0;
-    final paymentMethodSelected = selectedPaymentMethod.value.isNotEmpty;
+    final subTotalValid = subTotal > 0;
+    final totalValid = totalAmount > 0;
+    final paymentMethodSelected = selectedPaymentMethod.isNotEmpty;
     final profileValid = isProfileValid.value;
-    final notProcessing = !isProcessingOrder.value;
-    final notPaymentInProgress = !isPaymentInProgress.value;
-    final notPaymentCompleted = !isPaymentCompleted.value;
+    final notProcessing = !isProcessingOrder;
+    final notPaymentInProgress = !isPaymentInProgress;
+    final notPaymentCompleted = !isPaymentCompleted;
 
-    print('🔑 ENHANCED CART READY CHECK:');
-    print('DEBUG: - cartNotEmpty: $cartNotEmpty (${cartItem.length} items)');
-    print('DEBUG: - subTotalValid: $subTotalValid (${subTotal.value})');
-    print('DEBUG: - totalValid: $totalValid (${totalAmount.value})');
     print(
-      'DEBUG: - paymentMethodSelected: $paymentMethodSelected ("${selectedPaymentMethod.value}")',
+      'DEBUG: - paymentMethodSelected: $paymentMethodSelected ("${selectedPaymentMethod}")',
     );
     print('DEBUG: - profileValid: $profileValid');
     print('DEBUG: - notProcessing: $notProcessing');
@@ -1608,13 +1568,12 @@ class CartControllerProvider extends ChangeNotifier {
   bool isPaymentReadyToProceed() {
     final cartReady = isCartReadyForPayment();
     final addressValid =
-        selectedAddress.value?.id != null &&
-        selectedAddress.value!.id!.isNotEmpty;
+        selectedAddress?.id != null && selectedAddress!.id!.isNotEmpty;
 
     print('DEBUG: isPaymentReadyToProceed() check:');
     print('DEBUG: - cartReady: $cartReady');
     print(
-      'DEBUG: - addressValid: $addressValid (address ID: "${selectedAddress.value?.id}")',
+      'DEBUG: - addressValid: $addressValid (address ID: "${selectedAddress?.id}")',
     );
 
     return cartReady && addressValid;
@@ -1622,11 +1581,9 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Update cart readiness state
   void updateCartReadiness() {
-    isCartReady.value = cartItem.isNotEmpty && subTotal.value > 0;
-    isPaymentReady.value = isCartReadyForPayment();
-    isAddressValid.value =
-        selectedAddress.value?.id != null &&
-        selectedAddress.value!.id!.isNotEmpty;
+    isCartReady = cartItem.isNotEmpty && subTotal > 0;
+    isPaymentReady = isCartReadyForPayment();
+    isAddressValid = selectedAddress?.id != null;
   }
 
   /// Force refresh cart data and recalculate prices
@@ -1637,7 +1594,7 @@ class CartControllerProvider extends ChangeNotifier {
     checkAndUpdatePaymentMethod();
     updateCartReadiness();
     print(
-      'DEBUG: Force refresh completed - Items: ${cartItem.length}, Total: ${totalAmount.value}',
+      'DEBUG: Force refresh completed - Items: ${cartItem.length}, Total: ${totalAmount}',
     );
   }
 
@@ -1646,7 +1603,6 @@ class CartControllerProvider extends ChangeNotifier {
     print('DEBUG: clearCart() method called');
     try {
       print('DEBUG: Current cart items count: ${cartItem.length}');
-      print('DEBUG: Current subTotal: ${subTotal.value}');
 
       // Clear cart items from memory
       cartItem.clear();
@@ -1657,19 +1613,19 @@ class CartControllerProvider extends ChangeNotifier {
       print('DEBUG: Cart cleared from database');
 
       // Reset cart-related variables
-      subTotal.value = 0.0;
-      totalAmount.value = 0.0;
-      deliveryCharges.value = 0.0;
-      couponAmount.value = 0.0;
-      specialDiscountAmount.value = 0.0;
-      taxAmount.value = 0.0;
-      deliveryTips.value = 0.0;
-      selectedPaymentMethod.value = '';
+      subTotal = 0.0;
+      totalAmount = 0.0;
+      deliveryCharges = 0.0;
+      couponAmount = 0.0;
+      specialDiscountAmount = 0.0;
+      taxAmount = 0.0;
+      deliveryTips = 0.0;
+      selectedPaymentMethod = '';
 
       print('DEBUG: Cart variables reset');
       print('DEBUG: Cart cleared successfully on logout');
       print('DEBUG: Final cart items count: ${cartItem.length}');
-      print('DEBUG: Final subTotal: ${subTotal.value}');
+      print('DEBUG: Final subTotal: ${subTotal}');
 
       // Verify cart is actually empty
       final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
@@ -1691,7 +1647,7 @@ class CartControllerProvider extends ChangeNotifier {
   void _clearVendorCache() {
     _cachedVendorModel = null;
     _lastCacheTime = null;
-    vendorModel.value = VendorModel(); // Reset to empty
+    vendorModel = VendorModel(); // Reset to empty
     print('🔑 VENDOR CACHE CLEARED - Ready for fresh vendor data');
   }
 
@@ -1736,7 +1692,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       if (martVendor != null) {
-        vendorModel.value = VendorModel(
+        vendorModel = VendorModel(
           id: martVendor.id,
           title: martVendor.title,
           latitude: martVendor.latitude,
@@ -1767,7 +1723,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       final freshVendor = await FireStoreUtils.getVendorById(vendorId);
       if (freshVendor != null) {
-        vendorModel.value = freshVendor;
+        vendorModel = freshVendor;
         print('🛒 [FRESH_RESTAURANT_VENDOR] Loaded: ${freshVendor.title}');
       } else {
         print('🛒 [FRESH_RESTAURANT_VENDOR] Vendor not found: $vendorId');
@@ -1831,7 +1787,7 @@ class CartControllerProvider extends ChangeNotifier {
 
             if (martVendor != null) {
               // Convert MartVendorModel to VendorModel for compatibility
-              vendorModel.value = VendorModel(
+              vendorModel = VendorModel(
                 id: martVendor.id,
                 title: martVendor.title,
                 latitude: martVendor.latitude,
@@ -1843,16 +1799,16 @@ class CartControllerProvider extends ChangeNotifier {
                 isOpen: martVendor.isOpen,
                 // Add other necessary fields as needed
               );
-              _cachedVendorModel = vendorModel.value;
+              _cachedVendorModel = vendorModel;
               _updateCacheTime();
             } else {
               // Don't set hardcoded values - let the system handle this gracefully
-              vendorModel.value = VendorModel();
+              vendorModel = VendorModel();
             }
           } catch (e) {
             print('[VENDOR_LOAD] ❌ Error loading mart vendor: $e');
             // Don't set hardcoded values - let the system handle this gracefully
-            vendorModel.value = VendorModel();
+            vendorModel = VendorModel();
           }
         } else {
           // For regular restaurant items, use existing logic
@@ -1861,16 +1817,16 @@ class CartControllerProvider extends ChangeNotifier {
           );
           // Use cached vendor data if available
           if (_cachedVendorModel != null && _isCacheValid()) {
-            vendorModel.value = _cachedVendorModel!;
+            vendorModel = _cachedVendorModel!;
             print(
-              '[VENDOR_LOAD] ✅ Using cached restaurant vendor: ${vendorModel.value.title}',
+              '[VENDOR_LOAD] ✅ Using cached restaurant vendor: ${vendorModel.title}',
             );
           } else {
             await FireStoreUtils.getVendorById(
               cartItem.first.vendorID.toString(),
             ).then((value) async {
               if (value != null) {
-                vendorModel.value = value;
+                vendorModel = value;
                 _cachedVendorModel = value;
                 _updateCacheTime();
                 print(
@@ -1890,36 +1846,31 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Check payment method after cart data is loaded
       checkAndUpdatePaymentMethod();
-
       // Update cart readiness state
       updateCartReadiness();
-
-      print(
-        'DEBUG: Cart calculation completed - SubTotal: ${subTotal.value}, Total: ${totalAmount.value}',
-      );
     });
-    selectedFoodType.value = Preferences.getString(
+    selectedFoodType = Preferences.getString(
       Preferences.foodDeliveryType,
       defaultValue: "Delivery".tr,
     );
 
     // Load user profile (only if not cached)
-    if (userModel.value.id == null) {
+    if (userModel.id == null) {
       final userId = await SqlStorageConst.getFirebaseId();
       await AddressListProvider.getUserProfile(userId.toString()).then((value) {
         if (value != null) {
-          userModel.value = value;
+          userModel = value;
         }
       });
     }
 
     // Load delivery charge (use cache if available)
     if (_cachedDeliveryCharge != null && _isCacheValid()) {
-      deliveryChargeModel.value = _cachedDeliveryCharge!;
+      deliveryChargeModel = _cachedDeliveryCharge!;
     } else {
       await FireStoreUtils.getDeliveryCharge().then((value) {
         if (value != null) {
-          deliveryChargeModel.value = value;
+          deliveryChargeModel = value;
           _cachedDeliveryCharge = value;
           _updateCacheTime();
           calculatePrice();
@@ -1929,27 +1880,26 @@ class CartControllerProvider extends ChangeNotifier {
 
     // Load coupons only if vendor is available and not cached
     print('[COUPON_DEBUG] 🔍 Checking coupon loading conditions:');
-    print('[COUPON_DEBUG] - vendorModel.value.id: ${vendorModel.value.id}');
     print('[COUPON_DEBUG] - _isCacheValid(): ${_isCacheValid()}');
     print(
       '[COUPON_DEBUG] - _cachedCouponList: ${_cachedCouponList?.length ?? 'null'}',
     );
 
-    if (vendorModel.value.id != null &&
+    if (vendorModel.id != null &&
         (!_isCacheValid() || _cachedCouponList == null)) {
       print('[COUPON_DEBUG] ✅ Conditions met, loading coupons...');
       await _loadCoupons();
     } else {
       print('[COUPON_DEBUG] ❌ Conditions not met, skipping coupon loading');
       print(
-        '[COUPON_DEBUG] - vendorModel.value.id != null: ${vendorModel.value.id != null}',
+        '[COUPON_DEBUG] - vendorModel.value.id != null: ${vendorModel.id != null}',
       );
       print(
         '[COUPON_DEBUG] - (!_isCacheValid() || _cachedCouponList == null): ${(!_isCacheValid() || _cachedCouponList == null)}',
       );
 
       // Force load coupons if we have a vendor but no coupons loaded yet
-      if (vendorModel.value.id != null && _cachedCouponList == null) {
+      if (vendorModel.id != null && _cachedCouponList == null) {
         print(
           '[COUPON_DEBUG] 🔧 Force loading coupons - vendor exists but no cached coupons',
         );
@@ -1968,10 +1918,10 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Load vendor coupons
       final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons(
-        vendorModel.value.id.toString(),
+        vendorModel.id.toString(),
       );
       final allVendorCoupons = await FireStoreUtils.getAllVendorCoupons(
-        vendorModel.value.id.toString(),
+        vendorModel.id.toString(),
       );
 
       // Load global coupons
@@ -2055,8 +2005,8 @@ class CartControllerProvider extends ChangeNotifier {
       _updateCacheTime();
 
       // Update observable lists
-      couponList.value = contextFilteredCoupons;
-      allCouponList.value = contextFilteredAllCoupons;
+      couponList = contextFilteredCoupons;
+      allCouponList = contextFilteredAllCoupons;
 
       // Mark used coupons
       await _markUsedCoupons();
@@ -2076,10 +2026,10 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Load vendor coupons
       final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons(
-        vendorModel.value.id.toString(),
+        vendorModel.id.toString(),
       );
       final allVendorCoupons = await FireStoreUtils.getAllVendorCoupons(
-        vendorModel.value.id.toString(),
+        vendorModel.id.toString(),
       );
 
       // Load global coupons
@@ -2106,8 +2056,8 @@ class CartControllerProvider extends ChangeNotifier {
       _updateCacheTime();
 
       // Update observable lists
-      couponList.value = combinedCoupons.cast<CouponModel>();
-      allCouponList.value = combinedAllCoupons.cast<CouponModel>();
+      couponList = combinedCoupons.cast<CouponModel>();
+      allCouponList = combinedAllCoupons.cast<CouponModel>();
 
       // Mark used coupons
       await _markUsedCoupons();
@@ -2225,13 +2175,10 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       final isEligible =
-          subTotal.value >= itemThreshold &&
-          totalDistance.value <= freeDeliveryKm;
+          subTotal >= itemThreshold && totalDistance <= freeDeliveryKm;
 
       print('[MART_DELIVERY_UI] Free delivery check:');
-      print('[MART_DELIVERY_UI]   - Subtotal: ₹${subTotal.value}');
       print('[MART_DELIVERY_UI]   - Threshold: ₹$itemThreshold');
-      print('[MART_DELIVERY_UI]   - Distance: ${totalDistance.value} km');
       print('[MART_DELIVERY_UI]   - Free distance: $freeDeliveryKm km');
       print('[MART_DELIVERY_UI]   - Is eligible: $isEligible');
 
@@ -2248,7 +2195,7 @@ class CartControllerProvider extends ChangeNotifier {
       _currentContext.value = contextType;
       print('[COUPON_LOAD] 🎯 Context manually set to: $contextType');
       // Reload coupons with new context
-      if (vendorModel.value.id != null) {
+      if (vendorModel.id != null) {
         _loadCoupons();
       }
     } else {
@@ -2276,7 +2223,7 @@ class CartControllerProvider extends ChangeNotifier {
   void forceMartContext() {
     print('[COUPON_DEBUG] 🔧 Forcing mart context for testing...');
     _currentContext.value = "mart";
-    if (vendorModel.value.id != null) {
+    if (vendorModel.id != null) {
       _loadCoupons();
     }
   }
@@ -2285,7 +2232,7 @@ class CartControllerProvider extends ChangeNotifier {
   void forceRestaurantContext() {
     print('[COUPON_DEBUG] 🔧 Forcing restaurant context for testing...');
     _currentContext.value = "restaurant";
-    if (vendorModel.value.id != null) {
+    if (vendorModel.id != null) {
       _loadCoupons();
     }
   }
@@ -2299,10 +2246,6 @@ class CartControllerProvider extends ChangeNotifier {
   // Force load coupons without any conditions
   void forceLoadCouponsUnconditionally() {
     print('[COUPON_DEBUG] 🔧 Force loading coupons unconditionally...');
-    print('[COUPON_DEBUG] - vendorModel.value.id: ${vendorModel.value.id}');
-    print(
-      '[COUPON_DEBUG] - vendorModel.value: ${vendorModel.value.toString()}',
-    );
 
     // Clear cache to force fresh load
     _cachedCouponList = null;
@@ -2314,15 +2257,15 @@ class CartControllerProvider extends ChangeNotifier {
   // Ensure coupons are loaded when cart screen opens
   void ensureCouponsLoaded() {
     if (_cachedCouponList == null || _cachedCouponList!.isEmpty) {
-      if (vendorModel.value.id != null) {
+      if (vendorModel.id != null) {
         _loadCoupons();
       } else {
         _loadGlobalCouponsOnly();
       }
     } else {
       // Update the observable list with cached coupons
-      if (couponList.value.isEmpty && _cachedCouponList!.isNotEmpty) {
-        couponList.value = _cachedCouponList!;
+      if (couponList.isEmpty && _cachedCouponList!.isNotEmpty) {
+        couponList = _cachedCouponList!;
       }
     }
   }
@@ -2357,8 +2300,8 @@ class CartControllerProvider extends ChangeNotifier {
       _updateCacheTime();
 
       // Update observable lists
-      couponList.value = contextFilteredCoupons;
-      allCouponList.value = filteredGlobalCoupons.cast<CouponModel>();
+      couponList = contextFilteredCoupons;
+      allCouponList = filteredGlobalCoupons.cast<CouponModel>();
     } catch (e) {
       print('[COUPON_DEBUG] ❌ Error loading global coupons: $e');
     }
@@ -2371,10 +2314,10 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Load vendor coupons
       final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons(
-        vendorModel.value.id.toString(),
+        vendorModel.id.toString(),
       );
       final allVendorCoupons = await FireStoreUtils.getAllVendorCoupons(
-        vendorModel.value.id.toString(),
+        vendorModel.id.toString(),
       );
 
       // Load global coupons
@@ -2457,19 +2400,19 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       // Reset all values
-      deliveryCharges.value = 0.0;
-      subTotal.value = 0.0;
-      couponAmount.value = 0.0;
-      specialDiscountAmount.value = 0.0;
-      taxAmount.value = 0.0;
-      totalAmount.value = 0.0;
+      deliveryCharges = 0.0;
+      subTotal = 0.0;
+      couponAmount = 0.0;
+      specialDiscountAmount = 0.0;
+      taxAmount = 0.0;
+      totalAmount = 0.0;
       // Early return if cart is empty
       if (cartItem.isEmpty) {
         return;
       }
 
       // Ensure vendor model is loaded for mart items
-      if (vendorModel.value.id == null) {
+      if (vendorModel.id == null) {
         final martItems = cartItem.where((item) => _isMartItem(item)).toList();
         if (martItems.isNotEmpty) {
           print(
@@ -2509,7 +2452,7 @@ class CartControllerProvider extends ChangeNotifier {
             }
 
             if (martVendor != null) {
-              vendorModel.value = VendorModel(
+              vendorModel = VendorModel(
                 id: martVendor.id,
                 title: martVendor.title,
                 latitude: martVendor.latitude,
@@ -2531,7 +2474,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       // 1. Calculate subtotal first - Use promotional price if available
-      subTotal.value = 0.0;
+      subTotal = 0.0;
       for (var element in cartItem) {
         // Check if this item has a promotional price
         final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
@@ -2551,42 +2494,26 @@ class CartControllerProvider extends ChangeNotifier {
         final quantity = double.parse(element.quantity.toString());
         final extrasPrice = double.parse(element.extrasPrice.toString());
 
-        subTotal.value += (itemPrice * quantity) + (extrasPrice * quantity);
+        subTotal += (itemPrice * quantity) + (extrasPrice * quantity);
       }
 
       // 2. Now calculate delivery fee using the correct subtotal
       if (cartItem.isNotEmpty) {
-        if (selectedFoodType.value == "Delivery") {
+        if (selectedFoodType == "Delivery") {
           // Add null safety checks for location data
           print('[DISTANCE_CALC] ==========================================');
           print('[DISTANCE_CALC] 🗺️  CALCULATING DISTANCE BETWEEN LOCATIONS');
           print('[DISTANCE_CALC] ==========================================');
           print('[DISTANCE_CALC] 📍 Customer Address:');
-          print(
-            '[DISTANCE_CALC]   - Latitude: ${selectedAddress.value?.location?.latitude}',
-          );
-          print(
-            '[DISTANCE_CALC]   - Longitude: ${selectedAddress.value?.location?.longitude}',
-          );
-          print(
-            '[DISTANCE_CALC]   - Address: ${selectedAddress.value?.address}',
-          );
-          print('[DISTANCE_CALC] 📍 Vendor Location:');
-          print('[DISTANCE_CALC]   - Vendor ID: ${vendorModel.value.id}');
-          print('[DISTANCE_CALC]   - Vendor Name: ${vendorModel.value.title}');
-          print('[DISTANCE_CALC]   - Latitude: ${vendorModel.value.latitude}');
-          print(
-            '[DISTANCE_CALC]   - Longitude: ${vendorModel.value.longitude}',
-          );
 
-          if (selectedAddress.value?.location?.latitude != null &&
-              selectedAddress.value?.location?.longitude != null &&
-              vendorModel.value.latitude != null &&
-              vendorModel.value.longitude != null) {
-            final customerLat = selectedAddress.value!.location!.latitude;
-            final customerLng = selectedAddress.value!.location!.longitude;
-            final vendorLat = vendorModel.value.latitude!;
-            final vendorLng = vendorModel.value.longitude!;
+          if (selectedAddress?.location?.latitude != null &&
+              selectedAddress?.location?.longitude != null &&
+              vendorModel.latitude != null &&
+              vendorModel.longitude != null) {
+            final customerLat = selectedAddress?.location!.latitude;
+            final customerLng = selectedAddress?.location!.longitude;
+            final vendorLat = vendorModel.latitude!;
+            final vendorLng = vendorModel.longitude!;
 
             print(
               '[DISTANCE_CALC] ✅ All location data available, calculating distance...',
@@ -2601,38 +2528,30 @@ class CartControllerProvider extends ChangeNotifier {
               lng2: vendorLng.toString(),
             );
 
-            totalDistance.value = double.parse(distanceString);
+            totalDistance = double.parse(distanceString);
 
             print('[DISTANCE_CALC] ✅ Distance calculated successfully:');
             print('[DISTANCE_CALC]   - Raw distance string: $distanceString');
+            print('[DISTANCE_CALC]   - Parsed distance: ${totalDistance} km');
             print(
-              '[DISTANCE_CALC]   - Parsed distance: ${totalDistance.value} km',
-            );
-            print(
-              '[DISTANCE_CALC]   - Distance type: ${totalDistance.value.runtimeType}',
+              '[DISTANCE_CALC]   - Distance type: ${totalDistance.runtimeType}',
             );
           } else {
             print(
               '[DISTANCE_CALC] ❌ Missing location data, setting distance to 0',
             );
+
             print(
-              '[DISTANCE_CALC]   - Customer location available: ${selectedAddress.value?.location?.latitude != null && selectedAddress.value?.location?.longitude != null}',
+              '[DISTANCE_CALC]   - Vendor location available: ${vendorModel.latitude != null && vendorModel.longitude != null}',
             );
-            print(
-              '[DISTANCE_CALC]   - Vendor location available: ${vendorModel.value.latitude != null && vendorModel.value.longitude != null}',
-            );
-            print(
-              '[DISTANCE_CALC]   - Selected address: ${selectedAddress.value?.address}',
-            );
-            print(
-              '[DISTANCE_CALC]   - Vendor model: ${vendorModel.value.title}',
-            );
-            totalDistance.value = 0.0;
+
+            print('[DISTANCE_CALC]   - Vendor model: ${vendorModel.title}');
+            totalDistance = 0.0;
           }
 
           print('[DISTANCE_CALC] ==========================================');
           print(
-            '[DISTANCE_CALC] 🎯 FINAL DISTANCE RESULT: ${totalDistance.value} km',
+            '[DISTANCE_CALC] 🎯 FINAL DISTANCE RESULT: ${totalDistance} km',
           );
           print('[DISTANCE_CALC] ==========================================');
           /*
@@ -2687,16 +2606,6 @@ class CartControllerProvider extends ChangeNotifier {
             // Use regular delivery charge logic
             calculateRegularDeliveryCharge();
           }
-
-          print('DEBUG: subTotal.value = ' + subTotal.value.toString());
-          print(
-            'DEBUG: totalDistance.value = ' + totalDistance.value.toString(),
-          );
-          print(
-            'DEBUG: originalDeliveryFee = ' +
-                originalDeliveryFee.value.toString(),
-          );
-          print('DEBUG: deliveryCharges = ' + deliveryCharges.value.toString());
         }
       }
 
@@ -2760,9 +2669,9 @@ class CartControllerProvider extends ChangeNotifier {
       CouponModel? activeCoupon;
 
       // Check if there's a selected coupon model (from "Tap To Apply" button)
-      if (selectedCouponModel.value.id != null &&
-          selectedCouponModel.value.id!.isNotEmpty) {
-        activeCoupon = selectedCouponModel.value;
+      if (selectedCouponModel.id != null &&
+          selectedCouponModel.id!.isNotEmpty) {
+        activeCoupon = selectedCouponModel;
       }
       // Check if there's a coupon code entered manually
       else if (couponCodeController.value.text.isNotEmpty) {
@@ -2789,36 +2698,35 @@ class CartControllerProvider extends ChangeNotifier {
         ShowToastDialog.showToast(
           "Coupons cannot be applied to promotional items".tr,
         );
-        couponCodeController.value.text = "";
-        selectedCouponModel.value = CouponModel();
-        couponAmount.value = 0.0;
+        couponCodeController.text = "";
+        selectedCouponModel = CouponModel();
+        couponAmount = 0.0;
         print('DEBUG: Coupon removed - cart contains promotional items');
       } else if (activeCoupon != null) {
         // Check minimum order value first
         final minimumValue =
             double.tryParse(activeCoupon.itemValue ?? '0') ?? 0.0;
-        if (subTotal.value < minimumValue) {
+        if (subTotal < minimumValue) {
           ShowToastDialog.showToast(
             "Minimum order value for this coupon is ${Constant.amountShow(amount: activeCoupon.itemValue ?? '0')}"
                 .tr,
           );
-          couponCodeController.value.text = "";
-          selectedCouponModel.value = CouponModel();
-          couponAmount.value = 0.0;
+          couponCodeController.text = "";
+          selectedCouponModel = CouponModel();
+          couponAmount = 0.0;
         } else {
           // Calculate coupon discount
           if (activeCoupon.discountType == "percentage") {
-            couponAmount.value =
-                (subTotal.value *
-                    double.parse(activeCoupon.discount.toString())) /
+            couponAmount =
+                (subTotal * double.parse(activeCoupon.discount.toString())) /
                 100;
           } else {
-            couponAmount.value = double.parse(activeCoupon.discount.toString());
+            couponAmount = double.parse(activeCoupon.discount.toString());
           }
           print('DEBUG: Coupon applied successfully - ${activeCoupon.code}');
         }
       } else {
-        couponAmount.value = 0.0;
+        couponAmount = 0.0;
       }
 
       /*
@@ -2827,9 +2735,8 @@ class CartControllerProvider extends ChangeNotifier {
     // Calculate SGST (5%) on item total, GST (18%) on delivery fee
     */
       // 4. Calculate special discount
-      if (specialDiscountAmount.value > 0) {
-        specialDiscountAmount.value =
-            (subTotal.value * specialDiscountAmount.value) / 100;
+      if (specialDiscountAmount > 0) {
+        specialDiscountAmount = (subTotal * specialDiscountAmount) / 100;
       }
 
       // 5. Calculate taxes - Always calculate tax on original delivery fee for promotional and mart items
@@ -2846,7 +2753,7 @@ class CartControllerProvider extends ChangeNotifier {
         for (var element in Constant.taxList!) {
           if ((element.title?.toLowerCase() ?? '').contains('sgst')) {
             sgst = Constant.calculateTax(
-              amount: subTotal.value.toString(),
+              amount: subTotal.toString(),
               taxModel: element,
             );
             if (hasPromotionalItemsForTax) {
@@ -2860,7 +2767,7 @@ class CartControllerProvider extends ChangeNotifier {
             }
           } else if ((element.title?.toLowerCase() ?? '').contains('gst')) {
             gst = Constant.calculateTax(
-              amount: originalDeliveryFee.value.toString(),
+              amount: originalDeliveryFee.toString(),
               taxModel: element,
             );
             if (hasPromotionalItemsForTax) {
@@ -2876,23 +2783,14 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
-      taxAmount.value = sgst + gst;
+      taxAmount = sgst + gst;
 
       if (hasPromotionalItemsForTax) {
-        print(
-          '[PROMOTIONAL_TAX] Total Taxes & Charges = ' +
-              taxAmount.value.toString(),
-        );
       } else if (hasMartItems) {
-        print(
-          '[MART_TAX] Total Taxes & Charges = ' + taxAmount.value.toString(),
-        );
-      } else {
-        print('DEBUG: Total Taxes & Charges = ' + taxAmount.value.toString());
-      }
+      } else {}
 
       bool isFreeDelivery = false;
-      if (cartItem.isNotEmpty && selectedFoodType.value == "Delivery") {
+      if (cartItem.isNotEmpty && selectedFoodType == "Delivery") {
         // Check if cart has promotional items or mart items
         final hasPromotionalItems = cartItem.any(
           (item) => item.promoId != null && item.promoId!.isNotEmpty,
@@ -2912,13 +2810,9 @@ class CartControllerProvider extends ChangeNotifier {
             firstPromoItem.vendorID ?? '',
           );
 
-          if (totalDistance.value <= freeDeliveryKm) {
+          if (totalDistance <= freeDeliveryKm) {
             isFreeDelivery = true;
           }
-
-          print(
-            'DEBUG: Ultra-fast promotional free delivery check - Distance: ${totalDistance.value}, Free km: $freeDeliveryKm, Free: $isFreeDelivery',
-          );
         } else if (hasMartItems) {
           // For mart items - check mart delivery settings for free delivery eligibility
           // Use cached mart delivery settings if available, otherwise use defaults
@@ -2936,36 +2830,29 @@ class CartControllerProvider extends ChangeNotifier {
                 5.0;
           }
 
-          if (subTotal.value >= itemThreshold &&
-              totalDistance.value <= freeDeliveryKm) {
+          if (subTotal >= itemThreshold && totalDistance <= freeDeliveryKm) {
             isFreeDelivery = true;
-            print(
-              '[MART_DELIVERY] Mart items - FREE DELIVERY eligible (₹${subTotal.value} >= ₹$itemThreshold, ${totalDistance.value} km <= ${freeDeliveryKm} km)',
-            );
           } else {
             isFreeDelivery = false;
-            print(
-              '[MART_DELIVERY] Mart items - NO FREE DELIVERY (₹${subTotal.value} < ₹$itemThreshold or ${totalDistance.value} km > ${freeDeliveryKm} km)',
-            );
           }
         } else {
           // For regular items, use regular delivery settings
-          final dc = deliveryChargeModel.value;
-          final subtotal = subTotal.value;
+          final dc = deliveryChargeModel;
+          final subtotal = subTotal;
           final threshold = dc.itemTotalThreshold ?? 299;
           final freeKm = dc.freeDeliveryDistanceKm ?? 7;
-          if (subtotal >= threshold && totalDistance.value <= freeKm) {
+          if (subtotal >= threshold && totalDistance <= freeKm) {
             isFreeDelivery = true;
           }
         }
       }
 
-      totalAmount.value =
-          (subTotal.value - couponAmount.value - specialDiscountAmount.value) +
-          taxAmount.value +
-          (isFreeDelivery ? 0.0 : deliveryCharges.value) +
-          deliveryTips.value +
-          surgePercent.value;
+      totalAmount =
+          (subTotal - couponAmount - specialDiscountAmount) +
+          taxAmount +
+          (isFreeDelivery ? 0.0 : deliveryCharges) +
+          deliveryTips +
+          surgePercent;
 
       // Check and switch payment method based on order total
       checkAndUpdatePaymentMethod();
@@ -3045,34 +2932,24 @@ class CartControllerProvider extends ChangeNotifier {
   }) {
     print('$logPrefix Calculating $orderType delivery charge');
 
-    print(
-      '$logPrefix Delivery settings - Free km: $freeDeliveryKm, Per km charge: $perKmCharge, Distance: ${totalDistance.value} km',
-    );
-
-    if (vendorModel.value.isSelfDelivery == true &&
+    if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = 0.0;
+      deliveryCharges = 0.0;
+      originalDeliveryFee = 0.0;
       print('$logPrefix Self delivery - no charge');
-    } else if (totalDistance.value <= freeDeliveryKm) {
+    } else if (totalDistance <= freeDeliveryKm) {
       // Free delivery within distance - show original fee with strikethrough
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = baseCharge;
+      deliveryCharges = 0.0;
+      originalDeliveryFee = baseCharge;
       print(
         '$logPrefix Free delivery within distance - showing original fee: ₹$baseCharge',
       );
     } else {
       // Calculate extra charge for distance beyond free delivery
-      double extraKm = (totalDistance.value - freeDeliveryKm).ceilToDouble();
-      deliveryCharges.value = extraKm * perKmCharge;
+      double extraKm = (totalDistance - freeDeliveryKm).ceilToDouble();
+      deliveryCharges = extraKm * perKmCharge;
       // Always calculate tax on base charge (₹23) + extra charges for all order types
-      originalDeliveryFee.value = baseCharge + deliveryCharges.value;
-      print(
-        '$logPrefix Extra delivery charge: $extraKm km × ₹$perKmCharge = ₹${deliveryCharges.value}',
-      );
-      print(
-        '$logPrefix Original delivery fee for tax: ₹${originalDeliveryFee.value} (base ₹$baseCharge + extra ₹${deliveryCharges.value})',
-      );
+      originalDeliveryFee = baseCharge + deliveryCharges;
     }
   }
 
@@ -3099,15 +2976,6 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
 
-    // Log current cart state
-    print('[MART_DELIVERY] 💰 Current Cart State:');
-    print('[MART_DELIVERY]   - Subtotal: ₹${subTotal.value}');
-    print('[MART_DELIVERY]   - Distance: ${totalDistance.value} km');
-    print('[MART_DELIVERY]   - Vendor ID: ${vendorModel.value.id}');
-    print('[MART_DELIVERY]   - Vendor Name: ${vendorModel.value.title}');
-    print(
-      '[MART_DELIVERY]   - Is Self Delivery: ${vendorModel.value.isSelfDelivery}',
-    );
     print(
       '[MART_DELIVERY]   - Self Delivery Feature: ${Constant.isSelfDeliveryFeature}',
     );
@@ -3124,8 +2992,8 @@ class CartControllerProvider extends ChangeNotifier {
     final perKm = 7.0; // Per km charge above free distance
     final threshold = 199.0; // Free delivery threshold for mart
 
-    final subtotal = subTotal.value;
-    final distance = totalDistance.value;
+    final subtotal = subTotal;
+    final distance = totalDistance;
 
     print('[MART_DELIVERY] 📊 STATIC DELIVERY CALCULATION PARAMETERS:');
     print('[MART_DELIVERY]   - Base charge: ₹$baseCharge');
@@ -3134,9 +3002,7 @@ class CartControllerProvider extends ChangeNotifier {
     print('[MART_DELIVERY]   - Item total threshold: ₹$threshold');
     print('[MART_DELIVERY]   - Current distance: ${distance} km');
     print('[MART_DELIVERY]   - Current subtotal: ₹$subtotal');
-    print(
-      '[MART_DELIVERY]   - Is self delivery: ${vendorModel.value.isSelfDelivery}',
-    );
+
     print(
       '[MART_DELIVERY]   - Self delivery feature enabled: ${Constant.isSelfDeliveryFeature}',
     );
@@ -3148,45 +3014,34 @@ class CartControllerProvider extends ChangeNotifier {
     print(
       '[MART_DELIVERY]   - Distance (${distance} km) <= Free Distance (${freeKm} km): ${distance <= freeKm}',
     );
-    print(
-      '[MART_DELIVERY]   - Self Delivery: ${vendorModel.value.isSelfDelivery == true && Constant.isSelfDeliveryFeature == true}',
-    );
 
-    if (vendorModel.value.isSelfDelivery == true &&
+    if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = 0.0;
+      deliveryCharges = 0.0;
+      originalDeliveryFee = 0.0;
       print('[MART_DELIVERY] ✅ RESULT: Self delivery - NO CHARGE');
-      print(
-        '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-      );
-      print(
-        '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-      );
     } else if (subtotal >= threshold) {
       print(
         '[MART_DELIVERY] 🎯 CASE: Above threshold (₹$subtotal >= ₹$threshold)',
       );
       // Above threshold - free delivery within distance
       if (distance <= freeKm) {
-        deliveryCharges.value = 0.0;
-        originalDeliveryFee.value = baseCharge;
+        deliveryCharges = 0.0;
+        originalDeliveryFee = baseCharge;
         print(
           '[MART_DELIVERY] ✅ RESULT: FREE DELIVERY - Above threshold and within free distance',
         );
         print(
           '[MART_DELIVERY]   - Distance: ${distance} km <= ${freeKm} km (free distance)',
         );
+        print('[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges}');
         print(
-          '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
+          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee}',
         );
       } else {
         double extraKm = (distance - freeKm).ceilToDouble();
-        deliveryCharges.value = extraKm * perKm;
-        originalDeliveryFee.value = baseCharge + deliveryCharges.value;
+        deliveryCharges = extraKm * perKm;
+        originalDeliveryFee = baseCharge + deliveryCharges;
         print(
           '[MART_DELIVERY] ✅ RESULT: FREE DELIVERY WITH EXTRA CHARGE - Above threshold but beyond free distance',
         );
@@ -3195,13 +3050,10 @@ class CartControllerProvider extends ChangeNotifier {
         );
         print('[MART_DELIVERY]   - Extra km: ${extraKm} km');
         print(
-          '[MART_DELIVERY]   - Extra charge: ${extraKm} km × ₹$perKm = ₹${deliveryCharges.value}',
+          '[MART_DELIVERY]   - Extra charge: ${extraKm} km × ₹$perKm = ₹${deliveryCharges}',
         );
         print(
-          '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
+          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee}',
         );
       }
     } else {
@@ -3210,24 +3062,18 @@ class CartControllerProvider extends ChangeNotifier {
       );
       // Below threshold - always charge delivery
       if (distance <= freeKm) {
-        deliveryCharges.value = baseCharge;
-        originalDeliveryFee.value = baseCharge;
+        deliveryCharges = baseCharge;
+        originalDeliveryFee = baseCharge;
         print(
           '[MART_DELIVERY] ✅ RESULT: BASE CHARGE - Below threshold, within free distance',
         );
         print(
           '[MART_DELIVERY]   - Distance: ${distance} km <= ${freeKm} km (free distance)',
         );
-        print(
-          '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-        );
       } else {
         double extraKm = (distance - freeKm).ceilToDouble();
-        deliveryCharges.value = baseCharge + (extraKm * perKm);
-        originalDeliveryFee.value = deliveryCharges.value;
+        deliveryCharges = baseCharge + (extraKm * perKm);
+        originalDeliveryFee = deliveryCharges;
         print(
           '[MART_DELIVERY] ✅ RESULT: FULL CHARGE - Below threshold, beyond free distance',
         );
@@ -3239,27 +3085,8 @@ class CartControllerProvider extends ChangeNotifier {
         print(
           '[MART_DELIVERY]   - Extra charge: ${extraKm} km × ₹$perKm = ₹${extraKm * perKm}',
         );
-        print(
-          '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-        );
       }
     }
-
-    print('[MART_DELIVERY] ==========================================');
-    print('[MART_DELIVERY] 🎉 FINAL DELIVERY CALCULATION RESULT:');
-    print(
-      '[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges.value}',
-    );
-    print(
-      '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee.value}',
-    );
-    print(
-      '[MART_DELIVERY]   - Is delivery free: ${deliveryCharges.value == 0.0 ? 'YES' : 'NO'}',
-    );
-    print('[MART_DELIVERY] ==========================================');
   }
 
   /// Fetch mart delivery charge settings from Firestore
@@ -3351,29 +3178,25 @@ class CartControllerProvider extends ChangeNotifier {
         print(
           'DEBUG: Promotional delivery settings - Free km: $freeDeliveryKm, Extra charge: $extraKmCharge',
         );
-        print('DEBUG: Total distance: ${totalDistance.value} km');
+        print('DEBUG: Total distance: ${totalDistance} km');
 
-        if (vendorModel.value.isSelfDelivery == true &&
+        if (vendorModel.isSelfDelivery == true &&
             Constant.isSelfDeliveryFeature == true) {
-          deliveryCharges.value = 0.0;
-          originalDeliveryFee.value = 0.0;
+          deliveryCharges = 0.0;
+          originalDeliveryFee = 0.0;
           print('DEBUG: Self delivery - no charge');
-        } else if (totalDistance.value <= freeDeliveryKm) {
+        } else if (totalDistance <= freeDeliveryKm) {
           // Free delivery within promotional distance - show original fee with strikethrough
-          deliveryCharges.value = 0.0;
-          originalDeliveryFee.value = baseCharge.toDouble();
+          deliveryCharges = 0.0;
+          originalDeliveryFee = baseCharge.toDouble();
           print(
             'DEBUG: Free delivery within promotional distance - showing original fee: ₹$baseCharge',
           );
         } else {
           // Calculate extra charge for distance beyond free delivery
-          double extraKm = (totalDistance.value - freeDeliveryKm)
-              .ceilToDouble();
-          deliveryCharges.value = extraKm * extraKmCharge;
-          originalDeliveryFee.value = deliveryCharges.value;
-          print(
-            'DEBUG: Extra delivery charge: $extraKm km × ₹$extraKmCharge = ₹${deliveryCharges.value}',
-          );
+          double extraKm = (totalDistance - freeDeliveryKm).ceilToDouble();
+          deliveryCharges = extraKm * extraKmCharge;
+          originalDeliveryFee = deliveryCharges;
         }
       } else {
         print(
@@ -3389,8 +3212,8 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Calculate delivery charge for regular (non-promotional) items
   void calculateRegularDeliveryCharge() {
-    final dc = deliveryChargeModel.value;
-    final subtotal = subTotal.value;
+    final dc = deliveryChargeModel;
+    final subtotal = subTotal;
     final threshold = dc.itemTotalThreshold ?? 299;
     final baseCharge = dc.baseDeliveryCharge ?? 23;
     final freeKm = dc.freeDeliveryDistanceKm ?? 7;
@@ -3398,38 +3221,33 @@ class CartControllerProvider extends ChangeNotifier {
     // Regular delivery has complex logic that doesn't fit the simple reusable method
     // So we'll keep the original logic but use the reusable method where possible
     print('DEBUG: Calculating regular delivery charge');
-    if (vendorModel.value.isSelfDelivery == true &&
+    if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = 0.0;
+      deliveryCharges = 0.0;
+      originalDeliveryFee = 0.0;
     } else if (subtotal < threshold) {
       // Below threshold - always charge delivery (but still use freeKm for distance calculation)
-      if (totalDistance.value <= freeKm) {
-        deliveryCharges.value = baseCharge.toDouble();
-        originalDeliveryFee.value = baseCharge.toDouble();
+      if (totalDistance <= freeKm) {
+        deliveryCharges = baseCharge.toDouble();
+        originalDeliveryFee = baseCharge.toDouble();
       } else {
-        double extraKm = (totalDistance.value - freeKm).ceilToDouble();
-        deliveryCharges.value = (baseCharge + (extraKm * perKm)).toDouble();
-        originalDeliveryFee.value = deliveryCharges.value;
+        double extraKm = (totalDistance - freeKm).ceilToDouble();
+        deliveryCharges = (baseCharge + (extraKm * perKm)).toDouble();
+        originalDeliveryFee = deliveryCharges;
       }
     } else {
       // Above threshold - free delivery within distance
-      if (totalDistance.value <= freeKm) {
-        deliveryCharges.value = 0.0;
-        originalDeliveryFee.value = baseCharge.toDouble();
+      if (totalDistance <= freeKm) {
+        deliveryCharges = 0.0;
+        originalDeliveryFee = baseCharge.toDouble();
       } else {
-        double extraKm = (totalDistance.value - freeKm).ceilToDouble();
-        originalDeliveryFee.value = (baseCharge + (extraKm * perKm)).toDouble();
-        deliveryCharges.value = (extraKm * perKm).toDouble();
+        double extraKm = (totalDistance - freeKm).ceilToDouble();
+        originalDeliveryFee = (baseCharge + (extraKm * perKm)).toDouble();
+        deliveryCharges = (extraKm * perKm).toDouble();
         print('DEBUG: subtotal >= threshold && totalDistance > freeKm');
         print('DEBUG: baseCharge = ' + baseCharge.toString());
         print('DEBUG: extraKm = ' + extraKm.toString());
         print('DEBUG: perKm = ' + perKm.toString());
-        print(
-          'DEBUG: originalDeliveryFee = ' +
-              originalDeliveryFee.value.toString(),
-        );
-        print('DEBUG: deliveryCharges = ' + deliveryCharges.value.toString());
       }
     }
 
@@ -3515,20 +3333,20 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Check if order is already in progress (idempotency)
   bool _isOrderInProgress() {
-    return _orderInProgress || isProcessingOrder.value;
+    return _orderInProgress || isProcessingOrder;
   }
 
   /// Start order processing with idempotency
   void _startOrderProcessing() {
     _orderInProgress = true;
-    isProcessingOrder.value = true;
+    isProcessingOrder = true;
     _currentOrderId = DateTime.now().millisecondsSinceEpoch.toString();
   }
 
   /// End order processing
   void _endOrderProcessing() {
     _orderInProgress = false;
-    isProcessingOrder.value = false;
+    isProcessingOrder = false;
     _currentOrderId = null;
   }
 
@@ -3567,8 +3385,7 @@ class CartControllerProvider extends ChangeNotifier {
       // This check is now handled in the address validation above
       // No need for separate fallback location check since address is mandatory
 
-      if (selectedPaymentMethod.value == PaymentGateway.cod.name &&
-          subTotal.value > 599) {
+      if (selectedPaymentMethod == PaymentGateway.cod.name && subTotal > 599) {
         ShowToastDialog.showToast(
           "Cash on Delivery is not available for orders above ₹599. Please select another payment method."
               .tr,
@@ -3577,7 +3394,7 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      if (selectedPaymentMethod.value == PaymentGateway.cod.name &&
+      if (selectedPaymentMethod == PaymentGateway.cod.name &&
           hasPromotionalItems()) {
         ShowToastDialog.showToast(
           "Cash on Delivery is not available for promotional items. Please select another payment method."
@@ -3589,19 +3406,18 @@ class CartControllerProvider extends ChangeNotifier {
 
       // 🔑 ENSURE PAYMENT METHOD IS SET CORRECTLY FOR PREPAID ORDERS
       // Check if we have a successful payment but payment method is COD or empty
-      if (isPaymentCompleted.value &&
+      if (isPaymentCompleted &&
           _lastPaymentId != null &&
-          (selectedPaymentMethod.value.isEmpty ||
-              selectedPaymentMethod.value == PaymentGateway.cod.name)) {
-        selectedPaymentMethod.value = PaymentGateway.razorpay.name;
+          (selectedPaymentMethod.isEmpty ||
+              selectedPaymentMethod == PaymentGateway.cod.name)) {
+        selectedPaymentMethod = PaymentGateway.razorpay.name;
         print(
-          '🔑 Payment method corrected in placeOrder: ${selectedPaymentMethod.value}',
+          '🔑 Payment method corrected in placeOrder: ${selectedPaymentMethod}',
         );
       }
 
-      if (selectedPaymentMethod.value == PaymentGateway.wallet.name) {
-        if (double.parse(userModel.value.walletAmount.toString()) >=
-            totalAmount.value) {
+      if (selectedPaymentMethod == PaymentGateway.wallet.name) {
+        if (double.parse(userModel.walletAmount.toString()) >= totalAmount) {
           await setOrder();
         } else {
           ShowToastDialog.showToast(
@@ -3705,9 +3521,9 @@ class CartControllerProvider extends ChangeNotifier {
       */
 
       // Check if vendor is still open using the new status system
-      if (vendorModel.value.id != null) {
+      if (vendorModel.id != null) {
         final latestVendor = await FireStoreUtils.getVendorById(
-          vendorModel.value.id!,
+          vendorModel.id!,
         );
         if (latestVendor != null) {
           // Check if this is a mart vendor
@@ -3998,14 +3814,10 @@ class CartControllerProvider extends ChangeNotifier {
     print('DEBUG: Starting order placement process');
 
     // Validate restaurant status before placing order (for wallet payments)
-    await FireStoreUtils.getVendorById(vendorModel.value.id!);
-    print(
-      "${vendorModel.value.author.toString()}  ${vendorModel.value.authorName.toString()}  ${vendorModel.value.categoryTitle.toString()}  vendorModel.value.author ",
-    );
-    if (vendorModel.value.id != null) {
-      final latestVendor = await FireStoreUtils.getVendorById(
-        vendorModel.value.id!,
-      );
+    await FireStoreUtils.getVendorById(vendorModel.id!);
+
+    if (vendorModel.id != null) {
+      final latestVendor = await FireStoreUtils.getVendorById(vendorModel.id!);
       if (latestVendor != null) {
         // Check if this is a mart vendor
         if (latestVendor.vType == 'mart') {
@@ -4051,11 +3863,9 @@ class CartControllerProvider extends ChangeNotifier {
       // Check subscription limits if applicable
       if ((Constant.isSubscriptionModelApplied == true ||
               Constant.adminCommission?.isEnabled == true) &&
-          vendorModel.value.subscriptionPlan != null &&
-          vendorModel.value.id != null) {
-        final vender = await FireStoreUtils.getVendorById(
-          vendorModel.value.id!,
-        );
+          vendorModel.subscriptionPlan != null &&
+          vendorModel.id != null) {
+        final vender = await FireStoreUtils.getVendorById(vendorModel.id!);
         if (vender?.subscriptionTotalOrders == '0' ||
             vender?.subscriptionTotalOrders == null) {
           ShowToastDialog.closeLoader();
@@ -4078,9 +3888,9 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       Map<String, dynamic> specialDiscountMap = {
-        'special_discount': specialDiscountAmount.value,
-        'special_discount_label': specialDiscount.value,
-        'specialType': specialType.value,
+        'special_discount': specialDiscountAmount,
+        'special_discount_label': specialDiscount,
+        'specialType': specialType,
       };
 
       OrderModel orderModel = OrderModel();
@@ -4112,25 +3922,20 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Set order details using correct field names
       // Address is already validated above - no fallbacks needed
-      orderModel.address = selectedAddress.value;
+      orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
-      orderModel.author = userModel.value;
-
-      print(
-        'DEBUG: Order address set - Address: ${selectedAddress.value!.address}, Locality: ${selectedAddress.value!.locality}',
-      );
+      orderModel.author = userModel;
 
       // Handle vendor details - check if vendor model is set
-      if (vendorModel.value.id != null) {
+      if (vendorModel.id != null) {
         // Restaurant order - use existing vendor model
-        orderModel.vendorID = vendorModel.value.id;
-        orderModel.vendor = vendorModel.value;
-        orderModel.adminCommission = vendorModel.value.adminCommission != null
-            ? vendorModel.value.adminCommission!.amount
+        orderModel.vendorID = vendorModel.id;
+        orderModel.vendor = vendorModel;
+        orderModel.adminCommission = vendorModel.adminCommission != null
+            ? vendorModel.adminCommission!.amount
             : Constant.adminCommission!.amount;
-        orderModel.adminCommissionType =
-            vendorModel.value.adminCommission != null
-            ? vendorModel.value.adminCommission!.commissionType
+        orderModel.adminCommissionType = vendorModel.adminCommission != null
+            ? vendorModel.adminCommission!.commissionType
             : Constant.adminCommission!.commissionType;
       } else {
         // Mart order - fetch the actual mart vendor from Firebase
@@ -4231,30 +4036,30 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
       String admin_fee = "0";
-      if (surgePercent.value > 0) {
+      if (surgePercent > 0) {
         admin_fee = await getAdminSurgeFee();
       }
       orderModel.products = tempProduc;
       orderModel.specialDiscount = specialDiscountMap;
-      orderModel.paymentMethod = selectedPaymentMethod.value;
+      orderModel.paymentMethod = selectedPaymentMethod;
       orderModel.status = Constant.orderPlaced;
       orderModel.createdAt = Timestamp.now();
-      orderModel.couponId = selectedCouponModel.value.id ?? '';
-      orderModel.couponCode = selectedCouponModel.value.code ?? '';
-      orderModel.discount = couponAmount.value;
-      orderModel.deliveryCharge = deliveryCharges.value.toString();
-      orderModel.tipAmount = deliveryTips.value.toString();
-      orderModel.toPayAmount = totalAmount.value;
-      orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime.value);
-      orderModel.surgeFee = "${surgePercent.value + int.parse(admin_fee)}";
-      if (vendorModel.value.id != null &&
-          vendorModel.value.latitude != null &&
-          vendorModel.value.longitude != null) {
+      orderModel.couponId = selectedCouponModel.id ?? '';
+      orderModel.couponCode = selectedCouponModel.code ?? '';
+      orderModel.discount = couponAmount;
+      orderModel.deliveryCharge = deliveryCharges.toString();
+      orderModel.tipAmount = deliveryTips.toString();
+      orderModel.toPayAmount = totalAmount;
+      orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime);
+      orderModel.surgeFee = "${surgePercent + int.parse(admin_fee)}";
+      if (vendorModel.id != null &&
+          vendorModel.latitude != null &&
+          vendorModel.longitude != null) {
         Constant.calculateDistance(
-          vendorModel.value.latitude!,
-          vendorModel.value.longitude!,
-          selectedAddress.value?.location?.latitude ?? 0.0,
-          selectedAddress.value?.location?.longitude ?? 0.0,
+          vendorModel.latitude!,
+          vendorModel.longitude!,
+          selectedAddress?.location?.latitude ?? 0.0,
+          selectedAddress?.location?.longitude ?? 0.0,
         );
       } else {
         // For mart items, use default coordinates or skip distance calculation
@@ -4290,9 +4095,9 @@ class CartControllerProvider extends ChangeNotifier {
               'orderId': orderModel.id,
               'ToPay': orderModel.toPayAmount,
               'createdAt': Timestamp.now(),
-              'surge_fee': surgePercent.value,
+              'surge_fee': surgePercent,
               'admin_surge_fee': admin_fee,
-              'total_surge_fee': "${surgePercent.value + int.parse(admin_fee)}",
+              'total_surge_fee': "${surgePercent + int.parse(admin_fee)}",
             }),
       );
       // Send notifications and email
@@ -4330,8 +4135,8 @@ class CartControllerProvider extends ChangeNotifier {
       print('🔑 ORDER PLACEMENT SUCCESSFUL - All tasks completed');
 
       // 🔑 RESET PAYMENT STATE ON SUCCESS
-      isPaymentInProgress.value = false;
-      isPaymentCompleted.value = false;
+      isPaymentInProgress = false;
+      isPaymentCompleted = false;
       _lastPaymentId = null;
       _lastPaymentSignature = null;
       _lastPaymentTime = null;
@@ -4353,7 +4158,7 @@ class CartControllerProvider extends ChangeNotifier {
       endOrderProcessing();
 
       // 🔑 ENHANCED ERROR HANDLING WITH PAYMENT STATE
-      if (isPaymentCompleted.value && _lastPaymentId != null) {
+      if (isPaymentCompleted && _lastPaymentId != null) {
         print(
           '🔑 Payment was successful but order failed - showing retry options',
         );
@@ -4400,13 +4205,13 @@ class CartControllerProvider extends ChangeNotifier {
         jsonDecode(Preferences.getString(Preferences.codSettings)),
       );
       if (walletSettingModel.value.isEnabled == true) {
-        selectedPaymentMethod.value = PaymentGateway.wallet.name;
+        selectedPaymentMethod = PaymentGateway.wallet.name;
       } else if (cashOnDeliverySettingModel.value.isEnabled == true &&
-          subTotal.value <= 599 &&
+          subTotal <= 599 &&
           !hasMartItemsInCart()) {
-        selectedPaymentMethod.value = PaymentGateway.cod.name;
+        selectedPaymentMethod = PaymentGateway.cod.name;
       } else if (razorPayModel.value.isEnabled == true) {
-        selectedPaymentMethod.value = PaymentGateway.razorpay.name;
+        selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
       razorPay?.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlePaymentSuccess);
       razorPay?.on(Razorpay.EVENT_EXTERNAL_WALLET, handleExternalWaller);
@@ -4426,12 +4231,9 @@ class CartControllerProvider extends ChangeNotifier {
     print('🔑 RAZORPAY OPEN CHECKOUT - Starting payment with crash prevention');
     print('DEBUG: Amount: $amount, Order ID: $orderId');
     print('DEBUG: Razorpay Key: ${razorPayModel.value.razorpayKey}');
-    print(
-      'DEBUG: Payment state - InProgress: ${isPaymentInProgress.value}, Completed: ${isPaymentCompleted.value}',
-    );
 
     // 🔑 CHECK PAYMENT STATE BEFORE OPENING
-    if (isPaymentInProgress.value) {
+    if (isPaymentInProgress) {
       print(
         '🔑 WARNING: Payment already in progress, blocking duplicate payment',
       );
@@ -4441,7 +4243,7 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
 
-    if (isPaymentCompleted.value) {
+    if (isPaymentCompleted) {
       print(
         '🔑 WARNING: Payment already completed, blocking duplicate payment',
       );
@@ -4471,14 +4273,14 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     // 🔑 SET PAYMENT IN PROGRESS STATE
-    isPaymentInProgress.value = true;
+    isPaymentInProgress = true;
     print('🔑 Payment state set to in progress');
 
     // 🔑 CRITICAL FIX: Validate Razorpay configuration before creating options
     if (razorPayModel.value.razorpayKey == null ||
         razorPayModel.value.razorpayKey!.isEmpty) {
       print('🔑 ERROR: Razorpay key is null or empty');
-      isPaymentInProgress.value = false;
+      isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
       );
@@ -4489,7 +4291,7 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '🔑 ERROR: Invalid Razorpay key format: ${razorPayModel.value.razorpayKey}',
       );
-      isPaymentInProgress.value = false;
+      isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
       );
@@ -4509,10 +4311,7 @@ class CartControllerProvider extends ChangeNotifier {
       'description': 'Order Payment',
       'retry': {'enabled': true, 'max_count': 1},
       'send_sms_hash': true,
-      'prefill': {
-        'contact': userModel.value.phoneNumber,
-        'email': userModel.value.email,
-      },
+      'prefill': {'contact': userModel.phoneNumber, 'email': userModel.email},
       'external': {
         'wallets': ['paytm'],
       },
@@ -4530,7 +4329,7 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         print('🔑 ERROR: Failed to open Razorpay payment gateway safely');
         // 🔑 RESET PAYMENT STATE ON ERROR
-        isPaymentInProgress.value = false;
+        isPaymentInProgress = false;
         ShowToastDialog.showToast(
           "Failed to open payment gateway. Please try again.".tr,
         );
@@ -4538,7 +4337,7 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (e) {
       print('🔑 ERROR: Failed to open Razorpay payment gateway: $e');
       // 🔑 RESET PAYMENT STATE ON ERROR
-      isPaymentInProgress.value = false;
+      isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Failed to open payment gateway. Please try again.".tr,
       );
@@ -4563,7 +4362,7 @@ class CartControllerProvider extends ChangeNotifier {
       _lastPaymentId = response.paymentId;
       _lastPaymentSignature = response.signature;
       _lastPaymentTime = DateTime.now();
-      isPaymentCompleted.value = true;
+      isPaymentCompleted = true;
 
       print('🔑 RAZORPAY SUCCESS - Payment details stored');
       print('🔑 RAZORPAY SUCCESS - Payment ID stored: $_lastPaymentId');
@@ -4583,7 +4382,7 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (e) {
       isGlobalLocked.value = false;
       print('🔑 ERROR: Payment success handler failed: $e');
-      isPaymentInProgress.value = false;
+      isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment processing failed. Please try again.".tr,
       );
@@ -4597,13 +4396,13 @@ class CartControllerProvider extends ChangeNotifier {
       print('DEBUG: Payment error: ${response.message}');
 
       // Reset payment state
-      isPaymentInProgress.value = false;
+      isPaymentInProgress = false;
 
       // Show error message
       ShowToastDialog.showToast("Payment failed: ${response.message}".tr);
     } catch (e) {
       print('🔑 ERROR: Payment error handler failed: $e');
-      isPaymentInProgress.value = false;
+      isPaymentInProgress = false;
       ShowToastDialog.showToast("Payment failed. Please try again.".tr);
     }
   }
@@ -4620,7 +4419,7 @@ class CartControllerProvider extends ChangeNotifier {
       );
     } catch (e) {
       print('🔑 ERROR: External wallet handler failed: $e');
-      isPaymentInProgress.value = false;
+      isPaymentInProgress = false;
       ShowToastDialog.showToast("External wallet error. Please try again.".tr);
     }
   }
@@ -4733,8 +4532,8 @@ class CartControllerProvider extends ChangeNotifier {
 
   // 🔑 RESET PAYMENT STATE
   void _resetPaymentState() {
-    isPaymentInProgress.value = false;
-    isPaymentCompleted.value = false;
+    isPaymentInProgress = false;
+    isPaymentCompleted = false;
     _lastPaymentId = null;
     _lastPaymentSignature = null;
     _lastPaymentTime = null;
@@ -4759,7 +4558,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> checkForPendingPayments() async {
     print('🔑 MANUAL PENDING PAYMENT CHECK');
     await _restorePaymentState();
-    if (isPaymentInProgress.value && _lastPaymentId != null) {
+    if (isPaymentInProgress && _lastPaymentId != null) {
       print('🔑 PENDING PAYMENT FOUND - Payment ID: $_lastPaymentId');
       _checkPendingPaymentAndRecover();
     } else {
@@ -4772,7 +4571,7 @@ class CartControllerProvider extends ChangeNotifier {
   void checkPendingPayment() {
     print('🔑 MANUAL PAYMENT RECOVERY CHECK');
     _restorePaymentState().then((_) {
-      if (isPaymentInProgress.value && _lastPaymentId != null) {
+      if (isPaymentInProgress && _lastPaymentId != null) {
         print('🔑 PENDING PAYMENT DETECTED - Showing recovery dialog');
         _checkPendingPaymentAndRecover();
       } else {
@@ -4794,7 +4593,7 @@ class CartControllerProvider extends ChangeNotifier {
       print('🔑 Stored payment method: $paymentMethod');
 
       if (paymentState == 'true') {
-        isPaymentInProgress.value = true;
+        isPaymentInProgress = true;
         _lastPaymentId = Preferences.getString(_paymentIdKey);
         _lastPaymentSignature = Preferences.getString(_paymentSignatureKey);
         final paymentTimeStr = Preferences.getString(_paymentTimeKey);
@@ -4805,30 +4604,20 @@ class CartControllerProvider extends ChangeNotifier {
         print('🔑 Restored Payment Time String: $paymentTimeStr');
         print('🔑 Restored Payment Method: $paymentMethodStr');
 
-        if (paymentTimeStr != null &&
-            paymentTimeStr.isNotEmpty &&
-            paymentTimeStr != '') {
+        if (paymentTimeStr.isNotEmpty && paymentTimeStr != '') {
           _lastPaymentTime = DateTime.fromMillisecondsSinceEpoch(
             int.parse(paymentTimeStr),
           );
           print('🔑 Restored Payment Time: $_lastPaymentTime');
         }
-
         // 🔑 RESTORE PAYMENT METHOD FROM PERSISTENT STORAGE
         if (paymentMethodStr.isNotEmpty && paymentMethodStr != '') {
-          selectedPaymentMethod.value = paymentMethodStr;
-          print('🔑 Payment method restored: ${selectedPaymentMethod.value}');
+          selectedPaymentMethod = paymentMethodStr;
+          print('🔑 Payment method restored: ${selectedPaymentMethod}');
         } else if (_lastPaymentId != null && _lastPaymentId!.isNotEmpty) {
-          // If we have a payment ID but no payment method, it must be a Razorpay payment
-          selectedPaymentMethod.value = PaymentGateway.razorpay.name;
-          print(
-            '🔑 Payment method inferred from payment ID: ${selectedPaymentMethod.value}',
-          );
+          selectedPaymentMethod = PaymentGateway.razorpay.name;
         }
-
         print('🔑 Payment state restored from persistent storage');
-        print('🔑 isPaymentInProgress: ${isPaymentInProgress.value}');
-        print('🔑 isPaymentCompleted: ${isPaymentCompleted.value}');
       } else {
         print('🔑 No pending payment state found');
       }
@@ -4972,7 +4761,7 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.showLoader("Completing your order...".tr);
 
       // Set payment as completed
-      isPaymentCompleted.value = true;
+      isPaymentCompleted = true;
 
       // Try to place the order
       await _processOrderWithRetry();
@@ -5035,7 +4824,7 @@ class CartControllerProvider extends ChangeNotifier {
 
     try {
       // 🔑 VALIDATE PAYMENT STATE BEFORE PROCEEDING
-      if (!isPaymentCompleted.value || _lastPaymentId == null) {
+      if (!isPaymentCompleted || _lastPaymentId == null) {
         throw Exception('Payment validation failed - no valid payment found');
       }
 
@@ -5050,16 +4839,15 @@ class CartControllerProvider extends ChangeNotifier {
       print('🔑 Payment validation successful - Payment ID: $_lastPaymentId');
 
       // 🔑 ENSURE PAYMENT METHOD IS SET CORRECTLY FOR PREPAID ORDERS
-      if (selectedPaymentMethod.value.isEmpty ||
-          selectedPaymentMethod.value == PaymentGateway.cod.name) {
+      if (selectedPaymentMethod.isEmpty ||
+          selectedPaymentMethod == PaymentGateway.cod.name) {
         // If payment method is empty or COD, but we have a successful payment, set it to razorpay
-        selectedPaymentMethod.value = PaymentGateway.razorpay.name;
-        print('🔑 Payment method corrected to: ${selectedPaymentMethod.value}');
+        selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
 
       // Prevent order if fallback location is used - apply to ALL payment methods
-      if (selectedAddress.value?.locality == 'Ongole, Andhra Pradesh, India' ||
-          selectedAddress.value?.addressAs == 'Ongole Center') {
+      if (selectedAddress?.locality == 'Ongole, Andhra Pradesh, India' ||
+          selectedAddress?.addressAs == 'Ongole Center') {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
           "Please select your actual address or use current location to place order."
@@ -5069,8 +4857,7 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      if (selectedPaymentMethod.value == PaymentGateway.cod.name &&
-          subTotal.value > 599) {
+      if (selectedPaymentMethod == PaymentGateway.cod.name && subTotal > 599) {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
           "Cash on Delivery is not available for orders above ₹599. Please select another payment method."
@@ -5080,7 +4867,7 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      if (selectedPaymentMethod.value == PaymentGateway.cod.name &&
+      if (selectedPaymentMethod == PaymentGateway.cod.name &&
           hasPromotionalItems()) {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
@@ -5091,9 +4878,8 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      if (selectedPaymentMethod.value == PaymentGateway.wallet.name) {
-        if (double.parse(userModel.value.walletAmount.toString()) >=
-            totalAmount.value) {
+      if (selectedPaymentMethod == PaymentGateway.wallet.name) {
+        if (double.parse(userModel.walletAmount.toString()) >= totalAmount) {
           await _setOrderInternal();
         } else {
           ShowToastDialog.closeLoader();
@@ -5463,7 +5249,7 @@ class CartControllerProvider extends ChangeNotifier {
         return; // Skip validation if settings are inactive
       }
 
-      final currentSubTotal = subTotal.value;
+      final currentSubTotal = subTotal;
 
       print('[MIN_ORDER_VALIDATION] 💰 Validation Parameters:');
       print('[MIN_ORDER_VALIDATION]   - Minimum order value: ₹$minOrderValue');
@@ -5503,48 +5289,13 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  /// Check if user is repeatedly trying the same failed address
-  bool _isRepeatedFailedAttempt() {
-    if (selectedAddress.value?.id == null) return false;
-
-    final currentAddressId = selectedAddress.value!.id!;
-    final now = DateTime.now();
-
-    // If it's the same address that failed before
-    if (_lastFailedAddressId == currentAddressId) {
-      // If it's within 5 minutes of the last failure
-      if (_lastFailedValidationTime != null &&
-          now.difference(_lastFailedValidationTime!).inMinutes < 5) {
-        _failedAttempts++;
-        print(
-          'DEBUG: Repeated failed attempt #$_failedAttempts for address: $currentAddressId',
-        );
-        return true;
-      }
-    }
-
-    return false;
-  }
-
   /// Reset failed validation tracking when address changes
   void _resetFailedValidationTracking() {
-    if (selectedAddress.value?.id != _lastFailedAddressId) {
+    if (selectedAddress?.id != _lastFailedAddressId) {
       _lastFailedAddressId = null;
       _lastFailedValidationTime = null;
       _failedAttempts = 0;
       print('DEBUG: Reset failed validation tracking - new address selected');
-    }
-  }
-
-  /// Record failed validation attempt
-  void _recordFailedValidation() {
-    if (selectedAddress.value?.id != null) {
-      _lastFailedAddressId = selectedAddress.value!.id!;
-      _lastFailedValidationTime = DateTime.now();
-      _failedAttempts++;
-      print(
-        'DEBUG: Recorded failed validation attempt #$_failedAttempts for address: $_lastFailedAddressId',
-      );
     }
   }
 
@@ -5562,9 +5313,8 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '🏠 [BULLETPROOF_ADDRESS] Address count in list: ${Constant.userModel?.shippingAddress?.length ?? 0}',
       );
-
       // CRITICAL CHECK 1: Address must exist
-      if (selectedAddress.value == null) {
+      if (selectedAddress == null) {
         print(
           '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 1 FAILED - No address selected',
         );
@@ -5580,7 +5330,7 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
 
-      final address = selectedAddress.value!;
+      final address = selectedAddress!;
       print('🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 1 PASSED - Address exists');
       print('🏠 [BULLETPROOF_ADDRESS] Address ID: ${address.id}');
       print('🏠 [BULLETPROOF_ADDRESS] Address: ${address.address}');
@@ -5781,7 +5531,7 @@ class CartControllerProvider extends ChangeNotifier {
         '🏠 [BULLETPROOF_ADDRESS] Address zone: ${address.zoneId ?? "NULL"}',
       );
       print(
-        '🏠 [BULLETPROOF_ADDRESS] Vendor zone: ${vendorModel.value.zoneId ?? "NULL"}',
+        '🏠 [BULLETPROOF_ADDRESS] Vendor zone: ${vendorModel.zoneId ?? "NULL"}',
       );
 
       if (address.zoneId == null || address.zoneId!.isEmpty) {
@@ -5815,13 +5565,12 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
 
-      if (vendorModel.value.zoneId == null ||
-          vendorModel.value.zoneId!.isEmpty) {
+      if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
         print(
           '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 8 FAILED - Vendor zone ID is null',
         );
         print(
-          '🏠 [BULLETPROOF_ADDRESS] Vendor zone ID: "${vendorModel.value.zoneId}"',
+          '🏠 [BULLETPROOF_ADDRESS] Vendor zone ID: "${vendorModel.zoneId}"',
         );
         ShowToastDialog.showToast(
           "Vendor zone not configured. Please contact support.".tr,
@@ -5829,12 +5578,10 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
 
-      if (address.zoneId != vendorModel.value.zoneId) {
+      if (address.zoneId != vendorModel.zoneId) {
         print('🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 8 FAILED - ZONE MISMATCH');
         print('🏠 [BULLETPROOF_ADDRESS] Address zone: "${address.zoneId}"');
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Vendor zone: "${vendorModel.value.zoneId}"',
-        );
+
         print(
           '🏠 [BULLETPROOF_ADDRESS] ERROR: Delivery not available to this address!',
         );
@@ -5854,21 +5601,18 @@ class CartControllerProvider extends ChangeNotifier {
       // CRITICAL CHECK 9: DISTANCE VALIDATION - Address must be within reasonable delivery distance
       print('🏠 [BULLETPROOF_ADDRESS] Starting distance validation...');
 
-      if (vendorModel.value.latitude != null &&
-          vendorModel.value.longitude != null) {
+      if (vendorModel.latitude != null && vendorModel.longitude != null) {
         final distance = Constant.calculateDistance(
           address.location!.latitude!,
           address.location!.longitude!,
-          vendorModel.value.latitude!,
-          vendorModel.value.longitude!,
+          vendorModel.latitude!,
+          vendorModel.longitude!,
         );
 
         print(
           '🏠 [BULLETPROOF_ADDRESS] Calculated distance: ${distance.toStringAsFixed(2)} km',
         );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Vendor location: lat=${vendorModel.value.latitude}, lng=${vendorModel.value.longitude}',
-        );
+
         print(
           '🏠 [BULLETPROOF_ADDRESS] Address location: lat=${address.location!.latitude}, lng=${address.location!.longitude}',
         );
@@ -5946,92 +5690,6 @@ class CartControllerProvider extends ChangeNotifier {
 
       Get.to(() => const AddressListScreen());
       return false;
-    }
-  }
-
-  /// 🔑 CRITICAL FIX: Validate delivery zone to prevent orders to invalid addresses
-  Future<void> _validateDeliveryZone() async {
-    try {
-      print('DEBUG: Validating delivery zone...');
-
-      // Reset tracking if address changed
-      _resetFailedValidationTracking();
-
-      // Check if this is a repeated failed attempt
-      if (_isRepeatedFailedAttempt()) {
-        print('DEBUG: Blocking repeated failed attempt #$_failedAttempts');
-        DeliveryZoneAlertDialog.showRepeatedAttemptError(_failedAttempts);
-        throw Exception('Repeated failed validation attempt blocked');
-      }
-
-      // Check if address has zone information
-      if (selectedAddress.value?.zoneId != null &&
-          selectedAddress.value!.zoneId!.isNotEmpty) {
-        // Check if vendor has zone information
-        if (vendorModel.value.zoneId != null &&
-            vendorModel.value.zoneId!.isNotEmpty) {
-          // Validate zone match
-          if (selectedAddress.value!.zoneId != vendorModel.value.zoneId) {
-            print(
-              'DEBUG: Zone mismatch - Address zone: ${selectedAddress.value!.zoneId}, Vendor zone: ${vendorModel.value.zoneId}',
-            );
-            _recordFailedValidation();
-            DeliveryZoneAlertDialog.showZoneMismatchError();
-            throw Exception('Delivery zone validation failed');
-          }
-
-          print(
-            'DEBUG: Zone validation passed - Address and vendor in same zone: ${selectedAddress.value!.zoneId}',
-          );
-          return;
-        }
-      }
-
-      // Fallback: Distance-based validation for addresses without zone info
-      if (selectedAddress.value?.location?.latitude != null &&
-          selectedAddress.value?.location?.longitude != null &&
-          vendorModel.value.latitude != null &&
-          vendorModel.value.longitude != null) {
-        final distance = Geolocator.distanceBetween(
-          selectedAddress.value!.location!.latitude!,
-          selectedAddress.value!.location!.longitude!,
-          vendorModel.value.latitude!,
-          vendorModel.value.longitude!,
-        );
-
-        print('DEBUG: Distance-based validation - Distance: ${distance}m');
-
-        // Reject orders beyond reasonable delivery distance (20km)
-        if (distance > 20000) {
-          // 20km in meters
-          print('DEBUG: Distance too far - ${distance}m > 20000m');
-          _recordFailedValidation();
-          DeliveryZoneAlertDialog.showDistanceTooFarError();
-          throw Exception('Delivery distance validation failed');
-        }
-
-        print('DEBUG: Distance validation passed - Distance: ${distance}m');
-        return;
-      }
-
-      // Special handling for mart items - skip zone validation if no vendor location
-      if (hasMartItemsInCart() &&
-          vendorModel.value.latitude == null &&
-          vendorModel.value.longitude == null) {
-        print(
-          'DEBUG: Mart items with no vendor location - skipping zone validation',
-        );
-        return;
-      }
-
-      // If no zone or distance validation possible, show warning but allow order
-      print(
-        'DEBUG: No zone or distance validation possible - allowing order with warning',
-      );
-      DeliveryZoneAlertDialog.showZoneValidationWarning();
-    } catch (e) {
-      print('DEBUG: Delivery zone validation failed: $e');
-      rethrow;
     }
   }
 }

@@ -6,21 +6,21 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart'
     show AddressListProvider;
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/user_model.dart';
+import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'dart:async';
 import 'package:jippymart_customer/models/BannerModel.dart';
-import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/gps_location_service.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/performance_optimizer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -361,6 +361,8 @@ class HomeProvider extends ChangeNotifier {
   late BestRestaurantProvider bestRestaurantProvider;
   late DashBoardProvider dashBoardProvider;
   late AddressListProvider addressListProvider;
+  late FavouriteProvider favouriteProvider;
+  late OrderProvider orderProvider;
 
   void initFunction({required BuildContext context}) {
     categoryViewProvider = Provider.of<CategoryViewProvider>(
@@ -376,6 +378,8 @@ class HomeProvider extends ChangeNotifier {
       context,
       listen: false,
     );
+    favouriteProvider = Provider.of<FavouriteProvider>(context, listen: false);
+    orderProvider = Provider.of<OrderProvider>(context, listen: false);
     _loadAllDataInParallel(context);
     scrollController.addListener(() {
       if (scrollController.position.userScrollDirection.toString() ==
@@ -438,9 +442,9 @@ class HomeProvider extends ChangeNotifier {
 
   late TabController tabController;
 
-  RxList<BannerModel> bannerModel = <BannerModel>[].obs;
-  RxList<BannerModel> bannerBottomModel = <BannerModel>[].obs;
-  RxList<FavouriteModel> favouriteList = <FavouriteModel>[].obs;
+  List<BannerModel> bannerModel = <BannerModel>[];
+  List<BannerModel> bannerBottomModel = <BannerModel>[];
+  List<VendorModel> favouriteList = <VendorModel>[];
 
   // Optimized parallel data loading
   Future<void> _loadAllDataInParallel(BuildContext context) async {
@@ -458,7 +462,8 @@ class HomeProvider extends ChangeNotifier {
         bestRestaurantProvider.loadRestaurantsAndRelatedData(),
       ]);
       dashBoardProvider.initFunction(context);
-      print('[DEBUG] All parallel data fetch completed');
+      favouriteProvider.initFunction();
+      orderProvider.initFunction();
       setLoading();
     });
   }
@@ -534,7 +539,6 @@ class HomeProvider extends ChangeNotifier {
 
   Future<void> _loadBanners() async {
     print('[DEBUG] Loading banners from API');
-
     // Log current zone information
     String? currentZoneId = Constant.selectedZone?.id;
     String? currentZoneTitle = Constant.selectedZone?.name;
@@ -545,14 +549,14 @@ class HomeProvider extends ChangeNotifier {
     try {
       await Future.wait([
         getHomeTopBanner("top").then((value) {
-          bannerModel.value = value;
+          bannerModel = value;
           print('[BANNER_LOADING] Top banners loaded: ${value.length}');
           print(
             '[BANNER_LOADING] Top banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
           );
         }),
         getHomeTopBanner("middle").then((value) {
-          bannerBottomModel.value = value;
+          bannerBottomModel = value;
           print('[BANNER_LOADING] Bottom banners loaded: ${value.length}');
           print(
             '[BANNER_LOADING] Bottom banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
@@ -575,95 +579,12 @@ class HomeProvider extends ChangeNotifier {
   Future<void> _loadFavorites() async {
     print('[DEBUG] Loading favorites');
     if (Constant.userModel != null) {
-      await FireStoreUtils.getFavouriteRestaurant().then((value) {
-        favouriteList.value = value;
+      await FavouriteProvider.getFavouriteRestaurants().then((value) {
+        favouriteList = value;
         print('[DEBUG] Favorites loaded: ${value.length}');
       });
     }
   }
-
-  // Load restaurants and related data in parallel
-  // Future<void> _loadRestaurantsAndRelatedData() async {
-  //   print('[DEBUG] Loading restaurants and related data');
-  //
-  //   // **CRITICAL: Add initial delay to ensure splash screen has finished**
-  //   await Future.delayed(Duration(milliseconds: 100));
-  //
-  //   // Location and zone should already be set by the main loading process
-  //
-  //   // Start restaurant stream and load related data in parallel
-  //   FireStoreUtils.getAllNearestRestaurant().listen((event) async {
-  //     print('[DEBUG] Restaurant stream received ${event.length} restaurants');
-  //
-  //     // Clear lists efficiently
-  //     popularRestaurantList.clear();
-  //     newArrivalRestaurantList.clear();
-  //     allNearestRestaurant.clear();
-  //     advertisementList.clear();
-  //
-  //     // Add all restaurants at once
-  //     allNearestRestaurant.addAll(event);
-  //     newArrivalRestaurantList.addAll(event);
-  //     popularRestaurantList.addAll(event);
-  //     Constant.restaurantList = allNearestRestaurant;
-  //
-  //     // Load related data in parallel
-  //     await _loadRelatedDataInParallel(allNearestRestaurant);
-  //
-  //     // Calculate distances and sort
-  //     await _processRestaurantData(allNearestRestaurant);
-  //
-  //     // **DEBUG: Log restaurant diagnostics**
-  //     logRestaurantDiagnostics();
-  //   });
-  // }
-
-  // Helper method to parse DateTime from various timestamp formats
-
-  // Process restaurant data (distances and sorting)
-  // Future<void> _processRestaurantData(List<VendorModel> restaurants) async {
-  //   print('[DEBUG] Processing restaurant data');
-  //   await _calculateDistancesInBatches(restaurants);
-  //   // Sort by distance, then by rating
-  //   allNearestRestaurant.sort((a, b) {
-  //     double distanceA = Constant.calculateDistance(
-  //       Constant.selectedLocation.location!.latitude!,
-  //       Constant.selectedLocation.location!.longitude!,
-  //       a.latitude!,
-  //       a.longitude!,
-  //     );
-  //     double distanceB = Constant.calculateDistance(
-  //       Constant.selectedLocation.location!.latitude!,
-  //       Constant.selectedLocation.location!.longitude!,
-  //       b.latitude!,
-  //       b.longitude!,
-  //     );
-  //     int distanceCompare = distanceA.compareTo(distanceB);
-  //     if (distanceCompare != 0) return distanceCompare;
-  //     double ratingA = double.tryParse(a.reviewsSum?.toString() ?? '0') ?? 0;
-  //     double ratingB = double.tryParse(b.reviewsSum?.toString() ?? '0') ?? 0;
-  //     return ratingB.compareTo(ratingA);
-  //   });
-  //   popularRestaurantList.sort(
-  //     (a, b) =>
-  //         Constant.calculateReview(
-  //           reviewCount: b.reviewsCount.toString(),
-  //           reviewSum: b.reviewsSum.toString(),
-  //         ).compareTo(
-  //           Constant.calculateReview(
-  //             reviewCount: a.reviewsCount.toString(),
-  //             reviewSum: a.reviewsSum.toString(),
-  //           ),
-  //         ),
-  //   );
-  //   newArrivalRestaurantList.sort(
-  //     (a, b) => (b.createdAt ?? Timestamp.now()).toDate().compareTo(
-  //       (a.createdAt ?? Timestamp.now()).toDate(),
-  //     ),
-  //   );
-  //
-  //   print('[DEBUG] Restaurant data processing completed');
-  // }
 
   /// **ENSURE USER MODEL IS LOADED BEFORE LOCATION DETECTION**
   Future<void> _ensureUserModelIsLoaded() async {
@@ -987,8 +908,8 @@ class HomeProvider extends ChangeNotifier {
 
   getFavouriteRestaurant() async {
     if (Constant.userModel != null) {
-      await FireStoreUtils.getFavouriteRestaurant().then((value) {
-        favouriteList.value = value;
+      await FavouriteProvider.getFavouriteRestaurants().then((value) {
+        favouriteList = value;
       });
     }
   }

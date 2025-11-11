@@ -19,10 +19,7 @@ import 'package:provider/provider.dart';
 class MartProductDetailsScreen extends StatefulWidget {
   final dynamic product;
 
-  const MartProductDetailsScreen({
-    super.key,
-    required this.product,
-  });
+  const MartProductDetailsScreen({super.key, required this.product});
 
   @override
   State<MartProductDetailsScreen> createState() =>
@@ -37,7 +34,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   int cartQuantity = 0;
   Timer? _cartStatusTimer;
   Timer? _loadingTimeoutTimer;
-  bool _showLoadingTimeout = false;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   MartBrandModel? brandData;
 
@@ -64,7 +60,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   /// Fetch delivery settings from Firestore
   void _fetchDeliverySettings() {
     try {
-      final martController = Provider.of<MartProvider>(context,listen: false);
+      final martController = Provider.of<MartProvider>(context, listen: false);
       martController.fetchDeliverySettings();
     } catch (e) {
       print('Error fetching delivery settings: $e');
@@ -109,7 +105,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   void _checkCartStatus() {
     try {
       print(
-          '[CART STATUS] Checking cart status for product: ${widget.product.id}');
+        '[CART STATUS] Checking cart status for product: ${widget.product.id}',
+      );
       print('[CART STATUS] Total cart items: ${cartItem.length}');
 
       // Find the product in the global cart list
@@ -119,13 +116,15 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
       );
 
       print(
-          '[CART STATUS] Found cart item: ${foundCartItem.id}, quantity: ${foundCartItem.quantity}');
+        '[CART STATUS] Found cart item: ${foundCartItem.id}, quantity: ${foundCartItem.quantity}',
+      );
 
       if (foundCartItem.id != null &&
           foundCartItem.quantity != null &&
           foundCartItem.quantity! > 0) {
         print(
-            '[CART STATUS] Product is in cart with quantity: ${foundCartItem.quantity}');
+          '[CART STATUS] Product is in cart with quantity: ${foundCartItem.quantity}',
+        );
         setState(() {
           isInCart = true;
           cartQuantity = foundCartItem.quantity!;
@@ -156,10 +155,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   void _navigateToBrandProducts(String? brandID, String brandTitle) {
     if (brandID != null && brandID.isNotEmpty) {
       // Navigate to brand products page
-      Get.to(() => MartBrandProductsScreen(
-            brandID: brandID,
-            brandTitle: brandTitle,
-          ));
+      Get.to(
+        () => MartBrandProductsScreen(brandID: brandID, brandTitle: brandTitle),
+      );
     } else {
       // Show error message if brand ID is not available
       ScaffoldMessenger.of(context).showSnackBar(
@@ -315,12 +313,16 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                       GestureDetector(
                         onTap: () {
                           // Navigate to brand products page
-                          _navigateToBrandProducts(widget.product.brandID,
-                              widget.product.brandTitle!);
+                          _navigateToBrandProducts(
+                            widget.product.brandID,
+                            widget.product.brandTitle!,
+                          );
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
@@ -334,7 +336,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                                   color: Colors.transparent,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: brandData?.logoUrl != null &&
+                                child:
+                                    brandData?.logoUrl != null &&
                                         brandData!.logoUrl.isNotEmpty
                                     ? ClipRRect(
                                         borderRadius: BorderRadius.circular(6),
@@ -398,7 +401,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                               const SizedBox(width: 8),
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.green,
                                   borderRadius: BorderRadius.circular(4),
@@ -433,7 +438,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                           children: [
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: Colors.green,
                                 borderRadius: BorderRadius.circular(4),
@@ -441,8 +448,11 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  const Icon(Icons.star,
-                                      color: Colors.white, size: 16),
+                                  const Icon(
+                                    Icons.star,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
                                   const SizedBox(width: 2),
                                   Text(
                                     '${widget.product.reviewSum ?? 0}',
@@ -475,8 +485,11 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                     // Delivery Information
                     Row(
                       children: [
-                        const Icon(Icons.flash_on,
-                            color: Colors.purple, size: 20),
+                        const Icon(
+                          Icons.flash_on,
+                          color: Colors.purple,
+                          size: 20,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -506,8 +519,11 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.block,
-                                  color: Colors.grey[600], size: 20),
+                              Icon(
+                                Icons.block,
+                                color: Colors.grey[600],
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -533,8 +549,11 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.flash_on,
-                                  color: Colors.grey[600], size: 20),
+                              Icon(
+                                Icons.flash_on,
+                                color: Colors.grey[600],
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -603,7 +622,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                     //     ),
                     //   ],
                     // ),
-
                     const SizedBox(height: 10),
 
                     // Description
@@ -774,9 +792,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
             ),
 
             // Bottom padding
-            const SliverToBoxAdapter(
-              child: SizedBox(height: 100),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
 
@@ -799,7 +815,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               children: [
                 // Delivery Information - Only show if active
                 Consumer<MartProvider>(
-                  builder: (context,martController,_) {
+                  builder: (context, martController, _) {
                     if (!martController.isDeliverySettingsActive) {
                       return const SizedBox.shrink(); // Hide if not active
                     }
@@ -818,7 +834,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                         const SizedBox(width: 4),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.green,
                             borderRadius: BorderRadius.circular(4),
@@ -853,8 +871,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
       child: ElevatedButton(
         onPressed: () async {
           try {
-
-            CartControllerProvider  cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+            CartControllerProvider cartControllerProvider =
+                Provider.of<CartControllerProvider>(context, listen: false);
 
             final martVendorID = "mart_${widget.product.vendorID ?? 'unknown'}";
 
@@ -863,13 +881,14 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               name: widget.product.name,
               photo: widget.product.photo,
               price: widget.product.price?.toString() ?? '0',
-              discountPrice: widget.product.disPrice?.toString() ??
+              discountPrice:
+                  widget.product.disPrice?.toString() ??
                   widget.product.price?.toString() ??
                   '0',
-              vendorID:
-                  martVendorID, // Prefix with "mart_" to identify as mart item
-              vendorName:
-                  "Jippy Mart", // Add vendor name to satisfy NOT NULL constraint
+              vendorID: martVendorID,
+              // Prefix with "mart_" to identify as mart item
+              vendorName: "Jippy Mart",
+              // Add vendor name to satisfy NOT NULL constraint
               categoryId: widget.product.categoryID,
               quantity: quantity,
               extrasPrice: '0',
@@ -877,7 +896,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               variantInfo: null,
               promoId: null,
             );
-
 
             final success = await cartControllerProvider.addToCart(
               cartProductModel: cartProduct,
@@ -915,11 +933,13 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                     textColor: Colors.white,
                     onPressed: () {
                       Get.to(
-                          () => const CartScreen(
-                              hideBackButton: false,
-                              source: 'mart',
-                              isFromMartNavigation: false),
-                          fullscreenDialog: true);
+                        () => const CartScreen(
+                          hideBackButton: false,
+                          source: 'mart',
+                          isFromMartNavigation: false,
+                        ),
+                        fullscreenDialog: true,
+                      );
                     },
                   ),
                 ),
@@ -946,10 +966,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         ),
         child: const Text(
           'Add to cart',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -957,8 +974,10 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
   Widget _buildCartActions() {
     // Get total cart items count from the global cart list
-    final totalCartItems =
-        cartItem.fold(0, (sum, item) => sum + (item.quantity ?? 0));
+    final totalCartItems = cartItem.fold(
+      0,
+      (sum, item) => sum + (item.quantity ?? 0),
+    );
 
     return Row(
       children: [
@@ -975,11 +994,13 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               onPressed: () {
                 // Navigate to cart screen
                 Get.to(
-                    () => const CartScreen(
-                        hideBackButton: false,
-                        source: 'mart',
-                        isFromMartNavigation: false),
-                    fullscreenDialog: true);
+                  () => const CartScreen(
+                    hideBackButton: false,
+                    source: 'mart',
+                    isFromMartNavigation: false,
+                  ),
+                  fullscreenDialog: true,
+                );
               },
               icon: Stack(
                 children: [
@@ -987,8 +1008,10 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                     'assets/icons/ic_shoping_cart.svg',
                     width: 24,
                     height: 24,
-                    colorFilter:
-                        const ColorFilter.mode(Colors.grey, BlendMode.srcIn),
+                    colorFilter: const ColorFilter.mode(
+                      Colors.grey,
+                      BlendMode.srcIn,
+                    ),
                   ),
                   if (totalCartItems > 0)
                     Positioned(
@@ -1055,7 +1078,11 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                   onPressed: () async {
                     try {
                       // Get the cart controller
-                      CartControllerProvider cartControllerProvider =  Provider.of<CartControllerProvider>(context,listen:false);
+                      CartControllerProvider cartControllerProvider =
+                          Provider.of<CartControllerProvider>(
+                            context,
+                            listen: false,
+                          );
 
                       // Create CartProductModel for removal
                       final martVendorID =
@@ -1065,7 +1092,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                         name: widget.product.name,
                         photo: widget.product.photo,
                         price: widget.product.price?.toString() ?? '0',
-                        discountPrice: widget.product.disPrice?.toString() ??
+                        discountPrice:
+                            widget.product.disPrice?.toString() ??
                             widget.product.price?.toString() ??
                             '0',
                         vendorID: martVendorID,
@@ -1117,7 +1145,11 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                   onPressed: () async {
                     try {
                       // Get the cart controller
-                      CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+                      CartControllerProvider cartControllerProvider =
+                          Provider.of<CartControllerProvider>(
+                            context,
+                            listen: false,
+                          );
 
                       // Create CartProductModel for addition
                       final martVendorID =
@@ -1127,7 +1159,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                         name: widget.product.name,
                         photo: widget.product.photo,
                         price: widget.product.price?.toString() ?? '0',
-                        discountPrice: widget.product.disPrice?.toString() ??
+                        discountPrice:
+                            widget.product.disPrice?.toString() ??
                             widget.product.price?.toString() ??
                             '0',
                         vendorID: martVendorID,
@@ -1188,20 +1221,23 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   }
 
   Widget _buildSimilarProducts() {
-    final controller =Provider.of<MartProvider>(context,listen:false);
+    final controller = Provider.of<MartProvider>(context, listen: false);
 
     // Debug logging
     print('[SIMILAR PRODUCTS] Current product: ${widget.product.name}');
     print(
-        '[SIMILAR PRODUCTS] Current product categoryID: ${widget.product.categoryID}');
+      '[SIMILAR PRODUCTS] Current product categoryID: ${widget.product.categoryID}',
+    );
     print(
-        '[SIMILAR PRODUCTS] Current product subcategoryID: ${widget.product.subcategoryID}');
+      '[SIMILAR PRODUCTS] Current product subcategoryID: ${widget.product.subcategoryID}',
+    );
 
     // Check if we have the required categoryID
     if (widget.product.categoryID == null ||
         widget.product.categoryID!.isEmpty) {
       print(
-          '[SIMILAR PRODUCTS] No categoryID available, cannot load similar products');
+        '[SIMILAR PRODUCTS] No categoryID available, cannot load similar products',
+      );
       return Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
@@ -1212,10 +1248,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         child: const Center(
           child: Text(
             'No similar products available',
-            style: TextStyle(
-              color: Colors.grey,
-              fontSize: 14,
-            ),
+            style: TextStyle(color: Colors.grey, fontSize: 14),
           ),
         ),
       );
@@ -1230,14 +1263,17 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
       ),
       builder: (context, snapshot) {
         print(
-            '[SIMILAR PRODUCTS] Stream snapshot state: ${snapshot.connectionState}');
+          '[SIMILAR PRODUCTS] Stream snapshot state: ${snapshot.connectionState}',
+        );
         print('[SIMILAR PRODUCTS] Stream has data: ${snapshot.hasData}');
         print('[SIMILAR PRODUCTS] Stream has error: ${snapshot.hasError}');
         if (snapshot.hasData) {
           print(
-              '[SIMILAR PRODUCTS] Stream data length: ${snapshot.data?.length ?? 0}');
+            '[SIMILAR PRODUCTS] Stream data length: ${snapshot.data?.length ?? 0}',
+          );
           print(
-              '[SIMILAR PRODUCTS] Stream data: ${snapshot.data?.map((item) => item.name).toList()}');
+            '[SIMILAR PRODUCTS] Stream data: ${snapshot.data?.map((item) => item.name).toList()}',
+          );
         }
 
         if (snapshot.hasError) {
@@ -1252,11 +1288,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.error_outline,
-                  color: Colors.red[400],
-                  size: 32,
-                ),
+                Icon(Icons.error_outline, color: Colors.red[400], size: 32),
                 const SizedBox(height: 8),
                 const Text(
                   'Unable to load similar products',
@@ -1269,10 +1301,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                 const SizedBox(height: 4),
                 Text(
                   'Please check your connection',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ],
             ),
@@ -1283,7 +1312,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         if (snapshot.hasData && snapshot.data!.isNotEmpty) {
           final similarProducts = snapshot.data!;
           print(
-              '[SIMILAR PRODUCTS] Stream returned ${similarProducts.length} similar products');
+            '[SIMILAR PRODUCTS] Stream returned ${similarProducts.length} similar products',
+          );
 
           return SizedBox(
             height: 280, // Increased height to accommodate 2-line titles
@@ -1321,8 +1351,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                     height: 24,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Colors.purple[400]!),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Colors.purple[400]!,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1337,10 +1368,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                   const SizedBox(height: 4),
                   Text(
                     'Loading products from mart_items collection',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
                   ),
                 ],
               ),
@@ -1377,10 +1405,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                 const SizedBox(height: 4),
                 Text(
                   'Try refreshing or check back later',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
                 ),
               ],
             ),
@@ -1398,10 +1423,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
           child: const Center(
             child: Text(
               'Loading...',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ),
         );
@@ -1432,8 +1454,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
           children: [
             // Product Image
             ClipRRect(
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
               child: Container(
                 height: 150, // Increased image height to match new card height
                 width: double.infinity,
@@ -1492,7 +1515,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6), // Slightly increased spacing
-
                     // Price
                     Row(
                       children: [
@@ -1529,7 +1551,11 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                         onPressed: () async {
                           try {
                             // Get the cart controller
-                            CartControllerProvider cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
+                            CartControllerProvider cartControllerProvider =
+                                Provider.of<CartControllerProvider>(
+                                  context,
+                                  listen: false,
+                                );
 
                             // Convert MartItemModel to CartProductModel
                             final martVendorID =
@@ -1539,7 +1565,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                               name: product.name,
                               photo: product.photo,
                               price: product.price?.toString() ?? '0',
-                              discountPrice: product.disPrice?.toString() ??
+                              discountPrice:
+                                  product.disPrice?.toString() ??
                                   product.price?.toString() ??
                                   '0',
                               vendorID: martVendorID,
@@ -1572,13 +1599,15 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:  ColorConst.orangeLight,
+                          backgroundColor: ColorConst.orangeLight,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(
-                              vertical: 4), // Smaller padding
+                            vertical: 4,
+                          ), // Smaller padding
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(
-                                3), // Smaller border radius
+                              3,
+                            ), // Smaller border radius
                           ),
                         ),
                         child: const Text(

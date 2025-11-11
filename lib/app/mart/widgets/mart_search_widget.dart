@@ -5,7 +5,6 @@ import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_product_card.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:provider/provider.dart';
@@ -506,15 +505,15 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
         Expanded(
           child: Consumer<MartSearchProvider>(
             builder: (context, controller, _) {
-              if (controller.isLoading.value) {
+              if (controller.isLoading) {
                 return _buildLoadingWidget();
               }
 
-              if (controller.errorMessage.value.isNotEmpty) {
+              if (controller.errorMessage.isNotEmpty) {
                 return _buildErrorWidget();
               }
 
-              if (controller.searchQuery.value.isEmpty) {
+              if (controller.searchQuery.isEmpty) {
                 return _buildEmptyState();
               }
 
@@ -689,7 +688,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
           ),
           const SizedBox(height: 8),
           Text(
-            searchController.errorMessage.value,
+            searchController.errorMessage,
             textAlign: TextAlign.center,
             style: const TextStyle(color: Colors.grey),
           ),
@@ -891,7 +890,6 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
         final horizontalPadding = 16.0;
         final spacing = 8.0; // 🔑 Reduced spacing for tighter layout
 
-        // 🔑 Calculate responsive grid columns - ensure at least 2 horizontally
         final availableWidth = screenWidth - (horizontalPadding * 2);
         final minItemWidth = 120.0; // Minimum width for each chip
         final maxColumns = (availableWidth / minItemWidth).floor();
@@ -917,7 +915,6 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
           itemCount: searches.length,
           itemBuilder: (context, index) {
             final search = searches[index];
-            final popularity = search['popularity'] ?? 0;
 
             return TweenAnimationBuilder<double>(
               duration: Duration(milliseconds: 200 + (index * 50)),
@@ -1170,7 +1167,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
           if (searchController.searchResults.isNotEmpty) _buildItemsSection(),
 
           // Load More Button
-          if (searchController.hasMoreItems.value) _buildLoadMoreButton(),
+          if (searchController.hasMoreItems) _buildLoadMoreButton(),
 
           // No Results
           if (searchController.categoryResults.isEmpty &&
@@ -1249,7 +1246,6 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
                 (spacing * (crossAxisCount - 1));
             final cardWidth = availableWidth / crossAxisCount;
             // More flexible aspect ratio to accommodate content-based card heights
-            final aspectRatio = isTablet ? 0.7 : (isLargePhone ? 0.65 : 0.6);
 
             // 🔑 Use Wrap instead of GridView to allow flexible heights
             return Padding(
@@ -1296,10 +1292,10 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
       child: Consumer<MartSearchProvider>(
         builder: (context, controller, _) {
           return ElevatedButton(
-            onPressed: controller.isLoading.value
+            onPressed: controller.isLoading
                 ? null
                 : () => controller.loadMoreItems(),
-            child: controller.isLoading.value
+            child: controller.isLoading
                 ? const SizedBox(
                     width: 20,
                     height: 20,

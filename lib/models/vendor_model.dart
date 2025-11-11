@@ -104,8 +104,6 @@ class VendorModel {
     author = json['author'];
     dineInActive = json['dine_in_active'];
     openDineTime = json['openDineTime'];
-
-    // Handle categoryID - could be List or String
     if (json['categoryID'] != null) {
       if (json['categoryID'] is List) {
         categoryID = json['categoryID'];
@@ -115,7 +113,6 @@ class VendorModel {
     } else {
       categoryID = [];
     }
-
     id = json['id'];
     categoryPhoto = json['categoryPhoto'];
     restaurantMenuPhotos = json['restaurantMenuPhotos'] ?? [];
@@ -145,24 +142,36 @@ class VendorModel {
     walletAmount = json['walletAmount'];
     closeDineTime = json['closeDineTime'];
     zoneId = json['zoneId'];
-
-    // Handle createdAt - could be String from API
     createdAt = json['createdAt']?.toString();
-
     // Handle longitude - could be double or String
+    // ✅ Handle longitude
     if (json['longitude'] != null) {
       longitude = json['longitude'] is double
           ? json['longitude']
           : double.tryParse(json['longitude'].toString());
     }
-
+    if (json['coordinates'] != null) {
+      final coord = json['coordinates'];
+      if (coord is GeoPoint) {
+        coordinates = coord;
+      } else if (coord is Map &&
+          coord['latitude'] != null &&
+          coord['longitude'] != null) {
+        coordinates = GeoPoint(
+          (coord['latitude'] as num).toDouble(),
+          (coord['longitude'] as num).toDouble(),
+        );
+      } else {
+        print("⚠️ Invalid coordinates format: $coord");
+      }
+    }
     enabledDiveInFuture = json['enabledDiveInFuture'];
     restaurantCost = json['restaurantCost']?.toString();
-
-    deliveryCharge = json['DeliveryCharge'] != null
-        ? DeliveryCharge.fromJson(json['DeliveryCharge'])
-        : null;
-
+    if (json['DeliveryCharge'] != null && json['DeliveryCharge'] is Map) {
+      deliveryCharge = DeliveryCharge.fromJson(json['DeliveryCharge']);
+    } else {
+      deliveryCharge = null;
+    }
     // **FIX: Handle adminCommission - could be Map or JSON String**
     if (json['adminCommission'] != null) {
       if (json['adminCommission'] is Map) {
@@ -196,10 +205,26 @@ class VendorModel {
     }
 
     specialDiscountEnable = json['specialDiscountEnable'];
-    coordinates = json['coordinates'];
     reviewsSum = json['reviewsSum'] ?? 0.0;
     photos = json['photos'] ?? [];
     title = json['title'];
+    if (json['coordinates'] != null) {
+      final coord = json['coordinates'];
+      if (coord is GeoPoint) {
+        coordinates = coord;
+      } else if (coord is Map &&
+          coord['latitude'] != null &&
+          coord['longitude'] != null) {
+        coordinates = GeoPoint(
+          (coord['latitude'] as num).toDouble(),
+          (coord['longitude'] as num).toDouble(),
+        );
+      } else {
+        print("⚠️ Invalid coordinates format: $coord");
+      }
+    }
+    // ❌ Remove or comment out this line:
+    // coordinates = json['coordinates'];
 
     // Handle categoryTitle - could be List or String
     if (json['categoryTitle'] != null) {
@@ -413,7 +438,17 @@ class G {
 
   G.fromJson(Map<String, dynamic> json) {
     geohash = json['geohash'];
-    geopoint = json['geopoint'];
+    if (json['geopoint'] != null) {
+      if (json['geopoint'] is GeoPoint) {
+        geopoint = json['geopoint'];
+      } else if (json['geopoint'] is Map) {
+        final map = json['geopoint'] as Map;
+        geopoint = GeoPoint(
+          (map['latitude'] as num).toDouble(),
+          (map['longitude'] as num).toDouble(),
+        );
+      }
+    }
   }
 
   Map<String, dynamic> toJson() {

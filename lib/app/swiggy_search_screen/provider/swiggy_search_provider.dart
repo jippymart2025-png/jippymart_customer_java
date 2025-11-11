@@ -74,7 +74,6 @@ class SwiggySearchProvider extends ChangeNotifier {
   // **FIRESTORE PAGINATION CURSORS**
   DocumentSnapshot? _lastVendorDocument;
   DocumentSnapshot? _lastProductDocument;
-  DocumentSnapshot? _lastCategoryDocument;
 
   // **DEBOUNCE TIMER**
   Timer? _debounceTimer;
@@ -1353,7 +1352,6 @@ class SwiggySearchProvider extends ChangeNotifier {
       // Reset pagination state
       _lastVendorDocument = null;
       _lastProductDocument = null;
-      _lastCategoryDocument = null;
       hasMoreResults.value = true;
 
       // **PARALLEL SEARCH: Search vendors and products simultaneously using Firestore**

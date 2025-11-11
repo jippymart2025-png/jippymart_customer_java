@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
@@ -13,7 +12,6 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 /// - Providing safe wrappers for platform channels
 class NativeLockPrevention {
   static const Duration _maxNativeOperationTime = Duration(seconds: 2);
-  static const Duration _maxHeavyNativeOperationTime = Duration(seconds: 5);
   static final Map<String, DateTime> _activeNativeOperations = {};
   static Timer? _lockContentionMonitor;
   static bool _isMonitoring = false;

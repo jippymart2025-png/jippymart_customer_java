@@ -30,11 +30,6 @@ class PerformanceMonitor {
   final List<Completer<void>> _pendingOperations = [];
 
   // **MEMORY MONITORING**
-  int _lastMemoryUsage = 0;
-  DateTime? _lastMemoryCheck;
-  static const Duration _memoryCheckInterval = Duration(minutes: 5);
-
-  /// **START OPERATION MONITORING**
   ///
   /// Wraps an operation with performance monitoring and ANR prevention
   static Future<T> monitorOperation<T>(

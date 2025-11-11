@@ -3,13 +3,11 @@ import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_deta
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
-import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
-import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
@@ -226,77 +224,76 @@ class AdvertisementCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  model.type == 'restaurant_promotion'
-                      ? Obx(
-                          () => IconButton(
-                            icon:
-                                controller.favouriteList
-                                    .where(
-                                      (p0) => p0.restaurantId == model.vendorId,
-                                    )
-                                    .isNotEmpty
-                                ? SvgPicture.asset(
-                                    "assets/icons/ic_like_fill.svg",
-                                  )
-                                : SvgPicture.asset(
-                                    "assets/icons/ic_like.svg",
-                                    colorFilter: ColorFilter.mode(
-                                      AppThemeData.grey600,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                            onPressed: () async {
-                              if (controller.favouriteList
-                                  .where(
-                                    (p0) => p0.restaurantId == model.vendorId,
-                                  )
-                                  .isNotEmpty) {
-                                final userId =
-                                    await SqlStorageConst.getFirebaseId();
-                                FavouriteModel favouriteModel = FavouriteModel(
-                                  restaurantId: model.vendorId,
-                                  userId: userId,
-                                );
-                                controller.favouriteList.removeWhere(
-                                  (item) => item.restaurantId == model.vendorId,
-                                );
-                                await FireStoreUtils.removeFavouriteRestaurant(
-                                  favouriteModel,
-                                );
-                              } else {
-                                final userId =
-                                    await SqlStorageConst.getFirebaseId();
-                                FavouriteModel favouriteModel = FavouriteModel(
-                                  restaurantId: model.vendorId,
-                                  userId: userId,
-                                );
-                                controller.favouriteList.add(favouriteModel);
-                                await FireStoreUtils.setFavouriteRestaurant(
-                                  favouriteModel,
-                                );
-                              }
-                            },
-                          ),
-                        )
-                      : Container(
-                          decoration: ShapeDecoration(
-                            color: AppThemeData.primary50,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            child: Icon(
-                              Icons.arrow_forward,
-                              size: 20,
-                              color: AppThemeData.primary300,
-                            ),
-                          ),
-                        ),
+                  // model.type == 'restaurant_promotion'
+                  //     ? Obx(
+                  //         () => IconButton(
+                  //           icon:
+                  //               controller.favouriteList
+                  //                   .where(
+                  //                     (p0) => p0.restaurantId == model.vendorId,
+                  //                   )
+                  //                   .isNotEmpty
+                  //               ? SvgPicture.asset(
+                  //                   "assets/icons/ic_like_fill.svg",
+                  //                 )
+                  //               : SvgPicture.asset(
+                  //                   "assets/icons/ic_like.svg",
+                  //                   colorFilter: ColorFilter.mode(
+                  //                     AppThemeData.grey600,
+                  //                     BlendMode.srcIn,
+                  //                   ),
+                  //                 ),
+                  //           onPressed: () async {
+                  //             final userId =
+                  //                 await SqlStorageConst.getFirebaseId();
+                  //             if (controller.favouriteList
+                  //                 .where(
+                  //                   (p0) => p0.restaurantId == model.vendorId,
+                  //                 )
+                  //                 .isNotEmpty) {
+                  //               FavouriteModel favouriteModel = FavouriteModel(
+                  //                 restaurantId: model.vendorId,
+                  //                 userId: userId,
+                  //               );
+                  //               controller.favouriteList.removeWhere(
+                  //                 (item) => item.restaurantId == model.vendorId,
+                  //               );
+                  //               await FireStoreUtils.removeFavouriteRestaurant(
+                  //                 favouriteModel,
+                  //               );
+                  //             } else {
+                  //               FavouriteModel favouriteModel = FavouriteModel(
+                  //                 restaurantId: model.vendorId,
+                  //                 userId: userId,
+                  //               );
+                  //               controller.favouriteList.add(favouriteModel);
+                  //               await FireStoreUtils.setFavouriteRestaurant(
+                  //                 favouriteModel,
+                  //               );
+                  //             }
+                  //           },
+                  //         ),
+                  //       )
+                  //     :
+                  Container(
+                    decoration: ShapeDecoration(
+                      color: AppThemeData.primary50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward,
+                        size: 20,
+                        color: AppThemeData.primary300,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

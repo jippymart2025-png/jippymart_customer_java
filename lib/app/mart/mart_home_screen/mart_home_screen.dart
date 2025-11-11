@@ -8,7 +8,6 @@ import 'package:jippymart_customer/app/mart/widgets/playtime_product_card.dart';
 import 'package:jippymart_customer/models/mart_banner_model.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
-import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
@@ -35,21 +34,21 @@ class MartHomeScreen extends StatelessWidget {
           builder: (context, controller, _) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (controller.featuredCategories.isEmpty &&
-                  !controller.isCategoryLoading.value &&
-                  !controller.isHomepageCategoriesLoaded.value) {
+                  !controller.isCategoryLoading &&
+                  !controller.isHomepageCategoriesLoaded) {
                 controller.loadHomepageCategoriesStreaming(limit: 6);
               }
               if (controller.featuredItems.isEmpty &&
-                  !controller.isProductLoading.value) {
+                  !controller.isProductLoading) {
                 controller.loadFeaturedItemsStreaming();
               }
               if (controller.trendingItems.isEmpty &&
-                  !controller.isTrendingLoading.value) {
+                  !controller.isTrendingLoading) {
                 controller.loadTrendingItemsStreaming();
               }
               // Load subcategories for the subcategories section
               if (controller.subcategories.isEmpty &&
-                  !controller.isSubcategoryLoading.value) {
+                  !controller.isSubcategoryLoading) {
                 if (controller.featuredCategories.isNotEmpty) {
                   final mainCategory = controller.featuredCategories[0];
                   controller.loadSubcategoriesStreaming(mainCategory.id ?? '');
@@ -172,9 +171,8 @@ class MartHomeScreen extends StatelessWidget {
                                       ),
                                       child: ReusableBannerWidget(
                                         banners: controller.martTopBanners,
-                                        pageController: controller
-                                            .martTopBannerController
-                                            .value,
+                                        pageController:
+                                            controller.martTopBannerController,
                                         currentPage:
                                             controller.currentTopBannerPage,
                                         height: 150,
@@ -192,46 +190,7 @@ class MartHomeScreen extends StatelessWidget {
                             }),
                             SizedBox(height: 10),
                             groceryComponent(size),
-                            // MartFeaturedProducts(screenWidth: screenWidth),
-                            // Obx(() {
-                            //       if (controller.martBottomBanners.isNotEmpty) {
-                            //         return Column(
-                            //           children: [
-                            //             const SizedBox(height: 8),
-                            //             ReusableBannerWidget(
-                            //               banners: controller.martBottomBanners,
-                            //               pageController: controller
-                            //                   .martBottomBannerController.value,
-                            //               currentPage:
-                            //               controller.currentBottomBannerPage,
-                            //               height: 150,
-                            //               enableAutoScroll:
-                            //               false, // Bottom banners don't auto-scroll
-                            //             ),
-                            //             const SizedBox(height: 8),
-                            //             BannerIndicatorDots(
-                            //               itemCount:
-                            //               controller.martBottomBanners.length,
-                            //               currentIndex:
-                            //               controller.currentBottomBannerPage,
-                            //               activeColor: const Color(0xFF00998a),
-                            //               inactiveColor: Colors.grey[300]!,
-                            //             ),
-                            //             const SizedBox(height: 8),
-                            //           ],
-                            //         );
-                            //       }
-                            //       return const SizedBox.shrink();
-                            //     }),
-                            // MartTrendingDealsPersonalCare(
-                            //        screenWidth: screenWidth,),
-                            // Subcategories Section
-                            // MartSubcategoriesSection(
-                            //       screenWidth: screenWidth),
-                            // // Product Deals Section
-                            // MartProductDealsSection(screenWidth: screenWidth),
-                            // Dynamic Sections from Firebase
-                            // MartDynamicSections(screenWidth: screenWidth),
+
                             MartDynamicSectionsEnhanced(
                               screenWidth: screenWidth,
                             ),
@@ -239,67 +198,6 @@ class MartHomeScreen extends StatelessWidget {
                           ],
                         ),
                       ),
-
-                      // Positioned(
-                      //   bottom: MediaQuery.of(context).padding.bottom +
-                      //       120, // Above bottom navigation
-                      //   right: 16,
-                      //   child: GestureDetector(
-                      //     onTap: () async {
-                      //       // WhatsApp number - you can change this to your desired number
-                      //       const String phoneNumber =
-                      //           '+919390579864'; // Your actual WhatsApp number
-                      //       const String message =
-                      //           'Hello! I need help with my JippyMart order.'; // Customize the message
-                      //
-                      //       final Uri whatsappUrl = Uri.parse(
-                      //           'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}');
-                      //
-                      //       try {
-                      //         if (await canLaunchUrl(whatsappUrl)) {
-                      //           await launchUrl(whatsappUrl,
-                      //               mode: LaunchMode.externalApplication);
-                      //         } else {
-                      //           // Fallback to regular phone call if WhatsApp is not available
-                      //           final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
-                      //           if (await canLaunchUrl(phoneUrl)) {
-                      //             await launchUrl(phoneUrl,
-                      //                 mode: LaunchMode.externalApplication);
-                      //           }
-                      //         }
-                      //       } catch (e) {
-                      //         print('Error launching WhatsApp: $e');
-                      //       }
-                      //     },
-                      //     child: Container(
-                      //       width: 56,
-                      //       height: 56,
-                      //       decoration: BoxDecoration(
-                      //         color: Colors.green, // WhatsApp green color
-                      //         shape: BoxShape.circle,
-                      //         boxShadow: [
-                      //           BoxShadow(
-                      //             color: Colors.black.withOpacity(0.2),
-                      //             blurRadius: 8,
-                      //             offset: const Offset(0, 4),
-                      //           ),
-                      //         ],
-                      //       ),
-                      //       child: Padding(
-                      //         padding: const EdgeInsets.all(0.0),
-                      //         child: SvgPicture.asset(
-                      //           'assets/images/whatsapp.svg',
-                      //           width: 24,
-                      //           height: 24,
-                      //           colorFilter: const ColorFilter.mode(
-                      //             Colors.white,
-                      //             BlendMode.srcIn,
-                      //           ),
-                      //         ),
-                      //       ),
-                      //     ),
-                      //   ),
-                      // ),
                     ],
                   ),
                 ],
@@ -2414,7 +2312,7 @@ class MartFeaturedProducts extends StatelessWidget {
 
         Consumer<MartProvider>(
           builder: (context, controller, _) {
-            if (controller.isProductLoading.value) {
+            if (controller.isProductLoading) {
               return const SizedBox(
                 height: 280,
                 child: Center(child: CircularProgressIndicator()),
@@ -2913,7 +2811,7 @@ class MartDynamicCategoriesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<MartProvider>(
       builder: (context, controller, _) {
-        if (controller.isCategoryLoading.value) {
+        if (controller.isCategoryLoading) {
           return Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

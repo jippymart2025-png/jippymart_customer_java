@@ -1,5 +1,5 @@
-
-import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart' show MartProvider;
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart'
+    show MartProvider;
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
@@ -9,7 +9,6 @@ import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-
 
 class MartCategoriesScreen extends StatefulWidget {
   const MartCategoriesScreen({super.key});
@@ -24,9 +23,9 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
   @override
   void initState() {
     super.initState();
-    _martController = Provider.of<MartProvider>(context,listen: false);
-
+    _martController = Provider.of<MartProvider>(context, listen: false);
   }
+
   Future<void> _loadCategories() async {
     try {
       await Future.delayed(const Duration(milliseconds: 500));
@@ -36,41 +35,42 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
     }
   }
 
-
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor:ColorConst.martPrimary,
+        backgroundColor: ColorConst.martPrimary,
         foregroundColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white,),
+          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
           onPressed: () {
-              try {
-                final martNavController = Provider.of<MartNavigationProvider>(context,listen: false);
-                martNavController.goToHome();
-              } catch (e) {
-                Get.back();
-              }
+            try {
+              final martNavController = Provider.of<MartNavigationProvider>(
+                context,
+                listen: false,
+              );
+              martNavController.goToHome();
+            } catch (e) {
+              Get.back();
+            }
           },
         ),
         title: Text(
           'Categories',
           style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.bold),
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        actions: [
-        ],
+        actions: [],
       ),
       backgroundColor: Colors.white, // Pure white background for grocery app
       body: Consumer<MartProvider>(
-        builder: (context,controller,_) {
-          if (controller.isCategoryLoading.value) {
+        builder: (context, controller, _) {
+          if (controller.isCategoryLoading) {
             return _buildLoadingState();
           }
-          if (controller.errorMessage.value.isNotEmpty) {
+          if (controller.errorMessage.isNotEmpty) {
             return _buildErrorState();
           }
           return RefreshIndicator(
@@ -117,10 +117,7 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
           const SizedBox(height: 8),
           Text(
             'Getting your grocery items ready',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey.shade600,
-            ),
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
         ],
       ),
@@ -161,10 +158,7 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
             const Text(
               'Please check your internet connection and try again',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
@@ -174,17 +168,17 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
                 foregroundColor: Colors.white,
                 elevation: 4,
                 shadowColor: MartTheme.jippyMartButton.withOpacity(0.3),
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 14,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: const Text(
                 'Try Again',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ),
           ],
@@ -192,7 +186,6 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
       ),
     );
   }
-
 
   Widget _buildCategoriesBySections(List<MartCategoryModel> categories) {
     Map<String, List<MartCategoryModel>> sections = {};
@@ -207,11 +200,12 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
     }
 
     List<String> sortedSections = sections.keys.toList()
-      ..sort((a, b) => (sectionOrders[a] ?? 999).compareTo(sectionOrders[b] ?? 999));
+      ..sort(
+        (a, b) => (sectionOrders[a] ?? 999).compareTo(sectionOrders[b] ?? 999),
+      );
     return Column(
       children: [
         ...sortedSections.asMap().entries.map((entry) {
-          final index = entry.key;
           final sectionName = entry.value;
           final sectionCategories = sections[sectionName]!;
           return _buildSection(sectionName, sectionCategories);
@@ -220,8 +214,13 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
     );
   }
 
-  Widget _buildSection(String sectionName, List<MartCategoryModel> sectionCategories) {
-    sectionCategories.sort((a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0));
+  Widget _buildSection(
+    String sectionName,
+    List<MartCategoryModel> sectionCategories,
+  ) {
+    sectionCategories.sort(
+      (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
+    );
     return ListView.builder(
       physics: const NeverScrollableScrollPhysics(),
       shrinkWrap: true,
@@ -229,23 +228,27 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
       itemCount: sectionCategories.length,
       itemBuilder: (context, index) {
         final category = sectionCategories[index];
-        return _buildCategoryCard(category,);
+        return _buildCategoryCard(category);
       },
     );
   }
 
-  Widget _buildCategoryCard(MartCategoryModel category, ) {
+  Widget _buildCategoryCard(MartCategoryModel category) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: () {
-          Get.to(() => const MartCategoryDetailScreen(), arguments: {
-            'categoryId': category.id,
-            'categoryName': category.title ?? 'Category',
-          });
+          Get.to(
+            () => const MartCategoryDetailScreen(),
+            arguments: {
+              'categoryId': category.id,
+              'categoryName': category.title ?? 'Category',
+            },
+          );
         },
         borderRadius: BorderRadius.circular(16),
-        child: Container(width: double.infinity,
+        child: Container(
+          width: double.infinity,
           padding: EdgeInsets.all(12),
           margin: EdgeInsets.only(bottom: 10),
           decoration: BoxDecoration(
@@ -259,19 +262,17 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
                 spreadRadius: 1,
               ),
             ],
-            border: Border.all(
-              color: Colors.grey.withOpacity(0.1),
-              width: 1,
-            ),
+            border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Container(
-                width: 83 ,
-                height:  50 ,
+                width: 83,
+                height: 50,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF0EFFE), // Slightly darker purple for better contrast
+                  color: const Color(0xFFF0EFFE),
+                  // Slightly darker purple for better contrast
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
@@ -285,27 +286,28 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
                   borderRadius: BorderRadius.circular(14),
                   child: category.photo != null && category.photo!.isNotEmpty
                       ? NetworkImageWidget(
-                    imageUrl: category.photo!,
-                    fit: BoxFit.cover,
-                    errorWidget: Container(
-                      color: const Color(0xFFF0EFFE),
-                      child: Icon(
-                        Icons.category_rounded,
-                        size:  24,
-                        color: MartTheme.jippyMartButton,
-                      ),
-                    ),
-                  )  : Container(
-                    color: const Color(0xFFF0EFFE),
-                    child: Icon(
-                      Icons.category_rounded,
-                      size: 24,
-                      color: MartTheme.jippyMartButton,
-                    ),
-                  ),
+                          imageUrl: category.photo!,
+                          fit: BoxFit.cover,
+                          errorWidget: Container(
+                            color: const Color(0xFFF0EFFE),
+                            child: Icon(
+                              Icons.category_rounded,
+                              size: 24,
+                              color: MartTheme.jippyMartButton,
+                            ),
+                          ),
+                        )
+                      : Container(
+                          color: const Color(0xFFF0EFFE),
+                          child: Icon(
+                            Icons.category_rounded,
+                            size: 24,
+                            color: MartTheme.jippyMartButton,
+                          ),
+                        ),
                 ),
               ),
-              SizedBox(width: 30,),
+              SizedBox(width: 30),
               Text(
                 category.title ?? 'Category',
                 style: TextStyle(
@@ -319,7 +321,10 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
                 overflow: TextOverflow.ellipsis,
               ),
               Spacer(),
-              Icon(Icons.arrow_forward_ios_rounded,color: ColorConst.blackColor,)
+              Icon(
+                Icons.arrow_forward_ios_rounded,
+                color: ColorConst.blackColor,
+              ),
             ],
           ),
         ),
@@ -327,4 +332,3 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
     );
   }
 }
-

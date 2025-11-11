@@ -5,7 +5,6 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/widget/osm_map/map_picker_page.dart';
 import 'package:flutter/cupertino.dart';

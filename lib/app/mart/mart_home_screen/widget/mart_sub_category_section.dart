@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
-
 class MartSubcategoriesSection extends StatelessWidget {
   final double screenWidth;
 
@@ -78,7 +77,7 @@ class MartSubcategoriesSection extends StatelessWidget {
         children: [
           const SizedBox(height: 16),
           Consumer<MartProvider>(
-            builder: (context,controller,_) {
+            builder: (context, controller, _) {
               final itemCount = controller.homepageSubcategories.length;
               return Container(
                 padding: const EdgeInsets.symmetric(vertical: 0),
@@ -135,11 +134,12 @@ class MartSubcategoriesSection extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Consumer<MartProvider>(
-            builder: (context,controller,_) {
+            builder: (context, controller, _) {
               if (controller.subcategoriesMap.isEmpty &&
-                  !controller.isSubcategoryLoading.value) {
+                  !controller.isSubcategoryLoading) {
                 print(
-                    '[MART HOME] 🏷️ Loading first page of homepage subcategories...');
+                  '[MART HOME] 🏷️ Loading first page of homepage subcategories...',
+                );
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   controller.loadFirstPageHomepageSubcategories();
                 });
@@ -150,7 +150,7 @@ class MartSubcategoriesSection extends StatelessWidget {
               return Column(
                 children: [
                   // Enhanced Loading Skeleton
-                  if (controller.isSubcategoryLoading.value &&
+                  if (controller.isSubcategoryLoading &&
                       homepageSubcategories.isEmpty)
                     _buildEnhancedLoadingSkeleton(),
 
@@ -161,12 +161,12 @@ class MartSubcategoriesSection extends StatelessWidget {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       gridDelegate:
-                      const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 4,
-                        crossAxisSpacing: 12,
-                        mainAxisSpacing: 16,
-                        childAspectRatio: 0.62,
-                      ),
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 0.62,
+                          ),
                       itemCount: homepageSubcategories.length,
                       itemBuilder: (context, index) {
                         final subcategory = homepageSubcategories[index];
@@ -176,7 +176,7 @@ class MartSubcategoriesSection extends StatelessWidget {
 
                   // Enhanced Empty State
                   if (homepageSubcategories.isEmpty &&
-                      !controller.isSubcategoryLoading.value)
+                      !controller.isSubcategoryLoading)
                     _buildEnhancedEmptyState(controller),
 
                   // Enhanced Pagination Controls
@@ -199,7 +199,7 @@ class MartSubcategoriesSection extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: List.generate(
           4,
-              (index) => Column(
+          (index) => Column(
             children: [
               Container(
                 width: 72,
@@ -253,11 +253,7 @@ class MartSubcategoriesSection extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(
-            Icons.category_outlined,
-            size: 64,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.category_outlined, size: 64, color: Colors.grey[400]),
           const SizedBox(height: 16),
           const Text(
             'No Categories Available',
@@ -319,7 +315,7 @@ class MartSubcategoriesSection extends StatelessWidget {
       child: Column(
         children: [
           // Loading more indicator
-          if (controller.isSubcategoryLoading.value)
+          if (controller.isSubcategoryLoading)
             Column(
               children: [
                 SizedBox(
@@ -344,7 +340,7 @@ class MartSubcategoriesSection extends StatelessWidget {
               ],
             )
           else if (controller.hasMoreSubcategories)
-          // Enhanced View More button
+            // Enhanced View More button
             ElevatedButton(
               onPressed: () {
                 controller.loadMoreHomepageSubcategories();
@@ -383,15 +379,11 @@ class MartSubcategoriesSection extends StatelessWidget {
               ),
             )
           else
-          // No more items message
+            // No more items message
             const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  Icons.check_circle,
-                  size: 16,
-                  color: Color(0xFF00998a),
-                ),
+                Icon(Icons.check_circle, size: 16, color: Color(0xFF00998a)),
                 SizedBox(width: 8),
                 Text(
                   'All categories loaded',
@@ -429,14 +421,18 @@ class MartSubcategoriesSection extends StatelessWidget {
         onTap: () {
           if (subcategory.parentCategoryId != null &&
               subcategory.parentCategoryId!.isNotEmpty) {
-            Get.to(() => const MartCategoryDetailScreen(), arguments: {
-              'categoryId': subcategory.parentCategoryId!,
-              'categoryName': subcategory.parentCategoryTitle ?? 'Category',
-              'subcategoryId': subcategory.id ?? '',
-            });
+            Get.to(
+              () => const MartCategoryDetailScreen(),
+              arguments: {
+                'categoryId': subcategory.parentCategoryId!,
+                'categoryName': subcategory.parentCategoryTitle ?? 'Category',
+                'subcategoryId': subcategory.id ?? '',
+              },
+            );
           } else {
             print(
-                '[MART HOME] 🏷️ Warning: Subcategory ${subcategory.title} has no parent category ID');
+              '[MART HOME] 🏷️ Warning: Subcategory ${subcategory.title} has no parent category ID',
+            );
           }
         },
         borderRadius: BorderRadius.circular(20),
@@ -487,43 +483,44 @@ class MartSubcategoriesSection extends StatelessWidget {
 
                     // Image or Icon
                     Center(
-                      child: (subcategory.validImageUrl.isNotEmpty ||
-                          (subcategory.photo != null &&
-                              subcategory.photo!.isNotEmpty))
+                      child:
+                          (subcategory.validImageUrl.isNotEmpty ||
+                              (subcategory.photo != null &&
+                                  subcategory.photo!.isNotEmpty))
                           ? NetworkImageWidget(
-                        imageUrl: subcategory.validImageUrl.isNotEmpty
-                            ? subcategory.validImageUrl
-                            : subcategory.photo!,
-                        width: 48,
-                        height: 48,
-                        fit: BoxFit.cover,
-                        errorWidget: Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.3),
-                          ),
-                          child: Icon(
-                            _getSubcategoryIcon(subcategory.title ?? ''),
-                            color: const Color(0xFF00998a),
-                            size: 24,
-                          ),
-                        ),
-                      )
+                              imageUrl: subcategory.validImageUrl.isNotEmpty
+                                  ? subcategory.validImageUrl
+                                  : subcategory.photo!,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorWidget: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                                child: Icon(
+                                  _getSubcategoryIcon(subcategory.title ?? ''),
+                                  color: const Color(0xFF00998a),
+                                  size: 24,
+                                ),
+                              ),
+                            )
                           : Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withOpacity(0.3),
-                        ),
-                        child: Icon(
-                          _getSubcategoryIcon(subcategory.title ?? ''),
-                          color: const Color(0xFF00998a),
-                          size: 24,
-                        ),
-                      ),
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withOpacity(0.3),
+                              ),
+                              child: Icon(
+                                _getSubcategoryIcon(subcategory.title ?? ''),
+                                color: const Color(0xFF00998a),
+                                size: 24,
+                              ),
+                            ),
                     ),
                   ],
                 ),

@@ -315,8 +315,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                     )
                                   : PageView.builder(
                                       physics: const BouncingScrollPhysics(),
-                                      controller:
-                                          controller.pageController.value,
+                                      controller: controller.pageController,
                                       scrollDirection: Axis.horizontal,
                                       itemCount:
                                           controller.vendorModel.photos!.length,
@@ -382,9 +381,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                         width: 9,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          color:
-                                              controller.currentPage.value ==
-                                                  index
+                                          color: controller.currentPage == index
                                               ? AppThemeData.primary300
                                               : AppThemeData.grey300,
                                         ),
@@ -400,13 +397,13 @@ class RestaurantDetailsScreen extends StatelessWidget {
                     ];
                   },
               //changed here1
-              body: controller.isLoading.value
+              body: controller.isLoading
                   // ? Constant.loader(message: "Loading restaurant details...".tr)
                   ? resturantDetailsShimmer()
                   : Padding(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: SingleChildScrollView(
-                        controller: controller.scrollController.value,
+                        controller: controller.scrollController,
                         physics: const BouncingScrollPhysics(),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.start,
@@ -663,7 +660,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                         ),
                                   const SizedBox(height: 10),
                                   Text(
-                                    "Menu".tr,
+                                    "Menu",
                                     textAlign: TextAlign.start,
                                     maxLines: 1,
                                     style: TextStyle(
@@ -676,9 +673,8 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 10),
                                   TextFieldWidget(
-                                    controller: controller
-                                        .searchEditingController
-                                        .value,
+                                    controller:
+                                        controller.searchEditingController,
                                     hintText:
                                         'Search the dish, food, meals and more...'
                                             .tr,
@@ -701,9 +697,9 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                       children: [
                                         InkWell(
                                           onTap: () {
-                                            if (!controller.isVag.value) {
-                                              controller.isVag.value = true;
-                                              controller.isNonVag.value = false;
+                                            if (!controller.isVag) {
+                                              controller.isVag = true;
+                                              controller.isNonVag = false;
                                               controller.filterRecord();
                                             }
                                           },
@@ -712,7 +708,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                               horizontal: 6,
                                               vertical: 4,
                                             ),
-                                            decoration: controller.isVag.value
+                                            decoration: controller.isVag
                                                 ? ShapeDecoration(
                                                     color:
                                                         AppThemeData.primary50,
@@ -772,9 +768,9 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                         const SizedBox(width: 6),
                                         InkWell(
                                           onTap: () {
-                                            if (!controller.isNonVag.value) {
-                                              controller.isNonVag.value = true;
-                                              controller.isVag.value = false;
+                                            if (!controller.isNonVag) {
+                                              controller.isNonVag = true;
+                                              controller.isVag = false;
                                               controller.filterRecord();
                                             }
                                           },
@@ -783,8 +779,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                               horizontal: 6,
                                               vertical: 4,
                                             ),
-                                            decoration:
-                                                controller.isNonVag.value
+                                            decoration: controller.isNonVag
                                                 ? ShapeDecoration(
                                                     color:
                                                         AppThemeData.primary50,
@@ -854,10 +849,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                             ),
                                             builder: (context, value, child) {
                                               return Transform.scale(
-                                                scale:
-                                                    controller
-                                                        .isOfferFilter
-                                                        .value
+                                                scale: controller.isOfferFilter
                                                     ? 1.0
                                                     : value,
                                                 child: AnimatedContainer(
@@ -871,9 +863,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                         vertical: 6,
                                                       ),
                                                   decoration:
-                                                      controller
-                                                          .isOfferFilter
-                                                          .value
+                                                      controller.isOfferFilter
                                                       ? BoxDecoration(
                                                           gradient:
                                                               LinearGradient(
@@ -1002,7 +992,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                         color:
                                                             controller
                                                                 .isOfferFilter
-                                                                .value
                                                             ? Colors.white
                                                             : Color(0xFFFF6B6B),
                                                       ),
@@ -1013,7 +1002,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                           color:
                                                               controller
                                                                   .isOfferFilter
-                                                                  .value
                                                               ? Colors.white
                                                               : Color(
                                                                   0xFFFF6B6B,
@@ -1027,7 +1015,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                           shadows:
                                                               controller
                                                                   .isOfferFilter
-                                                                  .value
                                                               ? [
                                                                   Shadow(
                                                                     color: Colors
@@ -1059,11 +1046,9 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                           builder: (context) {
                                             try {
                                               final hasActiveFilters =
-                                                  (controller.isVag.value) ||
-                                                  (controller.isNonVag.value) ||
-                                                  (controller
-                                                      .isOfferFilter
-                                                      .value) ||
+                                                  (controller.isVag) ||
+                                                  (controller.isNonVag) ||
+                                                  (controller.isOfferFilter) ||
                                                   (controller
                                                       .searchEditingController
                                                       .value
@@ -1150,7 +1135,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 20),
-                            // if (controller.vendorModel.value.reststatus == false || controller.isOpen.value == false) ...[
                             if (!controller.canAcceptOrders()) ...[
                               const SizedBox(height: 20),
                               Center(

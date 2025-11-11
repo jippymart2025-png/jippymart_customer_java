@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 
@@ -127,10 +126,8 @@ class MartVendorService {
       print(
         '📊 [MART_VENDOR_SERVICE] Found ${allMartVendors.docs.length} total mart vendors in database',
       );
-
       // Filter by zone and isOpen in memory (more reliable than Firestore query)
       final filteredVendors = <MartVendorModel>[];
-
       for (var doc in allMartVendors.docs) {
         try {
           final data = doc.data();
@@ -138,14 +135,11 @@ class MartVendorService {
             '🔍 [MART_VENDOR_SERVICE] Processing vendor document: ${doc.id}',
           );
           print('   Raw data keys: ${data.keys.toList()}');
-
           final vendor = MartVendorModel.fromJson({...data, 'id': doc.id});
-
           print('🔍 [MART_VENDOR_SERVICE] Checking vendor: ${vendor.title}');
           print('   Zone ID: ${vendor.zoneId} (target: $zoneId)');
           print('   Is Open: ${vendor.isOpen}');
           print('   vType: ${vendor.vType}');
-
           // Check if vendor matches our criteria (zone only, regardless of open/closed status)
           if (vendor.zoneId == zoneId) {
             print(

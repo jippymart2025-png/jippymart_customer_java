@@ -15,7 +15,6 @@ import 'package:jippymart_customer/widget/firebase_pagination/src/firestore_pagi
 import 'package:jippymart_customer/widget/firebase_pagination/src/models/view_type.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:provider/provider.dart';
 
 class RestaurantInboxScreen extends StatelessWidget {
   const RestaurantInboxScreen({super.key, required this.userId});

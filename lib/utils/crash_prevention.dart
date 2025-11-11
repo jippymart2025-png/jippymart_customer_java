@@ -29,8 +29,6 @@ class CrashPrevention {
   final Map<String, DateTime> _lastOperationTimes = {};
 
   // **ANR PREVENTION**
-  static const Duration _anrThreshold = Duration(milliseconds: 300);
-  final Map<String, Timer> _operationTimers = {};
 
   // **ERROR RECOVERY**
   int _consecutiveErrors = 0;

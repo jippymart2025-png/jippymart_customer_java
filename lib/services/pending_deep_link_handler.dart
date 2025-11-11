@@ -6,10 +6,6 @@ import 'package:get/get.dart';
 /// Handles pending deep links stored by the web page
 /// This is called when the app starts after installation
 class PendingDeepLinkHandler {
-  static const String _pendingDeepLinkKey = 'pendingDeepLink';
-  static const String _pendingProductIdKey = 'pendingProductId';
-  static const String _pendingTimestampKey = 'pendingDeepLinkTimestamp';
-
   /// Check for pending deep links on app startup
   static Future<void> checkPendingDeepLinks() async {
     try {
@@ -64,7 +60,6 @@ class PendingDeepLinkHandler {
 
       // Use the existing deep link service to handle the link
       if (Get.isRegistered<FinalDeepLinkService>()) {
-        final deepLinkService = Get.find<FinalDeepLinkService>();
         // Process the deep link using your existing service
         log('🔗 [PENDING] Deep link processed successfully');
       } else {

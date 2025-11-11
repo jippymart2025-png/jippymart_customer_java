@@ -8,29 +8,31 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:get/get.dart';
 
 class OrderProvider extends ChangeNotifier {
-  RxList<OrderModel> allList = <OrderModel>[].obs;
-  RxList<OrderModel> newOrderList = <OrderModel>[].obs;
-  RxList<OrderModel> inProgressList = <OrderModel>[].obs;
-  RxList<OrderModel> deliveredList = <OrderModel>[].obs;
-  RxList<OrderModel> rejectedList = <OrderModel>[].obs;
-  RxList<OrderModel> cancelledList = <OrderModel>[].obs;
-  RxBool isLoading = true.obs;
+  List<OrderModel> allList = <OrderModel>[];
+  List<OrderModel> newOrderList = <OrderModel>[];
+  List<OrderModel> inProgressList = <OrderModel>[];
+  List<OrderModel> deliveredList = <OrderModel>[];
+  List<OrderModel> rejectedList = <OrderModel>[];
+  List<OrderModel> cancelledList = <OrderModel>[];
+  bool isLoading = true;
+
   void initFunction() {
     getOrder();
   }
+
   void refreshDataAfterUserLoaded() {
     getOrder();
   }
 
   getOrder() async {
-
     if (Constant.userModel != null) {
       FireStoreUtils.backendUserId = Constant.userModel!.id;
       if (kDebugMode) {
-        log('[OrderController] Set backendUserId to: ${Constant.userModel!.id}');
+        log(
+          '[OrderController] Set backendUserId to: ${Constant.userModel!.id}',
+        );
       }
     }
-
     if (Constant.userModel != null) {
       if (kDebugMode) {
         log('[OrderController] User model exists, fetching orders...');
@@ -40,29 +42,32 @@ class OrderProvider extends ChangeNotifier {
         if (kDebugMode) {
           log('[OrderController] Fetched ${orders.length} orders');
         }
-
-        allList.value = orders;
+        allList = orders;
         if (kDebugMode) {
           log('[OrderController] All orders: ${allList.length}');
         }
-
-        newOrderList.value = allList
-            .where((p0) =>
-        p0.status == Constant.orderPlaced || p0.status == "pending")
+        newOrderList = allList
+            .where(
+              (p0) =>
+                  p0.status == Constant.orderPlaced || p0.status == "pending",
+            )
             .toList();
-        rejectedList.value =
-            allList.where((p0) => p0.status == Constant.orderRejected).toList();
-        inProgressList.value = allList
-            .where((p0) =>
-        p0.status == Constant.orderAccepted ||
-            p0.status == Constant.driverPending ||
-            p0.status == Constant.orderShipped ||
-            p0.status == Constant.orderInTransit)
+        rejectedList = allList
+            .where((p0) => p0.status == Constant.orderRejected)
             .toList();
-        deliveredList.value = allList
+        inProgressList = allList
+            .where(
+              (p0) =>
+                  p0.status == Constant.orderAccepted ||
+                  p0.status == Constant.driverPending ||
+                  p0.status == Constant.orderShipped ||
+                  p0.status == Constant.orderInTransit,
+            )
+            .toList();
+        deliveredList = allList
             .where((p0) => p0.status == Constant.orderCompleted)
             .toList();
-        cancelledList.value = allList
+        cancelledList = allList
             .where((p0) => p0.status == Constant.orderCancelled)
             .toList();
       } catch (e) {
@@ -75,33 +80,39 @@ class OrderProvider extends ChangeNotifier {
         log('[OrderController] ERROR: Constant.userModel is null');
       }
     }
-
-    isLoading.value = false;
+    isLoading = false;
     if (kDebugMode) {
       log('[OrderController] getOrder completed');
     }
+    notifyListeners();
   }
 
   final CartProvider cartProvider = CartProvider();
 
   addToCart({required CartProductModel cartProductModel}) {
     cartProvider.addToCart(
-        Get.context!, cartProductModel, cartProductModel.quantity!);
+      Get.context!,
+      cartProductModel,
+      cartProductModel.quantity!,
+    );
     notifyListeners();
   }
 
   // Method to manually refresh orders (for debugging)
   Future<void> refreshOrders() async {
     log('[OrderController] Manual refresh requested');
-    isLoading.value = true;
+    isLoading = true;
     await getOrder();
+    notifyListeners();
   }
 
   // Method to force set the correct user ID (for debugging)
   void forceSetUserId() {
     if (Constant.userModel != null) {
       FireStoreUtils.backendUserId = Constant.userModel!.id;
-      log('[OrderController] Force set backendUserId to: ${Constant.userModel!.id}');
+      log(
+        '[OrderController] Force set backendUserId to: ${Constant.userModel!.id}',
+      );
     }
   }
 }

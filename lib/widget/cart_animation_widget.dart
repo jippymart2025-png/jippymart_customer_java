@@ -24,52 +24,47 @@ class _CartAnimationWidgetState extends State<CartAnimationWidget>
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _rotationAnimation;
-  
+
   bool _isAnimating = false;
-  Offset? _startPosition;
-  Offset? _endPosition;
 
   @override
   void initState() {
     super.initState();
-    
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
-    _scaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.3,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
-    ));
-    
-    _slideAnimation = Tween<Offset>(
-      begin: Offset.zero,
-      end: const Offset(0, -1.0),
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.8, curve: Curves.easeInOut),
-    ));
-    
-    _fadeAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.5, 1.0, curve: Curves.easeInOut),
-    ));
-    
-    _rotationAnimation = Tween<double>(
-      begin: 0.0,
-      end: 360.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: const Interval(0.0, 0.8, curve: Curves.easeInOut),
-    ));
-    
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.3).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeInOut),
+      ),
+    );
+
+    _slideAnimation =
+        Tween<Offset>(begin: Offset.zero, end: const Offset(0, -1.0)).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: const Interval(0.0, 0.8, curve: Curves.easeInOut),
+          ),
+        );
+
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.5, 1.0, curve: Curves.easeInOut),
+      ),
+    );
+
+    _rotationAnimation = Tween<double>(begin: 0.0, end: 360.0).animate(
+      CurvedAnimation(
+        parent: _animationController,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeInOut),
+      ),
+    );
+
     _animationController.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         setState(() {
@@ -89,24 +84,15 @@ class _CartAnimationWidgetState extends State<CartAnimationWidget>
 
   void startAnimation() {
     if (_isAnimating) return;
-    
+
     setState(() {
       _isAnimating = true;
     });
-    
+
     // Calculate start and end positions
-    _calculatePositions();
-    
+
     // Start animation
     _animationController.forward();
-  }
-
-  void _calculatePositions() {
-    // Get the position of the cart icon
-    final RenderBox? cartRenderBox = widget.cartIconKey.currentContext?.findRenderObject() as RenderBox?;
-    if (cartRenderBox != null) {
-      _endPosition = cartRenderBox.localToGlobal(Offset.zero);
-    }
   }
 
   @override
@@ -115,7 +101,7 @@ class _CartAnimationWidgetState extends State<CartAnimationWidget>
       children: [
         // Original child widget
         widget.child,
-        
+
         // Flying animation overlay
         if (_isAnimating)
           Positioned.fill(
@@ -165,19 +151,19 @@ class _CartAnimationWidgetState extends State<CartAnimationWidget>
 // Helper class to trigger cart animation from anywhere
 class CartAnimationHelper {
   static final Map<String, VoidCallback> _animationCallbacks = {};
-  
+
   static void registerAnimation(String key, VoidCallback callback) {
     _animationCallbacks[key] = callback;
   }
-  
+
   static void unregisterAnimation(String key) {
     _animationCallbacks.remove(key);
   }
-  
+
   static void triggerAnimation(String key) {
     _animationCallbacks[key]?.call();
   }
-  
+
   static void triggerAllAnimations() {
     for (var callback in _animationCallbacks.values) {
       callback();

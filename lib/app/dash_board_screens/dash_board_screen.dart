@@ -8,37 +8,20 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:provider/provider.dart';
 
-class DashBoardScreen extends StatefulWidget {
+class DashBoardScreen extends StatelessWidget {
   const DashBoardScreen({super.key});
-
-  @override
-  State<DashBoardScreen> createState() => _DashBoardScreenState();
-}
-
-class _DashBoardScreenState extends State<DashBoardScreen> {
-  @override
-  void initState() {
-    super.initState();
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //   final provider = Provider.of<DashBoardProvider>(context, listen: false);
-    //   provider.initFunction(context);
-    // });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<DashBoardProvider>(
       builder: (context, controller, _) {
-        // Ensure pageList is initialized and has items
         final safePageList = controller.pageList.isNotEmpty
             ? controller.pageList
-            : [const SizedBox()]; // Fallback empty widget
-
+            : [const SizedBox()];
         final safeIndex = controller.selectedIndex.clamp(
           0,
           safePageList.length - 1,
         );
-
         return PopScope(
           canPop: controller.canPopNow,
           onPopInvoked: (didPop) {
@@ -94,9 +77,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         controller: controller,
       ),
     ];
-
     final safeIndex = controller.selectedIndex.clamp(0, items.length - 1);
-
     return BottomNavigationBar(
       type: BottomNavigationBarType.fixed,
       showUnselectedLabels: true,

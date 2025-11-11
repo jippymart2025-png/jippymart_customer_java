@@ -83,7 +83,7 @@ class SelectPaymentScreen extends StatelessWidget {
                                           .value
                                           .isEnabled ==
                                       true &&
-                                  controller.subTotal.value <= 599 &&
+                                  controller.subTotal <= 599 &&
                                   !controller.hasPromotionalItems(),
                               child: cardDecoration(
                                 controller,
@@ -98,7 +98,7 @@ class SelectPaymentScreen extends StatelessWidget {
                                           .value
                                           .isEnabled ==
                                       true &&
-                                  controller.subTotal.value > 599,
+                                  controller.subTotal > 599,
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -135,7 +135,7 @@ class SelectPaymentScreen extends StatelessWidget {
                                           .value
                                           .isEnabled ==
                                       true &&
-                                  controller.subTotal.value <= 599 &&
+                                  controller.subTotal <= 599 &&
                                   controller.hasPromotionalItems(),
                               child: Container(
                                 padding: const EdgeInsets.all(12),
@@ -327,7 +327,7 @@ class SelectPaymentScreen extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 20),
               child: RoundedButtonFill(
                 title:
-                    "${'Pay Now'.tr} | ${Constant.amountShow(amount: controller.totalAmount.value.toString())}"
+                    "${'Pay Now'.tr} | ${Constant.amountShow(amount: controller.totalAmount.toString())}"
                         .tr,
                 height: 5,
                 color: AppThemeData.primary300,
@@ -356,7 +356,7 @@ class SelectPaymentScreen extends StatelessWidget {
           children: [
             InkWell(
               onTap: () {
-                controller.selectedPaymentMethod.value = value.name;
+                controller.selectedPaymentMethod = value.name;
               },
               child: Row(
                 children: [
@@ -397,10 +397,9 @@ class SelectPaymentScreen extends StatelessWidget {
                               Text(
                                 Constant.amountShow(
                                   amount:
-                                      controller.userModel.value.walletAmount ==
-                                          null
+                                      controller.userModel.walletAmount == null
                                       ? '0.0'
-                                      : controller.userModel.value.walletAmount
+                                      : controller.userModel.walletAmount
                                             .toString(),
                                 ),
                                 textAlign: TextAlign.start,
@@ -427,10 +426,10 @@ class SelectPaymentScreen extends StatelessWidget {
                   const Expanded(child: SizedBox()),
                   Radio(
                     value: value.name,
-                    groupValue: controller.selectedPaymentMethod.value,
+                    groupValue: controller.selectedPaymentMethod,
                     activeColor: AppThemeData.primary300,
                     onChanged: (value) {
-                      controller.selectedPaymentMethod.value = value.toString();
+                      controller.selectedPaymentMethod = value.toString();
                     },
                   ),
                 ],

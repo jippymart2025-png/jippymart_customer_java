@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter_map/flutter_map.dart' as flutterMap;
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/advertisement_screens/all_advertisement_screen.dart';
@@ -11,6 +9,7 @@ import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/h
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/best_restaurant_section_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/story_view_widget.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/profile_screen/profile_screen.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
@@ -19,7 +18,6 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/BannerModel.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
-import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
@@ -30,7 +28,6 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
-import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/animated_search_hint.dart';
 import 'package:jippymart_customer/widget/initials_avatar.dart';
 import 'package:jippymart_customer/widget/mini_cart_bar.dart';
@@ -56,7 +53,8 @@ import 'widgets/category_view_widget.dart';
 class HomeScreenTwo extends StatelessWidget {
   const HomeScreenTwo({super.key});
 
-  static Future<void> _checkMartAvailability() async {
+  static Future<void> _checkMartAvailability(MartProvider martProvider) async {
+    martProvider.initFunction();
     try {
       if (Constant.selectedZone?.id == null) {
         ComingSoonDialogHelper.show(
@@ -96,8 +94,8 @@ class HomeScreenTwo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<HomeProvider>(
-      builder: (context, controller, _) {
+    return Consumer2<HomeProvider, MartProvider>(
+      builder: (context, controller, martProvider, _) {
         return Scaffold(
           body: Container(
             decoration: BoxDecoration(
@@ -225,7 +223,9 @@ class HomeScreenTwo extends StatelessWidget {
                                             Expanded(
                                               child: GestureDetector(
                                                 onTap: () {
-                                                  HomeScreenTwo._checkMartAvailability();
+                                                  HomeScreenTwo._checkMartAvailability(
+                                                    martProvider,
+                                                  );
                                                 },
                                                 child: Container(
                                                   margin: const EdgeInsets.all(
@@ -1146,75 +1146,76 @@ class AdvertisementHomeCard extends StatelessWidget {
                       ],
                     ),
                   ),
-                  model.type == 'restaurant_promotion'
-                      ? IconButton(
-                          icon: Obx(
-                            () =>
-                                controller.favouriteList
-                                    .where(
-                                      (p0) => p0.restaurantId == model.vendorId,
-                                    )
-                                    .isNotEmpty
-                                ? SvgPicture.asset(
-                                    "assets/icons/ic_like_fill.svg",
-                                  )
-                                : SvgPicture.asset(
-                                    "assets/icons/ic_like.svg",
-                                    colorFilter: ColorFilter.mode(
-                                      AppThemeData.grey600,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                          ),
-                          onPressed: () async {
-                            final userId =
-                                await SqlStorageConst.getFirebaseId();
-                            if (controller.favouriteList
-                                .where(
-                                  (p0) => p0.restaurantId == model.vendorId,
-                                )
-                                .isNotEmpty) {
-                              FavouriteModel favouriteModel = FavouriteModel(
-                                restaurantId: model.vendorId,
-                                userId: userId,
-                              );
-                              controller.favouriteList.removeWhere(
-                                (item) => item.restaurantId == model.vendorId,
-                              );
-                              await FireStoreUtils.removeFavouriteRestaurant(
-                                favouriteModel,
-                              );
-                            } else {
-                              FavouriteModel favouriteModel = FavouriteModel(
-                                restaurantId: model.vendorId,
-                                userId: userId,
-                              );
-                              controller.favouriteList.add(favouriteModel);
-                              await FireStoreUtils.setFavouriteRestaurant(
-                                favouriteModel,
-                              );
-                            }
-                          },
-                        )
-                      : Container(
-                          decoration: ShapeDecoration(
-                            color: AppThemeData.primary50,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
-                            ),
-                            child: Icon(
-                              Icons.arrow_forward,
-                              size: 20,
-                              color: AppThemeData.primary300,
-                            ),
-                          ),
-                        ),
+                  // model.type == 'restaurant_promotion'
+                  //     ? IconButton(
+                  //         icon: Obx(
+                  //           () =>
+                  //               controller.favouriteList
+                  //                   .where(
+                  //                     (p0) => p0.restaurantId == model.vendorId,
+                  //                   )
+                  //                   .isNotEmpty
+                  //               ? SvgPicture.asset(
+                  //                   "assets/icons/ic_like_fill.svg",
+                  //                 )
+                  //               : SvgPicture.asset(
+                  //                   "assets/icons/ic_like.svg",
+                  //                   colorFilter: ColorFilter.mode(
+                  //                     AppThemeData.grey600,
+                  //                     BlendMode.srcIn,
+                  //                   ),
+                  //                 ),
+                  //         ),
+                  //         onPressed: () async {
+                  //           final userId =
+                  //               await SqlStorageConst.getFirebaseId();
+                  //           if (controller.favouriteList
+                  //               .where(
+                  //                 (p0) => p0.restaurantId == model.vendorId,
+                  //               )
+                  //               .isNotEmpty) {
+                  //             FavouriteModel favouriteModel = FavouriteModel(
+                  //               restaurantId: model.vendorId,
+                  //               userId: userId,
+                  //             );
+                  //             controller.favouriteList.removeWhere(
+                  //               (item) => item.restaurantId == model.vendorId,
+                  //             );
+                  //             await FireStoreUtils.removeFavouriteRestaurant(
+                  //               favouriteModel,
+                  //             );
+                  //           } else {
+                  //             FavouriteModel favouriteModel = FavouriteModel(
+                  //               restaurantId: model.vendorId,
+                  //               userId: userId,
+                  //             );
+                  //             controller.favouriteList.add(favouriteModel);
+                  //             await FireStoreUtils.setFavouriteRestaurant(
+                  //               favouriteModel,
+                  //             );
+                  //           }
+                  //         },
+                  //       )
+                  //     :
+                  Container(
+                    decoration: ShapeDecoration(
+                      color: AppThemeData.primary50,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward,
+                        size: 20,
+                        color: AppThemeData.primary300,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -1555,86 +1556,86 @@ class MapView extends StatelessWidget {
                                                           ),
                                                         ),
                                                       ),
-                                                      Positioned(
-                                                        right: 10,
-                                                        top: 10,
-                                                        child: InkWell(
-                                                          onTap: () async {
-                                                            final userId =
-                                                                await SqlStorageConst.getFirebaseId();
-                                                            if (controller
-                                                                .homeController
-                                                                .favouriteList
-                                                                .where(
-                                                                  (p0) =>
-                                                                      p0.restaurantId ==
-                                                                      vendorModel
-                                                                          .id,
-                                                                )
-                                                                .isNotEmpty) {
-                                                              FavouriteModel
-                                                              favouriteModel =
-                                                                  FavouriteModel(
-                                                                    restaurantId:
-                                                                        vendorModel
-                                                                            .id,
-                                                                    userId:
-                                                                        userId,
-                                                                  );
-                                                              controller
-                                                                  .homeController
-                                                                  .favouriteList
-                                                                  .removeWhere(
-                                                                    (item) =>
-                                                                        item.restaurantId ==
-                                                                        vendorModel
-                                                                            .id,
-                                                                  );
-                                                              await FireStoreUtils.removeFavouriteRestaurant(
-                                                                favouriteModel,
-                                                              );
-                                                            } else {
-                                                              FavouriteModel
-                                                              favouriteModel =
-                                                                  FavouriteModel(
-                                                                    restaurantId:
-                                                                        vendorModel
-                                                                            .id,
-                                                                    userId:
-                                                                        userId,
-                                                                  );
-                                                              controller
-                                                                  .homeController
-                                                                  .favouriteList
-                                                                  .add(
-                                                                    favouriteModel,
-                                                                  );
-                                                              await FireStoreUtils.setFavouriteRestaurant(
-                                                                favouriteModel,
-                                                              );
-                                                            }
-                                                          },
-                                                          child: Obx(
-                                                            () =>
-                                                                controller
-                                                                    .homeController
-                                                                    .favouriteList
-                                                                    .where(
-                                                                      (p0) =>
-                                                                          p0.restaurantId ==
-                                                                          vendorModel
-                                                                              .id,
-                                                                    )
-                                                                    .isNotEmpty
-                                                                ? SvgPicture.asset(
-                                                                    "assets/icons/ic_like_fill.svg",
-                                                                  )
-                                                                : SvgPicture.asset(
-                                                                    "assets/icons/ic_like.svg",
-                                                                  ),
-                                                          ),
-                                                        ),
-                                                      ),
+                                                      // Positioned(
+                                                      //   right: 10,
+                                                      //   top: 10,
+                                                      //   child: InkWell(
+                                                      //     onTap: () async {
+                                                      //       final userId =
+                                                      //           await SqlStorageConst.getFirebaseId();
+                                                      //       if (controller
+                                                      //           .homeController
+                                                      //           .favouriteList
+                                                      //           .where(
+                                                      //             (p0) =>
+                                                      //                 p0.restaurantId ==
+                                                      //                 vendorModel
+                                                      //                     .id,
+                                                      //           )
+                                                      //           .isNotEmpty) {
+                                                      //         FavouriteModel
+                                                      //         favouriteModel =
+                                                      //             FavouriteModel(
+                                                      //               restaurantId:
+                                                      //                   vendorModel
+                                                      //                       .id,
+                                                      //               userId:
+                                                      //                   userId,
+                                                      //             );
+                                                      //         controller
+                                                      //             .homeController
+                                                      //             .favouriteList
+                                                      //             .removeWhere(
+                                                      //               (item) =>
+                                                      //                   item.restaurantId ==
+                                                      //                   vendorModel
+                                                      //                       .id,
+                                                      //             );
+                                                      //         await FireStoreUtils.removeFavouriteRestaurant(
+                                                      //           favouriteModel,
+                                                      //         );
+                                                      //       } else {
+                                                      //         FavouriteModel
+                                                      //         favouriteModel =
+                                                      //             FavouriteModel(
+                                                      //               restaurantId:
+                                                      //                   vendorModel
+                                                      //                       .id,
+                                                      //               userId:
+                                                      //                   userId,
+                                                      //             );
+                                                      //         controller
+                                                      //             .homeController
+                                                      //             .favouriteList
+                                                      //             .add(
+                                                      //               favouriteModel,
+                                                      //             );
+                                                      //         await FireStoreUtils.setFavouriteRestaurant(
+                                                      //           favouriteModel,
+                                                      //         );
+                                                      //       }
+                                                      //     },
+                                                      //     child: Obx(
+                                                      //       () =>
+                                                      //           controller
+                                                      //               .homeController
+                                                      //               .favouriteList
+                                                      //               .where(
+                                                      //                 (p0) =>
+                                                      //                     p0.restaurantId ==
+                                                      //                     vendorModel
+                                                      //                         .id,
+                                                      //               )
+                                                      //               .isNotEmpty
+                                                      //           ? SvgPicture.asset(
+                                                      //               "assets/icons/ic_like_fill.svg",
+                                                      //             )
+                                                      //           : SvgPicture.asset(
+                                                      //               "assets/icons/ic_like.svg",
+                                                      //             ),
+                                                      //     ),
+                                                      //   ),
+                                                      // ),
                                                     ],
                                                   ),
                                                 ),

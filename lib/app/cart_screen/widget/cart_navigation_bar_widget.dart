@@ -171,14 +171,14 @@ Widget cartNavigationBarWidget(
             child: RoundedButtonFill(
               textColor: AppThemeData.surface,
               isEnabled: true,
-              title: controller.isProcessingOrder.value
+              title: controller.isProcessingOrder
                   ? "Processing...".tr
                   : "Place Order".tr,
               height: 5,
               color: AppThemeData.primary300,
               fontSizes: 16,
               onPress: () async {
-                if (controller.isProcessingOrder.value) {
+                if (controller.isProcessingOrder) {
                   ShowToastDialog.showToast(
                     "Please wait, order is being processed...".tr,
                   );
@@ -188,7 +188,7 @@ Widget cartNavigationBarWidget(
                 //     " ${controller.vendorModel.value.authorName.toString()}  ${controller.vendorModel.value.categoryTitle.toString()}  vendorModel.value.author ");
 
                 await controller.showPaymentMethodDialog(context);
-                if (controller.selectedPaymentMethod.value.isNotEmpty) {
+                if (controller.selectedPaymentMethod.isNotEmpty) {
                   await _processPayment(controller, context);
                 }
               },
@@ -422,16 +422,16 @@ Future<void> _processPayment(
     return;
   }
   // Validate coupon and discount amounts
-  if ((controller.couponAmount.value >= 1) &&
-      (controller.couponAmount.value > controller.totalAmount.value)) {
+  if ((controller.couponAmount >= 1) &&
+      (controller.couponAmount > controller.totalAmount)) {
     ShowToastDialog.showToast(
       "The total price must be greater than or equal to the coupon discount value for the code to apply. Please review your cart total."
           .tr,
     );
     return;
   }
-  if ((controller.specialDiscountAmount.value >= 1) &&
-      (controller.specialDiscountAmount.value > controller.totalAmount.value)) {
+  if ((controller.specialDiscountAmount >= 1) &&
+      (controller.specialDiscountAmount > controller.totalAmount)) {
     ShowToastDialog.showToast(
       "The total price must be greater than or equal to the special discount value for the code to apply. Please review your cart total."
           .tr,
@@ -439,17 +439,15 @@ Future<void> _processPayment(
     return;
   }
   // Process based on selected payment method
-  if (controller.selectedPaymentMethod.value == PaymentGateway.stripe.name) {
+  if (controller.selectedPaymentMethod == PaymentGateway.stripe.name) {
     ShowToastDialog.showToast("Stripe payment is disabled".tr);
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.cod.name) {
+  } else if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
     controller.placeOrder(context);
-  } else if (controller.selectedPaymentMethod.value ==
-      PaymentGateway.razorpay.name) {
+  } else if (controller.selectedPaymentMethod == PaymentGateway.razorpay.name) {
     print("Razorpay payment started");
     RazorPayController()
         .createOrderRazorPay(
-          amount: double.parse(controller.totalAmount.value.toString()),
+          amount: double.parse(controller.totalAmount.toString()),
           razorpayModel: controller.razorPayModel.value,
         )
         .then((value) async {

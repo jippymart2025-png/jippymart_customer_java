@@ -55,7 +55,7 @@ class GlobalDeeplinkHandler {
   }
 
   /// Store a deep link for later processing
-  void storeDeeplink(String url,BuildContext context) {
+  void storeDeeplink(String url, BuildContext context) {
     print('🔗 [GLOBAL_DEEPLINK] 🚀 storeDeeplink() called with URL: $url');
     print(' [GLOBAL_DEEPLINK]  storeDeeplink() called with URL: $url');
     if (url.isEmpty) {
@@ -66,7 +66,8 @@ class GlobalDeeplinkHandler {
     // **RATE LIMITING: Prevent too many deep links at once**
     if (_isProcessing) {
       print(
-          '🔗 [GLOBAL_DEEPLINK] ⚠️ Already processing a deep link, queuing this one...');
+        '🔗 [GLOBAL_DEEPLINK] ⚠️ Already processing a deep link, queuing this one...',
+      );
       _pendingDeeplink = url;
       return;
     }
@@ -76,18 +77,21 @@ class GlobalDeeplinkHandler {
     // Set processing flag to prevent concurrent processing
     _isProcessing = true;
     print(
-        '🔗 [GLOBAL_DEEPLINK] ✅ Set processing flag to prevent concurrent processing');
+      '🔗 [GLOBAL_DEEPLINK] ✅ Set processing flag to prevent concurrent processing',
+    );
 
     _pendingDeeplink = url;
     print(
-        '🔗 [GLOBAL_DEEPLINK] ✅ Deeplink stored. Has pending: ${hasPendingDeeplink}');
+      '🔗 [GLOBAL_DEEPLINK] ✅ Deeplink stored. Has pending: ${hasPendingDeeplink}',
+    );
     print('🔗 [GLOBAL_DEEPLINK] ✅ Pending deeplink value: $_pendingDeeplink');
 
     // **ENHANCED PROCESSING: Use crash prevention for ALL deep links**
     print(
-        '🔗 [GLOBAL_DEEPLINK] 🛡️ Using enhanced crash prevention for all deep links');
+      '🔗 [GLOBAL_DEEPLINK] 🛡️ Using enhanced crash prevention for all deep links',
+    );
     DeepLinkCrashPrevention.safeProcessDeepLink(url, () async {
-      await _processDeeplink(url,context);
+      await _processDeeplink(url, context);
       // Reset processing flag after completion
       _isProcessing = false;
       print('🔗 [GLOBAL_DEEPLINK] ✅ Reset processing flag after completion');
@@ -108,7 +112,7 @@ class GlobalDeeplinkHandler {
     }
     _isProcessing = true;
     try {
-      navigateToLink(_pendingDeeplink!,context);
+      navigateToLink(_pendingDeeplink!, context);
       clearPending();
     } catch (e) {
     } finally {
@@ -116,43 +120,35 @@ class GlobalDeeplinkHandler {
     }
   }
 
-  void navigateToLink(String link,BuildContext context) {
+  void navigateToLink(String link, BuildContext context) {
     final uri = Uri.parse(link);
     // Handle both custom scheme and HTTPS URLs
-    String pathToCheck;
     List<String> pathSegments;
 
     if (uri.scheme == 'jippymart') {
       // For custom scheme: jippymart://product/123 -> host is "product", path is "/123"
       if (uri.host.isNotEmpty) {
-        pathToCheck = '/${uri.host}${uri.path}';
         pathSegments = [uri.host, ...uri.pathSegments];
       } else {
-        pathToCheck = uri.path;
         pathSegments = uri.pathSegments;
       }
     } else {
-      // For HTTP URLs: https://jippymart.in/product/123 -> path is "/product/123"
-      pathToCheck = uri.path;
       pathSegments = uri.pathSegments;
     }
 
     if (pathSegments.isNotEmpty && pathSegments[0] == 'product') {
       final productId = pathSegments.length > 1 ? pathSegments[1] : null;
       if (productId != null) {
-        _navigateToProduct(productId,context);
-      } else {
-      }
+        _navigateToProduct(productId, context);
+      } else {}
     } else if (pathSegments.isNotEmpty && pathSegments[0] == 'restaurant') {
       final restaurantId = pathSegments.length > 1 ? pathSegments[1] : null;
       if (restaurantId != null) {
-        _navigateToRestaurant(restaurantId,context);
-      } else {
-      }
+        _navigateToRestaurant(restaurantId, context);
+      } else {}
     } else if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
       _navigateToCatering();
-    } else {
-    }
+    } else {}
   }
 
   void _navigateToCatering() {
@@ -165,47 +161,47 @@ class GlobalDeeplinkHandler {
   }
 
   /// Navigate to product details using GetX
-  void _navigateToProduct(String productId,BuildContext context) async {
+  void _navigateToProduct(String productId, BuildContext context) async {
     try {
-      final martController =Provider.of<MartProvider>(context,listen: false);
+      final martController = Provider.of<MartProvider>(context, listen: false);
 
       final product = await martController.getProductById(productId);
       if (product != null) {
-
         await Future.delayed(Duration(milliseconds: 500));
         Get.to(() => MartProductDetailsScreen(product: product));
       } else {
-
-        navigatorKey.currentState?.push(MaterialPageRoute(
-          builder: (_) => const MartNavigationScreen(),
-        ));
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => const MartNavigationScreen()),
+        );
       }
       print('🔗 [GLOBAL_DEEPLINK] ===== END PRODUCT NAVIGATION =====');
     } catch (e) {
       print('❌ [GLOBAL_DEEPLINK] Error navigating to product: $e');
       print('🔗 [GLOBAL_DEEPLINK] Redirecting to mart home due to error...');
       // Navigate to mart home on error
-      navigatorKey.currentState?.push(MaterialPageRoute(
-        builder: (_) => const MartNavigationScreen(),
-      ));
+      navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => const MartNavigationScreen()),
+      );
     }
   }
 
   /// Navigate to restaurant details
-  void _navigateToRestaurant(String restaurantId,BuildContext context) async {
+  void _navigateToRestaurant(String restaurantId, BuildContext context) async {
     try {
       print('🔗 [GLOBAL_DEEPLINK] 🍽️ Navigating to restaurant: $restaurantId');
       // Track current restaurant to prevent duplicate navigation
       if (_currentRestaurantId == restaurantId) {
         print(
-            '🔗 [GLOBAL_DEEPLINK] ⚠️ Same restaurant already loaded, skipping: $restaurantId');
+          '🔗 [GLOBAL_DEEPLINK] ⚠️ Same restaurant already loaded, skipping: $restaurantId',
+        );
         return;
       }
       _currentRestaurantId = restaurantId;
 
       // **FIXED: Fetch restaurant data first**
       print(
-          '🔗 [GLOBAL_DEEPLINK] 🔍 Fetching restaurant data for ID: $restaurantId');
+        '🔗 [GLOBAL_DEEPLINK] 🔍 Fetching restaurant data for ID: $restaurantId',
+      );
 
       // Import FireStoreUtils for fetching restaurant data
       final restaurant = await FireStoreUtils.getVendorById(restaurantId);
@@ -214,45 +210,54 @@ class GlobalDeeplinkHandler {
         print('🔗 [GLOBAL_DEEPLINK] ✅ Restaurant found: ${restaurant.title}');
         print('🔗 [GLOBAL_DEEPLINK] Restaurant ID: ${restaurant.id}');
         print(
-            '🔗 [GLOBAL_DEEPLINK] Restaurant Status: ${restaurant.isOpen == true ? "OPEN" : "CLOSED"}');
+          '🔗 [GLOBAL_DEEPLINK] Restaurant Status: ${restaurant.isOpen == true ? "OPEN" : "CLOSED"}',
+        );
 
         // **FIXED: Minimal delay for faster navigation**
         print(
-            '🔗 [GLOBAL_DEEPLINK] DEBUG - Minimal delay for faster navigation...');
+          '🔗 [GLOBAL_DEEPLINK] DEBUG - Minimal delay for faster navigation...',
+        );
         await Future.delayed(Duration(milliseconds: 100));
 
         // **FIXED: Use GetX navigation with restaurant data and allow override**
         print(
-            '🔗 [GLOBAL_DEEPLINK] DEBUG - Using GetX navigation to restaurant details with data...');
+          '🔗 [GLOBAL_DEEPLINK] DEBUG - Using GetX navigation to restaurant details with data...',
+        );
 
         // **FIXED: Use Get.to() instead of Get.offAll() to preserve navigation stack**
         // This allows the back button to work properly
         print(
-            '🔗 [GLOBAL_DEEPLINK] DEBUG - Using Get.to() to preserve navigation stack...');
-        Get.to(() => RestaurantDetailsScreen(), arguments: {
-          'vendorModel': restaurant,
-        });
+          '🔗 [GLOBAL_DEEPLINK] DEBUG - Using Get.to() to preserve navigation stack...',
+        );
+        Get.to(
+          () => RestaurantDetailsScreen(),
+          arguments: {'vendorModel': restaurant},
+        );
 
         // Force a delay to ensure navigation completes
         await Future.delayed(Duration(milliseconds: 300));
 
         // Try to update the controller with new restaurant data after navigation
         try {
+          print(
+            '🔗 [GLOBAL_DEEPLINK] 🔍 Controller is registered, attempting update...',
+          );
+          final controller = Provider.of<RestaurantDetailsProvider>(
+            context,
+            listen: false,
+          );
 
-            print(
-                '🔗 [GLOBAL_DEEPLINK] 🔍 Controller is registered, attempting update...');
-            final controller = Provider.of<RestaurantDetailsProvider>(context,listen: false);
-
-            print(
-                '🔗 [GLOBAL_DEEPLINK] 🔍 Controller found, calling updateRestaurant...');
-            controller.updateRestaurant(restaurant);
-
+          print(
+            '🔗 [GLOBAL_DEEPLINK] 🔍 Controller found, calling updateRestaurant...',
+          );
+          controller.updateRestaurant(restaurant);
         } catch (e) {
           print('🔗 [GLOBAL_DEEPLINK] ❌ Could not update controller: $e');
         }
 
         print(
-            '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to restaurant details with data: ${restaurant.title}');
+          '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to restaurant details with data: ${restaurant.title}',
+        );
       } else {
         print('🔗 [GLOBAL_DEEPLINK] ❌ Restaurant not found: $restaurantId');
         print('🔗 [GLOBAL_DEEPLINK] This could mean:');
@@ -282,19 +287,22 @@ class GlobalDeeplinkHandler {
   /// Test method to verify handler is working
   void testHandler() {
     print(
-        '🔗 [GLOBAL_DEEPLINK] ✅ Handler is working! Test method called successfully');
+      '🔗 [GLOBAL_DEEPLINK] ✅ Handler is working! Test method called successfully',
+    );
   }
 
   /// Process deep link with enhanced crash prevention
-  Future<void> _processDeeplink(String url,BuildContext context) async {
+  Future<void> _processDeeplink(String url, BuildContext context) async {
     try {
       print(
-          '🔗 [GLOBAL_DEEPLINK] Processing deep link with enhanced crash prevention: $url');
+        '🔗 [GLOBAL_DEEPLINK] Processing deep link with enhanced crash prevention: $url',
+      );
 
       // **ENHANCED CRASH PREVENTION: Longer delay and memory management**
       print('🔗 [GLOBAL_DEEPLINK] 🛡️ Applying enhanced crash prevention...');
       await Future.delayed(
-          const Duration(milliseconds: 1000)); // Increased delay
+        const Duration(milliseconds: 1000),
+      ); // Increased delay
 
       // **MEMORY MANAGEMENT: Force garbage collection before processing**
       print('🔗 [GLOBAL_DEEPLINK] 🧹 Running garbage collection...');
@@ -305,15 +313,16 @@ class GlobalDeeplinkHandler {
         final restaurantId = _extractRestaurantId(url);
         if (restaurantId != null) {
           print(
-              '🔗 [GLOBAL_DEEPLINK] 🍽️ Processing restaurant deep link: $restaurantId');
-          _navigateToRestaurant(restaurantId,context);
+            '🔗 [GLOBAL_DEEPLINK] 🍽️ Processing restaurant deep link: $restaurantId',
+          );
+          _navigateToRestaurant(restaurantId, context);
         }
       } else if (url.contains('/mart/')) {
         _navigateToMart(url);
       } else if (url.contains('/product/')) {
         final productId = _extractProductId(url);
         if (productId != null) {
-          _navigateToProduct(productId,context);
+          _navigateToProduct(productId, context);
         }
       } else if (url.contains('/category/')) {
         final categoryId = _extractCategoryId(url);
@@ -327,7 +336,8 @@ class GlobalDeeplinkHandler {
       print('❌ [GLOBAL_DEEPLINK] Error processing deep link: $url - $e');
       // **GRACEFUL ERROR HANDLING: Don't crash the app**
       print(
-          '🔗 [GLOBAL_DEEPLINK] 🛡️ Graceful error handling - app continues running');
+        '🔗 [GLOBAL_DEEPLINK] 🛡️ Graceful error handling - app continues running',
+      );
     }
   }
 
@@ -370,7 +380,8 @@ class GlobalDeeplinkHandler {
 
       // **FIXED: Use the same working logic as FinalDeepLinkService**
       print(
-          '🔗 [GLOBAL_DEEPLINK] 🔍 Fetching category data for ID: $categoryId');
+        '🔗 [GLOBAL_DEEPLINK] 🔍 Fetching category data for ID: $categoryId',
+      );
 
       // Use direct Firestore query to get category by ID
       final categoryDoc = await FirebaseFirestore.instance
@@ -388,7 +399,8 @@ class GlobalDeeplinkHandler {
       if (category != null) {
         print('🔗 [GLOBAL_DEEPLINK] ✅ Found category: ${category.title}');
         print(
-            '🔗 [GLOBAL_DEEPLINK] Category Status: ${category.publish == true ? "PUBLISHED" : "UNPUBLISHED"}');
+          '🔗 [GLOBAL_DEEPLINK] Category Status: ${category.publish == true ? "PUBLISHED" : "UNPUBLISHED"}',
+        );
 
         // Wait briefly for app to be ready
         print('🔗 [GLOBAL_DEEPLINK] Waiting briefly for app to be ready...');
@@ -396,14 +408,19 @@ class GlobalDeeplinkHandler {
 
         // Navigate to specific category detail screen with actual category name
         print(
-            '🔗 [GLOBAL_DEEPLINK] Navigating to specific category detail screen...');
-        Get.to(() => const MartCategoryDetailScreen(), arguments: {
-          'categoryId': categoryId,
-          'categoryName':
-              category.title ?? 'Category', // Use actual category title
-        });
+          '🔗 [GLOBAL_DEEPLINK] Navigating to specific category detail screen...',
+        );
+        Get.to(
+          () => const MartCategoryDetailScreen(),
+          arguments: {
+            'categoryId': categoryId,
+            'categoryName':
+                category.title ?? 'Category', // Use actual category title
+          },
+        );
         print(
-            '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to specific category detail screen!');
+          '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to specific category detail screen!',
+        );
       } else {
         print('🔗 [GLOBAL_DEEPLINK] ❌ Category not found for ID: $categoryId');
         print('🔗 [GLOBAL_DEEPLINK] Redirecting to dashboard...');

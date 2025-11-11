@@ -6,7 +6,6 @@ import 'package:jippymart_customer/models/AttributesModel.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
-import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
@@ -117,12 +116,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   Future<void> getProductList() async {
     try {
       print(" getProductList called, total products: ${productList.length}");
-
       // Clear existing data
       vendorCategoryList.clear();
       categoryProductsMap.clear();
       categoryKeys.clear();
-
       for (var product in productList) {
         // Skip if product has no category
         if (product.categoryID == null || product.categoryID!.isEmpty) continue;
@@ -175,29 +172,28 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     }
   }
 
-  Rx<TextEditingController> searchEditingController =
-      TextEditingController().obs;
+  TextEditingController searchEditingController = TextEditingController();
 
-  RxBool isLoading = true.obs;
-  Rx<PageController> pageController = PageController().obs;
-  RxInt currentPage = 0.obs;
+  bool isLoading = true;
+  PageController pageController = PageController();
+  int currentPage = 0;
 
-  RxBool isVag = false.obs;
-  RxBool isNonVag = false.obs;
-  RxBool isOfferFilter = false.obs;
-  RxBool isMenuOpen = false.obs;
+  bool isVag = false;
+  bool isNonVag = false;
+  bool isOfferFilter = false;
+  bool isMenuOpen = false;
 
   // Scroll controller for scrolling to specific product
-  Rx<ScrollController> scrollController = ScrollController().obs;
-  RxBool shouldScrollToProduct = false.obs;
+  ScrollController scrollController = ScrollController();
+  bool shouldScrollToProduct = false;
 
-  RxList<FavouriteModel> favouriteList = <FavouriteModel>[].obs;
-  RxList<FavouriteItemModel> favouriteItemList = <FavouriteItemModel>[].obs;
-  RxList<ProductModel> allProductList = <ProductModel>[].obs;
-  RxList<ProductModel> productList = <ProductModel>[].obs;
-  RxList<VendorCategoryModel> vendorCategoryList = <VendorCategoryModel>[].obs;
+  List<VendorModel> favouriteList = <VendorModel>[];
+  List<FavouriteItemModel> favouriteItemList = <FavouriteItemModel>[];
+  List<ProductModel> allProductList = <ProductModel>[];
+  List<ProductModel> productList = <ProductModel>[];
+  List<VendorCategoryModel> vendorCategoryList = <VendorCategoryModel>[];
 
-  RxList<CouponModel> couponList = <CouponModel>[].obs;
+  List<CouponModel> couponList = <CouponModel>[];
 
   // **ENHANCED CACHE FOR FASTER FILTERING**
   Map<String, List<ProductModel>> _productsByCategory = {};
@@ -205,7 +201,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   void initFunction({required VendorModel vendorModels}) {
     getArgument(vendorModels: vendorModels);
     if (scrollToProductId != null) {
-      shouldScrollToProduct.value = true;
+      shouldScrollToProduct = true;
     }
   }
 
@@ -223,25 +219,25 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     _promotionalCacheLoaded = false;
 
     // Reset loading state
-    isLoading.value = true;
+    isLoading = true;
 
     // Reload all data for the new restaurant
     _loadCriticalDataInParallel()
         .then((_) async {
           await _loadPromotionalCache();
-          isLoading.value = false;
+          isLoading = false;
           notifyListeners();
         })
         .catchError((error) {
           print('[RESTAURANT CONTROLLER] ❌ Error updating restaurant: $error');
-          isLoading.value = false;
+          isLoading = false;
         });
   }
 
   void animateSlider() {
     if (vendorModel.photos != null && vendorModel.photos!.isNotEmpty) {
       Timer.periodic(const Duration(seconds: 2), (Timer timer) {
-        if (!pageController.value.hasClients) {
+        if (!pageController.hasClients) {
           timer.cancel();
           return;
         }
@@ -249,14 +245,14 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         if (currentPage < vendorModel.photos!.length - 1) {
           currentPage++;
         } else {
-          currentPage.value = 0;
+          currentPage = 0;
         }
 
         // Only animate if attached
         try {
-          if (pageController.value.hasClients) {
-            pageController.value.animateToPage(
-              currentPage.value,
+          if (pageController.hasClients) {
+            pageController.animateToPage(
+              currentPage,
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeIn,
             );
@@ -281,7 +277,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   // **GET SIMPLE RESTAURANT STATUS INFO**
   Map<String, dynamic> getRestaurantStatusInfo() {
     final isOpen = canAcceptOrders();
-
     return {
       'isOpen': isOpen,
       'statusText': isOpen ? 'OPEN' : 'CLOSED',
@@ -396,7 +391,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     animateSlider();
     await _loadCriticalDataInParallel();
     // **STEP 2: Mark screen as ready immediately**
-    isLoading.value = false;
+    isLoading = false;
     notifyListeners();
 
     // **STEP 3: Load secondary data in parallel (non-blocking)**
@@ -449,23 +444,19 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   Future<void> _loadProducts() async {
     return await PerformanceMonitor.monitorOperation('loadProducts', () async {
       print("DEBUG: Loading products for vendor: ${vendorModel.id}");
-
-      // Check cache first with enhanced validation
       final cacheKey = 'products_${vendorModel.id}';
       final cachedProducts = await CacheManager.get<List<ProductModel>>(
         cacheKey,
       );
-
       if (cachedProducts != null && cachedProducts.isNotEmpty) {
-        allProductList.value = cachedProducts;
-        productList.value = cachedProducts;
+        allProductList = cachedProducts;
+        productList = cachedProducts;
         _applySmartSorting();
         print("DEBUG: Using cached products: ${cachedProducts.length} items");
       } else {
         if (cachedProducts != null && cachedProducts.isEmpty) {
           CacheManager.clear(cacheKey);
         }
-        // **SINGLE QUERY FOR ALL PRODUCTS**
         final products = await FireStoreUtils.getProductByVendorId(
           vendorModel.id.toString(),
         );
@@ -475,20 +466,20 @@ class RestaurantDetailsProvider extends ChangeNotifier {
                 Constant.adminCommission?.isEnabled == true) &&
             vendorModel.subscriptionPlan != null) {
           if (vendorModel.subscriptionPlan?.itemLimit == '-1') {
-            allProductList.value = products;
-            productList.value = products;
+            allProductList = products;
+            productList = products;
           } else {
             int selectedProduct =
                 products.length <
                     int.parse(vendorModel.subscriptionPlan?.itemLimit ?? '0')
                 ? (products.isEmpty ? 0 : (products.length))
                 : int.parse(vendorModel.subscriptionPlan?.itemLimit ?? '0');
-            allProductList.value = products.sublist(0, selectedProduct);
-            productList.value = products.sublist(0, selectedProduct);
+            allProductList = products.sublist(0, selectedProduct);
+            productList = products.sublist(0, selectedProduct);
           }
         } else {
-          allProductList.value = products;
-          productList.value = products;
+          allProductList = products;
+          productList = products;
         }
 
         _applySmartSorting();
@@ -513,11 +504,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
         // Load favorite restaurants and items in parallel
         await Future.wait([
-          FireStoreUtils.getFavouriteRestaurant().then((value) {
-            favouriteList.value = value;
+          FireStoreUtils.getFavouriteRestaurants().then((value) {
+            favouriteList = value;
           }),
           FireStoreUtils.getFavouriteItem().then((value) {
-            favouriteItemList.value = value;
+            favouriteItemList = value;
           }),
         ]);
       }
@@ -534,7 +525,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         FireStoreUtils.getOfferByVendorId(vendorModel.id.toString()).then((
           value,
         ) {
-          couponList.value = value;
+          couponList = value;
         }),
         FireStoreUtils.getHomeCoupon().then((globalCoupons) {
           final filteredGlobalCoupons = globalCoupons
@@ -588,10 +579,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       productList.addAll(allProductList);
       _applySmartSorting();
     } else {
-      isVag.value = false;
-      isNonVag.value = false;
-      isOfferFilter.value = false;
-      productList.value = allProductList
+      isVag = false;
+      isNonVag = false;
+      isOfferFilter = false;
+      productList = allProductList
           .where((p0) => p0.name!.toLowerCase().contains(name.toLowerCase()))
           .toList();
     }
@@ -601,28 +592,28 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   filterRecord() {
     List<ProductModel> filteredList = [];
 
-    if (isVag.value == true && isNonVag.value == true) {
+    if (isVag == true && isNonVag == true) {
       filteredList = allProductList
           .where((p0) => p0.nonveg == true || p0.nonveg == false)
           .toList();
-    } else if (isVag.value == true && isNonVag.value == false) {
+    } else if (isVag == true && isNonVag == false) {
       filteredList = allProductList.where((p0) => p0.nonveg == false).toList();
-    } else if (isVag.value == false && isNonVag.value == true) {
+    } else if (isVag == false && isNonVag == true) {
       filteredList = allProductList.where((p0) => p0.nonveg == true).toList();
-    } else if (isVag.value == false && isNonVag.value == false) {
+    } else if (isVag == false && isNonVag == false) {
       filteredList = allProductList
           .where((p0) => p0.nonveg == true || p0.nonveg == false)
           .toList();
     }
 
     // Apply offer filter if enabled
-    if (isOfferFilter.value) {
+    if (isOfferFilter) {
       filteredList = filteredList
           .where((product) => _isPromotionalItem(product))
           .toList();
     }
 
-    productList.value = filteredList;
+    productList = filteredList;
     _applySmartSorting();
   }
 
@@ -658,7 +649,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   /// **SMART SORTING SYSTEM**
   void _applySmartSorting() {
-    if (isOfferFilter.value) {
+    if (isOfferFilter) {
       // When offer filter is active, show only promotional items
       return;
     }
@@ -686,12 +677,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   /// **OFFER FILTER TOGGLE METHOD**
   void toggleOfferFilter() {
-    isOfferFilter.value = !isOfferFilter.value;
+    isOfferFilter = !isOfferFilter;
 
     // Reset other filters when offer filter is activated
-    if (isOfferFilter.value) {
-      isVag.value = false;
-      isNonVag.value = false;
+    if (isOfferFilter) {
+      isVag = false;
+      isNonVag = false;
     }
 
     filterRecord();
@@ -701,12 +692,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   void clearAllFilters() {
     try {
       // Reset all filter states
-      isVag.value = false;
-      isNonVag.value = false;
-      isOfferFilter.value = false;
+      isVag = false;
+      isNonVag = false;
+      isOfferFilter = false;
 
       // Clear search text
-      searchEditingController.value.clear();
+      searchEditingController.clear();
 
       // Reset product list to show all products
       productList.clear();
@@ -929,7 +920,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   // Method to scroll to a specific product
   void scrollToProduct(String productId) {
-    if (scrollController.value.hasClients) {
+    if (scrollController.hasClients) {
       // Find the index of the product in the product list
       int productIndex = -1;
       for (int i = 0; i < productList.length; i++) {
@@ -947,7 +938,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         scrollPosition = scrollPosition - 100.0;
         if (scrollPosition < 0) scrollPosition = 0;
 
-        scrollController.value.animateTo(
+        scrollController.animateTo(
           scrollPosition,
           duration: const Duration(milliseconds: 800),
           curve: Curves.easeInOut,
@@ -958,22 +949,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   // Method to scroll to product after data is loaded
   void scrollToProductAfterLoad() {
-    if (scrollToProductId != null && shouldScrollToProduct.value) {
+    if (scrollToProductId != null && shouldScrollToProduct) {
       // Wait a bit for the UI to be ready
       Future.delayed(const Duration(milliseconds: 500), () {
         scrollToProduct(scrollToProductId!);
-        shouldScrollToProduct.value = false;
+        shouldScrollToProduct = false;
       });
-    }
-  }
-
-  void onClose() {
-    try {
-      if (pageController.value.hasClients) {
-        pageController.value.dispose();
-      }
-    } catch (e) {
-      // Ignore disposal errors
     }
   }
 }

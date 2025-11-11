@@ -1,13 +1,10 @@
 import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/provider/restaurant_list_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/models/favourite_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
-import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/restaurant_image_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -50,11 +47,6 @@ class RestaurantListScreen extends StatelessWidget {
                         onTap:
                             !RestaurantStatusUtils.canAcceptOrders(vendorModel)
                             ? () {
-                                // Show closed message
-                                final status =
-                                    RestaurantStatusUtils.canAcceptOrders(
-                                      vendorModel,
-                                    );
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(content: Text('Closed')),
                                 );
@@ -128,57 +120,42 @@ class RestaurantListScreen extends StatelessWidget {
                                             top: 10,
                                             child: InkWell(
                                               onTap: () async {
-                                                final userId =
-                                                    await SqlStorageConst.getFirebaseId();
-                                                if (controller.favouriteList
-                                                    .where(
-                                                      (p0) =>
-                                                          p0.restaurantId ==
-                                                          vendorModel.id,
-                                                    )
-                                                    .isNotEmpty) {
-                                                  FavouriteModel
-                                                  favouriteModel =
-                                                      FavouriteModel(
-                                                        restaurantId:
-                                                            vendorModel.id,
-                                                        userId: userId,
+                                                try {
+                                                  await controller
+                                                      .toggleFavorite(
+                                                        vendorModel,
                                                       );
-                                                  controller.favouriteList
-                                                      .removeWhere(
-                                                        (item) =>
-                                                            item.restaurantId ==
-                                                            vendorModel.id,
-                                                      );
-                                                  await FireStoreUtils.removeFavouriteRestaurant(
-                                                    favouriteModel,
+                                                  // Show success message
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        controller.isVendorFavorite(
+                                                              vendorModel.id
+                                                                  .toString(),
+                                                            )
+                                                            ? 'Added to favorites'
+                                                            : 'Removed from favorites',
+                                                      ),
+                                                    ),
                                                   );
-                                                } else {
-                                                  final userId =
-                                                      await SqlStorageConst.getFirebaseId();
-                                                  FavouriteModel
-                                                  favouriteModel =
-                                                      FavouriteModel(
-                                                        restaurantId:
-                                                            vendorModel.id,
-                                                        userId: userId,
-                                                      );
-                                                  controller.favouriteList.add(
-                                                    favouriteModel,
-                                                  );
-                                                  await FireStoreUtils.setFavouriteRestaurant(
-                                                    favouriteModel,
+                                                } catch (e) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    SnackBar(
+                                                      content: Text(
+                                                        'Operation failed: $e',
+                                                      ),
+                                                    ),
                                                   );
                                                 }
                                               },
                                               child:
-                                                  controller.favouriteList
-                                                      .where(
-                                                        (p0) =>
-                                                            p0.restaurantId ==
-                                                            vendorModel.id,
-                                                      )
-                                                      .isNotEmpty
+                                                  controller.isVendorFavorite(
+                                                    vendorModel.id.toString(),
+                                                  )
                                                   ? SvgPicture.asset(
                                                       "assets/icons/ic_like_fill.svg",
                                                     )

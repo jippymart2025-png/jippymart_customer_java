@@ -170,13 +170,11 @@ class MartProductCardHome extends StatelessWidget {
         price:
             selectedOption['original_price']?.toString() ??
             selectedOption['price']?.toString() ??
-            product.price?.toString() ??
-            '0',
+            product.price.toString(),
         discountPrice:
             selectedOption['price']?.toString() ??
             product.disPrice?.toString() ??
-            product.price?.toString() ??
-            '0',
+            product.price.toString(),
         vendorID: "mart_${product.vendorID ?? 'unknown'}",
         vendorName: "Jippy Mart",
         categoryId: product.categoryID,
@@ -192,9 +190,7 @@ class MartProductCardHome extends StatelessWidget {
         isIncrement: true,
         quantity: 1,
       );
-
       if (!success) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${cartProduct.name} added to cart!'),

@@ -53,7 +53,7 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
   int _currentHint = 0;
   Timer? _timer;
   bool _controllersInitialized = false;
-  
+
   // Animation controllers
   late AnimationController _textAnimationController;
   late AnimationController _emojiAnimationController;
@@ -61,13 +61,12 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
   late AnimationController _glowAnimationController;
   AnimationController? _typewriterController;
   AnimationController? _colorController;
-  
+
   // Animations
   late Animation<double> _textSlideAnimation;
   late Animation<double> _textFadeAnimation;
   late Animation<double> _emojiBounceAnimation;
   late Animation<double> _emojiRotateAnimation;
-  late Animation<double> _pulseAnimation;
   late Animation<double> _glowAnimation;
   Animation<double>? _typewriterAnimation;
   Animation<Color?>? _textColorAnimation;
@@ -75,176 +74,160 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
   @override
   void initState() {
     super.initState();
-    
-    _hints = widget.hints ?? [
-      // Food items
-      "Search '🍰 cake'",
-      "Search '🍛 biryani'",
-      "Search '🍦 ice cream'",
-      "Search '🍕 pizza'",
-      "Search '🍔 burger'",
-      "Search '🍣 sushi'",
-      "Search '🍴 restaurants'",
-      "Search '🥘 curry'",
-      "Search '🍜 noodles'",
-      "Search '🌮 tacos'",
-      "Search '🍗 chicken'",
-      "Search '🥗 salad'",
-      "Search '🍳 breakfast'",
-      "Search '🍝 pasta'",
-      "Search '🍲 soup'",
-      "Search '🥙 wraps'",
-      "Search '🍩 donuts'",
-      "Search '☕ coffee'",
-      "Search '🍪 cookies'",
-      "Search '🥤 drinks'",
-      
-      // Motivational messages
-      "Search '💪 healthy food'",
-      "Search '🌟 trending dishes'",
-      "Search '🔥 popular items'",
-      "Search '⭐ top rated'",
-      "Search '🚀 new arrivals'",
-      "Search '💎 premium'",
-      "Search '🎯 best deals'",
-      "Search '🏆 award winning'",
-      "Search '✨ special offers'",
-      "Search '🎉 today's special'",
-      "Search '💝 gift ideas'",
-      "Search '🌙 late night'",
-      "Search '☀️ breakfast'",
-      "Search '🌅 morning'",
-      "Search '🌆 evening'",
-      "Search '🌃 dinner'",
-      "Search '🍽️ family meals'",
-      "Search '👥 group orders'",
-      "Search '💼 office lunch'",
-      "Search '🎊 party food'",
-    ];
-    
+
+    _hints =
+        widget.hints ??
+        [
+          // Food items
+          "Search '🍰 cake'",
+          "Search '🍛 biryani'",
+          "Search '🍦 ice cream'",
+          "Search '🍕 pizza'",
+          "Search '🍔 burger'",
+          "Search '🍣 sushi'",
+          "Search '🍴 restaurants'",
+          "Search '🥘 curry'",
+          "Search '🍜 noodles'",
+          "Search '🌮 tacos'",
+          "Search '🍗 chicken'",
+          "Search '🥗 salad'",
+          "Search '🍳 breakfast'",
+          "Search '🍝 pasta'",
+          "Search '🍲 soup'",
+          "Search '🥙 wraps'",
+          "Search '🍩 donuts'",
+          "Search '☕ coffee'",
+          "Search '🍪 cookies'",
+          "Search '🥤 drinks'",
+
+          // Motivational messages
+          "Search '💪 healthy food'",
+          "Search '🌟 trending dishes'",
+          "Search '🔥 popular items'",
+          "Search '⭐ top rated'",
+          "Search '🚀 new arrivals'",
+          "Search '💎 premium'",
+          "Search '🎯 best deals'",
+          "Search '🏆 award winning'",
+          "Search '✨ special offers'",
+          "Search '🎉 today's special'",
+          "Search '💝 gift ideas'",
+          "Search '🌙 late night'",
+          "Search '☀️ breakfast'",
+          "Search '🌅 morning'",
+          "Search '🌆 evening'",
+          "Search '🌃 dinner'",
+          "Search '🍽️ family meals'",
+          "Search '👥 group orders'",
+          "Search '💼 office lunch'",
+          "Search '🎊 party food'",
+        ];
+
     _emojis = [
       // Food emojis
       "🍰", "🍛", "🍦", "🍕", "🍔", "🍣", "🍴", "🥘", "🍜", "🌮", "🍗", "🥗",
       "🍳", "🍝", "🍲", "🥙", "🍩", "☕", "🍪", "🥤",
       // Motivational emojis
       "💪", "🌟", "🔥", "⭐", "🚀", "💎", "🎯", "🏆", "✨", "🎉", "💝", "🌙",
-      "☀️", "🌅", "🌆", "🌃", "🍽️", "👥", "💼", "🎊"
+      "☀️", "🌅", "🌆", "🌃", "🍽️", "👥", "💼", "🎊",
     ];
-    
+
     // Initialize animation controllers
     _textAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _emojiAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _pulseAnimationController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
-    
+
     _glowAnimationController = AnimationController(
       duration: const Duration(milliseconds: 3000),
       vsync: this,
     );
-    
+
     _typewriterController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
-    
+
     _colorController = AnimationController(
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
-    
+
     // Initialize animations
-    _textSlideAnimation = Tween<double>(
-      begin: 30.0,
-      end: 0.0,
-    ).animate(CurvedAnimation(
-      parent: _textAnimationController,
-      curve: Curves.elasticOut,
-    ));
-    
-    _textFadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _textAnimationController,
-      curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-    ));
-    
-    _emojiBounceAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _emojiAnimationController,
-      curve: Curves.bounceOut,
-    ));
-    
-    _emojiRotateAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _emojiAnimationController,
-      curve: Curves.easeInOut,
-    ));
-    
-    _pulseAnimation = Tween<double>(
-      begin: 0.8,
-      end: 1.1,
-    ).animate(CurvedAnimation(
-      parent: _pulseAnimationController,
-      curve: Curves.easeInOut,
-    ));
-    
-    _glowAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _glowAnimationController,
-      curve: Curves.easeInOut,
-    ));
-    
-    _typewriterAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _typewriterController!,
-      curve: Curves.easeInOut,
-    ));
-    
-    _textColorAnimation = ColorTween(
-      begin: Colors.grey,
-      end: Colors.orange,
-    ).animate(CurvedAnimation(
-      parent: _colorController!,
-      curve: Curves.easeInOut,
-    ));
-    
+    _textSlideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
+      CurvedAnimation(
+        parent: _textAnimationController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    _textFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _textAnimationController,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+
+    _emojiBounceAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _emojiAnimationController,
+        curve: Curves.bounceOut,
+      ),
+    );
+
+    _emojiRotateAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _emojiAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _glowAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _glowAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _typewriterAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _typewriterController!, curve: Curves.easeInOut),
+    );
+
+    _textColorAnimation = ColorTween(begin: Colors.grey, end: Colors.orange)
+        .animate(
+          CurvedAnimation(parent: _colorController!, curve: Curves.easeInOut),
+        );
+
     // Start animations after a small delay to ensure everything is initialized
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _controllersInitialized = true;
       });
-      
+
       // Start continuous animations (removed pulse animation)
       _glowAnimationController.repeat(reverse: true);
       _colorController?.repeat(reverse: true);
-      
+
       // Start text animation
       _textAnimationController.forward();
       _emojiAnimationController.forward();
       _typewriterController?.forward();
     });
-    
+
     // Timer for changing hints
-    _timer = Timer.periodic(widget.interval ?? const Duration(seconds: 3), (timer) {
+    _timer = Timer.periodic(widget.interval ?? const Duration(seconds: 3), (
+      timer,
+    ) {
       _changeHint();
     });
   }
@@ -253,7 +236,7 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
     setState(() {
       _currentHint = (_currentHint + 1) % _hints.length;
     });
-    
+
     // Restart animations
     _textAnimationController.reset();
     _emojiAnimationController.reset();
@@ -356,13 +339,14 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
           //     ),
           //   ],
           // ),
-          child:  ClipRRect(
+          child: ClipRRect(
             borderRadius: BorderRadius.circular(25),
             child: Stack(
               children: [
                 TextFieldWidget(
                   key: ValueKey(_hints[_currentHint]),
-                  hintText: "", // Empty hint text, we'll overlay our custom text
+                  hintText: "",
+                  // Empty hint text, we'll overlay our custom text
                   controller: widget.controller,
                   enable: widget.enable,
                   prefix: _buildAnimatedPrefix(),
@@ -380,9 +364,7 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
                 ),
                 // Custom animated hint text overlay
                 if (widget.controller?.text.isEmpty ?? true)
-                  Positioned.fill(
-                    child: _buildAnimatedHintText(),
-                  ),
+                  Positioned.fill(child: _buildAnimatedHintText()),
               ],
             ),
           ),
@@ -444,7 +426,9 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: SvgPicture.asset(
             "assets/icons/ic_search.svg",
-            color: Color(0xFFff5201).withOpacity(0.7 + (0.3 * _glowAnimation.value)),
+            color: Color(
+              0xFFff5201,
+            ).withOpacity(0.7 + (0.3 * _glowAnimation.value)),
           ),
         ),
       ),
@@ -455,29 +439,30 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
     if (!_controllersInitialized) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        child: Text(
-          _hints[_currentHint],
-          style: widget.hintTextStyle,
-        ),
+        child: Text(_hints[_currentHint], style: widget.hintTextStyle),
       );
     }
 
     final currentHint = _hints[_currentHint];
-    
+
     // Split the hint into "Search" (static) and the changing part
     String staticPart = "Search ";
     String changingPart = currentHint.replaceFirst("Search ", " ");
-    
+
     // Calculate visible length for the changing part only
-    final visibleLength = (changingPart.length * (_typewriterAnimation?.value ?? 1.0)).round();
-    final visibleChangingText = changingPart.substring(0, visibleLength.clamp(0, changingPart.length));
-    
+    final visibleLength =
+        (changingPart.length * (_typewriterAnimation?.value ?? 1.0)).round();
+    final visibleChangingText = changingPart.substring(
+      0,
+      visibleLength.clamp(0, changingPart.length),
+    );
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       child: Row(
         children: [
           // Add spacing for emoji
-          const SizedBox(width: 28   ),
+          const SizedBox(width: 28),
           // Animated text with typewriter effect
           Expanded(
             child: Transform.translate(
@@ -497,18 +482,21 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
                         // Static "Search" part
                         TextSpan(
                           text: staticPart,
-                          style: (widget.hintTextStyle ?? const TextStyle()).copyWith(
-                            color: Colors.grey,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: (widget.hintTextStyle ?? const TextStyle())
+                              .copyWith(
+                                color: Colors.grey,
+                                fontWeight: FontWeight.w500,
+                              ),
                         ),
                         // Animated changing part
                         TextSpan(
                           text: visibleChangingText,
-                          style: (widget.hintTextStyle ?? const TextStyle()).copyWith(
-                            color: _textColorAnimation?.value ?? Colors.grey,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: (widget.hintTextStyle ?? const TextStyle())
+                              .copyWith(
+                                color:
+                                    _textColorAnimation?.value ?? Colors.grey,
+                                fontWeight: FontWeight.w600,
+                              ),
                         ),
                       ],
                     ),
@@ -547,4 +535,4 @@ class _AnimatedSearchHintState extends State<AnimatedSearchHint>
       ),
     );
   }
-} 
+}

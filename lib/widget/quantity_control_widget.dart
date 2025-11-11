@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:provider/provider.dart';
 
 class QuantityControlWidget extends StatelessWidget {
   final int quantity;

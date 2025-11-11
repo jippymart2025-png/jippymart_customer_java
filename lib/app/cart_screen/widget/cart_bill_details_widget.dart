@@ -61,7 +61,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                     ),
                     Text(
                       Constant.amountShow(
-                        amount: controller.subTotal.value.toString(),
+                        amount: controller.subTotal.toString(),
                       ),
                       textAlign: TextAlign.start,
                       style: TextStyle(
@@ -73,7 +73,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 10),
-                controller.selectedFoodType.value == 'TakeAway'
+                controller.selectedFoodType == 'TakeAway'
                     ? const SizedBox()
                     : Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -97,8 +97,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                                 .hasMartItemsInCart();
 
                             // Self delivery check
-                            if (controller.vendorModel.value.isSelfDelivery ==
-                                    true &&
+                            if (controller.vendorModel.isSelfDelivery == true &&
                                 Constant.isSelfDeliveryFeature == true) {
                               return Text(
                                 'Free Delivery',
@@ -118,25 +117,13 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                               return buildDeliveryFeeUI(
                                 isFreeDelivery: true,
                                 originalFee: 23.0,
-                                currentFee: controller.deliveryCharges.value,
+                                currentFee: controller.deliveryCharges,
                               );
                             }
 
                             if (hasMartItems) {
                               print(
                                 '[CART_UI] 🛒 Building mart delivery UI...',
-                              );
-                              print(
-                                '[CART_UI]   - Subtotal: ₹${controller.subTotal.value}',
-                              );
-                              print(
-                                '[CART_UI]   - Distance: ${controller.totalDistance.value} km',
-                              );
-                              print(
-                                '[CART_UI]   - Delivery charges: ₹${controller.deliveryCharges.value}',
-                              );
-                              print(
-                                '[CART_UI]   - Original delivery fee: ₹${controller.originalDeliveryFee.value}',
                               );
 
                               // For mart items, use the same logic as restaurant items
@@ -148,8 +135,8 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                               double baseDeliveryCharge =
                                   23.0; // Static base charge
 
-                              final subtotal = controller.subTotal.value;
-                              final distance = controller.totalDistance.value;
+                              final subtotal = controller.subTotal;
+                              final distance = controller.totalDistance;
 
                               print(
                                 '[CART_UI]   - Mart threshold: ₹$itemThreshold',
@@ -194,8 +181,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                                   return buildDeliveryFeeUI(
                                     isFreeDelivery: true,
                                     originalFee: baseDeliveryCharge,
-                                    currentFee:
-                                        controller.deliveryCharges.value,
+                                    currentFee: controller.deliveryCharges,
                                   );
                                 }
                               } else {
@@ -206,7 +192,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                                 return buildDeliveryFeeUI(
                                   isFreeDelivery: false,
                                   originalFee: 0.0,
-                                  currentFee: controller.deliveryCharges.value,
+                                  currentFee: controller.deliveryCharges,
                                 );
                               }
                             }
@@ -215,17 +201,15 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                             final threshold =
                                 controller
                                     .deliveryChargeModel
-                                    .value
                                     .itemTotalThreshold ??
                                 299;
                             final freeKm =
                                 controller
                                     .deliveryChargeModel
-                                    .value
                                     .freeDeliveryDistanceKm ??
                                 7;
-                            final subtotal = controller.subTotal.value;
-                            final distance = controller.totalDistance.value;
+                            final subtotal = controller.subTotal;
+                            final distance = controller.totalDistance;
 
                             print(
                               '[CART_UI] 🍽️ Building regular delivery UI...',
@@ -235,10 +219,10 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                             print('[CART_UI]   - Distance: ${distance} km');
                             print('[CART_UI]   - Free distance: ${freeKm} km');
                             print(
-                              '[CART_UI]   - Delivery charges: ₹${controller.deliveryCharges.value}',
+                              '[CART_UI]   - Delivery charges: ₹${controller.deliveryCharges}',
                             );
                             print(
-                              '[CART_UI]   - Original delivery fee: ₹${controller.originalDeliveryFee.value}',
+                              '[CART_UI]   - Original delivery fee: ₹${controller.originalDeliveryFee}',
                             );
 
                             // Determine delivery eligibility and charges
@@ -261,7 +245,6 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                             double baseDeliveryCharge =
                                 (controller
                                             .deliveryChargeModel
-                                            .value
                                             .baseDeliveryCharge ??
                                         23.0)
                                     .toDouble();
@@ -286,7 +269,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                                   isFreeDelivery: true,
                                   originalFee: baseDeliveryCharge,
                                   // Show base charge, not calculated total
-                                  currentFee: controller.deliveryCharges.value,
+                                  currentFee: controller.deliveryCharges,
                                 );
                               }
                             } else {
@@ -295,7 +278,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                               return buildDeliveryFeeUI(
                                 isFreeDelivery: false,
                                 originalFee: 0.0,
-                                currentFee: controller.deliveryCharges.value,
+                                currentFee: controller.deliveryCharges,
                               );
                             }
                           }),
@@ -354,41 +337,40 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                         ),
                       ),
                     ),
-                    Obx(() {
-                      return Row(
-                        children: [
-                          Text(
-                            controller.surgePercent.value <= 0 ? 'Free' : "",
-                            textAlign: TextAlign.start,
-                            style: TextStyle(
-                              fontFamily: AppThemeData.regular,
-                              color: AppThemeData.success400,
-                              fontSize: 16,
-                            ),
+
+                    Row(
+                      children: [
+                        Text(
+                          controller.surgePercent <= 0 ? 'Free' : "",
+                          textAlign: TextAlign.start,
+                          style: TextStyle(
+                            fontFamily: AppThemeData.regular,
+                            color: AppThemeData.success400,
+                            fontSize: 16,
                           ),
-                          SizedBox(width: 10),
-                          Text(
-                            controller.surgePercent.value <= 0
-                                ? "₹10"
-                                : "₹${controller.surgePercent.value}",
-                            textAlign: TextAlign.start,
-                            style: controller.surgePercent.value <= 0
-                                ? TextStyle(
-                                    fontFamily: AppThemeData.regular,
-                                    color: AppThemeData.danger300,
-                                    fontSize: 16,
-                                    decoration: TextDecoration.lineThrough,
-                                    decorationColor: AppThemeData.danger300,
-                                  )
-                                : TextStyle(
-                                    fontFamily: AppThemeData.regular,
-                                    color: AppThemeData.grey900,
-                                    fontSize: 16,
-                                  ),
-                          ),
-                        ],
-                      );
-                    }),
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          controller.surgePercent <= 0
+                              ? "₹10"
+                              : "₹${controller.surgePercent}",
+                          textAlign: TextAlign.start,
+                          style: controller.surgePercent <= 0
+                              ? TextStyle(
+                                  fontFamily: AppThemeData.regular,
+                                  color: AppThemeData.danger300,
+                                  fontSize: 16,
+                                  decoration: TextDecoration.lineThrough,
+                                  decorationColor: AppThemeData.danger300,
+                                )
+                              : TextStyle(
+                                  fontFamily: AppThemeData.regular,
+                                  color: AppThemeData.grey900,
+                                  fontSize: 16,
+                                ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -411,12 +393,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                     Row(
                       children: [
                         Text(
-                          "- (" +
-                              Constant.amountShow(
-                                amount: controller.couponAmount.value
-                                    .toString(),
-                              ) +
-                              ")",
+                          "- (${Constant.amountShow(amount: controller.couponAmount.toString())})",
                           textAlign: TextAlign.start,
                           style: TextStyle(
                             fontFamily: AppThemeData.regular,
@@ -424,21 +401,16 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                             fontSize: 16,
                           ),
                         ),
-                        controller.selectedCouponModel.value.id != null &&
-                                controller
-                                    .selectedCouponModel
-                                    .value
-                                    .id!
-                                    .isNotEmpty
+                        controller.selectedCouponModel.id != null &&
+                                controller.selectedCouponModel.id!.isNotEmpty
                             ? Padding(
                                 padding: const EdgeInsets.only(left: 8.0),
                                 child: InkWell(
                                   onTap: () {
-                                    controller.selectedCouponModel.value =
+                                    controller.selectedCouponModel =
                                         CouponModel();
-                                    controller.couponCodeController.value.text =
-                                        '';
-                                    controller.couponAmount.value = 0.0;
+                                    controller.couponCodeController.text = '';
+                                    controller.couponAmount = 0.0;
                                     controller.calculatePrice();
                                   },
                                   child: Text(
@@ -457,7 +429,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                     ),
                   ],
                 ),
-                controller.specialDiscountAmount.value > 0
+                controller.specialDiscountAmount > 0
                     ? Column(
                         children: [
                           const SizedBox(height: 10),
@@ -476,7 +448,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                                 ),
                               ),
                               Text(
-                                "- (${Constant.amountShow(amount: controller.specialDiscountAmount.value.toString())})",
+                                "- (${Constant.amountShow(amount: controller.specialDiscountAmount.toString())})",
                                 textAlign: TextAlign.start,
                                 style: TextStyle(
                                   fontFamily: AppThemeData.regular,
@@ -490,8 +462,8 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                       )
                     : const SizedBox(),
                 const SizedBox(height: 10),
-                controller.selectedFoodType.value == 'TakeAway' ||
-                        (controller.vendorModel.value.isSelfDelivery == true &&
+                controller.selectedFoodType == 'TakeAway' ||
+                        (controller.vendorModel.isSelfDelivery == true &&
                             Constant.isSelfDeliveryFeature == true)
                     ? const SizedBox()
                     : Row(
@@ -510,11 +482,11 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                                     fontSize: 16,
                                   ),
                                 ),
-                                controller.deliveryTips.value == 0
+                                controller.deliveryTips == 0
                                     ? const SizedBox()
                                     : InkWell(
                                         onTap: () {
-                                          controller.deliveryTips.value = 0;
+                                          controller.deliveryTips = 0;
                                           controller.calculatePrice();
                                         },
                                         child: Text(
@@ -561,7 +533,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                     ),
                     Text(
                       Constant.amountShow(
-                        amount: controller.taxAmount.value.toString(),
+                        amount: controller.taxAmount.toString(),
                       ),
                       textAlign: TextAlign.start,
                       style: TextStyle(
@@ -589,7 +561,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                     ),
                     Text(
                       Constant.amountShow(
-                        amount: controller.totalAmount.value.toString(),
+                        amount: controller.totalAmount.toString(),
                       ),
                       textAlign: TextAlign.start,
                       style: TextStyle(

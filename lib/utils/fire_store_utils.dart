@@ -8,6 +8,7 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/chat_screens/ChatVideoContainer.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/constant/collection_name.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -16,16 +17,12 @@ import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/conversation_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
-import 'package:jippymart_customer/models/dine_in_booking_model.dart';
 import 'package:jippymart_customer/models/email_template_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
-import 'package:jippymart_customer/models/favourite_model.dart';
-import 'package:jippymart_customer/models/gift_cards_order_model.dart';
 import 'package:jippymart_customer/models/mart_banner_model.dart';
 import 'package:jippymart_customer/models/inbox_model.dart';
 import 'package:jippymart_customer/models/mail_setting.dart';
 import 'package:jippymart_customer/models/notification_model.dart';
-import 'package:jippymart_customer/models/on_boarding_model.dart';
 import 'package:jippymart_customer/models/order_model.dart';
 import 'package:jippymart_customer/models/payment_model/cod_setting_model.dart';
 import 'package:jippymart_customer/models/payment_model/flutter_wave_model.dart';
@@ -42,7 +39,6 @@ import 'package:jippymart_customer/models/payment_model/wallet_setting_model.dar
 import 'package:jippymart_customer/models/payment_model/xendit.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/rating_model.dart';
-import 'package:jippymart_customer/models/referral_model.dart';
 import 'package:jippymart_customer/models/review_attribute_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -58,7 +54,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import 'package:video_compress/video_compress.dart';
 
@@ -208,55 +203,6 @@ class FireStoreUtils {
           isUpdate = false;
         });
     return isUpdate;
-  }
-
-  static Future<List<OnBoardingModel>> getOnBoardingList() async {
-    List<OnBoardingModel> onBoardingModel = [];
-    await fireStore
-        .collection(CollectionName.onBoarding)
-        .where("type", isEqualTo: "customerApp")
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            OnBoardingModel documentModel = OnBoardingModel.fromJson(
-              element.data(),
-            );
-            onBoardingModel.add(documentModel);
-          }
-        })
-        .catchError((error) {
-          log(error.toString());
-        });
-    return onBoardingModel;
-  }
-
-  static Future<List<VendorModel>> getVendors() async {
-    List<VendorModel> giftCardModelList = [];
-    QuerySnapshot<Map<String, dynamic>> currencyQuery = await fireStore
-        .collection(CollectionName.vendors)
-        .where("zoneId", isEqualTo: Constant.selectedZone!.id.toString())
-        .get();
-    await Future.forEach(currencyQuery.docs, (
-      QueryDocumentSnapshot<Map<String, dynamic>> document,
-    ) {
-      try {
-        log(document.data().toString());
-        VendorModel vendorModel = VendorModel.fromJson(document.data());
-
-        // **FOOD CATEGORY FILTERING: Exclude mart vendors**
-        if (vendorModel.vType == null ||
-            vendorModel.vType!.toLowerCase() != 'mart') {
-          giftCardModelList.add(vendorModel);
-        } else {
-          print(
-            '🔍 Mart vendor excluded from getVendors: ${vendorModel.title}',
-          );
-        }
-      } catch (e) {
-        debugPrint('FireStoreUtils.get Currency Parse error $e');
-      }
-    });
-    return giftCardModelList;
   }
 
   static Future<bool?> setWalletTransaction(
@@ -494,57 +440,6 @@ class FireStoreUtils {
     return isExit;
   }
 
-  static Future<ReferralModel?> getReferralUserByCode(
-    String referralCode,
-  ) async {
-    ReferralModel? referralModel;
-    try {
-      await fireStore
-          .collection(CollectionName.referral)
-          .where("referralCode", isEqualTo: referralCode)
-          .get()
-          .then((value) {
-            if (value.docs.isNotEmpty) {
-              referralModel = ReferralModel.fromJson(value.docs.first.data());
-            }
-          });
-    } catch (e, s) {
-      log('FireStoreUtils.firebaseCreateNewUser $e $s');
-      return null;
-    }
-    return referralModel;
-  }
-
-  static Future<String?> referralAdd(ReferralModel ratingModel) async {
-    try {
-      await fireStore
-          .collection(CollectionName.referral)
-          .doc(ratingModel.id)
-          .set(ratingModel.toJson());
-    } catch (e, s) {
-      log('FireStoreUtils.firebaseCreateNewUser $e $s');
-      return null;
-    }
-    return null;
-  }
-
-  // static Future<List<ZoneModel>?> getZone() async {
-  //   List<ZoneModel> airPortList = [];
-  //   await fireStore
-  //       .collection(CollectionName.zone)
-  //       .where('publish', isEqualTo: true)
-  //       .get()
-  //       .then((value) {
-  //     for (var element in value.docs) {
-  //       ZoneModel ariPortModel = ZoneModel.fromJson(element.data());
-  //       airPortList.add(ariPortModel);
-  //     }
-  //   }).catchError((error) {
-  //     log(error.toString());
-  //   });
-  //   return airPortList;
-  // }
-
   static Future<List<WalletTransactionModel>?> getWalletTransaction() async {
     final userId = await SqlStorageConst.getFirebaseId();
     List<WalletTransactionModel> walletTransactionList = [];
@@ -778,7 +673,6 @@ class FireStoreUtils {
       getNearestVendorController =
           StreamController<List<VendorModel>>.broadcast();
       List<VendorModel> vendorList = [];
-
       // **DEBUG: Check zone availability**
       if (Constant.selectedZone == null) {
         print(
@@ -903,7 +797,6 @@ class FireStoreUtils {
               print('[DEBUG] Error parsing restaurant data: $e');
             }
           }
-
           print(
             '[DEBUG] getAllNearestRestaurant: Final result: ${vendorList.length} restaurants after filtering',
           );
@@ -1117,25 +1010,6 @@ class FireStoreUtils {
     }
   }
 
-  // static Future<List<StoryModel>> getStory() async {
-  //   List<StoryModel> storyList = [];
-  //   await fireStore
-  //       .collection(CollectionName.story)
-  //       .get()
-  //       .then((value) {
-  //         for (var element in value.docs) {
-  //           StoryModel walletTransactionModel = StoryModel.fromJson(
-  //             element.data(),
-  //           );
-  //           storyList.add(walletTransactionModel);
-  //         }
-  //       })
-  //       .catchError((error) {
-  //         log(error.toString());
-  //       });
-  //   return storyList;
-  // }
-
   static Future<List<CouponModel>> getHomeCoupon() async {
     List<CouponModel> list = [];
     await fireStore
@@ -1158,26 +1032,6 @@ class FireStoreUtils {
     return list;
   }
 
-  // static Future<List<VendorCategoryModel>> getHomeVendorCategory() async {
-  //   List<VendorCategoryModel> list = [];
-  //   await fireStore
-  //       .collection(CollectionName.vendorCategories)
-  //       .where("show_in_homepage", isEqualTo: true)
-  //       .where('publish', isEqualTo: true)
-  //       .get()
-  //       .then((value) {
-  //         for (var element in value.docs) {
-  //           VendorCategoryModel walletTransactionModel =
-  //               VendorCategoryModel.fromJson(element.data());
-  //           list.add(walletTransactionModel);
-  //         }
-  //       })
-  //       .catchError((error) {
-  //         log(error.toString());
-  //       });
-  //   return list;
-  // }
-
   static Future<List<VendorCategoryModel>> getVendorCategory() async {
     List<VendorCategoryModel> list = [];
     await fireStore
@@ -1196,142 +1050,6 @@ class FireStoreUtils {
         });
     return list;
   }
-
-  //
-  // static Future<List<BannerModel>> getHomeTopBanner() async {
-  //   List<BannerModel> bannerList = [];
-  //   List<BannerModel> filteredBannerList = [];
-  //   String? customerZoneId = Constant.selectedZone?.id;
-  //   String? customerZoneTitle = Constant.selectedZone?.name;
-  //   log(
-  //     '[BANNER_FILTERING] Customer zone - ID: $customerZoneId, Title: $customerZoneTitle',
-  //   );
-  //
-  //   await fireStore
-  //       .collection(CollectionName.menuItems)
-  //       .where("is_publish", isEqualTo: true)
-  //       .where("position", isEqualTo: "top")
-  //       .orderBy("set_order", descending: false)
-  //       .get()
-  //       .then((value) {
-  //         log(
-  //           '[BANNER_FILTERING] Total banners in database: ${value.docs.length}',
-  //         );
-  //
-  //         for (var element in value.docs) {
-  //           BannerModel bannerHome = BannerModel.fromJson(element.data());
-  //           bannerList.add(bannerHome);
-  //
-  //           // Filter banners by zone
-  //           bool shouldShowBanner = false;
-  //
-  //           // If banner has no zone specified, show it to all zones
-  //           if (bannerHome.zoneId == null || bannerHome.zoneId!.isEmpty) {
-  //             shouldShowBanner = true;
-  //             log(
-  //               '[BANNER_FILTERING] Banner "${bannerHome.title}" - No zone specified, showing to all zones',
-  //             );
-  //           }
-  //           // If customer zone is null/not set, show all banners (fallback behavior)
-  //           else if (customerZoneId == null || customerZoneId.isEmpty) {
-  //             shouldShowBanner = true;
-  //             log(
-  //               '[BANNER_FILTERING] Banner "${bannerHome.title}" - Customer zone not set, showing all banners (fallback)',
-  //             );
-  //           }
-  //           // If banner zone matches customer zone
-  //           else if (bannerHome.zoneId == customerZoneId) {
-  //             shouldShowBanner = true;
-  //             log(
-  //               '[BANNER_FILTERING] Banner "${bannerHome.title}" - Zone matches customer zone ($customerZoneId)',
-  //             );
-  //           } else {
-  //             log(
-  //               '[BANNER_FILTERING] Banner "${bannerHome.title}" - Zone ${bannerHome.zoneId} does not match customer zone $customerZoneId',
-  //             );
-  //           }
-  //           if (shouldShowBanner) {
-  //             filteredBannerList.add(bannerHome);
-  //           }
-  //         }
-  //
-  //         log(
-  //           '[BANNER_FILTERING] Banners matching customer zone: ${filteredBannerList.length}',
-  //         );
-  //       });
-  //   return filteredBannerList;
-  // }
-  //
-  // static Future<List<BannerModel>> getHomeBottomBanner() async {
-  //   List<BannerModel> bannerList = [];
-  //   List<BannerModel> filteredBannerList = [];
-  //   // Get customer's current zone (should be set by home controller)
-  //   String? customerZoneId = Constant.selectedZone?.id;
-  //   String? customerZoneTitle = Constant.selectedZone?.name;
-  //
-  //   log(
-  //     '[BANNER_FILTERING] Customer zone for bottom banners - ID: $customerZoneId, Title: $customerZoneTitle',
-  //   );
-  //
-  //   await fireStore
-  //       .collection(CollectionName.menuItems)
-  //       .where("is_publish", isEqualTo: true)
-  //       .where("position", isEqualTo: "middle")
-  //       .orderBy("set_order", descending: false)
-  //       .get()
-  //       .then((value) {
-  //         log(
-  //           '[BANNER_FILTERING] Total bottom banners in database: ${value.docs.length}',
-  //         );
-  //
-  //         for (var element in value.docs) {
-  //           BannerModel bannerHome = BannerModel.fromJson(element.data());
-  //           bannerList.add(bannerHome);
-  //
-  //           // Filter banners by zone
-  //           bool shouldShowBanner = false;
-  //
-  //           // If banner has no zone specified, show it to all zones
-  //           if (bannerHome.zoneId == null || bannerHome.zoneId!.isEmpty) {
-  //             shouldShowBanner = true;
-  //             log(
-  //               '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - No zone specified, showing to all zones',
-  //             );
-  //           }
-  //           // If customer zone is null/not set, show all banners (fallback behavior)
-  //           else if (customerZoneId == null || customerZoneId.isEmpty) {
-  //             shouldShowBanner = true;
-  //             log(
-  //               '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Customer zone not set, showing all banners (fallback)',
-  //             );
-  //           }
-  //           // If banner zone matches customer zone
-  //           else if (bannerHome.zoneId == customerZoneId) {
-  //             shouldShowBanner = true;
-  //             log(
-  //               '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Zone matches customer zone ($customerZoneId)',
-  //             );
-  //           }
-  //           // If banner zone doesn't match
-  //           else {
-  //             log(
-  //               '[BANNER_FILTERING] Bottom Banner "${bannerHome.title}" - Zone ${bannerHome.zoneId} does not match customer zone $customerZoneId',
-  //             );
-  //           }
-  //
-  //           if (shouldShowBanner) {
-  //             filteredBannerList.add(bannerHome);
-  //           }
-  //         }
-  //
-  //         log(
-  //           '[BANNER_FILTERING] Bottom banners matching customer zone: ${filteredBannerList.length}',
-  //         );
-  //       });
-  //   return filteredBannerList;
-  // }
-
-  // ==================== MART BANNERS ====================
 
   /// Stream method to get all mart banners without filtering
   static Stream<List<MartBannerModel>> getAllMartBannersStream() {
@@ -1461,160 +1179,6 @@ class FireStoreUtils {
         });
   }
 
-  /// Get mart top banners (position: "top") - Legacy method
-  static Future<List<MartBannerModel>> getMartTopBanners() async {
-    List<MartBannerModel> bannerList = [];
-    List<MartBannerModel> filteredBannerList = [];
-
-    // Get customer's current zone
-    String? customerZoneId = Constant.selectedZone?.id;
-    String? customerZoneTitle = Constant.selectedZone?.name;
-
-    log(
-      '[MART_BANNER_FILTERING] Customer zone for mart top banners - ID: $customerZoneId, Title: $customerZoneTitle',
-    );
-
-    try {
-      // Try optimized query with orderBy (requires index)
-      final querySnapshot = await fireStore
-          .collection('mart_banners')
-          .where("is_publish", isEqualTo: true)
-          .where("position", isEqualTo: "top")
-          .orderBy("set_order", descending: false)
-          .get();
-
-      log(
-        '[MART_BANNER_FILTERING] Total mart top banners in database: ${querySnapshot.docs.length}',
-      );
-
-      for (var element in querySnapshot.docs) {
-        log('[MART_BANNER_FILTERING] Raw banner data: ${element.data()}');
-        MartBannerModel banner = MartBannerModel.fromJson({
-          ...element.data(),
-          'id': element.id,
-        });
-        log(
-          '[MART_BANNER_FILTERING] Parsed banner: title=${banner.title}, photo=${banner.photo}, position=${banner.position}',
-        );
-        bannerList.add(banner);
-
-        // Filter banners by zone
-        bool shouldShowBanner = false;
-
-        // If banner has no zone specified, show it to all zones
-        if (banner.zoneId == null || banner.zoneId!.isEmpty) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Top Banner "${banner.title}" - No zone specified, showing to all zones',
-          );
-        }
-        // If customer zone is null/not set, show all banners (fallback behavior)
-        else if (customerZoneId == null || customerZoneId.isEmpty) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Top Banner "${banner.title}" - Customer zone not set, showing all banners (fallback)',
-          );
-        }
-        // If banner zone matches customer zone
-        else if (banner.zoneId == customerZoneId) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Top Banner "${banner.title}" - Zone matches customer zone ($customerZoneId)',
-          );
-        }
-        // If banner zone doesn't match
-        else {
-          log(
-            '[MART_BANNER_FILTERING] Mart Top Banner "${banner.title}" - Zone ${banner.zoneId} does not match customer zone $customerZoneId',
-          );
-        }
-
-        if (shouldShowBanner) {
-          filteredBannerList.add(banner);
-        }
-      }
-
-      log(
-        '[MART_BANNER_FILTERING] Mart top banners matching customer zone: ${filteredBannerList.length}',
-      );
-    } catch (e) {
-      log(
-        '[MART_BANNER_FILTERING] Index query failed, using fallback query: $e',
-      );
-
-      // Fallback: Use simpler query without orderBy
-      final fallbackSnapshot = await fireStore
-          .collection('mart_banners')
-          .where("is_publish", isEqualTo: true)
-          .where("position", isEqualTo: "top")
-          .get();
-
-      log(
-        '[MART_BANNER_FILTERING] Fallback - Total mart top banners in database: ${fallbackSnapshot.docs.length}',
-      );
-
-      for (var element in fallbackSnapshot.docs) {
-        log('[MART_BANNER_FILTERING] Raw banner data: ${element.data()}');
-        MartBannerModel banner = MartBannerModel.fromJson({
-          ...element.data(),
-          'id': element.id,
-        });
-        log(
-          '[MART_BANNER_FILTERING] Parsed banner: title=${banner.title}, photo=${banner.photo}, position=${banner.position}',
-        );
-        bannerList.add(banner);
-
-        // Filter banners by zone
-        bool shouldShowBanner = false;
-
-        // If banner has no zone specified, show it to all zones
-        if (banner.zoneId == null || banner.zoneId!.isEmpty) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Top Banner "${banner.title}" - No zone specified, showing to all zones',
-          );
-        }
-        // If customer zone is null/not set, show all banners (fallback behavior)
-        else if (customerZoneId == null || customerZoneId.isEmpty) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Top Banner "${banner.title}" - Customer zone not set, showing all banners (fallback)',
-          );
-        }
-        // If banner zone matches customer zone
-        else if (banner.zoneId == customerZoneId) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Top Banner "${banner.title}" - Zone matches customer zone ($customerZoneId)',
-          );
-        }
-        // If banner zone doesn't match
-        else {
-          log(
-            '[MART_BANNER_FILTERING] Mart Top Banner "${banner.title}" - Zone ${banner.zoneId} does not match customer zone $customerZoneId',
-          );
-        }
-
-        if (shouldShowBanner) {
-          filteredBannerList.add(banner);
-        }
-      }
-
-      // Sort by set_order in memory (fallback sorting)
-      filteredBannerList.sort((a, b) {
-        int orderA = a.setOrder ?? 0;
-        int orderB = b.setOrder ?? 0;
-        return orderA.compareTo(orderB);
-      });
-
-      log(
-        '[MART_BANNER_FILTERING] Fallback - Mart top banners matching customer zone: ${filteredBannerList.length}',
-      );
-    }
-
-    return filteredBannerList;
-  }
-
   /// Stream method to get mart bottom banners (position: "bottom") - Lazy loading
   static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
     log(
@@ -1706,169 +1270,24 @@ class FireStoreUtils {
         });
   }
 
-  /// Get mart bottom banners (position: "bottom") - Legacy method
-  static Future<List<MartBannerModel>> getMartBottomBanners() async {
-    List<MartBannerModel> bannerList = [];
-    List<MartBannerModel> filteredBannerList = [];
-
-    // Get customer's current zone
-    String? customerZoneId = Constant.selectedZone?.id;
-    String? customerZoneTitle = Constant.selectedZone?.name;
-
-    log(
-      '[MART_BANNER_FILTERING] Customer zone for mart bottom banners - ID: $customerZoneId, Title: $customerZoneTitle',
-    );
-
-    try {
-      // Try optimized query with orderBy (requires index)
-      final querySnapshot = await fireStore
-          .collection('mart_banners')
-          .where("is_publish", isEqualTo: true)
-          .where("position", isEqualTo: "bottom")
-          .orderBy("set_order", descending: false)
-          .get();
-
-      log(
-        '[MART_BANNER_FILTERING] Total mart bottom banners in database: ${querySnapshot.docs.length}',
-      );
-
-      for (var element in querySnapshot.docs) {
-        MartBannerModel banner = MartBannerModel.fromJson({
-          ...element.data(),
-          'id': element.id,
-        });
-        bannerList.add(banner);
-
-        // Filter banners by zone
-        bool shouldShowBanner = false;
-
-        // If banner has no zone specified, show it to all zones
-        if (banner.zoneId == null || banner.zoneId!.isEmpty) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Bottom Banner "${banner.title}" - No zone specified, showing to all zones',
-          );
-        }
-        // If customer zone is null/not set, show all banners (fallback behavior)
-        else if (customerZoneId == null || customerZoneId.isEmpty) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Bottom Banner "${banner.title}" - Customer zone not set, showing all banners (fallback)',
-          );
-        }
-        // If banner zone matches customer zone
-        else if (banner.zoneId == customerZoneId) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Bottom Banner "${banner.title}" - Zone matches customer zone ($customerZoneId)',
-          );
-        }
-        // If banner zone doesn't match
-        else {
-          log(
-            '[MART_BANNER_FILTERING] Mart Bottom Banner "${banner.title}" - Zone ${banner.zoneId} does not match customer zone $customerZoneId',
-          );
-        }
-
-        if (shouldShowBanner) {
-          filteredBannerList.add(banner);
-        }
-      }
-
-      log(
-        '[MART_BANNER_FILTERING] Mart bottom banners matching customer zone: ${filteredBannerList.length}',
-      );
-    } catch (e) {
-      log(
-        '[MART_BANNER_FILTERING] Index query failed, using fallback query: $e',
-      );
-
-      // Fallback: Use simpler query without orderBy
-      final fallbackSnapshot = await fireStore
-          .collection('mart_banners')
-          .where("is_publish", isEqualTo: true)
-          .where("position", isEqualTo: "bottom")
-          .get();
-
-      log(
-        '[MART_BANNER_FILTERING] Fallback - Total mart bottom banners in database: ${fallbackSnapshot.docs.length}',
-      );
-
-      for (var element in fallbackSnapshot.docs) {
-        MartBannerModel banner = MartBannerModel.fromJson({
-          ...element.data(),
-          'id': element.id,
-        });
-        bannerList.add(banner);
-
-        // Filter banners by zone
-        bool shouldShowBanner = false;
-
-        // If banner has no zone specified, show it to all zones
-        if (banner.zoneId == null || banner.zoneId!.isEmpty) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Bottom Banner "${banner.title}" - No zone specified, showing to all zones',
-          );
-        }
-        // If customer zone is null/not set, show all banners (fallback behavior)
-        else if (customerZoneId == null || customerZoneId.isEmpty) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Bottom Banner "${banner.title}" - Customer zone not set, showing all banners (fallback)',
-          );
-        }
-        // If banner zone matches customer zone
-        else if (banner.zoneId == customerZoneId) {
-          shouldShowBanner = true;
-          log(
-            '[MART_BANNER_FILTERING] Mart Bottom Banner "${banner.title}" - Zone matches customer zone ($customerZoneId)',
-          );
-        }
-        // If banner zone doesn't match
-        else {
-          log(
-            '[MART_BANNER_FILTERING] Mart Bottom Banner "${banner.title}" - Zone ${banner.zoneId} does not match customer zone $customerZoneId',
-          );
-        }
-
-        if (shouldShowBanner) {
-          filteredBannerList.add(banner);
-        }
-      }
-
-      // Sort by set_order in memory (fallback sorting)
-      filteredBannerList.sort((a, b) {
-        int orderA = a.setOrder ?? 0;
-        int orderB = b.setOrder ?? 0;
-        return orderA.compareTo(orderB);
-      });
-
-      log(
-        '[MART_BANNER_FILTERING] Fallback - Mart bottom banners matching customer zone: ${filteredBannerList.length}',
-      );
-    }
-
-    return filteredBannerList;
-  }
-
-  static Future<List<FavouriteModel>> getFavouriteRestaurant() async {
-    final userId = await SqlStorageConst.getFirebaseId();
-    List<FavouriteModel> favouriteList = [];
-    await fireStore
-        .collection(CollectionName.favoriteRestaurant)
-        .where('user_id', isEqualTo: userId)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            FavouriteModel favouriteModel = FavouriteModel.fromJson(
-              element.data(),
-            );
-            favouriteList.add(favouriteModel);
-          }
-        });
-    return favouriteList;
-  }
+  //
+  // static Future<List<FavouriteModel>> getFavouriteRestaurant() async {
+  //   final userId = await SqlStorageConst.getFirebaseId();
+  //   List<FavouriteModel> favouriteList = [];
+  //   await fireStore
+  //       .collection(CollectionName.favoriteRestaurant)
+  //       .where('user_id', isEqualTo: userId)
+  //       .get()
+  //       .then((value) {
+  //         for (var element in value.docs) {
+  //           FavouriteModel favouriteModel = FavouriteModel.fromJson(
+  //             element.data(),
+  //           );
+  //           favouriteList.add(favouriteModel);
+  //         }
+  //       });
+  //   return favouriteList;
+  // }
 
   static Future<List<FavouriteItemModel>> getFavouriteItem() async {
     final userId = await SqlStorageConst.getFirebaseId();
@@ -1888,27 +1307,14 @@ class FireStoreUtils {
     return favouriteList;
   }
 
-  static Future removeFavouriteRestaurant(FavouriteModel favouriteModel) async {
-    await fireStore
-        .collection(CollectionName.favoriteRestaurant)
-        .where("restaurant_id", isEqualTo: favouriteModel.restaurantId)
-        .get()
-        .then((value) {
-          value.docs.forEach((element) async {
-            await fireStore
-                .collection(CollectionName.favoriteRestaurant)
-                .doc(element.id)
-                .delete();
-          });
-        });
-  }
-
-  static Future<void> setFavouriteRestaurant(
-    FavouriteModel favouriteModel,
-  ) async {
-    await fireStore
-        .collection(CollectionName.favoriteRestaurant)
-        .add(favouriteModel.toJson());
+  // Get user's favorite restaurants (returns VendorModel list)
+  static Future<List<VendorModel>> getFavouriteRestaurants() async {
+    try {
+      return await FavouriteProvider.getFavouriteRestaurants();
+    } catch (e) {
+      print('Error fetching favorites: $e');
+      rethrow;
+    }
   }
 
   static Future<void> removeFavouriteItem(
@@ -1951,16 +1357,15 @@ class FireStoreUtils {
         final queryTimeout = const Duration(seconds: 15); // Increased timeout
         const int maxProducts =
             400; // Increased limit to prevent product filtering issues
-
         if (selectedFoodType == "TakeAway") {
           final value = await fireStore
               .collection(CollectionName.vendorProducts)
               .where("vendorID", isEqualTo: vendorId)
               .where('publish', isEqualTo: true)
               .orderBy("createdAt", descending: false)
-              .limit(maxProducts) // **PERFORMANCE: Limit results**
+              .limit(maxProducts)
               .get()
-              .timeout(queryTimeout); // **PERFORMANCE: Add timeout**
+              .timeout(queryTimeout);
           for (var element in value.docs) {
             try {
               ProductModel productModel = ProductModel.fromJson(element.data());
@@ -1993,14 +1398,12 @@ class FireStoreUtils {
             }
           }
         }
-
         if (kDebugMode) {
           print(
             'DEBUG: getProductByVendorId loaded ${list.length} products for vendor $vendorId',
           );
           print('DEBUG: Food delivery type: $selectedFoodType');
           print('DEBUG: Max products limit: $maxProducts');
-
           // Check if specific product is in the list
           bool foundSpecificProduct = list.any(
             (product) => product.id == "E5uQMHSJY9hj9yD5NTp3",
@@ -2211,13 +1614,11 @@ class FireStoreUtils {
   static Future<List<OrderModel>> getAllOrder() async {
     List<OrderModel> list = [];
     final currentUid = await SqlStorageConst.getFirebaseId();
-
     if (kDebugMode) {
       log('[FireStoreUtils] getAllOrder called');
       log('[FireStoreUtils] Current UID: $currentUid');
       log('[FireStoreUtils] Constant.userModel?.id: ${Constant.userModel?.id}');
     }
-
     if (currentUid == null) {
       if (kDebugMode) {
         log(
@@ -2686,23 +2087,6 @@ class FireStoreUtils {
     }
 
     return promo.isNotEmpty ? promo : null;
-  }
-
-  /// Force refresh promotional data by clearing any cache
-  static Future<void> clearPromotionalCache() async {
-    print('[DEBUG] Clearing promotional cache...');
-    // This method can be called to force a fresh fetch of promotional data
-    // Currently, Firestore doesn't cache by default, but this can be used for future caching implementations
-  }
-
-  /// Calculates delivery charge for promo items
-  static double calculatePromoDeliveryCharge({
-    required double distanceInKm,
-    required double freeDeliveryKm,
-    required double extraKmCharge,
-  }) {
-    if (distanceInKm <= freeDeliveryKm) return 0;
-    return (distanceInKm - freeDeliveryKm) * extraKmCharge;
   }
 
   // **SEARCH UTILITY METHODS**

@@ -37,9 +37,9 @@ class ProductListView extends StatelessWidget {
               : controller.vendorCategoryList.isEmpty
               ? buildProductsWithoutCategories(context, controller)
               : controller.searchEditingController.value.text.isNotEmpty ||
-                    controller.isVag.value ||
-                    controller.isNonVag.value ||
-                    controller.isOfferFilter.value
+                    controller.isVag ||
+                    controller.isNonVag ||
+                    controller.isOfferFilter
               ? buildProductsWithoutCategories(context, controller)
               : ListView.builder(
                   controller: controller.scrollControllerProduct,

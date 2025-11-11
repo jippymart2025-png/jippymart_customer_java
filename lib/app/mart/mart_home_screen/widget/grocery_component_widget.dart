@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
-import 'dart:math';
 
 Widget groceryComponent(Size size) {
   return Padding(
@@ -14,59 +13,20 @@ Widget groceryComponent(Size size) {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header with title and view all
-        // Padding(
-        //   padding: const EdgeInsets.only(bottom: 12),
-        //   child: Row(
-        //     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        //     children: [
-        //       // Text(
-        //       //   'Shop by Category',
-        //       //   style: TextStyle(
-        //       //     fontFamily: 'Montserrat',
-        //       //     fontSize: 18,
-        //       //     fontWeight: FontWeight.w700,
-        //       //     color: Color(0xFF1A1A1A),
-        //       //     letterSpacing: -0.5,
-        //       //   ),
-        //       // ),
-        //       // Container(
-        //       //   decoration: BoxDecoration(
-        //       //     color: ColorConst.martPrimary.withOpacity(0.1),
-        //       //     borderRadius: BorderRadius.circular(12),
-        //       //   ),
-        //       //   child: Padding(
-        //       //     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        //       //     child: Text(
-        //       //       'View All',
-        //       //       style: TextStyle(
-        //       //         fontFamily: 'Montserrat',
-        //       //         fontSize: 12,
-        //       //         fontWeight: FontWeight.w600,
-        //       //         color: ColorConst.martPrimary,
-        //       //       ),
-        //       //     ),
-        //       //   ),
-        //       // ),
-        //     ],
-        //   ),
-        // ),
         SizedBox(height: 20),
         Consumer<MartProvider>(
           builder: (context, controller, _) {
             // Loading State
-            if (controller.isCategoryLoading.value) {
+            if (controller.isCategoryLoading) {
               return _buildCategoryShimmer();
             }
-
             // Error State
-            if (controller.errorMessage.value.isNotEmpty) {
+            if (controller.errorMessage.isNotEmpty) {
               return _buildErrorState(controller);
             }
-
             // Empty State
             if (controller.featuredCategories.isEmpty) {
-              if (!controller.isHomepageCategoriesLoaded.value) {
+              if (!controller.isHomepageCategoriesLoaded) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   controller.loadHomepageCategoriesStreaming(limit: 6);
                 });

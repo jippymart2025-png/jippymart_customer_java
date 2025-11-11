@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/favourite_model.dart';
@@ -36,11 +37,12 @@ class AllAdvertisementProvider extends ChangeNotifier {
   }
 
   List<FavouriteModel> favouriteList = <FavouriteModel>[];
+  List<VendorModel> vendorModel = <VendorModel>[];
 
   getFavouriteRestaurant() async {
     if (Constant.userModel != null) {
-      await FireStoreUtils.getFavouriteRestaurant().then((value) {
-        favouriteList = value;
+      await FavouriteProvider.getFavouriteRestaurants().then((value) {
+        vendorModel = value;
       });
     }
   }

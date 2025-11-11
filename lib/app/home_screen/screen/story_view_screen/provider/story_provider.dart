@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:rxdart/rxdart.dart';
+
 enum PlaybackState { pause, play, next, previous }
-class StoryProvider extends ChangeNotifier{
+
+class StoryProvider extends ChangeNotifier {
   /// Stream that broadcasts the playback state of the stories.
   final playbackNotifier = BehaviorSubject<PlaybackState>();
 
@@ -21,11 +23,5 @@ class StoryProvider extends ChangeNotifier{
 
   void previous() {
     playbackNotifier.add(PlaybackState.previous);
-  }
-
-  /// Remember to call dispose when the story screen is disposed to close
-  /// the notifier stream.
-  void dispose() {
-    playbackNotifier.close();
   }
 }

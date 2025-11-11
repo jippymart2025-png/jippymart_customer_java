@@ -60,7 +60,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   void _refreshCartData(BuildContext context) {
     print('DEBUG: Refreshing cart data...');
     controller.forceRefreshCart();
-    if (controller.selectedAddress.value == null) {
+    if (controller.selectedAddress == null) {
       // Trigger address initialization by calling the public method
       controller.initializeAddress(context);
     }

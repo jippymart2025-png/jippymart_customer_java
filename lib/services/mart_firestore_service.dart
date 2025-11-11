@@ -950,9 +950,7 @@ class MartFirestoreService extends GetxService {
       final querySnapshot = await _firestore
           .collection('mart_subcategories')
           .get();
-      for (int i = 0; i < querySnapshot.docs.length; i++) {
-        final doc = querySnapshot.docs[i];
-      }
+
       final subcategories = querySnapshot.docs
           .map((doc) {
             try {

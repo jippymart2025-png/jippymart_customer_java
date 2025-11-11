@@ -166,7 +166,7 @@ tipsDialog(CartControllerProvider controller) {
           children: [
             TextFieldWidget(
               title: 'Tips Amount'.tr,
-              controller: controller.tipsController.value,
+              controller: controller.tipsController,
               textInputType: const TextInputType.numberWithOptions(
                 signed: true,
                 decimal: true,
@@ -215,7 +215,7 @@ tipsDialog(CartControllerProvider controller) {
                           "Please enter tips Amount".tr,
                         );
                       } else {
-                        controller.deliveryTips.value = double.parse(
+                        controller.deliveryTips = double.parse(
                           controller.tipsController.value.text,
                         );
                         controller.calculatePrice();

@@ -77,7 +77,7 @@ class CouponListScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: TextFieldWidget(
                   hintText: 'Enter coupon code'.tr,
-                  controller: controller.couponCodeController.value,
+                  controller: controller.couponCodeController,
                   suffix: Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -103,13 +103,13 @@ class CouponListScreen extends StatelessWidget {
                           }
                           double minValue =
                               double.tryParse(element.itemValue ?? '0') ?? 0.0;
-                          if (controller.subTotal.value <= minValue) {
+                          if (controller.subTotal <= minValue) {
                             ShowToastDialog.showToast(
                               "This coupon can only be applied for orders above ₹${minValue.toStringAsFixed(0)}.",
                             );
                             return;
                           }
-                          controller.selectedCouponModel.value = element;
+                          controller.selectedCouponModel = element;
                           controller.calculatePrice();
                           Get.back();
                         } else {
@@ -183,7 +183,7 @@ class CouponListScreen extends StatelessWidget {
                                         couponModel.itemValue ?? '0',
                                       ) ??
                                       0.0;
-                                  if (controller.subTotal.value <= minValue) {
+                                  if (controller.subTotal <= minValue) {
                                     ShowToastDialog.showToast(
                                       "This coupon can only be applied for orders above ₹${minValue.toStringAsFixed(0)}.",
                                     );
@@ -191,15 +191,13 @@ class CouponListScreen extends StatelessWidget {
                                   }
                                   double couponAmount =
                                       Constant.calculateDiscount(
-                                        amount: controller.subTotal.value
-                                            .toString(),
+                                        amount: controller.subTotal.toString(),
                                         offerModel: couponModel,
                                       );
-                                  if (couponAmount <
-                                      controller.subTotal.value) {
-                                    controller.selectedCouponModel.value =
+                                  if (couponAmount < controller.subTotal) {
+                                    controller.selectedCouponModel =
                                         couponModel;
-                                    controller.couponCodeController.value.text =
+                                    controller.couponCodeController.text =
                                         couponModel.code ?? '';
                                     controller.calculatePrice();
                                     Get.back();

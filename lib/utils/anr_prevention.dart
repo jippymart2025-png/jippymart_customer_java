@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 /// **ANR PREVENTION UTILITY**
@@ -12,9 +10,6 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 /// - Using background processing
 /// - Monitoring operation duration
 class ANRPrevention {
-  static const Duration _anrThreshold = Duration(
-    milliseconds: 2000,
-  ); // 2 seconds
   static const Duration _criticalThreshold = Duration(
     milliseconds: 500,
   ); // 500ms
@@ -44,9 +39,7 @@ class ANRPrevention {
           },
         );
       });
-
       final duration = DateTime.now().difference(startTime);
-
       // Log slow operations
       if (duration > _criticalThreshold) {
         log(
@@ -59,7 +52,6 @@ class ANRPrevention {
           );
         }
       }
-
       return result;
     } catch (e, stackTrace) {
       final duration = DateTime.now().difference(startTime);

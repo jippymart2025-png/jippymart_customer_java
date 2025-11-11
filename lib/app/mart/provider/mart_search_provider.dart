@@ -2,29 +2,26 @@ import 'dart:convert';
 
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
-import 'package:jippymart_customer/utils/anr_prevention.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 
-class MartSearchProvider extends ChangeNotifier
-  {
+class MartSearchProvider extends ChangeNotifier {
   // Search state
-  final RxString searchQuery = ''.obs;
-  final RxBool isSearching = false.obs;
-  final RxBool isLoading = false.obs;
-  final RxString errorMessage = ''.obs;
+  String searchQuery = '';
+  bool isSearching = false;
+  bool isLoading = false;
+  String errorMessage = '';
 
   // Search results
-  final RxList<MartItemModel> searchResults = <MartItemModel>[].obs;
-  final RxList<MartCategoryModel> categoryResults = <MartCategoryModel>[].obs;
+  List<MartItemModel> searchResults = <MartItemModel>[];
+  List<MartCategoryModel> categoryResults = <MartCategoryModel>[];
 
   // Pagination
-  final RxInt currentPage = 1.obs;
-  final RxBool hasMoreItems = false.obs;
+  int currentPage = 1;
+  bool hasMoreItems = false;
 
   // Search history
-  final RxList<String> searchHistory = <String>[].obs;
+  List<String> searchHistory = <String>[];
 
   // API Configuration
   static const String baseUrl = 'https://jippymart.in/api';
@@ -32,46 +29,42 @@ class MartSearchProvider extends ChangeNotifier
   static const String categoriesEndpoint = '/search/categories';
 
   // Search items using API
-  Future<void> searchItems(String query,
-      {int page = 1, bool append = false}) async {
+  Future<void> searchItems(
+    String query, {
+    int page = 1,
+    bool append = false,
+  }) async {
     if (query.trim().isEmpty) {
       clearResults();
       return;
     }
 
-    // ANR PREVENTION: Use background processing for search operations
-    await ANRPrevention.executeWithANRPrevention(
-      'MartSearchController_searchItems',
-          () async {
-        try {
-          isLoading.value = true;
-          errorMessage.value = '';
+    try {
+      isLoading = true;
+      errorMessage = '';
 
-          if (!append) {
-            currentPage.value = page;
-            searchResults.clear();
-          }
-
-          // Use API search
-          await _searchItemsViaAPI(query, page: page, append: append);
-        } catch (e) {
-          errorMessage.value = 'Error searching items: $e';
-          print('[MART_SEARCH] ❌ Search error: $e');
-        } finally {
-          isLoading.value = false;
-        }
-      },
-      timeout: const Duration(seconds: 10),
-    );
+      if (!append) {
+        currentPage = page;
+        searchResults.clear();
+      }
+      // Use API search
+      await _searchItemsViaAPI(query, page: page, append: append);
+    } catch (e) {
+      errorMessage = 'Error searching items: $e';
+      print('[MART_SEARCH] ❌ Search error: $e');
+    } finally {
+      isLoading = false;
+    }
   }
 
   // Search items via API
-  Future<void> _searchItemsViaAPI(String query,
-      {int page = 1, bool append = false}) async {
+  Future<void> _searchItemsViaAPI(
+    String query, {
+    int page = 1,
+    bool append = false,
+  }) async {
     try {
       print('[MART_SEARCH] 🔍 Searching via API for: "$query" (page: $page)');
-
-      // Build API URL with query parameters
       // Removed isAvailable to avoid 422 validation errors
       final uri = Uri.parse('$baseUrl$itemsEndpoint').replace(
         queryParameters: {
@@ -80,61 +73,62 @@ class MartSearchProvider extends ChangeNotifier
           'limit': '40',
         },
       );
-
       print('[MART_SEARCH] 📡 API URL: $uri');
-
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
-
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
       print('[MART_SEARCH] 📡 API Response Status: ${response.statusCode}');
       print('[MART_SEARCH] 📡 API Response Body: ${response.body}');
-
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['success'] == true) {
           final itemsList = (data['data'] as List);
-          final items =
-          itemsList.map((item) => MartItemModel.fromJson(item)).toList();
+          final items = itemsList
+              .map((item) => MartItemModel.fromJson(item))
+              .toList();
 
           if (append) {
             searchResults.addAll(items);
           } else {
-            searchResults.value = items;
+            searchResults = items;
           }
 
           // Update pagination info
           if (data['pagination'] != null) {
-            hasMoreItems.value = data['pagination']['has_more'] ?? false;
+            hasMoreItems = data['pagination']['has_more'] ?? false;
           } else {
-            hasMoreItems.value = false;
+            hasMoreItems = false;
           }
 
           _saveToHistory(query);
           print(
-              '[MART_SEARCH] ✅ API search successful: ${items.length} items found');
+            '[MART_SEARCH] ✅ API search successful: ${items.length} items found',
+          );
         } else {
           searchResults.clear();
-          errorMessage.value = data['message'] ?? 'No results found';
+          errorMessage = data['message'] ?? 'No results found';
           print(
-              '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}');
+            '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}',
+          );
         }
       } else {
         searchResults.clear();
-        errorMessage.value = 'Failed to search items. Please try again.';
+        errorMessage = 'Failed to search items. Please try again.';
         print(
-            '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}');
+          '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}',
+        );
         print('[MART_SEARCH] ❌ Error details: ${response.body}');
       }
     } catch (e) {
       print('[MART_SEARCH] ❌ API search failed: $e');
       searchResults.clear();
-      errorMessage.value = 'Search failed. Please check your connection.';
+      errorMessage = 'Search failed. Please check your connection.';
       rethrow;
     }
   }
@@ -147,16 +141,16 @@ class MartSearchProvider extends ChangeNotifier
     }
 
     try {
-      isLoading.value = true;
-      errorMessage.value = '';
+      isLoading = true;
+      errorMessage = '';
 
       // Use API search
       await _searchCategoriesViaAPI(query);
     } catch (e) {
-      errorMessage.value = 'Error searching categories: $e';
+      errorMessage = 'Error searching categories: $e';
       print('[MART_SEARCH] ❌ Category search error: $e');
     } finally {
-      isLoading.value = false;
+      isLoading = false;
     }
   }
 
@@ -164,24 +158,22 @@ class MartSearchProvider extends ChangeNotifier
   Future<void> _searchCategoriesViaAPI(String query) async {
     try {
       print('[MART_SEARCH] 🔍 Searching categories via API for: "$query"');
-
       // Build API URL with query parameters
-      final uri = Uri.parse('$baseUrl$categoriesEndpoint').replace(
-        queryParameters: {
-          'q': query,
-          'limit': '20',
-        },
-      );
+      final uri = Uri.parse(
+        '$baseUrl$categoriesEndpoint',
+      ).replace(queryParameters: {'q': query, 'limit': '20'});
 
       print('[MART_SEARCH] 📡 API URL: $uri');
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       print('[MART_SEARCH] 📡 API Response Status: ${response.statusCode}');
 
@@ -194,26 +186,28 @@ class MartSearchProvider extends ChangeNotifier
               .map((cat) => MartCategoryModel.fromJson(cat))
               .toList();
 
-          categoryResults.value = categories;
+          categoryResults = categories;
           print(
-              '[MART_SEARCH] ✅ API category search successful: ${categories.length} categories found');
+            '[MART_SEARCH] ✅ API category search successful: ${categories.length} categories found',
+          );
         } else {
           categoryResults.clear();
-          errorMessage.value = data['message'] ?? 'No categories found';
+          errorMessage = data['message'] ?? 'No categories found';
           print(
-              '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}');
+            '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}',
+          );
         }
       } else {
         categoryResults.clear();
-        errorMessage.value = 'Failed to search categories. Please try again.';
+        errorMessage = 'Failed to search categories. Please try again.';
         print(
-            '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}');
+          '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('[MART_SEARCH] ❌ API category search failed: $e');
       categoryResults.clear();
-      errorMessage.value =
-      'Category search failed. Please check your connection.';
+      errorMessage = 'Category search failed. Please check your connection.';
       rethrow;
     }
   }
@@ -225,22 +219,19 @@ class MartSearchProvider extends ChangeNotifier
       return;
     }
 
-    searchQuery.value = query.trim();
-    isSearching.value = true;
+    searchQuery = query.trim();
+    isSearching = true;
 
     // Search only items (no categories)
     await searchItems(query);
 
-    isSearching.value = false;
+    isSearching = false;
   }
 
   // Load more items (pagination)
   Future<void> loadMoreItems() async {
-    if (hasMoreItems.value &&
-        !isLoading.value &&
-        searchQuery.value.isNotEmpty) {
-      await searchItems(searchQuery.value,
-          page: currentPage.value + 1, append: true);
+    if (hasMoreItems && !isLoading && searchQuery.isNotEmpty) {
+      await searchItems(searchQuery, page: currentPage + 1, append: true);
     }
   }
 
@@ -248,11 +239,11 @@ class MartSearchProvider extends ChangeNotifier
   void clearResults() {
     searchResults.clear();
     categoryResults.clear();
-    searchQuery.value = '';
-    isSearching.value = false;
-    errorMessage.value = '';
-    currentPage.value = 1;
-    hasMoreItems.value = false;
+    searchQuery = '';
+    isSearching = false;
+    errorMessage = '';
+    currentPage = 1;
+    hasMoreItems = false;
   }
 
   // Save search query to history
@@ -278,16 +269,15 @@ class MartSearchProvider extends ChangeNotifier
   // Get featured items using API
   Future<void> getFeaturedItems({String type = 'featured'}) async {
     try {
-      isLoading.value = true;
-      errorMessage.value = '';
-
+      isLoading = true;
+      errorMessage = '';
       // Use API to get featured items
       await _getFeaturedItemsViaAPI(type: type);
     } catch (e) {
-      errorMessage.value = 'Error loading featured items: $e';
+      errorMessage = 'Error loading featured items: $e';
       print('[MART_SEARCH] ❌ Featured items error: $e');
     } finally {
-      isLoading.value = false;
+      isLoading = false;
     }
   }
 
@@ -295,55 +285,55 @@ class MartSearchProvider extends ChangeNotifier
   Future<void> _getFeaturedItemsViaAPI({String type = 'featured'}) async {
     try {
       print('[MART_SEARCH] 🔍 Getting featured items via API (type: $type)');
-
       // Build API URL with query parameters
-      final uri = Uri.parse('$baseUrl/search/items/featured').replace(
-        queryParameters: {
-          'type': type,
-          'limit': '20',
-        },
-      );
+      final uri = Uri.parse(
+        '$baseUrl/search/items/featured',
+      ).replace(queryParameters: {'type': type, 'limit': '20'});
 
       print('[MART_SEARCH] 📡 API URL: $uri');
 
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 10));
+      final response = await http
+          .get(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 10));
 
       print('[MART_SEARCH] 📡 API Response Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-
         if (data['success'] == true) {
           final itemsList = (data['data'] as List);
-          final items =
-          itemsList.map((item) => MartItemModel.fromJson(item)).toList();
-
-          searchResults.value = items;
+          final items = itemsList
+              .map((item) => MartItemModel.fromJson(item))
+              .toList();
+          searchResults = items;
           print(
-              '[MART_SEARCH] ✅ API featured items loaded: ${items.length} items');
+            '[MART_SEARCH] ✅ API featured items loaded: ${items.length} items',
+          );
         } else {
           searchResults.clear();
-          errorMessage.value = data['message'] ?? 'No featured items found';
+          errorMessage = data['message'] ?? 'No featured items found';
           print(
-              '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}');
+            '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}',
+          );
         }
       } else {
         searchResults.clear();
-        errorMessage.value = 'Failed to load featured items. Please try again.';
+        errorMessage = 'Failed to load featured items. Please try again.';
         print(
-            '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}');
+          '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}',
+        );
       }
     } catch (e) {
       print('[MART_SEARCH] ❌ API featured items request failed: $e');
       searchResults.clear();
-      errorMessage.value =
-      'Failed to load featured items. Please check your connection.';
+      errorMessage =
+          'Failed to load featured items. Please check your connection.';
       rethrow;
     }
   }
@@ -352,7 +342,6 @@ class MartSearchProvider extends ChangeNotifier
   Future<List<Map<String, dynamic>>> getTrendingSearches() async {
     try {
       print('[MART_SEARCH] 🔥 Fetching trending searches from API...');
-
       final response = await http.get(
         Uri.parse('$baseUrl/trending-searches'),
         headers: {
@@ -366,26 +355,30 @@ class MartSearchProvider extends ChangeNotifier
 
         if (data['success'] == true) {
           final trendingData = (data['data'] as List)
-              .map((item) => {
-            'text': item['text'] ?? item['name'] ?? '',
-            'color': _getColorFromString(item['color'] ?? ''),
-            'category': item['category'] ?? 'general',
-            'popularity':
-            item['popularity'] ?? item['search_count'] ?? 0,
-          })
+              .map(
+                (item) => {
+                  'text': item['text'] ?? item['name'] ?? '',
+                  'color': _getColorFromString(item['color'] ?? ''),
+                  'category': item['category'] ?? 'general',
+                  'popularity': item['popularity'] ?? item['search_count'] ?? 0,
+                },
+              )
               .toList();
 
           print(
-              '[MART_SEARCH] ✅ Trending searches loaded: ${trendingData.length} items');
+            '[MART_SEARCH] ✅ Trending searches loaded: ${trendingData.length} items',
+          );
           return trendingData;
         } else {
           print(
-              '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}');
+            '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}',
+          );
           return [];
         }
       } else {
         print(
-            '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}');
+          '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}',
+        );
         return [];
       }
     } catch (e) {
@@ -427,7 +420,7 @@ class MartSearchProvider extends ChangeNotifier
         case 'deeporange':
           return const Color(0xFFFF5722);
         default:
-        // Try to parse as hex color
+          // Try to parse as hex color
           if (cleanColor.length == 6) {
             return Color(int.parse('FF$cleanColor', radix: 16));
           }

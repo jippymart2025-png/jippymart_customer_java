@@ -19,7 +19,7 @@ class ReusableBannerWidget extends StatelessWidget {
   final List<dynamic>
   banners; // Can be List<BannerModel> or List<MartBannerModel>
   final PageController pageController;
-  final RxInt currentPage;
+  final ValueNotifier<int> currentPage; // ✅ Change here
   final double height;
   final bool enableAutoScroll;
   final Duration autoScrollDuration;

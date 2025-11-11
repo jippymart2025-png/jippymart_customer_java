@@ -4,7 +4,6 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_categories_screen/mart_categories_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
@@ -21,8 +20,6 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart' show Provider;
 import '../app/category_service/category__service_screen.dart';
 
-bool _globalDeepLinkProcessed = false;
-
 class FinalDeepLinkService {
   // Singleton pattern
   static final FinalDeepLinkService _instance =
@@ -38,7 +35,6 @@ class FinalDeepLinkService {
   );
 
   StreamSubscription? _sub;
-  GlobalKey<NavigatorState>? _navigatorKey;
   bool _initialized = false;
   String? _pendingDeepLink; // Added to store pending deep link
   bool _hasProcessedDeepLink = false; // Flag to prevent duplicate processing
@@ -48,21 +44,10 @@ class FinalDeepLinkService {
     BuildContext context,
   ) async {
     if (_initialized) {
-      log('🔗 [FLUTTER] DeepLinkService already initialized, skipping...');
-      print(
-        '🔗 [FLUTTER] PRINT TEST - DeepLinkService already initialized, skipping...',
-      );
       return; // Prevent multiple subscriptions
     }
 
     _initialized = true;
-    _navigatorKey = navigatorKey;
-    log('🚀 [FLUTTER] DeepLinkService INIT started - Singleton pattern');
-    print(
-      '🚀 [FLUTTER] PRINT TEST - DeepLinkService INIT started - Singleton pattern',
-    );
-    log('🔗 [FLUTTER] Navigator key set: ✅');
-    print('🔗 [FLUTTER] PRINT TEST - Navigator key set: ✅');
 
     // 1) Listen to event stream (real-time links) - persistent subscription
     log('🔗 [FLUTTER] Setting up persistent event channel listener...');
@@ -107,7 +92,6 @@ class FinalDeepLinkService {
 
   void _handleLink(String url, BuildContext context) async {
     _hasProcessedDeepLink = false;
-    _globalDeepLinkProcessed = false;
     if (_hasProcessedDeepLink) {
       print(
         '🔥🔥🔥 [FLUTTER] Deep link already processed, ignoring duplicate: $url',
@@ -410,14 +394,12 @@ class FinalDeepLinkService {
   void clearLastProcessedLink() {
     _pendingDeepLink = null;
     _hasProcessedDeepLink = false;
-    _globalDeepLinkProcessed = false;
     print('🔥🔥🔥 [FLUTTER] Cleared all deep link processing flags');
   }
 
   /// Force reset all deep link processing flags (for new deep links)
   void resetForNewDeepLink() {
     _hasProcessedDeepLink = false;
-    _globalDeepLinkProcessed = false;
     _pendingDeepLink = null;
     print('🔥🔥🔥 [FLUTTER] Reset all flags for new deep link processing');
   }

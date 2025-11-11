@@ -1,6 +1,5 @@
 import 'dart:developer';
 
-import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/production_logger.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';

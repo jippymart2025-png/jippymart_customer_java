@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
-// import 'package:url_launcher/url_launcher.dart';
-import '../app/cart_screen/cart_screen.dart';
 import '../app/restaurant_details_screen/restaurant_details_screen.dart';
 import '../constant/constant.dart';
 import '../utils/fire_store_utils.dart';
@@ -54,7 +52,11 @@ class MiniCartBar extends StatelessWidget {
                       width: 44,
                       height: 44,
                       color: Colors.grey[200],
-                      child: const Icon(Icons.image, color: Colors.grey, size: 24),
+                      child: const Icon(
+                        Icons.image,
+                        color: Colors.grey,
+                        size: 24,
+                      ),
                     ),
                   ),
                 )
@@ -75,10 +77,15 @@ class MiniCartBar extends StatelessWidget {
                   onTap: () async {
                     if (vendorId != null) {
                       ShowToastDialog.showLoader("Loading restaurant...");
-                      final vendorModel = await FireStoreUtils.getVendorById(vendorId.toString());
+                      final vendorModel = await FireStoreUtils.getVendorById(
+                        vendorId.toString(),
+                      );
                       ShowToastDialog.closeLoader();
                       if (vendorModel != null) {
-                        Get.to(const RestaurantDetailsScreen(), arguments: {'vendorModel': vendorModel});
+                        Get.to(
+                          const RestaurantDetailsScreen(),
+                          arguments: {'vendorModel': vendorModel},
+                        );
                       } else {
                         ShowToastDialog.showToast("Restaurant not found");
                       }
@@ -103,11 +110,11 @@ class MiniCartBar extends StatelessWidget {
               //     // WhatsApp number - you can change this to your desired number
               //     const String phoneNumber = '+919876543210'; // Replace with your actual WhatsApp number
               //     const String message = 'Hello! I need help with my order.'; // Customize the message
-                  
+
               //     final Uri whatsappUrl = Uri.parse(
               //       'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}'
               //     );
-                  
+
               //     try {
               //       if (await canLaunchUrl(whatsappUrl)) {
               //         await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
@@ -153,13 +160,18 @@ class MiniCartBar extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
                       textStyle: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
                     ),
-                    child: Text('View Cart • $itemCount item${itemCount > 1 ? 's' : ''}'),
+                    child: Text(
+                      'View Cart • $itemCount item${itemCount > 1 ? 's' : ''}',
+                    ),
                   ),
                 ],
               ),
@@ -169,4 +181,4 @@ class MiniCartBar extends StatelessWidget {
       );
     });
   }
-} 
+}
