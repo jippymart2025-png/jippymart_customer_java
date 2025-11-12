@@ -105,7 +105,6 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  // Determine cart theme based on source and content
   CartTheme _getCartTheme() {
     // If source is explicitly provided, use it
     if (widget.source != null) {
@@ -163,7 +162,6 @@ class _CartScreenState extends State<CartScreen> {
             backgroundColor: themeColors.surface,
             appBar: AppBar(
               backgroundColor: ColorConst.martPrimary,
-              // themeColors.primary,
               foregroundColor: Colors.white,
               automaticallyImplyLeading: !widget.hideBackButton,
               leading: widget.hideBackButton
@@ -219,29 +217,15 @@ class _CartScreenState extends State<CartScreen> {
                                     ) async {
                                       if (value != null) {
                                         ShippingAddress addressModel = value;
-
-                                        // 🔑 ZONE DETECTION: Use the same zone system as restaurants
                                         if (addressModel.location?.latitude !=
                                                 null &&
                                             addressModel.location?.longitude !=
                                                 null) {
                                           try {
-                                            print(
-                                              '🔍 [CART_ADDRESS_CHANGE] Using restaurant zone system for consistency...',
-                                            );
-
-                                            // Use the same zone as restaurants (Constant.selectedZone)
                                             if (Constant.selectedZone != null) {
                                               addressModel.zoneId =
                                                   Constant.selectedZone!.id;
-                                              print(
-                                                '✅ [CART_ADDRESS_CHANGE] Using restaurant zone: ${Constant.selectedZone!.name} (${Constant.selectedZone!.id})',
-                                              );
                                             } else {
-                                              // Fallback to mart zone detection if restaurant zone not available
-                                              print(
-                                                '⚠️ [CART_ADDRESS_CHANGE] No restaurant zone available, trying mart zone detection...',
-                                              );
                                               final zoneId =
                                                   await MartZoneUtils.getZoneIdForCoordinates(
                                                     addressModel
@@ -274,7 +258,6 @@ class _CartScreenState extends State<CartScreen> {
                                             '⚠️ [CART_ADDRESS_CHANGE] No coordinates available for zone detection',
                                           );
                                         }
-
                                         controller.selectedAddress =
                                             addressModel;
                                         controller.calculatePrice();
@@ -353,185 +336,6 @@ class _CartScreenState extends State<CartScreen> {
                                 ),
                               ),
                         cartProductDetailsImageWidget(controller),
-                        const SizedBox(height: 20),
-                        Visibility(
-                          visible: false,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "${'Delivery Type'.tr} (${controller.selectedFoodType})"
-                                      .tr,
-                                  textAlign: TextAlign.start,
-                                  style: TextStyle(
-                                    fontFamily: AppThemeData.semiBold,
-                                    color: AppThemeData.grey900,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                controller.selectedFoodType == 'TakeAway'
-                                    ? const SizedBox()
-                                    : Container(
-                                        width: Responsive.width(100, context),
-                                        decoration: ShapeDecoration(
-                                          color: AppThemeData.grey50,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Padding(
-                                          padding: const EdgeInsets.all(10),
-                                          child: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Column(
-                                                  crossAxisAlignment:
-                                                      CrossAxisAlignment.start,
-                                                  children: [
-                                                    Text(
-                                                      "Instant Delivery".tr,
-                                                      textAlign:
-                                                          TextAlign.start,
-                                                      style: TextStyle(
-                                                        fontFamily:
-                                                            AppThemeData.medium,
-                                                        color: AppThemeData
-                                                            .primary300,
-                                                        fontSize: 16,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 5),
-                                                    Text(
-                                                      "Standard".tr,
-                                                      textAlign:
-                                                          TextAlign.start,
-                                                      style: TextStyle(
-                                                        fontFamily:
-                                                            AppThemeData.medium,
-                                                        fontSize: 12,
-                                                        color: AppThemeData
-                                                            .grey500,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              Radio(
-                                                value: controller.deliveryType,
-                                                groupValue: "instant".tr,
-                                                activeColor:
-                                                    AppThemeData.primary300,
-                                                onChanged: (value) {
-                                                  controller.deliveryType =
-                                                      "instant".tr;
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                const SizedBox(height: 10),
-                                Container(
-                                  width: Responsive.width(100, context),
-                                  decoration: ShapeDecoration(
-                                    color: AppThemeData.grey50,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: Offstage(
-                                    offstage: true,
-                                    child: InkWell(
-                                      onTap: () {
-                                        controller.deliveryType = "schedule".tr;
-                                        BottomPicker.dateTime(
-                                          onSubmit: (index) {
-                                            controller.scheduleDateTime = index;
-                                          },
-                                          minDateTime: DateTime.now(),
-                                          displaySubmitButton: true,
-                                          pickerTitle: Text('Schedule Time'.tr),
-                                          buttonSingleColor:
-                                              AppThemeData.primary300,
-                                        ).show(context);
-                                      },
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(10),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    "Schedule Time".tr,
-                                                    textAlign: TextAlign.start,
-                                                    style: TextStyle(
-                                                      fontFamily:
-                                                          AppThemeData.medium,
-                                                      color: AppThemeData
-                                                          .primary300,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 5),
-                                                  Text(
-                                                    "${'Your preferred time'.tr} ${controller.deliveryType == "schedule" ? Constant.timestampToDateTime(Timestamp.fromDate(controller.scheduleDateTime)) : ""}",
-                                                    textAlign: TextAlign.start,
-                                                    style: TextStyle(
-                                                      fontFamily:
-                                                          AppThemeData.medium,
-                                                      fontSize: 12,
-                                                      color:
-                                                          AppThemeData.grey500,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            Radio(
-                                              value: controller.deliveryType,
-                                              groupValue: "schedule".tr,
-                                              activeColor:
-                                                  AppThemeData.primary300,
-                                              onChanged: (value) {
-                                                controller.deliveryType =
-                                                    "schedule".tr;
-                                                BottomPicker.dateTime(
-                                                  initialDateTime: controller
-                                                      .scheduleDateTime,
-                                                  onSubmit: (index) {
-                                                    controller
-                                                            .scheduleDateTime =
-                                                        index;
-                                                  },
-                                                  minDateTime: controller
-                                                      .scheduleDateTime,
-                                                  displaySubmitButton: true,
-                                                  pickerTitle: Text(
-                                                    'Schedule Time'.tr,
-                                                  ),
-                                                  buttonSingleColor:
-                                                      AppThemeData.primary300,
-                                                ).show(context);
-                                              },
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
                         const SizedBox(height: 20),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 16),

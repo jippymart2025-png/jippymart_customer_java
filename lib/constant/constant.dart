@@ -151,54 +151,121 @@ class Constant {
     }
   }
 
-  static String productCommissionPrice(VendorModel vendorModel, String price) {
-    String commission = "0";
-    if (adminCommission!.isEnabled == true) {
-      if (vendorModel.adminCommission == null) {
-        if (adminCommission!.commissionType!.toLowerCase() ==
-                "Percent".toLowerCase() ||
-            adminCommission!.commissionType?.toLowerCase() ==
-                "Percentage".toLowerCase()) {
-          commission =
-              (double.parse(price) +
-                      (double.parse(price) *
-                          double.parse(adminCommission!.amount.toString()) /
-                          100))
-                  .toString();
+  static String productCommissionPrice(VendorModel vendorModel, String? price) {
+    try {
+      // Handle null or empty price
+      if (price == null || price.isEmpty) {
+        print('⚠️ productCommissionPrice: Price is null or empty');
+        return "0";
+      }
+
+      // Parse the base price safely
+      final double basePrice = double.tryParse(price) ?? 0.0;
+      if (basePrice == 0.0) {
+        print('⚠️ productCommissionPrice: Unable to parse price: $price');
+        return "0";
+      }
+
+      String commission = "0";
+
+      if (adminCommission!.isEnabled == true) {
+        if (vendorModel.adminCommission == null) {
+          // Use global admin commission
+          final globalCommissionAmount =
+              double.tryParse(adminCommission!.amount?.toString() ?? '0') ??
+              0.0;
+
+          if (adminCommission!.commissionType?.toLowerCase() == "percent" ||
+              adminCommission!.commissionType?.toLowerCase() == "percentage") {
+            commission =
+                (basePrice + (basePrice * globalCommissionAmount / 100))
+                    .toString();
+          } else {
+            commission = (basePrice + globalCommissionAmount).toString();
+          }
         } else {
-          commission =
-              (double.parse(price) +
-                      double.parse(adminCommission!.amount.toString()))
-                  .toString();
+          // Use vendor-specific commission
+          final vendorCommissionAmount =
+              double.tryParse(
+                vendorModel.adminCommission!.amount?.toString() ?? '0',
+              ) ??
+              0.0;
+
+          if (vendorModel.adminCommission!.commissionType?.toLowerCase() ==
+                  "percent" ||
+              vendorModel.adminCommission!.commissionType?.toLowerCase() ==
+                  "percentage") {
+            commission =
+                (basePrice + (basePrice * vendorCommissionAmount / 100))
+                    .toString();
+          } else {
+            commission = (basePrice + vendorCommissionAmount).toString();
+          }
         }
       } else {
-        if (vendorModel.adminCommission!.commissionType!.toLowerCase() ==
-                "Percent".toLowerCase() ||
-            vendorModel.adminCommission!.commissionType?.toLowerCase() ==
-                "Percentage".toLowerCase()) {
-          commission =
-              (double.parse(price) +
-                      (double.parse(price) *
-                          double.parse(
-                            vendorModel.adminCommission!.amount.toString(),
-                          ) /
-                          100))
-                  .toString();
-        } else {
-          commission =
-              (double.parse(price) +
-                      double.parse(
-                        vendorModel.adminCommission!.amount.toString(),
-                      ))
-                  .toString();
-        }
+        commission = price;
       }
-    } else {
-      commission = price;
+      // Debug output
+      print('💰 Commission Calculation:');
+      print('   - Base Price: $basePrice');
+      print('   - Final Commission: $commission');
+      return commission;
+    } catch (e) {
+      print('❌ Error in productCommissionPrice: $e');
+      print('   - Vendor: ${vendorModel.title}');
+      print('   - Price: $price');
+      return "0"; // Return safe default
     }
-
-    return commission;
   }
+
+  // static String productCommissionPrice(VendorModel vendorModel, String price) {
+  //   String commission = "0";
+  //   if (adminCommission!.isEnabled == true) {
+  //     if (vendorModel.adminCommission == null) {
+  //       if (adminCommission!.commissionType!.toLowerCase() ==
+  //               "Percent".toLowerCase() ||
+  //           adminCommission!.commissionType?.toLowerCase() ==
+  //               "Percentage".toLowerCase()) {
+  //         commission =
+  //             (double.parse(price) +
+  //                     (double.parse(price) *
+  //                         double.parse(adminCommission!.amount.toString()) /
+  //                         100))
+  //                 .toString();
+  //       } else {
+  //         commission =
+  //             (double.parse(price) +
+  //                     double.parse(adminCommission!.amount.toString()))
+  //                 .toString();
+  //       }
+  //     } else {
+  //       if (vendorModel.adminCommission!.commissionType!.toLowerCase() ==
+  //               "Percent".toLowerCase() ||
+  //           vendorModel.adminCommission!.commissionType?.toLowerCase() ==
+  //               "Percentage".toLowerCase()) {
+  //         commission =
+  //             (double.parse(price) +
+  //                     (double.parse(price) *
+  //                         double.parse(
+  //                           vendorModel.adminCommission!.amount.toString(),
+  //                         ) /
+  //                         100))
+  //                 .toString();
+  //       } else {
+  //         commission =
+  //             (double.parse(price) +
+  //                     double.parse(
+  //                       vendorModel.adminCommission!.amount.toString(),
+  //                     ))
+  //                 .toString();
+  //       }
+  //     }
+  //   } else {
+  //     commission = price;
+  //   }
+  //
+  //   return commission;
+  // }
 
   static double calculateTax({String? amount, TaxModel? taxModel}) {
     double taxAmount = 0.0;

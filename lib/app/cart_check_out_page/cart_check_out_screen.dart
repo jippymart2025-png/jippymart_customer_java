@@ -38,7 +38,6 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   void initState() {
     super.initState();
     controller = Provider.of<CartControllerProvider>(context, listen: false);
-    // Future.delayed(const Duration(seconds: 3), () {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       Future.delayed(const Duration(seconds: 3), () {
         _refreshCartData(context);

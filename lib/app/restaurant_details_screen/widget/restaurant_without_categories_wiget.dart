@@ -36,6 +36,7 @@ Widget buildProductsWithoutCategories(
       List<String> selectedVariants = [];
       List<String> selectedIndexVariants = [];
       List<String> selectedIndexArray = [];
+
       if (productModel.itemAttribute != null) {
         if (productModel.itemAttribute!.attributes!.isNotEmpty) {
           for (var element in productModel.itemAttribute!.attributes!) {
@@ -76,18 +77,28 @@ Widget buildProductsWithoutCategories(
           disPrice = "0";
         }
       } else {
+        // FIXED: Safe price parsing
         price = Constant.productCommissionPrice(
           controller.vendorModel,
-          productModel.price.toString(),
+          productModel.price?.toString() ?? '0',
         );
-        disPrice = double.parse(productModel.disPrice.toString()) <= 0
-            ? "0"
-            : Constant.productCommissionPrice(
-                controller.vendorModel,
-                productModel.disPrice.toString(),
-              );
-      }
 
+        // FIXED: Safe discount price handling
+        final discountPriceStr = productModel.disPrice?.toString();
+        if (discountPriceStr == null ||
+            discountPriceStr.isEmpty ||
+            discountPriceStr == 'null') {
+          disPrice = "0";
+        } else {
+          final discountPriceValue = double.tryParse(discountPriceStr) ?? 0.0;
+          disPrice = discountPriceValue <= 0
+              ? "0"
+              : Constant.productCommissionPrice(
+                  controller.vendorModel,
+                  discountPriceStr,
+                );
+        }
+      }
       return Padding(
         padding: const EdgeInsets.only(bottom: 20),
         child: Row(

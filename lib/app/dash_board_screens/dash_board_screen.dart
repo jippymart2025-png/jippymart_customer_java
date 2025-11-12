@@ -1,3 +1,4 @@
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -13,8 +14,8 @@ class DashBoardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<DashBoardProvider>(
-      builder: (context, controller, _) {
+    return Consumer2<DashBoardProvider, CartControllerProvider>(
+      builder: (context, controller, cartControllerProvider, _) {
         final safePageList = controller.pageList.isNotEmpty
             ? controller.pageList
             : [const SizedBox()];
@@ -38,19 +39,27 @@ class DashBoardScreen extends StatelessWidget {
                 SystemNavigator.pop();
               }
             } else {
-              controller.changeNavbar(0);
+              controller.changeNavbar(0, cartControllerProvider, context);
             }
           },
           child: Scaffold(
             body: IndexedStack(index: safeIndex, children: safePageList),
-            bottomNavigationBar: _buildBottomNavigationBar(controller),
+            bottomNavigationBar: _buildBottomNavigationBar(
+              controller,
+              cartControllerProvider,
+              context,
+            ),
           ),
         );
       },
     );
   }
 
-  Widget _buildBottomNavigationBar(DashBoardProvider controller) {
+  Widget _buildBottomNavigationBar(
+    DashBoardProvider controller,
+    CartControllerProvider cartControllerProvider,
+    BuildContext context,
+  ) {
     final List<BottomNavigationBarItem> items = [
       _buildNavigationBarItem(
         index: 0,
@@ -90,7 +99,11 @@ class DashBoardScreen extends StatelessWidget {
       selectedItemColor: AppThemeData.primary300,
       unselectedItemColor: AppThemeData.grey600,
       onTap: (int index) {
-        controller.changeNavbar(index.clamp(0, items.length - 1));
+        controller.changeNavbar(
+          index.clamp(0, items.length - 1),
+          cartControllerProvider,
+          context,
+        );
       },
       items: items,
     );

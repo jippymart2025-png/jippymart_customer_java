@@ -328,7 +328,6 @@ class AddressListScreen extends StatelessWidget {
                     }
                   } catch (e) {
                     ShowToastDialog.closeLoader();
-                    print('Error deleting address: $e');
                   }
                 },
                 child: Text(

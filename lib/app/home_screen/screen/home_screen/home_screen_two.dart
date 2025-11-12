@@ -956,16 +956,12 @@ class BannerView extends StatelessWidget {
                           await FireStoreUtils.getVendorById(
                             productModel!.vendorID.toString(),
                           );
-
                       if (vendorModel!.zoneId == Constant.selectedZone!.id) {
                         ShowToastDialog.closeLoader();
                         restaurantDetailsProvider.initFunction(
                           vendorModels: vendorModel,
                         );
-                        Get.to(
-                          const RestaurantDetailsScreen(),
-                          arguments: {"vendorModel": vendorModel},
-                        );
+                        Get.to(const RestaurantDetailsScreen());
                       } else {
                         ShowToastDialog.closeLoader();
                         ShowToastDialog.showToast(
@@ -1246,140 +1242,6 @@ class AdvertisementHomeCard extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class BannerBottomView extends StatelessWidget {
-  final HomeProvider controller;
-
-  const BannerBottomView({super.key, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Consumer<RestaurantDetailsProvider>(
-          builder: (context, restaurantDetailsProvider, _) {
-            return SizedBox(
-              height: 150,
-              child: PageView.builder(
-                physics: const BouncingScrollPhysics(),
-                controller: controller.pageBottomController,
-                scrollDirection: Axis.horizontal,
-                itemCount: controller.bannerBottomModel.length,
-                padEnds: false,
-                pageSnapping: true,
-                allowImplicitScrolling: true,
-                onPageChanged: (value) {
-                  controller.currentBottomPage = value;
-                },
-                itemBuilder: (BuildContext context, int index) {
-                  BannerModel bannerModel = controller.bannerBottomModel[index];
-                  return InkWell(
-                    onTap: () async {
-                      if (bannerModel.redirectType == "store") {
-                        ShowToastDialog.showLoader("Please wait".tr);
-                        VendorModel? vendorModel =
-                            await FireStoreUtils.getVendorById(
-                              bannerModel.redirectId.toString(),
-                            );
-
-                        if (vendorModel!.zoneId == Constant.selectedZone!.id) {
-                          ShowToastDialog.closeLoader();
-                          restaurantDetailsProvider.initFunction(
-                            vendorModels: vendorModel,
-                          );
-                          Get.to(
-                            const RestaurantDetailsScreen(),
-                            arguments: {"vendorModel": vendorModel},
-                          );
-                        } else {
-                          ShowToastDialog.closeLoader();
-                          ShowToastDialog.showToast(
-                            "Sorry, The Zone is not available in your area. change the other location first."
-                                .tr,
-                          );
-                        }
-                      } else if (bannerModel.redirectType == "product") {
-                        ShowToastDialog.showLoader("Please wait".tr);
-                        ProductModel? productModel =
-                            await FireStoreUtils.getProductById(
-                              bannerModel.redirectId.toString(),
-                            );
-                        VendorModel? vendorModel =
-                            await FireStoreUtils.getVendorById(
-                              productModel!.vendorID.toString(),
-                            );
-
-                        if (vendorModel!.zoneId == Constant.selectedZone!.id) {
-                          ShowToastDialog.closeLoader();
-                          restaurantDetailsProvider.initFunction(
-                            vendorModels: vendorModel,
-                          );
-                          Get.to(const RestaurantDetailsScreen());
-                        } else {
-                          ShowToastDialog.closeLoader();
-                          ShowToastDialog.showToast(
-                            "Sorry, The Zone is not available in your area. change the other location first."
-                                .tr,
-                          );
-                        }
-                      } else if (bannerModel.redirectType == "external_link") {
-                        final uri = Uri.parse(
-                          bannerModel.redirectId.toString(),
-                        );
-                        if (await canLaunchUrl(uri)) {
-                          await launchUrl(uri);
-                        } else {
-                          ShowToastDialog.showToast("Could not launch".tr);
-                        }
-                      }
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: 14),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(12),
-                        ),
-                        child: NetworkImageWidget(
-                          imageUrl: bannerModel.photo.toString(),
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: List.generate(controller.bannerBottomModel.length, (
-              index,
-            ) {
-              return Obx(
-                () => Container(
-                  margin: const EdgeInsets.only(right: 5),
-                  alignment: Alignment.centerLeft,
-                  height: 9,
-                  width: 9,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: controller.currentBottomPage == index
-                        ? AppThemeData.primary300
-                        : Colors.black12,
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-      ],
     );
   }
 }

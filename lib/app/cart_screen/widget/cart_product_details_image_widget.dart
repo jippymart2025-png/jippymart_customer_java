@@ -51,10 +51,7 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                         restaurantDetailsProvider.initFunction(
                           vendorModels: value,
                         );
-                        Get.to(
-                          const RestaurantDetailsScreen(),
-                          arguments: {"vendorModel": value},
-                        );
+                        Get.to(const RestaurantDetailsScreen());
                       }
                     });
                   },
@@ -383,7 +380,6 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                                                               .split('~')
                                                               .first,
                                                         );
-                                                    // Check if this is a promotional item
                                                     if (cartProductModel
                                                                 .promoId !=
                                                             null &&
@@ -535,7 +531,6 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                                                         );
                                                       }
                                                     } else {
-                                                      // Fallback: if productModel is null, allow increment for mart items
                                                       await controller.addToCart(
                                                         cartProductModel:
                                                             cartProductModel,
@@ -547,6 +542,8 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                                                       );
                                                     }
                                                   },
+
+                                                  ///finded
                                                   child: const Icon(Icons.add),
                                                 ),
                                                 const SizedBox(width: 8),

@@ -402,41 +402,6 @@ class ProductListView extends StatelessWidget {
                     fontWeight: FontWeight.w400,
                   ),
                 ),
-                const SizedBox(height: 5),
-                Visibility(
-                  visible: false,
-                  child: InkWell(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return infoDialog(controller, productModel);
-                        },
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info,
-                          color: AppThemeData.secondary300,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          "Info".tr,
-                          maxLines: 2,
-                          style: TextStyle(
-                            overflow: TextOverflow.ellipsis,
-                            fontSize: 16,
-                            color: AppThemeData.secondary300,
-                            fontFamily: AppThemeData.regular,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
@@ -708,6 +673,7 @@ class ProductListView extends StatelessWidget {
         ),
       );
     } else {
+      //finded
       return RoundedButtonFill(
         title: "Add".tr,
         width: 10,
@@ -715,56 +681,54 @@ class ProductListView extends StatelessWidget {
         color: AppThemeData.grey50,
         textColor: AppThemeData.primary300,
         onPress: () async {
-          if (1 <= (productModel.quantity ?? 0) ||
-              (productModel.quantity ?? 0) == -1) {
-            // Check for promotional price and limit
-            final promo = controller.getActivePromotionForProduct(
-              productId: productModel.id ?? '',
-              restaurantId: productModel.vendorID ?? '',
-            );
-
-            // Check promotional item limit
-            if (promo != null) {
-              final isAllowed = controller.isPromotionalItemQuantityAllowed(
-                productModel.id ?? '',
-                productModel.vendorID ?? '',
-                1,
-              );
-
-              if (!isAllowed) {
-                final limit = controller.getPromotionalItemLimit(
-                  productModel.id ?? '',
-                  productModel.vendorID ?? '',
-                );
-                ShowToastDialog.showToast(
-                  "Maximum $limit items allowed for this promotional offer".tr,
-                );
-                return;
-              }
-            }
-
-            String finalPrice = price;
-            String finalDiscountPrice = disPrice;
-
-            if (promo != null) {
-              // Use promotional price
-              finalPrice = (promo['special_price'] as num).toString();
-              finalDiscountPrice = Constant.productCommissionPrice(
-                controller.vendorModel,
-                productModel.price.toString(),
-              );
-            }
-
-            controller.addToCart(
-              productModel: productModel,
-              price: finalPrice,
-              discountPrice: finalDiscountPrice,
-              isIncrement: true,
-              quantity: 1,
-            );
-          } else {
-            ShowToastDialog.showToast("Out of stock".tr);
-          }
+          controller.addProductAndRemoveProductFunction(
+            productModel: productModel,
+            price: price,
+            disPrice: disPrice,
+          );
+          // if (1 <= (productModel.quantity ?? 0) ||
+          //     (productModel.quantity ?? 0) == -1) {
+          //   final promo = controller.getActivePromotionForProduct(
+          //     productId: productModel.id ?? '',
+          //     restaurantId: productModel.vendorID ?? '',
+          //   );
+          //   // Check promotional item limit
+          //   if (promo != null) {
+          //     final isAllowed = controller.isPromotionalItemQuantityAllowed(
+          //       productModel.id ?? '',
+          //       productModel.vendorID ?? '',
+          //       1,
+          //     );
+          //     if (!isAllowed) {
+          //       final limit = controller.getPromotionalItemLimit(
+          //         productModel.id ?? '',
+          //         productModel.vendorID ?? '',
+          //       );
+          //       ShowToastDialog.showToast(
+          //         "Maximum $limit items allowed for this promotional offer".tr,
+          //       );
+          //       return;
+          //     }
+          //   }
+          //   String finalPrice = price;
+          //   String finalDiscountPrice = disPrice;
+          //   if (promo != null) {
+          //     finalPrice = (promo['special_price'] as num).toString();
+          //     finalDiscountPrice = Constant.productCommissionPrice(
+          //       controller.vendorModel,
+          //       productModel.price.toString(),
+          //     );
+          //   }
+          //   controller.addToCart(
+          //     productModel: productModel,
+          //     price: finalPrice,
+          //     discountPrice: finalDiscountPrice,
+          //     isIncrement: true,
+          //     quantity: 1,
+          //   );
+          // } else {
+          //   ShowToastDialog.showToast("Out of stock".tr);
+          // }
         },
       );
     }

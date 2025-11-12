@@ -118,10 +118,10 @@ class CategoryView extends StatelessWidget {
                             controller.vendorCategoryModel[index];
                         return GestureDetector(
                           onTap: () {
-                            Get.to(const CategoryRestaurantScreen());
                             categoryRestaurantProvider.initFunction(
                               vendorCategoryModel,
                             );
+                            Get.to(const CategoryRestaurantScreen());
                           },
                           child: Container(
                             margin: const EdgeInsets.only(right: 0),

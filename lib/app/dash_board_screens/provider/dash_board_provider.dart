@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/favourite_screens/favourite_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/home_screen_two.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/order_screen.dart';
@@ -9,15 +10,18 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class DashBoardProvider extends ChangeNotifier {
-  void changeNavbar(int index) {
+  void changeNavbar(
+    int index,
+    CartControllerProvider cartControllerProvider,
+    BuildContext context,
+  ) {
     if (index >= 0 && index < pageList.length) {
       selectedIndex = index;
       notifyListeners();
-    } else {
-      print(
-        '[DASHBOARD] Invalid index: $index, pageList length: ${pageList.length}',
-      );
-    }
+      if (index == 2) {
+        cartControllerProvider.initFunction(context);
+      }
+    } else {}
   }
 
   bool isCartScreenInitialized = false;
@@ -65,36 +69,22 @@ class DashBoardProvider extends ChangeNotifier {
   /// Check if user has shipping addresses and show alert if none
   Future<void> _checkUserShippingAddresses() async {
     try {
-      print('[DASHBOARD] Waiting for home page to fully load...');
       await Future.delayed(const Duration(milliseconds: 3000));
       if (Constant.userModel != null) {
         final hasAddresses =
             Constant.userModel!.shippingAddress != null &&
             Constant.userModel!.shippingAddress!.isNotEmpty;
-        print('[DASHBOARD] Address check - Has addresses: $hasAddresses');
         if (!hasAddresses) {
-          print('[DASHBOARD] User has no shipping addresses - showing alert');
           _showAddressRequiredAlert();
-        } else {
-          print('[DASHBOARD] User has addresses - no alert needed');
-        }
-      } else {
-        print('[DASHBOARD] User model is null - cannot check addresses');
-      }
-    } catch (e) {
-      print('[DASHBOARD] Error checking shipping addresses: $e');
-    }
+        } else {}
+      } else {}
+    } catch (e) {}
   }
 
-  /// Show address required alert dialog
   void _showAddressRequiredAlert() {
-    // Prevent multiple dialogs from showing
     if (Get.isDialogOpen == true) {
-      print('[DASHBOARD] Dialog already showing, skipping...');
       return;
     }
-    print('[DASHBOARD] Showing address required dialog...');
-
     try {
       Get.dialog(
         WillPopScope(

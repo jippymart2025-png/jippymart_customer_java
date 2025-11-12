@@ -251,7 +251,6 @@ class CartControllerProvider extends ChangeNotifier {
             ElevatedButton(
               onPressed: () {
                 Get.back();
-                _processSelectedPaymentMethod();
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
@@ -267,13 +266,6 @@ class CartControllerProvider extends ChangeNotifier {
       ),
       barrierDismissible: false,
     );
-  }
-
-  // Add this helper method to process the selected payment
-  void _processSelectedPaymentMethod() {
-    // The actual payment processing will happen when user clicks "Pay Now" again
-    // This just sets the payment method and closes the dialog
-    print("Payment method selected: ${selectedPaymentMethod}");
   }
 
   Future<Map<String, dynamic>> getWeather(double lat, double lon) async {
@@ -439,9 +431,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _initializeAddressWithPriority(BuildContext context) async {
     try {
-      print('🏠 [ADDRESS_PRIORITY] ==========================================');
-      print('🏠 [ADDRESS_PRIORITY] ADDRESS INITIALIZATION STARTED');
-
       // PRIORITY 1: Check for saved addresses in user profile
       if (Constant.userModel != null &&
           Constant.userModel!.shippingAddress != null &&
@@ -455,82 +444,27 @@ class CartControllerProvider extends ChangeNotifier {
           defaultAddress.location?.latitude ?? 0.0,
           defaultAddress.location?.longitude ?? 0.0,
         );
-        print(" surge value ${surgePercent}");
-        print(
-          '🏠 [ADDRESS_PRIORITY] ✅ PRIORITY 1 SUCCESS - Using saved address: ${defaultAddress.address}',
-        );
-        print('🏠 [ADDRESS_PRIORITY] Address ID: ${defaultAddress.id}');
-        print(
-          '🏠 [ADDRESS_PRIORITY] Address locality: ${defaultAddress.locality}',
-        );
-        print(
-          '🏠 [ADDRESS_PRIORITY] Address zone: ${defaultAddress.zoneId ?? "NULL"}',
-        );
-        print(
-          '🏠 [ADDRESS_PRIORITY] ⚠️ IGNORING GPS LOCATION - Using saved address only',
-        );
-        print(
-          '🏠 [ADDRESS_PRIORITY] ==========================================',
-        );
         return;
       }
-
-      print(
-        '🏠 [ADDRESS_PRIORITY] ❌ PRIORITY 1 FAILED - No saved addresses found',
-      );
-      print(
-        '🏠 [ADDRESS_PRIORITY] Available addresses: ${Constant.userModel?.shippingAddress?.length ?? 0}',
-      );
-
-      // PRIORITY 2: Try to get address from home screen (Constant.selectedLocation)
-      print(
-        '🏠 [ADDRESS_PRIORITY] PRIORITY 2: Attempting to get address from home screen...',
-      );
       final homeScreenAddress = await _getCurrentLocationAddress(context);
-
       if (homeScreenAddress != null) {
         selectedAddress = homeScreenAddress;
         initialLiseSurgeValue(
           homeScreenAddress.location?.latitude ?? 0.0,
           homeScreenAddress.location?.longitude ?? 0.0,
         );
-        // Map<String, dynamic> weather = await getWeather(
-        //   homeScreenAddress.location?.latitude ?? 0.0,
-        //   homeScreenAddress.location?.longitude ?? 0.0,
-        // );
-        // Map<String, dynamic> rules = await getSurgeRules();
-        // surgePercent.value = calculateSurgeFee(weather, rules);
-        print(" surge value ${surgePercent}");
-        print(
-          '🏠 [ADDRESS_PRIORITY] ✅ PRIORITY 2 SUCCESS - Using home screen address: ${homeScreenAddress.address}',
-        );
-        print(
-          '🏠 [ADDRESS_PRIORITY] Home screen address locality: ${homeScreenAddress.locality}',
-        );
-        print(
-          '🏠 [ADDRESS_PRIORITY] Home screen coordinates: lat=${homeScreenAddress.location?.latitude}, lng=${homeScreenAddress.location?.longitude}',
-        );
+
         return;
       }
-
-      print(
-        '🏠 [ADDRESS_PRIORITY] ❌ PRIORITY 2 FAILED - Could not get home screen address',
-      );
-
-      // PRIORITY 3: BLOCK ORDER - NO FALLBACK ZONES
-      print(
-        '🏠 [ADDRESS_PRIORITY] ❌ PRIORITY 3 - BLOCKING ORDER - No valid address available',
-      );
-      print('🏠 [ADDRESS_PRIORITY] ==========================================');
       selectedAddress = null;
-
-      // Show alert to add address
+      notifyListeners();
       _showAddressRequiredAlert();
     } catch (e) {
       print('🏠 [ADDRESS_PRIORITY] ❌ ERROR in address initialization: $e');
       selectedAddress = null;
       _showAddressRequiredAlert();
     }
+    notifyListeners();
   }
 
   /// Get home screen address (Constant.selectedLocation) as address
@@ -538,54 +472,27 @@ class CartControllerProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      print(
-        '📍 [HOME_SCREEN_ADDRESS] Attempting to get address from home screen...',
-      );
-
-      // Check if we have address from home screen (Constant.selectedLocation)
       if (Constant.selectedLocation.location?.latitude != null &&
           Constant.selectedLocation.location?.longitude != null) {
         final lat = Constant.selectedLocation.location!.latitude!;
         final lng = Constant.selectedLocation.location!.longitude!;
-
-        // Validate coordinates are within India bounds
         if (lat >= 6.0 && lat <= 37.0 && lng >= 68.0 && lng <= 97.0) {
-          // Use the address information from Constant.selectedLocation if available
           String address = Constant.selectedLocation.address ?? '';
           String locality = Constant.selectedLocation.locality ?? '';
-
-          // If we don't have proper address text, this is not a valid address
           if (address.isEmpty ||
               locality.isEmpty ||
               address == 'Current Location' ||
               locality == 'Current Location' ||
               address.contains('Current Location') ||
               locality.contains('Current Location')) {
-            print(
-              '📍 [HOME_SCREEN_ADDRESS] ❌ Home screen address is invalid or incomplete',
-            );
-            print('📍 [HOME_SCREEN_ADDRESS] Address: "$address"');
-            print('📍 [HOME_SCREEN_ADDRESS] Locality: "$locality"');
             return null;
           }
-
-          print(
-            '📍 [HOME_SCREEN_ADDRESS] ✅ Successfully got address from home screen',
-          );
-          print('📍 [HOME_SCREEN_ADDRESS] Address: "$address"');
-          print('📍 [HOME_SCREEN_ADDRESS] Locality: "$locality"');
-          print('📍 [HOME_SCREEN_ADDRESS] Coordinates: lat=$lat, lng=$lng');
-
-          // 🔑 CRITICAL: Detect zone ID for current location address
           String? detectedZoneId = await _detectZoneIdForCoordinates(
             lat,
             lng,
             context,
           );
-          print(
-            '📍 [HOME_SCREEN_ADDRESS] Detected zone ID: ${detectedZoneId ?? "NULL"}',
-          );
-
+          notifyListeners();
           return ShippingAddress(
             id: 'home_screen_address_${DateTime.now().millisecondsSinceEpoch}',
             addressAs:
@@ -599,9 +506,6 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
 
-      print(
-        '📍 [HOME_SCREEN_ADDRESS] ❌ Could not get valid address from home screen',
-      );
       return null;
     } catch (e) {
       print('📍 [HOME_SCREEN_ADDRESS] ❌ Error getting home screen address: $e');
@@ -642,16 +546,8 @@ class CartControllerProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
-      print(
-        '[DEBUG] Starting zone detection for coordinates: $latitude, $longitude',
-      );
-
-      // If you need to get all zones from Firestore/API, you'd need a separate method
-      // For example: final List<Zone> zones = await getAllZones();
-
-      // For now, using your existing getCurrentZone method
       final zoneModel = await HomeProvider.getCurrentZone(latitude, longitude);
-
+      notifyListeners();
       if (zoneModel == null || zoneModel.zone == null) {
         print('[DEBUG] No zone available');
         return null;
@@ -670,6 +566,7 @@ class CartControllerProvider extends ChangeNotifier {
           return zone.id;
         }
       }
+      notifyListeners();
       print('[DEBUG] Coordinates not within the service zone');
       return null;
     } catch (e) {
@@ -692,7 +589,6 @@ class CartControllerProvider extends ChangeNotifier {
       getPaymentSettings();
       validateUserProfile();
 
-      // Periodically check subtotal instead of ever()
       Timer.periodic(const Duration(seconds: 1), (timer) {
         if (subTotal > 599 &&
             selectedPaymentMethod == PaymentGateway.cod.name) {
@@ -700,87 +596,41 @@ class CartControllerProvider extends ChangeNotifier {
         }
       });
     });
+    notifyListeners();
   }
 
   /// 🔑 BULLETPROOF PROFILE VALIDATION - NEVER FAILS
   Future<void> validateUserProfileBulletproof() async {
     final startTime = DateTime.now();
     isProfileValidating.value = true;
-
     try {
-      print(
-        '🔒 [BULLETPROOF_PROFILE] ==========================================',
-      );
-      print(
-        '🔒 [BULLETPROOF_PROFILE] VALIDATION STARTED at ${startTime.toIso8601String()}',
-      );
-      print(
-        '🔒 [BULLETPROOF_PROFILE] Cached user model: ${Constant.userModel?.firstName ?? 'NULL'}',
-      );
-
       // RETRY MECHANISM: Try multiple times with different strategies
       UserModel? user;
       int attempts = 0;
       const maxAttempts = 3;
-
       while (user == null && attempts < maxAttempts) {
         attempts++;
-        print(
-          '🔒 [BULLETPROOF_PROFILE] Attempt $attempts/$maxAttempts at ${DateTime.now().toIso8601String()}',
-        );
 
         try {
-          // Strategy 1: Try fresh Firestore fetch
-          print(
-            '🔒 [BULLETPROOF_PROFILE] Strategy 1: Fresh Firestore fetch (10s timeout)',
-          );
           final fetchStart = DateTime.now();
           final userId = await SqlStorageConst.getFirebaseId();
           user = await AddressListProvider.getUserProfile(
             userId.toString(),
           ).timeout(const Duration(seconds: 10));
           final fetchDuration = DateTime.now().difference(fetchStart);
-          print(
-            '🔒 [BULLETPROOF_PROFILE] Firestore fetch completed in ${fetchDuration.inMilliseconds}ms',
-          );
 
           if (user != null) {
-            print(
-              '🔒 [BULLETPROOF_PROFILE] ✅ Fresh Firestore fetch SUCCESSFUL',
-            );
-            print(
-              '🔒 [BULLETPROOF_PROFILE] User data: firstName="${user.firstName}", phone="${user.phoneNumber}", email="${user.email}"',
-            );
             break;
-          } else {
-            print(
-              '🔒 [BULLETPROOF_PROFILE] ❌ Fresh Firestore fetch returned NULL',
-            );
-          }
+          } else {}
         } catch (e) {
-          print('🔒 [BULLETPROOF_PROFILE] ❌ Fresh Firestore fetch FAILED: $e');
-          print('🔒 [BULLETPROOF_PROFILE] Error type: ${e.runtimeType}');
-
-          // Strategy 2: Try cached data if fresh fetch fails
           if (attempts == 2 && Constant.userModel != null) {
-            print(
-              '🔒 [BULLETPROOF_PROFILE] Strategy 2: Using cached user data as fallback',
-            );
-            print(
-              '🔒 [BULLETPROOF_PROFILE] Cached data: firstName="${Constant.userModel!.firstName}", phone="${Constant.userModel!.phoneNumber}"',
-            );
             user = Constant.userModel;
-            print(
-              '🔒 [BULLETPROOF_PROFILE] ✅ Cached user data used as fallback',
-            );
+
             break;
           }
 
           // Strategy 3: Wait and retry for network issues
           if (attempts < maxAttempts) {
-            print(
-              '🔒 [BULLETPROOF_PROFILE] Strategy 3: Waiting 2 seconds before retry...',
-            );
             await Future.delayed(const Duration(seconds: 2));
             print(
               '🔒 [BULLETPROOF_PROFILE] Wait completed, proceeding to next attempt',
@@ -788,15 +638,9 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
+      notifyListeners();
 
       if (user == null) {
-        final totalDuration = DateTime.now().difference(startTime);
-        print('🔒 [BULLETPROOF_PROFILE] ❌ ALL PROFILE FETCH ATTEMPTS FAILED');
-        print(
-          '🔒 [BULLETPROOF_PROFILE] Total duration: ${totalDuration.inMilliseconds}ms',
-        );
-        print('🔒 [BULLETPROOF_PROFILE] Attempts made: $attempts/$maxAttempts');
-        print('🔒 [BULLETPROOF_PROFILE] Final result: PROFILE_INVALID');
         isProfileValid.value = false;
         ShowToastDialog.showToast(
           "Unable to verify profile. Please check your internet connection and try again."
@@ -804,14 +648,6 @@ class CartControllerProvider extends ChangeNotifier {
         );
         return;
       }
-
-      print('🔒 [BULLETPROOF_PROFILE] ✅ User data retrieved successfully');
-      print(
-        '🔒 [BULLETPROOF_PROFILE] Raw data - firstName: "${user.firstName}", phoneNumber: "${user.phoneNumber}", email: "${user.email}"',
-      );
-
-      // BULLETPROOF VALIDATION CHECKS
-      print('🔒 [BULLETPROOF_PROFILE] Starting field validation checks...');
 
       final hasFirstName =
           user.firstName != null &&
@@ -829,39 +665,14 @@ class CartControllerProvider extends ChangeNotifier {
           user.email!.contains('@') &&
           user.email!.contains('.');
 
-      print('🔒 [BULLETPROOF_PROFILE] Field validation results:');
-      print(
-        '🔒 [BULLETPROOF_PROFILE] - First Name: ${hasFirstName ? "✅ VALID" : "❌ INVALID"} (value: "${user.firstName}", length: ${user.firstName?.length ?? 0})',
-      );
-      print(
-        '🔒 [BULLETPROOF_PROFILE] - Phone Number: ${hasPhoneNumber ? "✅ VALID" : "❌ INVALID"} (value: "${user.phoneNumber}", length: ${user.phoneNumber?.length ?? 0})',
-      );
-      print(
-        '🔒 [BULLETPROOF_PROFILE] - Email: ${hasEmail ? "✅ VALID" : "❌ INVALID"} (value: "${user.email}", contains @: ${user.email?.contains('@') ?? false}, contains .: ${user.email?.contains('.') ?? false})',
-      );
-
       isProfileValid.value = hasFirstName && hasPhoneNumber && hasEmail;
 
       final totalDuration = DateTime.now().difference(startTime);
-      print(
-        '🔒 [BULLETPROOF_PROFILE] ==========================================',
-      );
-      print(
-        '🔒 [BULLETPROOF_PROFILE] FINAL RESULT: ${isProfileValid.value ? "✅ PROFILE_VALID" : "❌ PROFILE_INVALID"}',
-      );
-      print(
-        '🔒 [BULLETPROOF_PROFILE] Total duration: ${totalDuration.inMilliseconds}ms',
-      );
-      print('🔒 [BULLETPROOF_PROFILE] Attempts used: $attempts/$maxAttempts');
-      print(
-        '🔒 [BULLETPROOF_PROFILE] ==========================================',
-      );
 
       // Always update userModel with validated data
       userModel = user;
       Constant.userModel = user; // Update global cache
-      print('🔒 [BULLETPROOF_PROFILE] User model updated with validated data');
-
+      notifyListeners();
       if (!isProfileValid.value) {
         print(
           '🔒 [BULLETPROOF_PROFILE] ❌ Profile validation failed - missing required fields',
@@ -874,114 +685,29 @@ class CartControllerProvider extends ChangeNotifier {
           '🔒 [BULLETPROOF_PROFILE] Missing fields: ${missingFields.join(', ')}',
         );
       }
+      notifyListeners();
     } catch (e) {
       final totalDuration = DateTime.now().difference(startTime);
-      print(
-        '🔒 [BULLETPROOF_PROFILE] ==========================================',
-      );
-      print('🔒 [BULLETPROOF_PROFILE] ❌ CRITICAL ERROR OCCURRED');
-      print('🔒 [BULLETPROOF_PROFILE] Error: $e');
-      print('🔒 [BULLETPROOF_PROFILE] Error type: ${e.runtimeType}');
-      print('🔒 [BULLETPROOF_PROFILE] Stack trace: ${StackTrace.current}');
-      print(
-        '🔒 [BULLETPROOF_PROFILE] Total duration: ${totalDuration.inMilliseconds}ms',
-      );
-      print('🔒 [BULLETPROOF_PROFILE] Final result: PROFILE_INVALID (ERROR)');
-      print(
-        '🔒 [BULLETPROOF_PROFILE] ==========================================',
-      );
       isProfileValid.value = false;
       ShowToastDialog.showToast(
         "Error validating profile. Please try again.".tr,
       );
+      notifyListeners();
     } finally {
       isProfileValidating.value = false;
-      print(
-        '🔒 [BULLETPROOF_PROFILE] Validation completed, isProfileValidating set to false',
-      );
+      notifyListeners();
     }
   }
 
-  /// Validate user profile completeness with fresh data fetch (LEGACY - USE BULLETPROOF VERSION)
   Future<void> validateUserProfile() async {
     await validateUserProfileBulletproof();
   }
 
-  /*
-  /// OLD PROFILE VALIDATION METHOD - COMMENTED OUT FOR REFERENCE
-  /// Validate user profile completeness with fresh data fetch
-  Future<void> validateUserProfile() async {
-    isProfileValidating.value = true;
-    try {
-      print('DEBUG: Starting fresh profile validation...');
-
-      // Always fetch fresh user data from Firestore
-      final user = await FireStoreUtils.getUserProfile(FireStoreUtils.getCurrentUid());
-      print('DEBUG: Fresh user data fetched: ${user != null ? "SUCCESS" : "NULL"}');
-
-      if (user != null) {
-        print('DEBUG: User profile validation - firstName: "${user.firstName}", phoneNumber: "${user.phoneNumber}", email: "${user.email}"');
-
-        final hasFirstName = user.firstName != null && user.firstName!.trim().isNotEmpty;
-        final hasPhoneNumber = user.phoneNumber != null && user.phoneNumber!.trim().isNotEmpty;
-        final hasEmail = user.email != null && user.email!.trim().isNotEmpty;
-
-        print('DEBUG: Profile validation checks - firstName: $hasFirstName, phoneNumber: $hasPhoneNumber, email: $hasEmail');
-
-        isProfileValid.value = hasFirstName && hasPhoneNumber && hasEmail;
-
-        print('DEBUG: Final profile validation result: ${isProfileValid.value}');
-
-        // Always update userModel with fresh data
-        userModel.value = user;
-        print('DEBUG: User model updated with fresh data');
-
-        if (!isProfileValid.value) {
-          print('DEBUG: Profile validation failed - missing required fields');
-        }
-      } else {
-        print('DEBUG: User profile is null - user not found in Firestore');
-        isProfileValid.value = false;
-        // Don't set userModel to null since it's non-nullable
-      }
-    } catch (e) {
-      print('DEBUG: Error validating profile: $e');
-      isProfileValid.value = false;
-      // Don't set userModel to null since it's non-nullable
-    } finally {
-      isProfileValidating.value = false;
-    }
-  }
-  */
-
-  /// 🔑 BULLETPROOF ORDER VALIDATION - NEVER FAILS
   Future<bool> validateAndPlaceOrderBulletproof(BuildContext context) async {
-    final startTime = DateTime.now();
-    print('🚀 [BULLETPROOF_ORDER] ==========================================');
-    print(
-      '🚀 [BULLETPROOF_ORDER] ORDER VALIDATION STARTED at ${startTime.toIso8601String()}',
-    );
-    print('🚀 [BULLETPROOF_ORDER] Cart items: ${cartItem.length}');
-
-    // STEP 1: BULLETPROOF PROFILE VALIDATION
-    print('🚀 [BULLETPROOF_ORDER] STEP 1: Starting profile validation...');
-    final profileStartTime = DateTime.now();
-
     await validateUserProfileBulletproof();
-
-    final profileDuration = DateTime.now().difference(profileStartTime);
-    print(
-      '🚀 [BULLETPROOF_ORDER] Profile validation completed in ${profileDuration.inMilliseconds}ms',
-    );
-    print(
-      '🚀 [BULLETPROOF_ORDER] Profile validation result: ${isProfileValid.value ? "✅ VALID" : "❌ INVALID"}',
-    );
-
     if (!isProfileValid.value) {
-      // Get specific missing fields for better user feedback
       final user = userModel;
       List<String> missingFields = [];
-
       if (user.firstName == null ||
           user.firstName!.trim().isEmpty ||
           user.firstName!.trim().length < 2) {
@@ -1003,163 +729,26 @@ class CartControllerProvider extends ChangeNotifier {
         message =
             "Missing required fields: ${missingFields.join(', ')}. Please complete your profile.";
       }
-
-      final totalDuration = DateTime.now().difference(startTime);
-      print('🚀 [BULLETPROOF_ORDER] ❌ STEP 1 FAILED - Profile incomplete');
-      print(
-        '🚀 [BULLETPROOF_ORDER] Missing fields: ${missingFields.join(', ')}',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] Total duration: ${totalDuration.inMilliseconds}ms',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] Final result: ORDER_BLOCKED (PROFILE_INVALID)',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] ==========================================',
-      );
+      notifyListeners();
 
       ShowToastDialog.showToast(message);
       return false;
     }
-    print(
-      '🚀 [BULLETPROOF_ORDER] ✅ STEP 1 PASSED - Profile validation successful',
-    );
-
-    // STEP 2: BULLETPROOF ADDRESS VALIDATION
-    print('🚀 [BULLETPROOF_ORDER] STEP 2: Starting address validation...');
-    final addressStartTime = DateTime.now();
 
     final addressValid = await _validateAddressBulletproof(context);
 
-    final addressDuration = DateTime.now().difference(addressStartTime);
-    print(
-      '🚀 [BULLETPROOF_ORDER] Address validation completed in ${addressDuration.inMilliseconds}ms',
-    );
-    print(
-      '🚀 [BULLETPROOF_ORDER] Address validation result: ${addressValid ? "✅ VALID" : "❌ INVALID"}',
-    );
-
     if (!addressValid) {
-      final totalDuration = DateTime.now().difference(startTime);
-      print('🚀 [BULLETPROOF_ORDER] ❌ STEP 2 FAILED - Address invalid');
-      print(
-        '🚀 [BULLETPROOF_ORDER] Total duration: ${totalDuration.inMilliseconds}ms',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] Final result: ORDER_BLOCKED (ADDRESS_INVALID)',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] ==========================================',
-      );
       return false;
     }
-    print(
-      '🚀 [BULLETPROOF_ORDER] ✅ STEP 2 PASSED - Address validation successful',
-    );
-
-    // STEP 3: MINIMUM ORDER VALIDATION
-    print(
-      '🚀 [BULLETPROOF_ORDER] STEP 3: Starting minimum order validation...',
-    );
-    final minOrderStartTime = DateTime.now();
 
     try {
       await validateMinimumOrderValue();
-
-      final minOrderDuration = DateTime.now().difference(minOrderStartTime);
-      print(
-        '🚀 [BULLETPROOF_ORDER] Minimum order validation completed in ${minOrderDuration.inMilliseconds}ms',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] ✅ STEP 3 PASSED - Minimum order validation successful',
-      );
     } catch (e) {
-      final totalDuration = DateTime.now().difference(startTime);
-      print(
-        '🚀 [BULLETPROOF_ORDER] ❌ STEP 3 FAILED - Minimum order validation error: $e',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] Total duration: ${totalDuration.inMilliseconds}ms',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] Final result: ORDER_BLOCKED (MIN_ORDER_INVALID)',
-      );
-      print(
-        '🚀 [BULLETPROOF_ORDER] ==========================================',
-      );
       return false;
     }
-
-    final totalDuration = DateTime.now().difference(startTime);
-    print('🚀 [BULLETPROOF_ORDER] ==========================================');
-    print(
-      '🚀 [BULLETPROOF_ORDER] ✅ ALL 3 STEPS PASSED - ORDER VALIDATION SUCCESSFUL',
-    );
-    print('🚀 [BULLETPROOF_ORDER] Validation breakdown:');
-    print(
-      '🚀 [BULLETPROOF_ORDER] - Profile validation: ${profileDuration.inMilliseconds}ms',
-    );
-    print(
-      '🚀 [BULLETPROOF_ORDER] - Address validation: ${addressDuration.inMilliseconds}ms',
-    );
-    print(
-      '🚀 [BULLETPROOF_ORDER] - Min order validation: ${DateTime.now().difference(minOrderStartTime).inMilliseconds}ms',
-    );
-    print(
-      '🚀 [BULLETPROOF_ORDER] Total validation duration: ${totalDuration.inMilliseconds}ms',
-    );
-    print('🚀 [BULLETPROOF_ORDER] Final result: ORDER_READY_FOR_PAYMENT');
-    print('🚀 [BULLETPROOF_ORDER] ==========================================');
-
+    notifyListeners();
     return true;
   }
-
-  /// Enhanced validation method that ensures fresh data before order placement (LEGACY - USE BULLETPROOF VERSION)
-  Future<bool> validateAndPlaceOrder(BuildContext context) async {
-    return await validateAndPlaceOrderBulletproof(context);
-  }
-
-  /*
-  /// OLD ORDER VALIDATION METHOD - COMMENTED OUT FOR REFERENCE
-  /// Enhanced validation method that ensures fresh data before order placement
-  Future<bool> validateAndPlaceOrder() async {
-    print('DEBUG: validateAndPlaceOrder() called at ${DateTime.now()}');
-
-    // Always fetch fresh profile data before validation
-    await validateUserProfile();
-
-    print('DEBUG: Profile validation completed - isProfileValid: ${isProfileValid.value}');
-
-    if (!isProfileValid.value) {
-      // Get specific missing fields for better user feedback
-      final user = userModel.value;
-      List<String> missingFields = [];
-
-      if (user?.firstName == null || user!.firstName!.trim().isEmpty) {
-        missingFields.add("First Name");
-      }
-      if (user?.phoneNumber == null || user!.phoneNumber!.trim().isEmpty) {
-        missingFields.add("Phone Number");
-      }
-      if (user?.email == null || user!.email!.trim().isEmpty) {
-        missingFields.add("Email");
-      }
-
-      String message = "Please complete your profile before placing an order.";
-      if (missingFields.isNotEmpty) {
-        message = "Missing required fields: ${missingFields.join(', ')}. Please complete your profile.";
-      }
-
-      ShowToastDialog.showToast(message);
-      print('DEBUG: Order placement blocked - profile incomplete');
-      return false;
-    }
-
-    print('DEBUG: Profile validation passed - proceeding with order placement');
-    return true;
-  }
-  */
 
   // Method to check if cache is valid
   bool _isCacheValid() {
@@ -1175,19 +764,11 @@ class CartControllerProvider extends ChangeNotifier {
   // **ULTRA-FAST METHOD TO PRELOAD ALL CALCULATION DATA FOR INSTANT CART UPDATES**
   Future<void> _loadCalculationCache() async {
     if (_calculationCacheLoaded) return;
-
     try {
-      print('DEBUG: Loading ultra-fast calculation cache...');
-
       // Load tax list once and cache it
       if (_cachedTaxList == null) {
         _cachedTaxList = await FireStoreUtils.getTaxList();
-        print(
-          'DEBUG: Tax list cached with ${_cachedTaxList?.length ?? 0} items',
-        );
       }
-
-      // Pre-load promotional data for all cart items
       final futures = <Future>[];
       for (var item in cartItem) {
         if (item.promoId != null && item.promoId!.isNotEmpty) {
@@ -1203,18 +784,12 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
-
-      // Wait for all promotional data to be cached
       await Future.wait(futures);
-
       _calculationCacheLoaded = true;
-      print('DEBUG: Ultra-fast calculation cache loaded successfully');
-    } catch (e) {
-      print('DEBUG: Error loading calculation cache: $e');
-    }
+    } catch (e) {}
+    notifyListeners();
   }
 
-  // **METHOD TO CACHE PROMOTIONAL DATA FOR A SPECIFIC ITEM**
   Future<void> _cachePromotionalData(
     String productId,
     String restaurantId,
@@ -1225,29 +800,22 @@ class CartControllerProvider extends ChangeNotifier {
         productId: productId,
         restaurantId: restaurantId,
       );
-
       if (promoDetails != null) {
         _promotionalCalculationCache[cacheKey] = promoDetails;
-
-        // Pre-calculate delivery parameters
         final freeDeliveryKm =
             (promoDetails['free_delivery_km'] as num?)?.toDouble() ?? 3.0;
         final extraKmCharge =
             (promoDetails['extra_km_charge'] as num?)?.toDouble() ?? 7.0;
-
         _cachedFreeDeliveryKm[cacheKey] = freeDeliveryKm;
         _cachedExtraKmCharge[cacheKey] = extraKmCharge;
-
-        print(
-          'DEBUG: Cached promotional data for $cacheKey - Free km: $freeDeliveryKm, Extra charge: $extraKmCharge',
-        );
       }
+      notifyListeners();
     } catch (e) {
       print('DEBUG: Error caching promotional data for $cacheKey: $e');
     }
+    notifyListeners();
   }
 
-  // **INSTANT METHOD TO GET CACHED FREE DELIVERY KM (ZERO ASYNC)**
   double _getCachedFreeDeliveryKm(String productId, String restaurantId) {
     final cacheKey = '$productId-$restaurantId';
     return _cachedFreeDeliveryKm[cacheKey] ?? 3.0;
@@ -1273,83 +841,18 @@ class CartControllerProvider extends ChangeNotifier {
   /// **ULTRA-FAST PROMOTIONAL ITEM LIMIT (INSTANT - ZERO ASYNC)**
   int? getPromotionalItemLimit(String productId, String restaurantId) {
     try {
-      print(
-        'DEBUG: getPromotionalItemLimit called for productId=$productId, restaurantId=$restaurantId',
-      );
-
-      /*
-
-      final promoDetails = await FireStoreUtils.getActivePromotionForProduct(
-        productId: productId,
-        restaurantId: restaurantId,
-      );
-
-      if (promoDetails != null) {
-        int? itemLimit; // No default value
-
-        // More robust item_limit extraction
-        try {
-          final itemLimitData = promoDetails['item_limit'];
-          print('DEBUG: getPromotionalItemLimit - Raw item_limit data: $itemLimitData (type: ${itemLimitData.runtimeType})');
-
-          if (itemLimitData != null) {
-            if (itemLimitData is int) {
-              itemLimit = itemLimitData;
-            } else if (itemLimitData is double) {
-              itemLimit = itemLimitData.toInt();
-            } else if (itemLimitData is String) {
-              itemLimit = int.tryParse(itemLimitData);
-            } else if (itemLimitData is num) {
-              itemLimit = itemLimitData.toInt();
-            } else {
-              print('DEBUG: getPromotionalItemLimit - WARNING: Unknown item_limit type: ${itemLimitData.runtimeType}');
-              itemLimit = null;
-            }
-          }
-        } catch (e) {
-          print('DEBUG: getPromotionalItemLimit - ERROR parsing item_limit: $e');
-          itemLimit = null;
-        }
-
-        // Check if item_limit was successfully extracted
-        if (itemLimit == null || itemLimit <= 0) {
-          print('DEBUG: getPromotionalItemLimit - ERROR: Invalid or missing item_limit: $itemLimit');
-          return null;
-        }
-
-        print('DEBUG: getPromotionalItemLimit - Found promotional data with item_limit: $itemLimit');
-        return itemLimit;
-      } else {
-        print('DEBUG: getPromotionalItemLimit - No promotional data found');
-        return null;
-      }
-
-      */
-      // **PERFORMANCE FIX: Use cached promotional data (instant)**
       final limit = PromotionalCacheService.getPromotionalItemLimit(
         productId,
         restaurantId,
       );
-
       if (limit != null) {
-        print(
-          'DEBUG: getPromotionalItemLimit - Found promotional limit: $limit',
-        );
-      } else {
-        print('DEBUG: getPromotionalItemLimit - No promotional limit found');
-      }
-
+      } else {}
+      notifyListeners();
       return limit;
     } catch (e) {
-      print('DEBUG: Error getting promotional item limit: $e');
       return null;
     }
   }
-
-  /*
-  // Method to check if promotional item quantity is within limit
-  Future<bool> isPromotionalItemQuantityAllowed(String productId, String restaurantId, int currentQuantity) async {
-  */
 
   /// **ULTRA-FAST PROMOTIONAL ITEM QUANTITY CHECK (INSTANT - ZERO ASYNC)**
   bool isPromotionalItemQuantityAllowed(
@@ -1357,48 +860,18 @@ class CartControllerProvider extends ChangeNotifier {
     String restaurantId,
     int currentQuantity,
   ) {
-    print(
-      'DEBUG: isPromotionalItemQuantityAllowed called for productId=$productId, restaurantId=$restaurantId, currentQuantity=$currentQuantity',
-    );
-
     if (currentQuantity <= 0) {
-      print(
-        'DEBUG: isPromotionalItemQuantityAllowed - Allowing decrement (currentQuantity <= 0)',
-      );
       return true; // Allow decrement
     }
-
-    /*
-
-    final limit = await getPromotionalItemLimit(productId, restaurantId);
-
-    // If no limit found, don't allow adding items
-    if (limit == null) {
-      print('DEBUG: isPromotionalItemQuantityAllowed - No valid limit found, not allowing');
-      return false;
-    }
-
-    */
-    // **PERFORMANCE FIX: Use cached promotional data (instant)**
     final isAllowed = PromotionalCacheService.isPromotionalItemQuantityAllowed(
       productId,
       restaurantId,
       currentQuantity,
     );
-
-    /*
- final isAllowed = currentQuantity <= limit;
-    print('DEBUG: isPromotionalItemQuantityAllowed - Limit: $limit, Current: $currentQuantity, Allowed: $isAllowed');
-    */
-
-    print(
-      'DEBUG: isPromotionalItemQuantityAllowed - Current: $currentQuantity, Allowed: $isAllowed',
-    );
-
+    notifyListeners();
     return isAllowed;
   }
 
-  // Method to check if order processing is allowed (debouncing)
   bool canProcessOrder() {
     if (isProcessingOrder) {
       return false;
@@ -1410,14 +883,8 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
     }
-
+    notifyListeners();
     return true;
-  }
-
-  // Method to start order processing
-  void startOrderProcessing() {
-    isProcessingOrder = true;
-    lastOrderAttempt = DateTime.now();
   }
 
   // Method to end order processing
@@ -1425,67 +892,22 @@ class CartControllerProvider extends ChangeNotifier {
     _endOrderProcessing();
   }
 
-  // Method to check for recent duplicate orders
-  Future<bool> hasRecentOrder() async {
-    try {
-      final userId = await SqlStorageConst.getFirebaseId();
-      final now = DateTime.now();
-      final fiveMinutesAgo = now.subtract(const Duration(minutes: 5));
-
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('restaurant_orders')
-          .where('author', isEqualTo: userId)
-          .where('createdAt', isGreaterThan: Timestamp.fromDate(fiveMinutesAgo))
-          .orderBy('createdAt', descending: true)
-          .limit(1)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        final lastOrder = querySnapshot.docs.first;
-        final orderTime = lastOrder.data()['createdAt'] as Timestamp;
-        final timeDiff = now.difference(orderTime.toDate());
-
-        // If order was placed within last 30 seconds, consider it a potential duplicate
-        if (timeDiff.inSeconds < 30) {
-          return true;
-        }
-      }
-
-      return false;
-    } catch (e) {
-      print('DEBUG: Error checking for recent orders: $e');
-      return false;
-    }
-  }
-
   // Method to check and update payment method based on order total, promotional items, and mart items
   void checkAndUpdatePaymentMethod() {
-    // Check if cart has promotional items
     final hasPromoItems = hasPromotionalItems();
-    print('DEBUG: Cart has promotional items: $hasPromoItems');
 
-    // Check if cart has mart items
-    final hasMartItems = hasMartItemsInCart();
-    print('DEBUG: Cart has mart items: $hasMartItems');
-
-    // Force Razorpay if cart has promotional items
     if (hasPromoItems) {
       if (selectedPaymentMethod == PaymentGateway.cod.name ||
           selectedPaymentMethod.isEmpty) {
-        print(
-          'DEBUG: Switching from COD to Razorpay - Cart has promotional items',
-        );
         selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
-    }
-    // Original logic for high-value orders
-    else if (subTotal > 599) {
+    } else if (subTotal > 599) {
       if (selectedPaymentMethod == PaymentGateway.cod.name ||
           selectedPaymentMethod.isEmpty) {
-        print('DEBUG: Switching from COD to Razorpay - SubTotal: ${subTotal}');
         selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
     }
+    notifyListeners();
   }
 
   /// Check if cart is ready for payment
@@ -1499,14 +921,6 @@ class CartControllerProvider extends ChangeNotifier {
     final notPaymentInProgress = !isPaymentInProgress;
     final notPaymentCompleted = !isPaymentCompleted;
 
-    print(
-      'DEBUG: - paymentMethodSelected: $paymentMethodSelected ("${selectedPaymentMethod}")',
-    );
-    print('DEBUG: - profileValid: $profileValid');
-    print('DEBUG: - notProcessing: $notProcessing');
-    print('DEBUG: - notPaymentInProgress: $notPaymentInProgress');
-    print('DEBUG: - notPaymentCompleted: $notPaymentCompleted');
-
     final isReady =
         cartNotEmpty &&
         subTotalValid &&
@@ -1516,24 +930,8 @@ class CartControllerProvider extends ChangeNotifier {
         notProcessing &&
         notPaymentInProgress &&
         notPaymentCompleted;
-
-    print('🔑 CART READY RESULT: $isReady');
+    notifyListeners();
     return isReady;
-  }
-
-  /// Check if payment is ready to proceed
-  bool isPaymentReadyToProceed() {
-    final cartReady = isCartReadyForPayment();
-    final addressValid =
-        selectedAddress?.id != null && selectedAddress!.id!.isNotEmpty;
-
-    print('DEBUG: isPaymentReadyToProceed() check:');
-    print('DEBUG: - cartReady: $cartReady');
-    print(
-      'DEBUG: - addressValid: $addressValid (address ID: "${selectedAddress?.id}")',
-    );
-
-    return cartReady && addressValid;
   }
 
   /// Update cart readiness state
@@ -1541,35 +939,26 @@ class CartControllerProvider extends ChangeNotifier {
     isCartReady = cartItem.isNotEmpty && subTotal > 0;
     isPaymentReady = isCartReadyForPayment();
     isAddressValid = selectedAddress?.id != null;
+    notifyListeners();
   }
 
   /// Force refresh cart data and recalculate prices
   Future<void> forceRefreshCart() async {
-    print('DEBUG: Force refreshing cart...');
     await cartProvider.refreshCart();
     await calculatePrice();
     checkAndUpdatePaymentMethod();
     updateCartReadiness();
-    print(
-      'DEBUG: Force refresh completed - Items: ${cartItem.length}, Total: ${totalAmount}',
-    );
+    notifyListeners();
   }
 
   // Method to clear cart data on logout
   Future<void> clearCart() async {
-    print('DEBUG: clearCart() method called');
     try {
-      print('DEBUG: Current cart items count: ${cartItem.length}');
-
       // Clear cart items from memory
       cartItem.clear();
-      print('DEBUG: Cart items cleared from memory');
-
       // Clear cart from database
       await DatabaseHelper.instance.deleteAllCartProducts();
-      print('DEBUG: Cart cleared from database');
 
-      // Reset cart-related variables
       subTotal = 0.0;
       totalAmount = 0.0;
       deliveryCharges = 0.0;
@@ -1579,55 +968,38 @@ class CartControllerProvider extends ChangeNotifier {
       deliveryTips = 0.0;
       selectedPaymentMethod = '';
 
-      print('DEBUG: Cart variables reset');
-      print('DEBUG: Cart cleared successfully on logout');
-      print('DEBUG: Final cart items count: ${cartItem.length}');
-      print('DEBUG: Final subTotal: ${subTotal}');
-
       // Verify cart is actually empty
       final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
-      print(
-        'DEBUG: Verification - Remaining items in database: ${remainingItems.length}',
-      );
-      if (remainingItems.isNotEmpty) {
-        print(
-          'DEBUG: WARNING - Cart database still contains items after clearing!',
-        );
-      }
-    } catch (e) {
-      print('DEBUG: Error clearing cart on logout: $e');
-      print('DEBUG: Stack trace: ${StackTrace.current}');
-    }
+
+      if (remainingItems.isNotEmpty) {}
+      notifyListeners();
+    } catch (e) {}
+    notifyListeners();
   }
 
   /// 🔑 CLEAR VENDOR CACHE WHEN CART CHANGES
   void _clearVendorCache() {
     _cachedVendorModel = null;
     _lastCacheTime = null;
-    vendorModel = VendorModel(); // Reset to empty
-    print('🔑 VENDOR CACHE CLEARED - Ready for fresh vendor data');
+    vendorModel = VendorModel();
+    notifyListeners();
   }
 
   /// 🔑 LOAD FRESH VENDOR DATA - NO CACHING
   Future<void> _loadFreshVendorForCart() async {
     try {
-      print('🛒 [FRESH_VENDOR_LOAD] Starting fresh vendor load...');
-
       final martItems = cartItem.where((item) => _isMartItem(item)).toList();
       final restaurantItems = cartItem
           .where((item) => !_isMartItem(item))
           .toList();
-
       if (martItems.isNotEmpty) {
         await _loadFreshMartVendor(martItems);
       } else if (restaurantItems.isNotEmpty) {
         await _loadFreshRestaurantVendor(restaurantItems.first.vendorID);
-      } else {
-        print('🛒 [FRESH_VENDOR_LOAD] No items found for vendor loading');
-      }
-    } catch (e) {
-      print('🛒 [FRESH_VENDOR_LOAD] Error loading fresh vendor: $e');
-    }
+      } else {}
+      notifyListeners();
+    } catch (e) {}
+    notifyListeners();
   }
 
   /// 🔑 LOAD FRESH MART VENDOR
@@ -1636,14 +1008,10 @@ class CartControllerProvider extends ChangeNotifier {
       final firstMartItem = martItems.first;
       final vendorId = firstMartItem.vendorID;
 
-      print('🛒 [FRESH_MART_VENDOR] Loading mart vendor: $vendorId');
-
       MartVendorModel? martVendor;
       if (vendorId != null && vendorId.isNotEmpty) {
         martVendor = await MartVendorService.getMartVendorById(vendorId);
-        if (martVendor == null) {
-          martVendor = await MartVendorService.getDefaultMartVendor();
-        }
+        martVendor ??= await MartVendorService.getDefaultMartVendor();
       } else {
         martVendor = await MartVendorService.getDefaultMartVendor();
       }
@@ -1659,85 +1027,56 @@ class CartControllerProvider extends ChangeNotifier {
           zoneId: martVendor.zoneId,
           isOpen: martVendor.isOpen,
         );
-        print('🛒 [FRESH_MART_VENDOR] Loaded: ${martVendor.title}');
       }
-    } catch (e) {
-      print('🛒 [FRESH_MART_VENDOR] Error: $e');
-    }
+      notifyListeners();
+    } catch (e) {}
   }
 
   /// 🔑 LOAD FRESH RESTAURANT VENDOR
   Future<void> _loadFreshRestaurantVendor(String? vendorId) async {
     try {
       if (vendorId == null) {
-        print('🛒 [FRESH_RESTAURANT_VENDOR] No vendor ID provided');
         return;
       }
-
-      print(
-        '🛒 [FRESH_RESTAURANT_VENDOR] Loading restaurant vendor: $vendorId',
-      );
 
       final freshVendor = await FireStoreUtils.getVendorById(vendorId);
       if (freshVendor != null) {
         vendorModel = freshVendor;
-        print('🛒 [FRESH_RESTAURANT_VENDOR] Loaded: ${freshVendor.title}');
-      } else {
-        print('🛒 [FRESH_RESTAURANT_VENDOR] Vendor not found: $vendorId');
-      }
-    } catch (e) {
-      print('🛒 [FRESH_RESTAURANT_VENDOR] Error: $e');
-    }
+      } else {}
+      notifyListeners();
+    } catch (e) {}
   }
 
   getCartData() async {
     cartProvider.cartStream.listen((event) async {
       cartItem.clear();
       cartItem.addAll(event);
-      // 🔑 CRITICAL: Clear vendor cache when cart changes significantly
       if (cartItem.isNotEmpty) {
         final firstItemVendor = cartItem.first.vendorID;
         if (_cachedVendorModel?.id != firstItemVendor) {
-          print('🛒 [VENDOR_DEBUG] Vendor changed, clearing cache');
           _clearVendorCache();
         }
       }
-
       if (cartItem.isNotEmpty) {
-        // Force fresh vendor load - NEVER use cache here
         await _loadFreshVendorForCart();
       }
-
       if (cartItem.isNotEmpty) {
-        // Check if cart contains mart items
         final martItems = cartItem.where((item) => _isMartItem(item)).toList();
-
         if (martItems.isNotEmpty) {
           try {
-            // Get the vendorID from the first mart item to load the specific mart vendor
             final firstMartItem = martItems.first;
             final vendorId = firstMartItem.vendorID;
-
             MartVendorModel? martVendor;
 
             if (vendorId != null && vendorId.isNotEmpty) {
               // Try to get the specific mart vendor by ID first
               martVendor = await MartVendorService.getMartVendorById(vendorId);
               if (martVendor != null) {
-                print(
-                  '[VENDOR_LOAD] ✅ Found specific mart vendor: ${martVendor.title} (${martVendor.id})',
-                );
               } else {
-                print(
-                  '[VENDOR_LOAD] ⚠️ Specific mart vendor not found, trying default mart vendor...',
-                );
                 // Fallback to default mart vendor
                 martVendor = await MartVendorService.getDefaultMartVendor();
               }
             } else {
-              print(
-                '[VENDOR_LOAD] ⚠️ No vendorID in mart item, trying default mart vendor...',
-              );
               // Fallback to default mart vendor
               martVendor = await MartVendorService.getDefaultMartVendor();
             }
@@ -1750,7 +1089,6 @@ class CartControllerProvider extends ChangeNotifier {
                 latitude: martVendor.latitude,
                 longitude: martVendor.longitude,
                 isSelfDelivery: false,
-                // Mart vendors don't have self delivery, use false
                 vType: martVendor.vType,
                 zoneId: martVendor.zoneId,
                 isOpen: martVendor.isOpen,
@@ -1762,22 +1100,14 @@ class CartControllerProvider extends ChangeNotifier {
               // Don't set hardcoded values - let the system handle this gracefully
               vendorModel = VendorModel();
             }
+            notifyListeners();
           } catch (e) {
-            print('[VENDOR_LOAD] ❌ Error loading mart vendor: $e');
-            // Don't set hardcoded values - let the system handle this gracefully
             vendorModel = VendorModel();
           }
+          notifyListeners();
         } else {
-          // For regular restaurant items, use existing logic
-          print(
-            '[VENDOR_LOAD] 🍽️ Cart contains restaurant items, loading restaurant vendor...',
-          );
-          // Use cached vendor data if available
           if (_cachedVendorModel != null && _isCacheValid()) {
             vendorModel = _cachedVendorModel!;
-            print(
-              '[VENDOR_LOAD] ✅ Using cached restaurant vendor: ${vendorModel.title}',
-            );
           } else {
             await FireStoreUtils.getVendorById(
               cartItem.first.vendorID.toString(),
@@ -1786,11 +1116,9 @@ class CartControllerProvider extends ChangeNotifier {
                 vendorModel = value;
                 _cachedVendorModel = value;
                 _updateCacheTime();
-                print(
-                  '[VENDOR_LOAD] ✅ Restaurant vendor loaded: ${value.title} (${value.id})',
-                );
               }
             });
+            notifyListeners();
           }
         }
       }
@@ -1811,7 +1139,6 @@ class CartControllerProvider extends ChangeNotifier {
       defaultValue: "Delivery".tr,
     );
 
-    // Load user profile (only if not cached)
     if (userModel.id == null) {
       final userId = await SqlStorageConst.getFirebaseId();
       await AddressListProvider.getUserProfile(userId.toString()).then((value) {
@@ -1820,7 +1147,6 @@ class CartControllerProvider extends ChangeNotifier {
         }
       });
     }
-    // Load delivery charge (use cache if available)
     if (_cachedDeliveryCharge != null && _isCacheValid()) {
       deliveryChargeModel = _cachedDeliveryCharge!;
     } else {
@@ -1834,45 +1160,20 @@ class CartControllerProvider extends ChangeNotifier {
       });
     }
 
-    // Load coupons only if vendor is available and not cached
-    print('[COUPON_DEBUG] 🔍 Checking coupon loading conditions:');
-    print('[COUPON_DEBUG] - _isCacheValid(): ${_isCacheValid()}');
-    print(
-      '[COUPON_DEBUG] - _cachedCouponList: ${_cachedCouponList?.length ?? 'null'}',
-    );
-
     if (vendorModel.id != null &&
         (!_isCacheValid() || _cachedCouponList == null)) {
-      print('[COUPON_DEBUG] ✅ Conditions met, loading coupons...');
       await _loadCoupons();
     } else {
-      print('[COUPON_DEBUG] ❌ Conditions not met, skipping coupon loading');
-      print(
-        '[COUPON_DEBUG] - vendorModel.value.id != null: ${vendorModel.id != null}',
-      );
-      print(
-        '[COUPON_DEBUG] - (!_isCacheValid() || _cachedCouponList == null): ${(!_isCacheValid() || _cachedCouponList == null)}',
-      );
-
-      // Force load coupons if we have a vendor but no coupons loaded yet
       if (vendorModel.id != null && _cachedCouponList == null) {
-        print(
-          '[COUPON_DEBUG] 🔧 Force loading coupons - vendor exists but no cached coupons',
-        );
         await _loadCoupons();
       }
     }
+    notifyListeners();
   }
 
-  // Separate method to load coupons with caching and context filtering
   Future<void> _loadCoupons() async {
     try {
-      print('[COUPON_LOAD] 🎫 Loading coupons with context filtering...');
-
-      // Detect current context (mart vs restaurant)
       _detectCurrentContext();
-
-      // Load vendor coupons
       final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons(
         vendorModel.id.toString(),
       );
@@ -1880,7 +1181,6 @@ class CartControllerProvider extends ChangeNotifier {
         vendorModel.id.toString(),
       );
 
-      // Load global coupons
       final globalCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons();
       final filteredGlobalCoupons = globalCoupons
@@ -1892,48 +1192,12 @@ class CartControllerProvider extends ChangeNotifier {
           )
           .toList();
 
-      // Debug logging for coupon sources
-      print('[COUPON_DEBUG] 📊 Coupon Sources:');
-      print('[COUPON_DEBUG] - Vendor Public Coupons: ${vendorCoupons.length}');
-      print('[COUPON_DEBUG] - Vendor All Coupons: ${allVendorCoupons.length}');
-      print('[COUPON_DEBUG] - Global Coupons (raw): ${globalCoupons.length}');
-      print(
-        '[COUPON_DEBUG] - Global Coupons (filtered): ${filteredGlobalCoupons.length}',
-      );
-
-      // Log each coupon with its details
-      print('[COUPON_DEBUG] 📋 Vendor Coupons:');
-      for (int i = 0; i < vendorCoupons.length; i++) {
-        final coupon = vendorCoupons[i];
-        print(
-          '[COUPON_DEBUG]   ${i + 1}. ${coupon.code} (${coupon.cType}) - ${coupon.resturantId}',
-        );
-      }
-
-      print('[COUPON_DEBUG] 📋 Global Coupons (raw):');
-      for (int i = 0; i < globalCoupons.length; i++) {
-        final coupon = globalCoupons[i];
-        print(
-          '[COUPON_DEBUG]   ${i + 1}. ${coupon.code} (${coupon.cType}) - ${coupon.resturantId}',
-        );
-      }
-
-      print('[COUPON_DEBUG] 📋 Global Coupons (filtered):');
-      for (int i = 0; i < filteredGlobalCoupons.length; i++) {
-        final coupon = filteredGlobalCoupons[i];
-        print(
-          '[COUPON_DEBUG]   ${i + 1}. ${coupon.code} (${coupon.cType}) - ${coupon.resturantId}',
-        );
-      }
-
-      // Combine all coupons before filtering
       final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
       final combinedAllCoupons = [
         ...allVendorCoupons,
         ...filteredGlobalCoupons,
       ];
 
-      // Apply context-based filtering
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: combinedCoupons.cast<CouponModel>(),
         contextType: _currentContext.value,
@@ -1946,28 +1210,18 @@ class CartControllerProvider extends ChangeNotifier {
             contextType: _currentContext.value,
             fallbackEnabled: true,
           );
-
-      // Log coupon statistics for debugging
       final stats = CouponFilterService.getCouponStats(
         combinedCoupons.cast<CouponModel>(),
       );
-      print('[COUPON_LOAD] 📊 Coupon Stats: ${stats.toString()}');
-      print(
-        '[COUPON_LOAD] 🎯 Context: ${_currentContext.value}, Filtered: ${contextFilteredCoupons.length}/${combinedCoupons.length}',
-      );
-      // Cache the results
       _cachedCouponList = contextFilteredCoupons;
       _updateCacheTime();
 
-      // Update observable lists
       couponList = contextFilteredCoupons;
       allCouponList = contextFilteredAllCoupons;
-
+      notifyListeners();
       // Mark used coupons
       await _markUsedCoupons();
     } catch (e) {
-      print('[COUPON_LOAD] ❌ Error loading coupons: $e');
-      // Fallback: Load coupons without filtering if filtering fails
       await _loadCouponsWithoutFiltering();
     }
   }
@@ -1975,11 +1229,6 @@ class CartControllerProvider extends ChangeNotifier {
   // Fallback method to load coupons without context filtering
   Future<void> _loadCouponsWithoutFiltering() async {
     try {
-      print(
-        '[COUPON_LOAD] 🔄 Loading coupons without filtering as fallback...',
-      );
-
-      // Load vendor coupons
       final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons(
         vendorModel.id.toString(),
       );
@@ -1987,7 +1236,6 @@ class CartControllerProvider extends ChangeNotifier {
         vendorModel.id.toString(),
       );
 
-      // Load global coupons
       final globalCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons();
       final filteredGlobalCoupons = globalCoupons
@@ -1999,21 +1247,19 @@ class CartControllerProvider extends ChangeNotifier {
           )
           .toList();
 
-      // Combine coupons (original logic)
       final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
       final combinedAllCoupons = [
         ...allVendorCoupons,
         ...filteredGlobalCoupons,
       ];
 
-      // Cache the results
       _cachedCouponList = combinedCoupons.cast<CouponModel>();
       _updateCacheTime();
 
       // Update observable lists
       couponList = combinedCoupons.cast<CouponModel>();
       allCouponList = combinedAllCoupons.cast<CouponModel>();
-
+      notifyListeners();
       // Mark used coupons
       await _markUsedCoupons();
     } catch (e) {
@@ -2024,7 +1270,6 @@ class CartControllerProvider extends ChangeNotifier {
   // Detect current context based on cart items
   void _detectCurrentContext() {
     try {
-      // Check if cart contains mart items
       bool hasMartItems = false;
       bool hasRestaurantItems = false;
 
@@ -2050,20 +1295,20 @@ class CartControllerProvider extends ChangeNotifier {
           _currentContext.value = "restaurant";
         }
       }
+      notifyListeners();
     } catch (e) {
       _currentContext.value = "restaurant";
+      notifyListeners();
     }
   }
 
   // Helper method to determine if an item is from mart
   bool _isMartItem(CartProductModel item) {
     try {
-      // Method 1: Check if vendorID starts with "mart_" (from mart product card)
       if (item.vendorID != null && item.vendorID!.startsWith("mart_")) {
         return true;
       }
 
-      // Method 2: Check if vendorID has mart-specific patterns
       if (item.vendorID != null) {
         final vendorId = item.vendorID!.toLowerCase();
         if (vendorId.startsWith("demo_") ||
@@ -2073,7 +1318,6 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
 
-      // Method 3: Check if vendor name indicates mart
       if (item.vendorName != null) {
         final vendorName = item.vendorName!.toLowerCase();
         if (vendorName.contains("jippy mart") || vendorName.contains("mart")) {
@@ -2084,21 +1328,19 @@ class CartControllerProvider extends ChangeNotifier {
       // Method 4: Check category patterns that indicate mart items
       if (item.categoryId != null) {
         final categoryId = item.categoryId!.toLowerCase();
-        // Add mart-specific category patterns here
         if (categoryId.contains("grocery") ||
             categoryId.contains("mart") ||
             categoryId.contains("retail")) {
           return true;
         }
       }
-
+      notifyListeners();
       return false; // Default to restaurant if no mart indicators found
     } catch (e) {
       return false;
     }
   }
 
-  // Check if cart contains any mart items
   bool hasMartItemsInCart() {
     try {
       return cartItem.any((item) => _isMartItem(item));
@@ -2107,14 +1349,12 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  // Check if mart items are eligible for free delivery
   bool isMartDeliveryFree() {
     try {
       if (!hasMartItemsInCart()) {
         return false;
       }
 
-      // Use cached mart delivery settings if available, otherwise use defaults
       double itemThreshold = 199.0; // Default
       double freeDeliveryKm = 5.0; // Default
 
@@ -2128,75 +1368,17 @@ class CartControllerProvider extends ChangeNotifier {
                 ?.toDouble() ??
             5.0;
       }
-
       final isEligible =
           subTotal >= itemThreshold && totalDistance <= freeDeliveryKm;
 
-      print('[MART_DELIVERY_UI] Free delivery check:');
-      print('[MART_DELIVERY_UI]   - Threshold: ₹$itemThreshold');
-      print('[MART_DELIVERY_UI]   - Free distance: $freeDeliveryKm km');
-      print('[MART_DELIVERY_UI]   - Is eligible: $isEligible');
-
+      notifyListeners();
       return isEligible;
     } catch (e) {
-      print('[MART_DELIVERY_UI] Error checking mart delivery eligibility: $e');
       return false;
     }
   }
 
-  // Public method to manually set context (useful for testing or specific scenarios)
-  void setContext(String contextType) {
-    if (contextType == "mart" || contextType == "restaurant") {
-      _currentContext.value = contextType;
-      print('[COUPON_LOAD] 🎯 Context manually set to: $contextType');
-      // Reload coupons with new context
-      if (vendorModel.id != null) {
-        _loadCoupons();
-      }
-    } else {
-      print(
-        '[COUPON_LOAD] ⚠️ Invalid context type: $contextType. Use "mart" or "restaurant"',
-      );
-    }
-  }
-
-  // Get current context
-  String getCurrentContext() {
-    return _currentContext.value;
-  }
-
-  // Get cached coupon list for debugging
-  List<CouponModel>? get cachedCouponList => _cachedCouponList;
-
-  // Temporary method to disable filtering for debugging
-  void disableCouponFiltering() {
-    print('[COUPON_DEBUG] 🔧 Disabling coupon filtering for debugging...');
-    _loadCouponsWithoutFiltering();
-  }
-
-  // Temporary method to force mart context for testing
-  void forceMartContext() {
-    print('[COUPON_DEBUG] 🔧 Forcing mart context for testing...');
-    _currentContext.value = "mart";
-    if (vendorModel.id != null) {
-      _loadCoupons();
-    }
-  }
-
   // Temporary method to force restaurant context for testing
-  void forceRestaurantContext() {
-    print('[COUPON_DEBUG] 🔧 Forcing restaurant context for testing...');
-    _currentContext.value = "restaurant";
-    if (vendorModel.id != null) {
-      _loadCoupons();
-    }
-  }
-
-  // Force coupon loading for debugging
-  void forceCouponLoading() {
-    print('[COUPON_DEBUG] 🔧 Force loading coupons for debugging...');
-    _loadCoupons();
-  }
 
   // Ensure coupons are loaded when cart screen opens
   void ensureCouponsLoaded() {
@@ -2212,12 +1394,12 @@ class CartControllerProvider extends ChangeNotifier {
         couponList = _cachedCouponList!;
       }
     }
+    notifyListeners();
   }
 
   // Load only global coupons when no vendor ID is available
   Future<void> _loadGlobalCouponsOnly() async {
     try {
-      // Detect current context (mart vs restaurant)
       _detectCurrentContext();
 
       // Load global coupons
@@ -2231,78 +1413,19 @@ class CartControllerProvider extends ChangeNotifier {
                 c.resturantId?.toUpperCase() == 'ALL',
           )
           .toList();
-
-      // Apply context-based filtering
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: filteredGlobalCoupons.cast<CouponModel>(),
         contextType: _currentContext.value,
         fallbackEnabled: true,
       );
-
-      // Cache the results
       _cachedCouponList = contextFilteredCoupons;
       _updateCacheTime();
-
       // Update observable lists
       couponList = contextFilteredCoupons;
       allCouponList = filteredGlobalCoupons.cast<CouponModel>();
+      notifyListeners();
     } catch (e) {
       print('[COUPON_DEBUG] ❌ Error loading global coupons: $e');
-    }
-  }
-
-  // Debug method to show all coupons in database
-  void showAllCouponsInDatabase() async {
-    try {
-      print('[COUPON_DEBUG] 🔍 Fetching ALL coupons from database...');
-
-      // Load vendor coupons
-      final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons(
-        vendorModel.id.toString(),
-      );
-      final allVendorCoupons = await FireStoreUtils.getAllVendorCoupons(
-        vendorModel.id.toString(),
-      );
-
-      // Load global coupons
-      final globalCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons();
-      final filteredGlobalCoupons = globalCoupons
-          .where(
-            (c) =>
-                c.resturantId == null ||
-                c.resturantId == '' ||
-                c.resturantId?.toUpperCase() == 'ALL',
-          )
-          .toList();
-
-      // Combine all coupons
-      final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
-      final combinedAllCoupons = [
-        ...allVendorCoupons,
-        ...filteredGlobalCoupons,
-      ];
-
-      print('[COUPON_DEBUG] 📊 ALL COUPONS IN DATABASE:');
-      print('[COUPON_DEBUG] - Vendor Public Coupons: ${vendorCoupons.length}');
-      print('[COUPON_DEBUG] - Vendor All Coupons: ${allVendorCoupons.length}');
-      print('[COUPON_DEBUG] - Global Coupons: ${filteredGlobalCoupons.length}');
-      print('[COUPON_DEBUG] - Combined Public: ${combinedCoupons.length}');
-      print('[COUPON_DEBUG] - Combined All: ${combinedAllCoupons.length}');
-
-      // Show details of each coupon
-      for (int i = 0; i < combinedCoupons.length; i++) {
-        final coupon = combinedCoupons[i];
-        print('[COUPON_DEBUG] 📋 Coupon ${i + 1}:');
-        print('[COUPON_DEBUG]   - ID: ${coupon.id}');
-        print('[COUPON_DEBUG]   - Code: ${coupon.code}');
-        print('[COUPON_DEBUG]   - cType: ${coupon.cType ?? "null"}');
-        print('[COUPON_DEBUG]   - Description: ${coupon.description}');
-        print('[COUPON_DEBUG]   - Enabled: ${coupon.isEnabled}');
-        print('[COUPON_DEBUG]   - Restaurant ID: ${coupon.resturantId}');
-      }
-    } catch (e) {
-      print('[COUPON_DEBUG] ❌ Error fetching all coupons: $e');
     }
   }
 
@@ -2325,13 +1448,13 @@ class CartControllerProvider extends ChangeNotifier {
       for (var coupon in allCouponList) {
         coupon.isEnabled = !usedCouponIds.contains(coupon.id);
       }
+      notifyListeners();
     } catch (e) {
       print('DEBUG: Error marking used coupons: $e');
     }
   }
 
   Future<void> calculatePrice() async {
-    // ANR PREVENTION: Use background processing for heavy operations
     await ANRPrevention.executeWithANRPrevention('CartController_calculatePrice', () async {
       // Use ultra-fast cached tax list instead of Firebase query
       if (_cachedTaxList != null) {
@@ -2356,7 +1479,6 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      // Ensure vendor model is loaded for mart items
       if (vendorModel.id == null) {
         final martItems = cartItem.where((item) => _isMartItem(item)).toList();
         if (martItems.isNotEmpty) {
@@ -2445,12 +1567,6 @@ class CartControllerProvider extends ChangeNotifier {
       // 2. Now calculate delivery fee using the correct subtotal
       if (cartItem.isNotEmpty) {
         if (selectedFoodType == "Delivery") {
-          // Add null safety checks for location data
-          print('[DISTANCE_CALC] ==========================================');
-          print('[DISTANCE_CALC] 🗺️  CALCULATING DISTANCE BETWEEN LOCATIONS');
-          print('[DISTANCE_CALC] ==========================================');
-          print('[DISTANCE_CALC] 📍 Customer Address:');
-
           if (selectedAddress?.location?.latitude != null &&
               selectedAddress?.location?.longitude != null &&
               vendorModel.latitude != null &&
@@ -2459,173 +1575,41 @@ class CartControllerProvider extends ChangeNotifier {
             final customerLng = selectedAddress?.location!.longitude;
             final vendorLat = vendorModel.latitude!;
             final vendorLng = vendorModel.longitude!;
-
-            print(
-              '[DISTANCE_CALC] ✅ All location data available, calculating distance...',
-            );
-            print('[DISTANCE_CALC]   - Customer: ($customerLat, $customerLng)');
-            print('[DISTANCE_CALC]   - Vendor: ($vendorLat, $vendorLng)');
-
             final distanceString = Constant.getDistance(
               lat1: customerLat.toString(),
               lng1: customerLng.toString(),
               lat2: vendorLat.toString(),
               lng2: vendorLng.toString(),
             );
-
             totalDistance = double.parse(distanceString);
-
-            print('[DISTANCE_CALC] ✅ Distance calculated successfully:');
-            print('[DISTANCE_CALC]   - Raw distance string: $distanceString');
-            print('[DISTANCE_CALC]   - Parsed distance: ${totalDistance} km');
-            print(
-              '[DISTANCE_CALC]   - Distance type: ${totalDistance.runtimeType}',
-            );
           } else {
-            print(
-              '[DISTANCE_CALC] ❌ Missing location data, setting distance to 0',
-            );
-
-            print(
-              '[DISTANCE_CALC]   - Vendor location available: ${vendorModel.latitude != null && vendorModel.longitude != null}',
-            );
-
-            print('[DISTANCE_CALC]   - Vendor model: ${vendorModel.title}');
             totalDistance = 0.0;
           }
 
-          print('[DISTANCE_CALC] ==========================================');
-          print(
-            '[DISTANCE_CALC] 🎯 FINAL DISTANCE RESULT: ${totalDistance} km',
-          );
-          print('[DISTANCE_CALC] ==========================================');
-          /*
-                final dc = deliveryChargeModel.value;
-        final subtotal = subTotal.value;
-        final threshold = dc.itemTotalThreshold ?? 299;
-        final baseCharge = dc.baseDeliveryCharge ?? 23;
-        final freeKm = dc.freeDeliveryDistanceKm ?? 7;
-        final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
-        if (vendorModel.value.isSelfDelivery == true && Constant.isSelfDeliveryFeature == true) {
-          deliveryCharges.value = 0.0;
-          originalDeliveryFee.value = 0.0;
-        } else if (subtotal < threshold) {
-          if (totalDistance.value <= freeKm) {
-            deliveryCharges.value = baseCharge.toDouble();
-            originalDeliveryFee.value = baseCharge.toDouble();
-          } else {
-            double extraKm = (totalDistance.value - freeKm).ceilToDouble();
-            deliveryCharges.value = (baseCharge + (extraKm * perKm)).toDouble();
-            originalDeliveryFee.value = deliveryCharges.value;
-          }
-        } else {
-          if (totalDistance.value <= freeKm) {
-            deliveryCharges.value = 0.0;
-            originalDeliveryFee.value = baseCharge.toDouble();
-          } else {
-            double extraKm = (totalDistance.value - freeKm).ceilToDouble();
-            originalDeliveryFee.value = (baseCharge + (extraKm * perKm)).toDouble();
-            deliveryCharges.value = (extraKm * perKm).toDouble();
-            print('DEBUG: subtotal >= threshold && totalDistance > freeKm');
-            print('DEBUG: baseCharge = ' + baseCharge.toString());
-            print('DEBUG: extraKm = ' + extraKm.toString());
-            print('DEBUG: perKm = ' + perKm.toString());
-            print('DEBUG: originalDeliveryFee = ' + originalDeliveryFee.value.toString());
-            print('DEBUG: deliveryCharges = ' + deliveryCharges.value.toString());
-          }
-        }
-        */
-          // Check if cart has promotional items or mart items
           final hasPromotionalItems = cartItem.any(
             (item) => item.promoId != null && item.promoId!.isNotEmpty,
           );
           final hasMartItems = hasMartItemsInCart();
-
           if (hasPromotionalItems) {
-            // Use ultra-fast cached promotional delivery charge logic
             calculatePromotionalDeliveryChargeFast();
           } else if (hasMartItems) {
-            // Use mart delivery charge logic (same as promotional but with mart fields)
             calculateMartDeliveryCharge();
           } else {
-            // Use regular delivery charge logic
             calculateRegularDeliveryCharge();
           }
         }
+        notifyListeners();
       }
-
-      // Coupon minimum value check and auto-remove logic
-      /*
-    if (selectedCouponModel.value.id != null && selectedCouponModel.value.id!.isNotEmpty) {
-      double minValue = double.tryParse(selectedCouponModel.value.itemValue ?? '0') ?? 0.0;
-      if (subTotal.value <= minValue) {
-        // Remove coupon and notify user
-        selectedCouponModel.value = CouponModel();
-        couponCodeController.value.text = '';
-        couponAmount.value = 0.0;
-        ShowToastDialog.showToast(
-          "Coupon removed: order total is below the minimum required for this coupon.".tr
-        );
-      } else {
-        couponAmount.value = Constant.calculateDiscount(
-            amount: subTotal.value.toString(),
-            offerModel: selectedCouponModel.value);
-      }
-    } else {
-      couponAmount.value = 0.0;
-  */
-
-      /*
-    if (vendorModel.value.specialDiscountEnable == true &&
-        Constant.specialDiscountOffer == true) {
-      final now = DateTime.now();
-      var day = DateFormat('EEEE', 'en_US').format(now);
-      var date = DateFormat('dd-MM-yyyy').format(now);
-      for (var element in vendorModel.value.specialDiscount!) {
-        if (day == element.day.toString()) {
-          if (element.timeslot!.isNotEmpty) {
-            for (var element in element.timeslot!) {
-              if (element.discountType == "delivery") {
-                var start = DateFormat("dd-MM-yyyy HH:mm")
-                    .parse("$date ${element.from}");
-                var end =
-                    DateFormat("dd-MM-yyyy HH:mm").parse("$date ${element.to}");
-                if (isCurrentDateInRange(start, end)) {
-                  specialDiscount.value =
-                      double.parse(element.discount.toString());
-                  specialType.value = element.type.toString();
-                  if (element.type == "percentage") {
-                    specialDiscountAmount.value =
-                        subTotal * specialDiscount.value / 100;
-                  } else {
-                    specialDiscountAmount.value = specialDiscount.value;
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    } else {
-      specialDiscount.value = double.parse("0");
-      specialType.value = "amount";
-    */
-      // 3. Calculate coupon discount
+      notifyListeners();
       CouponModel? activeCoupon;
-
-      // Check if there's a selected coupon model (from "Tap To Apply" button)
       if (selectedCouponModel.id != null &&
           selectedCouponModel.id!.isNotEmpty) {
         activeCoupon = selectedCouponModel;
-      }
-      // Check if there's a coupon code entered manually
-      else if (couponCodeController.value.text.isNotEmpty) {
+      } else if (couponCodeController.value.text.isNotEmpty) {
         activeCoupon = couponList
             .where((element) => element.code == couponCodeController.value.text)
             .firstOrNull;
       }
-
-      // Check if cart has promotional items - if yes, don't apply coupons
       final hasPromotionalItems = cartItem.any((item) {
         final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
         final discountPriceValue =
@@ -2639,7 +1623,6 @@ class CartControllerProvider extends ChangeNotifier {
       });
 
       if (hasPromotionalItems && activeCoupon != null) {
-        // Cart has promotional items - remove coupon and show message
         ShowToastDialog.showToast(
           "Coupons cannot be applied to promotional items".tr,
         );
@@ -2673,18 +1656,12 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         couponAmount = 0.0;
       }
+      notifyListeners();
 
-      /*
-    print('DEBUG: subTotal.value = ' + subTotal.value.toString());
-    print('DEBUG: deliveryCharges.value = ' + deliveryCharges.value.toString());
-    // Calculate SGST (5%) on item total, GST (18%) on delivery fee
-    */
-      // 4. Calculate special discount
       if (specialDiscountAmount > 0) {
         specialDiscountAmount = (subTotal * specialDiscountAmount) / 100;
       }
 
-      // 5. Calculate taxes - Always calculate tax on original delivery fee for promotional and mart items
       double sgst = 0.0;
       double gst = 0.0;
 
@@ -2702,38 +1679,23 @@ class CartControllerProvider extends ChangeNotifier {
               taxModel: element,
             );
             if (hasPromotionalItemsForTax) {
-              print(
-                '[PROMOTIONAL_TAX] SGST (5%) on item total: ' + sgst.toString(),
-              );
             } else if (hasMartItems) {
-              print('[MART_TAX] SGST (5%) on item total: ' + sgst.toString());
-            } else {
-              print('DEBUG: SGST (5%) on item total: ' + sgst.toString());
-            }
+            } else {}
           } else if ((element.title?.toLowerCase() ?? '').contains('gst')) {
             gst = Constant.calculateTax(
               amount: originalDeliveryFee.toString(),
               taxModel: element,
             );
             if (hasPromotionalItemsForTax) {
-              print(
-                '[PROMOTIONAL_TAX] GST (18%) on delivery fee: ' +
-                    gst.toString(),
-              );
             } else if (hasMartItems) {
-              print('[MART_TAX] GST (18%) on delivery fee: ' + gst.toString());
-            } else {
-              print('DEBUG: GST (18%) on delivery fee: ' + gst.toString());
-            }
+            } else {}
           }
         }
       }
       taxAmount = sgst + gst;
-
       if (hasPromotionalItemsForTax) {
       } else if (hasMartItems) {
       } else {}
-
       bool isFreeDelivery = false;
       if (cartItem.isNotEmpty && selectedFoodType == "Delivery") {
         // Check if cart has promotional items or mart items
@@ -2741,9 +1703,7 @@ class CartControllerProvider extends ChangeNotifier {
           (item) => item.promoId != null && item.promoId!.isNotEmpty,
         );
         final hasMartItems = hasMartItemsInCart();
-
         if (hasPromotionalItems) {
-          // For promotional items, use ultra-fast cached delivery settings
           final promotionalItems = cartItem
               .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
               .toList();
@@ -2759,8 +1719,6 @@ class CartControllerProvider extends ChangeNotifier {
             isFreeDelivery = true;
           }
         } else if (hasMartItems) {
-          // For mart items - check mart delivery settings for free delivery eligibility
-          // Use cached mart delivery settings if available, otherwise use defaults
           double itemThreshold = 199.0; // Default
           double freeDeliveryKm = 5.0; // Default
 
@@ -2791,22 +1749,19 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
-
       totalAmount =
           (subTotal - couponAmount - specialDiscountAmount) +
           taxAmount +
           (isFreeDelivery ? 0.0 : deliveryCharges) +
           deliveryTips +
           surgePercent;
-
-      // Check and switch payment method based on order total
       checkAndUpdatePaymentMethod();
+      notifyListeners();
     }, timeout: const Duration(seconds: 5));
+    notifyListeners();
   }
 
-  /// **ULTRA-FAST** Calculate delivery charge for promotional items using cached data
   void calculatePromotionalDeliveryChargeFast() {
-    // Get promotional items from cart
     final promotionalItems = cartItem
         .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
         .toList();
@@ -2829,7 +1784,6 @@ class CartControllerProvider extends ChangeNotifier {
     );
     final baseCharge = 23.0; // Base delivery charge for promotional items
 
-    // NEW: Use reusable method
     _calculateDeliveryCharge(
       orderType: 'promotional',
       freeDeliveryKm: freeDeliveryKm,
@@ -2837,37 +1791,9 @@ class CartControllerProvider extends ChangeNotifier {
       baseCharge: baseCharge,
       logPrefix: '[PROMOTIONAL_DELIVERY]',
     );
-
-    /* OLD CODE - KEPT FOR REFERENCE
-    print('DEBUG: Ultra-fast promotional delivery - Free km: $freeDeliveryKm, Extra charge: $extraKmCharge, Distance: ${totalDistance.value} km');
-
-    if (vendorModel.value.isSelfDelivery == true && Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = 0.0;
-      print('DEBUG: Self delivery - no charge');
-    } else if (totalDistance.value <= freeDeliveryKm) {
-      // Free delivery within promotional distance - show original fee with strikethrough
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = baseCharge.toDouble();
-      print('DEBUG: Free delivery within promotional distance - showing original fee: ₹$baseCharge');
-    } else {
-      // Calculate extra charge for distance beyond free delivery
-      double extraKm = (totalDistance.value - freeDeliveryKm).ceilToDouble();
-      deliveryCharges.value = extraKm * extraKmCharge;
-      originalDeliveryFee.value = deliveryCharges.value;
-      print('DEBUG: Extra delivery charge: $extraKm km × ₹$extraKmCharge = ₹${deliveryCharges.value}');
-    }
-    */
+    notifyListeners();
   }
 
-  /// Reusable method to calculate delivery charge for different order types
-  ///
-  /// Parameters:
-  /// - [orderType]: Type of order ('mart', 'promotional', 'regular')
-  /// - [freeDeliveryKm]: Free delivery distance in km
-  /// - [perKmCharge]: Charge per km beyond free delivery distance
-  /// - [baseCharge]: Base delivery charge to show with strikethrough
-  /// - [logPrefix]: Prefix for logging (e.g., '[MART_DELIVERY]', '[PROMOTIONAL_DELIVERY]')
   void _calculateDeliveryCharge({
     required String orderType,
     required double freeDeliveryKm,
@@ -2875,63 +1801,38 @@ class CartControllerProvider extends ChangeNotifier {
     required double baseCharge,
     required String logPrefix,
   }) {
-    print('$logPrefix Calculating $orderType delivery charge');
-
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
-      print('$logPrefix Self delivery - no charge');
     } else if (totalDistance <= freeDeliveryKm) {
       // Free delivery within distance - show original fee with strikethrough
       deliveryCharges = 0.0;
       originalDeliveryFee = baseCharge;
-      print(
-        '$logPrefix Free delivery within distance - showing original fee: ₹$baseCharge',
-      );
     } else {
-      // Calculate extra charge for distance beyond free delivery
       double extraKm = (totalDistance - freeDeliveryKm).ceilToDouble();
       deliveryCharges = extraKm * perKmCharge;
       // Always calculate tax on base charge (₹23) + extra charges for all order types
       originalDeliveryFee = baseCharge + deliveryCharges;
     }
+    notifyListeners();
   }
 
   /// Calculate delivery charge for mart items using static values (like restaurant)
   void calculateMartDeliveryCharge() {
-    print('[MART_DELIVERY] ==========================================');
-    print('[MART_DELIVERY] 🚚 STARTING MART DELIVERY CALCULATION');
-    print('[MART_DELIVERY] ==========================================');
-
     // Get mart items from cart
     final martItems = cartItem.where((item) => _isMartItem(item)).toList();
-    print('[MART_DELIVERY] 📦 Cart Analysis:');
-    print('[MART_DELIVERY]   - Total cart items: ${cartItem.length}');
-    print('[MART_DELIVERY]   - Mart items found: ${martItems.length}');
-    print(
-      '[MART_DELIVERY]   - Regular items: ${cartItem.length - martItems.length}',
-    );
+    notifyListeners();
 
     if (martItems.isEmpty) {
-      print(
-        '[MART_DELIVERY] ❌ No mart items found, using regular delivery charge',
-      );
       calculateRegularDeliveryCharge();
       return;
     }
-
-    print(
-      '[MART_DELIVERY]   - Self Delivery Feature: ${Constant.isSelfDeliveryFeature}',
-    );
-
     // Use static values like restaurant delivery (don't fetch from database)
     _calculateMartDeliveryWithStaticValues();
   }
 
-  /// Calculate mart delivery charge using static values (same logic as restaurant)
   void _calculateMartDeliveryWithStaticValues() {
-    // Static mart delivery settings (same as restaurant logic)
     final baseCharge = 23.0; // Base delivery charge
     final freeKm = 5.0; // Free delivery distance for mart
     final perKm = 7.0; // Per km charge above free distance
@@ -2940,218 +1841,48 @@ class CartControllerProvider extends ChangeNotifier {
     final subtotal = subTotal;
     final distance = totalDistance;
 
-    print('[MART_DELIVERY] 📊 STATIC DELIVERY CALCULATION PARAMETERS:');
-    print('[MART_DELIVERY]   - Base charge: ₹$baseCharge');
-    print('[MART_DELIVERY]   - Free delivery distance: ${freeKm} km');
-    print('[MART_DELIVERY]   - Per km charge above free: ₹$perKm');
-    print('[MART_DELIVERY]   - Item total threshold: ₹$threshold');
-    print('[MART_DELIVERY]   - Current distance: ${distance} km');
-    print('[MART_DELIVERY]   - Current subtotal: ₹$subtotal');
-
-    print(
-      '[MART_DELIVERY]   - Self delivery feature enabled: ${Constant.isSelfDeliveryFeature}',
-    );
-
-    print('[MART_DELIVERY] 🔍 DELIVERY LOGIC ANALYSIS:');
-    print(
-      '[MART_DELIVERY]   - Subtotal (₹$subtotal) >= Threshold (₹$threshold): ${subtotal >= threshold}',
-    );
-    print(
-      '[MART_DELIVERY]   - Distance (${distance} km) <= Free Distance (${freeKm} km): ${distance <= freeKm}',
-    );
-
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
-      print('[MART_DELIVERY] ✅ RESULT: Self delivery - NO CHARGE');
     } else if (subtotal >= threshold) {
-      print(
-        '[MART_DELIVERY] 🎯 CASE: Above threshold (₹$subtotal >= ₹$threshold)',
-      );
-      // Above threshold - free delivery within distance
       if (distance <= freeKm) {
         deliveryCharges = 0.0;
         originalDeliveryFee = baseCharge;
-        print(
-          '[MART_DELIVERY] ✅ RESULT: FREE DELIVERY - Above threshold and within free distance',
-        );
-        print(
-          '[MART_DELIVERY]   - Distance: ${distance} km <= ${freeKm} km (free distance)',
-        );
-        print('[MART_DELIVERY]   - Final delivery charge: ₹${deliveryCharges}');
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee}',
-        );
       } else {
         double extraKm = (distance - freeKm).ceilToDouble();
         deliveryCharges = extraKm * perKm;
         originalDeliveryFee = baseCharge + deliveryCharges;
-        print(
-          '[MART_DELIVERY] ✅ RESULT: FREE DELIVERY WITH EXTRA CHARGE - Above threshold but beyond free distance',
-        );
-        print(
-          '[MART_DELIVERY]   - Distance: ${distance} km > ${freeKm} km (free distance)',
-        );
-        print('[MART_DELIVERY]   - Extra km: ${extraKm} km');
-        print(
-          '[MART_DELIVERY]   - Extra charge: ${extraKm} km × ₹$perKm = ₹${deliveryCharges}',
-        );
-        print(
-          '[MART_DELIVERY]   - Original delivery fee: ₹${originalDeliveryFee}',
-        );
       }
+      notifyListeners();
     } else {
-      print(
-        '[MART_DELIVERY] 🎯 CASE: Below threshold (₹$subtotal < ₹$threshold)',
-      );
-      // Below threshold - always charge delivery
       if (distance <= freeKm) {
         deliveryCharges = baseCharge;
         originalDeliveryFee = baseCharge;
-        print(
-          '[MART_DELIVERY] ✅ RESULT: BASE CHARGE - Below threshold, within free distance',
-        );
-        print(
-          '[MART_DELIVERY]   - Distance: ${distance} km <= ${freeKm} km (free distance)',
-        );
       } else {
         double extraKm = (distance - freeKm).ceilToDouble();
         deliveryCharges = baseCharge + (extraKm * perKm);
         originalDeliveryFee = deliveryCharges;
-        print(
-          '[MART_DELIVERY] ✅ RESULT: FULL CHARGE - Below threshold, beyond free distance',
-        );
-        print(
-          '[MART_DELIVERY]   - Distance: ${distance} km > ${freeKm} km (free distance)',
-        );
-        print('[MART_DELIVERY]   - Extra km: ${extraKm} km');
-        print('[MART_DELIVERY]   - Base charge: ₹$baseCharge');
-        print(
-          '[MART_DELIVERY]   - Extra charge: ${extraKm} km × ₹$perKm = ₹${extraKm * perKm}',
-        );
       }
     }
+    notifyListeners();
   }
 
   /// Fetch mart delivery charge settings from Firestore
   Future<Map<String, dynamic>?> _fetchMartDeliveryChargeSettings() async {
     try {
-      print(
-        '[MART_DELIVERY] 🔍 Fetching mart delivery settings from Firestore...',
-      );
       final doc = await FirebaseFirestore.instance
           .collection('settings')
           .doc('martDeliveryCharge')
           .get();
-
       if (doc.exists) {
         final data = doc.data()!;
-        print('[MART_DELIVERY] ✅ Successfully fetched mart delivery settings:');
-        print(
-          '[MART_DELIVERY]   - Base delivery charge: ₹${data['base_delivery_charge']}',
-        );
-        print(
-          '[MART_DELIVERY]   - Free delivery distance: ${data['free_delivery_distance_km']} km',
-        );
-        print(
-          '[MART_DELIVERY]   - Per km charge above free: ₹${data['per_km_charge_above_free_distance']}',
-        );
-        print(
-          '[MART_DELIVERY]   - Item total threshold: ₹${data['item_total_threshold']}',
-        );
-        print(
-          '[MART_DELIVERY]   - Min delivery charges: ${data['minimum_delivery_charges']}',
-        );
-        print(
-          '[MART_DELIVERY]   - Min delivery charges within km: ${data['minimum_delivery_charges_within_km']}',
-        );
-        print('[MART_DELIVERY]   - Is active: ${data['is_active']}');
-        print(
-          '[MART_DELIVERY]   - Delivery promotion text: ${data['delivery_promotion_text']}',
-        );
-        print(
-          '[MART_DELIVERY]   - Min order message: ${data['min_order_message']}',
-        );
         return data;
       } else {
-        print('[MART_DELIVERY] ❌ martDeliveryCharge document not found');
         return null;
       }
     } catch (e) {
-      print(
-        '[MART_DELIVERY] ❌ Error fetching mart delivery charge settings: $e',
-      );
       return null;
-    }
-  }
-
-  /// Calculate mart delivery charge with Firestore settings
-
-  /// Calculate delivery charge for promotional items (OLD SLOW VERSION - DEPRECATED)
-  Future<void> calculatePromotionalDeliveryCharge() async {
-    print('DEBUG: Calculating promotional delivery charge');
-
-    // Get promotional items from cart
-    final promotionalItems = cartItem
-        .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
-        .toList();
-
-    if (promotionalItems.isEmpty) {
-      print('DEBUG: No promotional items found, using regular delivery charge');
-      calculateRegularDeliveryCharge();
-      return;
-    }
-
-    // Get the first promotional item's delivery settings
-    final firstPromoItem = promotionalItems.first;
-
-    try {
-      // Get promotional item details from Firestore
-      final promoDetails = await FireStoreUtils.getActivePromotionForProduct(
-        productId: firstPromoItem.id ?? '',
-        restaurantId: firstPromoItem.vendorID ?? '',
-      );
-
-      if (promoDetails != null) {
-        final freeDeliveryKm =
-            (promoDetails['free_delivery_km'] as num?)?.toDouble() ?? 3.0;
-        final extraKmCharge =
-            (promoDetails['extra_km_charge'] as num?)?.toDouble() ?? 7.0;
-        final baseCharge = 23.0; // Base delivery charge for promotional items
-
-        print(
-          'DEBUG: Promotional delivery settings - Free km: $freeDeliveryKm, Extra charge: $extraKmCharge',
-        );
-        print('DEBUG: Total distance: ${totalDistance} km');
-
-        if (vendorModel.isSelfDelivery == true &&
-            Constant.isSelfDeliveryFeature == true) {
-          deliveryCharges = 0.0;
-          originalDeliveryFee = 0.0;
-          print('DEBUG: Self delivery - no charge');
-        } else if (totalDistance <= freeDeliveryKm) {
-          // Free delivery within promotional distance - show original fee with strikethrough
-          deliveryCharges = 0.0;
-          originalDeliveryFee = baseCharge.toDouble();
-          print(
-            'DEBUG: Free delivery within promotional distance - showing original fee: ₹$baseCharge',
-          );
-        } else {
-          // Calculate extra charge for distance beyond free delivery
-          double extraKm = (totalDistance - freeDeliveryKm).ceilToDouble();
-          deliveryCharges = extraKm * extraKmCharge;
-          originalDeliveryFee = deliveryCharges;
-        }
-      } else {
-        print(
-          'DEBUG: No promotional details found, using regular delivery charge',
-        );
-        calculateRegularDeliveryCharge();
-      }
-    } catch (e) {
-      print('DEBUG: Error calculating promotional delivery charge: $e');
-      calculateRegularDeliveryCharge();
     }
   }
 
@@ -3163,15 +1894,11 @@ class CartControllerProvider extends ChangeNotifier {
     final baseCharge = dc.baseDeliveryCharge ?? 23;
     final freeKm = dc.freeDeliveryDistanceKm ?? 7;
     final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
-    // Regular delivery has complex logic that doesn't fit the simple reusable method
-    // So we'll keep the original logic but use the reusable method where possible
-    print('DEBUG: Calculating regular delivery charge');
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (subtotal < threshold) {
-      // Below threshold - always charge delivery (but still use freeKm for distance calculation)
       if (totalDistance <= freeKm) {
         deliveryCharges = baseCharge.toDouble();
         originalDeliveryFee = baseCharge.toDouble();
@@ -3189,45 +1916,10 @@ class CartControllerProvider extends ChangeNotifier {
         double extraKm = (totalDistance - freeKm).ceilToDouble();
         originalDeliveryFee = (baseCharge + (extraKm * perKm)).toDouble();
         deliveryCharges = (extraKm * perKm).toDouble();
-        print('DEBUG: subtotal >= threshold && totalDistance > freeKm');
-        print('DEBUG: baseCharge = ' + baseCharge.toString());
-        print('DEBUG: extraKm = ' + extraKm.toString());
-        print('DEBUG: perKm = ' + perKm.toString());
       }
     }
 
-    /* OLD CODE - KEPT FOR REFERENCE
-    print('DEBUG: Calculating regular delivery charge');
-
-    if (vendorModel.value.isSelfDelivery == true && Constant.isSelfDeliveryFeature == true) {
-      deliveryCharges.value = 0.0;
-      originalDeliveryFee.value = 0.0;
-    } else if (subtotal < threshold) {
-      if (totalDistance.value <= freeKm) {
-        deliveryCharges.value = baseCharge.toDouble();
-        originalDeliveryFee.value = baseCharge.toDouble();
-      } else {
-        double extraKm = (totalDistance.value - freeKm).ceilToDouble();
-        deliveryCharges.value = (baseCharge + (extraKm * perKm)).toDouble();
-        originalDeliveryFee.value = deliveryCharges.value;
-      }
-    } else {
-      if (totalDistance.value <= freeKm) {
-        deliveryCharges.value = 0.0;
-        originalDeliveryFee.value = baseCharge.toDouble();
-      } else {
-        double extraKm = (totalDistance.value - freeKm).ceilToDouble();
-        originalDeliveryFee.value = (baseCharge + (extraKm * perKm)).toDouble();
-        deliveryCharges.value = (extraKm * perKm).toDouble();
-        print('DEBUG: subtotal >= threshold && totalDistance > freeKm');
-        print('DEBUG: baseCharge = ' + baseCharge.toString());
-        print('DEBUG: extraKm = ' + extraKm.toString());
-        print('DEBUG: perKm = ' + perKm.toString());
-        print('DEBUG: originalDeliveryFee = ' + originalDeliveryFee.value.toString());
-        print('DEBUG: deliveryCharges = ' + deliveryCharges.value.toString());
-      }
-    }
-    */
+    notifyListeners();
   }
 
   Future<bool> addToCart({
@@ -3236,10 +1928,8 @@ class CartControllerProvider extends ChangeNotifier {
     required int quantity,
   }) async {
     if (isIncrement) {
-      // **PERFORMANCE FIX: Use cached promotional data (instant)**
       if (cartProductModel.promoId != null &&
           cartProductModel.promoId!.isNotEmpty) {
-        //final isAllowed = await isPromotionalItemQuantityAllowed(
         final isAllowed = isPromotionalItemQuantityAllowed(
           cartProductModel.id ?? '',
           cartProductModel.vendorID ?? '',
@@ -3263,12 +1953,14 @@ class CartControllerProvider extends ChangeNotifier {
         cartProductModel,
         quantity,
       );
+      notifyListeners();
       if (!success) {
         // Don't update the UI if adding to cart failed
         return false;
       }
     } else {
       cartProvider.removeFromCart(cartProductModel, quantity);
+      notifyListeners();
     }
     notifyListeners();
     return true;
@@ -3285,22 +1977,21 @@ class CartControllerProvider extends ChangeNotifier {
   void _startOrderProcessing() {
     _orderInProgress = true;
     isProcessingOrder = true;
+    notifyListeners();
   }
 
   /// End order processing
   void _endOrderProcessing() {
     _orderInProgress = false;
     isProcessingOrder = false;
+    notifyListeners();
   }
 
-  /// Enhanced place order with idempotency and state management
-  ///
-  /// finder
+  ///finded
+
   placeOrder(BuildContext context) async {
-    print('DEBUG: Starting placeOrder process');
     // Check idempotency - prevent duplicate orders
     if (_isOrderInProgress()) {
-      print('DEBUG: Order already in progress, ignoring duplicate request');
       ShowToastDialog.showToast(
         "Order is already being processed. Please wait...".tr,
       );
@@ -3309,25 +2000,16 @@ class CartControllerProvider extends ChangeNotifier {
     // Check debouncing
     if (lastOrderAttempt != null &&
         DateTime.now().difference(lastOrderAttempt!) < orderDebounceTime) {
-      print('DEBUG: Order attempt too soon, debouncing');
       ShowToastDialog.showToast("Please wait before trying again...".tr);
       return;
     }
-
     _startOrderProcessing();
     lastOrderAttempt = DateTime.now();
-
     try {
-      // Validate order before payment
       if (!await validateOrderBeforePayment(context)) {
-        print('DEBUG: Order validation failed');
         _endOrderProcessing();
         return;
       }
-
-      // This check is now handled in the address validation above
-      // No need for separate fallback location check since address is mandatory
-
       if (selectedPaymentMethod == PaymentGateway.cod.name && subTotal > 599) {
         ShowToastDialog.showToast(
           "Cash on Delivery is not available for orders above ₹599. Please select another payment method."
@@ -3336,7 +2018,6 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-
       if (selectedPaymentMethod == PaymentGateway.cod.name &&
           hasPromotionalItems()) {
         ShowToastDialog.showToast(
@@ -3346,19 +2027,12 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-
-      // 🔑 ENSURE PAYMENT METHOD IS SET CORRECTLY FOR PREPAID ORDERS
-      // Check if we have a successful payment but payment method is COD or empty
       if (isPaymentCompleted &&
           _lastPaymentId != null &&
           (selectedPaymentMethod.isEmpty ||
               selectedPaymentMethod == PaymentGateway.cod.name)) {
         selectedPaymentMethod = PaymentGateway.razorpay.name;
-        print(
-          '🔑 Payment method corrected in placeOrder: ${selectedPaymentMethod}',
-        );
       }
-
       if (selectedPaymentMethod == PaymentGateway.wallet.name) {
         if (double.parse(userModel.walletAmount.toString()) >= totalAmount) {
           await setOrder();
@@ -3373,14 +2047,8 @@ class CartControllerProvider extends ChangeNotifier {
       }
     } catch (e) {
       print('DEBUG: Error in placeOrder: $e');
-
-      // Check if this is a zone validation error and show specific message
       if (e.toString().contains('Delivery zone validation failed') ||
           e.toString().contains('Delivery distance validation failed')) {
-        // Zone validation error - don't show additional toast as _validateDeliveryZone already showed it
-        print(
-          'DEBUG: Zone validation failed - specific error message already shown',
-        );
       } else {
         // Generic order error
         ShowToastDialog.showToast(
@@ -3390,88 +2058,36 @@ class CartControllerProvider extends ChangeNotifier {
 
       endOrderProcessing();
     }
+    notifyListeners();
   }
 
   // Validate order before payment to prevent payment without order
   Future<bool> validateOrderBeforePayment(BuildContext context) async {
     try {
-      print('DEBUG: Validating order before payment...');
-      print('DEBUG: Cart items count: ${cartItem.length}');
-      print(
-        'DEBUG: First cart item vendorID: ${cartItem.isNotEmpty ? cartItem.first.vendorID : 'N/A'}',
-      );
-
-      // Check if cart is not empty
       if (cartItem.isEmpty) {
         ShowToastDialog.showToast(
           "Your cart is empty. Please add items before placing order.".tr,
         );
         return false;
       }
-
-      // Check minimum order value for mart items
       try {
         await validateMinimumOrderValue();
       } catch (e) {
-        print('DEBUG: Minimum order validation failed: $e');
         return false;
       }
 
       // 🔑 BULLETPROOF ADDRESS VALIDATION - NEVER SKIPS
       final addressValid = await _validateAddressBulletproof(context);
       if (!addressValid) {
-        print('DEBUG: ❌ Order validation failed - address validation failed');
         return false;
       }
 
-      // Zone validation is now handled in bulletproof address validation
-      print(
-        'DEBUG: ✅ Address validation passed - continuing with order validation',
-      );
-
-      /*
-      // OLD ADDRESS VALIDATION CODE - COMMENTED OUT FOR REFERENCE
-      // MANDATORY ADDRESS VALIDATION: No orders without real address
-      if (selectedAddress.value == null) {
-        ShowToastDialog.showToast("Delivery address is required. Please add an address to continue.".tr);
-        // Redirect to address selection screen
-
-        return false;
-      }
-
-      // Validate address has all required fields
-      if (selectedAddress.value!.address == null ||
-          selectedAddress.value!.address!.isEmpty ||
-          selectedAddress.value!.locality == null ||
-          selectedAddress.value!.locality!.isEmpty ||
-          selectedAddress.value!.location == null ||
-          selectedAddress.value!.location!.latitude == null ||
-          selectedAddress.value!.location!.longitude == null) {
-        ShowToastDialog.showToast("Please select a complete delivery address with location details.".tr);
-        // Redirect to address selection screen
-
-        return false;
-      }
-
-      // Prevent invalid fallback addresses (but allow fallback zone addresses)
-      if (selectedAddress.value!.address == 'Current Location' ||
-          selectedAddress.value!.locality == 'Current Location') {
-        ShowToastDialog.showToast("Please select your actual delivery address, not a default location.".tr);
-        // Redirect to address selection screen
-
-        return false;
-      }
-      */
-
-      // Check if vendor is still open using the new status system
       if (vendorModel.id != null) {
         final latestVendor = await FireStoreUtils.getVendorById(
           vendorModel.id!,
         );
         if (latestVendor != null) {
-          // Check if this is a mart vendor
           if (latestVendor.vType == 'mart') {
-            // For mart vendors, check if they're open using mart-specific logic
             if (latestVendor.isOpen == false) {
               ShowToastDialog.showToast(
                 "Jippy Mart is temporarily closed. Please try again later.",
@@ -3491,9 +2107,6 @@ class CartControllerProvider extends ChangeNotifier {
         }
       } else {
         // Handle case where vendor model is not set (e.g., mart items)
-        print(
-          'DEBUG: Vendor model not set, skipping vendor validation for mart items',
-        );
       }
 
       for (int i = 0; i < tempProduc.length; i++) {
@@ -3520,17 +2133,10 @@ class CartControllerProvider extends ChangeNotifier {
                     .collection('mart_items')
                     .doc(tempProduc[i].id!.split('~').first)
                     .update({'quantity': newQuantity});
-
-                print(
-                  'DEBUG: Updated mart item quantity for ${tempProduc[i].id}',
-                );
               }
             }
-          } catch (e) {
-            print(
-              'DEBUG: Error updating mart item quantity for ${tempProduc[i].id}: $e',
-            );
-          }
+          } catch (e) {}
+          notifyListeners();
         } else {
           // For restaurant items, use existing logic
           await FireStoreUtils.getProductById(
@@ -3585,6 +2191,7 @@ class CartControllerProvider extends ChangeNotifier {
 
             await FireStoreUtils.setProduct(productModel);
           });
+          notifyListeners();
         }
       }
 
@@ -3592,9 +2199,6 @@ class CartControllerProvider extends ChangeNotifier {
       for (var item in cartItem) {
         // Check if this is a mart item (has 'mart_' prefix in vendorID)
         bool isMartItem = item.vendorID?.startsWith('mart_') == true;
-        print(
-          'DEBUG: Item ${item.id} - vendorID: ${item.vendorID}, isMartItem: $isMartItem',
-        );
 
         if (isMartItem) {
           // For mart items, fetch from mart_items collection
@@ -3624,10 +2228,7 @@ class CartControllerProvider extends ChangeNotifier {
               );
               return false;
             }
-
-            print('DEBUG: Mart item validation successful for ${item.id}');
           } catch (e) {
-            print('DEBUG: Error validating mart item ${item.id}: $e');
             ShowToastDialog.showToast(
               "Error validating mart items. Please try again.",
             );
@@ -3658,26 +2259,19 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
-
-      print('DEBUG: Order validation successful');
+      notifyListeners();
       return true;
     } catch (e) {
-      print('DEBUG: Error in order validation: $e');
-
       // Check if this is a zone validation error and show specific message
       if (e.toString().contains('Delivery zone validation failed') ||
           e.toString().contains('Delivery distance validation failed')) {
-        // Zone validation error - don't show additional toast as _validateDeliveryZone already showed it
-        print(
-          'DEBUG: Zone validation failed - specific error message already shown',
-        );
       } else {
         // Generic validation error
         ShowToastDialog.showToast(
           "Error validating order. Please try again.".tr,
         );
       }
-
+      notifyListeners();
       return false;
     }
   }
@@ -3688,27 +2282,18 @@ class CartControllerProvider extends ChangeNotifier {
     List<CartProductModel> products,
   ) async {
     try {
-      print('DEBUG: Rolling back failed order: $orderId');
-
-      // Delete the failed order
       await FirebaseFirestore.instance
           .collection('restaurant_orders')
           .doc(orderId)
           .delete();
-
-      // Restore product quantities
       for (var product in products) {
-        // Check if this is a mart item (has 'mart_' prefix in vendorID)
         bool isMartItem = product.vendorID?.startsWith('mart_') == true;
-
         if (isMartItem) {
-          // For mart items, restore quantity in mart_items collection
           try {
             final martItemDoc = await FirebaseFirestore.instance
                 .collection('mart_items')
                 .doc(product.id!)
                 .get();
-
             if (martItemDoc.exists) {
               final martItemData = martItemDoc.data()!;
               final currentQuantity = martItemData['quantity'] ?? 0;
@@ -3719,14 +2304,9 @@ class CartControllerProvider extends ChangeNotifier {
                   .collection('mart_items')
                   .doc(product.id!)
                   .update({'quantity': newQuantity});
-
-              print('DEBUG: Restored mart item quantity for ${product.id}');
             }
-          } catch (e) {
-            print(
-              'DEBUG: Error restoring mart item quantity for ${product.id}: $e',
-            );
-          }
+          } catch (e) {}
+          notifyListeners();
         } else {
           // For restaurant items, use existing logic
           final productModel = await FireStoreUtils.getProductById(product.id!);
@@ -3737,6 +2317,8 @@ class CartControllerProvider extends ChangeNotifier {
             productModel.quantity = newQuantity;
             await FireStoreUtils.setProduct(productModel);
           }
+
+          notifyListeners();
         }
       }
 
@@ -3746,25 +2328,17 @@ class CartControllerProvider extends ChangeNotifier {
           .doc(orderId)
           .delete();
 
-      print('DEBUG: Rollback completed for order: $orderId');
-    } catch (e) {
-      print('DEBUG: Error in rollback: $e');
-    }
+      notifyListeners();
+    } catch (e) {}
   }
 
   /// finderone
   setOrder() async {
-    print('DEBUG: Starting order placement process');
-
-    // Validate restaurant status before placing order (for wallet payments)
     await FireStoreUtils.getVendorById(vendorModel.id!);
-
     if (vendorModel.id != null) {
       final latestVendor = await FireStoreUtils.getVendorById(vendorModel.id!);
       if (latestVendor != null) {
-        // Check if this is a mart vendor
         if (latestVendor.vType == 'mart') {
-          // For mart vendors, check if they're open using mart-specific logic
           if (latestVendor.isOpen == false) {
             ShowToastDialog.closeLoader();
             ShowToastDialog.showToast(
@@ -3774,7 +2348,6 @@ class CartControllerProvider extends ChangeNotifier {
             return;
           }
         } else {
-          // For restaurant vendors, use restaurant status system
           if (!RestaurantStatusUtils.isRestaurantOpen(latestVendor)) {
             ShowToastDialog.closeLoader();
             final status = RestaurantStatusUtils.getRestaurantStatus(
@@ -3786,24 +2359,16 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
-    } else {
-      // Handle case where vendor model is not set (e.g., mart items)
-      print(
-        'DEBUG: Vendor model not set, skipping vendor validation for mart items',
-      );
-    }
-
+    } else {}
+    notifyListeners();
     return await _setOrderInternal();
   }
-
-  // Internal method for order placement without restaurant status validation
 
   ///issue finded
   Future<void> _setOrderInternal() async {
     String? orderId;
     List<CartProductModel> orderedProducts = [];
     try {
-      // Check subscription limits if applicable
       if ((Constant.isSubscriptionModelApplied == true ||
               Constant.adminCommission?.isEnabled == true) &&
           vendorModel.subscriptionPlan != null &&
@@ -3835,10 +2400,8 @@ class CartControllerProvider extends ChangeNotifier {
         'special_discount_label': specialDiscount,
         'specialType': specialType,
       };
-
       OrderModel orderModel = OrderModel();
 
-      // Generate order ID
       final querySnapshot = await FirebaseFirestore.instance
           .collection('restaurant_orders')
           .where(FieldPath.documentId, isGreaterThanOrEqualTo: 'Jippy3000000')
@@ -3859,12 +2422,10 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
       final nextNumber = maxNumber + 1;
-      orderModel.id = 'Jippy3' + nextNumber.toString().padLeft(7, '0');
+      orderModel.id = 'Jippy3${nextNumber.toString().padLeft(7, '0')}';
       orderId = orderModel.id;
       print('DEBUG: Generated Order ID: ${orderModel.id}');
 
-      // Set order details using correct field names
-      // Address is already validated above - no fallbacks needed
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
@@ -3919,7 +2480,6 @@ class CartControllerProvider extends ChangeNotifier {
             orderModel.adminCommissionType =
                 martVendor.adminCommission?.commissionType ??
                 Constant.adminCommission!.commissionType;
-            print('DEBUG: Using actual mart vendor: ${martVendor.title}');
           } else {
             // Fallback to default values if no mart vendor found
             orderModel.vendorID = 'mart_default';
@@ -3946,14 +2506,9 @@ class CartControllerProvider extends ChangeNotifier {
             orderModel.adminCommission = Constant.adminCommission!.amount;
             orderModel.adminCommissionType =
                 Constant.adminCommission!.commissionType;
-            print('DEBUG: No mart vendor found, using default vendor object');
           }
         } catch (e) {
-          print(
-            'DEBUG: Error fetching mart vendor: $e, using default vendor object',
-          );
           orderModel.vendorID = 'mart_default';
-          // Create a default vendor object instead of setting to null
           orderModel.vendor = VendorModel(
             id: 'mart_default',
             title: 'Jippy Mart',
@@ -4004,32 +2559,20 @@ class CartControllerProvider extends ChangeNotifier {
           selectedAddress?.location?.latitude ?? 0.0,
           selectedAddress?.location?.longitude ?? 0.0,
         );
-      } else {
-        // For mart items, use default coordinates or skip distance calculation
-        print('DEBUG: Skipping distance calculation for mart items');
+        notifyListeners();
       }
-
-      print('DEBUG: Storing order in Firestore...');
 
       // Store the order
       await FirebaseFirestore.instance
           .collection('restaurant_orders')
           .doc(orderModel.id)
           .set(orderModel.toJson());
-
-      log(
-        'DEBUG: Order stored successfully, processing additional tasks... ${orderModel.toJson()}',
-      );
-
-      // Process additional tasks in parallel
+      notifyListeners();
       final additionalTasks = <Future>[];
-
-      // Record used coupon
       if (orderModel.couponId != null && orderModel.couponId!.isNotEmpty) {
         additionalTasks.add(markCouponAsUsed(orderModel.couponId!));
       }
 
-      // Save billing info
       additionalTasks.add(
         FirebaseFirestore.instance
             .collection('order_Billing')
@@ -4043,7 +2586,6 @@ class CartControllerProvider extends ChangeNotifier {
               'total_surge_fee': "${surgePercent + int.parse(admin_fee)}",
             }),
       );
-      // Send notifications and email
       if (orderModel.vendor != null && orderModel.vendor!.author != null) {
         additionalTasks.add(
           AddressListProvider.getUserProfile(
@@ -4066,45 +2608,33 @@ class CartControllerProvider extends ChangeNotifier {
             }
           }),
         );
-      } else {
-        print('DEBUG: Skipping vendor notification for mart items');
       }
-
       additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
 
-      // Wait for all additional tasks to complete
       await Future.wait(additionalTasks);
 
-      print('🔑 ORDER PLACEMENT SUCCESSFUL - All tasks completed');
-
-      // 🔑 RESET PAYMENT STATE ON SUCCESS
       isPaymentInProgress = false;
       isPaymentCompleted = false;
       _lastPaymentId = null;
       _lastPaymentSignature = null;
       _lastPaymentTime = null;
 
-      // 🔑 CLEAR PERSISTENT PAYMENT STATE ON SUCCESS
       await _clearPersistentPaymentState();
 
       ShowToastDialog.closeLoader();
       endOrderProcessing();
-
+      notifyListeners();
       // Navigate to order success screen
       Get.off(
         const OrderPlacingScreen(),
         arguments: {"orderModel": orderModel},
       );
+      notifyListeners();
     } catch (e) {
-      print('🔑 ORDER PLACEMENT ERROR: $e');
       ShowToastDialog.closeLoader();
       endOrderProcessing();
 
-      // 🔑 ENHANCED ERROR HANDLING WITH PAYMENT STATE
       if (isPaymentCompleted && _lastPaymentId != null) {
-        print(
-          '🔑 Payment was successful but order failed - showing retry options',
-        );
         // Don't reset payment state here - let user retry
         ShowToastDialog.showToast(
           "Order placement failed. Your payment is safe. Please try again.".tr,
@@ -4120,12 +2650,12 @@ class CartControllerProvider extends ChangeNotifier {
       if (orderId != null) {
         await rollbackFailedOrder(orderId, orderedProducts);
       }
+      notifyListeners();
     }
   }
 
   Rx<CodSettingModel> cashOnDeliverySettingModel = CodSettingModel().obs;
 
-  // Rx<StripeModel> stripeModel = StripeModel().obs;
   Rx<RazorPayModel> razorPayModel = RazorPayModel().obs;
 
   getPaymentSettings() async {
@@ -4148,25 +2678,16 @@ class CartControllerProvider extends ChangeNotifier {
       razorPay?.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
       checkAndUpdatePaymentMethod();
     });
+    notifyListeners();
   }
 
-  ///Paytm paym
-  ///RazorPay payment function with crash prevention
   final RazorpayCrashPrevention _razorpayCrashPrevention =
       RazorpayCrashPrevention();
 
   Razorpay? get razorPay => _razorpayCrashPrevention.razorpayInstance;
 
   void openCheckout({required amount, required orderId}) async {
-    print('🔑 RAZORPAY OPEN CHECKOUT - Starting payment with crash prevention');
-    print('DEBUG: Amount: $amount, Order ID: $orderId');
-    print('DEBUG: Razorpay Key: ${razorPayModel.value.razorpayKey}');
-
-    // 🔑 CHECK PAYMENT STATE BEFORE OPENING
     if (isPaymentInProgress) {
-      print(
-        '🔑 WARNING: Payment already in progress, blocking duplicate payment',
-      );
       ShowToastDialog.showToast(
         "Payment is already in progress. Please wait...".tr,
       );
@@ -4174,16 +2695,12 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     if (isPaymentCompleted) {
-      print(
-        '🔑 WARNING: Payment already completed, blocking duplicate payment',
-      );
       ShowToastDialog.showToast(
         "Payment already completed. Please refresh the page.".tr,
       );
       return;
     }
 
-    // ✅ CRITICAL: Initialize Razorpay with crash prevention
     if (!_razorpayCrashPrevention.isInitialized) {
       print('🔑 Initializing Razorpay with crash prevention...');
       final initialized = await _razorpayCrashPrevention.safeInitialize(
@@ -4193,7 +2710,6 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       if (!initialized) {
-        print('🔑 ERROR: Failed to initialize Razorpay safely');
         ShowToastDialog.showToast(
           "Payment system is temporarily unavailable. Please try again later."
               .tr,
@@ -4204,12 +2720,10 @@ class CartControllerProvider extends ChangeNotifier {
 
     // 🔑 SET PAYMENT IN PROGRESS STATE
     isPaymentInProgress = true;
-    print('🔑 Payment state set to in progress');
 
     // 🔑 CRITICAL FIX: Validate Razorpay configuration before creating options
     if (razorPayModel.value.razorpayKey == null ||
         razorPayModel.value.razorpayKey!.isEmpty) {
-      print('🔑 ERROR: Razorpay key is null or empty');
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
@@ -4218,9 +2732,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     if (!razorPayModel.value.razorpayKey!.startsWith('rzp_')) {
-      print(
-        '🔑 ERROR: Invalid Razorpay key format: ${razorPayModel.value.razorpayKey}',
-      );
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
@@ -4230,7 +2741,6 @@ class CartControllerProvider extends ChangeNotifier {
 
     // 🔑 CRITICAL FIX: Convert amount to int to pass validation
     final int amountInPaise = (double.parse(amount.toString()) * 100).round();
-    print('🔑 DEBUG: Amount in paise: $amountInPaise');
 
     var options = {
       'key': razorPayModel.value.razorpayKey,
@@ -4246,26 +2756,18 @@ class CartControllerProvider extends ChangeNotifier {
         'wallets': ['paytm'],
       },
     };
-    print('🔑 Razorpay options: $options');
+    notifyListeners();
     try {
-      print('🔑 Opening Razorpay payment gateway with crash prevention...');
       final success = await _razorpayCrashPrevention.safeOpenPayment(options);
-      print("Razorpay key: ${options['key']}");
-      print("Razorpay order_id: ${options['order_id']}");
-      print("Razorpay amount: ${options['amount']}");
-
       if (success) {
-        print('🔑 Razorpay payment gateway opened successfully');
       } else {
-        print('🔑 ERROR: Failed to open Razorpay payment gateway safely');
-        // 🔑 RESET PAYMENT STATE ON ERROR
         isPaymentInProgress = false;
         ShowToastDialog.showToast(
           "Failed to open payment gateway. Please try again.".tr,
         );
       }
+      notifyListeners();
     } catch (e) {
-      print('🔑 ERROR: Failed to open Razorpay payment gateway: $e');
       // 🔑 RESET PAYMENT STATE ON ERROR
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
@@ -4281,135 +2783,86 @@ class CartControllerProvider extends ChangeNotifier {
   void handlePaymentSuccess(PaymentSuccessResponse response) {
     try {
       isGlobalLocked.value = true;
-      print('🔑 RAZORPAY SUCCESS - Processing payment success');
-      print('🔑 RAZORPAY SUCCESS - Handler called at: ${DateTime.now()}');
-      print('DEBUG: Payment response: ${response.data}');
-      print('DEBUG: Payment ID: ${response.paymentId}');
-      print('DEBUG: Payment signature: ${response.signature}');
-      print('DEBUG: Payment order ID: ${response.orderId}');
 
-      // 🔑 CRITICAL: Store payment details for verification
       _lastPaymentId = response.paymentId;
       _lastPaymentSignature = response.signature;
       _lastPaymentTime = DateTime.now();
       isPaymentCompleted = true;
 
-      print('🔑 RAZORPAY SUCCESS - Payment details stored');
-      print('🔑 RAZORPAY SUCCESS - Payment ID stored: $_lastPaymentId');
-      print(
-        '🔑 RAZORPAY SUCCESS - Payment signature stored: $_lastPaymentSignature',
-      );
-
-      // Show loading immediately to prevent user interaction
       ShowToastDialog.showLoader("Processing payment and placing order...".tr);
 
-      // Add a small delay to ensure payment is fully processed
       Future.delayed(const Duration(milliseconds: 500), () async {
         print('🔑 RAZORPAY SUCCESS - Starting order placement after delay');
         placeOrderAfterPayment();
         isGlobalLocked.value = false;
       });
+      notifyListeners();
     } catch (e) {
       isGlobalLocked.value = false;
-      print('🔑 ERROR: Payment success handler failed: $e');
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment processing failed. Please try again.".tr,
       );
+      notifyListeners();
     }
   }
 
   /// ✅ NEW: Safe payment error handler with crash prevention
   void handlePaymentError(PaymentFailureResponse response) {
     try {
-      print('🔑 RAZORPAY ERROR - Processing payment failure');
-      print('DEBUG: Payment error: ${response.message}');
-
       // Reset payment state
       isPaymentInProgress = false;
 
       // Show error message
       ShowToastDialog.showToast("Payment failed: ${response.message}".tr);
+      notifyListeners();
     } catch (e) {
-      print('🔑 ERROR: Payment error handler failed: $e');
       isPaymentInProgress = false;
       ShowToastDialog.showToast("Payment failed. Please try again.".tr);
+      notifyListeners();
     }
   }
 
   /// ✅ NEW: Safe external wallet handler with crash prevention
   void handleExternalWallet(ExternalWalletResponse response) {
     try {
-      print('🔑 RAZORPAY EXTERNAL WALLET - Processing external wallet');
-      print('DEBUG: External wallet: ${response.walletName}');
-
-      // Handle external wallet response
       ShowToastDialog.showToast(
         "External wallet selected: ${response.walletName}".tr,
       );
+      notifyListeners();
     } catch (e) {
-      print('🔑 ERROR: External wallet handler failed: $e');
       isPaymentInProgress = false;
       ShowToastDialog.showToast("External wallet error. Please try again.".tr);
+      notifyListeners();
     }
   }
-
-  // 🔑 ORIGINAL PAYMENT SUCCESS HANDLER (COMMENTED FOR REFERENCE)
-  // void handlePaymentSuccess(PaymentSuccessResponse response) {
-  //   print('DEBUG: Razorpay payment success - Starting order placement');
-  //   print('DEBUG: Payment response: ${response.data}');
-  //
-  //   // Show loading immediately to prevent user interaction
-  //   ShowToastDialog.showLoader("Processing payment and placing order...".tr);
-  //
-  //   // Add a small delay to ensure payment is fully processed
-  //   Future.delayed(const Duration(milliseconds: 500), () {
-  //     placeOrderAfterPayment();
-  //   });
-  // }
 
   void handleExternalWaller(ExternalWalletResponse response) {
     Get.back();
     ShowToastDialog.showToast("Payment Processing!! via".tr);
   }
 
-  // 🔑 ORIGINAL PAYMENT ERROR HANDLER (COMMENTED FOR REFERENCE)
-  // void handlePaymentError(PaymentFailureResponse response) {
-  //   print('DEBUG: Razorpay payment failed: ${response.message}');
-  //   Get.back();
-  //   ShowToastDialog.showToast("Payment Failed!!".tr);
-  // }
-
-  // 🔑 ENHANCED ORDER PROCESSING WITH RETRY MECHANISM
   Future<void> _processOrderWithRetry() async {
     const maxRetries = 3;
     int retryCount = 0;
 
     while (retryCount < maxRetries) {
       try {
-        print(
-          '🔑 Attempting order placement - Retry ${retryCount + 1}/$maxRetries',
-        );
-
-        // Add delay for first retry to ensure payment is fully processed
         if (retryCount > 0) {
           await Future.delayed(Duration(seconds: retryCount * 2));
         }
 
         await placeOrderAfterPayment();
-        print('🔑 Order placement successful');
+        notifyListeners();
         return;
       } catch (e) {
         retryCount++;
-        print('🔑 Order placement failed (attempt $retryCount): $e');
 
         if (retryCount >= maxRetries) {
-          print('🔑 All retry attempts failed, showing error to user');
           await _handleOrderPlacementFailure();
           return;
         }
-
-        // Show retry message to user
+        await placeOrderAfterPayment();
         ShowToastDialog.showLoader(
           "Retrying order placement... (${retryCount}/$maxRetries)".tr,
         );
@@ -4417,10 +2870,8 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  // 🔑 HANDLE ORDER PLACEMENT FAILURE
   Future<void> _handleOrderPlacementFailure() async {
     ShowToastDialog.closeLoader();
-
     // Show critical error dialog
     Get.dialog(
       AlertDialog(
@@ -4458,101 +2909,40 @@ class CartControllerProvider extends ChangeNotifier {
       ),
       barrierDismissible: false,
     );
+    notifyListeners();
   }
 
-  // 🔑 RESET PAYMENT STATE
   void _resetPaymentState() {
     isPaymentInProgress = false;
     isPaymentCompleted = false;
     _lastPaymentId = null;
     _lastPaymentSignature = null;
     _lastPaymentTime = null;
-  }
-
-  // 🔑 RESET PAYMENT STATE WITH PERSISTENT CLEAR
-  Future<void> _resetPaymentStateWithClear() async {
-    _resetPaymentState();
-    await _clearPersistentPaymentState();
-  }
-
-  // 🔑 PUBLIC METHOD TO RESET PAYMENT STATE (for debugging)
-  void resetPaymentState() {
-    print('🔑 MANUAL PAYMENT STATE RESET');
-    _resetPaymentStateWithClear();
-    ShowToastDialog.showToast(
-      "Payment state reset. You can try payment again.".tr,
-    );
-  }
-
-  // 🔑 PUBLIC METHOD TO MANUALLY CHECK FOR PENDING PAYMENTS
-  Future<void> checkForPendingPayments() async {
-    print('🔑 MANUAL PENDING PAYMENT CHECK');
-    await _restorePaymentState();
-    if (isPaymentInProgress && _lastPaymentId != null) {
-      print('🔑 PENDING PAYMENT FOUND - Payment ID: $_lastPaymentId');
-      _checkPendingPaymentAndRecover();
-    } else {
-      print('🔑 NO PENDING PAYMENTS FOUND');
-      ShowToastDialog.showToast("No pending payments found.".tr);
-    }
-  }
-
-  // 🔑 MANUAL PAYMENT RECOVERY CHECK (for debugging)
-  void checkPendingPayment() {
-    print('🔑 MANUAL PAYMENT RECOVERY CHECK');
-    _restorePaymentState().then((_) {
-      if (isPaymentInProgress && _lastPaymentId != null) {
-        print('🔑 PENDING PAYMENT DETECTED - Showing recovery dialog');
-        _checkPendingPaymentAndRecover();
-      } else {
-        print('🔑 NO PENDING PAYMENT FOUND');
-        ShowToastDialog.showToast("No pending payment found.".tr);
-      }
-    });
+    notifyListeners();
   }
 
   // 🔑 RESTORE PAYMENT STATE FROM PERSISTENT STORAGE
   Future<void> _restorePaymentState() async {
-    try {
-      print('🔑 ATTEMPTING TO RESTORE PAYMENT STATE...');
-      final paymentState = Preferences.getString(_paymentStateKey);
-      final paymentId = Preferences.getString(_paymentIdKey);
-      final paymentMethod = Preferences.getString(_paymentMethodKey);
-      print('🔑 Stored payment state: $paymentState');
-      print('🔑 Stored payment ID: $paymentId');
-      print('🔑 Stored payment method: $paymentMethod');
+    final paymentState = Preferences.getString(_paymentStateKey);
+    if (paymentState == 'true') {
+      isPaymentInProgress = true;
+      _lastPaymentId = Preferences.getString(_paymentIdKey);
+      _lastPaymentSignature = Preferences.getString(_paymentSignatureKey);
+      final paymentTimeStr = Preferences.getString(_paymentTimeKey);
+      final paymentMethodStr = Preferences.getString(_paymentMethodKey);
 
-      if (paymentState == 'true') {
-        isPaymentInProgress = true;
-        _lastPaymentId = Preferences.getString(_paymentIdKey);
-        _lastPaymentSignature = Preferences.getString(_paymentSignatureKey);
-        final paymentTimeStr = Preferences.getString(_paymentTimeKey);
-        final paymentMethodStr = Preferences.getString(_paymentMethodKey);
-
-        print('🔑 Restored Payment ID: $_lastPaymentId');
-        print('🔑 Restored Payment Signature: $_lastPaymentSignature');
-        print('🔑 Restored Payment Time String: $paymentTimeStr');
-        print('🔑 Restored Payment Method: $paymentMethodStr');
-
-        if (paymentTimeStr.isNotEmpty && paymentTimeStr != '') {
-          _lastPaymentTime = DateTime.fromMillisecondsSinceEpoch(
-            int.parse(paymentTimeStr),
-          );
-          print('🔑 Restored Payment Time: $_lastPaymentTime');
-        }
-        // 🔑 RESTORE PAYMENT METHOD FROM PERSISTENT STORAGE
-        if (paymentMethodStr.isNotEmpty && paymentMethodStr != '') {
-          selectedPaymentMethod = paymentMethodStr;
-          print('🔑 Payment method restored: ${selectedPaymentMethod}');
-        } else if (_lastPaymentId != null && _lastPaymentId!.isNotEmpty) {
-          selectedPaymentMethod = PaymentGateway.razorpay.name;
-        }
-        print('🔑 Payment state restored from persistent storage');
-      } else {
-        print('🔑 No pending payment state found');
+      if (paymentTimeStr.isNotEmpty && paymentTimeStr != '') {
+        _lastPaymentTime = DateTime.fromMillisecondsSinceEpoch(
+          int.parse(paymentTimeStr),
+        );
       }
-    } catch (e) {
-      print('🔑 ERROR: Failed to restore payment state: $e');
+      // 🔑 RESTORE PAYMENT METHOD FROM PERSISTENT STORAGE
+      if (paymentMethodStr.isNotEmpty && paymentMethodStr != '') {
+        selectedPaymentMethod = paymentMethodStr;
+      } else if (_lastPaymentId != null && _lastPaymentId!.isNotEmpty) {
+        selectedPaymentMethod = PaymentGateway.razorpay.name;
+      }
+      notifyListeners();
     }
   }
 
@@ -4566,18 +2956,12 @@ class CartControllerProvider extends ChangeNotifier {
       await Preferences.setString(_paymentMethodKey, '');
       await Preferences.setString(_paymentAmountKey, '');
       await Preferences.setString(_paymentOrderIdKey, '');
-      print('🔑 Persistent payment state cleared');
-    } catch (e) {
-      print('🔑 ERROR: Failed to clear persistent payment state: $e');
-    }
+    } catch (e) {}
   }
 
   // 🔑 CHECK PENDING PAYMENT AND RECOVER (HANDLES APP KILLS)
   Future<void> _checkPendingPaymentAndRecover() async {
     try {
-      print('🔑 CHECKING PENDING PAYMENT RECOVERY...');
-
-      // Check if payment is still valid (within timeout)
       if (_lastPaymentTime != null) {
         final timeSincePayment = DateTime.now().difference(_lastPaymentTime!);
         if (timeSincePayment > paymentTimeout) {
@@ -4677,32 +3061,30 @@ class CartControllerProvider extends ChangeNotifier {
         ),
         barrierDismissible: false,
       );
+      notifyListeners();
     } catch (e) {
-      print('🔑 ERROR in payment recovery: $e');
       await _clearPersistentPaymentState();
       _resetPaymentState();
+      notifyListeners();
     }
   }
 
   // 🔑 COMPLETE PENDING ORDER
   Future<void> _completePendingOrder() async {
     try {
-      print('🔑 COMPLETING PENDING ORDER...');
       ShowToastDialog.showLoader("Completing your order...".tr);
-
-      // Set payment as completed
       isPaymentCompleted = true;
 
-      // Try to place the order
       await _processOrderWithRetry();
+      notifyListeners();
     } catch (e) {
-      print('🔑 ERROR completing pending order: $e');
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast(
         "Failed to complete order. Please try again.".tr,
       );
       await _clearPersistentPaymentState();
       _resetPaymentState();
+      notifyListeners();
     }
   }
 
@@ -4724,12 +3106,11 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.showToast("No valid payment found. Please try again.".tr);
       _resetPaymentState();
     }
+    notifyListeners();
   }
 
   // 🔑 ENHANCED PLACE ORDER AFTER PAYMENT - NEW IMPLEMENTATION
   placeOrderAfterPayment() async {
-    print('🔑 ENHANCED ORDER PLACEMENT - Starting process');
-
     try {
       // 🔑 VALIDATE PAYMENT STATE BEFORE PROCEEDING
       if (!isPaymentCompleted || _lastPaymentId == null) {
@@ -4743,8 +3124,6 @@ class CartControllerProvider extends ChangeNotifier {
           throw Exception('Payment session expired');
         }
       }
-
-      print('🔑 Payment validation successful - Payment ID: $_lastPaymentId');
 
       // 🔑 ENSURE PAYMENT METHOD IS SET CORRECTLY FOR PREPAID ORDERS
       if (selectedPaymentMethod.isEmpty ||
@@ -4799,42 +3178,25 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         await _setOrderInternal();
       }
+      notifyListeners();
     } catch (e) {
-      print('DEBUG: Error in placeOrderAfterPayment: $e');
       ShowToastDialog.closeLoader();
-
-      // Check if this is a zone validation error and show specific message
       if (e.toString().contains('Delivery zone validation failed') ||
           e.toString().contains('Delivery distance validation failed')) {
-        // Zone validation error - don't show additional toast as _validateDeliveryZone already showed it
-        print(
-          'DEBUG: Zone validation failed - specific error message already shown',
-        );
       } else {
-        // Generic order error
         ShowToastDialog.showToast(
           "An error occurred while placing your order. Please try again.".tr,
         );
       }
-
       endOrderProcessing();
     }
+    notifyListeners();
   }
 
-  //Orangepay payment
   static String accessToken = '';
   static String payToken = '';
   static String orderId = '';
   static String amount = '';
-
-  static reset() {
-    accessToken = '';
-    payToken = '';
-    orderId = '';
-    amount = '';
-  }
-
-  //XenditPayment
 
   // Add this method to mark a coupon as used for the current user
   Future<void> markCouponAsUsed(String couponId) async {
@@ -4863,56 +3225,30 @@ class CartControllerProvider extends ChangeNotifier {
   /// Validate minimum order value for mart items
   Future<void> validateMinimumOrderValue() async {
     try {
-      print(
-        '[MIN_ORDER_VALIDATION] ==========================================',
-      );
-      print('[MIN_ORDER_VALIDATION] 🛒 STARTING MINIMUM ORDER VALIDATION');
-      print(
-        '[MIN_ORDER_VALIDATION] ==========================================',
-      );
-
       // Check if cart contains any mart items
       bool hasMartItems = cartItem.any(
         (item) => item.vendorID?.startsWith('mart_') == true,
       );
 
-      print('[MIN_ORDER_VALIDATION] 📦 Cart Analysis:');
-      print('[MIN_ORDER_VALIDATION]   - Total cart items: ${cartItem.length}');
-      print('[MIN_ORDER_VALIDATION]   - Has mart items: $hasMartItems');
-
       if (hasMartItems) {
         final martItems = cartItem
             .where((item) => item.vendorID?.startsWith('mart_') == true)
             .toList();
-        print(
-          '[MIN_ORDER_VALIDATION]   - Mart items count: ${martItems.length}',
-        );
+
         for (int i = 0; i < martItems.length; i++) {
           final item = martItems[i];
-          print(
-            '[MIN_ORDER_VALIDATION]   - Mart item ${i + 1}: ${item.name} (₹${item.price}) x${item.quantity}',
-          );
         }
       }
 
       if (!hasMartItems) {
-        print(
-          '[MIN_ORDER_VALIDATION] ✅ No mart items in cart, skipping minimum order validation',
-        );
         return;
       }
 
-      print(
-        '[MIN_ORDER_VALIDATION] 🔍 Cart contains mart items, validating minimum order value...',
-      );
-
-      // Get minimum order value from martDeliveryCharge settings
       double minOrderValue = 99.0; // Default value
       String minOrderMessage = 'Min Item value is ₹99';
       bool isSettingsActive = true; // Default to active
 
       if (_martDeliverySettings != null) {
-        // Use settings from martDeliveryCharge document
         isSettingsActive = _martDeliverySettings!['is_active'] ?? true;
         minOrderValue =
             (_martDeliverySettings!['min_order_value'] as num?)?.toDouble() ??
@@ -4920,17 +3256,7 @@ class CartControllerProvider extends ChangeNotifier {
         minOrderMessage =
             _martDeliverySettings!['min_order_message'] ??
             'Min Item value is ₹${minOrderValue.toInt()}';
-        print(
-          'DEBUG: Using martDeliveryCharge settings for minimum order validation',
-        );
-        print(
-          'DEBUG: Settings active: $isSettingsActive, Min order value: ₹$minOrderValue',
-        );
       } else {
-        // Fetch settings if not already loaded
-        print(
-          'DEBUG: Fetching martDeliveryCharge settings for minimum order validation...',
-        );
         final settings = await _fetchMartDeliveryChargeSettings();
         if (settings != null) {
           _martDeliverySettings = settings;
@@ -4940,58 +3266,26 @@ class CartControllerProvider extends ChangeNotifier {
           minOrderMessage =
               settings['min_order_message'] ??
               'Min Item value is ₹${minOrderValue.toInt()}';
-          print(
-            'DEBUG: Fetched settings - Active: $isSettingsActive, Min order value: ₹$minOrderValue',
-          );
         }
       }
-
-      // Check if settings are active
       if (!isSettingsActive) {
-        print(
-          '[MIN_ORDER_VALIDATION] ⚠️ Mart delivery settings are inactive, skipping minimum order validation',
-        );
         return; // Skip validation if settings are inactive
       }
 
       final currentSubTotal = subTotal;
 
-      print('[MIN_ORDER_VALIDATION] 💰 Validation Parameters:');
-      print('[MIN_ORDER_VALIDATION]   - Minimum order value: ₹$minOrderValue');
-      print('[MIN_ORDER_VALIDATION]   - Current subtotal: ₹$currentSubTotal');
-      print(
-        '[MIN_ORDER_VALIDATION]   - Difference needed: ₹${(minOrderValue - currentSubTotal).toStringAsFixed(2)}',
-      );
-      print('[MIN_ORDER_VALIDATION]   - Validation message: $minOrderMessage');
-
       // Check if current subtotal meets minimum order requirement
       if (currentSubTotal < minOrderValue) {
-        print('[MIN_ORDER_VALIDATION] ❌ VALIDATION FAILED:');
-        print(
-          '[MIN_ORDER_VALIDATION]   - Current subtotal (₹$currentSubTotal) < Minimum required (₹$minOrderValue)',
-        );
-        print(
-          '[MIN_ORDER_VALIDATION]   - Short by: ₹${(minOrderValue - currentSubTotal).toStringAsFixed(2)}',
-        );
-        print(
-          '[MIN_ORDER_VALIDATION]   - Showing error message: $minOrderMessage',
-        );
         ShowToastDialog.showToast(minOrderMessage);
         throw Exception('Minimum order value not met');
       }
 
-      print('[MIN_ORDER_VALIDATION] ✅ VALIDATION PASSED:');
-      print(
-        '[MIN_ORDER_VALIDATION]   - Current subtotal (₹$currentSubTotal) >= Minimum required (₹$minOrderValue)',
-      );
-      print(
-        '[MIN_ORDER_VALIDATION] ==========================================',
-      );
+      notifyListeners();
     } catch (e) {
-      print('DEBUG: Error in minimum order validation: $e');
       // Re-throw the exception to stop the order process
       rethrow;
     }
+    notifyListeners();
   }
 
   /// 🔑 BULLETPROOF ADDRESS VALIDATION - NEVER FAILS
@@ -4999,69 +3293,30 @@ class CartControllerProvider extends ChangeNotifier {
     final startTime = DateTime.now();
 
     try {
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ==========================================',
-      );
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] VALIDATION STARTED at ${startTime.toIso8601String()}',
-      );
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] Address count in list: ${Constant.userModel?.shippingAddress?.length ?? 0}',
-      );
       // CRITICAL CHECK 1: Address must exist
       if (selectedAddress == null) {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 1 FAILED - No address selected',
-        );
-        print('🏠 [BULLETPROOF_ADDRESS] Selected address: NULL');
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Available addresses: ${Constant.userModel?.shippingAddress?.length ?? 0}',
-        );
         ShowToastDialog.showToast(
           "Delivery address is required. Please add an address to continue.".tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
 
       final address = selectedAddress!;
-      print('🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 1 PASSED - Address exists');
-      print('🏠 [BULLETPROOF_ADDRESS] Address ID: ${address.id}');
-      print('🏠 [BULLETPROOF_ADDRESS] Address: ${address.address}');
-      print('🏠 [BULLETPROOF_ADDRESS] Locality: ${address.locality}');
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] Coordinates: lat=${address.location?.latitude}, lng=${address.location?.longitude}',
-      );
 
       // CRITICAL CHECK 2: Address must have valid ID
       if (address.id == null || address.id!.trim().isEmpty) {
-        print('🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 2 FAILED - Invalid address ID');
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Address ID: "${address.id}" (null or empty)',
-        );
         ShowToastDialog.showToast(
           "Invalid address detected. Please select a valid delivery address."
               .tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 2 PASSED - Valid address ID: "${address.id}"',
-      );
 
-      // CRITICAL CHECK 3: Address must have valid address field (allow current location if it has coordinates)
       if (address.address == null ||
           address.address!.trim().isEmpty ||
           address.address!.trim() == 'null') {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 3 FAILED - Invalid address field',
-        );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Address field: "${address.address}" (null or empty)',
-        );
         ShowToastDialog.showToast(
           "Please select a valid delivery address with complete address details."
               .tr,
@@ -5071,56 +3326,31 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
 
-      // Special check for "Current Location" - only allow if it has valid coordinates
       if (address.address!.trim() == 'Current Location' &&
           (address.location?.latitude == null ||
               address.location?.longitude == null)) {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 3 FAILED - Current Location without coordinates',
-        );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Address: "${address.address}" but no valid coordinates',
-        );
         ShowToastDialog.showToast(
           "Current location address must have valid coordinates. Please add a proper address."
               .tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
 
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 3 PASSED - Valid address field: "${address.address}"',
-      );
-
-      // CRITICAL CHECK 4: Address must have valid locality (allow current location if it has coordinates)
       if (address.locality == null ||
           address.locality!.trim().isEmpty ||
           address.locality!.trim() == 'null') {
-        print('🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 4 FAILED - Invalid locality');
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Locality: "${address.locality}" (null or empty)',
-        );
         ShowToastDialog.showToast(
           "Please select a valid delivery address with complete location details."
               .tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
 
-      // Special check for "Current Location" locality - only allow if it has valid coordinates
       if (address.locality!.trim() == 'Current Location' &&
           (address.location?.latitude == null ||
               address.location?.longitude == null)) {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 4 FAILED - Current Location locality without coordinates',
-        );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Locality: "${address.locality}" but no valid coordinates',
-        );
         ShowToastDialog.showToast(
           "Current location must have valid coordinates. Please add a proper address."
               .tr,
@@ -5140,16 +3370,6 @@ class CartControllerProvider extends ChangeNotifier {
           address.location!.longitude == null ||
           address.location!.latitude == 0.0 ||
           address.location!.longitude == 0.0) {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 5 FAILED - Invalid coordinates',
-        );
-        print('🏠 [BULLETPROOF_ADDRESS] Location: ${address.location}');
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Latitude: ${address.location?.latitude}',
-        );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Longitude: ${address.location?.longitude}',
-        );
         ShowToastDialog.showToast(
           "Please select a delivery address with valid location coordinates."
               .tr,
@@ -5158,10 +3378,6 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 5 PASSED - Valid coordinates: lat=${address.location!.latitude}, lng=${address.location!.longitude}',
-      );
-
       // CRITICAL CHECK 6: BLOCK ALL FALLBACK ZONES - NO EXCEPTIONS
       if (address.id!.startsWith('fallback_zone_') ||
           address.address == 'Ongole' ||
@@ -5169,46 +3385,18 @@ class CartControllerProvider extends ChangeNotifier {
           address.locality == 'Ongole' ||
           address.locality == 'Service Area' ||
           address.id!.contains('ongole_fallback_zone')) {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 6 FAILED - FALLBACK ZONE DETECTED',
-        );
-        print('🏠 [BULLETPROOF_ADDRESS] Address ID: "${address.id}"');
-        print('🏠 [BULLETPROOF_ADDRESS] Address: "${address.address}"');
-        print('🏠 [BULLETPROOF_ADDRESS] Locality: "${address.locality}"');
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ERROR: Fallback zones are not allowed for orders!',
-        );
         ShowToastDialog.showToast(
           "Please add a valid delivery address. Fallback zones are not allowed."
               .tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
-      print('🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 6 PASSED - Not a fallback zone');
 
-      // CRITICAL CHECK 7: Validate coordinates are within reasonable bounds (India)
       final lat = address.location!.latitude!;
       final lng = address.location!.longitude!;
 
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] Checking coordinate bounds - lat: $lat, lng: $lng',
-      );
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] India bounds: lat (6.0-37.0), lng (68.0-97.0)',
-      );
-
       if (lat < 6.0 || lat > 37.0 || lng < 68.0 || lng > 97.0) {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 7 FAILED - Coordinates outside India bounds',
-        );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Latitude: $lat (valid: 6.0-37.0) - ${lat >= 6.0 && lat <= 37.0 ? "✅" : "❌"}',
-        );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Longitude: $lng (valid: 68.0-97.0) - ${lng >= 68.0 && lng <= 97.0 ? "✅" : "❌"}',
-        );
         ShowToastDialog.showToast(
           "Please select a delivery address within our service area.".tr,
         );
@@ -5216,25 +3404,8 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 7 PASSED - Coordinates within India bounds',
-      );
-
-      // CRITICAL CHECK 8: ZONE VALIDATION - Address zone must match vendor zone
-      print('🏠 [BULLETPROOF_ADDRESS] Starting zone validation...');
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] Address zone: ${address.zoneId ?? "NULL"}',
-      );
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] Vendor zone: ${vendorModel.zoneId ?? "NULL"}',
-      );
 
       if (address.zoneId == null || address.zoneId!.isEmpty) {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ⚠️ Address zone ID is null - attempting to detect...',
-        );
-        print('🏠 [BULLETPROOF_ADDRESS] Address zone ID: "${address.zoneId}"');
-
         // 🔑 CRITICAL: Try to detect zone ID for addresses that don't have one
         String? detectedZoneId = await _detectZoneIdForCoordinates(
           address.location!.latitude!,
@@ -5243,13 +3414,8 @@ class CartControllerProvider extends ChangeNotifier {
         );
 
         if (detectedZoneId != null) {
-          print('🏠 [BULLETPROOF_ADDRESS] ✅ Zone ID detected: $detectedZoneId');
-          // Update the address with detected zone ID
           address.zoneId = detectedZoneId;
         } else {
-          print(
-            '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 8 FAILED - Could not detect zone ID',
-          );
           ShowToastDialog.showToast(
             "Address zone not detected. Please update your address or contact support."
                 .tr,
@@ -5261,12 +3427,6 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 8 FAILED - Vendor zone ID is null',
-        );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Vendor zone ID: "${vendorModel.zoneId}"',
-        );
         ShowToastDialog.showToast(
           "Vendor zone not configured. Please contact support.".tr,
         );
@@ -5274,27 +3434,10 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       if (address.zoneId != vendorModel.zoneId) {
-        print('🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 8 FAILED - ZONE MISMATCH');
-        print('🏠 [BULLETPROOF_ADDRESS] Address zone: "${address.zoneId}"');
-
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ERROR: Delivery not available to this address!',
-        );
-
         // Show zone mismatch alert dialog
         DeliveryZoneAlertDialog.showZoneMismatchError();
         return false;
       }
-
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 8 PASSED - Zone validation successful',
-      );
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] Address zone matches vendor zone: "${address.zoneId}"',
-      );
-
-      // CRITICAL CHECK 9: DISTANCE VALIDATION - Address must be within reasonable delivery distance
-      print('🏠 [BULLETPROOF_ADDRESS] Starting distance validation...');
 
       if (vendorModel.latitude != null && vendorModel.longitude != null) {
         final distance = Constant.calculateDistance(
@@ -5304,81 +3447,19 @@ class CartControllerProvider extends ChangeNotifier {
           vendorModel.longitude!,
         );
 
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Calculated distance: ${distance.toStringAsFixed(2)} km',
-        );
-
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Address location: lat=${address.location!.latitude}, lng=${address.location!.longitude}',
-        );
-
         // Set maximum delivery distance (20km - adjust as needed)
         const maxDeliveryDistance = 16.0;
 
         if (distance > maxDeliveryDistance) {
-          print('🏠 [BULLETPROOF_ADDRESS] ❌ CHECK 9 FAILED - DISTANCE TOO FAR');
-          print(
-            '🏠 [BULLETPROOF_ADDRESS] Distance: ${distance.toStringAsFixed(2)} km',
-          );
-          print(
-            '🏠 [BULLETPROOF_ADDRESS] Max allowed: $maxDeliveryDistance km',
-          );
-          print(
-            '🏠 [BULLETPROOF_ADDRESS] ERROR: Address is too far from vendor location!',
-          );
-
           // Show distance too far alert dialog
           DeliveryZoneAlertDialog.showDistanceTooFarError();
           return false;
         }
-
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 9 PASSED - Distance validation successful',
-        );
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] Distance: ${distance.toStringAsFixed(2)} km (within $maxDeliveryDistance km limit)',
-        );
-      } else {
-        print(
-          '🏠 [BULLETPROOF_ADDRESS] ⚠️ CHECK 9 SKIPPED - Vendor location not available',
-        );
+        notifyListeners();
       }
-
-      final totalDuration = DateTime.now().difference(startTime);
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ==========================================',
-      );
-      print('🏠 [BULLETPROOF_ADDRESS] ✅ ALL 9 CHECKS PASSED - ADDRESS VALID');
-      print('🏠 [BULLETPROOF_ADDRESS] Final address details:');
-      print('🏠 [BULLETPROOF_ADDRESS] - ID: ${address.id}');
-      print('🏠 [BULLETPROOF_ADDRESS] - Address: ${address.address}');
-      print('🏠 [BULLETPROOF_ADDRESS] - Locality: ${address.locality}');
-      print('🏠 [BULLETPROOF_ADDRESS] - Coordinates: lat=$lat, lng=$lng');
-      print('🏠 [BULLETPROOF_ADDRESS] - Zone ID: ${address.zoneId ?? "NULL"}');
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] Total validation duration: ${totalDuration.inMilliseconds}ms',
-      );
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ==========================================',
-      );
-
+      notifyListeners();
       return true;
     } catch (e) {
-      final totalDuration = DateTime.now().difference(startTime);
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ==========================================',
-      );
-      print('🏠 [BULLETPROOF_ADDRESS] ❌ CRITICAL ERROR OCCURRED');
-      print('🏠 [BULLETPROOF_ADDRESS] Error: $e');
-      print('🏠 [BULLETPROOF_ADDRESS] Error type: ${e.runtimeType}');
-      print('🏠 [BULLETPROOF_ADDRESS] Stack trace: ${StackTrace.current}');
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] Total duration: ${totalDuration.inMilliseconds}ms',
-      );
-      print('🏠 [BULLETPROOF_ADDRESS] Final result: ADDRESS_INVALID (ERROR)');
-      print(
-        '🏠 [BULLETPROOF_ADDRESS] ==========================================',
-      );
       ShowToastDialog.showToast(
         "Error validating address. Please select a valid delivery address.".tr,
       );
