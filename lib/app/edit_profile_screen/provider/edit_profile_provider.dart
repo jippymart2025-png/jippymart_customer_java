@@ -1,15 +1,18 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:http/http.dart' as http;
 
 class EditProfileProvider extends ChangeNotifier {
   RxBool isLoading = true.obs;
@@ -123,7 +126,7 @@ class EditProfileProvider extends ChangeNotifier {
       userModel.value.phoneNumber = phoneNumberController.value.text;
       userModel.value.countryCode = countryCodeController.value.text;
       userModel.value.email = emailController.value.text;
-      await FireStoreUtils.updateUser(userModel.value).then((value) {
+      await updateUser(userModel.value).then((value) {
         Constant.userModel = userModel.value;
         print(
           '[EDIT_PROFILE] Updated global user model: ${Constant.userModel?.toJson()}',
@@ -132,6 +135,90 @@ class EditProfileProvider extends ChangeNotifier {
         Get.back(result: true);
       });
       Get.back(result: "profile_updated");
+    }
+  }
+
+  static Future<bool> updateUser(UserModel userModel) async {
+    try {
+      final userId = await SqlStorageConst.getFirebaseId();
+      String? uid = userModel.id ?? userId ?? '';
+      if (uid.isEmpty) {
+        return false;
+      }
+      userModel.id = uid;
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${AppConst.baseUrl}user/profile'),
+      );
+      final headers = await getHeaders();
+      request.headers.addAll(headers);
+      // Add text fields
+      request.fields['firebase_id'] = uid;
+      if (userModel.firstName != null) {
+        request.fields['firstName'] = userModel.firstName!;
+      }
+      if (userModel.lastName != null) {
+        request.fields['lastName'] = userModel.lastName!;
+      }
+      if (userModel.email != null) {
+        request.fields['email'] = userModel.email!;
+      }
+      if (userModel.phoneNumber != null) {
+        request.fields['phoneNumber'] = userModel.phoneNumber!;
+      }
+      if (userModel.countryCode != null) {
+        request.fields['countryCode'] = userModel.countryCode!;
+      }
+
+      // Add shipping address if available
+      if (userModel.shippingAddress != null &&
+          userModel.shippingAddress!.isNotEmpty) {
+        request.fields['shippingAddress'] = jsonEncode(
+          userModel.shippingAddress!,
+        );
+      }
+      // Add location if available
+      if (userModel.location != null) {
+        request.fields['location'] = userModel.location as String;
+      }
+
+      // Add profile picture if it's a file path (not a URL)
+      if (userModel.profilePictureURL != null &&
+          userModel.profilePictureURL!.isNotEmpty &&
+          !userModel.profilePictureURL!.startsWith('http')) {
+        try {
+          var file = File(userModel.profilePictureURL!);
+          if (await file.exists()) {
+            var multipartFile = await http.MultipartFile.fromPath(
+              'profilePictureURL',
+              file.path,
+              filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
+            );
+            request.files.add(multipartFile);
+          }
+        } catch (e) {
+          print('Error adding profile picture: $e');
+        }
+      }
+
+      // Send request
+      var streamedResponse = await request.send();
+      var response = await http.Response.fromStream(streamedResponse);
+      print("userdata ${response.body}");
+      if (response.statusCode == 200) {
+        // Parse response and update local user model
+        var responseData = jsonDecode(response.body);
+        if (responseData['success'] == true) {
+          Constant.userModel = userModel;
+          return true;
+        } else {
+          return false;
+        }
+      } else {
+        return false;
+      }
+    } catch (error) {
+      return false;
     }
   }
 

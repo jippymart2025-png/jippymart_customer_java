@@ -5,7 +5,6 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/widget/osm_map/map_picker_page.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -288,7 +287,6 @@ class AddressListScreen extends StatelessWidget {
                     }
                   } catch (e) {
                     ShowToastDialog.closeLoader();
-                    print('Error setting default address: $e');
                   }
                 },
                 child: Text(
@@ -765,139 +763,15 @@ class AddressListScreen extends StatelessWidget {
                         height: 5.5,
                         color: AppThemeData.primary300,
                         fontSizes: 16,
-                        // Replace the existing save button onPress section:
+                        // With this:
                         onPress: () async {
-                          if (controller.location.latitude == null ||
-                              controller.location.longitude == null) {
-                            ShowToastDialog.showToast(
-                              "Please select Location".tr,
-                            );
-                          } else if (controller
-                              .houseBuildingTextEditingController
-                              .value
-                              .text
-                              .isEmpty) {
-                            ShowToastDialog.showToast(
-                              "Please Enter Flat / House / Flore / Building".tr,
-                            );
-                          } else if (controller
-                              .localityEditingController
-                              .value
-                              .text
-                              .isEmpty) {
-                            ShowToastDialog.showToast(
-                              "Please Enter Area / Sector / locality".tr,
-                            );
-                          } else {
-                            controller.setLoading(true);
-                            ShowToastDialog.showLoader("Please wait".tr);
-
-                            try {
-                              // Prepare the shipping address model
-                              final shippingModel = ShippingAddress(
-                                id:
-                                    controller.shippingModel.id ??
-                                    Constant.getUuid(),
-                                location: controller.location,
-                                addressAs: controller.selectedSaveAs,
-                                address: controller
-                                    .houseBuildingTextEditingController
-                                    .value
-                                    .text,
-                                locality: controller
-                                    .localityEditingController
-                                    .value
-                                    .text,
-                                landmark: controller
-                                    .landmarkEditingController
-                                    .value
-                                    .text,
-                                isDefault:
-                                    controller.shippingAddressList.isEmpty
-                                    ? true
-                                    : false,
-                              );
-
-                              // Get zone ID if coordinates are available
-                              if (controller.location.latitude != null &&
-                                  controller.location.longitude != null) {
-                                try {
-                                  print(
-                                    '🔍 [ADDRESS_SAVE] Starting zone detection...',
-                                  );
-                                  final zoneId =
-                                      await MartZoneUtils.getZoneIdForCoordinates(
-                                        controller.location.latitude ?? 0.0,
-                                        controller.location.longitude ?? 0.0,
-                                        context,
-                                      );
-
-                                  if (zoneId.isNotEmpty) {
-                                    shippingModel.zoneId = zoneId;
-                                    print(
-                                      '✅ [ADDRESS_SAVE] Zone ID assigned: $zoneId',
-                                    );
-                                  } else {
-                                    print('⚠️ [ADDRESS_SAVE] No zone ID found');
-                                  }
-                                } catch (e) {
-                                  print(
-                                    '❌ [ADDRESS_SAVE] Zone detection error: $e',
-                                  );
-                                }
-                              }
-
-                              // Update the address list
-                              List<ShippingAddress> updatedAddressList;
-
-                              if (controller.shippingModel.id != null &&
-                                  index != null) {
-                                // Editing existing address
-                                updatedAddressList = List<ShippingAddress>.from(
-                                  controller.shippingAddressList,
-                                );
-                                updatedAddressList[index] = shippingModel;
-                              } else {
-                                // Adding new address
-                                updatedAddressList = List<ShippingAddress>.from(
-                                  controller.shippingAddressList,
-                                );
-                                updatedAddressList.add(shippingModel);
-                              }
-
-                              // Update user model
-                              controller.userModel.shippingAddress =
-                                  updatedAddressList;
-
-                              // Call API to update user
-                              final success = await addressListProvider
-                                  .updateUser(controller.userModel);
-
-                              if (success) {
-                                controller.shippingAddressList =
-                                    updatedAddressList;
-                                controller.getUser();
-                                ShowToastDialog.closeLoader();
-                                Get.back();
-                                ShowToastDialog.showToast(
-                                  "Address saved successfully".tr,
-                                );
-                              } else {
-                                ShowToastDialog.closeLoader();
-                                ShowToastDialog.showToast(
-                                  "Failed to save address".tr,
-                                );
-                              }
-                            } catch (e) {
-                              ShowToastDialog.closeLoader();
-                              print('❌ [ADDRESS_SAVE] Error: $e');
-                              ShowToastDialog.showToast(
-                                "Error saving address".tr,
-                              );
-                            } finally {
-                              controller.setLoading(false);
-                            }
-                          }
+                          // For new addresses, pass -1 or null, for editing pass the actual index
+                          final addressIndex = index ?? -1;
+                          controller.saveAddressFunction(
+                            addressIndex,
+                            context,
+                            addressListProvider,
+                          );
                         },
                         // onPress: () async {
                         //   if (controller.location.latitude == null ||

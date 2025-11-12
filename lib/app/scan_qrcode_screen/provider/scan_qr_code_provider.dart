@@ -11,7 +11,7 @@ class ScanQrCodeProvider extends ChangeNotifier {
   RxList<VendorModel> allNearestRestaurant = <VendorModel>[].obs;
 
   getData() {
-    FireStoreUtils.getAllNearestRestaurant().listen((event) async {
+    FireStoreUtils().getAllNearestRestaurant().listen((event) async {
       allNearestRestaurant.addAll(event);
     });
   }

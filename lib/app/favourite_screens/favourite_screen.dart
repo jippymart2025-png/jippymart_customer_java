@@ -1,6 +1,7 @@
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -282,248 +283,256 @@ class FavouriteScreen extends StatelessWidget {
     int index,
     BuildContext context,
   ) {
-    return InkWell(
-      onTap: () {
-        if (vendorModel.zoneId == Constant.selectedZone!.id) {
-          ShowToastDialog.closeLoader();
-          Get.to(
-            const RestaurantDetailsScreen(),
-            arguments: {"vendorModel": vendorModel},
-          );
-        } else {
-          ShowToastDialog.closeLoader();
-          ShowToastDialog.showToast(
-            "Sorry, The Zone is not available in your area. change the other location first."
-                .tr,
-          );
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: Container(
-          decoration: ShapeDecoration(
-            color: AppThemeData.grey50,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
+    return Consumer<RestaurantDetailsProvider>(
+      builder: (context, restaurantDetailsProvider, _) {
+        return InkWell(
+          onTap: () {
+            if (vendorModel.zoneId == Constant.selectedZone!.id) {
+              ShowToastDialog.closeLoader();
+              restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+              Get.to(
+                const RestaurantDetailsScreen(),
+                arguments: {"vendorModel": vendorModel},
+              );
+            } else {
+              ShowToastDialog.closeLoader();
+              ShowToastDialog.showToast(
+                "Sorry, The Zone is not available in your area. change the other location first."
+                    .tr,
+              );
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Container(
+              decoration: ShapeDecoration(
+                color: AppThemeData.grey50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                    child: Stack(
-                      children: [
-                        RestaurantImageView(vendorModel: vendorModel),
-                        Container(
-                          height: Responsive.height(20, context),
-                          width: Responsive.width(100, context),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: const Alignment(-0.00, -1.00),
-                              end: const Alignment(0, 1),
-                              colors: [
-                                Colors.black.withOpacity(0),
-                                const Color(0xFF111827),
-                              ],
-                            ),
-                          ),
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
                         ),
-                        // Favorite remove button for restaurants
-                        Positioned(
-                          right: 10,
-                          top: 10,
-                          child: InkWell(
-                            onTap: () async {
-                              try {
-                                await favouriteProvider
-                                    .removeFavoriteRestaurantUI(
-                                      vendorModel.id.toString(),
-                                      index,
-                                    );
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text('Removed from favorites'.tr),
-                                    duration: const Duration(seconds: 2),
-                                  ),
-                                );
-                              } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Failed to remove: Please try again'.tr,
-                                    ),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
-                              }
-                            },
-                            child: SvgPicture.asset(
-                              "assets/icons/ic_like_fill.svg",
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Transform.translate(
-                    offset: Offset(
-                      Responsive.width(-3, context),
-                      Responsive.height(17.5, context),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Visibility(
-                          visible:
-                              (vendorModel.isSelfDelivery == true &&
-                              Constant.isSelfDeliveryFeature == true),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 7,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppThemeData.lightGreen,
-                                  borderRadius: BorderRadius.circular(120),
-                                ),
-                                child: Row(
-                                  children: [
-                                    SvgPicture.asset(
-                                      "assets/icons/ic_free_delivery.svg",
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      "Free Delivery".tr,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: AppThemeData.darkGreen,
-                                        fontFamily: AppThemeData.semiBold,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                        child: Stack(
+                          children: [
+                            RestaurantImageView(vendorModel: vendorModel),
+                            Container(
+                              height: Responsive.height(20, context),
+                              width: Responsive.width(100, context),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: const Alignment(-0.00, -1.00),
+                                  end: const Alignment(0, 1),
+                                  colors: [
+                                    Colors.black.withOpacity(0),
+                                    const Color(0xFF111827),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 6),
-                            ],
+                            ),
+                            // Favorite remove button for restaurants
+                            Positioned(
+                              right: 10,
+                              top: 10,
+                              child: InkWell(
+                                onTap: () async {
+                                  try {
+                                    await favouriteProvider
+                                        .removeFavoriteRestaurantUI(
+                                          vendorModel.id.toString(),
+                                          index,
+                                        );
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Removed from favorites'.tr,
+                                        ),
+                                        duration: const Duration(seconds: 2),
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Failed to remove: Please try again'
+                                              .tr,
+                                        ),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                                child: SvgPicture.asset(
+                                  "assets/icons/ic_like_fill.svg",
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Transform.translate(
+                        offset: Offset(
+                          Responsive.width(-3, context),
+                          Responsive.height(17.5, context),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Visibility(
+                              visible:
+                                  (vendorModel.isSelfDelivery == true &&
+                                  Constant.isSelfDeliveryFeature == true),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 7,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppThemeData.lightGreen,
+                                      borderRadius: BorderRadius.circular(120),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        SvgPicture.asset(
+                                          "assets/icons/ic_free_delivery.svg",
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          "Free Delivery".tr,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: AppThemeData.darkGreen,
+                                            fontFamily: AppThemeData.semiBold,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 7,
+                              ),
+                              decoration: ShapeDecoration(
+                                color: AppThemeData.primary50,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(120),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    "assets/icons/ic_star.svg",
+                                    colorFilter: ColorFilter.mode(
+                                      AppThemeData.primary300,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
+                                    style: TextStyle(
+                                      color: AppThemeData.primary300,
+                                      fontFamily: AppThemeData.semiBold,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 7,
+                              ),
+                              decoration: ShapeDecoration(
+                                color: AppThemeData.secondary50,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(120),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  SvgPicture.asset(
+                                    "assets/icons/ic_map_distance.svg",
+                                    colorFilter: const ColorFilter.mode(
+                                      AppThemeData.secondary300,
+                                      BlendMode.srcIn,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    "${Constant.getDistance(lat1: vendorModel.latitude.toString(), lng1: vendorModel.longitude.toString(), lat2: Constant.selectedLocation.location!.latitude.toString(), lng2: Constant.selectedLocation.location!.longitude.toString())} ${Constant.distanceType}",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppThemeData.secondary300,
+                                      fontFamily: AppThemeData.semiBold,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          vendorModel.title.toString(),
+                          textAlign: TextAlign.start,
+                          maxLines: 1,
+                          style: TextStyle(
+                            fontSize: 18,
+                            overflow: TextOverflow.ellipsis,
+                            fontFamily: AppThemeData.semiBold,
+                            color: AppThemeData.grey900,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 7,
-                          ),
-                          decoration: ShapeDecoration(
-                            color: AppThemeData.primary50,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(120),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                "assets/icons/ic_star.svg",
-                                colorFilter: ColorFilter.mode(
-                                  AppThemeData.primary300,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
-                                style: TextStyle(
-                                  color: AppThemeData.primary300,
-                                  fontFamily: AppThemeData.semiBold,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 7,
-                          ),
-                          decoration: ShapeDecoration(
-                            color: AppThemeData.secondary50,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(120),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              SvgPicture.asset(
-                                "assets/icons/ic_map_distance.svg",
-                                colorFilter: const ColorFilter.mode(
-                                  AppThemeData.secondary300,
-                                  BlendMode.srcIn,
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Text(
-                                "${Constant.getDistance(lat1: vendorModel.latitude.toString(), lng1: vendorModel.longitude.toString(), lat2: Constant.selectedLocation.location!.latitude.toString(), lng2: Constant.selectedLocation.location!.longitude.toString())} ${Constant.distanceType}",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: AppThemeData.secondary300,
-                                  fontFamily: AppThemeData.semiBold,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
+                        Text(
+                          vendorModel.location.toString(),
+                          textAlign: TextAlign.start,
+                          maxLines: 1,
+                          style: TextStyle(
+                            overflow: TextOverflow.ellipsis,
+                            fontFamily: AppThemeData.medium,
+                            fontWeight: FontWeight.w500,
+                            color: AppThemeData.grey400,
                           ),
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(height: 10),
                 ],
               ),
-              const SizedBox(height: 15),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vendorModel.title.toString(),
-                      textAlign: TextAlign.start,
-                      maxLines: 1,
-                      style: TextStyle(
-                        fontSize: 18,
-                        overflow: TextOverflow.ellipsis,
-                        fontFamily: AppThemeData.semiBold,
-                        color: AppThemeData.grey900,
-                      ),
-                    ),
-                    Text(
-                      vendorModel.location.toString(),
-                      textAlign: TextAlign.start,
-                      maxLines: 1,
-                      style: TextStyle(
-                        overflow: TextOverflow.ellipsis,
-                        fontFamily: AppThemeData.medium,
-                        fontWeight: FontWeight.w500,
-                        color: AppThemeData.grey400,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

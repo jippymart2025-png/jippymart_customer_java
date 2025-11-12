@@ -308,11 +308,6 @@ class OrderDetailsScreen extends StatelessWidget {
     double gst = originalDeliveryFee * 0.18;
     taxAmount = sgst + gst;
 
-    print('DEBUG: subTotal = ' + subTotal.toString());
-    print('DEBUG: totalDistance = ' + totalDistance.toString());
-    print('DEBUG: originalDeliveryFee = ' + originalDeliveryFee.toString());
-    print('DEBUG: deliveryCharges = ' + deliveryCharges.toString());
-    // Free Delivery logic for total - Enhanced for promotional items
     bool isFreeDelivery = false;
     if (hasPromotionalItems) {
       // For promotional items, check if within free delivery distance (dynamic from Firestore)
@@ -2032,7 +2027,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                               });
 
                                           // Self delivery check
-                                          if (vendor?.isSelfDelivery == true &&
+                                          if (vendor.isSelfDelivery == true &&
                                               Constant.isSelfDeliveryFeature ==
                                                   true) {
                                             return Text(

@@ -10,11 +10,9 @@ import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
-
 import '../../../constant/constant.dart';
 import '../../../constant/show_toast_dialog.dart';
 import '../../../themes/responsive.dart';
-import '../../../utils/fire_store_utils.dart';
 import '../../../utils/network_image_widget.dart';
 
 class ProductDetailsView extends StatelessWidget {
@@ -99,13 +97,6 @@ class ProductDetailsView extends StatelessWidget {
                                                 p0.productId == productModel.id,
                                           )
                                           .isNotEmpty) {
-                                        FavouriteItemModel favouriteModel =
-                                            FavouriteItemModel(
-                                              productId: productModel.id,
-                                              storeId:
-                                                  controller.vendorModel.id,
-                                              userId: userId,
-                                            );
                                         controller.favouriteItemList
                                             .removeWhere(
                                               (item) =>

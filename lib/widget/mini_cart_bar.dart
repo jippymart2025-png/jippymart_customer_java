@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
+import 'package:provider/provider.dart';
 import '../app/restaurant_details_screen/restaurant_details_screen.dart';
 import '../constant/constant.dart';
 import '../utils/fire_store_utils.dart';
@@ -73,34 +75,42 @@ class MiniCartBar extends StatelessWidget {
               const SizedBox(width: 12),
               // Restaurant name (clickable)
               Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    if (vendorId != null) {
-                      ShowToastDialog.showLoader("Loading restaurant...");
-                      final vendorModel = await FireStoreUtils.getVendorById(
-                        vendorId.toString(),
-                      );
-                      ShowToastDialog.closeLoader();
-                      if (vendorModel != null) {
-                        Get.to(
-                          const RestaurantDetailsScreen(),
-                          arguments: {'vendorModel': vendorModel},
-                        );
-                      } else {
-                        ShowToastDialog.showToast("Restaurant not found");
-                      }
-                    }
+                child: Consumer<RestaurantDetailsProvider>(
+                  builder: (context, restaurantDetailsProvider, _) {
+                    return InkWell(
+                      onTap: () async {
+                        if (vendorId != null) {
+                          ShowToastDialog.showLoader("Loading restaurant...");
+                          final vendorModel =
+                              await FireStoreUtils.getVendorById(
+                                vendorId.toString(),
+                              );
+                          ShowToastDialog.closeLoader();
+                          if (vendorModel != null) {
+                            restaurantDetailsProvider.initFunction(
+                              vendorModels: vendorModel,
+                            );
+                            Get.to(
+                              const RestaurantDetailsScreen(),
+                              arguments: {'vendorModel': vendorModel},
+                            );
+                          } else {
+                            ShowToastDialog.showToast("Restaurant not found");
+                          }
+                        }
+                      },
+                      child: Text(
+                        vendorName,
+                        style: const TextStyle(
+                          color: Color(0xFFff5201),
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        maxLines: 1,
+                      ),
+                    );
                   },
-                  child: Text(
-                    vendorName,
-                    style: const TextStyle(
-                      color: Color(0xFFff5201),
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    maxLines: 1,
-                  ),
                 ),
               ),
               const SizedBox(width: 12),

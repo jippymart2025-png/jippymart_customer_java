@@ -19,7 +19,6 @@ class MartZoneUtils {
     final vendors = await MartVendorService.getMartVendorsByZone(zoneId);
     _cachedMartVendors = vendors;
     _lastFetchTime = DateTime.now();
-
     return vendors;
   }
 

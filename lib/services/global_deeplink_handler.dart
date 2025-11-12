@@ -4,7 +4,6 @@ import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provi
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
-import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/utils/crash_prevention.dart';
@@ -29,7 +28,6 @@ class GlobalDeeplinkHandler {
 
   String? _pendingDeeplink;
   bool _isProcessing = false;
-  bool _isNavigating = false;
   String? _currentRestaurantId;
 
   /// Initialize the GlobalDeeplinkHandler
@@ -56,45 +54,25 @@ class GlobalDeeplinkHandler {
 
   /// Store a deep link for later processing
   void storeDeeplink(String url, BuildContext context) {
-    print('🔗 [GLOBAL_DEEPLINK] 🚀 storeDeeplink() called with URL: $url');
-    print(' [GLOBAL_DEEPLINK]  storeDeeplink() called with URL: $url');
     if (url.isEmpty) {
-      print('🔗 [GLOBAL_DEEPLINK] ❌ Empty URL provided, skipping storage');
       return;
     }
 
     // **RATE LIMITING: Prevent too many deep links at once**
     if (_isProcessing) {
-      print(
-        '🔗 [GLOBAL_DEEPLINK] ⚠️ Already processing a deep link, queuing this one...',
-      );
       _pendingDeeplink = url;
       return;
     }
 
-    print('🔗 [GLOBAL_DEEPLINK] ✅ Storing deeplink: $url');
-
     // Set processing flag to prevent concurrent processing
     _isProcessing = true;
-    print(
-      '🔗 [GLOBAL_DEEPLINK] ✅ Set processing flag to prevent concurrent processing',
-    );
 
     _pendingDeeplink = url;
-    print(
-      '🔗 [GLOBAL_DEEPLINK] ✅ Deeplink stored. Has pending: ${hasPendingDeeplink}',
-    );
-    print('🔗 [GLOBAL_DEEPLINK] ✅ Pending deeplink value: $_pendingDeeplink');
 
-    // **ENHANCED PROCESSING: Use crash prevention for ALL deep links**
-    print(
-      '🔗 [GLOBAL_DEEPLINK] 🛡️ Using enhanced crash prevention for all deep links',
-    );
     DeepLinkCrashPrevention.safeProcessDeepLink(url, () async {
       await _processDeeplink(url, context);
       // Reset processing flag after completion
       _isProcessing = false;
-      print('🔗 [GLOBAL_DEEPLINK] ✅ Reset processing flag after completion');
     });
   }
 
@@ -207,80 +185,24 @@ class GlobalDeeplinkHandler {
       final restaurant = await FireStoreUtils.getVendorById(restaurantId);
 
       if (restaurant != null) {
-        print('🔗 [GLOBAL_DEEPLINK] ✅ Restaurant found: ${restaurant.title}');
-        print('🔗 [GLOBAL_DEEPLINK] Restaurant ID: ${restaurant.id}');
-        print(
-          '🔗 [GLOBAL_DEEPLINK] Restaurant Status: ${restaurant.isOpen == true ? "OPEN" : "CLOSED"}',
-        );
-
-        // **FIXED: Minimal delay for faster navigation**
-        print(
-          '🔗 [GLOBAL_DEEPLINK] DEBUG - Minimal delay for faster navigation...',
-        );
         await Future.delayed(Duration(milliseconds: 100));
 
-        // **FIXED: Use GetX navigation with restaurant data and allow override**
-        print(
-          '🔗 [GLOBAL_DEEPLINK] DEBUG - Using GetX navigation to restaurant details with data...',
-        );
-
-        // **FIXED: Use Get.to() instead of Get.offAll() to preserve navigation stack**
-        // This allows the back button to work properly
-        print(
-          '🔗 [GLOBAL_DEEPLINK] DEBUG - Using Get.to() to preserve navigation stack...',
-        );
         Get.to(
           () => RestaurantDetailsScreen(),
           arguments: {'vendorModel': restaurant},
         );
 
-        // Force a delay to ensure navigation completes
         await Future.delayed(Duration(milliseconds: 300));
-
-        // Try to update the controller with new restaurant data after navigation
-        try {
-          print(
-            '🔗 [GLOBAL_DEEPLINK] 🔍 Controller is registered, attempting update...',
-          );
-          final controller = Provider.of<RestaurantDetailsProvider>(
-            context,
-            listen: false,
-          );
-
-          print(
-            '🔗 [GLOBAL_DEEPLINK] 🔍 Controller found, calling updateRestaurant...',
-          );
-          // controller.updateRestaurant(restaurant);
-        } catch (e) {
-          print('🔗 [GLOBAL_DEEPLINK] ❌ Could not update controller: $e');
-        }
-
-        print(
-          '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to restaurant details with data: ${restaurant.title}',
-        );
       } else {
-        print('🔗 [GLOBAL_DEEPLINK] ❌ Restaurant not found: $restaurantId');
-        print('🔗 [GLOBAL_DEEPLINK] This could mean:');
-        print('🔗 [GLOBAL_DEEPLINK] 1. Restaurant ID is incorrect');
-        print('🔗 [GLOBAL_DEEPLINK] 2. Restaurant doesn\'t exist in database');
-        print('🔗 [GLOBAL_DEEPLINK] 3. Restaurant is not published/available');
-        print('🔗 [GLOBAL_DEEPLINK] Redirecting to home screen...');
-
-        // Navigate to home screen instead of showing nothing
         Get.toNamed('/');
       }
     } catch (e) {
-      print('❌ [GLOBAL_DEEPLINK] Error navigating to restaurant: $e');
-      print('🔗 [GLOBAL_DEEPLINK] Redirecting to home screen due to error...');
-
-      // Navigate to home screen on error
       Get.toNamed('/');
     }
   }
 
   /// Clear pending deep link
   void clearPending() {
-    print('🔗 [GLOBAL_DEEPLINK] 🧹 Clearing pending deeplink');
     _pendingDeeplink = null;
   }
 

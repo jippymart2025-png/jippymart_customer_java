@@ -14,14 +14,14 @@ import 'package:provider/provider.dart';
 class MartNavigationScreen extends StatelessWidget {
   const MartNavigationScreen({super.key});
 
-
-
   @override
   Widget build(BuildContext context) {
     return Theme(
       data: MartTheme.theme,
       child: Consumer<MartNavigationProvider>(
-        builder: (context,navController,_) {
+        builder: (context, navController, _) {
+          print("Current Index: ${navController.selectedIndex.value}"); // Debug
+
           return PopScope(
             canPop: false,
             onPopInvoked: (didPop) async {
@@ -34,14 +34,21 @@ class MartNavigationScreen extends StatelessWidget {
             },
             child: Scaffold(
               backgroundColor: const Color(0xFFF6F6FF),
-              body:  Obx(() => IndexedStack(
-                      index: navController.selectedIndex.value,
-                      children: navController.pageList,
-                    )),
-
-              bottomNavigationBar:  Obx(() {
+              body: Obx(() {
+                print(
+                  "Building body with index: ${navController.selectedIndex.value}",
+                ); // Debug
+                return IndexedStack(
+                  index: navController.selectedIndex.value,
+                  children: navController.pageList,
+                );
+              }),
+              bottomNavigationBar: Obx(() {
+                print(
+                  "Building bottom nav bar, index: ${navController.selectedIndex.value}",
+                ); // Debug
                 if (navController.selectedIndex.value != 2) {
-               return   _buildEnhancedNavigationBar(navController);
+                  return _buildEnhancedNavigationBar(navController);
                 } else {
                   return const SizedBox.shrink();
                 }
@@ -55,35 +62,14 @@ class MartNavigationScreen extends StatelessWidget {
 
   Widget _buildEnhancedNavigationBar(MartNavigationProvider controller) {
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        // borderRadius: BorderRadius.circular(24),
-        // boxShadow: [
-        //   BoxShadow(
-        //     color: Colors.black.withOpacity(0.15),
-        //     blurRadius: 20,
-        //     offset: const Offset(0, 4),
-        //     spreadRadius: 0,
-        //   ),
-        //   BoxShadow(
-        //     color: Colors.black.withOpacity(0.1),
-        //     blurRadius: 8,
-        //     offset: const Offset(0, 2),
-        //     spreadRadius: 0,
-        //   ),
-        // ],
-        // border: Border.all(
-        //   color: Colors.grey.withOpacity(0.1),
-        //   width: 1,
-        // ),
-      ),
+      decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildEnhancedNavItem(
               icon: ImageConst.homeOne,
-              activeIcon:ImageConst.homeOne,
+              activeIcon: ImageConst.homeOne,
               label: 'Home',
               index: 0,
               controller: controller,
@@ -97,7 +83,7 @@ class MartNavigationScreen extends StatelessWidget {
             ),
             _buildEnhancedNavItem(
               icon: ImageConst.cartOne,
-              activeIcon:  ImageConst.cartOne,
+              activeIcon: ImageConst.cartOne,
               label: 'Cart',
               index: 2,
               controller: controller,
@@ -106,7 +92,8 @@ class MartNavigationScreen extends StatelessWidget {
                   return StreamBuilder<List<CartProductModel>>(
                     stream: cartProvider.cartStream,
                     builder: (context, snapshot) {
-                      int cartItemCount = snapshot.data?.length ?? cartItem.length;
+                      int cartItemCount =
+                          snapshot.data?.length ?? cartItem.length;
                       return cartItemCount > 0
                           ? _buildCartBadge(cartItemCount)
                           : const SizedBox.shrink();
@@ -116,8 +103,8 @@ class MartNavigationScreen extends StatelessWidget {
               ),
             ),
             _buildEnhancedNavItem(
-              icon:  ImageConst.profile,
-              activeIcon:  ImageConst.profile,
+              icon: ImageConst.profile,
+              activeIcon: ImageConst.profile,
               label: 'Profile',
               index: 3,
               controller: controller,
@@ -138,23 +125,30 @@ class MartNavigationScreen extends StatelessWidget {
   }) {
     return Obx(() {
       final isActive = controller.selectedIndex.value == index;
-      final primaryColor =  ColorConst.orangeLight;
+      final primaryColor = ColorConst.orangeLight;
       return GestureDetector(
-        onTap: () => controller.changeIndex(index),
+        onTap: () {
+          print("Tapped on index: $index"); // Debug
+          controller.changeIndex(index);
+        },
         behavior: HitTestBehavior.opaque,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: isActive ? primaryColor.withOpacity(0.08) : Colors.transparent,
+            color: isActive
+                ? primaryColor.withOpacity(0.08)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
-            gradient: isActive ? LinearGradient(
-              colors: [
-                primaryColor.withOpacity(0.12),
-                primaryColor.withOpacity(0.04),
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ) : null,
+            gradient: isActive
+                ? LinearGradient(
+                    colors: [
+                      primaryColor.withOpacity(0.12),
+                      primaryColor.withOpacity(0.04),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  )
+                : null,
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -167,7 +161,9 @@ class MartNavigationScreen extends StatelessWidget {
                     height: 24,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: isActive ? primaryColor.withOpacity(0.1) : Colors.transparent,
+                      color: isActive
+                          ? primaryColor.withOpacity(0.1)
+                          : Colors.transparent,
                     ),
                     child: Center(
                       child: SvgPicture.asset(
@@ -182,11 +178,7 @@ class MartNavigationScreen extends StatelessWidget {
                     ),
                   ),
                   if (badge != null && index == 2)
-                    Positioned(
-                      right: -4,
-                      top: -4,
-                      child: badge,
-                    ),
+                    Positioned(right: -4, top: -4, child: badge),
                 ],
               ),
               const SizedBox(height: 4),
@@ -213,11 +205,7 @@ class MartNavigationScreen extends StatelessWidget {
         color: Color(0xFFEF4444),
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(
-            color: Color(0xFFEF4444),
-            blurRadius: 4,
-            spreadRadius: 0,
-          ),
+          BoxShadow(color: Color(0xFFEF4444), blurRadius: 4, spreadRadius: 0),
         ],
       ),
       child: Text(

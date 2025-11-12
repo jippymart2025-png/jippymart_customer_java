@@ -17,62 +17,58 @@ import 'package:image_picker/image_picker.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 
 class RateProductProvider extends ChangeNotifier {
-  RxBool isLoading = true.obs;
+  bool isLoading = true;
 
   void initFunction() {
     getArgument();
   }
 
-  Rx<TextEditingController> commentController = TextEditingController().obs;
+  TextEditingController commentController = TextEditingController();
 
-  Rx<OrderModel> orderModel = OrderModel().obs;
-  RxString productId = "".obs;
-  Rx<RatingModel> ratingModel = RatingModel().obs;
-  Rx<ProductModel> productModel = ProductModel().obs;
-  Rx<VendorModel> vendorModel = VendorModel().obs;
-  Rx<VendorCategoryModel> vendorCategoryModel = VendorCategoryModel().obs;
+  OrderModel orderModel = OrderModel();
+  String productId = "";
+  RatingModel ratingModel = RatingModel();
+  ProductModel productModel = ProductModel();
+  VendorModel vendorModel = VendorModel();
+  VendorCategoryModel vendorCategoryModel = VendorCategoryModel();
 
-  RxList<ReviewAttributeModel> reviewAttributeList =
-      <ReviewAttributeModel>[].obs;
+  List<ReviewAttributeModel> reviewAttributeList = <ReviewAttributeModel>[];
 
-  RxDouble ratings = 0.0.obs;
+  double ratings = 0.0;
 
-  RxMap<String, dynamic> reviewAttribute = <String, dynamic>{}.obs;
-  RxMap<String, dynamic> reviewProductAttributes = <String, dynamic>{}.obs;
-
-  RxDouble vendorReviewSum = 0.0.obs;
-  RxDouble vendorReviewCount = 0.0.obs;
-
-  RxDouble productReviewSum = 0.0.obs;
-  RxDouble productReviewCount = 0.0.obs;
+  Map<String, dynamic> reviewAttribute = <String, dynamic>{};
+  Map<String, dynamic> reviewProductAttributes = <String, dynamic>{};
+  double vendorReviewSum = 0.0;
+  double vendorReviewCount = 0.0;
+  double productReviewSum = 0.0;
+  double productReviewCount = 0.0;
 
   getArgument() async {
     dynamic argumentData = Get.arguments;
     if (argumentData != null) {
-      orderModel.value = argumentData['orderModel'];
-      productId.value = argumentData['productId'];
-
+      orderModel = argumentData['orderModel'];
+      productId = argumentData['productId'];
       await FireStoreUtils.getOrderReviewsByID(
-        orderModel.value.id.toString(),
-        productId.value,
+        orderModel.id.toString(),
+        productId,
       ).then((value) {
         if (value != null) {
-          ratingModel.value = value;
-          ratings.value = value.rating ?? 0.0;
-          commentController.value.text = value.comment.toString();
-          reviewAttribute.value = value.reviewAttributes!;
+          ratingModel = value;
+          ratings = value.rating ?? 0.0;
+          commentController.text = value.comment.toString();
+          reviewAttribute = value.reviewAttributes!;
           images.addAll(value.photos ?? []);
         }
       });
 
-      await FireStoreUtils.getProductById(
-        productId.value.split('~').first,
-      ).then((value) {
+      await FireStoreUtils.getProductById(productId.split('~').first).then((
+        value,
+      ) {
         if (value != null) {
-          productModel.value = value;
-          if (ratingModel.value.id != null) {
-            productReviewCount.value = value.reviewsCount! - 1;
-            productReviewSum.value = value.reviewsSum! - ratings.value;
+          productModel = value;
+          if (ratingModel.id != null) {
+            productReviewCount = value.reviewsCount! - 1;
+            productReviewSum = value.reviewsSum! - ratings;
 
             if (value.reviewAttributes != null) {
               value.reviewAttributes!.forEach((key, value) {
@@ -88,40 +84,36 @@ class RateProductProvider extends ChangeNotifier {
               });
             }
           } else {
-            productReviewCount.value = double.parse(
-              value.reviewsCount.toString(),
-            );
-            productReviewSum.value = double.parse(value.reviewsSum.toString());
+            productReviewCount = double.parse(value.reviewsCount.toString());
+            productReviewSum = double.parse(value.reviewsSum.toString());
             if (value.reviewAttributes != null) {
-              reviewProductAttributes.value = value.reviewAttributes!;
+              reviewProductAttributes = value.reviewAttributes!;
             }
           }
         }
       });
 
-      await FireStoreUtils.getVendorById(
-        productModel.value.vendorID.toString(),
-      ).then((value) {
-        if (value != null) {
-          vendorModel.value = value;
-          if (ratingModel.value.id != null) {
-            vendorReviewCount.value = value.reviewsCount! - 1;
-            vendorReviewSum.value = value.reviewsSum! - ratings.value;
-          } else {
-            vendorReviewCount.value = double.parse(
-              value.reviewsCount.toString(),
-            );
-            vendorReviewSum.value = double.parse(value.reviewsSum.toString());
+      await FireStoreUtils.getVendorById(productModel.vendorID.toString()).then(
+        (value) {
+          if (value != null) {
+            vendorModel = value;
+            if (ratingModel.id != null) {
+              vendorReviewCount = value.reviewsCount! - 1;
+              vendorReviewSum = value.reviewsSum! - ratings;
+            } else {
+              vendorReviewCount = double.parse(value.reviewsCount.toString());
+              vendorReviewSum = double.parse(value.reviewsSum.toString());
+            }
           }
-        }
-      });
+        },
+      );
 
       await FireStoreUtils.getVendorCategoryByCategoryId(
-        productModel.value.categoryID.toString(),
+        productModel.categoryID.toString(),
       ).then((value) async {
         if (value != null) {
-          vendorCategoryModel.value = value;
-          for (var element in vendorCategoryModel.value.reviewAttributes!) {
+          vendorCategoryModel = value;
+          for (var element in vendorCategoryModel.reviewAttributes!) {
             await FireStoreUtils.getVendorReviewAttribute(element).then((
               value,
             ) {
@@ -132,18 +124,19 @@ class RateProductProvider extends ChangeNotifier {
       });
     }
 
-    isLoading.value = false;
+    isLoading = false;
+    notifyListeners();
   }
 
   saveRating() async {
-    if (ratings.value != 0.0) {
+    if (ratings != 0.0) {
       ShowToastDialog.showLoader("Please wait".tr);
-      productModel.value.reviewsCount = productReviewCount.value + 1;
-      productModel.value.reviewsSum = productReviewSum.value + ratings.value;
-      productModel.value.reviewAttributes = reviewProductAttributes;
+      productModel.reviewsCount = productReviewCount + 1;
+      productModel.reviewsSum = productReviewSum + ratings;
+      productModel.reviewAttributes = reviewProductAttributes;
 
-      vendorModel.value.reviewsCount = vendorReviewCount.value + 1;
-      vendorModel.value.reviewsSum = vendorReviewSum.value + ratings.value;
+      vendorModel.reviewsCount = vendorReviewCount + 1;
+      vendorModel.reviewsSum = vendorReviewSum + ratings;
 
       if (reviewProductAttributes.isEmpty) {
         reviewAttribute.forEach((key, value) {
@@ -183,14 +176,14 @@ class RateProductProvider extends ChangeNotifier {
       }
 
       RatingModel ratingProduct = RatingModel(
-        productId: productId.value,
-        comment: commentController.value.text,
+        productId: productId,
+        comment: commentController.text,
         photos: images,
-        rating: ratings.value,
+        rating: ratings,
         customerId: userId,
-        id: ratingModel.value.id ?? Constant.getUuid(),
-        orderId: orderModel.value.id,
-        vendorId: productModel.value.vendorID,
+        id: ratingModel.id ?? Constant.getUuid(),
+        orderId: orderModel.id,
+        vendorId: productModel.vendorID,
         createdAt: Timestamp.now(),
         uname: Constant.userModel!.fullName(),
         profile: Constant.userModel!.profilePictureURL,
@@ -198,8 +191,8 @@ class RateProductProvider extends ChangeNotifier {
       );
 
       await FireStoreUtils.setRatingModel(ratingProduct);
-      await FireStoreUtils.updateVendor(vendorModel.value);
-      await FireStoreUtils.setProduct(productModel.value);
+      await FireStoreUtils.updateVendor(vendorModel);
+      await FireStoreUtils.setProduct(productModel);
       ShowToastDialog.closeLoader();
       Get.back();
     } else {

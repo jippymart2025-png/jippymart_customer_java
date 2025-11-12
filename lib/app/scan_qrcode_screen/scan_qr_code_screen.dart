@@ -8,13 +8,15 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:qr_code_dart_scan/qr_code_dart_scan.dart';
 
+import '../restaurant_details_screen/provider/restaurant_details_provider.dart';
+
 class ScanQrCodeScreen extends StatelessWidget {
   const ScanQrCodeScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ScanQrCodeProvider>(
-      builder: (context, controller, _) {
+    return Consumer2<ScanQrCodeProvider, RestaurantDetailsProvider>(
+      builder: (context, controller, restaurantDetailsProvider, _) {
         return Scaffold(
           appBar: AppBar(
             centerTitle: false,
@@ -41,10 +43,10 @@ class ScanQrCodeScreen extends StatelessWidget {
                     in controller.allNearestRestaurant) {
                   if (storeModel.id == result.text) {
                     Get.back();
-                    Get.to(
-                      const RestaurantDetailsScreen(),
-                      arguments: {"vendorModel": storeModel},
+                    restaurantDetailsProvider.initFunction(
+                      vendorModels: storeModel,
                     );
+                    Get.to(const RestaurantDetailsScreen());
                   }
                 }
               } else {

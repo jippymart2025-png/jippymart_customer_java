@@ -19,7 +19,7 @@ class AllAdvertisementProvider extends ChangeNotifier {
   getAdvertisementList() async {
     advertisementList.clear();
     List<VendorModel> allNearestRestaurant = <VendorModel>[];
-    FireStoreUtils.getAllNearestRestaurant().listen((event) async {
+    FireStoreUtils().getAllNearestRestaurant().listen((event) async {
       allNearestRestaurant.addAll(event);
       await FireStoreUtils.getAllAdvertisement().then((value) {
         List<AdvertisementModel> adsList = value;

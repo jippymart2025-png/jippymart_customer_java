@@ -59,13 +59,10 @@ class MartProductCard extends StatelessWidget {
         id: product.id,
         name: product.name,
         photo: product.photo,
-        price: product.price?.toString() ?? '0',
-        discountPrice:
-            product.disPrice?.toString() ?? product.price?.toString() ?? '0',
+        price: product.price.toString(),
+        discountPrice: product.disPrice?.toString() ?? product.price.toString(),
         vendorID: martVendorID,
-        // Prefix with "mart_" to identify as mart item
         vendorName: "Jippy Mart",
-        // Add vendor name to satisfy NOT NULL constraint
         categoryId: product.categoryID,
         quantity: 1,
         extrasPrice: '0',

@@ -24,13 +24,16 @@ import 'package:jippymart_customer/services/gps_location_service.dart';
 import 'package:jippymart_customer/utils/performance_optimizer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 
 class HomeProvider extends ChangeNotifier {
-  /// Get current zone by coordinates
+  void changeBannerPage(int value) {
+    currentPage = value;
+    notifyListeners();
+  }
+
   static Future<ZoneModel?> getCurrentZone(
     double latitude,
     double longitude,
@@ -330,7 +333,7 @@ class HomeProvider extends ChangeNotifier {
 
   final CartProvider cartProvider = CartProvider();
   final ScrollController scrollController = ScrollController();
-  RxBool isNavBarVisible = true.obs;
+  bool isNavBarVisible = true;
 
   getCartData() async {
     cartProvider.cartStream.listen((event) async {
@@ -351,12 +354,12 @@ class HomeProvider extends ChangeNotifier {
   String selectedOrderTypeValue = "Delivery";
   PageController pageController = PageController(viewportFraction: 1.0);
   PageController pageBottomController = PageController(viewportFraction: 1.0);
-  RxInt currentPage = 0.obs;
-  RxInt currentBottomPage = 0.obs;
+  int currentPage = 0;
+  int currentBottomPage = 0;
 
   Timer? _bannerTimer;
 
-  var selectedIndex = 0.obs;
+  var selectedIndex = 0;
   late CategoryViewProvider categoryViewProvider;
   late BestRestaurantProvider bestRestaurantProvider;
   late DashBoardProvider dashBoardProvider;
@@ -384,12 +387,13 @@ class HomeProvider extends ChangeNotifier {
     scrollController.addListener(() {
       if (scrollController.position.userScrollDirection.toString() ==
           'ScrollDirection.reverse') {
-        if (isNavBarVisible.value) isNavBarVisible.value = false;
+        if (isNavBarVisible) isNavBarVisible = false;
       } else if (scrollController.position.userScrollDirection.toString() ==
           'ScrollDirection.forward') {
-        if (!isNavBarVisible.value) isNavBarVisible.value = true;
+        if (!isNavBarVisible) isNavBarVisible = true;
       }
     });
+    notifyListeners();
     startBannerTimer();
   }
 
@@ -415,17 +419,17 @@ class HomeProvider extends ChangeNotifier {
 
       if (bannerModel.isEmpty) return;
 
-      int nextPage = currentPage.value + 1;
+      int nextPage = currentPage + 1;
 
       if (nextPage >= bannerModel.length) {
         // Instead of animating back to 0, jump instantly without animation
         pageController.jumpToPage(0);
-        currentPage.value = 0;
+        currentPage = 0;
       } else {
-        currentPage.value = nextPage;
+        currentPage = nextPage;
         try {
           await pageController.animateToPage(
-            currentPage.value,
+            currentPage,
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
           );
@@ -464,33 +468,18 @@ class HomeProvider extends ChangeNotifier {
       dashBoardProvider.initFunction(context);
       favouriteProvider.initFunction();
       orderProvider.initFunction();
+      notifyListeners();
       setLoading();
     });
   }
 
   setLoading() async {
     await Future.delayed(Duration(seconds: 1), () async {
-      print(
-        '[DEBUG] setLoading() - Restaurant count: ${bestRestaurantProvider.allNearestRestaurant.length}',
-      );
-      print(
-        '[DEBUG] setLoading() - Zone available: ${Constant.isZoneAvailable}',
-      );
-      print(
-        '[DEBUG] setLoading() - Selected zone: ${Constant.selectedZone?.name}',
-      );
-
       if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
-        print(
-          '[DEBUG] setLoading() - No restaurants found, extending loading time',
-        );
         await Future.delayed(Duration(seconds: 2), () {
           isLoadingFunction(false);
         });
       } else {
-        print(
-          '[DEBUG] setLoading() - Restaurants found, setting loading to false',
-        );
         isLoadingFunction(false);
       }
       notifyListeners();

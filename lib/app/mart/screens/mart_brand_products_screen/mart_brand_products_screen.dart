@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
-import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_product_card.dart';
 import 'package:jippymart_customer/models/mart_brand_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
@@ -27,9 +26,9 @@ class MartBrandProductsScreen extends StatefulWidget {
 }
 
 class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
-  late MartProvider _martController ;
- late CartControllerProvider cartControllerProvider ;
- late  CategoryDetailsProvider _categoryController ;
+  late MartProvider _martController;
+
+  late CartControllerProvider cartControllerProvider;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -37,18 +36,22 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
 
   @override
   void initState() {
+    cartControllerProvider = Provider.of<CartControllerProvider>(
+      context,
+      listen: false,
+    );
+    _martController = Provider.of<MartProvider>(context, listen: false);
 
-    cartControllerProvider   =  Provider.of<CartControllerProvider>(context,listen:false);
-    _martController =Provider.of<MartProvider>(context,listen:false);
-    _categoryController=   Provider.of<CategoryDetailsProvider>(context,listen:false);
     super.initState();
     _fetchBrandData();
   }
 
   Future<void> _fetchBrandData() async {
     try {
-      final doc =
-          await _firestore.collection('brands').doc(widget.brandID).get();
+      final doc = await _firestore
+          .collection('brands')
+          .doc(widget.brandID)
+          .get();
       if (doc.exists) {
         setState(() {
           brandData = MartBrandModel.fromJson(doc.data()!);
@@ -65,8 +68,8 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
       backgroundColor:
           AppThemeData.homeScreenBackground, // Reusable home screen background
       appBar: AppBar(
-        backgroundColor:
-            const Color(0xFF20B2AA), // Teal color like search section
+        backgroundColor: const Color(0xFF20B2AA),
+        // Teal color like search section
         elevation: 0,
         leading: Container(
           margin: const EdgeInsets.all(8),
@@ -146,11 +149,7 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: Colors.red[400],
-                  ),
+                  Icon(Icons.error_outline, size: 64, color: Colors.red[400]),
                   const SizedBox(height: 16),
                   Text(
                     'Error loading products',
@@ -163,10 +162,7 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'Please check your connection and try again',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton(
@@ -206,10 +202,7 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
                   const SizedBox(height: 8),
                   Text(
                     'No products available for ${widget.brandTitle} brand',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -241,30 +234,34 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
 
                         // Calculate dynamic values based on screen size
                         final crossAxisCount = isTablet ? 3 : 2;
-                        final spacing =
-                            isTablet ? 12.0 : (isLargePhone ? 8.0 : 4.0);
-                        final horizontalPadding =
-                            isTablet ? 16.0 : (isLargePhone ? 8.0 : 4.0);
+                        final spacing = isTablet
+                            ? 12.0
+                            : (isLargePhone ? 8.0 : 4.0);
+                        final horizontalPadding = isTablet
+                            ? 16.0
+                            : (isLargePhone ? 8.0 : 4.0);
 
                         // 🔑 Auto-adjustable layout using Wrap for truly flexible card heights
                         return SingleChildScrollView(
                           padding: EdgeInsets.only(
-                              left: horizontalPadding,
-                              right: horizontalPadding,
-                              bottom: MediaQuery.of(context).padding.bottom + 8,
-                              top: 4),
+                            left: horizontalPadding,
+                            right: horizontalPadding,
+                            bottom: MediaQuery.of(context).padding.bottom + 8,
+                            top: 4,
+                          ),
                           child: Wrap(
-                            alignment: WrapAlignment
-                                .start, // 🔑 Ensure products start from the left
-                            crossAxisAlignment: WrapCrossAlignment
-                                .start, // 🔑 Ensure products start from the top
-                            runAlignment: WrapAlignment
-                                .start, // 🔑 Ensure runs start from the top
+                            alignment: WrapAlignment.start,
+                            // 🔑 Ensure products start from the left
+                            crossAxisAlignment: WrapCrossAlignment.start,
+                            // 🔑 Ensure products start from the top
+                            runAlignment: WrapAlignment.start,
+                            // 🔑 Ensure runs start from the top
                             spacing: spacing,
                             runSpacing: spacing,
                             children: products.map((product) {
                               // Calculate card width based on screen size and crossAxisCount
-                              final cardWidth = (screenWidth -
+                              final cardWidth =
+                                  (screenWidth -
                                       horizontalPadding * 2 -
                                       spacing * (crossAxisCount - 1)) /
                                   crossAxisCount;

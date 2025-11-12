@@ -22,7 +22,7 @@ class SignupProvider extends ChangeNotifier {
   );
   String type = "";
   String authToken = "";
-  Rx<UserModel> userModel = UserModel().obs;
+  UserModel userModel = UserModel();
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   void initFunction({

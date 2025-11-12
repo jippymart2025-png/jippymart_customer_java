@@ -8,6 +8,7 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/services/location_service.dart';
 import 'package:flutter/material.dart';
+import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
@@ -244,7 +245,6 @@ class AddressListProvider extends ChangeNotifier {
             };
           }).toList() ??
           [];
-
       final requestBody = {'shippingAddress': shippingAddresses};
       print('📦 [API] Request body: ${json.encode(requestBody)}');
       final response = await http
@@ -270,6 +270,83 @@ class AddressListProvider extends ChangeNotifier {
     } catch (e) {
       print('❌ [API] Exception in updateUser: $e');
       return false;
+    }
+  }
+
+  void saveAddressFunction(
+    int index,
+    BuildContext context,
+    AddressListProvider addressListProvider,
+  ) async {
+    if (location.latitude == null || location.longitude == null) {
+      ShowToastDialog.showToast("Please select Location".tr);
+    } else if (houseBuildingTextEditingController.value.text.isEmpty) {
+      ShowToastDialog.showToast(
+        "Please Enter Flat / House / Flore / Building".tr,
+      );
+    } else if (localityEditingController.value.text.isEmpty) {
+      ShowToastDialog.showToast("Please Enter Area / Sector / locality".tr);
+    } else {
+      setLoading(true);
+      ShowToastDialog.showLoader("Please wait".tr);
+      try {
+        // Prepare the shipping address model
+        final shippingModels = ShippingAddress(
+          id: shippingModel.id ?? Constant.getUuid(),
+          location: location,
+          addressAs: selectedSaveAs,
+          address: houseBuildingTextEditingController.value.text,
+          locality: localityEditingController.value.text,
+          landmark: landmarkEditingController.value.text,
+          isDefault: shippingAddressList.isEmpty ? true : false,
+        );
+        // Get zone ID if coordinates are available
+        if (location.latitude != null && location.longitude != null) {
+          try {
+            print('🔍 [ADDRESS_SAVE] Starting zone detection...');
+            final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
+              location.latitude ?? 0.0,
+              location.longitude ?? 0.0,
+              context,
+            );
+
+            if (zoneId.isNotEmpty) {
+              shippingModels.zoneId = zoneId;
+            } else {}
+          } catch (e) {}
+        }
+        // Update the address list
+        List<ShippingAddress> updatedAddressList;
+        if (shippingModel.id != null) {
+          // Editing existing address
+          updatedAddressList = List<ShippingAddress>.from(shippingAddressList);
+          updatedAddressList[index] = shippingModel;
+        } else {
+          // Adding new address
+          updatedAddressList = List<ShippingAddress>.from(shippingAddressList);
+          updatedAddressList.add(shippingModel);
+        }
+        // Update user model
+        userModel.shippingAddress = updatedAddressList;
+        print("shippingModel.address  ${shippingModel.address}");
+        final success = await addressListProvider.updateUser(userModel);
+        if (success) {
+          shippingAddressList = updatedAddressList;
+          getUser();
+          ShowToastDialog.closeLoader();
+          Get.back();
+          ShowToastDialog.showToast("Address saved successfully".tr);
+        } else {
+          ShowToastDialog.closeLoader();
+          ShowToastDialog.showToast("Failed to save address".tr);
+        }
+      } catch (e) {
+        ShowToastDialog.closeLoader();
+        print('❌ [ADDRESS_SAVE] Error: $e');
+        ShowToastDialog.showToast("Error saving address".tr);
+      } finally {
+        setLoading(false);
+      }
     }
   }
 }

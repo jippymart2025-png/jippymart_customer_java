@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/models/product_model.dart';
@@ -7,9 +9,12 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/trie_search.dart';
 import 'package:jippymart_customer/constant/collection_name.dart';
 import 'package:jippymart_customer/constant/constant.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 
 class SwiggySearchProvider extends ChangeNotifier {
   /// **CLEAR RECENT SEARCHES**
@@ -43,28 +48,29 @@ class SwiggySearchProvider extends ChangeNotifier {
   final TrieSearch trieSearch = TrieSearch();
 
   // **OBSERVABLE VARIABLES**
-  var recentSearches = <String>[].obs;
-  var trendingSearches = <String>[].obs;
-  var restaurantResults = <VendorModel>[].obs;
-  var productResults = <ProductModel>[].obs;
-  var categoryResults = <VendorCategoryModel>[].obs;
-  var searchSuggestions = <String>[].obs;
+  var recentSearches = <String>[];
+  var trendingSearches = <String>[];
+  var restaurantResults = <VendorModel>[];
+  var productResults = <ProductModel>[];
+  var categoryResults = <VendorCategoryModel>[];
+  var searchSuggestions = <String>[];
 
   // **SEARCH STATE**
-  var isSearching = false.obs;
-  var showSuggestions = false.obs;
-  var searchText = ''.obs;
-  var hasSearched = false.obs;
+  var isSearching = false;
+  var showSuggestions = false;
+  var searchText = '';
+  var hasSearched = false;
 
   // **LOADING STATE**
-  var isLoadingData = false.obs;
-  var dataLoaded = false.obs;
+  bool isLoadingData = false;
+
+  bool dataLoaded = false;
 
   // **PAGINATION STATE**
-  var isLoadingMore = false.obs;
-  var hasMoreResults = true.obs;
-  var currentResultCount = 0.obs;
-  var totalAvailableResults = 0.obs;
+  var isLoadingMore = false;
+  var hasMoreResults = true;
+  var currentResultCount = 0;
+  var totalAvailableResults = 0;
 
   // **REMAINING RESULTS FOR PAGINATION**
   List<ProductModel> _remainingProducts = [];
@@ -120,24 +126,24 @@ class SwiggySearchProvider extends ChangeNotifier {
   /// **INITIALIZE SEARCH SYSTEM**
   Future<void> _initializeSearch() async {
     try {
-      isLoadingData.value = true;
-
+      isLoadingData = true;
+      notifyListeners();
       // Load recent searches from storage (fast)
       await _loadRecentSearches();
 
       // Load trending searches (fast)
       await _loadTrendingSearches();
 
-      // Show initial state immediately
-      isLoadingData.value = false;
-
+      isLoadingData = false;
+      notifyListeners();
       // Load and index data in background (slow)
       _loadAndIndexDataInBackground();
 
       print("✅ Swiggy Search initialized successfully");
     } catch (e) {
       print("❌ Search initialization failed: $e");
-      isLoadingData.value = false;
+      isLoadingData = false;
+      notifyListeners();
     }
   }
 
@@ -146,9 +152,8 @@ class SwiggySearchProvider extends ChangeNotifier {
     try {
       print("🔄 Loading initial data in background...");
       await _loadAndIndexData();
-      dataLoaded.value = true;
-      print("✅ Initial background data loading completed");
-      print("📊 Indexed items: ${trieSearch.itemCount}");
+      dataLoaded = true;
+      notifyListeners();
 
       // Check if data was loaded successfully
       if (trieSearch.itemCount == 0) {
@@ -177,6 +182,7 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       for (var query in testQueries) {
         var results = trieSearch.search(query);
+        notifyListeners();
         print("🧪 Test search '$query': ${results.length} results");
       }
     } catch (e) {
@@ -209,9 +215,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           trieSearch.insert(product.name!, product, relevanceScore: 2.0);
         }
       }
-
-      print("✅ Progressive data loading completed (memory optimized)");
-      print("📊 Total indexed items: ${trieSearch.itemCount}");
+      notifyListeners();
     } catch (e) {
       print("❌ Progressive data loading failed: $e");
       if (e.toString().contains('OutOfMemoryError')) {
@@ -229,13 +233,13 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // Clear existing data
       trieSearch.clear();
-
+      notifyListeners();
       // Load vendors in smaller batches to prevent memory issues
       await _loadVendorsInBatches();
 
       // Load products in smaller batches to prevent memory issues
       await _loadProductsInBatches();
-
+      notifyListeners();
       print("✅ Data loading completed successfully");
     } catch (e) {
       print("❌ Error loading data: $e");
@@ -303,7 +307,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           }
         }
       }
-
+      notifyListeners();
       print("✅ Indexed ${vendors.length} vendors (memory optimized)");
       print("🔍 Total Trie items after vendors: ${trieSearch.itemCount}");
     } catch (e) {
@@ -325,6 +329,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       List<ProductModel> products = await FireStoreUtils.getAllProducts(
         limit: FAST_PRODUCT_LIMIT,
       );
+      notifyListeners();
       print(
         "📊 Loaded ${products.length} products (memory safe limit: $FAST_PRODUCT_LIMIT)",
       );
@@ -392,6 +397,7 @@ class SwiggySearchProvider extends ChangeNotifier {
             trieSearch.insert("nonveg", product, relevanceScore: 1.4);
           }
         }
+        notifyListeners();
       }
 
       print("✅ Indexed ${products.length} products (memory optimized)");
@@ -412,6 +418,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       // Try to get trending searches from backend
       List<String> trending = await FireStoreUtils.getTrendingSearches();
       trendingSearches.assignAll(trending);
+      notifyListeners();
     } catch (e) {
       print("❌ Error loading trending searches: $e");
       // Fallback to static trending searches
@@ -432,6 +439,7 @@ class SwiggySearchProvider extends ChangeNotifier {
         "Sweet",
         "Healthy",
       ]);
+      notifyListeners();
     }
   }
 
@@ -473,7 +481,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       performEnhancedMultiCollectionSearch(query);
     } catch (e) {
       print("❌ Search error: $e");
-      isSearching.value = false;
+      isSearching = false;
     }
   }
 
@@ -482,11 +490,11 @@ class SwiggySearchProvider extends ChangeNotifier {
     restaurantResults.clear();
     productResults.clear();
     categoryResults.clear();
-    hasSearched.value = false;
-    isSearching.value = false;
-    showSuggestions.value = false;
-    currentResultCount.value = 0;
-    hasMoreResults.value = true;
+    hasSearched = false;
+    isSearching = false;
+    showSuggestions = false;
+    currentResultCount = 0;
+    hasMoreResults = true;
     _remainingProducts.clear();
     _remainingRestaurants.clear();
     _remainingCategories.clear();
@@ -494,7 +502,7 @@ class SwiggySearchProvider extends ChangeNotifier {
 
   /// **CLEAR SEARCH (PUBLIC METHOD)**
   void clearSearch() {
-    searchText.value = '';
+    searchText = '';
     _clearSearchResults();
   }
 
@@ -551,7 +559,7 @@ class SwiggySearchProvider extends ChangeNotifier {
 
   /// **LOAD MORE RESULTS (PAGINATION) - ENHANCED MULTI-COLLECTION**
   void loadMoreResults() {
-    if (isLoadingMore.value) {
+    if (isLoadingMore) {
       print("⚠️ Load more already in progress, skipping...");
       return;
     }
@@ -570,14 +578,14 @@ class SwiggySearchProvider extends ChangeNotifier {
 
   /// **UPDATE SEARCH TEXT AND SHOW SUGGESTIONS**
   void updateSearchText(String text) {
-    searchText.value = text;
+    searchText = text;
 
     // Cancel previous timers
     _debounceTimer?.cancel();
     _searchTimer?.cancel();
 
     if (text.isEmpty) {
-      showSuggestions.value = false;
+      showSuggestions = false;
       return;
     }
 
@@ -603,7 +611,7 @@ class SwiggySearchProvider extends ChangeNotifier {
   /// **UPDATE SUGGESTIONS BASED ON SEARCH TEXT - OPTIMIZED**
   void _updateSuggestions(String query) {
     if (query.isEmpty) {
-      showSuggestions.value = false;
+      showSuggestions = false;
       return;
     }
     try {
@@ -613,7 +621,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       _updateSuggestionsOptimized(query);
     } catch (e) {
       print("❌ Suggestions failed: $e");
-      showSuggestions.value = false;
+      showSuggestions = false;
     }
   }
 
@@ -638,27 +646,54 @@ class SwiggySearchProvider extends ChangeNotifier {
 
   /// **SELECT A SUGGESTION**
   void selectSuggestion(String suggestion) {
-    searchText.value = suggestion;
-    showSuggestions.value = false;
+    searchText = suggestion;
+    showSuggestions = false;
     performSearch(suggestion);
   }
 
   /// **HIDE SUGGESTIONS**
   void hideSuggestions() {
-    showSuggestions.value = false;
+    showSuggestions = false;
+  }
+
+  static Future<List<VendorCategoryModel>> getVendorCategory() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}categories'),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final List<dynamic> data = responseData['data'];
+          return data
+              .map((categoryJson) => VendorCategoryModel.fromJson(categoryJson))
+              .toList();
+        } else {
+          throw Exception('API returned success: false');
+        }
+      } else {
+        throw Exception('Failed to load categories: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching categories: $e');
+      return [];
+    }
   }
 
   /// **PERFORM SEARCH - ENHANCED VERSION (as suggested) - MEMORY OPTIMIZED**
   Future<void> performSearch(String query) async {
-    searchText.value = query;
-    hasSearched.value = true;
-    isLoadingData.value = true;
+    searchText = query;
+    hasSearched = true;
+    isLoadingData = true;
 
     if (query.trim().isEmpty) {
       restaurantResults.clear();
       productResults.clear();
       categoryResults.clear();
-      isLoadingData.value = false;
+      isLoadingData = false;
       return;
     }
 
@@ -687,7 +722,7 @@ class SwiggySearchProvider extends ChangeNotifier {
         allProducts = await FireStoreUtils.getAllProductsInZone(
           limit: MAX_PRODUCTS_PER_SEARCH,
         ); // Limit to 40 products
-        allCategories = await FireStoreUtils.getVendorCategory();
+        allCategories = await getVendorCategory();
         print(
           "🔍 Loaded ${allRestaurants.length} restaurants, ${allProducts.length} products, ${allCategories.length} categories (memory safe)",
         );
@@ -966,24 +1001,24 @@ class SwiggySearchProvider extends ChangeNotifier {
       categoryResults.assignAll(initialCategories);
 
       // Update counts
-      currentResultCount.value =
+      currentResultCount =
           initialProducts.length +
           initialRestaurants.length +
           initialCategories.length;
-      totalAvailableResults.value =
+      totalAvailableResults =
           filteredProducts.length +
           filteredRestaurants.length +
           filteredCategories.length;
 
       // Check if there are more results
-      hasMoreResults.value =
+      hasMoreResults =
           _remainingProducts.isNotEmpty ||
           _remainingRestaurants.isNotEmpty ||
           _remainingCategories.isNotEmpty;
 
       // Debug: Print comprehensive search results
       print("📊 Comprehensive Search Results:");
-      print("  - Total available: ${totalAvailableResults.value} results");
+      print("  - Total available: ${totalAvailableResults} results");
       print("  - ALL products found: ${filteredProducts.length}");
       print("  - ALL restaurants found: ${filteredRestaurants.length}");
       print("  - ALL categories found: ${filteredCategories.length}");
@@ -993,20 +1028,20 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("  - Remaining products: ${_remainingProducts.length}");
       print("  - Remaining restaurants: ${_remainingRestaurants.length}");
       print("  - Remaining categories: ${_remainingCategories.length}");
-      print("  - Has more results: ${hasMoreResults.value}");
+      print("  - Has more results: ${hasMoreResults}");
 
       // Fallback: If we have any results but no remaining, still show Load More for better UX
-      if (!hasMoreResults.value &&
+      if (!hasMoreResults &&
           (initialProducts.isNotEmpty ||
               initialRestaurants.isNotEmpty ||
               filteredCategories.isNotEmpty)) {
-        hasMoreResults.value = true;
+        hasMoreResults = true;
         print("📊 Fallback: Showing Load More button for better UX");
       }
 
       // Suggestions (optional with TrieSearch)
       try {
-        searchSuggestions.value = trieSearch.getSuggestions(
+        searchSuggestions = trieSearch.getSuggestions(
           lowerQuery,
           maxSuggestions: MAX_SUGGESTIONS,
         );
@@ -1021,7 +1056,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       print(
         "📊 Enhanced search results: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${filteredCategories.length} categories",
       );
-      print("📊 Total available: ${totalAvailableResults.value} results");
+      print("📊 Total available: ${totalAvailableResults} results");
 
       // **MEMORY MONITORING: Log memory usage after search**
       logMemoryUsage("After Search Completion");
@@ -1032,7 +1067,7 @@ class SwiggySearchProvider extends ChangeNotifier {
         _emergencyMemoryCleanup();
       }
     } finally {
-      isLoadingData.value = false;
+      isLoadingData = false;
     }
   }
 
@@ -1044,13 +1079,13 @@ class SwiggySearchProvider extends ChangeNotifier {
     searchSuggestions.clear();
     recentSearches.clear();
     trendingSearches.clear();
-    hasSearched.value = false;
-    isSearching.value = false;
-    showSuggestions.value = false;
-    searchText.value = '';
-    currentResultCount.value = 0;
-    hasMoreResults.value = true;
-    dataLoaded.value = false;
+    hasSearched = false;
+    isSearching = false;
+    showSuggestions = false;
+    searchText = '';
+    currentResultCount = 0;
+    hasMoreResults = true;
+    dataLoaded = false;
     _remainingProducts.clear();
     _remainingRestaurants.clear();
     _remainingCategories.clear();
@@ -1114,13 +1149,13 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // Clear some search results
       if (restaurantResults.length > 10) {
-        restaurantResults.value = restaurantResults.take(10).toList();
+        restaurantResults = restaurantResults.take(10).toList();
       }
       if (productResults.length > 20) {
-        productResults.value = productResults.take(20).toList();
+        productResults = productResults.take(20).toList();
       }
       if (categoryResults.length > 5) {
-        categoryResults.value = categoryResults.take(5).toList();
+        categoryResults = categoryResults.take(5).toList();
       }
 
       // Clear suggestions
@@ -1132,7 +1167,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           "⚠️ Trie has ${trieSearch.itemCount} items, clearing to prevent memory issues",
         );
         trieSearch.clear();
-        dataLoaded.value = false;
+        dataLoaded = false;
       }
 
       print("✅ Emergency cleanup completed");
@@ -1259,13 +1294,8 @@ class SwiggySearchProvider extends ChangeNotifier {
       if (query.trim().isEmpty) {
         return [];
       }
-
       List<dynamic> results = [];
 
-      // **PREFIX SEARCH: Use Firestore range queries for efficient prefix matching**
-      // This is much more efficient than loading all data
-
-      // Search vendors by title prefix
       Query vendorQuery = FirebaseFirestore.instance
           .collection('vendors')
           .where('isActive', isEqualTo: true)
@@ -1346,13 +1376,13 @@ class SwiggySearchProvider extends ChangeNotifier {
 
     try {
       print("🔍 Optimized Firestore search for: '$query'");
-      isSearching.value = true;
-      hasSearched.value = true;
+      isSearching = true;
+      hasSearched = true;
 
       // Reset pagination state
       _lastVendorDocument = null;
       _lastProductDocument = null;
-      hasMoreResults.value = true;
+      hasMoreResults = true;
 
       // **PARALLEL SEARCH: Search vendors and products simultaneously using Firestore**
       final futures = await Future.wait([
@@ -1364,7 +1394,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           query: query,
           limit: MAX_PRODUCTS_PER_SEARCH,
         ),
-        FireStoreUtils.getVendorCategory(), // Categories are usually small
+        getVendorCategory(), // Categories are usually small
       ]);
 
       final vendorResults = futures[0] as List<VendorModel>;
@@ -1384,7 +1414,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       categoryResults.assignAll(filteredCategories);
 
       // Check if there are more results - FIXED: hasMoreResults should be true when we haven't reached limits yet
-      hasMoreResults.value =
+      hasMoreResults =
           vendorResults.length < MAX_VENDORS_PER_SEARCH ||
           productResults.length < MAX_PRODUCTS_PER_SEARCH;
 
@@ -1392,14 +1422,14 @@ class SwiggySearchProvider extends ChangeNotifier {
       _saveRecentSearch(query);
 
       // Hide suggestions
-      showSuggestions.value = false;
-      isSearching.value = false;
+      showSuggestions = false;
+      isSearching = false;
 
       print("📊 Optimized Firestore search results:");
       print("  - Vendors: ${vendorResults.length}");
       print("  - Products: ${productResults.length}");
       print("  - Categories: ${filteredCategories.length}");
-      print("  - Has more results: ${hasMoreResults.value}");
+      print("  - Has more results: ${hasMoreResults}");
 
       // **MEMORY MONITORING: Log memory usage after search**
       logMemoryUsage("After Optimized Search");
@@ -1409,23 +1439,23 @@ class SwiggySearchProvider extends ChangeNotifier {
         print("🚨 OutOfMemoryError detected! Performing emergency cleanup.");
         _emergencyMemoryCleanup();
       }
-      isSearching.value = false;
+      isSearching = false;
     }
   }
 
   /// **LOAD MORE RESULTS USING FIRESTORE PAGINATION**
   Future<void> loadMoreResultsOptimized() async {
-    if (isLoadingMore.value || !hasMoreResults.value) {
+    if (isLoadingMore || !hasMoreResults) {
       return;
     }
 
     try {
-      isLoadingMore.value = true;
+      isLoadingMore = true;
       print("🔄 Loading more results via Firestore pagination...");
 
-      final currentQuery = searchText.value;
+      final currentQuery = searchText;
       if (currentQuery.isEmpty) {
-        isLoadingMore.value = false;
+        isLoadingMore = false;
         return;
       }
 
@@ -1451,7 +1481,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       productResults.addAll(moreProducts);
 
       // Update pagination state - FIXED: hasMoreResults should be true when we haven't reached limits yet
-      hasMoreResults.value =
+      hasMoreResults =
           moreVendors.length < MAX_VENDORS_PER_SEARCH ||
           moreProducts.length < MAX_PRODUCTS_PER_SEARCH;
 
@@ -1464,14 +1494,14 @@ class SwiggySearchProvider extends ChangeNotifier {
     } catch (e) {
       print("❌ Error loading more results via Firestore: $e");
     } finally {
-      isLoadingMore.value = false;
+      isLoadingMore = false;
     }
   }
 
   /// **UPDATE SUGGESTIONS USING PREFIX SEARCH**
   Future<void> _updateSuggestionsOptimized(String query) async {
     if (query.isEmpty) {
-      showSuggestions.value = false;
+      showSuggestions = false;
       return;
     }
 
@@ -1500,12 +1530,12 @@ class SwiggySearchProvider extends ChangeNotifier {
           .take(MAX_SUGGESTIONS)
           .toList();
       searchSuggestions.assignAll(uniqueSuggestions);
-      showSuggestions.value = uniqueSuggestions.isNotEmpty;
+      showSuggestions = uniqueSuggestions.isNotEmpty;
 
       print("💡 Showing ${uniqueSuggestions.length} suggestions via Firestore");
     } catch (e) {
       print("❌ Suggestions failed: $e");
-      showSuggestions.value = false;
+      showSuggestions = false;
     }
   }
 
@@ -1518,8 +1548,8 @@ class SwiggySearchProvider extends ChangeNotifier {
 
     try {
       print("🔍 Enhanced multi-collection search for: '$query'");
-      isSearching.value = true;
-      hasSearched.value = true;
+      isSearching = true;
+      hasSearched = true;
 
       final lowerQuery = query.toLowerCase().trim();
 
@@ -1544,7 +1574,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       // Fallback to current method
       await performSearch(query);
     } finally {
-      isSearching.value = false;
+      isSearching = false;
     }
   }
 
@@ -1647,7 +1677,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           print('❌ Error parsing vendor ${document.id}: $e');
         }
       }
-
+      notifyListeners();
       print("✅ Found ${results.length} vendors via optimized search");
       return results;
     } catch (e) {
@@ -1707,7 +1737,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           print('❌ Error parsing product ${document.id}: $e');
         }
       }
-
+      notifyListeners();
       print(
         "✅ Found ${results.length} zone-filtered products via optimized search",
       );
@@ -1717,42 +1747,6 @@ class SwiggySearchProvider extends ChangeNotifier {
       return [];
     }
   }
-
-  /// **OPTIMIZED PRODUCT SEARCH - Main fields**
-  // Future<List<ProductModel>> _searchProductsOptimized(String query, int limit) async {
-  //   try {
-  //     print("🔍 Optimized product search for: '$query' (limit: $limit)");
-  //
-  //     // **SINGLE QUERY: Load products with publish filter (no prefix matching)**
-  //     Query firestoreQuery = FirebaseFirestore.instance
-  //         .collection(CollectionName.vendorProducts)
-  //         .where('publish', isEqualTo: true)
-  //         .limit(limit);
-  //
-  //     QuerySnapshot querySnapshot = await firestoreQuery.get();
-  //
-  //     List<ProductModel> results = [];
-  //     for (var document in querySnapshot.docs) {
-  //       try {
-  //         final data = document.data() as Map<String, dynamic>;
-  //         final product = ProductModel.fromJson(data);
-  //
-  //         // **SMART MATCHING: Check name first, then description**
-  //         if (_productMatchesPrimaryQuery(product, query)) {
-  //           results.add(product);
-  //         }
-  //       } catch (e) {
-  //         print('❌ Error parsing product ${document.id}: $e');
-  //       }
-  //     }
-  //
-  //     print("✅ Found ${results.length} products via optimized search");
-  //     return results;
-  //   } catch (e) {
-  //     print("❌ Optimized product search failed: $e");
-  //     return [];
-  //   }
-  // }
 
   /// **OPTIMIZED CATEGORY SEARCH - Main fields**
   Future<List<VendorCategoryModel>> _searchCategoriesOptimized(
@@ -1783,7 +1777,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           print('❌ Error parsing category ${document.id}: $e');
         }
       }
-
+      notifyListeners();
       print("✅ Found ${results.length} categories via optimized search");
       return results;
     } catch (e) {
@@ -1821,7 +1815,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           print('❌ Error parsing vendor ${document.id}: $e');
         }
       }
-
+      notifyListeners();
       print("✅ Found ${results.length} vendors via fallback search");
       return results;
     } catch (e) {
@@ -1859,7 +1853,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           print('❌ Error parsing product ${document.id}: $e');
         }
       }
-
+      notifyListeners();
       print("✅ Found ${results.length} products via fallback search");
       return results;
     } catch (e) {
@@ -1896,7 +1890,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           print('❌ Error parsing category ${document.id}: $e');
         }
       }
-
+      notifyListeners();
       print("✅ Found ${results.length} categories via fallback search");
       return results;
     } catch (e) {
@@ -1985,10 +1979,7 @@ class SwiggySearchProvider extends ChangeNotifier {
       'products': combinedProducts,
       'categories': combinedCategories,
     });
-
-    print(
-      "📊 Merged search results: ${combinedVendors.length} vendors, ${combinedProducts.length} products, ${combinedCategories.length} categories",
-    );
+    notifyListeners();
   }
 
   /// **UPDATE SEARCH RESULTS**
@@ -2005,33 +1996,29 @@ class SwiggySearchProvider extends ChangeNotifier {
         (results['products'] as List).length +
         (results['categories'] as List).length;
 
-    currentResultCount.value = totalResults;
-    totalAvailableResults.value = totalResults;
+    currentResultCount = totalResults;
+    totalAvailableResults = totalResults;
 
     // Update pagination state - FIXED: hasMoreResults should be true when we haven't reached limits yet
-    hasMoreResults.value =
+    hasMoreResults =
         (results['vendors'] as List).length < RESTAURANT_SEARCH_LIMIT ||
         (results['products'] as List).length < PRODUCT_SEARCH_LIMIT ||
         (results['categories'] as List).length < CATEGORY_SEARCH_LIMIT;
-
-    print(
-      "📊 Updated search results: ${restaurantResults.length} restaurants, ${productResults.length} products, ${categoryResults.length} categories",
-    );
-    print("📊 Total results: $totalResults");
+    notifyListeners();
   }
 
   /// **LOAD MORE RESULTS ENHANCED - MULTI-COLLECTION SEARCH**
   Future<void> loadMoreResultsEnhanced() async {
-    if (isLoadingMore.value || !hasMoreResults.value) {
+    if (isLoadingMore || !hasMoreResults) {
       print("⚠️ Load more not available or already in progress");
       return;
     }
 
     try {
-      isLoadingMore.value = true;
+      isLoadingMore = true;
       print("🔄 Loading more results via enhanced multi-collection search...");
 
-      final currentQuery = searchText.value;
+      final currentQuery = searchText;
       if (currentQuery.isEmpty) {
         print("⚠️ No search query for load more");
         return;
@@ -2088,27 +2075,21 @@ class SwiggySearchProvider extends ChangeNotifier {
           restaurantResults.length +
           productResults.length +
           categoryResults.length;
-      currentResultCount.value = totalResults;
-      totalAvailableResults.value = totalResults;
+      currentResultCount = totalResults;
+      totalAvailableResults = totalResults;
 
       // **UPDATE PAGINATION STATE - FIXED: hasMoreResults should be false if we got no new results**
       final totalNewResults =
           newVendorsAdded + newProductsAdded + newCategoriesAdded;
-      hasMoreResults.value =
+      hasMoreResults =
           totalNewResults > 0; // Only true if we actually got new results
-
-      print(
-        "📊 Load more completed: ${restaurantResults.length} restaurants, ${productResults.length} products, ${categoryResults.length} categories",
-      );
-      print(
-        "📊 New results added: $newVendorsAdded vendors, $newProductsAdded products, $newCategoriesAdded categories",
-      );
-      print("📊 Total results after load more: $totalResults");
-      print("📊 Has more results: ${hasMoreResults.value}");
+      notifyListeners();
     } catch (e) {
       print("❌ Load more enhanced failed: $e");
     } finally {
-      isLoadingMore.value = false;
+      isLoadingMore = false;
+      notifyListeners();
     }
+    notifyListeners();
   }
 }

@@ -1,5 +1,4 @@
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
-import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart' show Constant;
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -9,11 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-enum CartTheme {
-  food, // Default food app theme
-  mart, // Green mart theme
-  mixed, // Mixed cart theme
-}
+enum CartTheme { food, mart, mixed }
 
 // Cart theme colors class
 class CartThemeColors {
@@ -41,9 +36,6 @@ Widget buildDeliveryFeeUI({
   print('[DELIVERY_UI]   - isFreeDelivery: $isFreeDelivery');
   print('[DELIVERY_UI]   - originalFee: ₹$originalFee');
   print('[DELIVERY_UI]   - currentFee: ₹$currentFee');
-
-  // Check if this is the special case: free delivery eligible but with extra charge
-  // This happens when subtotal >= threshold but distance > free km
   bool isFreeDeliveryWithExtraCharge =
       isFreeDelivery && currentFee > 0.0 && originalFee > 0.0;
 

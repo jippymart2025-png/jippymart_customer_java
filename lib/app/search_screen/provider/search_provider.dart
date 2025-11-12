@@ -1,12 +1,17 @@
+import 'dart:convert';
+
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:get/get.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:jippymart_customer/utils/preferences.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
+import 'package:http/http.dart' as http;
 
 // **TRIE NODE FOR DICTIONARY-BASED SEARCH**
 class TrieNode {
@@ -221,20 +226,6 @@ class SearchData {
 
 // **ISOLATE SEARCH FUNCTION**
 
-// **TOKENIZATION UTILITY**
-List<String> _tokenize(String text) {
-  try {
-    return text
-        .toLowerCase()
-        .split(RegExp(r'[\s\-_.,!?()]+'))
-        .where((word) => word.length >= 2)
-        .toList();
-  } catch (e) {
-    print('ERROR: Tokenization failed: $e');
-    return [];
-  }
-}
-
 class SearchScreenProvider extends ChangeNotifier {
   Timer? _debounceTimer;
   Timer? _suggestionTimer;
@@ -264,22 +255,16 @@ class SearchScreenProvider extends ChangeNotifier {
   static bool _productsLoaded = false;
   static bool _isLoadingProducts = false;
   static bool _trieBuilt = false;
-  static const int _largeDatasetThreshold =
-      10000; // Threshold for isolate-based search
 
   // **BACKEND SEARCH FALLBACK**
-  bool _useBackendSearch = false;
   Timer? _backendSearchTimer;
 
   // **CRITICAL: ANR PREVENTION**
-  static const Duration _maxSearchTime = Duration(milliseconds: 500);
   static const Duration _maxLoadTime = Duration(seconds: 10);
   Timer? _searchTimeoutTimer;
   Timer? _loadTimeoutTimer;
 
   // **PERFORMANCE MONITORING**
-  static const Duration _performanceThreshold = Duration(milliseconds: 100);
-  DateTime? _lastSearchTime;
   int _searchCount = 0;
   int _slowSearchCount = 0;
 
@@ -366,6 +351,42 @@ class SearchScreenProvider extends ChangeNotifier {
     _loadProductsImmediately();
   }
 
+  static Future<List<ProductModel>> getProductByVendorId(
+    String vendorId,
+  ) async {
+    try {
+      String selectedFoodType = Preferences.getString(
+        Preferences.foodDeliveryType,
+        defaultValue: "Delivery".tr,
+      );
+
+      // Add query parameters for filtering
+      String url = '${AppConst.baseUrl}vendors/$vendorId/products';
+      if (selectedFoodType != "TakeAway") {
+        url += '?takeawayOption=false';
+      }
+
+      final response = await http
+          .get(Uri.parse(url), headers: await getHeaders())
+          .timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true) {
+          final List<dynamic> data = jsonResponse['data'];
+          return data.map((json) => ProductModel.fromJson(json)).toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      if (kDebugMode) {
+        print('ERROR: getProductByVendorId failed for vendor $vendorId: $e');
+      }
+      return [];
+    }
+  }
+
   // **IMMEDIATE PRODUCT LOADING FOR COMPREHENSIVE SEARCH**
   Future<void> _loadProductsImmediately() async {
     if (_isDisposed || _productsLoaded || _isLoadingProducts) return;
@@ -406,10 +427,8 @@ class SearchScreenProvider extends ChangeNotifier {
             "DEBUG: Loading products for vendor: ${vendor.title} (ID: ${vendor.id})",
           );
           // **CRITICAL: Add timeout for each vendor request**
-          final products =
-              await FireStoreUtils.getProductByVendorId(
-                vendor.id.toString(),
-              ).timeout(
+          final products = await getProductByVendorId(vendor.id.toString())
+              .timeout(
                 const Duration(seconds: 5),
                 onTimeout: () {
                   print(

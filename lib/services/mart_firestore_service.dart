@@ -2084,7 +2084,6 @@ class MartFirestoreService extends GetxService {
       print(
         '[MART FIRESTORE] 🛍️ Firestore query completed, found ${querySnapshot.docs.length} items',
       );
-
       if (querySnapshot.docs.isEmpty) {
         print('[MART FIRESTORE] ⚠️ No items found in Firestore');
         return [];

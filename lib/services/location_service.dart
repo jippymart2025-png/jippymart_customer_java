@@ -1,8 +1,8 @@
 import 'dart:developer';
+import 'package:jippymart_customer/app/edit_profile_screen/provider/edit_profile_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
@@ -189,7 +189,7 @@ class LocationService {
       // Update user profile if logged in
       if (Constant.userModel != null) {
         try {
-          await FireStoreUtils.updateUser(Constant.userModel!);
+          await EditProfileProvider.updateUser(Constant.userModel!);
         } catch (e) {
           log('[LOCATION_SERVICE] Error updating user profile: $e');
         }

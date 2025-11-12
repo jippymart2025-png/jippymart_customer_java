@@ -67,8 +67,8 @@ class MartHomeScreen extends StatelessWidget {
                   Stack(
                     children: [
                       Container(
-                        height: 430, // set your desired height
-                        width: double.infinity, // set your desired width
+                        height: 430,
+                        width: double.infinity,
                         decoration: BoxDecoration(
                           color: ColorConst.greenLight,
                           borderRadius: BorderRadius.only(
@@ -159,38 +159,33 @@ class MartHomeScreen extends StatelessWidget {
                               ),
                             ),
                             SizedBox(height: 10),
-                            Obx(() {
-                              if (controller.martTopBanners.isNotEmpty) {
-                                return Column(
-                                  children: [
-                                    Padding(
-                                      padding: const EdgeInsets.only(
-                                        left: 10.0,
-                                        right: 10,
-                                        top: 10,
+                            controller.martTopBanners.isNotEmpty
+                                ? Column(
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          left: 10.0,
+                                          right: 10,
+                                          top: 10,
+                                        ),
+                                        child: ReusableBannerWidget(
+                                          banners: controller.martTopBanners,
+                                          pageController: controller
+                                              .martTopBannerController,
+                                          currentPage:
+                                              controller.currentTopBannerPage,
+                                          height: 150,
+                                          onPanStart: () =>
+                                              controller.stopMartBannerTimer(),
+                                          onPanEnd: () =>
+                                              controller.startMartBannerTimer(),
+                                        ),
                                       ),
-                                      child: ReusableBannerWidget(
-                                        banners: controller.martTopBanners,
-                                        pageController:
-                                            controller.martTopBannerController,
-                                        currentPage:
-                                            controller.currentTopBannerPage,
-                                        height: 150,
-                                        onPanStart: () =>
-                                            controller.stopMartBannerTimer(),
-                                        onPanEnd: () =>
-                                            controller.startMartBannerTimer(),
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              } else {
-                                return const SizedBox.shrink();
-                              }
-                            }),
+                                    ],
+                                  )
+                                : const SizedBox.shrink(),
                             SizedBox(height: 10),
                             groceryComponent(size),
-
                             MartDynamicSectionsEnhanced(
                               screenWidth: screenWidth,
                             ),
@@ -524,7 +519,6 @@ class _GroceryItem extends StatelessWidget {
       onTap:
           onTap ??
           () {
-            // Show coming soon message
             Get.snackbar(
               'Coming Soon',
               'This feature is under development',
@@ -536,7 +530,6 @@ class _GroceryItem extends StatelessWidget {
         height: 129,
         child: Stack(
           children: [
-            // Rectangle 15 (Image placeholder)
             Positioned(
               left: 0,
               top: 0,
@@ -650,7 +643,6 @@ class MartGlowWellnessSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-
           // Wellness Grid
           GridView.count(
             shrinkWrap: true,

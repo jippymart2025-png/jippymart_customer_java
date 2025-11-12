@@ -1,5 +1,4 @@
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
-import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -46,9 +45,8 @@ class SelectPaymentScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  if (controller.walletSettingModel.value.isEnabled == true ||
-                      controller.cashOnDeliverySettingModel.value.isEnabled ==
-                          true)
+                  if (controller.cashOnDeliverySettingModel.value.isEnabled ==
+                      true)
                     Container(
                       decoration: ShapeDecoration(
                         color: AppThemeData.grey50,
@@ -170,9 +168,8 @@ class SelectPaymentScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (controller.walletSettingModel.value.isEnabled == true ||
-                      controller.cashOnDeliverySettingModel.value.isEnabled ==
-                          true)
+                  if (controller.cashOnDeliverySettingModel.value.isEnabled ==
+                      true)
                     Column(
                       children: [
                         const SizedBox(height: 10),
@@ -208,67 +205,6 @@ class SelectPaymentScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           Visibility(
-                            visible: false,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.stripe,
-                              "assets/images/stripe.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible:
-                                controller.paytmModel.value.isEnabled == true,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.paypal,
-                              "assets/images/paypal.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible:
-                                controller.payStackModel.value.isEnable == true,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.payStack,
-                              "assets/images/paystack.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible:
-                                controller.mercadoPagoModel.value.isEnabled ==
-                                true,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.mercadoPago,
-                              "assets/images/mercado-pago.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible: false,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.flutterWave,
-                              "assets/images/flutterwave_logo.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible: false,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.payFast,
-                              "assets/images/payfast.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible:
-                                controller.paytmModel.value.isEnabled == true,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.paytm,
-                              "assets/images/paytm.png",
-                            ),
-                          ),
-                          Visibility(
                             visible:
                                 controller.razorPayModel.value.isEnabled ==
                                 true,
@@ -276,34 +212,6 @@ class SelectPaymentScreen extends StatelessWidget {
                               controller,
                               PaymentGateway.razorpay,
                               "assets/images/razorpay.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible:
-                                controller.midTransModel.value.enable == true,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.midTrans,
-                              "assets/images/midtrans.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible:
-                                controller.orangeMoneyModel.value.enable ==
-                                true,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.orangeMoney,
-                              "assets/images/orange_money.png",
-                            ),
-                          ),
-                          Visibility(
-                            visible:
-                                controller.xenditModel.value.enable == true,
-                            child: cardDecoration(
-                              controller,
-                              PaymentGateway.xendit,
-                              "assets/images/xendit.png",
                             ),
                           ),
                         ],

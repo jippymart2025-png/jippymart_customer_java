@@ -923,7 +923,7 @@ class _CartScreenState extends State<CartScreen> {
                             children: [
                               TextFieldWidget(
                                 title: 'Remarks'.tr,
-                                controller: controller.reMarkController.value,
+                                controller: controller.reMarkController,
                                 hintText: 'Write remarks for the restaurant'.tr,
                                 maxLine: 4,
                               ),

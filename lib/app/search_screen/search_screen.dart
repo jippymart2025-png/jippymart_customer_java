@@ -1,3 +1,4 @@
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/app/search_screen/provider/search_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -266,97 +267,102 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildRestaurantItem(VendorModel vendorModel) {
-    return InkWell(
-      onTap: () {
-        Get.to(
-          () => const RestaurantDetailsScreen(),
-          arguments: {"vendorModel": vendorModel},
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 20),
-        child: Container(
-          decoration: ShapeDecoration(
-            color: AppThemeData.grey50,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
+    return Consumer<RestaurantDetailsProvider>(
+      builder: (context, restaurantDetailsProvider, _) {
+        return InkWell(
+          onTap: () {
+            restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+            Get.to(
+              () => const RestaurantDetailsScreen(),
+              arguments: {"vendorModel": vendorModel},
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 20),
+            child: Container(
+              decoration: ShapeDecoration(
+                color: AppThemeData.grey50,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                    child: Stack(
-                      children: [
-                        RestaurantImageView(vendorModel: vendorModel),
-                        Container(
-                          height: Responsive.height(20, context),
-                          width: Responsive.width(100, context),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: const Alignment(-0.00, -1.00),
-                              end: const Alignment(0, 1),
-                              colors: [
-                                Colors.black.withOpacity(0),
-                                const Color(0xFF111827),
-                              ],
+                  Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                        ),
+                        child: Stack(
+                          children: [
+                            RestaurantImageView(vendorModel: vendorModel),
+                            Container(
+                              height: Responsive.height(20, context),
+                              width: Responsive.width(100, context),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: const Alignment(-0.00, -1.00),
+                                  end: const Alignment(0, 1),
+                                  colors: [
+                                    Colors.black.withOpacity(0),
+                                    const Color(0xFF111827),
+                                  ],
+                                ),
+                              ),
                             ),
+                          ],
+                        ),
+                      ),
+                      _buildRestaurantBadges(vendorModel),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          vendorModel.title ?? '',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontFamily: AppThemeData.semiBold,
+                            color: AppThemeData.grey900,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        if (vendorModel.location != null &&
+                            vendorModel.location!.isNotEmpty)
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.location_on,
+                                size: 16,
+                                color: AppThemeData.grey400,
+                              ),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  vendorModel.location!,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppThemeData.grey400,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ),
-                  _buildRestaurantBadges(vendorModel),
                 ],
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      vendorModel.title ?? '',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontFamily: AppThemeData.semiBold,
-                        color: AppThemeData.grey900,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (vendorModel.location != null &&
-                        vendorModel.location!.isNotEmpty)
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.location_on,
-                            size: 16,
-                            color: AppThemeData.grey400,
-                          ),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              vendorModel.location!,
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: AppThemeData.grey400,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -503,10 +509,13 @@ class _SearchScreenState extends State<SearchScreen> {
             print(
               "DEBUG: Navigating to restaurant with product: ${productModel.id}",
             );
+            RestaurantDetailsProvider restaurantDetailsProvider =
+                Provider.of<RestaurantDetailsProvider>(context, listen: false);
+
+            restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
             // Navigate to restaurant details screen with the product ID to scroll to
             Get.to(
               () => RestaurantDetailsScreen(scrollToProductId: productModel.id),
-              arguments: {'vendorModel': vendorModel},
             );
           }
         },

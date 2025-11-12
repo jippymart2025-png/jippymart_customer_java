@@ -9,6 +9,10 @@ class MartNavigationProvider extends ChangeNotifier {
   RxInt selectedIndex = 0.obs;
   RxList<Widget> pageList = <Widget>[].obs;
 
+  MartNavigationProvider() {
+    initFunction();
+  }
+
   void initFunction() {
     _initializePages();
   }
@@ -16,23 +20,28 @@ class MartNavigationProvider extends ChangeNotifier {
   void _initializePages() {
     pageList.value = [
       const MartHomeScreen(),
-      const MartCategoriesScreen(), // Using new MartCategoriesScreen with API data
+      const MartCategoriesScreen(),
       const CartScreen(
-          hideBackButton: false, source: 'mart', isFromMartNavigation: true),
+        hideBackButton: false,
+        source: 'mart',
+        isFromMartNavigation: true,
+      ),
       const MartProfileScreen(),
     ];
+    notifyListeners();
   }
 
   void changeIndex(int index) {
     selectedIndex.value = index;
+    notifyListeners(); // Add this to ensure UI updates
   }
-
-  // Get current page
-  Widget get currentPage => pageList[selectedIndex.value];
 
   // Navigation methods
   void goToHome() => changeIndex(0);
-  void goToCategories() => changeIndex(1); // Updated method name
+
+  void goToCategories() => changeIndex(1);
+
   void goToCart() => changeIndex(2);
+
   void goToProfile() => changeIndex(3);
 }

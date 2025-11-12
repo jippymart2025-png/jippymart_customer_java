@@ -77,7 +77,6 @@ import 'app/swiggy_search_screen/provider/swiggy_search_provider.dart';
 import 'app/splash_screen/video_splash_screen.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
-import 'app/wallet_screen/provider/wallet_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -275,7 +274,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => ReviewListProvider()),
         ChangeNotifierProvider(create: (_) => ScanQrCodeProvider()),
         ChangeNotifierProvider(create: (_) => SearchScreenProvider()),
-        ChangeNotifierProvider(create: (_) => WalletProvider()),
         ChangeNotifierProvider(create: (_) => CategoryDetailsProvider()),
         ChangeNotifierProvider(create: (_) => MapViewProvider()),
         ChangeNotifierProvider(create: (_) => GlobalSettingsProvider()),

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:flutter/material.dart';
@@ -20,6 +21,7 @@ class MapViewProvider extends ChangeNotifier {
   late HomeProvider homeController;
   late BestRestaurantProvider bestRestaurantProvider;
   Image? departureOsmIcon; //OSM
+  late RestaurantDetailsProvider restaurantDetailsProvider;
 
   RxList<flutterMap.Marker> osmMarker = <flutterMap.Marker>[].obs;
   final flutterMap.MapController osmMapController = flutterMap.MapController();
@@ -27,6 +29,10 @@ class MapViewProvider extends ChangeNotifier {
   void initFunction(BuildContext context) {
     homeController = Provider.of<HomeProvider>(context, listen: false);
     bestRestaurantProvider = Provider.of<BestRestaurantProvider>(
+      context,
+      listen: false,
+    );
+    restaurantDetailsProvider = Provider.of<RestaurantDetailsProvider>(
       context,
       listen: false,
     );
@@ -52,6 +58,7 @@ class MapViewProvider extends ChangeNotifier {
             height: 40,
             child: GestureDetector(
               onTap: () {
+                restaurantDetailsProvider.initFunction(vendorModels: element);
                 Get.to(
                   const RestaurantDetailsScreen(),
                   arguments: {"vendorModel": element},
@@ -100,6 +107,9 @@ class MapViewProvider extends ChangeNotifier {
         onTap: () {
           int index = bestRestaurantProvider.allNearestRestaurant.indexWhere(
             (p0) => p0.id == id,
+          );
+          restaurantDetailsProvider.initFunction(
+            vendorModels: bestRestaurantProvider.allNearestRestaurant[index],
           );
           Get.to(
             const RestaurantDetailsScreen(),

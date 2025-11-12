@@ -11,7 +11,6 @@ import 'package:jippymart_customer/app/address_screens/provider/address_list_pro
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
-import 'package:jippymart_customer/app/wallet_screen/wallet_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/send_notification.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -21,23 +20,11 @@ import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 import 'package:jippymart_customer/models/order_model.dart';
 import 'package:jippymart_customer/models/payment_model/cod_setting_model.dart';
-import 'package:jippymart_customer/models/payment_model/flutter_wave_model.dart';
-import 'package:jippymart_customer/models/payment_model/mercado_pago_model.dart';
-import 'package:jippymart_customer/models/payment_model/mid_trans.dart';
-import 'package:jippymart_customer/models/payment_model/orange_money.dart';
-import 'package:jippymart_customer/models/payment_model/pay_fast_model.dart';
-import 'package:jippymart_customer/models/payment_model/pay_stack_model.dart';
-import 'package:jippymart_customer/models/payment_model/paypal_model.dart';
-import 'package:jippymart_customer/models/payment_model/paytm_model.dart';
 import 'package:jippymart_customer/models/payment_model/razorpay_model.dart';
-import 'package:jippymart_customer/models/payment_model/wallet_setting_model.dart';
-import 'package:jippymart_customer/models/payment_model/xendit.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-
-import 'package:jippymart_customer/payment/orangePayScreen.dart';
 
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/coupon_filter_service.dart';
@@ -56,7 +43,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
-import 'package:uuid/uuid.dart';
 
 class CartControllerProvider extends ChangeNotifier {
   Future<void> showPaymentMethodDialog(BuildContext context) async {
@@ -344,27 +330,17 @@ class CartControllerProvider extends ChangeNotifier {
     Map<String, dynamic> rules,
   ) {
     double surge = 0;
-    // Weather condition (rain, clouds, etc.)
     String condition = weather['weather'][0]['main'].toLowerCase();
     if (condition.contains("rain")) surge += rules["rain"];
-    // Temperature check for summer/winter
     double temp = weather['main']['temp'];
     if (temp > 45) surge += rules["summer"]; // hot weather
     if (temp < 10) surge += rules["bad_weather"]; // cold/winter
-    print(" newvaluevalue ${surge}");
-    // if(surge > 0) surge+=rules["admin_surge_fee"];
     return surge; // percentage
   }
 
   final CartProvider cartProvider = CartProvider();
-  Rx<TextEditingController> reMarkController = TextEditingController().obs;
+  TextEditingController reMarkController = TextEditingController();
 
-  // 🔑 Track failed validation attempts to prevent repeated tries
-  String? _lastFailedAddressId;
-  DateTime? _lastFailedValidationTime;
-  int _failedAttempts = 0;
-
-  // Cache for mart delivery settings from martDeliveryCharge document
   Map<String, dynamic>? _martDeliverySettings;
   TextEditingController couponCodeController = TextEditingController();
   TextEditingController tipsController = TextEditingController();
@@ -375,7 +351,6 @@ class CartControllerProvider extends ChangeNotifier {
   static const Duration orderDebounceTime = Duration(seconds: 3);
 
   // Add order idempotency tracking
-  String? _currentOrderId;
   bool _orderInProgress = false;
 
   // 🔑 RAZORPAY PAYMENT STATE MANAGEMENT
@@ -403,7 +378,6 @@ class CartControllerProvider extends ChangeNotifier {
   VendorModel? _cachedVendorModel;
   DeliveryCharge? _cachedDeliveryCharge;
   List<CouponModel>? _cachedCouponList;
-  List<CouponModel>? _cachedAllCouponList;
   DateTime? _lastCacheTime;
   static const Duration cacheExpiry = Duration(minutes: 5);
 
@@ -1187,20 +1161,6 @@ class CartControllerProvider extends ChangeNotifier {
   }
   */
 
-  void onClose() {
-    _cachedVendorModel = null;
-    _cachedDeliveryCharge = null;
-    _cachedCouponList = null;
-    _cachedAllCouponList = null;
-    _lastCacheTime = null;
-    _promotionalCalculationCache.clear();
-    _cachedFreeDeliveryKm.clear();
-    _cachedExtraKmCharge.clear();
-    _cachedTaxList = null;
-    _calculationCacheLoaded = false;
-    _razorpayCrashPrevention.safeCleanup();
-  }
-
   // Method to check if cache is valid
   bool _isCacheValid() {
     return _lastCacheTime != null &&
@@ -1860,7 +1820,6 @@ class CartControllerProvider extends ChangeNotifier {
         }
       });
     }
-
     // Load delivery charge (use cache if available)
     if (_cachedDeliveryCharge != null && _isCacheValid()) {
       deliveryChargeModel = _cachedDeliveryCharge!;
@@ -1996,10 +1955,8 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '[COUPON_LOAD] 🎯 Context: ${_currentContext.value}, Filtered: ${contextFilteredCoupons.length}/${combinedCoupons.length}',
       );
-
       // Cache the results
       _cachedCouponList = contextFilteredCoupons;
-      _cachedAllCouponList = contextFilteredAllCoupons;
       _updateCacheTime();
 
       // Update observable lists
@@ -2051,7 +2008,6 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Cache the results
       _cachedCouponList = combinedCoupons.cast<CouponModel>();
-      _cachedAllCouponList = combinedAllCoupons.cast<CouponModel>();
       _updateCacheTime();
 
       // Update observable lists
@@ -2242,17 +2198,6 @@ class CartControllerProvider extends ChangeNotifier {
     _loadCoupons();
   }
 
-  // Force load coupons without any conditions
-  void forceLoadCouponsUnconditionally() {
-    print('[COUPON_DEBUG] 🔧 Force loading coupons unconditionally...');
-
-    // Clear cache to force fresh load
-    _cachedCouponList = null;
-    _cachedAllCouponList = null;
-
-    _loadCoupons();
-  }
-
   // Ensure coupons are loaded when cart screen opens
   void ensureCouponsLoaded() {
     if (_cachedCouponList == null || _cachedCouponList!.isEmpty) {
@@ -2296,7 +2241,6 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Cache the results
       _cachedCouponList = contextFilteredCoupons;
-      _cachedAllCouponList = filteredGlobalCoupons.cast<CouponModel>();
       _updateCacheTime();
 
       // Update observable lists
@@ -3341,14 +3285,12 @@ class CartControllerProvider extends ChangeNotifier {
   void _startOrderProcessing() {
     _orderInProgress = true;
     isProcessingOrder = true;
-    _currentOrderId = DateTime.now().millisecondsSinceEpoch.toString();
   }
 
   /// End order processing
   void _endOrderProcessing() {
     _orderInProgress = false;
     isProcessingOrder = false;
-    _currentOrderId = null;
   }
 
   /// Enhanced place order with idempotency and state management
@@ -4181,21 +4123,10 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Rx<WalletSettingModel> walletSettingModel = WalletSettingModel().obs;
   Rx<CodSettingModel> cashOnDeliverySettingModel = CodSettingModel().obs;
-  Rx<PayFastModel> payFastModel = PayFastModel().obs;
-  Rx<MercadoPagoModel> mercadoPagoModel = MercadoPagoModel().obs;
-  Rx<PayPalModel> payPalModel = PayPalModel().obs;
 
   // Rx<StripeModel> stripeModel = StripeModel().obs;
-  Rx<FlutterWaveModel> flutterWaveModel = FlutterWaveModel().obs;
-  Rx<PayStackModel> payStackModel = PayStackModel().obs;
-  Rx<PaytmModel> paytmModel = PaytmModel().obs;
   Rx<RazorPayModel> razorPayModel = RazorPayModel().obs;
-
-  Rx<MidTrans> midTransModel = MidTrans().obs;
-  Rx<OrangeMoney> orangeMoneyModel = OrangeMoney().obs;
-  Rx<Xendit> xenditModel = Xendit().obs;
 
   getPaymentSettings() async {
     await FireStoreUtils.getPaymentSettingsData().then((value) {
@@ -4205,9 +4136,7 @@ class CartControllerProvider extends ChangeNotifier {
       cashOnDeliverySettingModel.value = CodSettingModel.fromJson(
         jsonDecode(Preferences.getString(Preferences.codSettings)),
       );
-      if (walletSettingModel.value.isEnabled == true) {
-        selectedPaymentMethod = PaymentGateway.wallet.name;
-      } else if (cashOnDeliverySettingModel.value.isEnabled == true &&
+      if (cashOnDeliverySettingModel.value.isEnabled == true &&
           subTotal <= 599 &&
           !hasMartItemsInCart()) {
         selectedPaymentMethod = PaymentGateway.cod.name;
@@ -4797,28 +4726,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  // 🔑 ORIGINAL PLACE ORDER AFTER PAYMENT (COMMENTED FOR REFERENCE)
-  // placeOrderAfterPayment() async {
-  //   print('DEBUG: Starting placeOrderAfterPayment process');
-  //
-  //   try {
-  //     // Prevent order if fallback location is used - apply to ALL payment methods
-  //     if (selectedAddress.value?.locality == 'Ongole, Andhra Pradesh, India' ||
-  //         selectedAddress.value?.addressAs == 'Ongole Center') {
-  //       ShowToastDialog.closeLoader();
-  //       ShowToastDialog.showToast("Please select your actual address or use current location to place order.".tr);
-  //       endOrderProcessing();
-  //       return;
-  //     }
-  //     // ... rest of original logic
-  //   } catch (e) {
-  //     print('DEBUG: Error in placeOrderAfterPayment: $e');
-  //     ShowToastDialog.closeLoader();
-  //     ShowToastDialog.showToast("An error occurred while placing your order. Please try again.".tr);
-  //     endOrderProcessing();
-  //   }
-  // }
-
   // 🔑 ENHANCED PLACE ORDER AFTER PAYMENT - NEW IMPLEMENTATION
   placeOrderAfterPayment() async {
     print('🔑 ENHANCED ORDER PLACEMENT - Starting process');
@@ -4914,182 +4821,11 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Future<String> createPaymentLink({required var amount}) async {
-    var ordersId = const Uuid().v1();
-    final url = Uri.parse(
-      midTransModel.value.isSandbox!
-          ? 'https://api.sandbox.midtrans.com/v1/payment-links'
-          : 'https://api.midtrans.com/v1/payment-links',
-    );
-
-    final response = await http.post(
-      url,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': generateBasicAuthHeader(
-          midTransModel.value.serverKey!,
-        ),
-      },
-      body: jsonEncode({
-        'transaction_details': {
-          'order_id': ordersId,
-          'gross_amount': double.parse(amount.toString()).toInt(),
-        },
-        'usage_limit': 2,
-        "callbacks": {
-          "finish": "https://www.google.com?merchant_order_id=$ordersId",
-        },
-      }),
-    );
-
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final responseData = jsonDecode(response.body);
-      return responseData['payment_url'];
-    } else {
-      ShowToastDialog.showToast(
-        "something went wrong, please contact admin.".tr,
-      );
-      return '';
-    }
-  }
-
-  String generateBasicAuthHeader(String apiKey) {
-    String credentials = '$apiKey:';
-    String base64Encoded = base64Encode(utf8.encode(credentials));
-    return 'Basic $base64Encoded';
-  }
-
   //Orangepay payment
   static String accessToken = '';
   static String payToken = '';
   static String orderId = '';
   static String amount = '';
-
-  orangeMakePayment({
-    required String amount,
-    required BuildContext context,
-  }) async {
-    reset();
-    var id = const Uuid().v4();
-    var paymentURL = await fetchToken(
-      context: context,
-      orderId: id,
-      amount: amount,
-      currency: 'USD',
-    );
-    ShowToastDialog.closeLoader();
-    if (paymentURL.toString() != '') {
-      Get.to(
-        () => OrangeMoneyScreen(
-          initialURl: paymentURL,
-          accessToken: accessToken,
-          amount: amount,
-          orangePay: orangeMoneyModel.value,
-          orderId: orderId,
-          payToken: payToken,
-        ),
-      )!.then((value) {
-        if (value == true) {
-          ShowToastDialog.showToast("Payment Successful!!".tr);
-          placeOrder(context);
-          ();
-        }
-      });
-    } else {
-      ShowToastDialog.showToast("Payment Unsuccessful!!".tr);
-    }
-  }
-
-  Future fetchToken({
-    required String orderId,
-    required String currency,
-    required BuildContext context,
-    required String amount,
-  }) async {
-    String apiUrl = 'https://api.orange.com/oauth/v3/token';
-    Map<String, String> requestBody = {'grant_type': 'client_credentials'};
-
-    var response = await http.post(
-      Uri.parse(apiUrl),
-      headers: <String, String>{
-        'Authorization': "Basic ${orangeMoneyModel.value.auth!}",
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
-      },
-      body: requestBody,
-    );
-
-    // Handle the response
-
-    if (response.statusCode == 200) {
-      Map<String, dynamic> responseData = jsonDecode(response.body);
-
-      accessToken = responseData['access_token'];
-      // ignore: use_build_context_synchronously
-      return await webpayment(
-        context: context,
-        amountData: amount,
-        currency: currency,
-        orderIdData: orderId,
-      );
-    } else {
-      ShowToastDialog.showToast(
-        "Something went wrong, please contact admin.".tr,
-      );
-      return '';
-    }
-  }
-
-  Future webpayment({
-    required String orderIdData,
-    required BuildContext context,
-    required String currency,
-    required String amountData,
-  }) async {
-    orderId = orderIdData;
-    amount = amountData;
-    String apiUrl = orangeMoneyModel.value.isSandbox! == true
-        ? 'https://api.orange.com/orange-money-webpay/dev/v1/webpayment'
-        : 'https://api.orange.com/orange-money-webpay/cm/v1/webpayment';
-    Map<String, String> requestBody = {
-      "merchant_key": orangeMoneyModel.value.merchantKey ?? '',
-      "currency": orangeMoneyModel.value.isSandbox == true ? "OUV" : currency,
-      "order_id": orderId,
-      "amount": amount,
-      "reference": 'Y-Note Test',
-      "lang": "en",
-      "return_url": orangeMoneyModel.value.returnUrl!.toString(),
-      "cancel_url": orangeMoneyModel.value.cancelUrl!.toString(),
-      "notif_url": orangeMoneyModel.value.notifUrl!.toString(),
-    };
-
-    var response = await http.post(
-      Uri.parse(apiUrl),
-      headers: <String, String>{
-        'Authorization': 'Bearer $accessToken',
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: json.encode(requestBody),
-    );
-
-    // Handle the response
-    if (response.statusCode == 201) {
-      Map<String, dynamic> responseData = jsonDecode(response.body);
-      if (responseData['message'] == 'OK') {
-        payToken = responseData['pay_token'];
-        return responseData['payment_url'];
-      } else {
-        return '';
-      }
-    } else {
-      ShowToastDialog.showToast(
-        "Something went wrong, please contact admin.".tr,
-      );
-      return '';
-    }
-  }
 
   static reset() {
     accessToken = '';
@@ -5122,38 +4858,6 @@ class CartControllerProvider extends ChangeNotifier {
     ShowToastDialog.showToast(
       "PayPal payment is disabled for APK size optimization".tr,
     );
-    // Navigator.of(context).push(
-    //   MaterialPageRoute(
-    //     builder: (BuildContext context) => UsePaypal(
-    //         sandboxMode: payPalModel.value.isLive == true ? false : true,
-    //         clientId: payPalModel.value.paypalClient ?? '',
-    //         secretKey: payPalModel.value.paypalSecret ?? '',
-    //         returnURL: "com.parkme://paypalpay",
-    //         cancelURL: "com.parkme://paypalpay",
-    //         transactions: [
-    //           {
-    //             "amount": {
-    //               "total": amount,
-    //               "currency": "USD",
-    //               "details": {"subtotal": amount}
-    //             },
-    //           }
-    //         ],
-    //         note: "Contact us for any questions on your order.",
-    //         onSuccess: (Map params) async {
-    //           placeOrder();
-    //           ShowToastDialog.showToast("Payment Successful!!".tr);
-    //         },
-    //         onError: (error) {
-    //           Get.back();
-    //           ShowToastDialog.showToast("Payment UnSuccessful!!".tr);
-    //         },
-    //         onCancel: (params) {
-    //           Get.back();
-    //           ShowToastDialog.showToast("Payment UnSuccessful!!".tr);
-    //         }),
-    //   ),
-    // );
   }
 
   /// Validate minimum order value for mart items
@@ -5287,16 +4991,6 @@ class CartControllerProvider extends ChangeNotifier {
       print('DEBUG: Error in minimum order validation: $e');
       // Re-throw the exception to stop the order process
       rethrow;
-    }
-  }
-
-  /// Reset failed validation tracking when address changes
-  void _resetFailedValidationTracking() {
-    if (selectedAddress?.id != _lastFailedAddressId) {
-      _lastFailedAddressId = null;
-      _lastFailedValidationTime = null;
-      _failedAttempts = 0;
-      print('DEBUG: Reset failed validation tracking - new address selected');
     }
   }
 
@@ -5694,3 +5388,5 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 }
+
+enum PaymentGateway { razorpay, cod, wallet }

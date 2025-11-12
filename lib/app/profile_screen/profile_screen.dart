@@ -26,6 +26,9 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
+import '../edit_profile_screen/provider/edit_profile_provider.dart'
+    show EditProfileProvider;
+
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -387,7 +390,7 @@ class ProfileScreen extends StatelessWidget {
                                                                 .userModel!
                                                                 .fcmToken =
                                                             "";
-                                                        await FireStoreUtils.updateUser(
+                                                        await EditProfileProvider.updateUser(
                                                           Constant.userModel!,
                                                         );
                                                         Constant.userModel =

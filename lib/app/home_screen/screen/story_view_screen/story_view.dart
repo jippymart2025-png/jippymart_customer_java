@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/home_screen/screen/story_view_screen/provider/story_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/story_model.dart';
@@ -10,6 +11,7 @@ import 'package:jippymart_customer/widget/story_view/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
 import '../../../../widget/story_view/widgets/story_view.dart';
 
@@ -119,85 +121,93 @@ class MoreStoriesState extends State<MoreStories> {
                       return const SizedBox();
                     } else {
                       VendorModel vendorModel = snapshot.data!;
-                      return InkWell(
-                        onTap: () {
-                          Get.to(
-                            const RestaurantDetailsScreen(),
-                            arguments: {"vendorModel": vendorModel},
-                          );
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipOval(
-                              child: NetworkImageWidget(
-                                imageUrl: vendorModel.photo.toString(),
-                                width: 50,
-                                height: 50,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    vendorModel.title.toString(),
-                                    textAlign: TextAlign.center,
-                                    maxLines: 1,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      overflow: TextOverflow.ellipsis,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                      return Consumer<RestaurantDetailsProvider>(
+                        builder: (context, restaurantDetailsProvider, _) {
+                          return InkWell(
+                            onTap: () {
+                              restaurantDetailsProvider.initFunction(
+                                vendorModels: vendorModel,
+                              );
+                              Get.to(
+                                const RestaurantDetailsScreen(),
+                                arguments: {"vendorModel": vendorModel},
+                              );
+                            },
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                ClipOval(
+                                  child: NetworkImageWidget(
+                                    imageUrl: vendorModel.photo.toString(),
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
                                   ),
-                                  Row(
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      SvgPicture.asset(
-                                        "assets/icons/ic_star.svg",
-                                      ),
-                                      const SizedBox(width: 5),
                                       Text(
-                                        "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} reviews",
+                                        vendorModel.title.toString(),
                                         textAlign: TextAlign.center,
                                         maxLines: 1,
                                         style: const TextStyle(
-                                          color: AppThemeData.warning300,
-                                          fontSize: 12,
+                                          color: Colors.white,
+                                          fontSize: 16,
                                           overflow: TextOverflow.ellipsis,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
+                                      Row(
+                                        children: [
+                                          SvgPicture.asset(
+                                            "assets/icons/ic_star.svg",
+                                          ),
+                                          const SizedBox(width: 5),
+                                          Text(
+                                            "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} reviews",
+                                            textAlign: TextAlign.center,
+                                            maxLines: 1,
+                                            style: const TextStyle(
+                                              color: AppThemeData.warning300,
+                                              fontSize: 12,
+                                              overflow: TextOverflow.ellipsis,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            ),
-                            InkWell(
-                              onTap: () async {
-                                Get.back();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.all(10.0),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(30),
-                                  color: Colors.grey,
                                 ),
-                                child: SvgPicture.asset(
-                                  "assets/icons/ic_close.svg",
-                                  colorFilter: ColorFilter.mode(
-                                    AppThemeData.grey800,
-                                    BlendMode.srcIn,
+                                InkWell(
+                                  onTap: () async {
+                                    Get.back();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(10.0),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(30),
+                                      color: Colors.grey,
+                                    ),
+                                    child: SvgPicture.asset(
+                                      "assets/icons/ic_close.svg",
+                                      colorFilter: ColorFilter.mode(
+                                        AppThemeData.grey800,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       );
                     }
                   }

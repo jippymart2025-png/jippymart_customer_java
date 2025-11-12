@@ -10,22 +10,20 @@ import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 
 class MartProvider extends ChangeNotifier {
   //NEW SECTION
-  RxMap<String, List<MartItemModel>> categoryProductsMap =
-      <String, List<MartItemModel>>{}.obs;
-  RxList<String> uniqueCategoryTitles = <String>[].obs;
+  Map<String, List<MartItemModel>> categoryProductsMap =
+      <String, List<MartItemModel>>{};
+  List<String> uniqueCategoryTitles = <String>[];
 
   Future<void> loadCategoryProductsForSections() async {
     try {
-      print(
-        '[MART CONTROLLER] 🔄 Loading products grouped by categoryTitle...',
-      );
       // Get all mart items
       final allProducts = await _firestoreService.getMartItems(
         search: null,
@@ -205,6 +203,7 @@ class MartProvider extends ChangeNotifier {
   bool filterAvailableOnly = true;
 
   void initFunction() {
+    loadMartBannersStream();
     loadCategoryProductsForSections();
     _preloadSections();
     _initializeServices();
@@ -263,19 +262,86 @@ class MartProvider extends ChangeNotifier {
 
   /// Load mart banners using lazy loading streams
   void loadMartBannersStream() {
-    print('[MART CONTROLLER] Starting lazy loading mart banners stream...');
-
-    // Use lazy loading - only start streams when needed
     _initializeBannerStreams();
+  }
+
+  static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
+    final StreamController<List<MartBannerModel>> controller =
+        StreamController<List<MartBannerModel>>();
+    String? customerZoneId = Constant.selectedZone?.id;
+    Future<void> fetchBanners() async {
+      try {
+        final response = await http.get(
+          Uri.parse('${AppConst.baseUrl}banners/top'),
+          headers: await getHeaders(),
+        );
+        print("getMartBottomBannersStream ${response.body}");
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseData = json.decode(response.body);
+
+          if (responseData['success'] == true) {
+            List<MartBannerModel> bannerList = [];
+            List<MartBannerModel> filteredBannerList = [];
+            // Process each banner from API response
+            for (var bannerData in responseData['data']) {
+              MartBannerModel banner = MartBannerModel.fromJson({
+                ...bannerData,
+                'id': bannerData['id'].toString(),
+              });
+              bannerList.add(banner);
+              // Filter banners by zone
+              bool shouldShowBanner = false;
+
+              // If banner has no zone specified, show it to all zones
+              if (banner.zoneId == null || banner.zoneId!.isEmpty) {
+                shouldShowBanner = true;
+              }
+              // If customer zone is null/not set, show all banners (fallback behavior)
+              else if (customerZoneId == null || customerZoneId.isEmpty) {
+                shouldShowBanner = true;
+              }
+              // If banner zone matches customer zone
+              else if (banner.zoneId == customerZoneId) {
+                shouldShowBanner = true;
+              }
+
+              if (shouldShowBanner) {
+                filteredBannerList.add(banner);
+              }
+            }
+
+            // Sort by set_order in memory
+            filteredBannerList.sort((a, b) {
+              int orderA = a.setOrder ?? 0;
+              int orderB = b.setOrder ?? 0;
+              return orderA.compareTo(orderB);
+            });
+
+            controller.add(filteredBannerList);
+          } else {
+            controller.add(<MartBannerModel>[]);
+          }
+        } else {
+          controller.add(<MartBannerModel>[]);
+        }
+      } catch (error) {
+        controller.add(<MartBannerModel>[]);
+      }
+    }
+
+    // Initial fetch
+    fetchBanners();
+
+    return controller.stream;
   }
 
   /// Initialize banner streams with lazy loading
   void _initializeBannerStreams() {
-    // Stream for top banners - lazy loading
-    FireStoreUtils.getMartTopBannersStream().listen(
+    getMartBottomBannersStream().listen(
       (banners) {
         print('[MART CONTROLLER] Lazy load - Top banners: ${banners.length}');
         martTopBanners = banners;
+        notifyListeners();
         if (banners.isNotEmpty) {
           _initializeBannerControllers();
         }
@@ -286,19 +352,7 @@ class MartProvider extends ChangeNotifier {
       },
     );
 
-    // Stream for bottom banners - lazy loading
-    FireStoreUtils.getMartBottomBannersStream().listen(
-      (banners) {
-        print(
-          '[MART CONTROLLER] Lazy load - Bottom banners: ${banners.length}',
-        );
-        martBottomBanners = banners;
-      },
-      onError: (error) {
-        print('[MART CONTROLLER] Lazy load error for bottom banners: $error');
-        martBottomBanners.clear();
-      },
-    );
+    notifyListeners();
   }
 
   /// Initialize banner PageControllers at middle position for infinite scrolling
@@ -314,7 +368,6 @@ class MartProvider extends ChangeNotifier {
       martTopBannerController = PageController(initialPage: 0);
       currentTopBannerPage.value = 0;
     }
-
     // Initialize bottom banner controller at middle position
     if (martBottomBanners.isNotEmpty && martBottomBanners.length > 1) {
       int middlePosition =
@@ -326,7 +379,7 @@ class MartProvider extends ChangeNotifier {
       martBottomBannerController = PageController(initialPage: 0);
       currentBottomBannerPage = 0;
     }
-
+    notifyListeners();
     print(
       '[MART CONTROLLER] Banner controllers initialized for infinite scrolling',
     );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/mart_banner_model.dart';
@@ -127,112 +129,119 @@ class ReusableBannerWidget extends StatelessWidget {
       redirectId = banner.redirectId;
     }
 
-    return InkWell(
-      onTap: () => _handleBannerTap(context, redirectType, redirectId),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8.0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Consumer<RestaurantDetailsProvider>(
+      builder: (context, restaurantDetailsProvider, _) {
+        return InkWell(
+          onTap: () => _handleBannerTap(context, redirectType, redirectId),
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8.0),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Banner Image
-              if (imageUrl != null && imageUrl.isNotEmpty)
-                Image.network(
-                  imageUrl,
-                  fit: BoxFit.fill,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: Colors.grey[100],
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_outlined,
-                          color: Colors.grey,
-                          size: 40,
-                        ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  // Banner Image
+                  if (imageUrl != null && imageUrl.isNotEmpty)
+                    Image.network(
+                      imageUrl,
+                      fit: BoxFit.fill,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          color: Colors.grey[100],
+                          child: const Center(
+                            child: Icon(
+                              Icons.image_outlined,
+                              color: Colors.grey,
+                              size: 40,
+                            ),
+                          ),
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        // Lazy loading - show placeholder immediately while image loads in background
+                        return Container(color: Colors.grey[50], child: child);
+                      },
+                    )
+                  else
+                    Container(
+                      color: Colors.grey[300],
+                      child: const Icon(
+                        Icons.image_not_supported,
+                        color: Colors.grey,
+                        size: 50,
                       ),
-                    );
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    // Lazy loading - show placeholder immediately while image loads in background
-                    return Container(color: Colors.grey[50], child: child);
-                  },
-                )
-              else
-                Container(
-                  color: Colors.grey[300],
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    color: Colors.grey,
-                    size: 50,
-                  ),
-                ),
+                    ),
 
-              // Gradient overlay for better text readability
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.3)],
-                  ),
-                ),
-              ),
-
-              // Banner text content
-              if (title != null || text != null || description != null)
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Title removed - only show text and description
-                        if (text != null && text.isNotEmpty)
-                          Text(
-                            text,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        if (description != null && description.isNotEmpty)
-                          const SizedBox(height: 4),
-                        if (description != null && description.isNotEmpty)
-                          Text(
-                            description,
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 12,
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                      ],
+                  // Gradient overlay for better text readability
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.transparent,
+                          Colors.black.withOpacity(0.3),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-            ],
+
+                  // Banner text content
+                  if (title != null || text != null || description != null)
+                    Positioned(
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Title removed - only show text and description
+                            if (text != null && text.isNotEmpty)
+                              Text(
+                                text,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            if (description != null && description.isNotEmpty)
+                              const SizedBox(height: 4),
+                            if (description != null && description.isNotEmpty)
+                              Text(
+                                description,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -254,11 +263,11 @@ class ReusableBannerWidget extends StatelessWidget {
       switch (redirectType) {
         case 'store':
           print('[BANNER NAVIGATION] 🏪 Store redirect');
-          await _handleStoreRedirect(redirectId);
+          await _handleStoreRedirect(redirectId, context);
           break;
         case 'product':
           print('[BANNER NAVIGATION] 🛍️ Product redirect');
-          await _handleProductRedirect(redirectId);
+          await _handleProductRedirect(redirectId, context);
           break;
         case 'category':
         case 'mart_category':
@@ -278,7 +287,10 @@ class ReusableBannerWidget extends StatelessWidget {
     }
   }
 
-  Future<void> _handleStoreRedirect(String storeId) async {
+  Future<void> _handleStoreRedirect(
+    String storeId,
+    BuildContext context,
+  ) async {
     ShowToastDialog.showLoader("Please wait".tr);
 
     try {
@@ -287,6 +299,9 @@ class ReusableBannerWidget extends StatelessWidget {
       if (vendorModel != null) {
         if (vendorModel.zoneId == Constant.selectedZone?.id) {
           ShowToastDialog.closeLoader();
+          RestaurantDetailsProvider restaurantDetailsProvider =
+              Provider.of<RestaurantDetailsProvider>(context, listen: false);
+          restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
           Get.to(
             const RestaurantDetailsScreen(),
             arguments: {"vendorModel": vendorModel},
@@ -308,7 +323,10 @@ class ReusableBannerWidget extends StatelessWidget {
     }
   }
 
-  Future<void> _handleProductRedirect(String productId) async {
+  Future<void> _handleProductRedirect(
+    String productId,
+    BuildContext context,
+  ) async {
     ShowToastDialog.showLoader("Please wait".tr);
 
     try {
@@ -334,6 +352,12 @@ class ReusableBannerWidget extends StatelessWidget {
           if (vendorModel != null) {
             if (vendorModel.zoneId == Constant.selectedZone?.id) {
               ShowToastDialog.closeLoader();
+              RestaurantDetailsProvider restaurantDetailsProvider =
+                  Provider.of<RestaurantDetailsProvider>(
+                    context,
+                    listen: false,
+                  );
+              restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
               Get.to(
                 const RestaurantDetailsScreen(),
                 arguments: {"vendorModel": vendorModel},

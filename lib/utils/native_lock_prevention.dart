@@ -161,7 +161,6 @@ class NativeLockPrevention {
 /// Prevents ANR in platform channel operations
 class PlatformChannelANRPrevention {
   static const Duration _maxChannelTime = Duration(seconds: 1);
-  static const Duration _maxHeavyChannelTime = Duration(seconds: 3);
 
   /// **Safe platform channel calls**
   static Future<T> safePlatformCall<T>(

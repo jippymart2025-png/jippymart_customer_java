@@ -8,19 +8,13 @@ import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 /// This utility provides real-time ANR detection and monitoring
 /// to track the effectiveness of ANR prevention measures.
 class ANRMonitor {
-  static DateTime? _lastUIUpdate;
   static bool _isMonitoring = false;
-  static const Duration _anrThreshold = Duration(seconds: 5);
-  static const Duration _checkInterval = Duration(seconds: 1);
-  static int _anrWarnings = 0;
-  static int _totalChecks = 0;
 
   /// **Start ANR monitoring**
   static void startMonitoring() {
     if (_isMonitoring) return;
 
     _isMonitoring = true;
-    _lastUIUpdate = DateTime.now();
 
     log('ANR_MONITOR: Started monitoring for ANR detection');
 

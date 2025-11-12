@@ -22,8 +22,6 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 
-import '../../../utils/utils/sql_storage_const.dart';
-
 class RestaurantDetailsProvider extends ChangeNotifier {
   final String? scrollToProductId;
 

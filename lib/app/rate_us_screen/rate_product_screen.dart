@@ -39,7 +39,7 @@ class RateProductScreen extends StatelessWidget {
               ),
             ),
           ),
-          body: controller.isLoading.value
+          body: controller.isLoading
               ? Constant.loader()
               : Padding(
                   padding: const EdgeInsets.symmetric(
@@ -74,7 +74,7 @@ class RateProductScreen extends StatelessWidget {
                                   ),
                                 ),
                                 Text(
-                                  "${controller.productModel.value.name}".tr,
+                                  "${controller.productModel.name}".tr,
                                   style: TextStyle(
                                     color: AppThemeData.grey800,
                                     fontSize: 18,
@@ -83,7 +83,7 @@ class RateProductScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 10),
                                 RatingBar.builder(
-                                  initialRating: controller.ratings.value,
+                                  initialRating: controller.ratings,
                                   minRating: 1,
                                   direction: Axis.horizontal,
                                   itemCount: 5,
@@ -96,7 +96,7 @@ class RateProductScreen extends StatelessWidget {
                                     color: AppThemeData.warning300,
                                   ),
                                   onRatingUpdate: (double rate) {
-                                    controller.ratings.value = rate;
+                                    controller.ratings = rate;
                                   },
                                 ),
                                 Padding(
@@ -136,15 +136,11 @@ class RateProductScreen extends StatelessWidget {
                                           ),
                                           RatingBar.builder(
                                             initialRating:
-                                                controller
-                                                        .ratingModel
-                                                        .value
-                                                        .id ==
+                                                controller.ratingModel.id ==
                                                     null
                                                 ? 0.0
                                                 : controller
                                                           .ratingModel
-                                                          .value
                                                           .reviewAttributes![controller
                                                           .reviewAttributeList[index]
                                                           .id] ??
@@ -345,8 +341,7 @@ class RateProductScreen extends StatelessWidget {
                                     keyboardType: TextInputType.text,
                                     textCapitalization:
                                         TextCapitalization.sentences,
-                                    controller:
-                                        controller.commentController.value,
+                                    controller: controller.commentController,
                                     maxLines: 4,
                                     textInputAction: TextInputAction.done,
                                     style: TextStyle(

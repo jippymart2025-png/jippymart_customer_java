@@ -7,6 +7,7 @@ import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provi
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
@@ -187,7 +188,10 @@ class FinalDeepLinkService {
   }
 
   /// **NEW: Navigate to restaurant with actual data**
-  void _navigateToRestaurantWithData(String restaurantId) async {
+  void _navigateToRestaurantWithData(
+    String restaurantId,
+    BuildContext context,
+  ) async {
     try {
       print('🔥 [NEW HANDLER] ===== RESTAURANT DEEP LINK NAVIGATION =====');
       print('🔥 [NEW HANDLER] Restaurant ID: $restaurantId');
@@ -209,21 +213,11 @@ class FinalDeepLinkService {
         // Navigate to restaurant details with actual data
         print('🔥 [NEW HANDLER] Navigating to restaurant details with data...');
         // Use GetX navigation with restaurant data
-        Get.to(
-          () => const RestaurantDetailsScreen(),
-          arguments: {'vendorModel': restaurant},
-        );
-        print(
-          '🔥✅ [NEW HANDLER] Successfully navigated to restaurant details with data!',
-        );
+        RestaurantDetailsProvider restaurantDetailsProvider =
+            Provider.of<RestaurantDetailsProvider>(context, listen: false);
+        restaurantDetailsProvider.initFunction(vendorModels: restaurant);
+        Get.to(() => const RestaurantDetailsScreen());
       } else {
-        print('❌ [NEW HANDLER] Restaurant not found: $restaurantId');
-        print('🔍 [NEW HANDLER] This could mean:');
-        print('🔍 [NEW HANDLER] 1. Restaurant ID is incorrect');
-        print('🔍 [NEW HANDLER] 2. Restaurant doesn\'t exist in database');
-        print('🔍 [NEW HANDLER] 3. Restaurant is not published/available');
-        print('🔍 [NEW HANDLER] Redirecting to dashboard...');
-
         // Navigate to dashboard instead of showing nothing
         _navigateToDashboard();
       }
@@ -405,39 +399,24 @@ class FinalDeepLinkService {
   }
 
   void _newSimpleDeepLinkHandler(String url, BuildContext context) async {
-    print('🔥 [NEW HANDLER] NEW SIMPLE Deep Link Handler started for: $url');
     // Wait for Navigator to be available
     int attempts = 0;
     while (GlobalDeeplinkHandler.navigatorKey.currentState == null &&
         attempts < 100) {
-      print('🔥 [NEW HANDLER] Waiting for Navigator... attempt $attempts');
       await Future.delayed(Duration(milliseconds: 100));
       attempts++;
     }
     if (GlobalDeeplinkHandler.navigatorKey.currentState == null) {
-      print('❌ [NEW HANDLER] Navigator not available after 10 seconds');
       return;
     }
     // Wait additional 10 seconds for app to be fully ready
-    print(
-      '🔥 [NEW HANDLER] Navigator ready, waiting 10 seconds for app to load...',
-    );
+
     await Future.delayed(Duration(seconds: 5));
 
     // Extract product ID from URL
     final uri = Uri.parse(url);
     final pathSegments = uri.pathSegments;
     String? productId;
-
-    print('🔥 [NEW HANDLER] ===== DEEP LINK URL PARSING =====');
-    print('🔥 [NEW HANDLER] Original URL: $url');
-    print('🔥 [NEW HANDLER] Parsed URI: $uri');
-    print('🔥 [NEW HANDLER] URI Scheme: ${uri.scheme}');
-    print('🔥 [NEW HANDLER] URI Host: ${uri.host}');
-    print('🔥 [NEW HANDLER] URI Path: ${uri.path}');
-    print('🔥 [NEW HANDLER] Path segments: $pathSegments');
-    print('🔥 [NEW HANDLER] Path segments count: ${pathSegments.length}');
-    print('🔥 categoriesservice ');
 
     // Handle different URL formats
     if (uri.scheme == 'jippymart') {
@@ -450,7 +429,7 @@ class FinalDeepLinkService {
             pathSegments[0] == 'restaurant') {
           // Format: jippymart://restaurant/123
           final restaurantId = pathSegments[1];
-          _navigateToRestaurantWithData(restaurantId);
+          _navigateToRestaurantWithData(restaurantId, context);
           return;
         }
         if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
@@ -471,14 +450,14 @@ class FinalDeepLinkService {
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'restaurant') {
         final restaurantId = pathSegments[1];
         print('🔥 [NEW HANDLER] HTTPS scheme - Restaurant ID: $restaurantId');
-        _navigateToRestaurantWithData(restaurantId);
+        _navigateToRestaurantWithData(restaurantId, context);
         return;
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'restaurants') {
         final restaurantId = pathSegments[1];
         print(
           '🔥 [NEW HANDLER] HTTPS scheme (plural) - Restaurant ID: $restaurantId',
         );
-        _navigateToRestaurantWithData(restaurantId);
+        _navigateToRestaurantWithData(restaurantId, context);
         return;
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'category') {
         final categoryId = pathSegments[1];

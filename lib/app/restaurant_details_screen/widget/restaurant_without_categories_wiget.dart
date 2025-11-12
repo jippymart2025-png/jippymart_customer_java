@@ -404,11 +404,6 @@ Widget buildProductsWithoutCategories(
                       if (controller.favouriteItemList
                           .where((p0) => p0.productId == productModel.id)
                           .isNotEmpty) {
-                        FavouriteItemModel favouriteModel = FavouriteItemModel(
-                          productId: productModel.id,
-                          storeId: controller.vendorModel.id,
-                          userId: userId,
-                        );
                         controller.favouriteItemList.removeWhere(
                           (item) => item.productId == productModel.id,
                         );

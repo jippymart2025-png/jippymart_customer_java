@@ -16,7 +16,7 @@ class OrderProvider extends ChangeNotifier {
   List<OrderModel> cancelledList = <OrderModel>[];
   bool isLoading = true;
 
-  void initFunction() {
+  Future<void> initFunction() async {
     getOrder();
   }
 

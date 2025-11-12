@@ -21,7 +21,7 @@ class FavouriteProvider extends ChangeNotifier {
 
   bool isLoading = true;
 
-  void initFunction() {
+  Future<void> initFunction() async {
     isLoading = true;
     getData();
     notifyListeners();

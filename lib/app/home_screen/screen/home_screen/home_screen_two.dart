@@ -12,7 +12,9 @@ import 'package:jippymart_customer/app/location_permission_screen/location_permi
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/profile_screen/profile_screen.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
+import 'package:jippymart_customer/app/swiggy_search_screen/provider/swiggy_search_provider.dart';
 import 'package:jippymart_customer/app/swiggy_search_screen/swiggy_search_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -519,84 +521,94 @@ class HomeScreenTwo extends StatelessWidget {
                                         ],
                                       ),
                                       const SizedBox(height: 20),
-                                      InkWell(
-                                        onTap: () {
-                                          Get.to(
-                                            () => const SwiggySearchScreen(),
+                                      Consumer<SwiggySearchProvider>(
+                                        builder: (context, swiggySearchProvider, _) {
+                                          return InkWell(
+                                            onTap: () {
+                                              swiggySearchProvider
+                                                  .initFunction();
+                                              Get.to(
+                                                () =>
+                                                    const SwiggySearchScreen(),
+                                              );
+                                            },
+                                            child: AnimatedSearchHint(
+                                              controller: null,
+                                              enable: false,
+                                              fillColor: Colors.white,
+                                              fontFamily: 'Outfit-Bold',
+                                              textStyle: TextStyle(
+                                                fontFamily: 'Outfit-Bold',
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 12,
+                                                color: Colors.black,
+                                              ),
+                                              hintTextStyle: TextStyle(
+                                                fontFamily: 'Outfit-Bold',
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 15,
+                                                color: Colors.grey,
+                                              ),
+                                              suffix: Padding(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 16,
+                                                    ),
+                                                child: SvgPicture.asset(
+                                                  "assets/icons/ic_search.svg",
+                                                  color: Color(0xFFff5201),
+                                                ),
+                                              ),
+                                              hints: [
+                                                // Food items
+                                                "Search 'cake'",
+                                                "Search 'biryani'",
+                                                "Search 'ice cream'",
+                                                "Search 'pizza'",
+                                                "Search 'burger'",
+                                                "Search 'sushi'",
+                                                "Search 'restaurants'",
+                                                "Search 'curry'",
+                                                "Search 'noodles'",
+                                                "Search 'tacos'",
+                                                "Search 'chicken'",
+                                                "Search 'salad'",
+                                                "Search 'breakfast'",
+                                                "Search 'pasta'",
+                                                "Search 'soup'",
+                                                "Search 'wraps'",
+                                                "Search 'donuts'",
+                                                "Search 'coffee'",
+                                                "Search 'cookies'",
+                                                "Search 'drinks'",
+
+                                                // Motivational messages
+                                                "Search 'healthy food'",
+                                                "Search 'trending dishes'",
+                                                "Search 'popular items'",
+                                                "Search 'top rated'",
+                                                "Search 'new arrivals'",
+                                                "Search 'premium'",
+                                                "Search 'best deals'",
+                                                "Search 'award winning'",
+                                                "Search 'special offers'",
+                                                "Search 'today's special'",
+                                                "Search 'gift ideas'",
+                                                "Search 'late night'",
+                                                "Search 'morning'",
+                                                "Search 'evening'",
+                                                "Search 'dinner'",
+                                                "Search 'family meals'",
+                                                "Search 'group orders'",
+                                                "Search 'office lunch'",
+                                                "Search 'party food'",
+                                              ],
+                                              interval: const Duration(
+                                                seconds: 2,
+                                              ),
+                                            ),
                                           );
                                         },
-                                        child: AnimatedSearchHint(
-                                          controller: null,
-                                          enable: false,
-                                          fillColor: Colors.white,
-                                          fontFamily: 'Outfit-Bold',
-                                          textStyle: TextStyle(
-                                            fontFamily: 'Outfit-Bold',
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                            color: Colors.black,
-                                          ),
-                                          hintTextStyle: TextStyle(
-                                            fontFamily: 'Outfit-Bold',
-                                            fontWeight: FontWeight.w900,
-                                            fontSize: 15,
-                                            color: Colors.grey,
-                                          ),
-                                          suffix: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                            ),
-                                            child: SvgPicture.asset(
-                                              "assets/icons/ic_search.svg",
-                                              color: Color(0xFFff5201),
-                                            ),
-                                          ),
-                                          hints: [
-                                            // Food items
-                                            "Search 'cake'",
-                                            "Search 'biryani'",
-                                            "Search 'ice cream'",
-                                            "Search 'pizza'",
-                                            "Search 'burger'",
-                                            "Search 'sushi'",
-                                            "Search 'restaurants'",
-                                            "Search 'curry'",
-                                            "Search 'noodles'",
-                                            "Search 'tacos'",
-                                            "Search 'chicken'",
-                                            "Search 'salad'",
-                                            "Search 'breakfast'",
-                                            "Search 'pasta'",
-                                            "Search 'soup'",
-                                            "Search 'wraps'",
-                                            "Search 'donuts'",
-                                            "Search 'coffee'",
-                                            "Search 'cookies'",
-                                            "Search 'drinks'",
-
-                                            // Motivational messages
-                                            "Search 'healthy food'",
-                                            "Search 'trending dishes'",
-                                            "Search 'popular items'",
-                                            "Search 'top rated'",
-                                            "Search 'new arrivals'",
-                                            "Search 'premium'",
-                                            "Search 'best deals'",
-                                            "Search 'award winning'",
-                                            "Search 'special offers'",
-                                            "Search 'today's special'",
-                                            "Search 'gift ideas'",
-                                            "Search 'late night'",
-                                            "Search 'morning'",
-                                            "Search 'evening'",
-                                            "Search 'dinner'",
-                                            "Search 'family meals'",
-                                            "Search 'group orders'",
-                                            "Search 'office lunch'",
-                                            "Search 'party food'",
-                                          ],
-                                          interval: const Duration(seconds: 2),
-                                        ),
                                       ),
                                       const SizedBox(height: 10),
                                     ],
@@ -895,88 +907,96 @@ class BannerView extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 160,
-      child: GestureDetector(
-        onPanStart: (_) => controller.stopBannerTimer(),
-        onPanEnd: (_) => controller.startBannerTimer(),
-        child: PageView.builder(
-          physics: const BouncingScrollPhysics(),
-          controller: controller.pageController,
-          scrollDirection: Axis.horizontal,
-          itemCount: controller.bannerModel.length,
-          padEnds: false,
-          pageSnapping: true,
-          onPageChanged: (value) {
-            controller.currentPage.value = value;
-          },
-          itemBuilder: (BuildContext context, int index) {
-            BannerModel bannerModel = controller.bannerModel[index];
-            return InkWell(
-              onTap: () async {
-                controller.stopBannerTimer();
-                if (bannerModel.redirectType == "store") {
-                  ShowToastDialog.showLoader("Please wait".tr);
-                  VendorModel? vendorModel = await FireStoreUtils.getVendorById(
-                    bannerModel.redirectId.toString(),
-                  );
-
-                  if (vendorModel!.zoneId == Constant.selectedZone!.id) {
-                    ShowToastDialog.closeLoader();
-                    Get.to(
-                      const RestaurantDetailsScreen(),
-                      arguments: {"vendorModel": vendorModel},
-                    );
-                  } else {
-                    ShowToastDialog.closeLoader();
-                    ShowToastDialog.showToast(
-                      "Sorry, The Zone is not available in your area. change the other location first."
-                          .tr,
-                    );
-                  }
-                } else if (bannerModel.redirectType == "product") {
-                  ShowToastDialog.showLoader("Please wait".tr);
-                  ProductModel? productModel =
-                      await FireStoreUtils.getProductById(
-                        bannerModel.redirectId.toString(),
-                      );
-                  VendorModel? vendorModel = await FireStoreUtils.getVendorById(
-                    productModel!.vendorID.toString(),
-                  );
-
-                  if (vendorModel!.zoneId == Constant.selectedZone!.id) {
-                    ShowToastDialog.closeLoader();
-                    Get.to(
-                      const RestaurantDetailsScreen(),
-                      arguments: {"vendorModel": vendorModel},
-                    );
-                  } else {
-                    ShowToastDialog.closeLoader();
-                    ShowToastDialog.showToast(
-                      "Sorry, The Zone is not available in your area. change the other location first."
-                          .tr,
-                    );
-                  }
-                } else if (bannerModel.redirectType == "external_link") {
-                  final uri = Uri.parse(bannerModel.redirectId.toString());
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri);
-                  } else {
-                    ShowToastDialog.showToast("Could not launch".tr);
-                  }
-                }
+      child: Consumer<RestaurantDetailsProvider>(
+        builder: (context, restaurantDetailsProvider, _) {
+          return GestureDetector(
+            onPanStart: (_) => controller.stopBannerTimer(),
+            onPanEnd: (_) => controller.startBannerTimer(),
+            child: PageView.builder(
+              physics: const BouncingScrollPhysics(),
+              controller: controller.pageController,
+              scrollDirection: Axis.horizontal,
+              itemCount: controller.bannerModel.length,
+              padEnds: false,
+              pageSnapping: true,
+              onPageChanged: (value) {
+                controller.changeBannerPage(value);
               },
-              child: Padding(
-                padding: const EdgeInsets.only(right: 0),
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.all(Radius.circular(12)),
-                  child: NetworkImageWidget(
-                    imageUrl: bannerModel.photo.toString(),
-                    fit: BoxFit.fill,
+              itemBuilder: (BuildContext context, int index) {
+                BannerModel bannerModel = controller.bannerModel[index];
+                return InkWell(
+                  onTap: () async {
+                    controller.stopBannerTimer();
+                    if (bannerModel.redirectType == "store") {
+                      ShowToastDialog.showLoader("Please wait".tr);
+                      VendorModel? vendorModel =
+                          await FireStoreUtils.getVendorById(
+                            bannerModel.redirectId.toString(),
+                          );
+                      if (vendorModel!.zoneId == Constant.selectedZone!.id) {
+                        ShowToastDialog.closeLoader();
+                        restaurantDetailsProvider.initFunction(
+                          vendorModels: vendorModel,
+                        );
+                        Get.to(const RestaurantDetailsScreen());
+                      } else {
+                        ShowToastDialog.closeLoader();
+                        ShowToastDialog.showToast(
+                          "Sorry, The Zone is not available in your area. change the other location first."
+                              .tr,
+                        );
+                      }
+                    } else if (bannerModel.redirectType == "product") {
+                      ShowToastDialog.showLoader("Please wait".tr);
+                      ProductModel? productModel =
+                          await FireStoreUtils.getProductById(
+                            bannerModel.redirectId.toString(),
+                          );
+                      VendorModel? vendorModel =
+                          await FireStoreUtils.getVendorById(
+                            productModel!.vendorID.toString(),
+                          );
+
+                      if (vendorModel!.zoneId == Constant.selectedZone!.id) {
+                        ShowToastDialog.closeLoader();
+                        restaurantDetailsProvider.initFunction(
+                          vendorModels: vendorModel,
+                        );
+                        Get.to(
+                          const RestaurantDetailsScreen(),
+                          arguments: {"vendorModel": vendorModel},
+                        );
+                      } else {
+                        ShowToastDialog.closeLoader();
+                        ShowToastDialog.showToast(
+                          "Sorry, The Zone is not available in your area. change the other location first."
+                              .tr,
+                        );
+                      }
+                    } else if (bannerModel.redirectType == "external_link") {
+                      final uri = Uri.parse(bannerModel.redirectId.toString());
+                      if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri);
+                      } else {
+                        ShowToastDialog.showToast("Could not launch".tr);
+                      }
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 0),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.all(Radius.circular(12)),
+                      child: NetworkImageWidget(
+                        imageUrl: bannerModel.photo.toString(),
+                        fit: BoxFit.fill,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-            );
-          },
-        ),
+                );
+              },
+            ),
+          );
+        },
       ),
     );
   }
@@ -994,234 +1014,238 @@ class AdvertisementHomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: () async {
-        ShowToastDialog.showLoader("Please wait".tr);
-        VendorModel? vendorModel = await FireStoreUtils.getVendorById(
-          model.vendorId!,
-        );
-        ShowToastDialog.closeLoader();
-        Get.to(
-          const RestaurantDetailsScreen(),
-          arguments: {"vendorModel": vendorModel},
-        );
-      },
-      child: Container(
-        margin: EdgeInsets.only(right: 16),
-        width: Responsive.width(70, context),
-        decoration: BoxDecoration(
-          color: AppThemeData.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 2,
-              spreadRadius: 0,
-              offset: Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                model.type == 'restaurant_promotion'
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                        child: NetworkImageWidget(
-                          imageUrl: model.coverImage ?? '',
-                          height: 135,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      )
-                    : VideoAdvWidget(
-                        url: model.video ?? '',
-                        height: 135,
-                        width: double.infinity,
-                      ),
-                if (model.type != 'video_promotion' &&
-                    model.vendorId != null &&
-                    (model.showRating == true || model.showReview == true))
-                  Positioned(
-                    bottom: 8,
-                    right: 8,
-                    child: FutureBuilder(
-                      future: FireStoreUtils.getVendorById(model.vendorId!),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const SizedBox();
-                        } else {
-                          if (snapshot.hasError) {
-                            return const SizedBox();
-                          } else if (snapshot.data == null) {
-                            return const SizedBox();
-                          } else {
-                            VendorModel vendorModel = snapshot.data!;
-                            return Container(
-                              decoration: ShapeDecoration(
-                                color: AppThemeData.primary50,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(120),
-                                ),
-                              ),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 8,
-                                ),
-                                child: Row(
-                                  children: [
-                                    SvgPicture.asset(
-                                      "assets/icons/ic_star.svg",
-                                      colorFilter: ColorFilter.mode(
-                                        AppThemeData.primary300,
-                                        BlendMode.srcIn,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 5),
-                                    Text(
-                                      "${model.showRating == true ? Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString()) : ''} ${model.showReview == true ? '(${vendorModel.reviewsCount!.toStringAsFixed(0)})' : ''}",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: AppThemeData.primary300,
-                                        fontFamily: AppThemeData.semiBold,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  ),
+    return Consumer<RestaurantDetailsProvider>(
+      builder: (context, restaurantDetailsProvider, _) {
+        return InkWell(
+          onTap: () async {
+            ShowToastDialog.showLoader("Please wait".tr);
+            VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+              model.vendorId!,
+            );
+            ShowToastDialog.closeLoader();
+            restaurantDetailsProvider.initFunction(
+              vendorModels: vendorModel ?? VendorModel(),
+            );
+            Get.to(const RestaurantDetailsScreen());
+          },
+          child: Container(
+            margin: EdgeInsets.only(right: 16),
+            width: Responsive.width(70, context),
+            decoration: BoxDecoration(
+              color: AppThemeData.surface,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 2,
+                  spreadRadius: 0,
+                  offset: Offset(0, 1),
+                ),
               ],
             ),
-            Padding(
-              padding: EdgeInsets.all(12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (model.type == 'restaurant_promotion')
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: NetworkImageWidget(
-                        imageUrl: model.profileImage ?? '',
-                        height: 50,
-                        width: 50,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          model.title ?? '',
-                          style: TextStyle(
-                            color: AppThemeData.grey900,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    model.type == 'restaurant_promotion'
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(16),
+                            ),
+                            child: NetworkImageWidget(
+                              imageUrl: model.coverImage ?? '',
+                              height: 135,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        : VideoAdvWidget(
+                            url: model.video ?? '',
+                            height: 135,
+                            width: double.infinity,
                           ),
-                          overflow: TextOverflow.ellipsis,
+                    if (model.type != 'video_promotion' &&
+                        model.vendorId != null &&
+                        (model.showRating == true || model.showReview == true))
+                      Positioned(
+                        bottom: 8,
+                        right: 8,
+                        child: FutureBuilder(
+                          future: FireStoreUtils.getVendorById(model.vendorId!),
+                          builder: (context, snapshot) {
+                            if (snapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const SizedBox();
+                            } else {
+                              if (snapshot.hasError) {
+                                return const SizedBox();
+                              } else if (snapshot.data == null) {
+                                return const SizedBox();
+                              } else {
+                                VendorModel vendorModel = snapshot.data!;
+                                return Container(
+                                  decoration: ShapeDecoration(
+                                    color: AppThemeData.primary50,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(120),
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        SvgPicture.asset(
+                                          "assets/icons/ic_star.svg",
+                                          colorFilter: ColorFilter.mode(
+                                            AppThemeData.primary300,
+                                            BlendMode.srcIn,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 5),
+                                        Text(
+                                          "${model.showRating == true ? Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString()) : ''} ${model.showReview == true ? '(${vendorModel.reviewsCount!.toStringAsFixed(0)})' : ''}",
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: AppThemeData.primary300,
+                                            fontFamily: AppThemeData.semiBold,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }
+                            }
+                          },
                         ),
-                        Text(
-                          model.description ?? '',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontFamily: AppThemeData.medium,
-                            color: AppThemeData.grey600,
+                      ),
+                  ],
+                ),
+                Padding(
+                  padding: EdgeInsets.all(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (model.type == 'restaurant_promotion')
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(30),
+                          child: NetworkImageWidget(
+                            imageUrl: model.profileImage ?? '',
+                            height: 50,
+                            width: 50,
+                            fit: BoxFit.cover,
                           ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 2,
                         ),
-                      ],
-                    ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              model.title ?? '',
+                              style: TextStyle(
+                                color: AppThemeData.grey900,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              model.description ?? '',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontFamily: AppThemeData.medium,
+                                color: AppThemeData.grey600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // model.type == 'restaurant_promotion'
+                      //     ? IconButton(
+                      //         icon: Obx(
+                      //           () =>
+                      //               controller.favouriteList
+                      //                   .where(
+                      //                     (p0) => p0.restaurantId == model.vendorId,
+                      //                   )
+                      //                   .isNotEmpty
+                      //               ? SvgPicture.asset(
+                      //                   "assets/icons/ic_like_fill.svg",
+                      //                 )
+                      //               : SvgPicture.asset(
+                      //                   "assets/icons/ic_like.svg",
+                      //                   colorFilter: ColorFilter.mode(
+                      //                     AppThemeData.grey600,
+                      //                     BlendMode.srcIn,
+                      //                   ),
+                      //                 ),
+                      //         ),
+                      //         onPressed: () async {
+                      //           final userId =
+                      //               await SqlStorageConst.getFirebaseId();
+                      //           if (controller.favouriteList
+                      //               .where(
+                      //                 (p0) => p0.restaurantId == model.vendorId,
+                      //               )
+                      //               .isNotEmpty) {
+                      //             FavouriteModel favouriteModel = FavouriteModel(
+                      //               restaurantId: model.vendorId,
+                      //               userId: userId,
+                      //             );
+                      //             controller.favouriteList.removeWhere(
+                      //               (item) => item.restaurantId == model.vendorId,
+                      //             );
+                      //             await FireStoreUtils.removeFavouriteRestaurant(
+                      //               favouriteModel,
+                      //             );
+                      //           } else {
+                      //             FavouriteModel favouriteModel = FavouriteModel(
+                      //               restaurantId: model.vendorId,
+                      //               userId: userId,
+                      //             );
+                      //             controller.favouriteList.add(favouriteModel);
+                      //             await FireStoreUtils.setFavouriteRestaurant(
+                      //               favouriteModel,
+                      //             );
+                      //           }
+                      //         },
+                      //       )
+                      //     :
+                      Container(
+                        decoration: ShapeDecoration(
+                          color: AppThemeData.primary50,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 4,
+                          ),
+                          child: Icon(
+                            Icons.arrow_forward,
+                            size: 20,
+                            color: AppThemeData.primary300,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  // model.type == 'restaurant_promotion'
-                  //     ? IconButton(
-                  //         icon: Obx(
-                  //           () =>
-                  //               controller.favouriteList
-                  //                   .where(
-                  //                     (p0) => p0.restaurantId == model.vendorId,
-                  //                   )
-                  //                   .isNotEmpty
-                  //               ? SvgPicture.asset(
-                  //                   "assets/icons/ic_like_fill.svg",
-                  //                 )
-                  //               : SvgPicture.asset(
-                  //                   "assets/icons/ic_like.svg",
-                  //                   colorFilter: ColorFilter.mode(
-                  //                     AppThemeData.grey600,
-                  //                     BlendMode.srcIn,
-                  //                   ),
-                  //                 ),
-                  //         ),
-                  //         onPressed: () async {
-                  //           final userId =
-                  //               await SqlStorageConst.getFirebaseId();
-                  //           if (controller.favouriteList
-                  //               .where(
-                  //                 (p0) => p0.restaurantId == model.vendorId,
-                  //               )
-                  //               .isNotEmpty) {
-                  //             FavouriteModel favouriteModel = FavouriteModel(
-                  //               restaurantId: model.vendorId,
-                  //               userId: userId,
-                  //             );
-                  //             controller.favouriteList.removeWhere(
-                  //               (item) => item.restaurantId == model.vendorId,
-                  //             );
-                  //             await FireStoreUtils.removeFavouriteRestaurant(
-                  //               favouriteModel,
-                  //             );
-                  //           } else {
-                  //             FavouriteModel favouriteModel = FavouriteModel(
-                  //               restaurantId: model.vendorId,
-                  //               userId: userId,
-                  //             );
-                  //             controller.favouriteList.add(favouriteModel);
-                  //             await FireStoreUtils.setFavouriteRestaurant(
-                  //               favouriteModel,
-                  //             );
-                  //           }
-                  //         },
-                  //       )
-                  //     :
-                  Container(
-                    decoration: ShapeDecoration(
-                      color: AppThemeData.primary50,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      child: Icon(
-                        Icons.arrow_forward,
-                        size: 20,
-                        color: AppThemeData.primary300,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }
@@ -1235,89 +1259,100 @@ class BannerBottomView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(
-          height: 150,
-          child: PageView.builder(
-            physics: const BouncingScrollPhysics(),
-            controller: controller.pageBottomController,
-            scrollDirection: Axis.horizontal,
-            itemCount: controller.bannerBottomModel.length,
-            padEnds: false,
-            pageSnapping: true,
-            allowImplicitScrolling: true,
-            onPageChanged: (value) {
-              controller.currentBottomPage.value = value;
-            },
-            itemBuilder: (BuildContext context, int index) {
-              BannerModel bannerModel = controller.bannerBottomModel[index];
-              return InkWell(
-                onTap: () async {
-                  if (bannerModel.redirectType == "store") {
-                    ShowToastDialog.showLoader("Please wait".tr);
-                    VendorModel? vendorModel =
-                        await FireStoreUtils.getVendorById(
-                          bannerModel.redirectId.toString(),
-                        );
-
-                    if (vendorModel!.zoneId == Constant.selectedZone!.id) {
-                      ShowToastDialog.closeLoader();
-                      Get.to(
-                        const RestaurantDetailsScreen(),
-                        arguments: {"vendorModel": vendorModel},
-                      );
-                    } else {
-                      ShowToastDialog.closeLoader();
-                      ShowToastDialog.showToast(
-                        "Sorry, The Zone is not available in your area. change the other location first."
-                            .tr,
-                      );
-                    }
-                  } else if (bannerModel.redirectType == "product") {
-                    ShowToastDialog.showLoader("Please wait".tr);
-                    ProductModel? productModel =
-                        await FireStoreUtils.getProductById(
-                          bannerModel.redirectId.toString(),
-                        );
-                    VendorModel? vendorModel =
-                        await FireStoreUtils.getVendorById(
-                          productModel!.vendorID.toString(),
-                        );
-
-                    if (vendorModel!.zoneId == Constant.selectedZone!.id) {
-                      ShowToastDialog.closeLoader();
-                      Get.to(
-                        const RestaurantDetailsScreen(),
-                        arguments: {"vendorModel": vendorModel},
-                      );
-                    } else {
-                      ShowToastDialog.closeLoader();
-                      ShowToastDialog.showToast(
-                        "Sorry, The Zone is not available in your area. change the other location first."
-                            .tr,
-                      );
-                    }
-                  } else if (bannerModel.redirectType == "external_link") {
-                    final uri = Uri.parse(bannerModel.redirectId.toString());
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri);
-                    } else {
-                      ShowToastDialog.showToast("Could not launch".tr);
-                    }
-                  }
+        Consumer<RestaurantDetailsProvider>(
+          builder: (context, restaurantDetailsProvider, _) {
+            return SizedBox(
+              height: 150,
+              child: PageView.builder(
+                physics: const BouncingScrollPhysics(),
+                controller: controller.pageBottomController,
+                scrollDirection: Axis.horizontal,
+                itemCount: controller.bannerBottomModel.length,
+                padEnds: false,
+                pageSnapping: true,
+                allowImplicitScrolling: true,
+                onPageChanged: (value) {
+                  controller.currentBottomPage = value;
                 },
-                child: Padding(
-                  padding: const EdgeInsets.only(right: 14),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.all(Radius.circular(12)),
-                    child: NetworkImageWidget(
-                      imageUrl: bannerModel.photo.toString(),
-                      fit: BoxFit.cover,
+                itemBuilder: (BuildContext context, int index) {
+                  BannerModel bannerModel = controller.bannerBottomModel[index];
+                  return InkWell(
+                    onTap: () async {
+                      if (bannerModel.redirectType == "store") {
+                        ShowToastDialog.showLoader("Please wait".tr);
+                        VendorModel? vendorModel =
+                            await FireStoreUtils.getVendorById(
+                              bannerModel.redirectId.toString(),
+                            );
+
+                        if (vendorModel!.zoneId == Constant.selectedZone!.id) {
+                          ShowToastDialog.closeLoader();
+                          restaurantDetailsProvider.initFunction(
+                            vendorModels: vendorModel,
+                          );
+                          Get.to(
+                            const RestaurantDetailsScreen(),
+                            arguments: {"vendorModel": vendorModel},
+                          );
+                        } else {
+                          ShowToastDialog.closeLoader();
+                          ShowToastDialog.showToast(
+                            "Sorry, The Zone is not available in your area. change the other location first."
+                                .tr,
+                          );
+                        }
+                      } else if (bannerModel.redirectType == "product") {
+                        ShowToastDialog.showLoader("Please wait".tr);
+                        ProductModel? productModel =
+                            await FireStoreUtils.getProductById(
+                              bannerModel.redirectId.toString(),
+                            );
+                        VendorModel? vendorModel =
+                            await FireStoreUtils.getVendorById(
+                              productModel!.vendorID.toString(),
+                            );
+
+                        if (vendorModel!.zoneId == Constant.selectedZone!.id) {
+                          ShowToastDialog.closeLoader();
+                          restaurantDetailsProvider.initFunction(
+                            vendorModels: vendorModel,
+                          );
+                          Get.to(const RestaurantDetailsScreen());
+                        } else {
+                          ShowToastDialog.closeLoader();
+                          ShowToastDialog.showToast(
+                            "Sorry, The Zone is not available in your area. change the other location first."
+                                .tr,
+                          );
+                        }
+                      } else if (bannerModel.redirectType == "external_link") {
+                        final uri = Uri.parse(
+                          bannerModel.redirectId.toString(),
+                        );
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri);
+                        } else {
+                          ShowToastDialog.showToast("Could not launch".tr);
+                        }
+                      }
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 14),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(12),
+                        ),
+                        child: NetworkImageWidget(
+                          imageUrl: bannerModel.photo.toString(),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
-          ),
+                  );
+                },
+              ),
+            );
+          },
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1335,7 +1370,7 @@ class BannerBottomView extends StatelessWidget {
                   width: 9,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: controller.currentBottomPage.value == index
+                    color: controller.currentBottomPage == index
                         ? AppThemeData.primary300
                         : Colors.black12,
                   ),

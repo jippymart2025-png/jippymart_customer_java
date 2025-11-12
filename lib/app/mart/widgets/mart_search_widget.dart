@@ -34,10 +34,8 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   final FocusNode _focusNode = FocusNode();
 
   // Real-time trending searches data
-  final RxList<Map<String, dynamic>> _trendingSearches =
-      <Map<String, dynamic>>[].obs;
-  final RxBool _isLoadingTrending = false.obs;
-  final RxString _lastUpdated = ''.obs;
+  List<Map<String, dynamic>> _trendingSearches = <Map<String, dynamic>>[];
+  bool _isLoadingTrending = false;
 
   // Utility function to remove emojis from text
   String _removeEmojis(String text) {
@@ -52,35 +50,28 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   // Load trending searches from API
   Future<void> _loadTrendingSearches() async {
     try {
-      _isLoadingTrending.value = true;
+      _isLoadingTrending = true;
 
       // Try to get trending searches from API first
       final trendingFromAPI = await _getTrendingSearchesFromAPI();
 
       if (trendingFromAPI.isNotEmpty) {
-        _trendingSearches.value = trendingFromAPI;
-        _lastUpdated.value = DateTime.now().toString().substring(
-          11,
-          19,
-        ); // HH:MM:SS
+        _trendingSearches = trendingFromAPI;
         print(
           '[MART_SEARCH] ✅ Loaded ${trendingFromAPI.length} trending searches from API',
         );
       } else {
         // Fallback to static data
-        _trendingSearches.value = _getStaticTrendingSearches();
-        _lastUpdated.value = 'Static';
+        _trendingSearches = _getStaticTrendingSearches();
         print(
           '[MART_SEARCH] ⚠️ Using static trending searches (${_trendingSearches.length} items)',
         );
       }
     } catch (e) {
       print('[MART_SEARCH] ❌ Error loading trending searches: $e');
-      // Fallback to static data
-      _trendingSearches.value = _getStaticTrendingSearches();
-      _lastUpdated.value = 'Static';
+      _trendingSearches = _getStaticTrendingSearches();
     } finally {
-      _isLoadingTrending.value = false;
+      _isLoadingTrending = false;
     }
   }
 
@@ -792,7 +783,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
 
   Widget _buildTrendingSearches() {
     return Obx(() {
-      if (_isLoadingTrending.value) {
+      if (_isLoadingTrending) {
         return _buildTrendingSearchesLoading();
       }
 
