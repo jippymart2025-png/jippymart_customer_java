@@ -28,7 +28,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:mailer/mailer.dart';
@@ -36,7 +35,7 @@ import 'package:mailer/smtp_server.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
-RxList<CartProductModel> cartItem = <CartProductModel>[].obs;
+List<CartProductModel> cartItem = <CartProductModel>[];
 
 class Constant {
   static String userRoleDriver = 'driver';
@@ -698,7 +697,7 @@ class Constant {
 
   static sendOrderEmail({required OrderModel orderModel}) async {
     EmailTemplateModel? emailTemplateModel =
-        await FireStoreUtils.getEmailTemplates(newOrderPlaced);
+        await FireStoreUtils.getEmailTemplates("new_order_placed");
     if (emailTemplateModel != null) {
       String firstHTML = """
        <table style="width: 100%; border-collapse: collapse; border: 1px solid rgb(0, 0, 0);">

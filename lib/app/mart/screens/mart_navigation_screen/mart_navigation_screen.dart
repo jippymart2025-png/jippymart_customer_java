@@ -21,7 +21,6 @@ class MartNavigationScreen extends StatelessWidget {
       child: Consumer<MartNavigationProvider>(
         builder: (context, navController, _) {
           print("Current Index: ${navController.selectedIndex.value}"); // Debug
-
           return PopScope(
             canPop: false,
             onPopInvoked: (didPop) async {
@@ -34,25 +33,13 @@ class MartNavigationScreen extends StatelessWidget {
             },
             child: Scaffold(
               backgroundColor: const Color(0xFFF6F6FF),
-              body: Obx(() {
-                print(
-                  "Building body with index: ${navController.selectedIndex.value}",
-                ); // Debug
-                return IndexedStack(
-                  index: navController.selectedIndex.value,
-                  children: navController.pageList,
-                );
-              }),
-              bottomNavigationBar: Obx(() {
-                print(
-                  "Building bottom nav bar, index: ${navController.selectedIndex.value}",
-                ); // Debug
-                if (navController.selectedIndex.value != 2) {
-                  return _buildEnhancedNavigationBar(navController);
-                } else {
-                  return const SizedBox.shrink();
-                }
-              }),
+              body: IndexedStack(
+                index: navController.selectedIndex.value,
+                children: navController.pageList,
+              ),
+              bottomNavigationBar: navController.selectedIndex.value != 2
+                  ? _buildEnhancedNavigationBar(navController)
+                  : const SizedBox.shrink(),
             ),
           );
         },
@@ -123,79 +110,75 @@ class MartNavigationScreen extends StatelessWidget {
     required MartNavigationProvider controller,
     Widget? badge,
   }) {
-    return Obx(() {
-      final isActive = controller.selectedIndex.value == index;
-      final primaryColor = ColorConst.orangeLight;
-      return GestureDetector(
-        onTap: () {
-          print("Tapped on index: $index"); // Debug
-          controller.changeIndex(index);
-        },
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: isActive
-                ? primaryColor.withOpacity(0.08)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(16),
-            gradient: isActive
-                ? LinearGradient(
-                    colors: [
-                      primaryColor.withOpacity(0.12),
-                      primaryColor.withOpacity(0.04),
-                    ],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                  )
-                : null,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: isActive
-                          ? primaryColor.withOpacity(0.1)
-                          : Colors.transparent,
-                    ),
-                    child: Center(
-                      child: SvgPicture.asset(
-                        isActive ? activeIcon : icon,
-                        width: 20,
-                        height: 20,
-                        colorFilter: ColorFilter.mode(
-                          isActive ? primaryColor : const Color(0xFF6B7280),
-                          BlendMode.srcIn,
-                        ),
+    final isActive = controller.selectedIndex.value == index;
+    final primaryColor = ColorConst.orangeLight;
+    return GestureDetector(
+      onTap: () {
+        print("Tapped on index: $index"); // Debug
+        controller.changeIndex(index);
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? primaryColor.withOpacity(0.08) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          gradient: isActive
+              ? LinearGradient(
+                  colors: [
+                    primaryColor.withOpacity(0.12),
+                    primaryColor.withOpacity(0.04),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                )
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isActive
+                        ? primaryColor.withOpacity(0.1)
+                        : Colors.transparent,
+                  ),
+                  child: Center(
+                    child: SvgPicture.asset(
+                      isActive ? activeIcon : icon,
+                      width: 20,
+                      height: 20,
+                      colorFilter: ColorFilter.mode(
+                        isActive ? primaryColor : const Color(0xFF6B7280),
+                        BlendMode.srcIn,
                       ),
                     ),
                   ),
-                  if (badge != null && index == 2)
-                    Positioned(right: -4, top: -4, child: badge),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isActive ? primaryColor : const Color(0xFF6B7280),
-                  fontSize: 10,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                  letterSpacing: -0.2,
                 ),
+                if (badge != null && index == 2)
+                  Positioned(right: -4, top: -4, child: badge),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? primaryColor : const Color(0xFF6B7280),
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                letterSpacing: -0.2,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
-    });
+      ),
+    );
   }
 
   Widget _buildCartBadge(int count) {

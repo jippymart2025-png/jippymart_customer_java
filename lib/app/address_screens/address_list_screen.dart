@@ -318,7 +318,7 @@ class AddressListScreen extends StatelessWidget {
                       controller.userModel,
                     );
                     if (success) {
-                      controller.getUser(); // Refresh from API
+                      controller.getUser();
                       ShowToastDialog.closeLoader();
                       Get.back();
                       ShowToastDialog.showToast("Address deleted".tr);
@@ -587,7 +587,6 @@ class AddressListScreen extends StatelessWidget {
                               const SizedBox(height: 8),
                               InkWell(
                                 onTap: () async {
-                                  print("log is working");
                                   if (Constant.selectedMapType == 'osm') {
                                     final result = await Get.to(
                                       () => MapPickerPage(),
@@ -764,7 +763,6 @@ class AddressListScreen extends StatelessWidget {
                         fontSizes: 16,
                         // With this:
                         onPress: () async {
-                          // For new addresses, pass -1 or null, for editing pass the actual index
                           final addressIndex = index ?? -1;
                           controller.saveAddressFunction(
                             addressIndex,
@@ -772,111 +770,6 @@ class AddressListScreen extends StatelessWidget {
                             addressListProvider,
                           );
                         },
-                        // onPress: () async {
-                        //   if (controller.location.latitude == null ||
-                        //       controller.location.longitude == null) {
-                        //     ShowToastDialog.showToast("Please select Location".tr);
-                        //   } else if (controller
-                        //       .houseBuildingTextEditingController
-                        //       .value
-                        //       .text
-                        //       .isEmpty) {
-                        //     ShowToastDialog.showToast(
-                        //       "Please Enter Flat / House / Flore / Building".tr,
-                        //     );
-                        //   } else if (controller
-                        //       .localityEditingController
-                        //       .value
-                        //       .text
-                        //       .isEmpty) {
-                        //     ShowToastDialog.showToast(
-                        //       "Please Enter Area / Sector / locality".tr,
-                        //     );
-                        //   } else {
-                        //     controller.isLoading = true;
-                        //     ShowToastDialog.showLoader("Please wait".tr);
-                        //     if (controller.shippingModel.id != null &&
-                        //         index != null) {
-                        //       controller.shippingModel.location =
-                        //           controller.location;
-                        //       controller.shippingModel.addressAs =
-                        //           controller.selectedSaveAs;
-                        //       controller.shippingModel.address = controller
-                        //           .houseBuildingTextEditingController
-                        //           .value
-                        //           .text;
-                        //       controller.shippingModel.locality =
-                        //           controller.localityEditingController.value.text;
-                        //       controller.shippingModel.landmark =
-                        //           controller.landmarkEditingController.value.text;
-                        //       if (controller.location.latitude != null &&
-                        //           controller.location.longitude != null) {
-                        //         try {
-                        //           final zoneId =
-                        //               await MartZoneUtils.getZoneIdForCoordinates(
-                        //                 controller.location.latitude ?? 0.0,
-                        //                 controller.location.longitude!,
-                        //                 context,
-                        //               );
-                        //           if (zoneId.isNotEmpty) {
-                        //             controller.shippingModel.zoneId = zoneId;
-                        //           } else {}
-                        //         } catch (e) {}
-                        //       } else {}
-                        //       controller.shippingAddressList.removeAt(index);
-                        //       controller.shippingAddressList.insert(
-                        //         index,
-                        //         controller.shippingModel,
-                        //       );
-                        //     } else {
-                        //       controller.shippingModel.id = Constant.getUuid();
-                        //       controller.shippingModel.location =
-                        //           controller.location;
-                        //       controller.shippingModel.addressAs =
-                        //           controller.selectedSaveAs;
-                        //       controller.shippingModel.address = controller
-                        //           .houseBuildingTextEditingController
-                        //           .value
-                        //           .text;
-                        //       controller.shippingModel.locality =
-                        //           controller.localityEditingController.value.text;
-                        //       controller.shippingModel.landmark =
-                        //           controller.landmarkEditingController.value.text;
-                        //       controller.shippingModel.isDefault =
-                        //           controller.shippingAddressList.isEmpty
-                        //           ? true
-                        //           : false;
-                        //       if (controller.location.latitude != null &&
-                        //           controller.location.longitude != null) {
-                        //         try {
-                        //           print(
-                        //             '🔍 [ADDRESS_SAVE] Starting zone detection for new address...',
-                        //           );
-                        //           final zoneId =
-                        //               await MartZoneUtils.getZoneIdForCoordinates(
-                        //                 controller.location.latitude ?? 0.0,
-                        //                 controller.location.longitude ?? 0.0,
-                        //                 context,
-                        //               );
-                        //
-                        //           if (zoneId.isNotEmpty) {
-                        //             controller.shippingModel.zoneId = zoneId;
-                        //           } else {}
-                        //         } catch (e) {}
-                        //       } else {}
-                        //       controller.shippingAddressList.add(
-                        //         controller.shippingModel,
-                        //       );
-                        //     }
-                        //     setState(() {});
-                        //     controller.userModel.shippingAddress =
-                        //         controller.shippingAddressList;
-                        //     await FireStoreUtils.updateUser(controller.userModel);
-                        //     controller.isLoading = false;
-                        //     ShowToastDialog.closeLoader();
-                        //     Get.back();
-                        //   }
-                        // },
                       ),
                     );
                   },

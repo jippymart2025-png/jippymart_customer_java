@@ -81,9 +81,7 @@ class FireStoreUtils {
         Uri.parse('${AppConst.baseUrl}restaurants/$vendorId'),
         headers: await getHeaders(),
       );
-
       print("getVendorById ${response.body}  ");
-
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
@@ -235,7 +233,7 @@ class FireStoreUtils {
         final fallbackResponse = await http.get(
           Uri.parse('${AppConst.baseUrl}restaurants'),
           // Adjust endpoint as needed
-          headers: {'Content-Type': 'application/json'},
+          headers: await getHeaders(),
         );
 
         if (fallbackResponse.statusCode == 200) {
@@ -550,46 +548,67 @@ class FireStoreUtils {
   }
 
   static Future<EmailTemplateModel?> getEmailTemplates(String type) async {
-    EmailTemplateModel? emailTemplateModel;
-    await fireStore
-        .collection(CollectionName.emailTemplates)
-        .where('type', isEqualTo: type)
-        .get()
-        .then((value) {
-          print("------>");
-          if (value.docs.isNotEmpty) {
-            print(value.docs.first.data());
-            emailTemplateModel = EmailTemplateModel.fromJson(
-              value.docs.first.data(),
-            );
-          }
-        });
-    return emailTemplateModel;
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}firestore/email-templates/$type'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          return EmailTemplateModel.fromJson(responseData['data']);
+        } else {
+          throw Exception('API returned success: false');
+        }
+      } else {
+        throw Exception(
+          'Failed to load email template: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error fetching email template: $e');
+      return null;
+    }
   }
 
   static Future<NotificationModel?> getNotificationContent(String type) async {
-    NotificationModel? notificationModel;
-    await fireStore
-        .collection(CollectionName.dynamicNotification)
-        .where('type', isEqualTo: type)
-        .get()
-        .then((value) {
-          print("------>");
-          if (value.docs.isNotEmpty) {
-            print(value.docs.first.data());
-            notificationModel = NotificationModel.fromJson(
-              value.docs.first.data(),
-            );
-          } else {
-            notificationModel = NotificationModel(
-              id: "",
-              message: "Notification setup is pending",
-              subject: "setup notification",
-              type: "",
-            );
-          }
-        });
-    return notificationModel;
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}firestore/notifications/$type'),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true) {
+          return NotificationModel.fromJson(jsonResponse['data']);
+        } else {
+          return NotificationModel(
+            id: "",
+            message: "Notification setup is pending",
+            subject: "setup notification",
+            type: "",
+          );
+        }
+      } else {
+        // Handle HTTP error
+        return NotificationModel(
+          id: "",
+          message: "Failed to fetch notification: ${response.statusCode}",
+          subject: "Error",
+          type: "",
+        );
+      }
+    } catch (e) {
+      // Handle network/parsing errors
+      return NotificationModel(
+        id: "",
+        message: "Network error: $e",
+        subject: "Error",
+        type: "",
+      );
+    }
   }
 
   static Future addDriverInbox(InboxModel inboxModel) async {

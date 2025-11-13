@@ -31,9 +31,9 @@ class OrderPlacingScreen extends StatelessWidget {
               centerTitle: false,
               titleSpacing: 0,
             ),
-            body: controller.isLoading.value
+            body: controller.isLoading
                 ? Constant.loader(message: "Preparing your order...".tr)
-                : controller.isPlacing.value
+                : controller.isPlacing
                 ? Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Column(
@@ -101,7 +101,7 @@ class OrderPlacingScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  controller.orderModel.value.id.toString(),
+                                  controller.orderModel.id.toString(),
                                   textAlign: TextAlign.start,
                                   style: TextStyle(
                                     fontFamily: AppThemeData.medium,
@@ -189,7 +189,7 @@ class OrderPlacingScreen extends StatelessWidget {
                                 ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  controller.orderModel.value.address!
+                                  controller.orderModel.address!
                                       .getFullAddress(),
                                   textAlign: TextAlign.start,
                                   style: TextStyle(
@@ -243,17 +243,11 @@ class OrderPlacingScreen extends StatelessWidget {
                                 const SizedBox(height: 5),
                                 ListView.builder(
                                   shrinkWrap: true,
-                                  itemCount: controller
-                                      .orderModel
-                                      .value
-                                      .products!
-                                      .length,
+                                  itemCount:
+                                      controller.orderModel.products!.length,
                                   itemBuilder: (context, index) {
                                     CartProductModel cartProductModel =
-                                        controller
-                                            .orderModel
-                                            .value
-                                            .products![index];
+                                        controller.orderModel.products![index];
                                     return Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -294,7 +288,7 @@ class OrderPlacingScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 20),
-                child: controller.isPlacing.value
+                child: controller.isPlacing
                     ? RoundedButtonFill(
                         title: "Track Order".tr,
                         height: 5.5,

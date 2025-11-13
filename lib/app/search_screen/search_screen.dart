@@ -94,7 +94,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget _buildSearchContent(SearchScreenProvider controller) {
     // Show loading indicator when searching
-    if (controller.isSearching.value) {
+    if (controller.isSearching) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -111,13 +111,12 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     // Show suggestions while typing
-    if (controller.showSuggestions.value &&
-        controller.searchSuggestions.isNotEmpty) {
+    if (controller.showSuggestions && controller.searchSuggestions.isNotEmpty) {
       return _buildSuggestionsList(controller);
     }
 
     // Show initial state when no search has been performed
-    if (controller.searchText.value.isEmpty) {
+    if (controller.searchText.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -143,10 +142,10 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     // Show "No results found" when search has no results
-    if (!controller.isSearching.value &&
+    if (!controller.isSearching &&
         controller.vendorSearchList.isEmpty &&
         controller.productSearchList.isEmpty &&
-        controller.searchText.value.isNotEmpty) {
+        controller.searchText.isNotEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -179,9 +178,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 const SizedBox(height: 8),
                 ElevatedButton(
                   onPressed: () {
-                    controller.forceSearchWithDebug(
-                      controller.searchText.value,
-                    );
+                    controller.forceSearchWithDebug(controller.searchText);
                   },
                   child: Text("Force Search with Debug".tr),
                 ),
@@ -210,7 +207,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 Icon(Icons.search, color: AppThemeData.primary300, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  "Found ${controller.vendorSearchList.length + controller.productSearchList.length} results for \"${controller.searchText.value}\"",
+                  "Found ${controller.vendorSearchList.length + controller.productSearchList.length} results for \"${controller.searchText}\"",
                   style: TextStyle(
                     fontSize: 14,
                     color: AppThemeData.primary300,

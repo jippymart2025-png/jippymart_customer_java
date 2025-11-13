@@ -67,173 +67,172 @@ class CartControllerProvider extends ChangeNotifier {
               ),
             ],
           ),
-          content: Obx(
-            () => Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Choose how you want to pay for your order:",
-                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Choose how you want to pay for your order:",
+                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+              ),
+              SizedBox(height: 20),
+              // COD Option
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                SizedBox(height: 20),
-                // COD Option
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: RadioListTile<String>(
-                    contentPadding: EdgeInsets.all(4),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Image.asset(
-                          "assets/images/ic_cash.png",
-                          width: 30,
-                          height: 30,
-                        ),
-                        SizedBox(
-                          width: 150,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Cash on Delivery",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
+                child: RadioListTile<String>(
+                  contentPadding: EdgeInsets.all(4),
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Image.asset(
+                        "assets/images/ic_cash.png",
+                        width: 30,
+                        height: 30,
+                      ),
+                      SizedBox(
+                        width: 150,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Cash on Delivery",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
                               ),
-                              Text(
-                                "Pay when you receive your order",
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[600],
-                                ),
-                                maxLines: 2,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    value: PaymentGateway.cod.name,
-                    groupValue: selectedPaymentMethod,
-                    onChanged: (value) {
-                      selectedPaymentMethod = value!;
-                    },
-                    activeColor: Colors.orange,
-                  ),
-                ),
-
-                SizedBox(height: 10),
-
-                // Razorpay Option
-                Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey[300]!),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: RadioListTile<String>(
-                    contentPadding: EdgeInsets.all(4),
-                    title: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Image.asset(
-                          "assets/images/razorpay.png",
-                          width: 30,
-                          height: 30,
-                        ),
-                        SizedBox(
-                          width: 150,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Online Payment",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                "Pay securely with Razorpay",
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    value: PaymentGateway.razorpay.name,
-                    groupValue: selectedPaymentMethod,
-                    onChanged: (value) {
-                      selectedPaymentMethod = value!;
-                    },
-                    activeColor: Colors.orange,
-                  ),
-                ),
-
-                SizedBox(height: 10),
-                // Validation messages
-                if (subTotal > 599)
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info, color: Colors.orange, size: 16),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            "COD not available for orders above ₹599",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.orange[800],
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (hasPromotionalItems())
-                  Container(
-                    padding: EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: Colors.orange[50],
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.orange[200]!),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info, color: Colors.orange, size: 16),
-                        SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            "COD not available for promotional items",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.orange[800],
+                            Text(
+                              "Pay when you receive your order",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[600],
+                              ),
+                              maxLines: 2,
                             ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  value: PaymentGateway.cod.name,
+                  groupValue: selectedPaymentMethod,
+                  onChanged: (value) {
+                    selectedPaymentMethod = value!;
+                  },
+                  activeColor: Colors.orange,
+                ),
+              ),
+
+              SizedBox(height: 10),
+
+              // Razorpay Option
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey[300]!),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: RadioListTile<String>(
+                  contentPadding: EdgeInsets.all(4),
+                  title: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Image.asset(
+                        "assets/images/razorpay.png",
+                        width: 30,
+                        height: 30,
+                      ),
+                      SizedBox(
+                        width: 150,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Online Payment",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              "Pay securely with Razorpay",
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  value: PaymentGateway.razorpay.name,
+                  groupValue: selectedPaymentMethod,
+                  onChanged: (value) {
+                    selectedPaymentMethod = value!;
+                  },
+                  activeColor: Colors.orange,
+                ),
+              ),
+
+              SizedBox(height: 10),
+              // Validation messages
+              if (subTotal > 599)
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.orange, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "COD not available for orders above ₹599",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[800],
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-              ],
-            ),
+                ),
+              if (hasPromotionalItems())
+                Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange[200]!),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info, color: Colors.orange, size: 16),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          "COD not available for promotional items",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.orange[800],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
+       
           actions: [
             // Cancel Button
             TextButton(

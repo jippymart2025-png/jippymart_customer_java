@@ -37,7 +37,7 @@ class ChatScreen extends StatelessWidget {
             centerTitle: false,
             titleSpacing: 0,
             title: Text(
-              controller.restaurantName.value,
+              controller.restaurantName,
               textAlign: TextAlign.start,
               style: TextStyle(
                 fontFamily: AppThemeData.medium,
@@ -71,11 +71,11 @@ class ChatScreen extends StatelessWidget {
                     // orderBy is compulsory to enable pagination
                     query: FirebaseFirestore.instance
                         .collection(
-                          controller.chatType.value == "Driver"
+                          controller.chatType == "Driver"
                               ? 'chat_driver'
                               : 'chat_restaurant',
                         )
-                        .doc(controller.orderId.value)
+                        .doc(controller.orderId)
                         .collection("thread")
                         .orderBy('createdAt', descending: false),
                     isLive: true,
@@ -112,7 +112,7 @@ class ChatScreen extends StatelessWidget {
                                 keyboardType: TextInputType.text,
                                 textCapitalization:
                                     TextCapitalization.sentences,
-                                controller: controller.messageController.value,
+                                controller: controller.messageController,
                                 decoration: InputDecoration(
                                   contentPadding: const EdgeInsets.only(
                                     top: 3,
@@ -125,11 +125,10 @@ class ChatScreen extends StatelessWidget {
                                 onSubmitted: (value) async {
                                   if (controller
                                       .messageController
-                                      .value
                                       .text
                                       .isNotEmpty) {
                                     controller.sendMessage(
-                                      controller.messageController.value.text,
+                                      controller.messageController.text,
                                       null,
                                       '',
                                       'text',
@@ -143,7 +142,7 @@ class ChatScreen extends StatelessWidget {
                                             .maxScrollExtent,
                                       ),
                                     );
-                                    controller.messageController.value.clear();
+                                    controller.messageController.clear();
                                   }
                                 },
                               ),
@@ -153,11 +152,10 @@ class ChatScreen extends StatelessWidget {
                             onTap: () {
                               if (controller
                                   .messageController
-                                  .value
                                   .text
                                   .isNotEmpty) {
                                 controller.sendMessage(
-                                  controller.messageController.value.text,
+                                  controller.messageController.text,
                                   null,
                                   '',
                                   'text',
@@ -171,7 +169,7 @@ class ChatScreen extends StatelessWidget {
                                         .maxScrollExtent,
                                   ),
                                 );
-                                controller.messageController.value.clear();
+                                controller.messageController.clear();
                               }
                             },
                             child: Container(

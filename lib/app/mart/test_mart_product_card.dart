@@ -211,7 +211,7 @@ class TestMartProductCardScreen extends StatelessWidget {
   ) {
     // Create a mock controller for testing
     final testController = CategoryDetailsProvider();
-    testController.subcategories.value = [
+    testController.subcategories = [
       MartSubcategoryModel(
         id: subcategoryId,
         title: subcategoryTitle,

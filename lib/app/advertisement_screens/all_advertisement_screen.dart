@@ -227,57 +227,6 @@ class AdvertisementCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      // model.type == 'restaurant_promotion'
-                      //     ? Obx(
-                      //         () => IconButton(
-                      //           icon:
-                      //               controller.favouriteList
-                      //                   .where(
-                      //                     (p0) => p0.restaurantId == model.vendorId,
-                      //                   )
-                      //                   .isNotEmpty
-                      //               ? SvgPicture.asset(
-                      //                   "assets/icons/ic_like_fill.svg",
-                      //                 )
-                      //               : SvgPicture.asset(
-                      //                   "assets/icons/ic_like.svg",
-                      //                   colorFilter: ColorFilter.mode(
-                      //                     AppThemeData.grey600,
-                      //                     BlendMode.srcIn,
-                      //                   ),
-                      //                 ),
-                      //           onPressed: () async {
-                      //             final userId =
-                      //                 await SqlStorageConst.getFirebaseId();
-                      //             if (controller.favouriteList
-                      //                 .where(
-                      //                   (p0) => p0.restaurantId == model.vendorId,
-                      //                 )
-                      //                 .isNotEmpty) {
-                      //               FavouriteModel favouriteModel = FavouriteModel(
-                      //                 restaurantId: model.vendorId,
-                      //                 userId: userId,
-                      //               );
-                      //               controller.favouriteList.removeWhere(
-                      //                 (item) => item.restaurantId == model.vendorId,
-                      //               );
-                      //               await FireStoreUtils.removeFavouriteRestaurant(
-                      //                 favouriteModel,
-                      //               );
-                      //             } else {
-                      //               FavouriteModel favouriteModel = FavouriteModel(
-                      //                 restaurantId: model.vendorId,
-                      //                 userId: userId,
-                      //               );
-                      //               controller.favouriteList.add(favouriteModel);
-                      //               await FireStoreUtils.setFavouriteRestaurant(
-                      //                 favouriteModel,
-                      //               );
-                      //             }
-                      //           },
-                      //         ),
-                      //       )
-                      //     :
                       Container(
                         decoration: ShapeDecoration(
                           color: AppThemeData.primary50,

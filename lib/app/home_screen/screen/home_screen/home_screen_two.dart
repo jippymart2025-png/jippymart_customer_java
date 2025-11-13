@@ -1,98 +1,41 @@
-import 'package:flutter_map/flutter_map.dart' as flutterMap;
-import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/advertisement_screens/all_advertisement_screen.dart';
-import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
-import 'package:jippymart_customer/app/home_screen/provider/map_view_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart'
     show BestRestaurantProvider;
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/banner_view_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/best_restaurant_section_widget.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/home_profile_widget.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/home_screen_search_widget.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/mart_food_tab_bar_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/story_view_widget.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
-import 'package:jippymart_customer/app/profile_screen/profile_screen.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
-import 'package:jippymart_customer/app/swiggy_search_screen/provider/swiggy_search_provider.dart';
-import 'package:jippymart_customer/app/swiggy_search_screen/swiggy_search_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/models/BannerModel.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
-import 'package:jippymart_customer/models/product_model.dart';
-import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
-import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
-import 'package:jippymart_customer/widget/animated_search_hint.dart';
-import 'package:jippymart_customer/widget/initials_avatar.dart';
 import 'package:jippymart_customer/widget/mini_cart_bar.dart';
-import 'package:jippymart_customer/widget/osm_map/map_picker_page.dart';
 import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
-import 'package:jippymart_customer/widgets/coming_soon_dialog.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:geocoding/geocoding.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_maps_place_picker_mb/google_maps_place_picker.dart';
-import 'package:latlong2/latlong.dart' as location;
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-
 import 'widgets/category_view_widget.dart';
 
 class HomeScreenTwo extends StatelessWidget {
   const HomeScreenTwo({super.key});
-
-  static Future<void> _checkMartAvailability(MartProvider martProvider) async {
-    martProvider.initFunction();
-    try {
-      if (Constant.selectedZone?.id == null) {
-        ComingSoonDialogHelper.show(
-          title: "COMING SOON".tr,
-          message:
-              "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-        );
-        return;
-      }
-      final martVendors = await MartZoneUtils.getCachedMartVendors();
-      if (martVendors.isEmpty) {
-        ComingSoonDialogHelper.show(
-          title: "COMING SOON".tr,
-          message:
-              "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-        );
-        return;
-      }
-      final allClosed = martVendors.every((v) => v.isOpen == false);
-      if (allClosed) {
-        ComingSoonDialogHelper.show(
-          title: "Mart Available from 7AM to 9PM".tr,
-          message: "",
-        );
-        return;
-      }
-      Get.to(() => const MartNavigationScreen());
-    } catch (e) {
-      debugPrint("❌ Mart check failed: $e");
-      ComingSoonDialogHelper.show(
-        title: "COMING SOON".tr,
-        message:
-            "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,646 +109,207 @@ class HomeScreenTwo extends StatelessWidget {
                       padding: EdgeInsets.only(
                         top: MediaQuery.of(context).viewPadding.top,
                       ),
-                      child: controller.isListView == false
-                          ? const MapView()
-                          : Column(
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        margin: const EdgeInsets.only(
-                                          top: 16,
-                                          bottom: 16,
-                                        ),
-                                        height: 48,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(
-                                            24,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(
-                                                0.1,
-                                              ),
-                                              blurRadius: 8,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            Expanded(
-                                              child: Container(
-                                                margin: const EdgeInsets.all(4),
-                                                decoration: BoxDecoration(
-                                                  color: Colors.orange,
-                                                  borderRadius:
-                                                      BorderRadius.circular(20),
-                                                ),
-                                                child: const Center(
-                                                  child: Text(
-                                                    'FOOD',
-                                                    style: TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      fontSize: 14,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            Expanded(
-                                              child: GestureDetector(
-                                                onTap: () {
-                                                  HomeScreenTwo._checkMartAvailability(
-                                                    martProvider,
-                                                  );
-                                                },
-                                                child: Container(
-                                                  margin: const EdgeInsets.all(
-                                                    4,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          20,
-                                                        ),
-                                                  ),
-                                                  child: Center(
-                                                    child: Text(
-                                                      'MART',
-                                                      style: TextStyle(
-                                                        color: Colors.grey[600],
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontSize: 14,
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      Row(
-                                        children: [
-                                          InkWell(
-                                            onTap: () {
-                                              Get.to(const ProfileScreen());
-                                            },
-                                            child: buildProfileAvatar(),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Constant.userModel == null
-                                                    ? InkWell(
-                                                        onTap: () {
-                                                          Get.offAll(
-                                                            const LoginScreen(),
-                                                          );
-                                                        },
-                                                        child: Text(
-                                                          "Login".tr,
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                          style: TextStyle(
-                                                            fontFamily:
-                                                                AppThemeData
-                                                                    .medium,
-                                                            color: AppThemeData
-                                                                .grey900,
-                                                            fontSize: 12,
-                                                          ),
-                                                        ),
-                                                      )
-                                                    : Text(
-                                                        Constant.userModel!
-                                                            .fullName(),
-                                                        textAlign:
-                                                            TextAlign.center,
-                                                        style: TextStyle(
-                                                          fontFamily:
-                                                              AppThemeData
-                                                                  .medium,
-                                                          color: AppThemeData
-                                                              .grey900,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                InkWell(
-                                                  onTap: () async {
-                                                    if (Constant.userModel !=
-                                                        null) {
-                                                      Get.to(
-                                                        const AddressListScreen(),
-                                                      )!.then((value) {
-                                                        if (value != null) {
-                                                          ShippingAddress
-                                                          addressModel = value;
-                                                          Constant.selectedLocation =
-                                                              addressModel;
-                                                          controller.getData(
-                                                            context,
-                                                          );
-                                                        }
-                                                      });
-                                                    } else {
-                                                      Constant.checkPermission(
-                                                        onTap: () async {
-                                                          ShowToastDialog.showLoader(
-                                                            "Please wait".tr,
-                                                          );
-                                                          ShippingAddress
-                                                          addressModel =
-                                                              ShippingAddress();
-                                                          try {
-                                                            await Geolocator.requestPermission();
-                                                            await Geolocator.getCurrentPosition();
-                                                            ShowToastDialog.closeLoader();
-                                                            if (Constant
-                                                                    .selectedMapType ==
-                                                                'osm') {
-                                                              final result =
-                                                                  await Get.to(
-                                                                    () =>
-                                                                        MapPickerPage(),
-                                                                  );
-                                                              if (result !=
-                                                                  null) {
-                                                                final firstPlace =
-                                                                    result;
-                                                                final lat = firstPlace
-                                                                    .coordinates
-                                                                    .latitude;
-                                                                final lng = firstPlace
-                                                                    .coordinates
-                                                                    .longitude;
-                                                                final address =
-                                                                    firstPlace
-                                                                        .address;
-
-                                                                addressModel
-                                                                        .addressAs =
-                                                                    "Home";
-                                                                addressModel
-                                                                    .locality = address
-                                                                    .toString();
-                                                                addressModel
-                                                                        .location =
-                                                                    UserLocation(
-                                                                      latitude:
-                                                                          lat,
-                                                                      longitude:
-                                                                          lng,
-                                                                    );
-                                                                Constant.selectedLocation =
-                                                                    addressModel;
-                                                                controller
-                                                                    .getData(
-                                                                      context,
-                                                                    );
-                                                                Get.back();
-                                                              }
-                                                            } else {
-                                                              Navigator.push(
-                                                                context,
-                                                                MaterialPageRoute(
-                                                                  builder: (context) => PlacePicker(
-                                                                    apiKey: Constant
-                                                                        .mapAPIKey,
-                                                                    onPlacePicked: (result) async {
-                                                                      ShippingAddress
-                                                                      addressModel =
-                                                                          ShippingAddress();
-                                                                      addressModel
-                                                                              .addressAs =
-                                                                          "Home";
-                                                                      addressModel
-                                                                          .locality = result
-                                                                          .formattedAddress!
-                                                                          .toString();
-                                                                      addressModel
-                                                                          .location = UserLocation(
-                                                                        latitude: result
-                                                                            .geometry!
-                                                                            .location
-                                                                            .lat,
-                                                                        longitude: result
-                                                                            .geometry!
-                                                                            .location
-                                                                            .lng,
-                                                                      );
-                                                                      Constant.selectedLocation =
-                                                                          addressModel;
-                                                                      controller
-                                                                          .getData(
-                                                                            context,
-                                                                          );
-                                                                      Get.back();
-                                                                    },
-                                                                    initialPosition:
-                                                                        const LatLng(
-                                                                          -33.8567844,
-                                                                          151.213108,
-                                                                        ),
-                                                                    useCurrentLocation:
-                                                                        true,
-                                                                    selectInitialPosition:
-                                                                        true,
-                                                                    usePinPointingSearch:
-                                                                        true,
-                                                                    usePlaceDetailSearch:
-                                                                        true,
-                                                                    zoomGesturesEnabled:
-                                                                        true,
-                                                                    zoomControlsEnabled:
-                                                                        true,
-                                                                    resizeToAvoidBottomInset:
-                                                                        false, // only works in page mode, less flickery, remove if wrong offsets
-                                                                  ),
-                                                                ),
-                                                              );
-                                                            }
-                                                          } catch (e) {
-                                                            await placemarkFromCoordinates(
-                                                              19.228825,
-                                                              72.854118,
-                                                            ).then((
-                                                              valuePlaceMaker,
-                                                            ) {
-                                                              Placemark
-                                                              placeMark =
-                                                                  valuePlaceMaker[0];
-                                                              addressModel
-                                                                      .addressAs =
-                                                                  "Home";
-                                                              addressModel
-                                                                      .location =
-                                                                  UserLocation(
-                                                                    latitude:
-                                                                        19.228825,
-                                                                    longitude:
-                                                                        72.854118,
-                                                                  );
-                                                              String
-                                                              currentLocation =
-                                                                  "${placeMark.name}, ${placeMark.subLocality}, ${placeMark.locality}, ${placeMark.administrativeArea}, ${placeMark.postalCode}, ${placeMark.country}";
-                                                              addressModel
-                                                                      .locality =
-                                                                  currentLocation;
-                                                            });
-
-                                                            Constant.selectedLocation =
-                                                                addressModel;
-                                                            ShowToastDialog.closeLoader();
-                                                            controller.getData(
-                                                              context,
-                                                            );
-                                                          }
-                                                        },
-                                                        context: context,
-                                                      );
-                                                    }
-                                                  },
-                                                  child: Text.rich(
-                                                    maxLines: 1,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    TextSpan(
-                                                      children: [
-                                                        TextSpan(
-                                                          text: Constant
-                                                              .selectedLocation
-                                                              .getFullAddress(),
-                                                          style: TextStyle(
-                                                            fontFamily:
-                                                                AppThemeData
-                                                                    .medium,
-                                                            overflow:
-                                                                TextOverflow
-                                                                    .ellipsis,
-                                                            color: AppThemeData
-                                                                .grey900,
-                                                            fontSize: 14,
-                                                          ),
-                                                        ),
-                                                        WidgetSpan(
-                                                          child: SvgPicture.asset(
-                                                            "assets/icons/ic_down.svg",
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 5),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 20),
-                                      Consumer<SwiggySearchProvider>(
-                                        builder: (context, swiggySearchProvider, _) {
-                                          return InkWell(
-                                            onTap: () {
-                                              swiggySearchProvider
-                                                  .initFunction();
-                                              Get.to(
-                                                () =>
-                                                    const SwiggySearchScreen(),
-                                              );
-                                            },
-                                            child: AnimatedSearchHint(
-                                              controller: null,
-                                              enable: false,
-                                              fillColor: Colors.white,
-                                              fontFamily: 'Outfit-Bold',
-                                              textStyle: TextStyle(
-                                                fontFamily: 'Outfit-Bold',
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 12,
-                                                color: Colors.black,
-                                              ),
-                                              hintTextStyle: TextStyle(
-                                                fontFamily: 'Outfit-Bold',
-                                                fontWeight: FontWeight.w900,
-                                                fontSize: 15,
-                                                color: Colors.grey,
-                                              ),
-                                              suffix: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 16,
-                                                    ),
-                                                child: SvgPicture.asset(
-                                                  "assets/icons/ic_search.svg",
-                                                  color: Color(0xFFff5201),
-                                                ),
-                                              ),
-                                              hints: [
-                                                // Food items
-                                                "Search 'cake'",
-                                                "Search 'biryani'",
-                                                "Search 'ice cream'",
-                                                "Search 'pizza'",
-                                                "Search 'burger'",
-                                                "Search 'sushi'",
-                                                "Search 'restaurants'",
-                                                "Search 'curry'",
-                                                "Search 'noodles'",
-                                                "Search 'tacos'",
-                                                "Search 'chicken'",
-                                                "Search 'salad'",
-                                                "Search 'breakfast'",
-                                                "Search 'pasta'",
-                                                "Search 'soup'",
-                                                "Search 'wraps'",
-                                                "Search 'donuts'",
-                                                "Search 'coffee'",
-                                                "Search 'cookies'",
-                                                "Search 'drinks'",
-
-                                                // Motivational messages
-                                                "Search 'healthy food'",
-                                                "Search 'trending dishes'",
-                                                "Search 'popular items'",
-                                                "Search 'top rated'",
-                                                "Search 'new arrivals'",
-                                                "Search 'premium'",
-                                                "Search 'best deals'",
-                                                "Search 'award winning'",
-                                                "Search 'special offers'",
-                                                "Search 'today's special'",
-                                                "Search 'gift ideas'",
-                                                "Search 'late night'",
-                                                "Search 'morning'",
-                                                "Search 'evening'",
-                                                "Search 'dinner'",
-                                                "Search 'family meals'",
-                                                "Search 'group orders'",
-                                                "Search 'office lunch'",
-                                                "Search 'party food'",
-                                              ],
-                                              interval: const Duration(
-                                                seconds: 2,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                      const SizedBox(height: 10),
-                                    ],
-                                  ),
+                                martFoodTabBarWidgetHome(
+                                  martProvider: martProvider,
                                 ),
-                                Consumer<BestRestaurantProvider>(
-                                  builder: (context, bestRestaurantProvider, _) {
-                                    return Expanded(
-                                      child: SingleChildScrollView(
-                                        child: Column(
-                                          children: [
-                                            controller.bannerModel.isEmpty
-                                                ? const SizedBox()
-                                                : Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 16,
-                                                        ),
-                                                    child: BannerView(
-                                                      controller: controller,
-                                                    ),
-                                                  ),
-                                            const SizedBox(height: 20),
-                                            Padding(
+                                homeProfileAddressWidget(
+                                  homeProvider: controller,
+                                  context: context,
+                                ),
+                                const SizedBox(height: 20),
+                                homeScreenSearchWidget(),
+                                const SizedBox(height: 10),
+                              ],
+                            ),
+                          ),
+                          Consumer<BestRestaurantProvider>(
+                            builder: (context, bestRestaurantProvider, _) {
+                              return Expanded(
+                                child: SingleChildScrollView(
+                                  child: Column(
+                                    children: [
+                                      controller.bannerModel.isEmpty
+                                          ? const SizedBox()
+                                          : Padding(
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 16,
                                                   ),
-                                              child: CategoryView(),
+                                              child: BannerView(),
                                             ),
-
+                                      const SizedBox(height: 20),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ),
+                                        child: CategoryView(),
+                                      ),
+                                      bestRestaurantProvider
+                                                  .storyList
+                                                  .isEmpty ||
+                                              (Constant.storyEnable == false &&
+                                                  !kDebugMode)
+                                          ? SizedBox()
+                                          : Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 0,
+                                                  ),
+                                              child: Column(
+                                                children: [
+                                                  StoryView(
+                                                    controller: controller,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                      Visibility(
+                                        visible:
+                                            Constant.isEnableAdsFeature == true,
+                                        child:
                                             bestRestaurantProvider
-                                                        .storyList
-                                                        .isEmpty ||
-                                                    (Constant.storyEnable ==
-                                                            false &&
-                                                        !kDebugMode)
-                                                ? SizedBox()
-                                                : Padding(
+                                                .advertisementList
+                                                .isEmpty
+                                            ? const SizedBox()
+                                            : Column(
+                                                children: [
+                                                  const SizedBox(height: 20),
+                                                  Container(
+                                                    margin:
+                                                        const EdgeInsets.symmetric(
+                                                          horizontal: 16,
+                                                        ),
                                                     padding:
                                                         const EdgeInsets.symmetric(
-                                                          horizontal: 0,
+                                                          horizontal: 16,
+                                                          vertical: 16,
                                                         ),
+                                                    decoration: BoxDecoration(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            20,
+                                                          ),
+                                                      color: AppThemeData
+                                                          .primary300
+                                                          .withAlpha(40),
+                                                    ),
                                                     child: Column(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .start,
+                                                      crossAxisAlignment:
+                                                          CrossAxisAlignment
+                                                              .start,
                                                       children: [
-                                                        StoryView(
-                                                          controller:
-                                                              controller,
+                                                        Row(
+                                                          children: [
+                                                            Expanded(
+                                                              child: Text(
+                                                                "Highlights for you"
+                                                                    .tr,
+                                                                textAlign:
+                                                                    TextAlign
+                                                                        .start,
+                                                                style: TextStyle(
+                                                                  fontFamily:
+                                                                      AppThemeData
+                                                                          .semiBold,
+                                                                  fontSize: 16,
+                                                                  color: AppThemeData
+                                                                      .grey900,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                            InkWell(
+                                                              onTap: () {
+                                                                Get.to(
+                                                                  AllAdvertisementScreen(),
+                                                                )?.then((
+                                                                  value,
+                                                                ) {
+                                                                  controller
+                                                                      .getFavouriteRestaurant();
+                                                                });
+                                                              },
+                                                              child: Text(
+                                                                "See all".tr,
+                                                                textAlign:
+                                                                    TextAlign
+                                                                        .center,
+                                                                style: TextStyle(
+                                                                  fontFamily:
+                                                                      AppThemeData
+                                                                          .regular,
+                                                                  color: AppThemeData
+                                                                      .primary300,
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                        const SizedBox(
+                                                          height: 16,
+                                                        ),
+                                                        SizedBox(
+                                                          height: 220,
+                                                          child: ListView.builder(
+                                                            physics:
+                                                                const BouncingScrollPhysics(),
+                                                            scrollDirection:
+                                                                Axis.horizontal,
+                                                            itemCount:
+                                                                bestRestaurantProvider
+                                                                        .advertisementList
+                                                                        .length >=
+                                                                    10
+                                                                ? 10
+                                                                : bestRestaurantProvider
+                                                                      .advertisementList
+                                                                      .length,
+                                                            padding:
+                                                                EdgeInsets.all(
+                                                                  0,
+                                                                ),
+                                                            itemBuilder:
+                                                                (
+                                                                  BuildContext
+                                                                  context,
+                                                                  int index,
+                                                                ) {
+                                                                  return AdvertisementHomeCard(
+                                                                    controller:
+                                                                        controller,
+                                                                    model: bestRestaurantProvider
+                                                                        .advertisementList[index],
+                                                                  );
+                                                                },
+                                                          ),
                                                         ),
                                                       ],
                                                     ),
                                                   ),
-                                            Visibility(
-                                              visible:
-                                                  Constant.isEnableAdsFeature ==
-                                                  true,
-                                              child:
-                                                  bestRestaurantProvider
-                                                      .advertisementList
-                                                      .isEmpty
-                                                  ? const SizedBox()
-                                                  : Column(
-                                                      children: [
-                                                        const SizedBox(
-                                                          height: 20,
-                                                        ),
-                                                        Container(
-                                                          margin:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 16,
-                                                              ),
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 16,
-                                                                vertical: 16,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  20,
-                                                                ),
-                                                            color: AppThemeData
-                                                                .primary300
-                                                                .withAlpha(40),
-                                                          ),
-                                                          child: Column(
-                                                            mainAxisAlignment:
-                                                                MainAxisAlignment
-                                                                    .start,
-                                                            crossAxisAlignment:
-                                                                CrossAxisAlignment
-                                                                    .start,
-                                                            children: [
-                                                              Row(
-                                                                children: [
-                                                                  Expanded(
-                                                                    child: Text(
-                                                                      "Highlights for you"
-                                                                          .tr,
-                                                                      textAlign:
-                                                                          TextAlign
-                                                                              .start,
-                                                                      style: TextStyle(
-                                                                        fontFamily:
-                                                                            AppThemeData.semiBold,
-                                                                        fontSize:
-                                                                            16,
-                                                                        color: AppThemeData
-                                                                            .grey900,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                  InkWell(
-                                                                    onTap: () {
-                                                                      Get.to(
-                                                                        AllAdvertisementScreen(),
-                                                                      )?.then((
-                                                                        value,
-                                                                      ) {
-                                                                        controller
-                                                                            .getFavouriteRestaurant();
-                                                                      });
-                                                                    },
-                                                                    child: Text(
-                                                                      "See all"
-                                                                          .tr,
-                                                                      textAlign:
-                                                                          TextAlign
-                                                                              .center,
-                                                                      style: TextStyle(
-                                                                        fontFamily:
-                                                                            AppThemeData.regular,
-                                                                        color: AppThemeData
-                                                                            .primary300,
-                                                                      ),
-                                                                    ),
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                              const SizedBox(
-                                                                height: 16,
-                                                              ),
-                                                              SizedBox(
-                                                                height: 220,
-                                                                child: ListView.builder(
-                                                                  physics:
-                                                                      const BouncingScrollPhysics(),
-                                                                  scrollDirection:
-                                                                      Axis.horizontal,
-                                                                  itemCount:
-                                                                      bestRestaurantProvider
-                                                                              .advertisementList
-                                                                              .length >=
-                                                                          10
-                                                                      ? 10
-                                                                      : bestRestaurantProvider
-                                                                            .advertisementList
-                                                                            .length,
-                                                                  padding:
-                                                                      EdgeInsets.all(
-                                                                        0,
-                                                                      ),
-                                                                  itemBuilder:
-                                                                      (
-                                                                        BuildContext
-                                                                        context,
-                                                                        int
-                                                                        index,
-                                                                      ) {
-                                                                        return AdvertisementHomeCard(
-                                                                          controller:
-                                                                              controller,
-                                                                          model:
-                                                                              bestRestaurantProvider.advertisementList[index],
-                                                                        );
-                                                                      },
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                            ),
-                                            BestRestaurantsSection(
-                                              restaurantList:
-                                                  bestRestaurantProvider
-                                                      .allNearestRestaurant,
-                                            ),
-                                          ],
-                                        ),
+                                                ],
+                                              ),
                                       ),
-                                    );
-                                  },
+                                      BestRestaurantsSection(
+                                        restaurantList: bestRestaurantProvider
+                                            .allNearestRestaurant,
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
             ),
           ),
@@ -869,131 +373,6 @@ class HomeScreenTwo extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-
-  Widget buildProfileAvatar() {
-    final user = Constant.userModel;
-    final hasProfileImage =
-        user != null &&
-        user.profilePictureURL != null &&
-        user.profilePictureURL!.isNotEmpty &&
-        user.profilePictureURL!.toLowerCase() != "null";
-
-    if (hasProfileImage) {
-      return CircleAvatar(
-        radius: 20,
-        backgroundColor: AppThemeData.primary300,
-        backgroundImage: NetworkImage(user.profilePictureURL!),
-      );
-    } else {
-      return InitialsAvatar(
-        firstName: user?.firstName,
-        lastName: user?.lastName,
-        radius: 20,
-        backgroundColor: AppThemeData.primary300,
-        textColor: Colors.white,
-      );
-    }
-  }
-}
-
-class BannerView extends StatelessWidget {
-  final HomeProvider controller;
-
-  const BannerView({super.key, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 160,
-      child: Consumer<RestaurantDetailsProvider>(
-        builder: (context, restaurantDetailsProvider, _) {
-          return GestureDetector(
-            onPanStart: (_) => controller.stopBannerTimer(),
-            onPanEnd: (_) => controller.startBannerTimer(),
-            child: PageView.builder(
-              physics: const BouncingScrollPhysics(),
-              controller: controller.pageController,
-              scrollDirection: Axis.horizontal,
-              itemCount: controller.bannerModel.length,
-              padEnds: false,
-              pageSnapping: true,
-              onPageChanged: (value) {
-                controller.changeBannerPage(value);
-              },
-              itemBuilder: (BuildContext context, int index) {
-                BannerModel bannerModel = controller.bannerModel[index];
-                return InkWell(
-                  onTap: () async {
-                    controller.stopBannerTimer();
-                    if (bannerModel.redirectType == "store") {
-                      ShowToastDialog.showLoader("Please wait".tr);
-                      VendorModel? vendorModel =
-                          await FireStoreUtils.getVendorById(
-                            bannerModel.redirectId.toString(),
-                          );
-                      if (vendorModel!.zoneId == Constant.selectedZone!.id) {
-                        ShowToastDialog.closeLoader();
-                        restaurantDetailsProvider.initFunction(
-                          vendorModels: vendorModel,
-                        );
-                        Get.to(const RestaurantDetailsScreen());
-                      } else {
-                        ShowToastDialog.closeLoader();
-                        ShowToastDialog.showToast(
-                          "Sorry, The Zone is not available in your area. change the other location first."
-                              .tr,
-                        );
-                      }
-                    } else if (bannerModel.redirectType == "product") {
-                      ShowToastDialog.showLoader("Please wait".tr);
-                      ProductModel? productModel =
-                          await FireStoreUtils.getProductById(
-                            bannerModel.redirectId.toString(),
-                          );
-                      VendorModel? vendorModel =
-                          await FireStoreUtils.getVendorById(
-                            productModel!.vendorID.toString(),
-                          );
-                      if (vendorModel!.zoneId == Constant.selectedZone!.id) {
-                        ShowToastDialog.closeLoader();
-                        restaurantDetailsProvider.initFunction(
-                          vendorModels: vendorModel,
-                        );
-                        Get.to(const RestaurantDetailsScreen());
-                      } else {
-                        ShowToastDialog.closeLoader();
-                        ShowToastDialog.showToast(
-                          "Sorry, The Zone is not available in your area. change the other location first."
-                              .tr,
-                        );
-                      }
-                    } else if (bannerModel.redirectType == "external_link") {
-                      final uri = Uri.parse(bannerModel.redirectId.toString());
-                      if (await canLaunchUrl(uri)) {
-                        await launchUrl(uri);
-                      } else {
-                        ShowToastDialog.showToast("Could not launch".tr);
-                      }
-                    }
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 0),
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.all(Radius.circular(12)),
-                      child: NetworkImageWidget(
-                        imageUrl: bannerModel.photo.toString(),
-                        fit: BoxFit.fill,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        },
-      ),
     );
   }
 }
@@ -1214,6 +593,56 @@ class AdvertisementHomeCard extends StatelessWidget {
                       //           }
                       //         },
                       //       )
+                      //     :         // model.type == 'restaurant_promotion'
+                      //     ? IconButton(
+                      //         icon: Obx(
+                      //           () =>
+                      //               controller.favouriteList
+                      //                   .where(
+                      //                     (p0) => p0.restaurantId == model.vendorId,
+                      //                   )
+                      //                   .isNotEmpty
+                      //               ? SvgPicture.asset(
+                      //                   "assets/icons/ic_like_fill.svg",
+                      //                 )
+                      //               : SvgPicture.asset(
+                      //                   "assets/icons/ic_like.svg",
+                      //                   colorFilter: ColorFilter.mode(
+                      //                     AppThemeData.grey600,
+                      //                     BlendMode.srcIn,
+                      //                   ),
+                      //                 ),
+                      //         ),
+                      //         onPressed: () async {
+                      //           final userId =
+                      //               await SqlStorageConst.getFirebaseId();
+                      //           if (controller.favouriteList
+                      //               .where(
+                      //                 (p0) => p0.restaurantId == model.vendorId,
+                      //               )
+                      //               .isNotEmpty) {
+                      //             FavouriteModel favouriteModel = FavouriteModel(
+                      //               restaurantId: model.vendorId,
+                      //               userId: userId,
+                      //             );
+                      //             controller.favouriteList.removeWhere(
+                      //               (item) => item.restaurantId == model.vendorId,
+                      //             );
+                      //             await FireStoreUtils.removeFavouriteRestaurant(
+                      //               favouriteModel,
+                      //             );
+                      //           } else {
+                      //             FavouriteModel favouriteModel = FavouriteModel(
+                      //               restaurantId: model.vendorId,
+                      //               userId: userId,
+                      //             );
+                      //             controller.favouriteList.add(favouriteModel);
+                      //             await FireStoreUtils.setFavouriteRestaurant(
+                      //               favouriteModel,
+                      //             );
+                      //           }
+                      //         },
+                      //       )
                       //     :
                       Container(
                         decoration: ShapeDecoration(
@@ -1240,481 +669,6 @@ class AdvertisementHomeCard extends StatelessWidget {
               ],
             ),
           ),
-        );
-      },
-    );
-  }
-}
-
-class MapView extends StatelessWidget {
-  const MapView({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer3<MapViewProvider, BestRestaurantProvider, HomeProvider>(
-      builder: (context, controller, bestRestaurantProvider, homeProvider, _) {
-        return Stack(
-          children: [
-            Constant.selectedMapType == "osm"
-                ? flutterMap.FlutterMap(
-                    mapController: controller.osmMapController,
-                    options: flutterMap.MapOptions(
-                      initialCenter: location.LatLng(
-                        Constant.selectedLocation.location!.latitude ?? 0.0,
-                        Constant.selectedLocation.location!.longitude ?? 0.0,
-                      ),
-                      initialZoom: 10,
-                    ),
-                    children: [
-                      flutterMap.TileLayer(
-                        urlTemplate:
-                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.example.app',
-                      ),
-                      flutterMap.MarkerLayer(markers: controller.osmMarker),
-                    ],
-                  )
-                : GoogleMap(
-                    mapType: MapType.terrain,
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
-                    zoomControlsEnabled: false,
-                    markers: Set<Marker>.of(controller.markers.values),
-                    onMapCreated: (GoogleMapController mapController) {
-                      controller.mapController = mapController;
-                    },
-                    mapToolbarEnabled: true,
-                    initialCameraPosition: CameraPosition(
-                      zoom: 18,
-                      target:
-                          bestRestaurantProvider.allNearestRestaurant.isEmpty
-                          ? LatLng(
-                              Constant.selectedLocation.location!.latitude ??
-                                  45.521563,
-                              Constant.selectedLocation.location!.longitude ??
-                                  -122.677433,
-                            )
-                          : LatLng(
-                              bestRestaurantProvider
-                                      .allNearestRestaurant
-                                      .first
-                                      .latitude ??
-                                  45.521563,
-                              bestRestaurantProvider
-                                      .allNearestRestaurant
-                                      .first
-                                      .longitude ??
-                                  -122.677433,
-                            ),
-                    ),
-                  ),
-            bestRestaurantProvider.allNearestRestaurant.isEmpty
-                ? Container()
-                : Align(
-                    alignment: Alignment.bottomCenter,
-                    child: Padding(
-                      padding: const EdgeInsets.only(bottom: 80),
-                      child: SizedBox(
-                        height: Responsive.height(25, context),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Expanded(
-                              child: PageView.builder(
-                                pageSnapping: true,
-                                controller: PageController(
-                                  viewportFraction: 0.88,
-                                ),
-                                onPageChanged: (value) async {
-                                  if (Constant.selectedMapType == "osm") {
-                                    controller.osmMapController.move(
-                                      location.LatLng(
-                                        bestRestaurantProvider
-                                            .allNearestRestaurant[value]
-                                            .latitude!,
-                                        bestRestaurantProvider
-                                            .allNearestRestaurant[value]
-                                            .longitude!,
-                                      ),
-                                      16,
-                                    );
-                                  } else {
-                                    CameraUpdate cameraUpdate =
-                                        CameraUpdate.newCameraPosition(
-                                          CameraPosition(
-                                            zoom: 18,
-                                            target: LatLng(
-                                              bestRestaurantProvider
-                                                  .allNearestRestaurant[value]
-                                                  .latitude!,
-                                              bestRestaurantProvider
-                                                  .allNearestRestaurant[value]
-                                                  .longitude!,
-                                            ),
-                                          ),
-                                        );
-                                    controller.mapController!.animateCamera(
-                                      cameraUpdate,
-                                    );
-                                  }
-                                },
-                                itemCount: bestRestaurantProvider
-                                    .allNearestRestaurant
-                                    .length,
-                                scrollDirection: Axis.horizontal,
-                                itemBuilder: (context, index) {
-                                  VendorModel vendorModel =
-                                      bestRestaurantProvider
-                                          .allNearestRestaurant[index];
-                                  return InkWell(
-                                    onTap: () {
-                                      Get.to(
-                                        const RestaurantDetailsScreen(),
-                                        arguments: {"vendorModel": vendorModel},
-                                      )?.then((v) {
-                                        controller.homeController
-                                            .getFavouriteRestaurant();
-                                      });
-                                    },
-                                    child: Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 10,
-                                        horizontal: index == 0 ? 0 : 10,
-                                      ),
-                                      child: Container(
-                                        decoration: BoxDecoration(
-                                          color: AppThemeData.grey50,
-                                          borderRadius: const BorderRadius.all(
-                                            Radius.circular(16),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Stack(
-                                              children: [
-                                                ClipRRect(
-                                                  borderRadius:
-                                                      const BorderRadius.only(
-                                                        topLeft:
-                                                            Radius.circular(16),
-                                                        topRight:
-                                                            Radius.circular(16),
-                                                      ),
-                                                  child: Stack(
-                                                    children: [
-                                                      NetworkImageWidget(
-                                                        imageUrl: vendorModel
-                                                            .photo
-                                                            .toString(),
-                                                        fit: BoxFit.cover,
-                                                        height:
-                                                            Responsive.height(
-                                                              14,
-                                                              context,
-                                                            ),
-                                                        width: Responsive.width(
-                                                          100,
-                                                          context,
-                                                        ),
-                                                      ),
-                                                      Container(
-                                                        height:
-                                                            Responsive.height(
-                                                              14,
-                                                              context,
-                                                            ),
-                                                        width: Responsive.width(
-                                                          100,
-                                                          context,
-                                                        ),
-                                                        decoration: BoxDecoration(
-                                                          gradient: LinearGradient(
-                                                            begin:
-                                                                const Alignment(
-                                                                  -0.00,
-                                                                  -1.00,
-                                                                ),
-                                                            end:
-                                                                const Alignment(
-                                                                  0,
-                                                                  1,
-                                                                ),
-                                                            colors: [
-                                                              Colors.black
-                                                                  .withOpacity(
-                                                                    0,
-                                                                  ),
-                                                              const Color(
-                                                                0xFF111827,
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      // Positioned(
-                                                      //   right: 10,
-                                                      //   top: 10,
-                                                      //   child: InkWell(
-                                                      //     onTap: () async {
-                                                      //       final userId =
-                                                      //           await SqlStorageConst.getFirebaseId();
-                                                      //       if (controller
-                                                      //           .homeController
-                                                      //           .favouriteList
-                                                      //           .where(
-                                                      //             (p0) =>
-                                                      //                 p0.restaurantId ==
-                                                      //                 vendorModel
-                                                      //                     .id,
-                                                      //           )
-                                                      //           .isNotEmpty) {
-                                                      //         FavouriteModel
-                                                      //         favouriteModel =
-                                                      //             FavouriteModel(
-                                                      //               restaurantId:
-                                                      //                   vendorModel
-                                                      //                       .id,
-                                                      //               userId:
-                                                      //                   userId,
-                                                      //             );
-                                                      //         controller
-                                                      //             .homeController
-                                                      //             .favouriteList
-                                                      //             .removeWhere(
-                                                      //               (item) =>
-                                                      //                   item.restaurantId ==
-                                                      //                   vendorModel
-                                                      //                       .id,
-                                                      //             );
-                                                      //         await FireStoreUtils.removeFavouriteRestaurant(
-                                                      //           favouriteModel,
-                                                      //         );
-                                                      //       } else {
-                                                      //         FavouriteModel
-                                                      //         favouriteModel =
-                                                      //             FavouriteModel(
-                                                      //               restaurantId:
-                                                      //                   vendorModel
-                                                      //                       .id,
-                                                      //               userId:
-                                                      //                   userId,
-                                                      //             );
-                                                      //         controller
-                                                      //             .homeController
-                                                      //             .favouriteList
-                                                      //             .add(
-                                                      //               favouriteModel,
-                                                      //             );
-                                                      //         await FireStoreUtils.setFavouriteRestaurant(
-                                                      //           favouriteModel,
-                                                      //         );
-                                                      //       }
-                                                      //     },
-                                                      //     child: Obx(
-                                                      //       () =>
-                                                      //           controller
-                                                      //               .homeController
-                                                      //               .favouriteList
-                                                      //               .where(
-                                                      //                 (p0) =>
-                                                      //                     p0.restaurantId ==
-                                                      //                     vendorModel
-                                                      //                         .id,
-                                                      //               )
-                                                      //               .isNotEmpty
-                                                      //           ? SvgPicture.asset(
-                                                      //               "assets/icons/ic_like_fill.svg",
-                                                      //             )
-                                                      //           : SvgPicture.asset(
-                                                      //               "assets/icons/ic_like.svg",
-                                                      //             ),
-                                                      //     ),
-                                                      //   ),
-                                                      // ),
-                                                    ],
-                                                  ),
-                                                ),
-                                                Transform.translate(
-                                                  offset: Offset(
-                                                    Responsive.width(
-                                                      -3,
-                                                      context,
-                                                    ),
-                                                    Responsive.height(
-                                                      11,
-                                                      context,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment.end,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment.end,
-                                                    children: [
-                                                      Container(
-                                                        decoration: ShapeDecoration(
-                                                          color: AppThemeData
-                                                              .primary50,
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  120,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 12,
-                                                                vertical: 8,
-                                                              ),
-                                                          child: Row(
-                                                            children: [
-                                                              SvgPicture.asset(
-                                                                "assets/icons/ic_star.svg",
-                                                                colorFilter:
-                                                                    ColorFilter.mode(
-                                                                      AppThemeData
-                                                                          .primary300,
-                                                                      BlendMode
-                                                                          .srcIn,
-                                                                    ),
-                                                              ),
-                                                              const SizedBox(
-                                                                width: 5,
-                                                              ),
-                                                              Text(
-                                                                "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
-                                                                style: TextStyle(
-                                                                  color: AppThemeData
-                                                                      .primary300,
-                                                                  fontFamily:
-                                                                      AppThemeData
-                                                                          .semiBold,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 10),
-                                                      Container(
-                                                        decoration: ShapeDecoration(
-                                                          color: AppThemeData
-                                                              .secondary50,
-                                                          shape: RoundedRectangleBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  120,
-                                                                ),
-                                                          ),
-                                                        ),
-                                                        child: Padding(
-                                                          padding:
-                                                              const EdgeInsets.symmetric(
-                                                                horizontal: 12,
-                                                                vertical: 8,
-                                                              ),
-                                                          child: Row(
-                                                            children: [
-                                                              SvgPicture.asset(
-                                                                "assets/icons/ic_map_distance.svg",
-                                                                colorFilter:
-                                                                    const ColorFilter.mode(
-                                                                      AppThemeData
-                                                                          .secondary300,
-                                                                      BlendMode
-                                                                          .srcIn,
-                                                                    ),
-                                                              ),
-                                                              const SizedBox(
-                                                                width: 5,
-                                                              ),
-                                                              Text(
-                                                                "${Constant.getDistance(lat1: vendorModel.latitude.toString(), lng1: vendorModel.longitude.toString(), lat2: Constant.selectedLocation.location!.latitude.toString(), lng2: Constant.selectedLocation.location!.longitude.toString())} ${Constant.distanceType}",
-                                                                style: TextStyle(
-                                                                  color: AppThemeData
-                                                                      .secondary300,
-                                                                  fontFamily:
-                                                                      AppThemeData
-                                                                          .semiBold,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                ),
-                                                              ),
-                                                            ],
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 15),
-                                            Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 10,
-                                                  ),
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    vendorModel.title
-                                                        .toString(),
-                                                    textAlign: TextAlign.start,
-                                                    maxLines: 1,
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      fontFamily:
-                                                          AppThemeData.semiBold,
-                                                      color:
-                                                          AppThemeData.grey900,
-                                                    ),
-                                                  ),
-                                                  Text(
-                                                    vendorModel.location
-                                                        .toString(),
-                                                    textAlign: TextAlign.start,
-                                                    maxLines: 1,
-                                                    style: TextStyle(
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      fontFamily:
-                                                          AppThemeData.medium,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      color:
-                                                          AppThemeData.grey400,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-          ],
         );
       },
     );

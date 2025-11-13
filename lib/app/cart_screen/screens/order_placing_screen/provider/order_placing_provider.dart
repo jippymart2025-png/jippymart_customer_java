@@ -6,9 +6,9 @@ import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:get/get.dart';
 
 class OrderPlacingProvider extends ChangeNotifier {
-  RxBool isLoading = true.obs;
-  RxBool isPlacing = false.obs;
-  RxInt counter = 0.obs;
+  bool isLoading = true;
+  bool isPlacing = false;
+  int counter = 0;
   Timer? timer;
 
   void initFunction() {
@@ -20,25 +20,24 @@ class OrderPlacingProvider extends ChangeNotifier {
     timer?.cancel();
   }
 
-  Rx<OrderModel> orderModel = OrderModel().obs;
+  OrderModel orderModel = OrderModel();
 
   getArgument() async {
-    print('DEBUG: Getting order arguments');
     try {
       // Clear cart immediately to free up memory
       await DatabaseHelper.instance.deleteAllCartProducts();
 
       dynamic argumentData = Get.arguments;
       if (argumentData != null) {
-        orderModel.value = argumentData['orderModel'];
-        print('DEBUG: Order received: ${orderModel.value.id}');
+        orderModel = argumentData['orderModel'];
+        print('DEBUG: Order received: ${orderModel.id}');
       }
 
-      isLoading.value = false;
+      isLoading = false;
       notifyListeners();
     } catch (e) {
       print('DEBUG: Error getting arguments: $e');
-      isLoading.value = false;
+      isLoading = false;
       notifyListeners();
     }
   }
@@ -46,9 +45,10 @@ class OrderPlacingProvider extends ChangeNotifier {
   void startTimer() {
     print('DEBUG: Starting order placement timer');
     timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (counter.value == 2) { // Reduced from 3 to 2 seconds
+      if (counter == 2) {
+        // Reduced from 3 to 2 seconds
         timer.cancel();
-        isPlacing.value = true;
+        isPlacing = true;
         print('DEBUG: Order placement completed');
       }
       counter++;

@@ -229,8 +229,8 @@ class SearchData {
 class SearchScreenProvider extends ChangeNotifier {
   Timer? _debounceTimer;
   Timer? _suggestionTimer;
-  RxBool isSearching = false.obs;
-  RxString searchText = ''.obs;
+  bool isSearching = false;
+  String searchText = '';
   TextEditingController? _searchTextController;
   bool _isDisposed = false;
 
@@ -239,8 +239,8 @@ class SearchScreenProvider extends ChangeNotifier {
   static final TrieSearch _productTrie = TrieSearch();
 
   // **AUTO-COMPLETE SUGGESTIONS**
-  RxList<String> searchSuggestions = <String>[].obs;
-  RxBool showSuggestions = false.obs;
+  List<String> searchSuggestions = <String>[];
+  bool showSuggestions = false;
 
   // **OPTIMIZED CACHING SYSTEM - STATIC FOR PERSISTENCE**
   static final Map<String, List<ProductModel>> _productCache = {};
@@ -305,7 +305,7 @@ class SearchScreenProvider extends ChangeNotifier {
       if (!_isDisposed) {
         print('WARNING: Product loading timed out, stopping load');
         _isLoadingProducts = false;
-        isLoading.value = false;
+        isLoading = false;
       }
     });
   }
@@ -315,12 +315,12 @@ class SearchScreenProvider extends ChangeNotifier {
     _loadTimeoutTimer?.cancel();
   }
 
-  RxBool isLoading = true.obs;
-  RxList<VendorModel> vendorList = <VendorModel>[].obs;
-  RxList<VendorModel> vendorSearchList = <VendorModel>[].obs;
+  bool isLoading = true;
+  List<VendorModel> vendorList = <VendorModel>[];
+  List<VendorModel> vendorSearchList = <VendorModel>[];
 
-  RxList<ProductModel> productList = <ProductModel>[].obs;
-  RxList<ProductModel> productSearchList = <ProductModel>[].obs;
+  List<ProductModel> productList = <ProductModel>[];
+  List<ProductModel> productSearchList = <ProductModel>[];
 
   // **OPTIMIZED CACHE VALIDATION**
   bool _isCacheValid() {
@@ -337,7 +337,7 @@ class SearchScreenProvider extends ChangeNotifier {
 
     dynamic argumentData = Get.arguments;
     if (argumentData != null) {
-      vendorList.value = argumentData['vendorList'];
+      vendorList = argumentData['vendorList'];
       _cachedVendorList = List.from(vendorList);
 
       // Build vendor trie immediately
@@ -345,7 +345,7 @@ class SearchScreenProvider extends ChangeNotifier {
 
       productList.clear();
     }
-    isLoading.value = false;
+    isLoading = false;
 
     // Load products immediately for comprehensive search
     _loadProductsImmediately();
@@ -688,7 +688,7 @@ class SearchScreenProvider extends ChangeNotifier {
       if (_isDisposed) return;
 
       final cleaned = text.trim();
-      searchText.value = cleaned;
+      searchText = cleaned;
 
       // Clear results if empty
       if (cleaned.isEmpty) {
@@ -702,15 +702,15 @@ class SearchScreenProvider extends ChangeNotifier {
       // Perform search with debounce
       _debounceTimer?.cancel();
       _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-        if (!_isDisposed && searchText.value == cleaned) {
-          isSearching.value = true;
+        if (!_isDisposed && searchText == cleaned) {
+          isSearching = true;
           _performSimpleSearch(cleaned);
         }
       });
     } catch (e) {
       print('❌ Search text change failed: $e');
       if (!_isDisposed) {
-        isSearching.value = false;
+        isSearching = false;
       }
     }
   }
@@ -828,10 +828,10 @@ class SearchScreenProvider extends ChangeNotifier {
 
       // Update UI
       if (!_isDisposed) {
-        vendorSearchList.value = vendorResults;
-        productSearchList.value = productResults;
-        isSearching.value = false;
-        showSuggestions.value = false; // Hide suggestions when showing results
+        vendorSearchList = vendorResults;
+        productSearchList = productResults;
+        isSearching = false;
+        showSuggestions = false; // Hide suggestions when showing results
         print(
           "🎯 UI Updated - Vendor list: ${vendorSearchList.length}, Product list: ${productSearchList.length}",
         );
@@ -839,7 +839,7 @@ class SearchScreenProvider extends ChangeNotifier {
     } catch (e) {
       print("❌ Search failed: $e");
       if (!_isDisposed) {
-        isSearching.value = false;
+        isSearching = false;
       }
     }
   }
@@ -923,7 +923,7 @@ class SearchScreenProvider extends ChangeNotifier {
   // **ENHANCED SUGGESTIONS**
   void _updateSearchSuggestions(String query) {
     if (_isDisposed || query.length < 2) {
-      showSuggestions.value = false;
+      showSuggestions = false;
       return;
     }
 
@@ -976,8 +976,8 @@ class SearchScreenProvider extends ChangeNotifier {
       print("💡 Generated ${suggestions.length} suggestions: $suggestions");
 
       if (!_isDisposed) {
-        searchSuggestions.value = suggestions;
-        showSuggestions.value = suggestions.isNotEmpty;
+        searchSuggestions = suggestions;
+        showSuggestions = suggestions.isNotEmpty;
       }
     } catch (e) {
       print("❌ Suggestions failed: $e");
@@ -990,8 +990,8 @@ class SearchScreenProvider extends ChangeNotifier {
       vendorSearchList.clear();
       productSearchList.clear();
       searchSuggestions.clear();
-      showSuggestions.value = false;
-      isSearching.value = false;
+      showSuggestions = false;
+      isSearching = false;
     }
   }
 
@@ -1054,12 +1054,12 @@ class SearchScreenProvider extends ChangeNotifier {
     print("🎯 Selected suggestion: '$suggestion'");
 
     searchTextController.text = suggestion;
-    searchText.value = suggestion;
-    showSuggestions.value = false;
+    searchText = suggestion;
+    showSuggestions = false;
     searchSuggestions.clear();
 
     // Perform search immediately
-    isSearching.value = true;
+    isSearching = true;
     _performSimpleSearch(suggestion);
   }
 
@@ -1068,7 +1068,7 @@ class SearchScreenProvider extends ChangeNotifier {
     if (_isDisposed) return;
 
     searchTextController.clear();
-    searchText.value = '';
+    searchText = '';
     _clearSearchResults();
   }
 

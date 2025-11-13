@@ -12,19 +12,19 @@ class CategoryDetailsProvider extends ChangeNotifier {
   late String categoryId;
   late String categoryName;
   late String sectionName; // For section-based navigation
-  RxString parentCategoryImageUrl = ''.obs;
+  String parentCategoryImageUrl = '';
 
   // Observable data
-  RxList<MartSubcategoryModel> subcategories = <MartSubcategoryModel>[].obs;
-  RxList<MartItemModel> products = <MartItemModel>[].obs;
-  RxString selectedSubCategoryId = ''.obs;
-  RxBool isLoadingSubcategories = true.obs;
-  RxBool isLoadingProducts = false.obs;
-  RxString errorMessage = ''.obs;
+  List<MartSubcategoryModel> subcategories = <MartSubcategoryModel>[];
+  List<MartItemModel> products = <MartItemModel>[];
+  String selectedSubCategoryId = '';
+  bool isLoadingSubcategories = true;
+  bool isLoadingProducts = false;
+  String errorMessage = '';
 
   // Search and filter
-  RxString searchQuery = ''.obs;
-  RxString selectedFilter = ''.obs;
+  String searchQuery = '';
+  String selectedFilter = '';
   late String initialSubcategoryId; // Add this field
   void initFunction() {
     final arguments = Get.arguments as Map<String, dynamic>?;
@@ -61,7 +61,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
         print(
           '[CATEGORY DETAIL] 🔥 Special case: Using default image for trending',
         );
-        parentCategoryImageUrl.value =
+        parentCategoryImageUrl =
             'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop';
         return;
       }
@@ -70,7 +70,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
         print(
           '[CATEGORY DETAIL] ⭐ Special case: Using default image for featured',
         );
-        parentCategoryImageUrl.value =
+        parentCategoryImageUrl =
             'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop';
         return;
       }
@@ -82,9 +82,9 @@ class CategoryDetailsProvider extends ChangeNotifier {
         orElse: () => categories.first,
       );
 
-      parentCategoryImageUrl.value = parentCategory.photo ?? '';
+      parentCategoryImageUrl = parentCategory.photo ?? '';
       print(
-        '[CATEGORY DETAIL] 📸 Parent category image URL: ${parentCategoryImageUrl.value}',
+        '[CATEGORY DETAIL] 📸 Parent category image URL: ${parentCategoryImageUrl}',
       );
     } catch (e) {
       print('[CATEGORY DETAIL] ❌ Error loading parent category image: $e');
@@ -94,7 +94,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
   /// Load subcategories for compatibility with existing code
   Future<void> loadSubcategories() async {
     try {
-      isLoadingSubcategories.value = true;
+      isLoadingSubcategories = true;
       print(
         '[CATEGORY DETAIL] 📋 Loading subcategories for category: $categoryId',
       );
@@ -104,7 +104,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
         print(
           '[CATEGORY DETAIL] 🔥 Special case: Creating mock subcategories for trending',
         );
-        subcategories.value = [
+        subcategories = [
           MartSubcategoryModel(
             id: 'trending',
             title: 'Trending',
@@ -112,8 +112,8 @@ class CategoryDetailsProvider extends ChangeNotifier {
                 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
           ),
         ];
-        selectedSubCategoryId.value = 'trending';
-        isLoadingSubcategories.value = false;
+        selectedSubCategoryId = 'trending';
+        isLoadingSubcategories = false;
         return;
       }
 
@@ -122,7 +122,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
         print(
           '[CATEGORY DETAIL] ⭐ Special case: Creating mock subcategories for featured',
         );
-        subcategories.value = [
+        subcategories = [
           MartSubcategoryModel(
             id: 'featured',
             title: 'Featured',
@@ -130,8 +130,8 @@ class CategoryDetailsProvider extends ChangeNotifier {
                 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
           ),
         ];
-        selectedSubCategoryId.value = 'featured';
-        isLoadingSubcategories.value = false;
+        selectedSubCategoryId = 'featured';
+        isLoadingSubcategories = false;
         return;
       }
 
@@ -140,7 +140,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
         print(
           '[CATEGORY DETAIL] 📂 Special case: Creating mock subcategories for section: $sectionName',
         );
-        subcategories.value = [
+        subcategories = [
           MartSubcategoryModel(
             id: 'section_${sectionName.toLowerCase().replaceAll(' ', '_')}',
             title: sectionName,
@@ -148,9 +148,9 @@ class CategoryDetailsProvider extends ChangeNotifier {
                 'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop',
           ),
         ];
-        selectedSubCategoryId.value =
+        selectedSubCategoryId =
             'section_${sectionName.toLowerCase().replaceAll(' ', '_')}';
-        isLoadingSubcategories.value = false;
+        isLoadingSubcategories = false;
         return;
       }
 
@@ -170,50 +170,50 @@ class CategoryDetailsProvider extends ChangeNotifier {
         if (subcategories.isNotEmpty) {
           if (initialSubcategoryId.isNotEmpty &&
               subcategories.any((sub) => sub.id == initialSubcategoryId)) {
-            selectedSubCategoryId.value = initialSubcategoryId;
+            selectedSubCategoryId = initialSubcategoryId;
             print(
               '[CATEGORY DETAIL] ✅ Auto-selected subcategory: $initialSubcategoryId',
             );
           } else {
-            selectedSubCategoryId.value = subcategories.first.id ?? '';
+            selectedSubCategoryId = subcategories.first.id ?? '';
             print('[CATEGORY DETAIL] ⚠️ Defaulted to first subcategory');
           }
         } else {
-          selectedSubCategoryId.value = categoryId;
+          selectedSubCategoryId = categoryId;
           print(
             '[CATEGORY DETAIL] ⚠️ No subcategories found, fallback to parent',
           );
         }
 
         // if (subcategories.isNotEmpty) {
-        //   selectedSubCategoryId.value = subcategories.first.id ?? '';
+        //   selectedSubCategoryId = subcategories.first.id ?? '';
         //   print(
         //       '[CATEGORY DETAIL] ✅ Loaded ${subcategories.length} subcategories');
         // } else {
         //   print(
         //       '[CATEGORY DETAIL] ⚠️ No subcategories found, using main category');
-        //   selectedSubCategoryId.value = categoryId;
+        //   selectedSubCategoryId = categoryId;
         // }
       } else {
         print(
           '[CATEGORY DETAIL] ⚠️ No subcategories found for parent category: $categoryId',
         );
         // If no subcategories found, we'll still use the main category
-        selectedSubCategoryId.value = categoryId;
+        selectedSubCategoryId = categoryId;
       }
     } catch (e) {
       print('[CATEGORY DETAIL] ❌ Error loading subcategories: $e');
-      errorMessage.value = 'Unable to load subcategories';
+      errorMessage = 'Unable to load subcategories';
       // Fallback to using main category
-      selectedSubCategoryId.value = categoryId;
+      selectedSubCategoryId = categoryId;
     } finally {
-      isLoadingSubcategories.value = false;
+      isLoadingSubcategories = false;
     }
   }
 
   /// Select a subcategory
   void selectSubCategory(String subcategoryId) {
-    selectedSubCategoryId.value = subcategoryId;
+    selectedSubCategoryId = subcategoryId;
     print('[CATEGORY DETAIL] 🔄 Selected subcategory: $subcategoryId');
     print('[CATEGORY DETAIL] 🔄 Current category ID: $categoryId');
     print('[CATEGORY DETAIL] 🔄 This will trigger product stream update');
@@ -221,20 +221,20 @@ class CategoryDetailsProvider extends ChangeNotifier {
 
   /// Select a filter and update the UI
   void selectFilter(String? filterType) {
-    selectedFilter.value = filterType ?? '';
+    selectedFilter = filterType ?? '';
     print('[CATEGORY DETAIL] 🔄 Selected filter: $filterType');
   }
 
   /// Update search query
   void updateSearchQuery(String query) {
-    searchQuery.value = query;
+    searchQuery = query;
     print('[CATEGORY DETAIL] 🔍 Search query updated: $query');
   }
 
   /// Refresh data (for RefreshIndicator)
   Future<void> refreshData() async {
     print('[CATEGORY DETAIL] 🔄 Refreshing data...');
-    errorMessage.value = '';
+    errorMessage = '';
 
     // Reload subcategories for compatibility
     await loadSubcategories();

@@ -24,125 +24,147 @@ class LiveTrackingProvider extends ChangeNotifier {
     getArgument();
   }
 
-  Rx<OrderModel> orderModel = OrderModel().obs;
-  Rx<UserModel> driverUserModel = UserModel().obs;
-  RxBool isLoading = true.obs;
+  OrderModel orderModel = OrderModel();
+  UserModel driverUserModel = UserModel();
+  bool isLoading = true;
 
-  Rx<location.LatLng> source =
-      location.LatLng(21.1702, 72.8311).obs; // Start (e.g., Surat)
-  Rx<location.LatLng> current =
-      location.LatLng(21.1800, 72.8400).obs; // Moving marker
-  Rx<location.LatLng> destination =
-      location.LatLng(21.2000, 72.8600).obs; // Destination
+  location.LatLng source = location.LatLng(
+    21.1702,
+    72.8311,
+  ); // Start (e.g., Surat)
+  location.LatLng current = location.LatLng(21.1800, 72.8400);
+  location.LatLng destination = location.LatLng(
+    21.2000,
+    72.8600,
+  ); // Destination
 
   getArgument() async {
     dynamic argumentData = Get.arguments;
     if (argumentData != null) {
-      orderModel.value = argumentData['orderModel'];
+      orderModel = argumentData['orderModel'];
       FireStoreUtils.fireStore
           .collection(CollectionName.restaurantOrders)
-          .doc(orderModel.value.id)
+          .doc(orderModel.id)
           .snapshots()
           .listen((event) {
-        if (event.data() != null) {
-          OrderModel orderModelStream = OrderModel.fromJson(event.data()!);
-          orderModel.value = orderModelStream;
-          FireStoreUtils.fireStore
-              .collection(CollectionName.users)
-              .doc(orderModel.value.driverID)
-              .snapshots()
-              .listen((event) {
             if (event.data() != null) {
-              driverUserModel.value = UserModel.fromJson(event.data()!);
-              if (Constant.selectedMapType != 'osm') {
-                if (orderModel.value.status == Constant.orderShipped) {
-                  getPolyline(
-                      sourceLatitude: driverUserModel.value.location!.latitude,
-                      sourceLongitude:
-                      driverUserModel.value.location!.longitude,
-                      destinationLatitude: orderModel.value.vendor!.latitude,
-                      destinationLongitude: orderModel.value.vendor!.longitude);
-                } else if (orderModel.value.status == Constant.orderInTransit) {
-                  getPolyline(
-                      sourceLatitude: driverUserModel.value.location!.latitude,
-                      sourceLongitude:
-                      driverUserModel.value.location!.longitude,
-                      destinationLatitude:
-                      orderModel.value.address!.location!.latitude,
-                      destinationLongitude:
-                      orderModel.value.address!.location!.longitude);
-                } else {
-                  getPolyline(
-                      sourceLatitude:
-                      orderModel.value.address!.location!.latitude,
-                      sourceLongitude:
-                      orderModel.value.address!.location!.longitude,
-                      destinationLatitude: orderModel.value.vendor!.latitude,
-                      destinationLongitude: orderModel.value.vendor!.longitude);
-                }
-              } else {
-                if (orderModel.value.status == Constant.orderShipped) {
-                  current.value = location.LatLng(
-                      driverUserModel.value.location!.latitude ?? 0.0,
-                      driverUserModel.value.location!.longitude ?? 0.0);
-                  source.value = location.LatLng(
-                      orderModel.value.vendor!.latitude ?? 0.0,
-                      orderModel.value.vendor!.longitude ?? 0.0);
-                  destination.value = location.LatLng(
-                      orderModel.value.address!.location!.latitude ?? 0.0,
-                      orderModel.value.address!.location!.longitude ?? 0.0);
-                  fetchRoute(current.value, source.value);
-                  animateToSource();
-                } else if (orderModel.value.status == Constant.orderInTransit) {
-                  current.value = location.LatLng(
-                      driverUserModel.value.location!.latitude ?? 0.0,
-                      driverUserModel.value.location!.longitude ?? 0.0);
-                  source.value = location.LatLng(
-                      orderModel.value.vendor!.latitude ?? 0.0,
-                      orderModel.value.vendor!.longitude ?? 0.0);
-                  destination.value = location.LatLng(
-                      orderModel.value.address!.location!.latitude ?? 0.0,
-                      orderModel.value.address!.location!.longitude ?? 0.0);
-                  fetchRoute(current.value, destination.value);
-                  animateToSource();
-                } else {
-                  current.value = location.LatLng(
-                      driverUserModel.value.location!.latitude ?? 0.0,
-                      driverUserModel.value.location!.longitude ?? 0.0);
-                  source.value = location.LatLng(
-                      orderModel.value.vendor!.latitude ?? 0.0,
-                      orderModel.value.vendor!.longitude ?? 0.0);
-                  destination.value = location.LatLng(
-                      orderModel.value.address!.location!.latitude ?? 0.0,
-                      orderModel.value.address!.location!.longitude ?? 0.0);
-                  fetchRoute(current.value, source.value);
-                  animateToSource();
-                }
+              OrderModel orderModelStream = OrderModel.fromJson(event.data()!);
+              orderModel = orderModelStream;
+              FireStoreUtils.fireStore
+                  .collection(CollectionName.users)
+                  .doc(orderModel.driverID)
+                  .snapshots()
+                  .listen((event) {
+                    if (event.data() != null) {
+                      driverUserModel = UserModel.fromJson(event.data()!);
+                      if (Constant.selectedMapType != 'osm') {
+                        if (orderModel.status == Constant.orderShipped) {
+                          getPolyline(
+                            sourceLatitude: driverUserModel.location!.latitude,
+                            sourceLongitude:
+                                driverUserModel.location!.longitude,
+                            destinationLatitude: orderModel.vendor!.latitude,
+                            destinationLongitude: orderModel.vendor!.longitude,
+                          );
+                        } else if (orderModel.status ==
+                            Constant.orderInTransit) {
+                          getPolyline(
+                            sourceLatitude: driverUserModel.location!.latitude,
+                            sourceLongitude:
+                                driverUserModel.location!.longitude,
+                            destinationLatitude:
+                                orderModel.address!.location!.latitude,
+                            destinationLongitude:
+                                orderModel.address!.location!.longitude,
+                          );
+                        } else {
+                          getPolyline(
+                            sourceLatitude:
+                                orderModel.address!.location!.latitude,
+                            sourceLongitude:
+                                orderModel.address!.location!.longitude,
+                            destinationLatitude: orderModel.vendor!.latitude,
+                            destinationLongitude: orderModel.vendor!.longitude,
+                          );
+                        }
+                      } else {
+                        if (orderModel.status == Constant.orderShipped) {
+                          current = location.LatLng(
+                            driverUserModel.location!.latitude ?? 0.0,
+                            driverUserModel.location!.longitude ?? 0.0,
+                          );
+                          source = location.LatLng(
+                            orderModel.vendor!.latitude ?? 0.0,
+                            orderModel.vendor!.longitude ?? 0.0,
+                          );
+                          destination = location.LatLng(
+                            orderModel.address!.location!.latitude ?? 0.0,
+                            orderModel.address!.location!.longitude ?? 0.0,
+                          );
+                          fetchRoute(current, source);
+                          animateToSource();
+                        } else if (orderModel.status ==
+                            Constant.orderInTransit) {
+                          current = location.LatLng(
+                            driverUserModel.location!.latitude ?? 0.0,
+                            driverUserModel.location!.longitude ?? 0.0,
+                          );
+                          source = location.LatLng(
+                            orderModel.vendor!.latitude ?? 0.0,
+                            orderModel.vendor!.longitude ?? 0.0,
+                          );
+                          destination = location.LatLng(
+                            orderModel.address!.location!.latitude ?? 0.0,
+                            orderModel.address!.location!.longitude ?? 0.0,
+                          );
+                          fetchRoute(current, destination);
+                          animateToSource();
+                        } else {
+                          current = location.LatLng(
+                            driverUserModel.location!.latitude ?? 0.0,
+                            driverUserModel.location!.longitude ?? 0.0,
+                          );
+                          source = location.LatLng(
+                            orderModel.vendor!.latitude ?? 0.0,
+                            orderModel.vendor!.longitude ?? 0.0,
+                          );
+                          destination = location.LatLng(
+                            orderModel.address!.location!.latitude ?? 0.0,
+                            orderModel.address!.location!.longitude ?? 0.0,
+                          );
+                          fetchRoute(current, source);
+                          animateToSource();
+                        }
+                      }
+                    }
+                  });
+
+              if (orderModel.status == Constant.orderCompleted) {
+                Get.back();
               }
             }
           });
-
-          if (orderModel.value.status == Constant.orderCompleted) {
-            Get.back();
-          }
-        }
-      });
     }
-    isLoading.value = false;
+    isLoading = false;
     notifyListeners();
   }
 
   void animateToSource() {
     osmMapController.move(
-        location.LatLng(driverUserModel.value.location!.latitude ?? 0.0,
-            driverUserModel.value.location!.longitude ?? 0.0),
-        16);
+      location.LatLng(
+        driverUserModel.location!.latitude ?? 0.0,
+        driverUserModel.location!.longitude ?? 0.0,
+      ),
+      16,
+    );
   }
 
   RxList<location.LatLng> routePoints = <location.LatLng>[].obs;
 
   Future<void> fetchRoute(
-      location.LatLng source, location.LatLng destination) async {
+    location.LatLng source,
+    location.LatLng destination,
+  ) async {
     final url = Uri.parse(
       'https://router.project-osrm.org/route/v1/driving/${source.longitude},${source.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson',
     );
@@ -168,11 +190,12 @@ class LiveTrackingProvider extends ChangeNotifier {
   BitmapDescriptor? destinationIcon;
   BitmapDescriptor? driverIcon;
 
-  void getPolyline(
-      {required double? sourceLatitude,
-        required double? sourceLongitude,
-        required double? destinationLatitude,
-        required double? destinationLongitude}) async {
+  void getPolyline({
+    required double? sourceLatitude,
+    required double? sourceLongitude,
+    required double? destinationLatitude,
+    required double? destinationLongitude,
+  }) async {
     if (sourceLatitude != null &&
         sourceLongitude != null &&
         destinationLatitude != null &&
@@ -194,46 +217,51 @@ class LiveTrackingProvider extends ChangeNotifier {
       } else {
         print(result.errorMessage.toString());
       }
-      if (orderModel.value.status == Constant.orderShipped) {
+      if (orderModel.status == Constant.orderShipped) {
         addMarker(
-            latitude: driverUserModel.value.location!.latitude,
-            longitude: driverUserModel.value.location!.longitude,
-            id: "Driver",
-            descriptor: driverIcon!,
-            rotation: double.parse(driverUserModel.value.rotation.toString()));
+          latitude: driverUserModel.location!.latitude,
+          longitude: driverUserModel.location!.longitude,
+          id: "Driver",
+          descriptor: driverIcon!,
+          rotation: double.parse(driverUserModel.rotation.toString()),
+        );
         addMarker(
-          latitude: orderModel.value.vendor!.latitude,
-          longitude: orderModel.value.vendor!.longitude,
+          latitude: orderModel.vendor!.latitude,
+          longitude: orderModel.vendor!.longitude,
           id: "Departure",
           descriptor: departureIcon!,
           rotation: 0.0,
         );
-      } else if (orderModel.value.status == Constant.orderInTransit) {
+      } else if (orderModel.status == Constant.orderInTransit) {
         addMarker(
-            latitude: driverUserModel.value.location!.latitude,
-            longitude: driverUserModel.value.location!.longitude,
-            id: "Driver",
-            descriptor: driverIcon!,
-            rotation: double.parse(driverUserModel.value.rotation.toString()));
+          latitude: driverUserModel.location!.latitude,
+          longitude: driverUserModel.location!.longitude,
+          id: "Driver",
+          descriptor: driverIcon!,
+          rotation: double.parse(driverUserModel.rotation.toString()),
+        );
         addMarker(
-            latitude: orderModel.value.address!.location!.latitude,
-            longitude: orderModel.value.address!.location!.longitude,
-            id: "Destination",
-            descriptor: destinationIcon!,
-            rotation: 0.0);
+          latitude: orderModel.address!.location!.latitude,
+          longitude: orderModel.address!.location!.longitude,
+          id: "Destination",
+          descriptor: destinationIcon!,
+          rotation: 0.0,
+        );
       } else {
         addMarker(
-            latitude: orderModel.value.vendor!.latitude,
-            longitude: orderModel.value.vendor!.longitude,
-            id: "Departure",
-            descriptor: departureIcon!,
-            rotation: 0.0);
+          latitude: orderModel.vendor!.latitude,
+          longitude: orderModel.vendor!.longitude,
+          id: "Departure",
+          descriptor: departureIcon!,
+          rotation: 0.0,
+        );
         addMarker(
-            latitude: orderModel.value.address!.location!.latitude,
-            longitude: orderModel.value.address!.location!.longitude,
-            id: "Destination",
-            descriptor: destinationIcon!,
-            rotation: 0.0);
+          latitude: orderModel.address!.location!.latitude,
+          longitude: orderModel.address!.location!.longitude,
+          id: "Destination",
+          descriptor: destinationIcon!,
+          rotation: 0.0,
+        );
       }
 
       _addPolyLine(polylineCoordinates);
@@ -242,35 +270,41 @@ class LiveTrackingProvider extends ChangeNotifier {
 
   RxMap<MarkerId, Marker> markers = <MarkerId, Marker>{}.obs;
 
-  addMarker(
-      {required double? latitude,
-        required double? longitude,
-        required String id,
-        required BitmapDescriptor descriptor,
-        required double? rotation}) {
+  addMarker({
+    required double? latitude,
+    required double? longitude,
+    required String id,
+    required BitmapDescriptor descriptor,
+    required double? rotation,
+  }) {
     MarkerId markerId = MarkerId(id);
     Marker marker = Marker(
-        markerId: markerId,
-        icon: descriptor,
-        position: LatLng(latitude ?? 0.0, longitude ?? 0.0),
-        rotation: rotation ?? 0.0);
+      markerId: markerId,
+      icon: descriptor,
+      position: LatLng(latitude ?? 0.0, longitude ?? 0.0),
+      rotation: rotation ?? 0.0,
+    );
     markers[markerId] = marker;
   }
 
   addMarkerSetup() async {
     if (Constant.selectedMapType != 'osm') {
-      final Uint8List departure =
-      await Constant().getBytesFromAsset('assets/images/pickup.png', 100);
-      final Uint8List destination =
-      await Constant().getBytesFromAsset('assets/images/dropoff.png', 100);
-      final Uint8List driver = await Constant()
-          .getBytesFromAsset('assets/images/food_delivery.png', 100);
+      final Uint8List departure = await Constant().getBytesFromAsset(
+        'assets/images/pickup.png',
+        100,
+      );
+      final Uint8List destination = await Constant().getBytesFromAsset(
+        'assets/images/dropoff.png',
+        100,
+      );
+      final Uint8List driver = await Constant().getBytesFromAsset(
+        'assets/images/food_delivery.png',
+        100,
+      );
       departureIcon = BitmapDescriptor.bytes(departure);
       destinationIcon = BitmapDescriptor.bytes(destination);
       driverIcon = BitmapDescriptor.bytes(driver);
-    } else {
-
-    }
+    } else {}
   }
 
   RxMap<PolylineId, Polyline> polyLines = <PolylineId, Polyline>{}.obs;
@@ -287,14 +321,17 @@ class LiveTrackingProvider extends ChangeNotifier {
     );
     polyLines[id] = polyline;
     updateCameraLocation(
-        polylineCoordinates.first, polylineCoordinates.last, mapController);
+      polylineCoordinates.first,
+      polylineCoordinates.last,
+      mapController,
+    );
   }
 
   Future<void> updateCameraLocation(
-      LatLng source,
-      LatLng destination,
-      GoogleMapController? mapController,
-      ) async {
+    LatLng source,
+    LatLng destination,
+    GoogleMapController? mapController,
+  ) async {
     if (mapController == null) return;
 
     LatLngBounds bounds;
@@ -304,12 +341,14 @@ class LiveTrackingProvider extends ChangeNotifier {
       bounds = LatLngBounds(southwest: destination, northeast: source);
     } else if (source.longitude > destination.longitude) {
       bounds = LatLngBounds(
-          southwest: LatLng(source.latitude, destination.longitude),
-          northeast: LatLng(destination.latitude, source.longitude));
+        southwest: LatLng(source.latitude, destination.longitude),
+        northeast: LatLng(destination.latitude, source.longitude),
+      );
     } else if (source.latitude > destination.latitude) {
       bounds = LatLngBounds(
-          southwest: LatLng(destination.latitude, source.longitude),
-          northeast: LatLng(source.latitude, destination.longitude));
+        southwest: LatLng(destination.latitude, source.longitude),
+        northeast: LatLng(source.latitude, destination.longitude),
+      );
     } else {
       bounds = LatLngBounds(southwest: source, northeast: destination);
     }
@@ -320,7 +359,9 @@ class LiveTrackingProvider extends ChangeNotifier {
   }
 
   Future<void> checkCameraLocation(
-      CameraUpdate cameraUpdate, GoogleMapController mapController) async {
+    CameraUpdate cameraUpdate,
+    GoogleMapController mapController,
+  ) async {
     mapController.animateCamera(cameraUpdate);
     LatLngBounds l1 = await mapController.getVisibleRegion();
     LatLngBounds l2 = await mapController.getVisibleRegion();
@@ -329,5 +370,4 @@ class LiveTrackingProvider extends ChangeNotifier {
       return checkCameraLocation(cameraUpdate, mapController);
     }
   }
-
 }

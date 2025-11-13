@@ -380,11 +380,6 @@ class OrderDetailsScreen extends StatelessWidget {
         taxAmount +
         (isFreeDelivery ? 0.0 : deliveryCharges) +
         deliveryTips;
-    print('DEBUG: Order Details - Final calculation:');
-    print('DEBUG: Order Details - SubTotal: ₹$subTotal');
-    print('DEBUG: Order Details - Delivery Charges: ₹$deliveryCharges');
-    print('DEBUG: Order Details - Is Free Delivery: $isFreeDelivery');
-    print('DEBUG: Order Details - Total Amount: ₹$totalAmount');
 
     return OrderBillDetails(
       subTotal: subTotal,
@@ -403,7 +398,7 @@ class OrderDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<OrderDetailsProvider>(
       builder: (context, controller, _) {
-        final order = controller.orderModel.value;
+        final order = controller.orderModel;
         if (order.products == null || order.products!.isEmpty) {
           return Scaffold(
             backgroundColor: AppThemeData.surface,
@@ -525,7 +520,7 @@ class OrderDetailsScreen extends StatelessWidget {
                   ),
                 ),
               ),
-              body: controller.isLoading.value
+              body: controller.isLoading
                   ? Constant.loader(message: "Loading order details...".tr)
                   : Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -542,7 +537,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        "${'Order'.tr} ${Constant.orderId(orderId: controller.orderModel.value.id.toString())}"
+                                        "${'Order'.tr} ${Constant.orderId(orderId: controller.orderModel.id.toString())}"
                                             .tr,
                                         textAlign: TextAlign.start,
                                         style: TextStyle(
@@ -555,18 +550,18 @@ class OrderDetailsScreen extends StatelessWidget {
                                   ),
                                 ),
                                 RoundedButtonFill(
-                                  title: controller.orderModel.value.status
+                                  title: controller.orderModel.status
                                       .toString()
                                       .tr,
                                   color: Constant.statusColor(
-                                    status: controller.orderModel.value.status
+                                    status: controller.orderModel.status
                                         .toString(),
                                   ),
                                   width: 32,
                                   height: 4.5,
                                   radius: 10,
                                   textColor: Constant.statusText(
-                                    status: controller.orderModel.value.status
+                                    status: controller.orderModel.status
                                         .toString(),
                                   ),
                                   onPress: () async {},
@@ -574,7 +569,7 @@ class OrderDetailsScreen extends StatelessWidget {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            controller.orderModel.value.takeAway == true
+                            controller.orderModel.takeAway == true
                                 ? Container(
                                     decoration: ShapeDecoration(
                                       color: AppThemeData.grey50,
@@ -597,7 +592,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                 Text(
                                                   controller
                                                           .orderModel
-                                                          .value
                                                           .vendor
                                                           ?.title ??
                                                       'Jippy Mart',
@@ -613,7 +607,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                 Text(
                                                   controller
                                                           .orderModel
-                                                          .value
                                                           .vendor
                                                           ?.location ??
                                                       'Jippy Mart Store',
@@ -633,7 +626,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                               final phone =
                                                   controller
                                                       .orderModel
-                                                      .value
                                                       .vendor
                                                       ?.phonenumber
                                                       ?.toString() ??
@@ -641,15 +633,12 @@ class OrderDetailsScreen extends StatelessWidget {
                                               final vendorId =
                                                   controller
                                                       .orderModel
-                                                      .value
                                                       .vendor
                                                       ?.author
                                                       ?.toString() ??
                                                   'mart_support';
-                                              final orderId = controller
-                                                  .orderModel
-                                                  .value
-                                                  .id;
+                                              final orderId =
+                                                  controller.orderModel.id;
                                               debugPrint('[CALL VENDOR]');
                                               debugPrint('Collection: vendors');
                                               debugPrint(
@@ -701,21 +690,18 @@ class OrderDetailsScreen extends StatelessWidget {
                                                   await AddressListProvider.getUserProfile(
                                                     controller
                                                         .orderModel
-                                                        .value
                                                         .authorID
                                                         .toString(),
                                                   );
                                               UserModel? restaurantUser =
                                                   controller
                                                           .orderModel
-                                                          .value
                                                           .vendor
                                                           ?.author !=
                                                       null
                                                   ? await AddressListProvider.getUserProfile(
                                                       controller
                                                           .orderModel
-                                                          .value
                                                           .vendor!
                                                           .author
                                                           .toString(),
@@ -748,10 +734,8 @@ class OrderDetailsScreen extends StatelessWidget {
                                                       .fullName(),
                                                   "restaurantName":
                                                       vendorModel.title,
-                                                  "orderId": controller
-                                                      .orderModel
-                                                      .value
-                                                      .id,
+                                                  "orderId":
+                                                      controller.orderModel.id,
                                                   "restaurantId":
                                                       restaurantUser.id,
                                                   "customerId": customer.id,
@@ -856,7 +840,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                   Text(
                                                                     controller
                                                                             .orderModel
-                                                                            .value
                                                                             .vendor
                                                                             ?.title ??
                                                                         'Jippy Mart',
@@ -876,7 +859,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                   Text(
                                                                     controller
                                                                             .orderModel
-                                                                            .value
                                                                             .vendor
                                                                             ?.location ??
                                                                         'Jippy Mart Store',
@@ -910,7 +892,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                 customer = await AddressListProvider.getUserProfile(
                                                                   controller
                                                                       .orderModel
-                                                                      .value
                                                                       .authorID
                                                                       .toString(),
                                                                 );
@@ -919,7 +900,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                     await AddressListProvider.getUserProfile(
                                                                       controller
                                                                           .orderModel
-                                                                          .value
                                                                           .vendor!
                                                                           .author
                                                                           .toString(),
@@ -947,7 +927,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                     "orderId":
                                                                         controller
                                                                             .orderModel
-                                                                            .value
                                                                             .id,
                                                                     "restaurantId":
                                                                         restaurantUser
@@ -1004,7 +983,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                   .start,
                                                           children: [
                                                             Text(
-                                                              "${controller.orderModel.value.address!.addressAs}",
+                                                              "${controller.orderModel.address!.addressAs}",
                                                               textAlign:
                                                                   TextAlign
                                                                       .start,
@@ -1020,7 +999,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                             Text(
                                                               controller
                                                                   .orderModel
-                                                                  .value
                                                                   .address!
                                                                   .getFullAddress(),
                                                               textAlign:
@@ -1043,7 +1021,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                               itemCount: 2,
                                             ),
                                           ),
-                                          controller.orderModel.value.status ==
+                                          controller.orderModel.status ==
                                                   Constant.orderRejected
                                               ? const SizedBox()
                                               : Column(
@@ -1060,13 +1038,11 @@ class OrderDetailsScreen extends StatelessWidget {
                                                     ),
                                                     controller
                                                                     .orderModel
-                                                                    .value
                                                                     .status ==
                                                                 Constant
                                                                     .orderCompleted &&
                                                             controller
                                                                     .orderModel
-                                                                    .value
                                                                     .driver !=
                                                                 null
                                                         ? Row(
@@ -1080,7 +1056,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                               Text(
                                                                 controller
                                                                     .orderModel
-                                                                    .value
                                                                     .driver!
                                                                     .fullName(),
                                                                 textAlign:
@@ -1123,13 +1098,11 @@ class OrderDetailsScreen extends StatelessWidget {
                                                           )
                                                         : controller
                                                                       .orderModel
-                                                                      .value
                                                                       .status ==
                                                                   Constant
                                                                       .orderAccepted ||
                                                               controller
                                                                       .orderModel
-                                                                      .value
                                                                       .status ==
                                                                   Constant
                                                                       .driverPending
@@ -1146,7 +1119,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                               ),
                                                               Expanded(
                                                                 child: Text(
-                                                                  "${'Your Order has been Preparing and assign to the driver'.tr}\n${'Preparation Time'.tr} ${controller.orderModel.value.estimatedTimeToPrepare}"
+                                                                  "${'Your Order has been Preparing and assign to the driver'.tr}\n${'Preparation Time'.tr} ${controller.orderModel.estimatedTimeToPrepare}"
                                                                       .tr,
                                                                   textAlign:
                                                                       TextAlign
@@ -1169,7 +1142,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                           )
                                                         : controller
                                                                   .orderModel
-                                                                  .value
                                                                   .driver !=
                                                               null
                                                         ? Row(
@@ -1178,7 +1150,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                 child: NetworkImageWidget(
                                                                   imageUrl: controller
                                                                       .orderModel
-                                                                      .value
                                                                       .author!
                                                                       .profilePictureURL
                                                                       .toString(),
@@ -1208,7 +1179,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                     Text(
                                                                       controller
                                                                           .orderModel
-                                                                          .value
                                                                           .driver!
                                                                           .fullName()
                                                                           .toString(),
@@ -1229,7 +1199,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                     Text(
                                                                       controller
                                                                           .orderModel
-                                                                          .value
                                                                           .driver!
                                                                           .email
                                                                           .toString(),
@@ -1255,7 +1224,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                   Constant.makePhoneCall(
                                                                     controller
                                                                         .orderModel
-                                                                        .value
                                                                         .driver!
                                                                         .phoneNumber
                                                                         .toString(),
@@ -1303,7 +1271,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                   customer = await AddressListProvider.getUserProfile(
                                                                     controller
                                                                         .orderModel
-                                                                        .value
                                                                         .authorID
                                                                         .toString(),
                                                                   );
@@ -1311,7 +1278,6 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                   driverUser = await AddressListProvider.getUserProfile(
                                                                     controller
                                                                         .orderModel
-                                                                        .value
                                                                         .driverID
                                                                         .toString(),
                                                                   );
@@ -1331,10 +1297,10 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                       "restaurantName":
                                                                           driverUser!
                                                                               .fullName(),
-                                                                      "orderId": controller
-                                                                          .orderModel
-                                                                          .value
-                                                                          .id,
+                                                                      "orderId":
+                                                                          controller
+                                                                              .orderModel
+                                                                              .id,
                                                                       "restaurantId":
                                                                           driverUser
                                                                               .id,
@@ -1419,18 +1385,12 @@ class OrderDetailsScreen extends StatelessWidget {
                                 child: ListView.separated(
                                   shrinkWrap: true,
                                   padding: EdgeInsets.zero,
-                                  itemCount: controller
-                                      .orderModel
-                                      .value
-                                      .products!
-                                      .length,
+                                  itemCount:
+                                      controller.orderModel.products!.length,
                                   physics: const NeverScrollableScrollPhysics(),
                                   itemBuilder: (context, index) {
                                     CartProductModel cartProductModel =
-                                        controller
-                                            .orderModel
-                                            .value
-                                            .products![index];
+                                        controller.orderModel.products![index];
                                     return Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -1719,8 +1679,7 @@ class OrderDetailsScreen extends StatelessWidget {
                                                           arguments: {
                                                             "orderModel":
                                                                 controller
-                                                                    .orderModel
-                                                                    .value,
+                                                                    .orderModel,
                                                             "productId":
                                                                 cartProductModel
                                                                     .id,

@@ -268,7 +268,6 @@ class MartZoneUtils {
   ) async {
     try {
       final zoneModel = await HomeProvider.getCurrentZone(latitude, longitude);
-
       // Check if zoneModel is null (API call failed)
       if (zoneModel == null) {
         return '';

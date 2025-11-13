@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart'
     show AddressListProvider;
@@ -11,9 +12,14 @@ import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
+import 'package:jippymart_customer/constant/show_toast_dialog.dart';
+import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/utils/utils/common.dart';
@@ -27,6 +33,7 @@ import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeProvider extends ChangeNotifier {
   void changeBannerPage(int value) {
@@ -113,6 +120,7 @@ class HomeProvider extends ChangeNotifier {
       );
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
+
         if (data['success'] == true) {
           final isInServiceArea = data['is_in_service_area'] == true;
           return isInServiceArea;
@@ -292,15 +300,15 @@ class HomeProvider extends ChangeNotifier {
           }
         }
       }
-
-      // If API fails, set default values
       Constant.selectedZone = null;
       Constant.isZoneAvailable = false;
       print('[DEBUG] No fallback zone available!');
+      notifyListeners();
     } catch (e) {
       print('[DEBUG] Error setting fallback zone: $e');
       Constant.selectedZone = null;
       Constant.isZoneAvailable = false;
+      notifyListeners();
     }
 
     notifyListeners();
@@ -340,6 +348,7 @@ class HomeProvider extends ChangeNotifier {
       cartItem.clear();
       cartItem.addAll(event);
     });
+    notifyListeners();
   }
 
   bool isLoading = true;
@@ -349,7 +358,6 @@ class HomeProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool isListView = true;
   bool isPopular = true;
   String selectedOrderTypeValue = "Delivery";
   PageController pageController = PageController(viewportFraction: 1.0);
@@ -399,14 +407,14 @@ class HomeProvider extends ChangeNotifier {
 
   void onClose() {
     _bannerTimer?.cancel();
-    try {
-      if (pageController.hasClients) {
-        pageController.dispose();
-      }
-      if (pageBottomController.hasClients) {
-        pageBottomController.dispose();
-      }
-    } catch (e) {}
+
+    if (pageController.hasClients) {
+      pageController.dispose();
+    }
+    if (pageBottomController.hasClients) {
+      pageBottomController.dispose();
+    }
+    notifyListeners();
   }
 
   void startBannerTimer() {
@@ -438,6 +446,7 @@ class HomeProvider extends ChangeNotifier {
         }
       }
     });
+    notifyListeners();
   }
 
   void stopBannerTimer() {
@@ -452,25 +461,22 @@ class HomeProvider extends ChangeNotifier {
 
   // Optimized parallel data loading
   Future<void> _loadAllDataInParallel(BuildContext context) async {
-    log(" _loadAllDataInParallel  second ");
-    return PerformanceOptimizer.measureAsync('parallel_data_fetch', () async {
-      isLoadingFunction(true);
-      getCartData();
-      await _ensureUserModelIsLoaded();
-      await _ensureUserLocationIsSet();
-      await getZone();
-      await Future.wait([
-        categoryViewProvider.loadVendorCategories(),
-        _loadBanners(),
-        _loadFavorites(),
-        bestRestaurantProvider.loadRestaurantsAndRelatedData(),
-      ]);
-      dashBoardProvider.initFunction(context);
-      favouriteProvider.initFunction();
-      orderProvider.initFunction();
-      notifyListeners();
-      setLoading();
-    });
+    isLoadingFunction(true);
+    getCartData();
+    await _ensureUserModelIsLoaded();
+    await _ensureUserLocationIsSet();
+    await getZone();
+    await Future.wait([
+      categoryViewProvider.loadVendorCategories(),
+      _loadBanners(),
+      _loadFavorites(),
+      bestRestaurantProvider.loadRestaurantsAndRelatedData(),
+    ]);
+    dashBoardProvider.initFunction(context);
+    favouriteProvider.initFunction();
+    orderProvider.initFunction();
+    notifyListeners();
+    setLoading();
   }
 
   setLoading() async {
@@ -484,6 +490,7 @@ class HomeProvider extends ChangeNotifier {
       }
       notifyListeners();
     });
+    notifyListeners();
   }
 
   // Load vendor categories in parallel
@@ -570,6 +577,8 @@ class HomeProvider extends ChangeNotifier {
     if (Constant.userModel != null) {
       await FavouriteProvider.getFavouriteRestaurants().then((value) {
         favouriteList = value;
+        notifyListeners();
+
         print('[DEBUG] Favorites loaded: ${value.length}');
       });
     }
@@ -716,6 +725,7 @@ class HomeProvider extends ChangeNotifier {
         await Future.delayed(Duration(milliseconds: 300));
       }
     }
+    notifyListeners();
   }
 
   Future<String?> _detectZoneIdForCoordinates(
@@ -754,9 +764,58 @@ class HomeProvider extends ChangeNotifier {
     if (Constant.userModel != null) {
       await FavouriteProvider.getFavouriteRestaurants().then((value) {
         favouriteList = value;
+        notifyListeners();
       });
     }
   }
 
-  // Optimized distance calculation in batches
+  void bannerOnTapFunction(
+    BannerModel bannerModel,
+    RestaurantDetailsProvider restaurantDetailsProvider,
+  ) async {
+    stopBannerTimer();
+    if (bannerModel.redirectType == "store") {
+      ShowToastDialog.showLoader("Please wait");
+      VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+        bannerModel.redirectId.toString(),
+      );
+      if (vendorModel!.zoneId == Constant.selectedZone!.id) {
+        ShowToastDialog.closeLoader();
+        restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+        Get.to(const RestaurantDetailsScreen());
+      } else {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast(
+          "Sorry, The Zone is not available in your area. change the other location first.",
+        );
+      }
+    } else if (bannerModel.redirectType == "product") {
+      ShowToastDialog.showLoader("Please wait");
+      ProductModel? productModel = await FireStoreUtils.getProductById(
+        bannerModel.redirectId.toString(),
+      );
+      VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+        productModel!.vendorID.toString(),
+      );
+      if (vendorModel!.zoneId == Constant.selectedZone!.id) {
+        ShowToastDialog.closeLoader();
+        restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+        Get.to(const RestaurantDetailsScreen());
+      } else {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast(
+          "Sorry, The Zone is not available in your area. change the other location first."
+              .tr,
+        );
+      }
+    } else if (bannerModel.redirectType == "external_link") {
+      final uri = Uri.parse(bannerModel.redirectId.toString());
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        ShowToastDialog.showToast("Could not launch".tr);
+      }
+    }
+    notifyListeners();
+  }
 }

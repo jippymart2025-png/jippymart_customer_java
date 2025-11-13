@@ -57,7 +57,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     try {
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}coupons/restaurant?vendorId=$vendorId'),
-        headers: {'Content-Type': 'application/json'},
+        headers: await getHeaders(),
       );
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);

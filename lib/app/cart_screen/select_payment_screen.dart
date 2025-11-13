@@ -242,94 +242,90 @@ class SelectPaymentScreen extends StatelessWidget {
     PaymentGateway value,
     String image,
   ) {
-    return Obx(
-      () => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Column(
-          children: [
-            InkWell(
-              onTap: () {
-                controller.selectedPaymentMethod = value.name;
-              },
-              child: Row(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: ShapeDecoration(
-                      shape: RoundedRectangleBorder(
-                        side: const BorderSide(
-                          width: 1,
-                          color: Color(0xFFE5E7EB),
-                        ),
-                        borderRadius: BorderRadius.circular(8),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () {
+              controller.selectedPaymentMethod = value.name;
+            },
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: ShapeDecoration(
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(
+                        width: 1,
+                        color: Color(0xFFE5E7EB),
                       ),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(
-                        value.name == "payFast" ? 0 : 8.0,
-                      ),
-                      child: Image.asset(image),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  value.name == "wallet"
-                      ? Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                value.name.capitalizeString(),
-                                textAlign: TextAlign.start,
-                                style: TextStyle(
-                                  fontFamily: AppThemeData.medium,
-                                  fontSize: 16,
-                                  color: AppThemeData.grey900,
-                                ),
+                  child: Padding(
+                    padding: EdgeInsets.all(value.name == "payFast" ? 0 : 8.0),
+                    child: Image.asset(image),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                value.name == "wallet"
+                    ? Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              value.name.capitalizeString(),
+                              textAlign: TextAlign.start,
+                              style: TextStyle(
+                                fontFamily: AppThemeData.medium,
+                                fontSize: 16,
+                                color: AppThemeData.grey900,
                               ),
-                              Text(
-                                Constant.amountShow(
-                                  amount:
-                                      controller.userModel.walletAmount == null
-                                      ? '0.0'
-                                      : controller.userModel.walletAmount
-                                            .toString(),
-                                ),
-                                textAlign: TextAlign.start,
-                                style: TextStyle(
-                                  fontFamily: AppThemeData.semiBold,
-                                  fontSize: 16,
-                                  color: AppThemeData.primary300,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )
-                      : Expanded(
-                          child: Text(
-                            value.name.capitalizeString(),
-                            textAlign: TextAlign.start,
-                            style: TextStyle(
-                              fontFamily: AppThemeData.medium,
-                              fontSize: 16,
-                              color: AppThemeData.grey900,
                             ),
+                            Text(
+                              Constant.amountShow(
+                                amount:
+                                    controller.userModel.walletAmount == null
+                                    ? '0.0'
+                                    : controller.userModel.walletAmount
+                                          .toString(),
+                              ),
+                              textAlign: TextAlign.start,
+                              style: TextStyle(
+                                fontFamily: AppThemeData.semiBold,
+                                fontSize: 16,
+                                color: AppThemeData.primary300,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Expanded(
+                        child: Text(
+                          value.name.capitalizeString(),
+                          textAlign: TextAlign.start,
+                          style: TextStyle(
+                            fontFamily: AppThemeData.medium,
+                            fontSize: 16,
+                            color: AppThemeData.grey900,
                           ),
                         ),
-                  const Expanded(child: SizedBox()),
-                  Radio(
-                    value: value.name,
-                    groupValue: controller.selectedPaymentMethod,
-                    activeColor: AppThemeData.primary300,
-                    onChanged: (value) {
-                      controller.selectedPaymentMethod = value.toString();
-                    },
-                  ),
-                ],
-              ),
+                      ),
+                const Expanded(child: SizedBox()),
+                Radio(
+                  value: value.name,
+                  groupValue: controller.selectedPaymentMethod,
+                  activeColor: AppThemeData.primary300,
+                  onChanged: (value) {
+                    controller.selectedPaymentMethod = value.toString();
+                  },
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

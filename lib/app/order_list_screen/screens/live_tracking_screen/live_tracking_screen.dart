@@ -21,13 +21,13 @@ class LiveTrackingScreen extends StatelessWidget {
             centerTitle: false,
             titleSpacing: 0,
           ),
-          body: controller.isLoading.value
+          body: controller.isLoading
               ? Constant.loader()
               : Constant.selectedMapType == 'osm'
               ? flutterMap.FlutterMap(
                   mapController: controller.osmMapController,
                   options: flutterMap.MapOptions(
-                    initialCenter: controller.current.value,
+                    initialCenter: controller.current,
                     initialZoom: 10,
                   ),
                   children: [
@@ -39,19 +39,19 @@ class LiveTrackingScreen extends StatelessWidget {
                     flutterMap.MarkerLayer(
                       markers: [
                         flutterMap.Marker(
-                          point: controller.current.value,
+                          point: controller.current,
                           width: 50,
                           height: 50,
                           child: Image.asset('assets/images/food_delivery.png'),
                         ),
                         flutterMap.Marker(
-                          point: controller.source.value,
+                          point: controller.source,
                           width: 50,
                           height: 50,
                           child: Image.asset('assets/images/pickup.png'),
                         ),
                         flutterMap.Marker(
-                          point: controller.destination.value,
+                          point: controller.destination,
                           width: 50,
                           height: 50,
                           child: Image.asset('assets/images/dropoff.png'),
@@ -85,22 +85,12 @@ class LiveTrackingScreen extends StatelessWidget {
                     initialCameraPosition: CameraPosition(
                       zoom: 15,
                       target: LatLng(
-                        controller.driverUserModel.value.location?.latitude !=
-                                null
-                            ? controller
-                                      .driverUserModel
-                                      .value
-                                      .location
-                                      ?.latitude ??
+                        controller.driverUserModel.location?.latitude != null
+                            ? controller.driverUserModel.location?.latitude ??
                                   45.521563
                             : 45.521563,
-                        controller.driverUserModel.value.location?.longitude !=
-                                null
-                            ? controller
-                                      .driverUserModel
-                                      .value
-                                      .location
-                                      ?.longitude ??
+                        controller.driverUserModel.location?.longitude != null
+                            ? controller.driverUserModel.location?.longitude ??
                                   45.521563
                             : 45.521563,
                       ),

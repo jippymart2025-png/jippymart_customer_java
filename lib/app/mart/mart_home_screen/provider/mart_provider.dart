@@ -146,8 +146,7 @@ class MartProvider extends ChangeNotifier {
   List<MartSubcategoryModel> subcategories = <MartSubcategoryModel>[];
 
   // Delivery settings
-  Rx<MartDeliverySettingsModel?> deliverySettings =
-      Rx<MartDeliverySettingsModel?>(null);
+  MartDeliverySettingsModel? deliverySettings;
 
   // Banner functionality
   List<MartBannerModel> martTopBanners = <MartBannerModel>[];
@@ -1780,7 +1779,7 @@ class MartProvider extends ChangeNotifier {
       );
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating similar products stream: $e');
-      return Stream.value(<MartItemModel>[]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -1804,7 +1803,7 @@ class MartProvider extends ChangeNotifier {
       );
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating all products stream: $e');
-      return Stream.value(<MartItemModel>[]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -1817,7 +1816,7 @@ class MartProvider extends ChangeNotifier {
       return _firestoreService.streamProductDeals(limit: limit);
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating Product Deals stream: $e');
-      return Stream.value(<MartItemModel>[]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -1828,7 +1827,7 @@ class MartProvider extends ChangeNotifier {
       return _firestoreService.streamHairCareProducts(limit: limit);
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating Hair Care stream: $e');
-      return Stream.value(<MartItemModel>[]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -1839,7 +1838,7 @@ class MartProvider extends ChangeNotifier {
       return _firestoreService.streamChocolateProducts(limit: limit);
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating Chocolates stream: $e');
-      return Stream.value(<MartItemModel>[]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -1850,7 +1849,7 @@ class MartProvider extends ChangeNotifier {
       return _firestoreService.streamPlaytimeProducts(limit: limit);
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating Playtime stream: $e');
-      return Stream.value(<MartItemModel>[]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -1861,7 +1860,7 @@ class MartProvider extends ChangeNotifier {
       return _firestoreService.streamBabyCareProducts(limit: limit);
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating Baby Care stream: $e');
-      return Stream.value(<MartItemModel>[]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -1872,7 +1871,7 @@ class MartProvider extends ChangeNotifier {
       return _firestoreService.streamLocalGroceryProducts(limit: limit);
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating Local Grocery stream: $e');
-      return Stream.value(<MartItemModel>[]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -1890,7 +1889,7 @@ class MartProvider extends ChangeNotifier {
       print(
         '[MART CONTROLLER] ❌ Error creating banner stream for position $position: $e',
       );
-      return Stream.value(<MartBannerModel>[]);
+      return Stream<List<MartBannerModel>>.empty();
     }
   }
 
@@ -1901,7 +1900,7 @@ class MartProvider extends ChangeNotifier {
       return _firestoreService.streamAllBanners(limit: limit);
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating all banners stream: $e');
-      return Stream.value(<MartBannerModel>[]);
+      return Stream<List<MartBannerModel>>.empty();
     }
   }
 
@@ -1991,7 +1990,7 @@ class MartProvider extends ChangeNotifier {
 
       if (doc.exists) {
         final data = doc.data()!;
-        deliverySettings.value = MartDeliverySettingsModel(
+        deliverySettings = MartDeliverySettingsModel(
           freeDeliveryThreshold:
               (data['item_total_threshold'] as num?)?.toDouble() ?? 99.0,
           deliveryPromotionText: data['delivery_promotion_text'] ?? 'Daily',
@@ -2000,23 +1999,8 @@ class MartProvider extends ChangeNotifier {
               (data['item_total_threshold'] as num?)?.toDouble() ?? 99.0,
           minOrderMessage: data['min_order_message'] ?? 'Min Item value is ₹99',
         );
-
-        print(
-          '[MART CONTROLLER] 🚚 Delivery settings loaded from martDeliveryCharge:',
-        );
-        print(
-          '  - Free delivery threshold: ₹${deliverySettings.value?.freeDeliveryThreshold}',
-        );
-        print(
-          '  - Promotion text: ${deliverySettings.value?.deliveryPromotionText}',
-        );
-        print('  - Is active: ${deliverySettings.value?.isActive}');
       } else {
-        print(
-          '[MART CONTROLLER] ⚠️ martDeliveryCharge document not found, using defaults',
-        );
-        // Set default values
-        deliverySettings.value = MartDeliverySettingsModel(
+        deliverySettings = MartDeliverySettingsModel(
           freeDeliveryThreshold: 99.0,
           deliveryPromotionText: 'Daily',
           isActive: true,
@@ -2025,9 +2009,7 @@ class MartProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
-      print('[MART CONTROLLER] ❌ Error fetching delivery settings: $e');
-      // Set default values on error
-      deliverySettings.value = MartDeliverySettingsModel(
+      deliverySettings = MartDeliverySettingsModel(
         freeDeliveryThreshold: 99.0,
         deliveryPromotionText: 'Daily',
         isActive: true,
@@ -2039,44 +2021,44 @@ class MartProvider extends ChangeNotifier {
 
   /// Get formatted delivery message
   String get deliveryMessage {
-    final threshold = deliverySettings.value?.freeDeliveryThreshold ?? 199.0;
+    final threshold = deliverySettings?.freeDeliveryThreshold ?? 199.0;
     return 'Spend ₹${threshold.toInt()} to unlock FREE delivery';
   }
 
   /// Get delivery promotion text
   String get deliveryPromotionText {
-    return deliverySettings.value?.deliveryPromotionText ?? 'daily';
+    return deliverySettings?.deliveryPromotionText ?? 'daily';
   }
 
   /// Check if delivery settings are active
   bool get isDeliverySettingsActive {
-    return deliverySettings.value?.isActive ?? true;
+    return deliverySettings?.isActive ?? true;
   }
 
   /// Get minimum order value for mart items
   double get minOrderValue {
-    return deliverySettings.value?.minOrderValue ?? 99.0;
+    return deliverySettings?.minOrderValue ?? 99.0;
   }
 
   /// Check if minimum order is enabled
   bool get isMinOrderEnabled {
-    return deliverySettings.value?.minOrderEnabled ?? true;
+    return deliverySettings?.minOrderEnabled ?? true;
   }
 
   /// Get minimum order message
   String get minOrderMessage {
-    return deliverySettings.value?.minOrderMessage ??
+    return deliverySettings?.minOrderMessage ??
         'Minimum order value is ₹99. Please add more items to your cart.';
   }
 
   /// Check if app is in maintenance mode
   bool get isMaintenanceMode {
-    return deliverySettings.value?.maintenanceMode ?? false;
+    return deliverySettings?.maintenanceMode ?? false;
   }
 
   /// Get maintenance message
   String get maintenanceMessage {
-    return deliverySettings.value?.maintenanceMessage ??
+    return deliverySettings?.maintenanceMessage ??
         'App is under maintenance. Please try again later.';
   }
 
@@ -2229,7 +2211,7 @@ class MartProvider extends ChangeNotifier {
       });
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error streaming products by brand: $e');
-      return Stream.value([]);
+      return Stream<List<MartItemModel>>.empty();
     }
   }
 
@@ -2302,13 +2284,13 @@ class MartProvider extends ChangeNotifier {
 
   //////[MART SUB CATEGORY CONTROLLER]
   // New pagination properties
-  final _lastDocuments = <DocumentSnapshot>[];
-  final _hasMoreSubcategories = true.obs;
-  final _currentPage = 0.obs;
+  final List<DocumentSnapshot> _lastDocuments = <DocumentSnapshot>[];
+  bool _hasMoreSubcategories = true;
+  int _currentPage = 0;
 
-  bool get hasMoreSubcategories => _hasMoreSubcategories.value;
+  bool get hasMoreSubcategories => _hasMoreSubcategories;
 
-  int get currentPageAll => _currentPage.value;
+  int get currentPageAll => _currentPage;
 
   int get loadedSubcategoriesCount {
     int total = 0;
@@ -2323,8 +2305,8 @@ class MartProvider extends ChangeNotifier {
     try {
       print('[MART] 🔄 Loading first page of subcategories...');
       _lastDocuments.clear();
-      _currentPage.value = 0;
-      _hasMoreSubcategories.value = true;
+      _currentPage = 0;
+      _hasMoreSubcategories = true;
 
       final result = await _firestoreService.getHomepageSubcategoriesPaginated(
         limit: 10,
@@ -2340,12 +2322,12 @@ class MartProvider extends ChangeNotifier {
         // 🔧 Store last document for pagination
         if (lastDoc != null) _lastDocuments.add(lastDoc);
 
-        _currentPage.value = 1;
-        _hasMoreSubcategories.value = (subcategories.length == 10);
+        _currentPage = 1;
+        _hasMoreSubcategories = (subcategories.length == 10);
 
         print('[MART] ✅ Loaded first ${subcategories.length} subcategories.');
       } else {
-        _hasMoreSubcategories.value = false;
+        _hasMoreSubcategories = false;
         print('[MART] ⚠️ No subcategories found.');
       }
     } catch (e) {
@@ -2355,13 +2337,13 @@ class MartProvider extends ChangeNotifier {
 
   /// Load next page
   Future<void> loadMoreHomepageSubcategories() async {
-    if (!_hasMoreSubcategories.value) {
+    if (!_hasMoreSubcategories) {
       print('[MART] ⚠️ No more pages left.');
       return;
     }
 
     try {
-      print('[MART] 🔄 Loading page ${_currentPage.value + 1}...');
+      print('[MART] 🔄 Loading page ${_currentPage + 1}...');
 
       final result = await _firestoreService.getHomepageSubcategoriesPaginated(
         limit: 10,
@@ -2378,12 +2360,12 @@ class MartProvider extends ChangeNotifier {
         // 🔧 Update last document for next page
         if (lastDoc != null) _lastDocuments.add(lastDoc);
 
-        _currentPage.value += 1;
-        _hasMoreSubcategories.value = (nextPageSubcategories.length == 10);
+        _currentPage += 1;
+        _hasMoreSubcategories = (nextPageSubcategories.length == 10);
 
-        print('[MART] ✅ Page ${_currentPage.value} loaded.');
+        print('[MART] ✅ Page ${_currentPage} loaded.');
       } else {
-        _hasMoreSubcategories.value = false;
+        _hasMoreSubcategories = false;
         print('[MART] ⚠️ No more subcategories to load.');
       }
     } catch (e) {
@@ -2408,7 +2390,7 @@ class MartProvider extends ChangeNotifier {
       }
     }
     // If subcategoriesMap is an RxMap, force update
-    (subcategoriesMap as RxMap).refresh();
+    notifyListeners();
   }
 
   /// Get all homepage subcategories from the map (for UI display)

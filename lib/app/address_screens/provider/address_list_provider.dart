@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
@@ -48,7 +49,6 @@ class AddressListProvider extends ChangeNotifier {
         Get.back(result: addressModel);
       }
     } catch (e) {
-      print('[ADDRESS_LIST] Error getting current location: $e');
       ShowToastDialog.showToast(
         "Failed to get current location. Please try again.".tr,
       );
@@ -80,7 +80,6 @@ class AddressListProvider extends ChangeNotifier {
   }
 
   getUser() async {
-    print(" getUser getUser ");
     setLoading(true);
     final userId = await SqlStorageConst.getFirebaseId();
     if (userId == null || userId.isEmpty) {
@@ -104,15 +103,12 @@ class AddressListProvider extends ChangeNotifier {
   static Future<UserModel?> getUserProfile(String userId) async {
     try {
       final headers = await getHeaders();
-      print('API Response - userId: ${AppConst.baseUrl}users/profile/$userId');
       final response = await http
           .get(
             Uri.parse('${AppConst.baseUrl}users/profile/$userId'),
             headers: headers,
           )
           .timeout(timeout);
-      print('API Response - Status:  getUserProfile ${response.statusCode}');
-      print('API Response - Body: ${response.body}');
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -120,15 +116,12 @@ class AddressListProvider extends ChangeNotifier {
           final processedData = _processApiUserData(userData);
           return UserModel.fromJson(processedData);
         } else {
-          print('API returned error: ${responseData['message']}');
           return null;
         }
       } else {
-        print('API call failed with status: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Error in getUserProfile API call: $e');
       return null;
     }
   }
@@ -210,38 +203,46 @@ class AddressListProvider extends ChangeNotifier {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
       if (userId == null || userId.isEmpty) {
-        print('updateUser: No user ID available');
+        log("❌ No user ID found");
         return false;
       }
       final headers = await getHeaders();
+      headers['Content-Type'] = 'application/json';
+      headers['Accept'] = 'application/json';
       final url =
           '${AppConst.baseUrl}users/$userId/shipping-address?merge=true';
-      print('🔄 [API] Updating user shipping address: $url');
-      // Convert shipping addresses to API format
+      // 🔹 Prepare the request body exactly like your backend expects (a list)
       final shippingAddresses =
           userModel.shippingAddress?.map((address) {
             return {
               'id': address.id,
-              'label': address.addressAs,
+              'label': address.addressAs, // ✅ Matches your JSON
               'address': address.address,
-              'locality': address.locality,
-              'landmark': address.landmark,
-              'city': '', // Add if available in your model
-              'pincode': '', // Add if available in your model
+              'addressAs': address.addressAs,
+              'landmark': address.landmark ?? '',
+              'city': '',
+              'pincode': '',
+              'locality': address.locality ?? '',
               'latitude': address.location?.latitude,
               'longitude': address.location?.longitude,
               'isDefault': address.isDefault ?? false,
-              'zoneId': address.zoneId,
+              'zoneId': address.zoneId, // Optional
             };
           }).toList() ??
           [];
-      final requestBody = {'shippingAddress': shippingAddresses};
-      print('📦 [API] Request body: ${json.encode(requestBody)}');
+
+      log("🟢 PUT URL: $url");
+      log("🟢 REQUEST BODY: ${jsonEncode(shippingAddresses)}");
+
       final response = await http
-          .put(Uri.parse(url), headers: headers, body: json.encode(requestBody))
+          .put(
+            Uri.parse(url),
+            headers: headers,
+            body: jsonEncode(shippingAddresses), // ✅ Array directly
+          )
           .timeout(const Duration(seconds: 30));
-      print('📡 [API] Response status: ${response.statusCode}');
-      print('📡 [API] Response body: ${response.body}');
+      log("🔵 STATUS: ${response.statusCode}");
+      log("🔵 BODY: ${response.body}");
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -250,15 +251,15 @@ class AddressListProvider extends ChangeNotifier {
           notifyListeners();
           return true;
         } else {
-          print('❌ [API] Update failed: ${responseData['message']}');
+          log("❌ API responded but success=false");
           return false;
         }
       } else {
-        print('❌ [API] HTTP error: ${response.statusCode}');
+        log("❌ Server responded with status: ${response.statusCode}");
         return false;
       }
-    } catch (e) {
-      print('❌ [API] Exception in updateUser: $e');
+    } catch (e, st) {
+      log("❌ Exception during updateUser: $e\n$st");
       return false;
     }
   }
@@ -290,35 +291,32 @@ class AddressListProvider extends ChangeNotifier {
           landmark: landmarkEditingController.value.text,
           isDefault: shippingAddressList.isEmpty ? true : false,
         );
-        // Get zone ID if coordinates are available
+        print("saveAddressFunction ${jsonEncode(shippingModels.toJson())}");
         if (location.latitude != null && location.longitude != null) {
           try {
-            print('🔍 [ADDRESS_SAVE] Starting zone detection...');
             final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
               location.latitude ?? 0.0,
               location.longitude ?? 0.0,
               context,
             );
-
             if (zoneId.isNotEmpty) {
               shippingModels.zoneId = zoneId;
-            } else {}
+            }
           } catch (e) {}
         }
-        // Update the address list
         List<ShippingAddress> updatedAddressList;
         if (shippingModel.id != null) {
-          // Editing existing address
           updatedAddressList = List<ShippingAddress>.from(shippingAddressList);
-          updatedAddressList[index] = shippingModel;
+          updatedAddressList[index] = shippingModels; // ✅ use shippingModels
+          notifyListeners();
         } else {
           // Adding new address
           updatedAddressList = List<ShippingAddress>.from(shippingAddressList);
-          updatedAddressList.add(shippingModel);
+          updatedAddressList.add(shippingModels); // ✅ use shippingModels
+          notifyListeners();
         }
         // Update user model
         userModel.shippingAddress = updatedAddressList;
-        print("shippingModel.address  ${shippingModel.address}");
         final success = await addressListProvider.updateUser(userModel);
         if (success) {
           shippingAddressList = updatedAddressList;
@@ -332,7 +330,6 @@ class AddressListProvider extends ChangeNotifier {
         }
       } catch (e) {
         ShowToastDialog.closeLoader();
-        print('❌ [ADDRESS_SAVE] Error: $e');
         ShowToastDialog.showToast("Error saving address".tr);
       } finally {
         setLoading(false);

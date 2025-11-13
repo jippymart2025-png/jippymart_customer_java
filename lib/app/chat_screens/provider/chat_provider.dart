@@ -11,73 +11,86 @@ import 'package:image_picker/image_picker.dart';
 import 'package:uuid/uuid.dart';
 
 class ChatProvider extends ChangeNotifier {
-  Rx<TextEditingController> messageController = TextEditingController().obs;
+  TextEditingController messageController = TextEditingController();
 
   final ScrollController scrollController = ScrollController();
+
   void initFunction() {
     if (scrollController.hasClients) {
-      Timer(const Duration(milliseconds: 500), () => scrollController.jumpTo(scrollController.position.maxScrollExtent));
+      Timer(
+        const Duration(milliseconds: 500),
+        () =>
+            scrollController.jumpTo(scrollController.position.maxScrollExtent),
+      );
     }
     getArgument();
   }
 
-  RxBool isLoading = true.obs;
-  RxString orderId = "".obs;
-  RxString customerId = "".obs;
-  RxString customerName = "".obs;
-  RxString customerProfileImage = "".obs;
-  RxString restaurantId = "".obs;
-  RxString restaurantName = "".obs;
-  RxString restaurantProfileImage = "".obs;
-  RxString token = "".obs;
-  RxString chatType = "".obs;
+  bool isLoading = true;
+  String orderId = "";
+  String customerId = "";
+  String customerName = "";
+  String customerProfileImage = "";
+  String restaurantId = "";
+  String restaurantName = "";
+  String restaurantProfileImage = "";
+  String token = "";
+  String chatType = "";
 
   getArgument() {
     dynamic argumentData = Get.arguments;
     if (argumentData != null) {
-      orderId.value = argumentData['orderId'];
-      customerId.value = argumentData['customerId'];
-      customerName.value = argumentData['customerName'];
-      customerProfileImage.value = argumentData['customerProfileImage'] ?? "";
-      restaurantId.value = argumentData['restaurantId'];
-      restaurantName.value = argumentData['restaurantName'];
-      restaurantProfileImage.value = argumentData['restaurantProfileImage'] ?? "";
-      token.value = argumentData['token'];
-      chatType.value = argumentData['chatType'];
+      orderId = argumentData['orderId'];
+      customerId = argumentData['customerId'];
+      customerName = argumentData['customerName'];
+      customerProfileImage = argumentData['customerProfileImage'] ?? "";
+      restaurantId = argumentData['restaurantId'];
+      restaurantName = argumentData['restaurantName'];
+      restaurantProfileImage = argumentData['restaurantProfileImage'] ?? "";
+      token = argumentData['token'];
+      chatType = argumentData['chatType'];
     }
-    isLoading.value = false;
+    isLoading = false;
+    notifyListeners();
   }
 
-  sendMessage(String message, Url? url, String videoThumbnail, String messageType) async {
+  sendMessage(
+    String message,
+    Url? url,
+    String videoThumbnail,
+    String messageType,
+  ) async {
     InboxModel inboxModel = InboxModel(
-        lastSenderId: customerId.value,
-        customerId: customerId.value,
-        customerName: customerName.value,
-        restaurantId: restaurantId.value,
-        restaurantName: restaurantName.value,
-        createdAt: Timestamp.now(),
-        orderId: orderId.value,
-        customerProfileImage: customerProfileImage.value,
-        restaurantProfileImage: restaurantProfileImage.value,
-        lastMessage: messageController.value.text,
-        chatType: chatType.value);
+      lastSenderId: customerId,
+      customerId: customerId,
+      customerName: customerName,
+      restaurantId: restaurantId,
+      restaurantName: restaurantName,
+      createdAt: Timestamp.now(),
+      orderId: orderId,
+      customerProfileImage: customerProfileImage,
+      restaurantProfileImage: restaurantProfileImage,
+      lastMessage: messageController.text,
+      chatType: chatType,
+    );
 
-    if (chatType.value == "Driver") {
+    if (chatType == "Driver") {
       await FireStoreUtils.addDriverInbox(inboxModel);
     } else {
       await FireStoreUtils.addRestaurantInbox(inboxModel);
     }
 
     ConversationModel conversationModel = ConversationModel(
-        id: const Uuid().v4(),
-        message: message,
-        senderId: customerId.value,
-        receiverId: restaurantId.value,
-        createdAt: Timestamp.now(),
-        url: url,
-        orderId: orderId.value,
-        messageType: messageType,
-        videoThumbnail: videoThumbnail);
+      id: const Uuid().v4(),
+      message: message,
+      senderId: customerId,
+      receiverId: restaurantId,
+      createdAt: Timestamp.now(),
+      url: url,
+      orderId: orderId,
+      messageType: messageType,
+      videoThumbnail: videoThumbnail,
+    );
 
     if (url != null) {
       if (url.mime.contains('image')) {
@@ -88,27 +101,19 @@ class ChatProvider extends ChangeNotifier {
         conversationModel.message = "Sent a audio".tr;
       }
     }
-
-    if (chatType.value == "Driver") {
+    notifyListeners();
+    if (chatType == "Driver") {
       await FireStoreUtils.addDriverChat(conversationModel);
     } else {
       await FireStoreUtils.addRestaurantChat(conversationModel);
     }
-
-    await SendNotification.sendChatFcmMessage(customerName.value, conversationModel.message.toString(), token.value, {});
+    await SendNotification.sendChatFcmMessage(
+      customerName,
+      conversationModel.message.toString(),
+      token,
+      {},
+    );
   }
 
   final ImagePicker imagePicker = ImagePicker();
-
-// Future pickFile({required ImageSource source}) async {
-//   try {
-//     XFile? image = await imagePicker.pickImage(source: source);
-//     if (image == null) return;
-//     Url url = await FireStoreUtils.uploadChatImageToFireStorage(File(image.path), Get.context!);
-//     sendMessage('', url, '', 'image');
-//     Get.back();
-//   } on PlatformException catch (e) {
-//     ShowToastDialog.showToast("${"failed_to_pick".tr} : \n $e");
-//   }
-// }
 }
