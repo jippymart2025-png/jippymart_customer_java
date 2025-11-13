@@ -15,16 +15,16 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:http/http.dart' as http;
 
 class EditProfileProvider extends ChangeNotifier {
-  RxBool isLoading = true.obs;
-  Rx<UserModel> userModel = UserModel().obs;
+  bool isLoading = true;
+  UserModel userModel = UserModel();
 
-  Rx<TextEditingController> firstNameController = TextEditingController().obs;
-  Rx<TextEditingController> lastNameController = TextEditingController().obs;
-  Rx<TextEditingController> emailController = TextEditingController().obs;
-  Rx<TextEditingController> phoneNumberController = TextEditingController().obs;
-  Rx<TextEditingController> countryCodeController = TextEditingController(
+  TextEditingController firstNameController = TextEditingController();
+  TextEditingController lastNameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController phoneNumberController = TextEditingController();
+  TextEditingController countryCodeController = TextEditingController(
     text: "+91",
-  ).obs;
+  );
 
   void initFunction() {
     getData();
@@ -42,7 +42,7 @@ class EditProfileProvider extends ChangeNotifier {
         print(
           '[EDIT_PROFILE] Using global user model: ${Constant.userModel?.toJson()}',
         );
-        userModel.value = Constant.userModel!;
+        userModel = Constant.userModel!;
       } else {
         print(
           '[EDIT_PROFILE] Global user model is null, fetching from Firestore',
@@ -52,7 +52,7 @@ class EditProfileProvider extends ChangeNotifier {
           userId.toString(),
         );
         if (value != null) {
-          userModel.value = value;
+          userModel = value;
           // Also update the global user model
           Constant.userModel = value;
           print(
@@ -64,17 +64,13 @@ class EditProfileProvider extends ChangeNotifier {
       }
 
       // Set the form fields
-      if (userModel.value.id != null) {
-        firstNameController.value.text =
-            userModel.value.firstName?.toString() ?? "";
-        lastNameController.value.text =
-            userModel.value.lastName?.toString() ?? "";
-        emailController.value.text = userModel.value.email?.toString() ?? "";
-        phoneNumberController.value.text =
-            userModel.value.phoneNumber?.toString() ?? "";
-        countryCodeController.value.text =
-            userModel.value.countryCode?.toString() ?? "+91";
-        profileImage.value = userModel.value.profilePictureURL ?? "";
+      if (userModel.id != null) {
+        firstNameController.text = userModel.firstName?.toString() ?? "";
+        lastNameController.text = userModel.lastName?.toString() ?? "";
+        emailController.text = userModel.email?.toString() ?? "";
+        phoneNumberController.text = userModel.phoneNumber?.toString() ?? "";
+        countryCodeController.text = userModel.countryCode?.toString() ?? "+91";
+        profileImage = userModel.profilePictureURL ?? "";
         print('[EDIT_PROFILE] Form fields populated successfully');
       } else {
         print('[EDIT_PROFILE] User model is null, cannot populate form fields');
@@ -83,51 +79,51 @@ class EditProfileProvider extends ChangeNotifier {
       print('[EDIT_PROFILE] Error loading user data: $e');
     }
 
-    isLoading.value = false;
+    isLoading = false;
   }
 
   saveData(BuildContext context) async {
-    if (firstNameController.value.text.isEmpty) {
+    if (firstNameController.text.isEmpty) {
       // showSnackBar(
       //   "Please enter the first name",
       //   context,
       // );
       ShowToastDialog.showToast("Please enter the first name".tr);
-    } else if (lastNameController.value.text.isEmpty) {
+    } else if (lastNameController.text.isEmpty) {
       ShowToastDialog.showToast("Please enter the last name".tr);
       // Get.snackbar(
       //   "Error",
       //   "Please enter the last name",
       //   snackPosition: SnackPosition.BOTTOM,
       // );
-    } else if (emailController.value.text.isEmpty) {
+    } else if (emailController.text.isEmpty) {
       ShowToastDialog.showToast("Please enter the email".tr);
       // Get.snackbar(
       //   "Error",
       //   "Please enter the email",
       //   snackPosition: SnackPosition.BOTTOM,
       // );
-    } else if (!isValidEmail(emailController.value.text)) {
+    } else if (!isValidEmail(emailController.text)) {
       ShowToastDialog.showToast("Invalid email format".tr);
     } else {
       ShowToastDialog.showLoader("Please wait".tr);
-      if (Constant().hasValidUrl(profileImage.value) == false &&
-          profileImage.value.isNotEmpty) {
+      if (Constant().hasValidUrl(profileImage) == false &&
+          profileImage.isNotEmpty) {
         final userId = await SqlStorageConst.getFirebaseId();
-        profileImage.value = await Constant.uploadUserImageToFireStorage(
-          File(profileImage.value),
-          "profileImage/${userId}",
-          File(profileImage.value).path.split('/').last,
+        profileImage = await Constant.uploadUserImageToFireStorage(
+          File(profileImage),
+          "profileImage/$userId",
+          File(profileImage).path.split('/').last,
         );
       }
-      userModel.value.firstName = firstNameController.value.text;
-      userModel.value.lastName = lastNameController.value.text;
-      userModel.value.profilePictureURL = profileImage.value;
-      userModel.value.phoneNumber = phoneNumberController.value.text;
-      userModel.value.countryCode = countryCodeController.value.text;
-      userModel.value.email = emailController.value.text;
-      await updateUser(userModel.value).then((value) {
-        Constant.userModel = userModel.value;
+      userModel.firstName = firstNameController.text;
+      userModel.lastName = lastNameController.text;
+      userModel.profilePictureURL = profileImage;
+      userModel.phoneNumber = phoneNumberController.text;
+      userModel.countryCode = countryCodeController.text;
+      userModel.email = emailController.text;
+      await updateUser(userModel).then((value) {
+        Constant.userModel = userModel;
         print(
           '[EDIT_PROFILE] Updated global user model: ${Constant.userModel?.toJson()}',
         );
@@ -223,14 +219,14 @@ class EditProfileProvider extends ChangeNotifier {
   }
 
   final ImagePicker _imagePicker = ImagePicker();
-  RxString profileImage = "".obs;
+  String profileImage = "";
 
   Future pickFile({required ImageSource source}) async {
     try {
       XFile? image = await _imagePicker.pickImage(source: source);
       if (image == null) return;
       Get.back();
-      profileImage.value = image.path;
+      profileImage = image.path;
     } on PlatformException catch (e) {
       ShowToastDialog.showToast("${"failed_to_pick".tr} : \n $e");
     }

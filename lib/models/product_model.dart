@@ -122,7 +122,7 @@ class ProductModel {
     grams = json['grams'];
     reviewsCount = json['reviewsCount'] ?? 0.0;
     disPrice = json['disPrice'] ?? "0";
-    photos = json['photos'] != null ? json['photos'].cast<String>() : null;
+    photos = json['photos']?.cast<String>();
     nonveg = json['nonveg'];
     photo = json['photo'];
     price = json['price'].toString();

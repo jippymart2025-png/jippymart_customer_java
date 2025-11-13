@@ -105,15 +105,9 @@ class CacheManager {
       _cacheTimestamps[key] = DateTime.now();
       _cacheVersions[key] = _currentAppVersion ?? 'unknown';
 
-      // Also save to disk for persistence
+      // Also sve to disk for persistence
       await _saveToDiskCache(key, value);
-
-      print(
-        'DEBUG: CacheManager - Cached data for key: $key (expiry: ${expiry ?? _defaultExpiry}, version: ${_currentAppVersion})',
-      );
-    } catch (e) {
-      print('DEBUG: CacheManager - Error setting cache for key: $key - $e');
-    }
+    } catch (e) {}
   }
 
   /// **GET CACHED DATA WITH FALLBACK**

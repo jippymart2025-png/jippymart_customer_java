@@ -4,7 +4,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
-import 'package:provider/provider.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -14,6 +13,7 @@ import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
 class SplashProvider extends ChangeNotifier {
   late HomeProvider homeProvider;
@@ -24,20 +24,25 @@ class SplashProvider extends ChangeNotifier {
   }
 
   _initializeLogo(BuildContext context) async {
-    await Future.delayed(const Duration(microseconds: 500)).then((value) {
+    await Future.delayed(const Duration(seconds: 1)).then((value) {
       _navigateToMainApp(context);
     });
   }
 
+  void refreshFunction(BuildContext context) async {
+    addressListProvider.initFunction();
+    homeProvider.initFunction(context: context);
+  }
+
   void _navigateToMainApp(BuildContext context) async {
     try {
+      final apiToken = await SqlStorageConst.getAuthToken();
+      final userId = await SqlStorageConst.getFirebaseId();
       homeProvider = Provider.of<HomeProvider>(context, listen: false);
       addressListProvider = Provider.of<AddressListProvider>(
         context,
         listen: false,
       );
-      final apiToken = await SqlStorageConst.getAuthToken();
-      final userId = await SqlStorageConst.getFirebaseId();
       if (apiToken == null || apiToken.isEmpty || userId == null) {
         Get.offAll(
           () => const PhoneNumberScreen(),
@@ -50,7 +55,6 @@ class SplashProvider extends ChangeNotifier {
       addressListProvider.initFunction();
       homeProvider.initFunction(context: context);
       await _loadUserDataFromStorage();
-
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => DashBoardScreen()),
         (Route<dynamic> route) => false,
@@ -61,6 +65,7 @@ class SplashProvider extends ChangeNotifier {
       } catch (e) {}
       _checkUpdatesInBackground();
     } catch (e) {
+      print("_navigateToMainApp e ${e.toString()}");
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => PhoneNumberScreen()),
         (Route<dynamic> route) => false,

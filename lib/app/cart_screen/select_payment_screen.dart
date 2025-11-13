@@ -45,8 +45,7 @@ class SelectPaymentScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  if (controller.cashOnDeliverySettingModel.value.isEnabled ==
-                      true)
+                  if (controller.cashOnDeliverySettingModel.isEnabled == true)
                     Container(
                       decoration: ShapeDecoration(
                         color: AppThemeData.grey50,
@@ -70,7 +69,6 @@ class SelectPaymentScreen extends StatelessWidget {
                               visible:
                                   controller
                                           .cashOnDeliverySettingModel
-                                          .value
                                           .isEnabled ==
                                       true &&
                                   controller.subTotal <= 599 &&
@@ -85,7 +83,6 @@ class SelectPaymentScreen extends StatelessWidget {
                               visible:
                                   controller
                                           .cashOnDeliverySettingModel
-                                          .value
                                           .isEnabled ==
                                       true &&
                                   controller.subTotal > 599,
@@ -122,7 +119,6 @@ class SelectPaymentScreen extends StatelessWidget {
                               visible:
                                   controller
                                           .cashOnDeliverySettingModel
-                                          .value
                                           .isEnabled ==
                                       true &&
                                   controller.subTotal <= 599 &&
@@ -160,8 +156,7 @@ class SelectPaymentScreen extends StatelessWidget {
                         ),
                       ),
                     ),
-                  if (controller.cashOnDeliverySettingModel.value.isEnabled ==
-                      true)
+                  if (controller.cashOnDeliverySettingModel.isEnabled == true)
                     Column(
                       children: [
                         const SizedBox(height: 10),
@@ -197,9 +192,7 @@ class SelectPaymentScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           Visibility(
-                            visible:
-                                controller.razorPayModel.value.isEnabled ==
-                                true,
+                            visible: controller.razorPayModel.isEnabled == true,
                             child: cardDecoration(
                               controller,
                               PaymentGateway.razorpay,

@@ -362,7 +362,7 @@ class MartItemModel {
 
   String get nutritionalSummary {
     List<String> info = [];
-    if (calories != null) info.add('${calories} cal');
+    if (calories != null) info.add('$calories cal');
     if (proteins != null) info.add('${proteins}g protein');
     if (fats != null) info.add('${fats}g fat');
     if (grams != null) info.add('${grams}g');

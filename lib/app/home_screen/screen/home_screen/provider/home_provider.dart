@@ -577,43 +577,19 @@ class HomeProvider extends ChangeNotifier {
 
   /// **ENSURE USER MODEL IS LOADED BEFORE LOCATION DETECTION**
   Future<void> _ensureUserModelIsLoaded() async {
-    print('[DEBUG] _ensureUserModelIsLoaded: Checking user model...');
     // If user model is already loaded, return
     if (Constant.userModel != null) {
-      print('[DEBUG] User model already loaded: ${Constant.userModel!.id}');
       return;
     }
-    // for (int attempt = 1; attempt <= 5; attempt++) {
-    //   print('[DEBUG] User model loading attempt $attempt/5');
-    //   if (Constant.userModel != null) {
-    //     print(
-    //       '[DEBUG] User model loaded successfully: ${Constant.userModel!.id}',
-    //     );
-    //     return;
-    //   }
-    //   if (attempt < 5) {
-    //     print(
-    //       '[DEBUG] User model not loaded yet, waiting 200ms before retry...',
-    //     );
-    //     await Future.delayed(Duration(milliseconds: 200));
-    //   }
-    // }
-    print(
-      '[DEBUG] User model not loaded after 5 attempts, trying to load fresh...',
-    );
     try {
       final userId = await SqlStorageConst.getFirebaseId();
-      print(
-        '[DEBUG] Attempting to load user model fresh from Firestore... $userId',
-      );
       final userModel = await AddressListProvider.getUserProfile(
         userId.toString(),
       );
+      notifyListeners();
       if (userModel != null) {
         Constant.userModel = userModel;
-        print(
-          '[DEBUG] User model loaded fresh from Firestore: ${userModel.id}',
-        );
+        notifyListeners();
         return;
       }
     } catch (e) {
@@ -624,20 +600,11 @@ class HomeProvider extends ChangeNotifier {
 
   /// **ENSURE USER LOCATION IS SET BEFORE ZONE DETECTION WITH RETRY MECHANISM**
   Future<void> _ensureUserLocationIsSet() async {
-    print('[DEBUG] _ensureUserLocationIsSet: Checking current location...');
-    print(
-      '[DEBUG] Current location: ${Constant.selectedLocation.location?.latitude}, ${Constant.selectedLocation.location?.longitude}',
-    );
-    // If location is already set, return
     if (Constant.selectedLocation.location?.latitude != null &&
         Constant.selectedLocation.location?.longitude != null) {
-      print('[DEBUG] Location already set, proceeding with zone detection');
       return;
     }
-    // **RETRY MECHANISM: Try multiple times with delays**
     for (int attempt = 1; attempt <= 3; attempt++) {
-      print('[DEBUG] Location detection attempt $attempt/3');
-      // Try to get location from user model
       if (Constant.userModel != null &&
           Constant.userModel!.shippingAddress != null &&
           Constant.userModel!.shippingAddress!.isNotEmpty) {
@@ -648,13 +615,10 @@ class HomeProvider extends ChangeNotifier {
         if (defaultAddress.location?.latitude != null &&
             defaultAddress.location?.longitude != null) {
           Constant.selectedLocation = defaultAddress;
-          print(
-            '[DEBUG] Location set from user model (attempt $attempt): ${defaultAddress.location?.latitude}, ${defaultAddress.location?.longitude}',
-          );
+          notifyListeners();
           return;
         }
       }
-      // Try to get location from local storage
       try {
         final box = GetStorage();
         final savedLocation = box.read('user_location');
@@ -693,10 +657,8 @@ class HomeProvider extends ChangeNotifier {
                 'locality': savedLocality,
                 'timestamp': DateTime.now().millisecondsSinceEpoch,
               });
-              print('[DEBUG] Updated local storage with address info');
+              notifyListeners();
             } catch (e) {
-              print('[DEBUG] Error getting address for saved location: $e');
-              // Use fallback address
               savedAddress = 'Current Location';
               savedLocality = 'Current Location';
             }
@@ -711,41 +673,27 @@ class HomeProvider extends ChangeNotifier {
             ),
             locality: savedLocality,
           );
-          print(
-            '[DEBUG] Location set from local storage (attempt $attempt): ${savedLocation['latitude']}, ${savedLocation['longitude']} - $savedAddress',
-          );
+          notifyListeners();
           return;
         }
-      } catch (e) {
-        print(
-          '[DEBUG] Error reading location from local storage (attempt $attempt): $e',
-        );
-      }
-
-      // **NEW: Try to get location from GPS as fallback**
+      } catch (e) {}
       try {
-        print(
-          '[DEBUG] Attempting GPS location detection (attempt $attempt)...',
-        );
         final gpsLocation =
             await GpsLocationService.getLocationForZoneDetection();
         if (gpsLocation != null &&
             gpsLocation['latitude'] != null &&
             gpsLocation['longitude'] != null) {
-          // Get full address from GPS coordinates
           final fullAddress =
               await GpsLocationService.getAddressFromCoordinates(
                 gpsLocation['latitude']!,
                 gpsLocation['longitude']!,
               );
-          // 🔑 CRITICAL: Detect zone ID for GPS location
           String? detectedZoneId = await _detectZoneIdForCoordinates(
             gpsLocation['latitude']!,
             gpsLocation['longitude']!,
           );
           Constant.selectedLocation = ShippingAddress(
             id: 'gps_location_${DateTime.now().millisecondsSinceEpoch}',
-            // 🔑 Add unique ID
             addressAs: 'Current Location',
             address: fullAddress,
             location: UserLocation(
@@ -755,137 +703,44 @@ class HomeProvider extends ChangeNotifier {
             locality: fullAddress,
             zoneId: detectedZoneId, // 🔑 Add detected zone ID
           );
-          print(
-            '[DEBUG] Location set from GPS (attempt $attempt): ${gpsLocation['latitude']}, ${gpsLocation['longitude']} - $fullAddress',
-          );
+
           return;
         }
-      } catch (e) {
-        print('[DEBUG] Error getting GPS location (attempt $attempt): $e');
-      }
+      } catch (e) {}
 
-      // If user model is not loaded yet, wait and retry
       if (Constant.userModel == null) {
-        print(
-          '[DEBUG] User model not loaded yet, waiting 500ms before retry...',
-        );
         await Future.delayed(Duration(milliseconds: 500));
         continue;
       }
-
-      // If we reach here, location is not available, wait before retry
       if (attempt < 3) {
-        print('[DEBUG] Location not found, waiting 300ms before retry...');
         await Future.delayed(Duration(milliseconds: 300));
       }
     }
-
-    print(
-      '[DEBUG] No valid location found after 3 attempts, will use fallback zone',
-    );
-
-    // **FINAL DEBUG: Log all available location sources**
-    await _debugLocationSources();
   }
 
-  /// 🔑 DETECT ZONE ID FOR COORDINATES
-  ///
-  /// This method detects the zone ID for given coordinates by checking
-  /// if the coordinates fall within any zone polygon
   Future<String?> _detectZoneIdForCoordinates(
     double latitude,
     double longitude,
   ) async {
     try {
-      print(
-        '[DEBUG] Starting zone detection for coordinates: $latitude, $longitude',
-      );
-
-      // If you need to get all zones from Firestore/API, you'd need a separate method
-      // For example: final List<Zone> zones = await getAllZones();
-
-      // For now, using your existing getCurrentZone method
       final zoneModel = await getCurrentZone(latitude, longitude);
-
       if (zoneModel == null || zoneModel.zone == null) {
-        print('[DEBUG] No zone available');
         return null;
       }
-
       final zone = zoneModel.zone!;
-      print('[DEBUG] Checking zone: ${zone.name} (${zone.id})');
-
-      // Check if coordinates fall within the zone polygon
       if (zone.area != null && zone.area!.isNotEmpty) {
         if (Constant.isPointInPolygon(
           LatLng(latitude, longitude),
           zone.area!.cast<GeoPoint>(),
         )) {
-          print('[DEBUG] Zone detected: ${zone.name} (${zone.id})');
           return zone.id;
         }
       }
-      print('[DEBUG] Coordinates not within the service zone');
       return null;
     } catch (e) {
-      print('[DEBUG] Error detecting zone: $e');
       return null;
     }
   }
-
-  /// **GET LOCATION NAME FROM GPS COORDINATES**
-
-  /// **DEBUG ALL LOCATION SOURCES**
-  Future<void> _debugLocationSources() async {
-    print('\n🔍 LOCATION SOURCES DEBUG:');
-    print(
-      '📍 Constant.selectedLocation: ${Constant.selectedLocation.location?.latitude}, ${Constant.selectedLocation.location?.longitude}',
-    );
-    print('👤 Constant.userModel: ${Constant.userModel?.id ?? "NULL"}');
-
-    if (Constant.userModel?.shippingAddress != null) {
-      print(
-        '🏠 User shipping addresses: ${Constant.userModel!.shippingAddress!.length}',
-      );
-      for (int i = 0; i < Constant.userModel!.shippingAddress!.length; i++) {
-        final addr = Constant.userModel!.shippingAddress![i];
-        print(
-          '   Address $i: ${addr.addressAs} - ${addr.location?.latitude}, ${addr.location?.longitude} (default: ${addr.isDefault})',
-        );
-      }
-    } else {
-      print('🏠 User shipping addresses: NULL');
-    }
-
-    try {
-      final box = GetStorage();
-      final savedLocation = box.read('user_location');
-      print(
-        '💾 Local storage location: ${savedLocation?['latitude']}, ${savedLocation?['longitude']}',
-      );
-    } catch (e) {
-      print('💾 Local storage error: $e');
-    }
-
-    // **NEW: Check GPS location availability**
-    try {
-      final isGpsAvailable = await GpsLocationService.isLocationAvailable();
-      print('📡 GPS location available: $isGpsAvailable');
-      if (isGpsAvailable) {
-        final gpsLocation =
-            await GpsLocationService.getLocationForZoneDetection();
-        print(
-          '📡 GPS location: ${gpsLocation?['latitude']}, ${gpsLocation?['longitude']}',
-        );
-      }
-    } catch (e) {
-      print('📡 GPS location error: $e');
-    }
-
-    print('🔍 END LOCATION SOURCES DEBUG\n');
-  }
-
-  /// **RESTAURANT VISIBILITY DIAGNOSTICS**
 
   getData(BuildContext context) async {
     await _loadAllDataInParallel(context);

@@ -266,17 +266,11 @@ class MartZoneUtils {
     double longitude,
     BuildContext context,
   ) async {
-    print(" getZoneIdForCoordinates ${latitude} $longitude ");
     try {
-      // Get current zone using the API
       final zoneModel = await HomeProvider.getCurrentZone(latitude, longitude);
 
       // Check if zoneModel is null (API call failed)
       if (zoneModel == null) {
-        print('❌ [MART_ZONE_UTILS] Failed to get zone from API');
-        print(
-          '🔍 [MART_ZONE_UTILS] ===== ZONE DETECTION ENDED (API FAILED) =====',
-        );
         return '';
       }
 

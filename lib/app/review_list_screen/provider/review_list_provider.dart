@@ -5,30 +5,30 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:get/get.dart';
 
 class ReviewListProvider extends ChangeNotifier {
-  RxBool isLoading = true.obs;
+  bool isLoading = true;
 
   void initFunction() {
     getArgument();
   }
 
-  Rx<VendorModel> vendorModel = VendorModel().obs;
-  RxList<RatingModel> ratingList = <RatingModel>[].obs;
+  VendorModel vendorModel = VendorModel();
+  List<RatingModel> ratingList = <RatingModel>[];
 
   getArgument() {
     dynamic argumentData = Get.arguments;
     if (argumentData != null) {
-      vendorModel.value = argumentData['vendorModel'];
+      vendorModel = argumentData['vendorModel'];
       getAllReview();
     }
-    isLoading.value = false;
+    isLoading = false;
   }
 
   getAllReview() async {
-    await FireStoreUtils.getVendorReviews(vendorModel.value.id.toString()).then(
-          (value) {
-        ratingList.value = value;
-      },
-    );
+    await FireStoreUtils.getVendorReviews(vendorModel.id.toString()).then((
+      value,
+    ) {
+      ratingList = value;
+    });
     notifyListeners();
   }
 }

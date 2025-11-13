@@ -243,7 +243,7 @@ class SearchScreenProvider extends ChangeNotifier {
   RxBool showSuggestions = false.obs;
 
   // **OPTIMIZED CACHING SYSTEM - STATIC FOR PERSISTENCE**
-  static Map<String, List<ProductModel>> _productCache = {};
+  static final Map<String, List<ProductModel>> _productCache = {};
   static List<VendorModel> _cachedVendorList = [];
   static List<ProductModel> _cachedProductList = [];
   static DateTime? _lastCacheTime;
@@ -265,8 +265,8 @@ class SearchScreenProvider extends ChangeNotifier {
   Timer? _loadTimeoutTimer;
 
   // **PERFORMANCE MONITORING**
-  int _searchCount = 0;
-  int _slowSearchCount = 0;
+  final int _searchCount = 0;
+  final int _slowSearchCount = 0;
 
   // Getter for searchTextController
   TextEditingController get searchTextController {

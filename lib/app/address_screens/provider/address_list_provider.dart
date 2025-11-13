@@ -33,8 +33,8 @@ class AddressListProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void initFunction() {
-    getUser();
+  Future<void> initFunction() async {
+    await getUser();
   }
 
   void useMyCurrentLocation() async {
@@ -82,31 +82,21 @@ class AddressListProvider extends ChangeNotifier {
   getUser() async {
     print(" getUser getUser ");
     setLoading(true);
-    try {
-      final userId = await SqlStorageConst.getFirebaseId();
-      if (userId == null || userId.isEmpty) {
-        print('User ID is null or empty');
-        setLoading(false);
-        return;
-      }
-      await getUserProfile(userId).then((value) {
-        if (value != null) {
-          userModel = value;
-          if (userModel.shippingAddress != null) {
-            shippingAddressList = userModel.shippingAddress!;
-          }
-          print(
-            'Successfully loaded ${shippingAddressList.length} shipping addresses',
-          );
-        } else {
-          print('Failed to load user profile');
-        }
-      });
-    } catch (e) {
-      print('Error in getUser: $e');
-    } finally {
+    final userId = await SqlStorageConst.getFirebaseId();
+    if (userId == null || userId.isEmpty) {
       setLoading(false);
+      return;
     }
+    await getUserProfile(userId).then((value) {
+      if (value != null) {
+        userModel = value;
+        if (userModel.shippingAddress != null) {
+          shippingAddressList = userModel.shippingAddress!;
+          notifyListeners();
+        }
+      }
+    });
+    setLoading(false);
   }
 
   static const Duration timeout = Duration(seconds: 30);

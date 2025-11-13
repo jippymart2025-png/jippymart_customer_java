@@ -2070,18 +2070,23 @@ class MartFirestoreService extends GetxService {
               }
 
               // Handle boolean fields that might be null
-              if (itemData['has_options'] == null)
+              if (itemData['has_options'] == null) {
                 itemData['has_options'] = false;
-              if (itemData['isAvailable'] == null)
+              }
+              if (itemData['isAvailable'] == null) {
                 itemData['isAvailable'] = true;
-              if (itemData['isBestSeller'] == null)
+              }
+              if (itemData['isBestSeller'] == null) {
                 itemData['isBestSeller'] = false;
+              }
               if (itemData['isFeature'] == null) itemData['isFeature'] = false;
               if (itemData['isNew'] == null) itemData['isNew'] = false;
-              if (itemData['isSeasonal'] == null)
+              if (itemData['isSeasonal'] == null) {
                 itemData['isSeasonal'] = false;
-              if (itemData['isSpotlight'] == null)
+              }
+              if (itemData['isSpotlight'] == null) {
                 itemData['isSpotlight'] = false;
+              }
               if (itemData['isStealOfMoment'] == null)
                 itemData['isStealOfMoment'] = false;
               if (itemData['isTrending'] == null)

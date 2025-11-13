@@ -138,36 +138,15 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                               final subtotal = controller.subTotal;
                               final distance = controller.totalDistance;
 
-                              print(
-                                '[CART_UI]   - Mart threshold: ₹$itemThreshold',
-                              );
-                              print(
-                                '[CART_UI]   - Mart free distance: ${freeDeliveryKm} km',
-                              );
-                              print(
-                                '[CART_UI]   - Base delivery charge: ₹$baseDeliveryCharge',
-                              );
-
                               // Determine delivery eligibility and charges (same logic as restaurant)
                               final isAboveThreshold =
                                   subtotal >= itemThreshold;
                               final isWithinFreeDistance =
                                   distance <= freeDeliveryKm;
 
-                              print(
-                                '[CART_UI]   - Is above threshold: $isAboveThreshold',
-                              );
-                              print(
-                                '[CART_UI]   - Is within free distance: $isWithinFreeDistance',
-                              );
-
                               if (isAboveThreshold) {
                                 // Above threshold - eligible for free delivery logic
                                 if (isWithinFreeDistance) {
-                                  // Standard free delivery: Green "Free Delivery" + strikethrough base charge + ₹0.00
-                                  print(
-                                    '[CART_UI]   - Mart standard free delivery',
-                                  );
                                   return buildDeliveryFeeUI(
                                     isFreeDelivery: true,
                                     originalFee: baseDeliveryCharge,
@@ -175,9 +154,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                                   );
                                 } else {
                                   // Free delivery with extra charge: Green "Free Delivery" + strikethrough base charge + extra charge
-                                  print(
-                                    '[CART_UI]   - Mart free delivery with extra charge',
-                                  );
+
                                   return buildDeliveryFeeUI(
                                     isFreeDelivery: true,
                                     originalFee: baseDeliveryCharge,

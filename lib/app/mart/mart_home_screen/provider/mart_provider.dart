@@ -1208,33 +1208,17 @@ class MartProvider extends ChangeNotifier {
     }
   }
 
-  /// Load homepage categories (optimized for homepage display)
   Future<void> loadHomepageCategories({int limit = 10}) async {
     try {
-      print('[MART CONTROLLER] ==========================================');
-      print('[MART CONTROLLER] 🏠 loadHomepageCategories() called');
-      print('[MART CONTROLLER] 📋 Parameters: limit=$limit');
-      print('[MART CONTROLLER] 🔍 Currently loading: ${isCategoryLoading}');
-      print('[MART CONTROLLER] ==========================================');
-
-      // Prevent multiple simultaneous calls
       if (isCategoryLoading) {
-        print('[MART CONTROLLER] ⚠️ Already loading categories, skipping...');
         return;
       }
-
-      // If already loaded and we have categories, don't reload
       if (isHomepageCategoriesLoaded && featuredCategories.isNotEmpty) {
-        print('[MART CONTROLLER] ✅ Categories already loaded, skipping...');
         return;
       }
-
       isCategoryLoading = true;
       errorMessage = '';
 
-      print(
-        '[MART CONTROLLER] 📞 Calling _martService.getHomepageCategories()...',
-      );
       final categories = await _firestoreService.getHomepageCategories(
         limit: limit,
       );
@@ -1272,46 +1256,24 @@ class MartProvider extends ChangeNotifier {
       isHomepageCategoriesLoaded = false; // Reset flag on error
       errorMessage =
           'Unable to load homepage categories. Please try again later.';
-      print('[MART CONTROLLER] ❌ Error loading homepage categories: $e');
     }
   }
 
   /// Load trending items from API
   Future<void> loadTrendingItems() async {
     try {
-      print('[MART CONTROLLER] ==========================================');
-      print('[MART CONTROLLER] 🚀 loadTrendingItems() called');
-      print('[MART CONTROLLER] ==========================================');
-
       // Prevent multiple simultaneous calls
       if (isTrendingLoading) {
-        print(
-          '[MART CONTROLLER] ⚠️ Already loading trending items, skipping...',
-        );
         return;
       }
 
       isTrendingLoading = true;
       errorMessage = '';
 
-      print(
-        '[MART CONTROLLER] 📞 Calling _firestoreService.getTrendingItems()...',
-      );
       final items = await _firestoreService.getTrendingItems();
 
       if (items.isNotEmpty) {
         trendingItems.assignAll(items);
-        print(
-          '[MART CONTROLLER] ✅ Trending items loaded successfully: ${items.length} items',
-        );
-
-        // Log the isTrending status of loaded items
-        final trendingCount = items
-            .where((item) => item.isTrending == true)
-            .length;
-        print(
-          '[MART CONTROLLER] 📊 Loaded items breakdown: ${trendingCount} trending out of ${items.length} total',
-        );
       } else {
         trendingItems.clear();
         print('[MART CONTROLLER] ⚠️ No trending items found from API');

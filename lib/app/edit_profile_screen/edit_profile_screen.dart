@@ -66,14 +66,12 @@ class EditProfileScreen extends StatelessWidget {
                                   fit: BoxFit.cover,
                                 ),
                               )
-                            : Constant().hasValidUrl(
-                                    controller.profileImage.value,
-                                  ) ==
+                            : Constant().hasValidUrl(controller.profileImage) ==
                                   false
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(60),
                                 child: Image.file(
-                                  File(controller.profileImage.value),
+                                  File(controller.profileImage),
                                   height: Responsive.width(24, context),
                                   width: Responsive.width(24, context),
                                   fit: BoxFit.cover,
@@ -83,7 +81,7 @@ class EditProfileScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(60),
                                 child: NetworkImageWidget(
                                   fit: BoxFit.cover,
-                                  imageUrl: controller.profileImage.value,
+                                  imageUrl: controller.profileImage,
                                   height: Responsive.width(24, context),
                                   width: Responsive.width(24, context),
                                   errorWidget: Image.asset(
@@ -113,7 +111,7 @@ class EditProfileScreen extends StatelessWidget {
                       Expanded(
                         child: TextFieldWidget(
                           title: 'First Name'.tr,
-                          controller: controller.firstNameController.value,
+                          controller: controller.firstNameController,
                           hintText: 'First Name'.tr,
                         ),
                       ),
@@ -121,7 +119,7 @@ class EditProfileScreen extends StatelessWidget {
                       Expanded(
                         child: TextFieldWidget(
                           title: 'Last Name'.tr,
-                          controller: controller.lastNameController.value,
+                          controller: controller.lastNameController,
                           hintText: 'Last Name'.tr,
                         ),
                       ),
@@ -130,16 +128,16 @@ class EditProfileScreen extends StatelessWidget {
                   TextFieldWidget(
                     title: 'Email'.tr,
                     textInputType: TextInputType.emailAddress,
-                    controller: controller.emailController.value,
+                    controller: controller.emailController,
                     hintText: 'Email'.tr,
                     enable: true,
                   ),
                   TextFieldWidget(
                     title: 'Phone Number'.tr,
                     textInputType: TextInputType.phone,
-                    controller: controller.phoneNumberController.value,
+                    controller: controller.phoneNumberController,
                     hintText: 'Phone Number'.tr,
-                    enable: controller.phoneNumberController.value.text
+                    enable: controller.phoneNumberController.text
                         .trim()
                         .isEmpty,
                   ),
@@ -180,7 +178,7 @@ class EditProfileScreen extends StatelessWidget {
                               ),
                             ),
                             child: Obx(() {
-                              final userModel = controller.userModel.value;
+                              final userModel = controller.userModel;
                               if (userModel.shippingAddress != null &&
                                   userModel.shippingAddress!.isNotEmpty) {
                                 final addresses = userModel.shippingAddress!;

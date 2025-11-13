@@ -167,7 +167,7 @@ class RateProductProvider extends ChangeNotifier {
         if (images[i].runtimeType == XFile) {
           String url = await Constant.uploadUserImageToFireStorage(
             File(images[i].path),
-            "profileImage/${userId}",
+            "profileImage/$userId",
             File(images[i].path).path.split('/').last,
           );
           images.removeAt(i);

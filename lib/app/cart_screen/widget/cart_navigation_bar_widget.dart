@@ -87,11 +87,10 @@ Future<void> _processPayment(
   if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
     controller.placeOrder(context);
   } else if (controller.selectedPaymentMethod == PaymentGateway.razorpay.name) {
-    print("Razorpay payment started");
     RazorPayController()
         .createOrderRazorPay(
           amount: double.parse(controller.totalAmount.toString()),
-          razorpayModel: controller.razorPayModel.value,
+          razorpayModel: controller.razorPayModel,
         )
         .then((value) async {
           if (value == null) {

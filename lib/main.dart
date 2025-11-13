@@ -100,7 +100,6 @@ void main() async {
   await GetStorage.init();
   await Preferences.initPref();
   DatabaseHelper.instance;
-
   Get.put(MartFirestoreService(), permanent: true);
   final cartProvider = CartProvider();
   await cartProvider.checkCartPersistence();

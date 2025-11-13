@@ -89,7 +89,6 @@ class SignupProvider extends ChangeNotifier {
         "phone":
             "$countryCode${phoneNUmberEditingController.value.text.trim()}",
       };
-      print(" signUp signupData ${signupData}");
       final endpoint = authToken.isNotEmpty ? 'complete-profile' : 'signup';
       final response = await _makeApiCall(
         endpoint,
@@ -97,7 +96,6 @@ class SignupProvider extends ChangeNotifier {
         'POST',
         token: authToken.isNotEmpty ? authToken : null,
       );
-      print(" signUp signUp ${response}");
       if (response['success'] == true) {
         if (response['token'] != null) {
           await secureStorage.write(key: 'api_token', value: response['token']);

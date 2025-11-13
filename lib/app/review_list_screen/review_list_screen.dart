@@ -37,7 +37,7 @@ class ReviewListScreen extends StatelessWidget {
               ),
             ),
           ),
-          body: controller.isLoading.value
+          body: controller.isLoading
               ? Constant.loader()
               : Padding(
                   padding: const EdgeInsets.symmetric(

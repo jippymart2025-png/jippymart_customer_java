@@ -270,11 +270,7 @@ class CartControllerProvider extends ChangeNotifier {
     const apiKey = "7885eed00855633516f769cf3646aace"; // 🔑 Add your key
     final url =
         "https://api.openweathermap.org/data/2.5/weather?lat=$lat&lon=$lon&appid=$apiKey&units=metric";
-    // final url =
-    //     "https://api.openweathermap.org/data/2.5/weather?q=Dubai&appid=7885eed00855633516f769cf3646aace&units=metric";
     final response = await http.get(Uri.parse(url));
-    print(" newvaluevalue ${url}");
-    print(" newvaluevalue ${response.body.toString()}");
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
@@ -359,8 +355,8 @@ class CartControllerProvider extends ChangeNotifier {
   static const String _paymentOrderIdKey = 'razorpay_order_id';
 
   // Add profile validation state
-  RxBool isProfileValid = false.obs;
-  RxBool isProfileValidating = false.obs;
+  bool isProfileValid = false;
+  bool isProfileValidating = false;
 
   // Add caching for better performance
   VendorModel? _cachedVendorModel;
@@ -370,12 +366,12 @@ class CartControllerProvider extends ChangeNotifier {
   static const Duration cacheExpiry = Duration(minutes: 5);
 
   // Context detection for coupon filtering
-  RxString _currentContext = "restaurant".obs; // Default to restaurant
+  String _currentContext = "restaurant"; // Default to restaurant
 
   // **ULTRA-FAST CALCULATION CACHE FOR INSTANT CART UPDATES**
-  Map<String, Map<String, dynamic>> _promotionalCalculationCache = {};
-  Map<String, double> _cachedFreeDeliveryKm = {};
-  Map<String, double> _cachedExtraKmCharge = {};
+  final Map<String, Map<String, dynamic>> _promotionalCalculationCache = {};
+  final Map<String, double> _cachedFreeDeliveryKm = {};
+  final Map<String, double> _cachedExtraKmCharge = {};
   List<TaxModel>? _cachedTaxList;
   bool _calculationCacheLoaded = false;
 
@@ -595,7 +591,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// 🔑 BULLETPROOF PROFILE VALIDATION - NEVER FAILS
   Future<void> validateUserProfileBulletproof() async {
-    isProfileValidating.value = true;
+    isProfileValidating = true;
     try {
       UserModel? user;
       int attempts = 0;
@@ -630,7 +626,7 @@ class CartControllerProvider extends ChangeNotifier {
       notifyListeners();
 
       if (user == null) {
-        isProfileValid.value = false;
+        isProfileValid = false;
         ShowToastDialog.showToast(
           "Unable to verify profile. Please check your internet connection and try again."
               .tr,
@@ -654,12 +650,12 @@ class CartControllerProvider extends ChangeNotifier {
           user.email!.contains('@') &&
           user.email!.contains('.');
 
-      isProfileValid.value = hasFirstName && hasPhoneNumber && hasEmail;
+      isProfileValid = hasFirstName && hasPhoneNumber && hasEmail;
 
       userModel = user;
       Constant.userModel = user; // Update global cache
       notifyListeners();
-      if (!isProfileValid.value) {
+      if (!isProfileValid) {
         final missingFields = <String>[];
         if (!hasFirstName) missingFields.add('First Name (min 2 chars)');
         if (!hasPhoneNumber) missingFields.add('Phone Number (min 10 digits)');
@@ -667,13 +663,13 @@ class CartControllerProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      isProfileValid.value = false;
+      isProfileValid = false;
       ShowToastDialog.showToast(
         "Error validating profile. Please try again.".tr,
       );
       notifyListeners();
     } finally {
-      isProfileValidating.value = false;
+      isProfileValidating = false;
       notifyListeners();
     }
   }
@@ -684,7 +680,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<bool> validateAndPlaceOrderBulletproof(BuildContext context) async {
     await validateUserProfileBulletproof();
-    if (!isProfileValid.value) {
+    if (!isProfileValid) {
       final user = userModel;
       List<String> missingFields = [];
       if (user.firstName == null ||
@@ -895,7 +891,7 @@ class CartControllerProvider extends ChangeNotifier {
     final subTotalValid = subTotal > 0;
     final totalValid = totalAmount > 0;
     final paymentMethodSelected = selectedPaymentMethod.isNotEmpty;
-    final profileValid = isProfileValid.value;
+    final profileValid = isProfileValid;
     final notProcessing = !isProcessingOrder;
     final notPaymentInProgress = !isPaymentInProgress;
     final notPaymentCompleted = !isPaymentCompleted;
@@ -1175,14 +1171,14 @@ class CartControllerProvider extends ChangeNotifier {
 
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: combinedCoupons.cast<CouponModel>(),
-        contextType: _currentContext.value,
+        contextType: _currentContext,
         fallbackEnabled: true, // Enable fallback for backward compatibility
       );
 
       final contextFilteredAllCoupons =
           CouponFilterService.filterCouponsByContext(
             coupons: combinedAllCoupons.cast<CouponModel>(),
-            contextType: _currentContext.value,
+            contextType: _currentContext,
             fallbackEnabled: true,
           );
 
@@ -1253,20 +1249,20 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Determine context based on cart contents
       if (hasMartItems && !hasRestaurantItems) {
-        _currentContext.value = "mart";
+        _currentContext = "mart";
       } else if (hasRestaurantItems && !hasMartItems) {
-        _currentContext.value = "restaurant";
+        _currentContext = "restaurant";
       } else {
         // Mixed cart or empty cart - prioritize mart if it has items
         if (hasMartItems) {
-          _currentContext.value = "mart";
+          _currentContext = "mart";
         } else {
-          _currentContext.value = "restaurant";
+          _currentContext = "restaurant";
         }
       }
       notifyListeners();
     } catch (e) {
-      _currentContext.value = "restaurant";
+      _currentContext = "restaurant";
       notifyListeners();
     }
   }
@@ -1384,7 +1380,7 @@ class CartControllerProvider extends ChangeNotifier {
           .toList();
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: filteredGlobalCoupons.cast<CouponModel>(),
-        contextType: _currentContext.value,
+        contextType: _currentContext,
         fallbackEnabled: true,
       );
       _cachedCouponList = contextFilteredCoupons;
@@ -1568,9 +1564,9 @@ class CartControllerProvider extends ChangeNotifier {
       if (selectedCouponModel.id != null &&
           selectedCouponModel.id!.isNotEmpty) {
         activeCoupon = selectedCouponModel;
-      } else if (couponCodeController.value.text.isNotEmpty) {
+      } else if (couponCodeController.text.isNotEmpty) {
         activeCoupon = couponList
-            .where((element) => element.code == couponCodeController.value.text)
+            .where((element) => element.code == couponCodeController.text)
             .firstOrNull;
       }
       final hasPromotionalItems = cartItem.any((item) {
@@ -2616,23 +2612,23 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Rx<CodSettingModel> cashOnDeliverySettingModel = CodSettingModel().obs;
+  CodSettingModel cashOnDeliverySettingModel = CodSettingModel();
 
-  Rx<RazorPayModel> razorPayModel = RazorPayModel().obs;
+  RazorPayModel razorPayModel = RazorPayModel();
 
   getPaymentSettings() async {
     await FireStoreUtils.getPaymentSettingsData().then((value) {
-      razorPayModel.value = RazorPayModel.fromJson(
+      razorPayModel = RazorPayModel.fromJson(
         jsonDecode(Preferences.getString(Preferences.razorpaySettings)),
       );
-      cashOnDeliverySettingModel.value = CodSettingModel.fromJson(
+      cashOnDeliverySettingModel = CodSettingModel.fromJson(
         jsonDecode(Preferences.getString(Preferences.codSettings)),
       );
-      if (cashOnDeliverySettingModel.value.isEnabled == true &&
+      if (cashOnDeliverySettingModel.isEnabled == true &&
           subTotal <= 599 &&
           !hasMartItemsInCart()) {
         selectedPaymentMethod = PaymentGateway.cod.name;
-      } else if (razorPayModel.value.isEnabled == true) {
+      } else if (razorPayModel.isEnabled == true) {
         selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
       razorPay?.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlePaymentSuccess);
@@ -2684,8 +2680,8 @@ class CartControllerProvider extends ChangeNotifier {
     isPaymentInProgress = true;
 
     // 🔑 CRITICAL FIX: Validate Razorpay configuration before creating options
-    if (razorPayModel.value.razorpayKey == null ||
-        razorPayModel.value.razorpayKey!.isEmpty) {
+    if (razorPayModel.razorpayKey == null ||
+        razorPayModel.razorpayKey!.isEmpty) {
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
@@ -2693,7 +2689,7 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
 
-    if (!razorPayModel.value.razorpayKey!.startsWith('rzp_')) {
+    if (!razorPayModel.razorpayKey!.startsWith('rzp_')) {
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
@@ -2705,7 +2701,7 @@ class CartControllerProvider extends ChangeNotifier {
     final int amountInPaise = (double.parse(amount.toString()) * 100).round();
 
     var options = {
-      'key': razorPayModel.value.razorpayKey,
+      'key': razorPayModel.razorpayKey,
       'amount': amountInPaise, // ✅ FIXED: Now using int instead of double
       'name': 'GoRide',
       'order_id': orderId,
@@ -2739,12 +2735,12 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  RxBool isGlobalLocked = false.obs;
+  bool isGlobalLocked = false;
 
   /// ✅ NEW: Safe payment success handler with crash prevention
   void handlePaymentSuccess(PaymentSuccessResponse response) {
     try {
-      isGlobalLocked.value = true;
+      isGlobalLocked = true;
       _lastPaymentId = response.paymentId;
       _lastPaymentTime = DateTime.now();
       isPaymentCompleted = true;
@@ -2754,11 +2750,11 @@ class CartControllerProvider extends ChangeNotifier {
       Future.delayed(const Duration(milliseconds: 500), () async {
         print('🔑 RAZORPAY SUCCESS - Starting order placement after delay');
         placeOrderAfterPayment();
-        isGlobalLocked.value = false;
+        isGlobalLocked = false;
       });
       notifyListeners();
     } catch (e) {
-      isGlobalLocked.value = false;
+      isGlobalLocked = false;
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment processing failed. Please try again.".tr,
@@ -2824,7 +2820,7 @@ class CartControllerProvider extends ChangeNotifier {
         }
         await placeOrderAfterPayment();
         ShowToastDialog.showLoader(
-          "Retrying order placement... (${retryCount}/$maxRetries)".tr,
+          "Retrying order placement... ($retryCount/$maxRetries)".tr,
         );
       }
     }

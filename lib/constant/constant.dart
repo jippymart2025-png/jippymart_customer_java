@@ -947,11 +947,6 @@ class Constant {
       Constant.selectedLocation.location!.longitude,
     );
 
-    // Debug logging for distance calculation
-    print('DEBUG: Distance calculation for ${vendor.title}');
-    print('  Vendor coordinates: $vendorLat, $vendorLng');
-    print('  User coordinates: $userLat, $userLng');
-
     String distance = getDistance(
       lat1: vendorLat,
       lng1: vendorLng,
@@ -959,7 +954,6 @@ class Constant {
       lng2: userLng,
     );
 
-    print('  Calculated distance: $distance ${distanceType}');
     return distance;
   }
 

@@ -145,7 +145,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
         });
         return WillPopScope(
           onWillPop: () async {
-            if (controller.isGlobalLocked.value) {
+            if (controller.isGlobalLocked) {
               ShowToastDialog.showToast(
                 "Please wait, payment is processing...",
               );

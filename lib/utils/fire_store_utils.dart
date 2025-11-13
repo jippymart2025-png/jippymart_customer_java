@@ -38,7 +38,7 @@ import 'package:http/http.dart' as http;
 
 class FireStoreUtils {
   static FirebaseFirestore fireStore = FirebaseFirestore.instance;
-  static bool _isDatabaseHealthy = true;
+  static final bool _isDatabaseHealthy = true;
   static String?
   backendUserId; // Set this from LoginController after OTP verification
   static bool get isDatabaseHealthy => _isDatabaseHealthy;
