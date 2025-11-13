@@ -71,34 +71,18 @@ class MartProductCard extends StatelessWidget {
         promoId: null,
       );
 
-      print(
-        '[CART] Cart product prepared: ${cartProduct.name} (ID: ${cartProduct.id})',
-      );
-      print(
-        '[CART] Price: ${cartProduct.price}, Discount Price: ${cartProduct.discountPrice}',
-      );
-      print('[CART] Original VendorID: ${product.vendorID}');
-      print('[CART] Modified VendorID (mart): ${martVendorID}');
-      print('[CART] CategoryID: ${product.categoryID}');
-
       // Add to cart using cart controller
       try {
-        print('[CART] Calling cartController.addToCart...');
         final success = await cartControllerProvider.addToCart(
           cartProductModel: cartProduct,
           isIncrement: true,
           quantity: 1,
         );
-        print('[CART] cartController.addToCart returned: $success');
 
         if (!success) {
-          print('[CART] Failed to add to cart - not showing success message');
           return;
         }
       } catch (e) {
-        print('[CART] Cart controller method failed: $e');
-        print('[CART] Error details: ${e.toString()}');
-
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -819,7 +803,7 @@ class MartProductCard extends StatelessWidget {
                                 ),
                                 const SizedBox(width: 2),
                                 Text(
-                                  '${_getDisplayRating().toStringAsFixed(1)}',
+                                  _getDisplayRating().toStringAsFixed(1),
                                   style: TextStyle(
                                     fontSize: _getResponsiveFontSize(
                                       screenWidth,
@@ -1159,7 +1143,7 @@ class ProductOptionsModal extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
-                                'Save ₹${savings}',
+                                'Save ₹$savings',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 10,

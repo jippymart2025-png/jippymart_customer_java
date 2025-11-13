@@ -184,7 +184,7 @@ class RateProductProvider extends ChangeNotifier {
         id: ratingModel.id ?? Constant.getUuid(),
         orderId: orderModel.id,
         vendorId: productModel.vendorID,
-        createdAt: Timestamp.now(),
+        createdAt: Timestamp.now().toString(),
         uname: Constant.userModel!.fullName(),
         profile: Constant.userModel!.profilePictureURL,
         reviewAttributes: reviewAttribute,

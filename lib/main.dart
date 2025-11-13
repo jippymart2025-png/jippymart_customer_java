@@ -4,21 +4,17 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provider/signup_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
-import 'package:jippymart_customer/app/change%20langauge/provider/change_language_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/home_screen/provider/global_settings_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/provider/restaurant_list_provider.dart';
 import 'package:jippymart_customer/config/smartlook_config.dart';
-import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/firebase_options.dart';
 import 'package:jippymart_customer/models/language_model.dart';
-
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:jippymart_customer/services/global_deeplink_handler.dart';
-import 'package:jippymart_customer/services/localization_service.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
 import 'package:jippymart_customer/services/mobile_deep_link_service.dart';
 import 'package:jippymart_customer/services/pending_deep_link_handler.dart';
@@ -70,7 +66,6 @@ import 'app/profile_screen/provider/my_profile_provider.dart';
 import 'app/rate_us_screen/provider/rate_product_provider.dart';
 import 'app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'app/review_list_screen/provider/review_list_provider.dart';
-import 'app/scan_qrcode_screen/provider/scan_qr_code_provider.dart';
 import 'app/search_screen/provider/search_provider.dart';
 import 'app/splash_screen/provider/splash_provider.dart';
 import 'app/swiggy_search_screen/provider/swiggy_search_provider.dart';
@@ -221,22 +216,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _initializeSmartLookInBackground();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (Preferences.getString(
+      LanguageModel languageModel = LanguageModel(
+        slug: "en",
+        isRtl: false,
+        title: "English",
+      );
+      Preferences.setString(
         Preferences.languageCodeKey,
-      ).toString().isNotEmpty) {
-        LanguageModel languageModel = Constant.getLanguage();
-        LocalizationService().changeLocale(languageModel.slug.toString());
-      } else {
-        LanguageModel languageModel = LanguageModel(
-          slug: "en",
-          isRtl: false,
-          title: "English",
-        );
-        Preferences.setString(
-          Preferences.languageCodeKey,
-          jsonEncode(languageModel.toJson()),
-        );
-      }
+        jsonEncode(languageModel.toJson()),
+      );
     });
     super.initState();
   }
@@ -256,7 +244,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => LoginProvider()),
         ChangeNotifierProvider(create: (_) => CartControllerProvider()),
         ChangeNotifierProvider(create: (_) => CategoryServiceProvider()),
-        ChangeNotifierProvider(create: (_) => ChangeLanguageProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => DashBoardProvider()),
         ChangeNotifierProvider(create: (_) => EditProfileProvider()),
@@ -272,7 +259,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => RateProductProvider()),
         ChangeNotifierProvider(create: (_) => RestaurantDetailsProvider()),
         ChangeNotifierProvider(create: (_) => ReviewListProvider()),
-        ChangeNotifierProvider(create: (_) => ScanQrCodeProvider()),
         ChangeNotifierProvider(create: (_) => SearchScreenProvider()),
         ChangeNotifierProvider(create: (_) => CategoryDetailsProvider()),
         ChangeNotifierProvider(create: (_) => MapViewProvider()),
@@ -291,7 +277,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         title: 'JippyMart Customer'.tr,
         debugShowCheckedModeBanner: false,
         localizationsDelegates: const [CountryLocalizations.delegate],
-        locale: LocalizationService.locale,
         builder: EasyLoading.init(),
         home: Consumer<GlobalSettingsProvider>(
           builder: (context, controller, _) {

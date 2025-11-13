@@ -53,8 +53,7 @@ class CategoryRestaurantProvider extends ChangeNotifier {
         throw Exception('Failed to load restaurants: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error in getAllNearestRestaurantByCategoryId: $e');
-      throw e;
+      rethrow;
     }
   }
 
@@ -67,7 +66,6 @@ class CategoryRestaurantProvider extends ChangeNotifier {
           Constant.selectedLocation.location?.longitude ?? 0.0;
 
       if (zoneId == null) {
-        print("Zone ID is null");
         return;
       }
 

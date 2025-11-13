@@ -284,7 +284,7 @@ class MartSpotlightSelections extends StatelessWidget {
           Positioned(
             left: 169,
             top: 19,
-            child: Container(
+            child: SizedBox(
               width: 67,
               height: 67,
               child: Image.asset(
@@ -331,7 +331,7 @@ class MartSpotlightSelections extends StatelessWidget {
           Positioned(
             left: 1,
             top: 150,
-            child: Container(
+            child: SizedBox(
               width: 402,
               height: 92,
               child: Consumer<MartProvider>(
@@ -366,7 +366,7 @@ class MartSpotlightSelections extends StatelessWidget {
                                 const SizedBox(width: 12),
                             ],
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   );
@@ -398,7 +398,7 @@ class _SpotlightCard extends StatelessWidget {
           snackPosition: SnackPosition.BOTTOM,
         );
       },
-      child: Container(
+      child: SizedBox(
         width: 88,
         height: 92,
         child: Stack(
@@ -509,23 +509,20 @@ class _SpotlightCard extends StatelessWidget {
 class _GroceryItem extends StatelessWidget {
   final String label;
   final String? imageUrl;
-  final VoidCallback? onTap;
 
-  const _GroceryItem({required this.label, this.imageUrl, this.onTap});
+  const _GroceryItem({required this.label, this.imageUrl});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap:
-          onTap ??
-          () {
-            Get.snackbar(
-              'Coming Soon',
-              'This feature is under development',
-              snackPosition: SnackPosition.BOTTOM,
-            );
-          },
-      child: Container(
+      onTap: () {
+        Get.snackbar(
+          'Coming Soon',
+          'This feature is under development',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      },
+      child: SizedBox(
         width: 87,
         height: 129,
         child: Stack(
@@ -1477,7 +1474,7 @@ class MartHairCareSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title with See All
-          Container(
+          SizedBox(
             width: double.infinity,
             height: 22,
             child: Stack(
@@ -1518,7 +1515,7 @@ class MartHairCareSection extends StatelessWidget {
                 Positioned(
                   right: 9,
                   top: 0,
-                  child: Container(
+                  child: SizedBox(
                     width: 24,
                     height: 24,
                     child: const Icon(
@@ -1572,7 +1569,7 @@ class MartChocolatesSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title with See All
-          Container(
+          SizedBox(
             width: double.infinity,
             height: 22,
             child: Stack(
@@ -1613,7 +1610,7 @@ class MartChocolatesSection extends StatelessWidget {
                 Positioned(
                   right: 9,
                   top: 0,
-                  child: Container(
+                  child: SizedBox(
                     width: 24,
                     height: 24,
                     child: const Icon(
@@ -1667,7 +1664,7 @@ class MartPlaytimeSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title with See All
-          Container(
+          SizedBox(
             width: double.infinity,
             height: 22,
             child: Stack(
@@ -1708,7 +1705,7 @@ class MartPlaytimeSection extends StatelessWidget {
                 Positioned(
                   right: 9,
                   top: 0,
-                  child: Container(
+                  child: SizedBox(
                     width: 24,
                     height: 24,
                     child: const Icon(
@@ -1833,7 +1830,7 @@ class MartBabyCareSection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title with See All
-          Container(
+          SizedBox(
             width: double.infinity,
             height: 22,
             child: Stack(
@@ -1874,7 +1871,7 @@ class MartBabyCareSection extends StatelessWidget {
                 Positioned(
                   right: 9,
                   top: 0,
-                  child: Container(
+                  child: SizedBox(
                     width: 24,
                     height: 24,
                     child: const Icon(
@@ -1999,7 +1996,7 @@ class MartLocalGrocerySection extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Section Title with See All
-          Container(
+          SizedBox(
             width: double.infinity,
             height: 22,
             child: Stack(
@@ -2040,7 +2037,7 @@ class MartLocalGrocerySection extends StatelessWidget {
                 Positioned(
                   right: 9,
                   top: 0,
-                  child: Container(
+                  child: SizedBox(
                     width: 24,
                     height: 24,
                     child: const Icon(
@@ -2525,11 +2522,9 @@ class _MartDynamicSectionsEnhancedState
               ],
             ),
           ),
-
-          // Horizontal Scroll of Products
           Padding(
             padding: const EdgeInsets.only(left: 16),
-            child: Container(
+            child: SizedBox(
               height: 215,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,

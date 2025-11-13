@@ -199,7 +199,7 @@ class OrderDetailsScreen extends StatelessWidget {
               deliveryCharges = extraKm * extraKmCharge;
               originalDeliveryFee = deliveryCharges;
               print(
-                'DEBUG: Order Details - Promotional paid delivery beyond ${freeDeliveryKm}km: $extraKm km × ₹$extraKmCharge = ₹${deliveryCharges}',
+                'DEBUG: Order Details - Promotional paid delivery beyond ${freeDeliveryKm}km: $extraKm km × ₹$extraKmCharge = ₹$deliveryCharges',
               );
             }
           } else {
@@ -744,8 +744,8 @@ class OrderDetailsScreen extends StatelessWidget {
                                               Get.to(
                                                 ChatScreen(userId: userId),
                                                 arguments: {
-                                                  "customerName":
-                                                      '${customer.fullName()}',
+                                                  "customerName": customer
+                                                      .fullName(),
                                                   "restaurantName":
                                                       vendorModel.title,
                                                   "orderId": controller
@@ -1326,7 +1326,8 @@ class OrderDetailsScreen extends StatelessWidget {
                                                                     ),
                                                                     arguments: {
                                                                       "customerName":
-                                                                          '${customer!.fullName()}',
+                                                                          customer!
+                                                                              .fullName(),
                                                                       "restaurantName":
                                                                           driverUser!
                                                                               .fullName(),

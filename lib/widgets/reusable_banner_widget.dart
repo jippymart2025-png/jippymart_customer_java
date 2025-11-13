@@ -339,16 +339,13 @@ class ReusableBannerWidget extends StatelessWidget {
         ShowToastDialog.closeLoader();
         Get.to(MartProductDetailsScreen(product: martItem));
       } else {
-        // Try to get regular product
         ProductModel? productModel = await FireStoreUtils.getProductById(
           productId,
         );
-
         if (productModel != null) {
           VendorModel? vendorModel = await FireStoreUtils.getVendorById(
             productModel.vendorID.toString(),
           );
-
           if (vendorModel != null) {
             if (vendorModel.zoneId == Constant.selectedZone?.id) {
               ShowToastDialog.closeLoader();
@@ -385,17 +382,11 @@ class ReusableBannerWidget extends StatelessWidget {
   }
 
   Future<void> _handleCategoryRedirect(String categoryId) async {
-    print(
-      '[BANNER NAVIGATION] 🎯 Category redirect triggered for ID: $categoryId',
-    );
     ShowToastDialog.showLoader("Please wait".tr);
 
     try {
       // Navigate to category detail screen with the category ID
       ShowToastDialog.closeLoader();
-      print(
-        '[BANNER NAVIGATION] 🚀 Navigating to MartCategoryDetailScreen with categoryId: $categoryId',
-      );
       Get.to(
         () => const MartCategoryDetailScreen(),
         arguments: {
@@ -404,7 +395,6 @@ class ReusableBannerWidget extends StatelessWidget {
         },
       );
     } catch (e) {
-      print('[BANNER NAVIGATION] ❌ Error in category redirect: $e');
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast("Error loading category details".tr);
     }

@@ -1,5 +1,3 @@
-import 'package:bottom_picker/bottom_picker.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/coupon_list_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';

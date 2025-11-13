@@ -1457,7 +1457,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(12),
               ),
-              child: Container(
+              child: SizedBox(
                 height: 150, // Increased image height to match new card height
                 width: double.infinity,
                 child: product.photo != null && product.photo!.isNotEmpty

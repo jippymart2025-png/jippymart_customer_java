@@ -211,35 +211,8 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                             final subtotal = controller.subTotal;
                             final distance = controller.totalDistance;
 
-                            print(
-                              '[CART_UI] 🍽️ Building regular delivery UI...',
-                            );
-                            print('[CART_UI]   - Subtotal: ₹$subtotal');
-                            print('[CART_UI]   - Threshold: ₹$threshold');
-                            print('[CART_UI]   - Distance: ${distance} km');
-                            print('[CART_UI]   - Free distance: ${freeKm} km');
-                            print(
-                              '[CART_UI]   - Delivery charges: ₹${controller.deliveryCharges}',
-                            );
-                            print(
-                              '[CART_UI]   - Original delivery fee: ₹${controller.originalDeliveryFee}',
-                            );
-
-                            // Determine delivery eligibility and charges
                             final isAboveThreshold = subtotal >= threshold;
                             final isWithinFreeDistance = distance <= freeKm;
-                            final isEligibleForFreeDelivery =
-                                isAboveThreshold && isWithinFreeDistance;
-
-                            print(
-                              '[CART_UI]   - Is above threshold: $isAboveThreshold',
-                            );
-                            print(
-                              '[CART_UI]   - Is within free distance: $isWithinFreeDistance',
-                            );
-                            print(
-                              '[CART_UI]   - Is eligible for free delivery: $isEligibleForFreeDelivery',
-                            );
 
                             // Get the base delivery charge for restaurant items (should be ₹23)
                             double baseDeliveryCharge =

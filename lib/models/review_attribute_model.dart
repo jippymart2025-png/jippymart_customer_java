@@ -2,10 +2,7 @@ class ReviewAttributeModel {
   String? id;
   String? title;
 
-  ReviewAttributeModel({
-    this.id,
-    this.title,
-  });
+  ReviewAttributeModel({this.id, this.title});
 
   ReviewAttributeModel.fromJson(Map<String, dynamic> json) {
     id = json['id'] ?? "";

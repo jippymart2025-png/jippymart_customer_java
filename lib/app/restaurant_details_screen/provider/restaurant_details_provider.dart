@@ -698,9 +698,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   Future<void> _loadAttributes() async {
     await FireStoreUtils.getAttributes().then((value) {
-      if (value != null) {
-        attributesList.value = value;
-      }
+      attributesList.value = value;
+      notifyListeners();
     });
   }
 

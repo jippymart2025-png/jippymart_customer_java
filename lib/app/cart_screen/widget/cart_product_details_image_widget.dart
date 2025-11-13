@@ -386,7 +386,7 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                                                         cartProductModel
                                                             .promoId!
                                                             .isNotEmpty) {
-                                                      final isAllowed = await controller
+                                                      final isAllowed = controller
                                                           .isPromotionalItemQuantityAllowed(
                                                             cartProductModel
                                                                     .id ??
@@ -400,7 +400,7 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                                                           );
 
                                                       if (!isAllowed) {
-                                                        final limit = await controller
+                                                        final limit = controller
                                                             .getPromotionalItemLimit(
                                                               cartProductModel
                                                                       .id ??

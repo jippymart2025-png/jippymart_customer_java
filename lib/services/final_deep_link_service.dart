@@ -474,10 +474,9 @@ class FinalDeepLinkService {
         // print('🔗 [GLOBAL_DEEPLINK] Catering link clicked, navigating...');
         // _navigateToCatering();
         return;
-      } else if (pathSegments.length >= 1) {
+      } else if (pathSegments.isNotEmpty) {
         // Direct product ID in path
         productId = pathSegments[0];
-        print('🔥 [NEW HANDLER] HTTPS scheme direct - Product ID: $productId');
       }
     }
 

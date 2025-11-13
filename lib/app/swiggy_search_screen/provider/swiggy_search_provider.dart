@@ -47,7 +47,6 @@ class SwiggySearchProvider extends ChangeNotifier {
 
   final TrieSearch trieSearch = TrieSearch();
 
-  // **OBSERVABLE VARIABLES**
   var recentSearches = <String>[];
   var trendingSearches = <String>[];
   var restaurantResults = <VendorModel>[];
@@ -1016,54 +1015,29 @@ class SwiggySearchProvider extends ChangeNotifier {
           _remainingRestaurants.isNotEmpty ||
           _remainingCategories.isNotEmpty;
 
-      // Debug: Print comprehensive search results
-      print("📊 Comprehensive Search Results:");
-      print("  - Total available: ${totalAvailableResults} results");
-      print("  - ALL products found: ${filteredProducts.length}");
-      print("  - ALL restaurants found: ${filteredRestaurants.length}");
-      print("  - ALL categories found: ${filteredCategories.length}");
-      print(
-        "  - Initial display: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${initialCategories.length} categories",
-      );
-      print("  - Remaining products: ${_remainingProducts.length}");
-      print("  - Remaining restaurants: ${_remainingRestaurants.length}");
-      print("  - Remaining categories: ${_remainingCategories.length}");
-      print("  - Has more results: ${hasMoreResults}");
-
       // Fallback: If we have any results but no remaining, still show Load More for better UX
       if (!hasMoreResults &&
           (initialProducts.isNotEmpty ||
               initialRestaurants.isNotEmpty ||
               filteredCategories.isNotEmpty)) {
         hasMoreResults = true;
-        print("📊 Fallback: Showing Load More button for better UX");
       }
-
-      // Suggestions (optional with TrieSearch)
       try {
         searchSuggestions = trieSearch.getSuggestions(
           lowerQuery,
           maxSuggestions: MAX_SUGGESTIONS,
         );
       } catch (e) {
-        print("❌ Error getting suggestions: $e");
         searchSuggestions.clear();
       }
 
       // Save to recent searches
       _saveRecentSearch(query);
 
-      print(
-        "📊 Enhanced search results: ${initialProducts.length} products, ${initialRestaurants.length} restaurants, ${filteredCategories.length} categories",
-      );
-      print("📊 Total available: ${totalAvailableResults} results");
-
       // **MEMORY MONITORING: Log memory usage after search**
       logMemoryUsage("After Search Completion");
     } catch (e) {
-      print("❌ Enhanced search error: $e");
       if (e.toString().contains('OutOfMemoryError')) {
-        print("🚨 OutOfMemoryError detected! Performing emergency cleanup.");
         _emergencyMemoryCleanup();
       }
     } finally {
@@ -1302,7 +1276,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           .where('title', isGreaterThanOrEqualTo: query)
           .where(
             'title',
-            isLessThan: query + '\uf8ff',
+            isLessThan: '$query\uf8ff',
           ) // \uf8ff is the highest Unicode character
           .limit(limit ~/ 2); // Half the limit for vendors
 
@@ -1321,7 +1295,7 @@ class SwiggySearchProvider extends ChangeNotifier {
           .collection('vendorProducts')
           .where('publish', isEqualTo: true)
           .where('name', isGreaterThanOrEqualTo: query)
-          .where('name', isLessThan: query + '\uf8ff')
+          .where('name', isLessThan: '$query\uf8ff')
           .limit(limit ~/ 2); // Half the limit for products
 
       QuerySnapshot productSnapshot = await productQuery.get();
@@ -1425,18 +1399,9 @@ class SwiggySearchProvider extends ChangeNotifier {
       showSuggestions = false;
       isSearching = false;
 
-      print("📊 Optimized Firestore search results:");
-      print("  - Vendors: ${vendorResults.length}");
-      print("  - Products: ${productResults.length}");
-      print("  - Categories: ${filteredCategories.length}");
-      print("  - Has more results: ${hasMoreResults}");
-
-      // **MEMORY MONITORING: Log memory usage after search**
       logMemoryUsage("After Optimized Search");
     } catch (e) {
-      print("❌ Optimized search error: $e");
       if (e.toString().contains('OutOfMemoryError')) {
-        print("🚨 OutOfMemoryError detected! Performing emergency cleanup.");
         _emergencyMemoryCleanup();
       }
       isSearching = false;

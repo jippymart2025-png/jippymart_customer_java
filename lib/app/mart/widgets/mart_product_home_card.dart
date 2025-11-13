@@ -267,440 +267,422 @@ class MartProductCardHome extends StatelessWidget {
     final discountedPrice = hasDiscount ? product.disPrice! : originalPrice;
     final savings = hasDiscount ? (originalPrice - discountedPrice) : 0;
 
-    return Container(
-      // margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-      child: Card(
-        elevation: 6,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        shadowColor: Colors.black.withOpacity(0.1),
-        surfaceTintColor: Colors.white,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Image Section with Enhanced Design
-                  Stack(
-                    children: [
-                      // Product Image with enhanced styling
-                      GestureDetector(
-                        onTap: () {
-                          Get.to(
-                            () => MartProductDetailsScreen(product: product),
-                          );
-                        },
+    return Card(
+      elevation: 6,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shadowColor: Colors.black.withOpacity(0.1),
+      surfaceTintColor: Colors.white,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.08),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Image Section with Enhanced Design
+                Stack(
+                  children: [
+                    // Product Image with enhanced styling
+                    GestureDetector(
+                      onTap: () {
+                        Get.to(
+                          () => MartProductDetailsScreen(product: product),
+                        );
+                      },
+                      child: Container(
+                        height: _getResponsiveImageHeight(screenWidth),
+                        // width: 100,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: product.photo.isNotEmpty
+                              ? NetworkImageWidget(
+                                  imageUrl: product.photo,
+                                  height: _getResponsiveImageHeight(
+                                    screenWidth,
+                                  ),
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorWidget: _buildImageErrorWidget(),
+                                )
+                              : _buildImageErrorWidget(),
+                        ),
+                      ),
+                    ),
+
+                    // Discount Badge
+                    if (hasDiscount)
+                      Positioned(
+                        top: 8,
+                        left: 8,
                         child: Container(
-                          height: _getResponsiveImageHeight(screenWidth),
-                          // width: 100,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(12),
+                            gradient: LinearGradient(
+                              colors: [
+                                Colors.red.shade500,
+                                Colors.red.shade400,
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 8,
+                                color: Colors.red.withOpacity(0.3),
+                                blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
                             ],
                           ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: product.photo.isNotEmpty
-                                ? NetworkImageWidget(
-                                    imageUrl: product.photo,
-                                    height: _getResponsiveImageHeight(
-                                      screenWidth,
-                                    ),
-                                    width: double.infinity,
-                                    fit: BoxFit.cover,
-                                    errorWidget: _buildImageErrorWidget(),
-                                  )
-                                : _buildImageErrorWidget(),
+                          child: Text(
+                            '${(savings / originalPrice * 100).toStringAsFixed(0)}% OFF',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
-
-                      // Discount Badge
-                      if (hasDiscount)
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: Container(
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 25,
+                      child: Text(
+                        product.name,
+                        style: TextStyle(
+                          fontSize: _getResponsiveFontSize(screenWidth, 12.0),
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade800,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (_getDisplayRating() > 0 && _getDisplayReviewCount() > 0)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '20 mins',
+                            style: TextStyle(
+                              fontSize: _getResponsiveFontSize(
+                                screenWidth,
+                                10.0,
+                              ),
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 4,
                             ),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.red.shade500,
-                                  Colors.red.shade400,
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.withOpacity(0.3),
-                                  blurRadius: 4,
-                                  offset: const Offset(0, 2),
+                            // decoration: BoxDecoration(
+                            //   color: Colors.amber.shade50,
+                            //   borderRadius: BorderRadius.circular(8),
+                            //   border: Border.all(color: Colors.amber.shade100),
+                            // ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.star_rounded,
+                                  size: 14,
+                                  color: Colors.amber.shade700,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _getDisplayRating().toStringAsFixed(1),
+                                  style: TextStyle(
+                                    fontSize: _getResponsiveFontSize(
+                                      screenWidth,
+                                      11.0,
+                                    ),
+                                    color: Colors.amber.shade800,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                               ],
                             ),
-                            child: Text(
-                              '${(savings / originalPrice * 100).toStringAsFixed(0)}% OFF',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        height: 25,
-                        child: Text(
-                          product.name,
-                          style: TextStyle(
-                            fontSize: _getResponsiveFontSize(screenWidth, 12.0),
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey.shade800,
-                            height: 1.2,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        ],
                       ),
-                      const SizedBox(height: 6),
-                      if (_getDisplayRating() > 0 &&
-                          _getDisplayReviewCount() > 0)
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '20 mins',
-                              style: TextStyle(
-                                fontSize: _getResponsiveFontSize(
-                                  screenWidth,
-                                  10.0,
-                                ),
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              // decoration: BoxDecoration(
-                              //   color: Colors.amber.shade50,
-                              //   borderRadius: BorderRadius.circular(8),
-                              //   border: Border.all(color: Colors.amber.shade100),
-                              // ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.star_rounded,
-                                    size: 14,
-                                    color: Colors.amber.shade700,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '${_getDisplayRating().toStringAsFixed(1)}',
-                                    style: TextStyle(
-                                      fontSize: _getResponsiveFontSize(
-                                        screenWidth,
-                                        11.0,
-                                      ),
-                                      color: Colors.amber.shade800,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                  // const SizedBox(width: 4),
-                                  // Text(
-                                  //   '(${_getDisplayReviewCount()})',
-                                  //   style: TextStyle(
-                                  //     fontSize: _getResponsiveFontSize(screenWidth, 10.0),
-                                  //     color: Colors.grey.shade600,
-                                  //     fontWeight: FontWeight.w500,
-                                  //   ),
-                                  // ),
-                                ],
-                              ),
-                            ),
-                          ],
+                    const SizedBox(height: 6),
+                    // Price Section
+                    Row(
+                      children: [
+                        // Current Price
+                        Text(
+                          '₹${discountedPrice.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: _getResponsiveFontSize(screenWidth, 12.0),
+                            color: Colors.green.shade700,
+                          ),
                         ),
-                      const SizedBox(height: 6),
-                      // Price Section
-                      Row(
-                        children: [
-                          // Current Price
+                        const SizedBox(width: 6),
+                        if (hasDiscount)
                           Text(
-                            '₹${discountedPrice.toStringAsFixed(0)}',
+                            '₹${originalPrice.toStringAsFixed(0)}',
                             style: TextStyle(
-                              fontWeight: FontWeight.w800,
                               fontSize: _getResponsiveFontSize(
                                 screenWidth,
                                 12.0,
                               ),
-                              color: Colors.green.shade700,
+                              color: Colors.grey.shade500,
+                              decoration: TextDecoration.lineThrough,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          if (hasDiscount)
-                            Text(
-                              '₹${originalPrice.toStringAsFixed(0)}',
-                              style: TextStyle(
-                                fontSize: _getResponsiveFontSize(
-                                  screenWidth,
-                                  12.0,
-                                ),
-                                color: Colors.grey.shade500,
-                                decoration: TextDecoration.lineThrough,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          Spacer(),
-                          Positioned(
-                            bottom: 8,
-                            right: 8,
-                            child: GestureDetector(
-                              onTap: () {
-                                if (product.has_options == true) {
-                                  _showProductOptionsModal(context, product);
-                                } else {
-                                  _handleAddToCart(context, product);
-                                }
-                              },
-                              child: Container(
-                                // width: 68,
-                                // height: 36,
-                                // decoration: BoxDecoration(
-                                //   gradient: LinearGradient(
-                                //     colors: [Colors.green.shade600, Colors.green.shade500],
-                                //     begin: Alignment.topCenter,
-                                //     end: Alignment.bottomCenter,
-                                //   ),
-                                //   borderRadius: BorderRadius.circular(10),
-                                //   boxShadow: [
-                                //     BoxShadow(
-                                //       color: Colors.green.withOpacity(0.3),
-                                //       blurRadius: 6,
-                                //       offset: const Offset(0, 3),
-                                //     ),
-                                //   ],
-                                // ),
-                                child: product.has_options == true
-                                    ? Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          // Text(
-                                          //   "ADD",
-                                          //   style: TextStyle(
-                                          //     color: Colors.white,
-                                          //     fontWeight: FontWeight.w800,
-                                          //     fontSize: 10,
-                                          //     letterSpacing: 0.5,
-                                          //   ),
-                                          // ),
-                                          CircleAvatar(
-                                            radius: 12,
-                                            child: Icon(Icons.add),
+                        Spacer(),
+                        Positioned(
+                          bottom: 8,
+                          right: 8,
+                          child: GestureDetector(
+                            onTap: () {
+                              if (product.has_options == true) {
+                                _showProductOptionsModal(context, product);
+                              } else {
+                                _handleAddToCart(context, product);
+                              }
+                            },
+                            child: Container(
+                              // width: 68,
+                              // height: 36,
+                              // decoration: BoxDecoration(
+                              //   gradient: LinearGradient(
+                              //     colors: [Colors.green.shade600, Colors.green.shade500],
+                              //     begin: Alignment.topCenter,
+                              //     end: Alignment.bottomCenter,
+                              //   ),
+                              //   borderRadius: BorderRadius.circular(10),
+                              //   boxShadow: [
+                              //     BoxShadow(
+                              //       color: Colors.green.withOpacity(0.3),
+                              //       blurRadius: 6,
+                              //       offset: const Offset(0, 3),
+                              //     ),
+                              //   ],
+                              // ),
+                              child: product.has_options == true
+                                  ? Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        // Text(
+                                        //   "ADD",
+                                        //   style: TextStyle(
+                                        //     color: Colors.white,
+                                        //     fontWeight: FontWeight.w800,
+                                        //     fontSize: 10,
+                                        //     letterSpacing: 0.5,
+                                        //   ),
+                                        // ),
+                                        CircleAvatar(
+                                          radius: 12,
+                                          child: Icon(Icons.add),
+                                        ),
+                                        Container(
+                                          margin: const EdgeInsets.symmetric(
+                                            horizontal: 4,
                                           ),
-                                          Container(
-                                            margin: const EdgeInsets.symmetric(
-                                              horizontal: 4,
-                                            ),
-                                            height: 1,
+                                          height: 1,
+                                          color: Colors.white.withOpacity(0.3),
+                                        ),
+                                        Text(
+                                          "(${product.options_count ?? 0})",
+                                          style: TextStyle(
                                             color: Colors.white.withOpacity(
-                                              0.3,
+                                              0.9,
                                             ),
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 8,
                                           ),
-                                          Text(
-                                            "(${product.options_count ?? 0})",
-                                            style: TextStyle(
-                                              color: Colors.white.withOpacity(
-                                                0.9,
-                                              ),
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 8,
-                                            ),
-                                          ),
-                                        ],
-                                      )
-                                    : CircleAvatar(
-                                        radius: 12,
-                                        child: Icon(Icons.add),
-                                      ),
-                                // Center(
-                                //   child: Text(
-                                //     "ADD",
-                                //     style: TextStyle(
-                                //       color: Colors.white,
-                                //       fontWeight: FontWeight.w800,
-                                //       fontSize: 12,
-                                //       letterSpacing: 0.5,
-                                //     ),
-                                //   ),
-                                // ),
-                              ),
+                                        ),
+                                      ],
+                                    )
+                                  : CircleAvatar(
+                                      radius: 12,
+                                      child: Icon(Icons.add),
+                                    ),
+                              // Center(
+                              //   child: Text(
+                              //     "ADD",
+                              //     style: TextStyle(
+                              //       color: Colors.white,
+                              //       fontWeight: FontWeight.w800,
+                              //       fontSize: 12,
+                              //       letterSpacing: 0.5,
+                              //     ),
+                              //   ),
+                              // ),
                             ),
                           ),
-                          // const Spacer(),
-                          // if (hasDiscount)
-                          //   Container(
-                          //     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          //     decoration: BoxDecoration(
-                          //       color: Colors.green.shade50,
-                          //       borderRadius: BorderRadius.circular(6),
-                          //       border: Border.all(color: Colors.green.shade100),
-                          //     ),
-                          //     child: Row(
-                          //       mainAxisSize: MainAxisSize.min,
-                          //       children: [
-                          //         Icon(
-                          //           Icons.savings,
-                          //           size: 12,
-                          //           color: Colors.green.shade700,
-                          //         ),
-                          //         const SizedBox(width: 2),
-                          //         Text(
-                          //           'Save ₹${savings.toStringAsFixed(0)}',
-                          //           style: TextStyle(
-                          //             fontSize: 9,
-                          //             color: Colors.green.shade700,
-                          //             fontWeight: FontWeight.w700,
-                          //           ),
-                          //         ),
-                          //       ],
-                          //     ),
-                          //   ),
-                        ],
-                      ),
-                      // const SizedBox(height: 5),
-                      Row(
-                        children: [
-                          // Expanded(
-                          //   child: Container(
-                          //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          //     decoration: BoxDecoration(
-                          //       color: Colors.blue.shade50,
-                          //       borderRadius: BorderRadius.circular(8),
-                          //       border: Border.all(color: Colors.blue.shade100),
-                          //     ),
-                          //     child: Text(
-                          //       _getSubcategoryName(product.subcategoryID),
-                          //       style: TextStyle(
-                          //         fontSize: _getResponsiveFontSize(screenWidth, 10.0),
-                          //         color: Colors.blue.shade700,
-                          //         fontWeight: FontWeight.w600,
-                          //       ),
-                          //       maxLines: 1,
-                          //       overflow: TextOverflow.ellipsis,
-                          //     ),
-                          //   ),
-                          // ),
-                          // const SizedBox(width: 8),
-                          // Delivery Time
-                          // Container(
-                          //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          //   decoration: BoxDecoration(
-                          //     color: Colors.orange.shade50,
-                          //     borderRadius: BorderRadius.circular(8),
-                          //     border: Border.all(color: Colors.orange.shade100),
-                          //   ),
-                          //   child: Row(
-                          //     mainAxisSize: MainAxisSize.min,
-                          //     children: [
-                          //       Icon(
-                          //         Icons.alarm,
-                          //         size: 12,
-                          //         color: Colors.orange.shade700,
-                          //       ),
-                          //       const SizedBox(width: 4),
-                          //       Text(
-                          //         '15 mins',
-                          //         style: TextStyle(
-                          //           fontSize: _getResponsiveFontSize(screenWidth, 10.0),
-                          //           color: Colors.orange.shade700,
-                          //           fontWeight: FontWeight.w600,
-                          //         ),
-                          //       ),
-                          //     ],
-                          //   ),
-                          // ),
-                        ],
-                      ),
-                      const SizedBox(height: 5),
-                      // Ratings Section
-                      // if (_getDisplayRating() > 0 && _getDisplayReviewCount() > 0)
-                      //   Container(
-                      //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      //     decoration: BoxDecoration(
-                      //       color: Colors.amber.shade50,
-                      //       borderRadius: BorderRadius.circular(8),
-                      //       border: Border.all(color: Colors.amber.shade100),
-                      //     ),
-                      //     child: Row(
-                      //       mainAxisSize: MainAxisSize.min,
-                      //       children: [
-                      //         Icon(
-                      //           Icons.star_rounded,
-                      //           size: 14,
-                      //           color: Colors.amber.shade700,
-                      //         ),
-                      //         const SizedBox(width: 4),
-                      //         Text(
-                      //           '${_getDisplayRating().toStringAsFixed(1)}',
-                      //           style: TextStyle(
-                      //             fontSize: _getResponsiveFontSize(screenWidth, 11.0),
-                      //             color: Colors.amber.shade800,
-                      //             fontWeight: FontWeight.w700,
-                      //           ),
-                      //         ),
-                      //         const SizedBox(width: 4),
-                      //         Text(
-                      //           '(${_getDisplayReviewCount()})',
-                      //           style: TextStyle(
-                      //             fontSize: _getResponsiveFontSize(screenWidth, 10.0),
-                      //             color: Colors.grey.shade600,
-                      //             fontWeight: FontWeight.w500,
-                      //           ),
-                      //         ),
-                      //       ],
-                      //     ),
-                      //   ),
-                      const SizedBox(height: 5),
-                    ],
-                  ),
-                ],
-              ),
+                        ),
+                        // const Spacer(),
+                        // if (hasDiscount)
+                        //   Container(
+                        //     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        //     decoration: BoxDecoration(
+                        //       color: Colors.green.shade50,
+                        //       borderRadius: BorderRadius.circular(6),
+                        //       border: Border.all(color: Colors.green.shade100),
+                        //     ),
+                        //     child: Row(
+                        //       mainAxisSize: MainAxisSize.min,
+                        //       children: [
+                        //         Icon(
+                        //           Icons.savings,
+                        //           size: 12,
+                        //           color: Colors.green.shade700,
+                        //         ),
+                        //         const SizedBox(width: 2),
+                        //         Text(
+                        //           'Save ₹${savings.toStringAsFixed(0)}',
+                        //           style: TextStyle(
+                        //             fontSize: 9,
+                        //             color: Colors.green.shade700,
+                        //             fontWeight: FontWeight.w700,
+                        //           ),
+                        //         ),
+                        //       ],
+                        //     ),
+                        //   ),
+                      ],
+                    ),
+                    // const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        // Expanded(
+                        //   child: Container(
+                        //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        //     decoration: BoxDecoration(
+                        //       color: Colors.blue.shade50,
+                        //       borderRadius: BorderRadius.circular(8),
+                        //       border: Border.all(color: Colors.blue.shade100),
+                        //     ),
+                        //     child: Text(
+                        //       _getSubcategoryName(product.subcategoryID),
+                        //       style: TextStyle(
+                        //         fontSize: _getResponsiveFontSize(screenWidth, 10.0),
+                        //         color: Colors.blue.shade700,
+                        //         fontWeight: FontWeight.w600,
+                        //       ),
+                        //       maxLines: 1,
+                        //       overflow: TextOverflow.ellipsis,
+                        //     ),
+                        //   ),
+                        // ),
+                        // const SizedBox(width: 8),
+                        // Delivery Time
+                        // Container(
+                        //   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        //   decoration: BoxDecoration(
+                        //     color: Colors.orange.shade50,
+                        //     borderRadius: BorderRadius.circular(8),
+                        //     border: Border.all(color: Colors.orange.shade100),
+                        //   ),
+                        //   child: Row(
+                        //     mainAxisSize: MainAxisSize.min,
+                        //     children: [
+                        //       Icon(
+                        //         Icons.alarm,
+                        //         size: 12,
+                        //         color: Colors.orange.shade700,
+                        //       ),
+                        //       const SizedBox(width: 4),
+                        //       Text(
+                        //         '15 mins',
+                        //         style: TextStyle(
+                        //           fontSize: _getResponsiveFontSize(screenWidth, 10.0),
+                        //           color: Colors.orange.shade700,
+                        //           fontWeight: FontWeight.w600,
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
+                      ],
+                    ),
+                    const SizedBox(height: 5),
+                    // Ratings Section
+                    // if (_getDisplayRating() > 0 && _getDisplayReviewCount() > 0)
+                    //   Container(
+                    //     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    //     decoration: BoxDecoration(
+                    //       color: Colors.amber.shade50,
+                    //       borderRadius: BorderRadius.circular(8),
+                    //       border: Border.all(color: Colors.amber.shade100),
+                    //     ),
+                    //     child: Row(
+                    //       mainAxisSize: MainAxisSize.min,
+                    //       children: [
+                    //         Icon(
+                    //           Icons.star_rounded,
+                    //           size: 14,
+                    //           color: Colors.amber.shade700,
+                    //         ),
+                    //         const SizedBox(width: 4),
+                    //         Text(
+                    //           '${_getDisplayRating().toStringAsFixed(1)}',
+                    //           style: TextStyle(
+                    //             fontSize: _getResponsiveFontSize(screenWidth, 11.0),
+                    //             color: Colors.amber.shade800,
+                    //             fontWeight: FontWeight.w700,
+                    //           ),
+                    //         ),
+                    //         const SizedBox(width: 4),
+                    //         Text(
+                    //           '(${_getDisplayReviewCount()})',
+                    //           style: TextStyle(
+                    //             fontSize: _getResponsiveFontSize(screenWidth, 10.0),
+                    //             color: Colors.grey.shade600,
+                    //             fontWeight: FontWeight.w500,
+                    //           ),
+                    //         ),
+                    //       ],
+                    //     ),
+                    //   ),
+                    const SizedBox(height: 5),
+                  ],
+                ),
+              ],
             ),
           ),
         ),

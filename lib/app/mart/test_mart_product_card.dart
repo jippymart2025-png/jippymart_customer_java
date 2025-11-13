@@ -54,10 +54,7 @@ class TestMartProductCardScreen extends StatelessWidget {
                     '• Cards are displayed 2 per row with ratings\n'
                     '• Both cards maintain same height regardless of content\n'
                     '• Test the new ProductCard component below',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.blue.shade700,
-                    ),
+                    style: TextStyle(fontSize: 14, color: Colors.blue.shade700),
                   ),
                 ],
               ),
@@ -77,10 +74,7 @@ class TestMartProductCardScreen extends StatelessWidget {
             const SizedBox(height: 8),
             const Text(
               'Two products displayed side by side with ratings - Same height enforced',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 16),
 
@@ -92,9 +86,9 @@ class TestMartProductCardScreen extends StatelessWidget {
                 children: [
                   // Product 1 - Simple Product (BALANCED CONTENT)
                   Expanded(
-                    child: Container(
-                      height:
-                          275, // Fixed height for consistent card sizing - reduced to prevent overflow
+                    child: SizedBox(
+                      height: 275,
+                      // Fixed height for consistent card sizing - reduced to prevent overflow
                       child: _buildTestProductCard(
                         context,
                         MartItemModel(
@@ -105,7 +99,8 @@ class TestMartProductCardScreen extends StatelessWidget {
                           photo:
                               'https://images.unsplash.com/photo-1619566636858-adf3ef46400b?w=400&h=300&fit=crop',
                           price: 120.0,
-                          disPrice: 99.0, // Discounted price
+                          disPrice: 99.0,
+                          // Discounted price
                           categoryID: 'fruits',
                           subcategoryID: 'organic_fruits',
                           vendorID: 'test_vendor',
@@ -129,9 +124,9 @@ class TestMartProductCardScreen extends StatelessWidget {
 
                   // Product 2 - Product with Options (BALANCED CONTENT)
                   Expanded(
-                    child: Container(
-                      height:
-                          275, // Fixed height for consistent card sizing - reduced to prevent overflow
+                    child: SizedBox(
+                      height: 275,
+                      // Fixed height for consistent card sizing - reduced to prevent overflow
                       child: _buildTestProductCard(
                         context,
                         MartItemModel(
@@ -142,7 +137,8 @@ class TestMartProductCardScreen extends StatelessWidget {
                           photo:
                               'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?w=400&h=300&fit=crop',
                           price: 450.0,
-                          disPrice: 399.0, // Discounted price
+                          disPrice: 399.0,
+                          // Discounted price
                           categoryID: 'beverages',
                           subcategoryID: 'coffee',
                           vendorID: 'test_vendor',

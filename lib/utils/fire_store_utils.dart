@@ -38,17 +38,10 @@ import 'package:http/http.dart' as http;
 
 class FireStoreUtils {
   static FirebaseFirestore fireStore = FirebaseFirestore.instance;
-
-  // **CRITICAL: Database corruption prevention**
   static bool _isDatabaseHealthy = true;
-
   static String?
   backendUserId; // Set this from LoginController after OTP verification
-
-  // **CRITICAL: Database health check**
   static bool get isDatabaseHealthy => _isDatabaseHealthy;
-
-  // **CRITICAL: Safe Firestore operation wrapper with retry mechanism**
 
   static Future getPaymentSettingsData() async {
     await fireStore
@@ -112,57 +105,29 @@ class FireStoreUtils {
       getNearestVendorController =
           StreamController<List<VendorModel>>.broadcast();
       List<VendorModel> vendorList = [];
-
-      // **DEBUG: Check zone availability**
       if (Constant.selectedZone == null) {
-        print(
-          '[DEBUG] getAllNearestRestaurant: No zone selected, cannot load restaurants',
-        );
         getNearestVendorController!.sink.add([]);
         yield* getNearestVendorController!.stream;
         return;
       }
-
-      print(
-        '[DEBUG] getAllNearestRestaurant: Loading restaurants for zone: ${Constant.selectedZone!.name} (${Constant.selectedZone!.id})',
-      );
-      print(
-        '[DEBUG] getAllNearestRestaurant: User location: ${Constant.selectedLocation.location?.latitude}, ${Constant.selectedLocation.location?.longitude}',
-      );
-      print(
-        '[DEBUG] getAllNearestRestaurant: Search radius: ${Constant.radius}km',
-      );
-
       // **REPLACED FIREBASE WITH API CALL**
       try {
         final response = await http.get(
           Uri.parse(
             '${AppConst.baseUrl}restaurants/by-zone/${Constant.selectedZone!.id}',
           ),
-          headers: {
-            'Content-Type': 'application/json',
-            // Add any required headers like authorization tokens
-          },
+          headers: await getHeaders(),
         );
-
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseData = json.decode(response.body);
 
           if (responseData['success'] == true) {
             final List<dynamic> restaurantData = responseData['data'];
-            print(
-              '[DEBUG] getAllNearestRestaurant: Found ${restaurantData.length} restaurants in API response',
-            );
 
             // Filter restaurants based on distance from user location
             for (var restaurant in restaurantData) {
               try {
                 VendorModel vendorModel = VendorModel.fromJson(restaurant);
-
-                // **DEBUG: Log restaurant details**
-                print(
-                  '[DEBUG] Restaurant: ${vendorModel.title} (ID: ${vendorModel.id}) - Zone: ${vendorModel.zoneId}',
-                );
 
                 // Calculate distance between user and restaurant
                 double distance = _calculateDistance(
@@ -376,113 +341,162 @@ class FireStoreUtils {
     return productModel;
   }
 
-  static Future<List<AttributesModel>?> getAttributes() async {
-    List<AttributesModel> attributeList = [];
-    await fireStore.collection(CollectionName.vendorAttributes).get().then((
-      value,
-    ) {
-      for (var element in value.docs) {
-        AttributesModel favouriteModel = AttributesModel.fromJson(
-          element.data(),
-        );
-        attributeList.add(favouriteModel);
+  static Future<List<AttributesModel>> getAttributes() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}vendor/attributes'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          List<AttributesModel> attributeList = [];
+
+          for (var element in responseData['data']) {
+            AttributesModel attributeModel = AttributesModel.fromJson(element);
+            attributeList.add(attributeModel);
+          }
+          return attributeList;
+        } else {
+          throw Exception('API returned success: false');
+        }
+      } else {
+        throw Exception('Failed to load attributes: ${response.statusCode}');
       }
-    });
-    return attributeList;
+    } catch (e) {
+      throw Exception('Error fetching attributes: $e');
+    }
   }
 
   static Future<DeliveryCharge?> getDeliveryCharge() async {
-    DeliveryCharge? deliveryCharge;
     try {
-      await fireStore
-          .collection(CollectionName.settings)
-          .doc("DeliveryCharge")
-          .get()
-          .then((value) {
-            if (value.exists) {
-              deliveryCharge = DeliveryCharge.fromJson(value.data()!);
-            }
-          });
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}settings/delivery-charge'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
+          return DeliveryCharge.fromJson(jsonResponse['data']);
+        }
+      }
+      return null;
     } catch (e) {
       return null;
     }
-    return deliveryCharge;
   }
 
   static Future<List<TaxModel>?> getTaxList() async {
     List<TaxModel> taxList = [];
-    // Check if location is available
+
     if (Constant.selectedLocation.location?.latitude == null ||
         Constant.selectedLocation.location?.longitude == null) {
-      print('[FIRE_STORE_UTILS] Location not available for tax calculation');
+      print('[API_UTILS] Location not available for tax calculation');
       return taxList;
     }
+
     try {
       List<Placemark> placeMarks = await placemarkFromCoordinates(
         Constant.selectedLocation.location!.latitude!,
         Constant.selectedLocation.location!.longitude!,
       );
+
       if (placeMarks.isEmpty) {
-        print('[FIRE_STORE_UTILS] No placemarks found for coordinates');
+        print('[API_UTILS] No placemarks found for coordinates');
         return taxList;
       }
-      await fireStore
-          .collection(CollectionName.tax)
-          .where('country', isEqualTo: placeMarks.first.country)
-          .where('enable', isEqualTo: true)
-          .get()
-          .then((value) {
-            for (var element in value.docs) {
-              TaxModel taxModel = TaxModel.fromJson(element.data());
+
+      // Make API call instead of Firebase query
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}settings/tax'),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final List<dynamic> taxData = responseData['data'];
+
+          // Filter taxes by country and enable status
+          for (var element in taxData) {
+            TaxModel taxModel = TaxModel.fromJson(element);
+
+            // Apply filters manually (previously done in Firebase query)
+            if (taxModel.country == placeMarks.first.country &&
+                taxModel.enable == true) {
               taxList.add(taxModel);
             }
-          })
-          .catchError((error) {});
+          }
+        } else {
+          print('[API_UTILS] API returned unsuccessful response');
+        }
+      } else {
+        print('[API_UTILS] HTTP error: ${response.statusCode}');
+      }
     } catch (e) {
-      print('[FIRE_STORE_UTILS] Error getting tax list: $e');
+      print('[API_UTILS] Error getting tax list: $e');
     }
     return taxList;
   }
 
-  static Future<List<CouponModel>> getAllVendorPublicCoupons(
-    String vendorId,
-  ) async {
-    List<CouponModel> coupon = [];
+  static Future<List<CouponModel>> getAllVendorPublicCoupons() async {
+    List<CouponModel> coupons = [];
 
-    await fireStore
-        .collection(CollectionName.coupons)
-        .where("resturant_id", isEqualTo: vendorId)
-        .where('expiresAt', isGreaterThanOrEqualTo: Timestamp.now())
-        .where("isEnabled", isEqualTo: true)
-        .where("isPublic", isEqualTo: true)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            CouponModel taxModel = CouponModel.fromJson(element.data());
-            coupon.add(taxModel);
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}coupons/restaurant'),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final List<dynamic> data = responseData['data'];
+          for (var element in data) {
+            // Filter coupons that are enabled, public, and not expired
+            final bool isEnabled = element['isEnabled'] == true;
+            final bool isPublic = element['isPublic'] == true;
+            final bool isValid = _isCouponValid(element['expiresAt']);
+
+            if (isEnabled && isPublic && isValid) {
+              CouponModel couponModel = CouponModel.fromJson(element);
+              coupons.add(couponModel);
+            }
           }
-        })
-        .catchError((error) {});
-    return coupon;
+        }
+      } else {
+        print('API call failed with status: ${response.statusCode}');
+      }
+    } catch (error) {
+      print('Error fetching coupons: $error');
+    }
+
+    return coupons;
   }
 
-  static Future<List<CouponModel>> getAllVendorCoupons(String vendorId) async {
-    List<CouponModel> coupon = [];
+  // Helper method to check if coupon is still valid
+  static bool _isCouponValid(dynamic expiresAt) {
+    if (expiresAt == null) return true;
 
-    await fireStore
-        .collection(CollectionName.coupons)
-        .where("resturant_id", isEqualTo: vendorId)
-        .where('expiresAt', isGreaterThanOrEqualTo: Timestamp.now())
-        .where("isEnabled", isEqualTo: true)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            CouponModel taxModel = CouponModel.fromJson(element.data());
-            coupon.add(taxModel);
-          }
-        })
-        .catchError((error) {});
-    return coupon;
+    try {
+      if (expiresAt is String) {
+        final expiryDate = DateTime.parse(expiresAt);
+        return expiryDate.isAfter(DateTime.now());
+      } else if (expiresAt is Map) {
+        // Handle if it comes as a timestamp object
+        final timestamp = expiresAt['_seconds'] as int;
+        final expiryDate = DateTime.fromMillisecondsSinceEpoch(
+          timestamp * 1000,
+        );
+        return expiryDate.isAfter(DateTime.now());
+      }
+      return true;
+    } catch (e) {
+      print('Error parsing expiry date: $e');
+      return true; // If we can't parse, assume it's valid
+    }
   }
 
   static Future<bool?> setProduct(ProductModel orderModel) async {
@@ -563,7 +577,6 @@ class FireStoreUtils {
           print("------>");
           if (value.docs.isNotEmpty) {
             print(value.docs.first.data());
-
             notificationModel = NotificationModel.fromJson(
               value.docs.first.data(),
             );
@@ -703,39 +716,60 @@ class FireStoreUtils {
   }
 
   static Future<List<RatingModel>> getVendorReviews(String vendorId) async {
-    List<RatingModel> ratingList = [];
-    await fireStore
-        .collection(CollectionName.foodsReview)
-        .where('VendorId', isEqualTo: vendorId)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            RatingModel giftCardsOrderModel = RatingModel.fromJson(
-              element.data(),
-            );
-            ratingList.add(giftCardsOrderModel);
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}vendor/$vendorId/reviews'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final List<dynamic> data = responseData['data'];
+          List<RatingModel> ratingList = [];
+
+          for (var element in data) {
+            RatingModel ratingModel = RatingModel.fromJson(element);
+            ratingList.add(ratingModel);
           }
-        });
-    return ratingList;
+
+          return ratingList;
+        } else {
+          throw Exception('Failed to load reviews: ${responseData['message']}');
+        }
+      } else {
+        throw Exception(
+          'Failed to load reviews. Status code: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      throw Exception('Error fetching reviews: $e');
+    }
   }
 
   static Future<RatingModel?> getOrderReviewsByID(
     String orderId,
     String productID,
   ) async {
-    RatingModel? ratingModel;
-    await fireStore
-        .collection(CollectionName.foodsReview)
-        .where('orderid', isEqualTo: orderId)
-        .where('productId', isEqualTo: productID)
-        .get()
-        .then((value) {
-          if (value.docs.isNotEmpty) {
-            ratingModel = RatingModel.fromJson(value.docs.first.data());
-          }
-        })
-        .catchError((error) {});
-    return ratingModel;
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '${AppConst.baseUrl}reviews/order?orderid=$orderId&productId=$productID',
+        ),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          return RatingModel.fromJson(responseData['data']);
+        }
+      } else {
+        print('API Error: ${response.statusCode} - ${response.body}');
+      }
+    } catch (error) {
+      print('Error fetching reviews: $error');
+    }
+    return null;
   }
 
   static Future<VendorCategoryModel?> getVendorCategoryByCategoryId(
@@ -761,23 +795,29 @@ class FireStoreUtils {
   static Future<ReviewAttributeModel?> getVendorReviewAttribute(
     String attributeId,
   ) async {
-    ReviewAttributeModel? vendorCategoryModel;
     try {
-      await fireStore
-          .collection(CollectionName.reviewAttributes)
-          .doc(attributeId)
-          .get()
-          .then((value) {
-            if (value.exists) {
-              vendorCategoryModel = ReviewAttributeModel.fromJson(
-                value.data()!,
-              );
-            }
-          });
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}review-attributes/$attributeId'),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+          return ReviewAttributeModel.fromJson(jsonResponse['data']);
+        } else {
+          return null;
+        }
+      } else {
+        // Handle different status codes
+        print('API Error: ${response.statusCode}');
+        return null;
+      }
     } catch (e) {
+      print('Error fetching review attribute: $e');
       return null;
     }
-    return vendorCategoryModel;
   }
 
   static Future<bool?> setRatingModel(RatingModel ratingModel) async {
@@ -891,18 +931,7 @@ class FireStoreUtils {
     required String productId,
     required String restaurantId,
   }) async {
-    print('[DEBUG] ===== PROMOTION CHECK START (OPTIMIZED) =====');
-    print(
-      '[DEBUG] getActivePromotionForProduct called for productId=$productId, restaurantId=$restaurantId',
-    );
-
-    // **CRITICAL PERFORMANCE FIX: Filter by restaurant to reduce query size**
     final promos = await fetchActivePromotions(restaurantId: restaurantId);
-    print(
-      '[DEBUG] Total active promotions found for restaurant: ${promos.length}',
-    );
-
-    // **PERFORMANCE FIX: Direct match instead of looping through all**
     final promo = promos.firstWhere(
       (p) =>
           p['product_id'] == productId &&
@@ -910,24 +939,6 @@ class FireStoreUtils {
           p['isAvailable'] == true,
       orElse: () => <String, dynamic>{},
     );
-
-    print('[DEBUG] Final matched promo: ${promo.toString()}');
-    print('[DEBUG] ===== PROMOTION CHECK END =====');
-
-    if (promo.isNotEmpty) {
-      print('[DEBUG] Found promotional data:');
-      print('[DEBUG] - item_limit: ${promo['item_limit']}');
-      print('[DEBUG] - special_price: ${promo['special_price']}');
-      print('[DEBUG] - free_delivery_km: ${promo['free_delivery_km']}');
-      print('[DEBUG] - extra_km_charge: ${promo['extra_km_charge']}');
-      print('[DEBUG] - start_time: ${promo['start_time']}');
-      print('[DEBUG] - end_time: ${promo['end_time']}');
-    } else {
-      print(
-        '[DEBUG] ✗ No promotional data found for this product/restaurant combination',
-      );
-    }
-
     return promo.isNotEmpty ? promo : null;
   }
 
@@ -936,7 +947,6 @@ class FireStoreUtils {
     try {
       List<ProductModel> productList = [];
       int safeLimit = limit ?? 800;
-
       // ✅ STEP 1: Get vendors of selected zone
       List<String> allowedVendorIds = [];
       if (Constant.selectedZone != null) {
@@ -950,31 +960,19 @@ class FireStoreUtils {
             .toList();
         print("✅ Found ${allowedVendorIds.length} vendors in this zone");
       }
-
-      // ✅ STEP 2: Query products (only published)
       Query query = FirebaseFirestore.instance
           .collection(CollectionName.vendorProducts)
-          // .where('publish', isEqualTo: true)
           .limit(safeLimit);
-
       QuerySnapshot querySnapshot = await query.get();
-
-      print(
-        '📊 Loaded ${querySnapshot.docs.length} published products (before zone filter)',
-      );
-
       for (var document in querySnapshot.docs) {
         try {
           final data = document.data() as Map<String, dynamic>;
           ProductModel product = ProductModel.fromJson(data);
-
-          // ✅ STEP 3: Keep only products whose vendor is in selected zone
           if (Constant.selectedZone != null) {
             if (allowedVendorIds.contains(product.vendorID)) {
               productList.add(product);
             }
           } else {
-            // No zone selected → include all
             productList.add(product);
           }
         } catch (e) {
@@ -999,12 +997,8 @@ class FireStoreUtils {
   static Future<List<VendorModel>> getAllVendors({int? limit}) async {
     try {
       List<VendorModel> vendorList = [];
-
-      // **MEMORY SAFETY: Always use a limit to prevent OutOfMemoryError**
       int safeLimit =
           limit ?? 500; // Increased to 500 to match admin panel results
-
-      // **ZONE FILTERING: Only load vendors from current zone**
       Query query;
       if (Constant.selectedZone != null) {
         query = FirebaseFirestore.instance
@@ -1015,24 +1009,19 @@ class FireStoreUtils {
           '🔍 Loading vendors from zone: ${Constant.selectedZone!.name} (${Constant.selectedZone!.id})',
         );
       } else {
-        // Fallback: load all vendors if no zone selected
         query = FirebaseFirestore.instance
             .collection(CollectionName.vendors)
             .limit(safeLimit);
         print('🔍 No zone selected, loading all vendors');
       }
-
       QuerySnapshot querySnapshot = await query.get();
-
       print(
         '🔍 Found ${querySnapshot.docs.length} vendors in Firestore (limited to $safeLimit for memory safety)',
       );
-
       for (var document in querySnapshot.docs) {
         try {
           final data = document.data() as Map<String, dynamic>;
           VendorModel vendorModel = VendorModel.fromJson(data);
-
           // **FOOD CATEGORY FILTERING: Exclude mart vendors from search**
           if (vendorModel.vType == null ||
               vendorModel.vType!.toLowerCase() != 'mart') {
@@ -1062,23 +1051,16 @@ class FireStoreUtils {
   static Future<List<ProductModel>> getAllProducts({int? limit}) async {
     try {
       List<ProductModel> productList = [];
-
-      // **MEMORY SAFETY: Always use a limit to prevent OutOfMemoryError**
       int safeLimit =
           limit ?? 800; // Increased to 800 to match admin panel results
-
-      // **OPTIMIZED: Single query for published products only**
       Query query = FirebaseFirestore.instance
           .collection(CollectionName.vendorProducts)
           .where('publish', isEqualTo: true)
           .limit(safeLimit); // Always limit to prevent memory issues
-
       QuerySnapshot querySnapshot = await query.get();
-
       print(
         '📊 Loaded ${querySnapshot.docs.length} published products (limited to $safeLimit for memory safety)',
       );
-
       for (var document in querySnapshot.docs) {
         try {
           ProductModel productModel = ProductModel.fromJson(
@@ -1089,7 +1071,6 @@ class FireStoreUtils {
           print('❌ Error parsing product ${document.id}: $e');
         }
       }
-
       print('✅ Loaded ${productList.length} products for search');
       return productList;
     } catch (e) {

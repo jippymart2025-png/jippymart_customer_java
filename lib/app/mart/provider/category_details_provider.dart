@@ -32,14 +32,11 @@ class CategoryDetailsProvider extends ChangeNotifier {
     categoryName = arguments?['categoryName'] ?? 'Category';
     sectionName = arguments?['sectionName'] ?? '';
     initialSubcategoryId = arguments?['subcategoryId'] ?? ''; // ✅ ADD THIS
-
     print(
       '[CATEGORY DETAIL] 🚀 Initializing for category: $categoryName (ID: $categoryId)',
     );
     print('[CATEGORY DETAIL] 🎯 Initial subcategory: $initialSubcategoryId');
-
     _initializeData();
-
     if (arguments?['initialFilter'] == 'trending' ||
         arguments?['initialFilter'] == 'featured') {
       WidgetsBinding.instance.addPostFrameCallback((_) {

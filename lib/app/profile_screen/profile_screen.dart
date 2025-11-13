@@ -2,9 +2,6 @@ import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/provider/login_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart'
     show CartControllerProvider;
-import 'package:jippymart_customer/app/change%20langauge/change_language_screen.dart';
-import 'package:jippymart_customer/app/chat_screens/driver_inbox_screen.dart';
-import 'package:jippymart_customer/app/chat_screens/restaurant_inbox_screen.dart';
 import 'package:jippymart_customer/app/edit_profile_screen/edit_profile_screen.dart';
 import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
@@ -21,7 +18,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:in_app_review/in_app_review.dart';
-import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -112,44 +108,43 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 20),
 
                           const SizedBox(height: 10),
-                          Text(
-                            "Preferences".tr,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppThemeData.grey500,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: Responsive.width(100, context),
-                            decoration: ShapeDecoration(
-                              color: AppThemeData.grey50,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 8,
-                              ),
-                              child: Column(
-                                children: [
-                                  cardDecoration(
-                                    controller,
-                                    "assets/icons/ic_change_language.svg",
-                                    "Change Language".tr,
-                                    () {
-                                      Get.to(const ChangeLanguageScreen());
-                                    },
-                                  ),
-                                  // cardDecoration(themeChange, controller, "assets/icons/ic_light_dark.svg", "Dark Mode".tr, () {}),
-                                ],
-                              ),
-                            ),
-                          ),
+                          // Text(
+                          //   "Preferences".tr,
+                          //   style: TextStyle(
+                          //     fontSize: 12,
+                          //     color: AppThemeData.grey500,
+                          //     fontFamily: AppThemeData.semiBold,
+                          //     fontWeight: FontWeight.w500,
+                          //   ),
+                          // ),
+                          // const SizedBox(height: 10),
+                          // Container(
+                          //   width: Responsive.width(100, context),
+                          //   decoration: ShapeDecoration(
+                          //     color: AppThemeData.grey50,
+                          //     shape: RoundedRectangleBorder(
+                          //       borderRadius: BorderRadius.circular(8),
+                          //     ),
+                          //   ),
+                          //   child: Padding(
+                          //     padding: const EdgeInsets.symmetric(
+                          //       horizontal: 10,
+                          //       vertical: 8,
+                          //     ),
+                          //     child: Column(
+                          //       children: [
+                          //         cardDecoration(
+                          //           controller,
+                          //           "assets/icons/ic_change_language.svg",
+                          //           "Change Language".tr,
+                          //           () {
+                          //             Get.to(const ChangeLanguageScreen());
+                          //           },
+                          //         ),
+                          //       ],
+                          //     ),
+                          //   ),
+                          // ),
                           const SizedBox(height: 10),
                           Text(
                             "Social".tr,
@@ -178,9 +173,6 @@ class ProfileScreen extends StatelessWidget {
                                 children: [
                                   Constant.userModel == null
                                       ? const SizedBox()
-                                      // : cardDecoration(themeChange, controller, "assets/icons/ic_refer.svg", "Refer a Friend", () {
-                                      //     Get.to(const ReferFriendScreen());
-                                      //   }),
                                       : cardDecoration(
                                           controller,
                                           "assets/icons/ic_share.svg",

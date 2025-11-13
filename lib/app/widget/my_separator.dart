@@ -23,10 +23,7 @@ class MySeparator extends StatelessWidget {
         radius: const Radius.circular(10),
         dashPattern: const [6, 3],
       ),
-      child: Container(
-        height: height,
-        width: width,
-      ),
+      child: SizedBox(height: height, width: width),
     );
   }
-} 
+}

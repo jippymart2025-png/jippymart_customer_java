@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 
 class RatingModel {
   String? id;
@@ -13,7 +13,7 @@ class RatingModel {
   String? uname;
   String? profile;
   Map<String, dynamic>? reviewAttributes;
-  Timestamp? createdAt;
+  String? createdAt;
 
   RatingModel({
     this.id,
@@ -32,28 +32,82 @@ class RatingModel {
   });
 
   factory RatingModel.fromJson(Map<String, dynamic> parsedJson) {
+    // Helper function to parse string to double safely
+    double? parseRating(dynamic ratingValue) {
+      if (ratingValue == null) return null;
+      if (ratingValue is double) return ratingValue;
+      if (ratingValue is int) return ratingValue.toDouble();
+      if (ratingValue is String) {
+        return double.tryParse(ratingValue);
+      }
+      return null;
+    }
+
+    // Parse reviewAttributes
+    Map<String, dynamic> reviewAttrs = {};
+    if (parsedJson['reviewAttributes'] != null) {
+      if (parsedJson['reviewAttributes'] is String) {
+        try {
+          final decoded = json.decode(parsedJson['reviewAttributes']);
+          if (decoded is Map) {
+            reviewAttrs = Map<String, dynamic>.from(decoded);
+          }
+        } catch (e) {
+          reviewAttrs = {};
+        }
+      } else if (parsedJson['reviewAttributes'] is Map) {
+        reviewAttrs = Map<String, dynamic>.from(parsedJson['reviewAttributes']);
+      }
+    }
+
+    // Parse photos
+    List<dynamic> photosList = [];
+    if (parsedJson['photos'] != null) {
+      if (parsedJson['photos'] is String) {
+        try {
+          final decoded = json.decode(parsedJson['photos']);
+          if (decoded is List) {
+            photosList = decoded;
+          }
+        } catch (e) {
+          photosList = [];
+        }
+      } else if (parsedJson['photos'] is List) {
+        photosList = List<dynamic>.from(parsedJson['photos']);
+      }
+    }
+
+    // Parse createdAt - remove extra quotes if present
+    String? createdAt = parsedJson['createdAt']?.toString();
+    if (createdAt != null &&
+        createdAt.startsWith('"') &&
+        createdAt.endsWith('"')) {
+      createdAt = createdAt.substring(1, createdAt.length - 1);
+    }
+
     return RatingModel(
-        comment: parsedJson['comment'] ?? '',
-        photos: parsedJson['photos'] ?? [],
-        rating: double.parse(parsedJson['rating'].toString()),
-        id: parsedJson['Id'] ?? '',
-        orderId: parsedJson['orderid'] ?? '',
-        vendorId: parsedJson['VendorId'] ?? '',
-        productId: parsedJson['productId'] ?? '',
-        driverId: parsedJson['driverId'] ?? '',
-        customerId: parsedJson['CustomerId'] ?? '',
-        uname: parsedJson['uname'] ?? '',
-        reviewAttributes: parsedJson['reviewAttributes'] ?? {},
-        createdAt: parsedJson['createdAt'] ?? Timestamp.now(),
-        profile: parsedJson['profile'] ?? '');
+      comment: parsedJson['comment'] ?? '',
+      photos: photosList,
+      rating: parseRating(parsedJson['rating']),
+      id: parsedJson['id'] ?? parsedJson['Id'] ?? '',
+      orderId: parsedJson['orderid'] ?? parsedJson['orderId'] ?? '',
+      vendorId: parsedJson['VendorId'] ?? parsedJson['vendorId'] ?? '',
+      productId: parsedJson['productId'] ?? '',
+      driverId: parsedJson['driverId'] ?? '',
+      customerId: parsedJson['CustomerId'] ?? parsedJson['customerId'] ?? '',
+      uname: parsedJson['uname'] ?? '',
+      reviewAttributes: reviewAttrs,
+      createdAt: createdAt ?? '',
+      profile: parsedJson['profile'] ?? '',
+    );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'comment': comment,
-      'photos': photos,
+      'photos': photos ?? [],
       'rating': rating,
-      'Id': id,
+      'id': id,
       'orderid': orderId,
       'VendorId': vendorId,
       'productId': productId,
@@ -61,8 +115,13 @@ class RatingModel {
       'CustomerId': customerId,
       'uname': uname,
       'profile': profile,
-      'reviewAttributes': reviewAttributes ?? {},
-      'createdAt': createdAt
+      'reviewAttributes': json.encode(reviewAttributes ?? {}),
+      'createdAt': createdAt,
     };
+  }
+
+  @override
+  String toString() {
+    return 'RatingModel(id: $id, rating: $rating, productId: $productId, orderId: $orderId)';
   }
 }

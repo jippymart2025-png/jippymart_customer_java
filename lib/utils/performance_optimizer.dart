@@ -280,7 +280,7 @@ class PerformanceOptimizer {
     log('Image cache size: ${_imageCache.length}');
     log('Preloaded images: ${_preloadedImages.length}');
 
-    log('\n' + '=' * 50);
+    log('\n${'=' * 50}');
     log('Report generated at: ${DateTime.now()}');
     log('=' * 50 + '\n');
   }

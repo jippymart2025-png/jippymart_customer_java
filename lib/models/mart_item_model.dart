@@ -1,5 +1,3 @@
-
-
 class MartItemModel {
   final String id;
   final String name;
@@ -56,7 +54,8 @@ class MartItemModel {
   final bool? has_options;
   final int? options_count;
   final List<Map<String, dynamic>>? options;
-final String? categoryTitle;
+  final String? categoryTitle;
+
   MartItemModel({
     required this.id,
     required this.name,
@@ -91,7 +90,7 @@ final String? categoryTitle;
     this.brand,
     this.brandID,
     this.brandTitle,
-    this.weight,  
+    this.weight,
     this.expiryDate,
     this.isFeatured,
     this.isOnSale,
@@ -119,7 +118,7 @@ final String? categoryTitle;
   factory MartItemModel.fromJson(Map<String, dynamic> json) {
     try {
       print('[MART ITEM MODEL] Parsing JSON: ${json.keys.toList()}');
-      
+
       double parsePrice(dynamic price) {
         if (price == null) return 0.0;
         if (price is num) return price.toDouble();
@@ -129,6 +128,12 @@ final String? categoryTitle;
         return 0.0;
       }
 
+      // Handle API-specific field mappings if needed
+      // For example, if API uses different field names:
+      final isTrending = json['isTrending'] ?? false;
+      final isAvailable = json['isAvailable'] ?? true;
+      final publish = json['publish'] ?? true;
+
       return MartItemModel(
         id: json['id']?.toString() ?? '',
         name: json['name']?.toString() ?? '',
@@ -136,32 +141,52 @@ final String? categoryTitle;
         price: parsePrice(json['price']),
         disPrice: parsePrice(json['disPrice']),
         photo: json['photo']?.toString() ?? '',
-        photos: json['photos'] is List ? List<String>.from(json['photos']) : null,
-        isAvailable: json['isAvailable'] ?? true,
-        publish: json['publish'] ?? true,
+        photos: json['photos'] is List
+            ? List<String>.from(json['photos'])
+            : null,
+        isAvailable: isAvailable,
+        publish: publish,
         veg: json['veg'] ?? false,
         nonveg: json['nonveg'] ?? false,
         quantity: json['quantity'] ?? 0,
         vendorID: json['vendorID']?.toString(),
         categoryID: json['categoryID']?.toString(),
-          categoryTitle: json['categoryTitle']?.toString(),
+        categoryTitle: json['categoryTitle']?.toString(),
         calories: (json['calories'] as num?)?.toDouble(),
         grams: (json['grams'] as num?)?.toDouble(),
         proteins: (json['proteins'] as num?)?.toDouble(),
         fats: (json['fats'] as num?)?.toDouble(),
-        addOnsTitle: json['addOnsTitle'] is List ? List<String>.from(json['addOnsTitle']) : null,
-        addOnsPrice: json['addOnsPrice'] is List ? List<String>.from(json['addOnsPrice']) : null,
-        sizeTitle: json['sizeTitle'] is List ? List<String>.from(json['sizeTitle']) : null,
-        sizePrice: json['sizePrice'] is List ? List<String>.from(json['sizePrice']) : null,
-        attributes: json['attributes'] is Map ? Map<String, dynamic>.from(json['attributes']) : null,
-        variants: json['variants'] is List ? List<Map<String, dynamic>>.from(json['variants']) : null,
-        options: json['options'] is List ? List<Map<String, dynamic>>.from(json['options']) : null,
+        addOnsTitle: json['addOnsTitle'] is List
+            ? List<String>.from(json['addOnsTitle'])
+            : null,
+        addOnsPrice: json['addOnsPrice'] is List
+            ? List<String>.from(json['addOnsPrice'])
+            : null,
+        sizeTitle: json['sizeTitle'] is List
+            ? List<String>.from(json['sizeTitle'])
+            : null,
+        sizePrice: json['sizePrice'] is List
+            ? List<String>.from(json['sizePrice'])
+            : null,
+        attributes: json['attributes'] is Map
+            ? Map<String, dynamic>.from(json['attributes'])
+            : null,
+        variants: json['variants'] is List
+            ? List<Map<String, dynamic>>.from(json['variants'])
+            : null,
+        options: json['options'] is List
+            ? List<Map<String, dynamic>>.from(json['options'])
+            : null,
         reviewCount: json['reviewCount']?.toString(),
         reviewSum: json['reviewSum']?.toString(),
         takeawayOption: json['takeawayOption'],
         migratedBy: json['migratedBy']?.toString(),
-        createdAt: json['createdAt']?.toString(),
-        updatedAt: json['updatedAt']?.toString(),
+        createdAt:
+            json['created_at']?.toString() ?? json['createdAt']?.toString(),
+        // Handle both field names
+        updatedAt:
+            json['updated_at']?.toString() ?? json['updatedAt']?.toString(),
+        // Handle both field names
         brand: json['brand']?.toString(),
         brandID: json['brandID']?.toString(),
         brandTitle: json['brandTitle']?.toString(),
@@ -172,15 +197,20 @@ final String? categoryTitle;
         discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
         barcode: json['barcode']?.toString(),
         tags: json['tags'] is List ? List<String>.from(json['tags']) : null,
-        nutritionalInfo: json['nutritionalInfo'] is Map ? Map<String, dynamic>.from(json['nutritionalInfo']) : null,
-        allergens: json['allergens'] is List ? List<String>.from(json['allergens']) : null,
+        nutritionalInfo: json['nutritionalInfo'] is Map
+            ? Map<String, dynamic>.from(json['nutritionalInfo'])
+            : null,
+        allergens: json['allergens'] is List
+            ? List<String>.from(json['allergens'])
+            : null,
         isOrganic: json['isOrganic'],
         isGlutenFree: json['isGlutenFree'],
         subcategoryID: json['subcategoryID'],
         isBestSeller: json['isBestSeller'],
         isFeature: json['isFeature'],
         isNew: json['isNew'],
-        isTrending: json['isTrending'],
+        isTrending: isTrending,
+        // Use the parsed value
         isSeasonal: json['isSeasonal'],
         isSpotlight: json['isSpotlight'],
         isStealOfMoment: json['isStealOfMoment'],
@@ -258,38 +288,59 @@ final String? categoryTitle;
 
   // Getters for compatibility
   bool get isFeaturedItem => isFeatured ?? false;
+
   bool get isOnSaleItem => isOnSale ?? false;
-  
+
   // Helper methods
   double get finalPrice => disPrice ?? price;
+
   bool get hasDiscount => disPrice != null && disPrice! < price;
-  double get discountPercent => hasDiscount ? ((price - disPrice!) / price * 100) : 0.0;
+
+  double get discountPercent =>
+      hasDiscount ? ((price - disPrice!) / price * 100) : 0.0;
+
   bool get isOutOfStock => quantity <= 0;
+
   bool get canOrder => isAvailable && !isOutOfStock;
+
   bool get canAddToCart => canOrder;
 
   // Legacy compatibility getters
   String get displayName => name;
+
   String get displayDescription => description;
+
   String get mainImage => photo;
+
   double get currentPrice => finalPrice;
+
   double get originalPrice => price;
+
   double get calculatedDiscountPercentage => discountPercent;
+
   bool get isPublished => publish;
+
   bool get isAvailableForPurchase => isAvailable && isPublished;
+
   bool get isVegetarian => veg;
+
   bool get isNonVegetarian => nonveg;
+
   bool get hasUnlimitedStock => quantity == -1;
-  
+
   String get stockStatus {
     if (hasUnlimitedStock) return 'In Stock';
     if (isOutOfStock) return 'Out of Stock';
     if (quantity > 0) return 'Limited Stock';
     return 'Out of Stock';
   }
-  
+
   double get averageRating {
-    if (reviewSum == null || reviewSum!.isEmpty || reviewCount == null || reviewCount!.isEmpty) return 0.0;
+    if (reviewSum == null ||
+        reviewSum!.isEmpty ||
+        reviewCount == null ||
+        reviewCount!.isEmpty)
+      return 0.0;
     try {
       final sum = double.parse(reviewSum!);
       final count = int.parse(reviewCount!);
@@ -299,7 +350,7 @@ final String? categoryTitle;
       return 0.0;
     }
   }
-  
+
   int get totalReviews {
     if (reviewCount == null || reviewCount!.isEmpty) return 0;
     try {
@@ -308,7 +359,7 @@ final String? categoryTitle;
       return 0;
     }
   }
-  
+
   String get nutritionalSummary {
     List<String> info = [];
     if (calories != null) info.add('${calories} cal');
@@ -317,7 +368,7 @@ final String? categoryTitle;
     if (grams != null) info.add('${grams}g');
     return info.join(' • ');
   }
-  
+
   String get dietaryInfo {
     List<String> info = [];
     if (isVegetarian) info.add('Vegetarian');
@@ -325,6 +376,6 @@ final String? categoryTitle;
     if (isGlutenFree == true) info.add('Gluten Free');
     return info.join(', ');
   }
-  
+
   List<String> get allImages => [photo, ...?photos];
 }

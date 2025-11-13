@@ -1,8 +1,5 @@
 import 'dart:async';
-
-import 'package:flutter/cupertino.dart';
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -349,7 +346,6 @@ class CartControllerProvider extends ChangeNotifier {
   bool isPaymentInProgress = false;
   bool isPaymentCompleted = false;
   String? _lastPaymentId;
-  String? _lastPaymentSignature;
   DateTime? _lastPaymentTime;
   static const Duration paymentTimeout = Duration(minutes: 5);
 
@@ -575,8 +571,6 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  /// Get fallback zone address from Firestore
-
   void initFunction(BuildContext context) {
     Future.delayed(const Duration(seconds: 3), () {
       _restorePaymentState().then((_) {
@@ -601,10 +595,8 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// 🔑 BULLETPROOF PROFILE VALIDATION - NEVER FAILS
   Future<void> validateUserProfileBulletproof() async {
-    final startTime = DateTime.now();
     isProfileValidating.value = true;
     try {
-      // RETRY MECHANISM: Try multiple times with different strategies
       UserModel? user;
       int attempts = 0;
       const maxAttempts = 3;
@@ -612,13 +604,10 @@ class CartControllerProvider extends ChangeNotifier {
         attempts++;
 
         try {
-          final fetchStart = DateTime.now();
           final userId = await SqlStorageConst.getFirebaseId();
           user = await AddressListProvider.getUserProfile(
             userId.toString(),
           ).timeout(const Duration(seconds: 10));
-          final fetchDuration = DateTime.now().difference(fetchStart);
-
           if (user != null) {
             break;
           } else {}
@@ -667,27 +656,17 @@ class CartControllerProvider extends ChangeNotifier {
 
       isProfileValid.value = hasFirstName && hasPhoneNumber && hasEmail;
 
-      final totalDuration = DateTime.now().difference(startTime);
-
-      // Always update userModel with validated data
       userModel = user;
       Constant.userModel = user; // Update global cache
       notifyListeners();
       if (!isProfileValid.value) {
-        print(
-          '🔒 [BULLETPROOF_PROFILE] ❌ Profile validation failed - missing required fields',
-        );
         final missingFields = <String>[];
         if (!hasFirstName) missingFields.add('First Name (min 2 chars)');
         if (!hasPhoneNumber) missingFields.add('Phone Number (min 10 digits)');
         if (!hasEmail) missingFields.add('Valid Email Address');
-        print(
-          '🔒 [BULLETPROOF_PROFILE] Missing fields: ${missingFields.join(', ')}',
-        );
       }
       notifyListeners();
     } catch (e) {
-      final totalDuration = DateTime.now().difference(startTime);
       isProfileValid.value = false;
       ShowToastDialog.showToast(
         "Error validating profile. Please try again.".tr,
@@ -1174,12 +1153,8 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _loadCoupons() async {
     try {
       _detectCurrentContext();
-      final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons(
-        vendorModel.id.toString(),
-      );
-      final allVendorCoupons = await FireStoreUtils.getAllVendorCoupons(
-        vendorModel.id.toString(),
-      );
+      final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons();
+      final allVendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons();
 
       final globalCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons();
@@ -1210,9 +1185,7 @@ class CartControllerProvider extends ChangeNotifier {
             contextType: _currentContext.value,
             fallbackEnabled: true,
           );
-      final stats = CouponFilterService.getCouponStats(
-        combinedCoupons.cast<CouponModel>(),
-      );
+
       _cachedCouponList = contextFilteredCoupons;
       _updateCacheTime();
 
@@ -1229,12 +1202,8 @@ class CartControllerProvider extends ChangeNotifier {
   // Fallback method to load coupons without context filtering
   Future<void> _loadCouponsWithoutFiltering() async {
     try {
-      final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons(
-        vendorModel.id.toString(),
-      );
-      final allVendorCoupons = await FireStoreUtils.getAllVendorCoupons(
-        vendorModel.id.toString(),
-      );
+      final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons();
+      final allVendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons();
 
       final globalCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons();
@@ -1456,7 +1425,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> calculatePrice() async {
     await ANRPrevention.executeWithANRPrevention('CartController_calculatePrice', () async {
-      // Use ultra-fast cached tax list instead of Firebase query
       if (_cachedTaxList != null) {
         Constant.taxList = _cachedTaxList;
       } else if (Constant.taxList == null || Constant.taxList!.isEmpty) {
@@ -1466,7 +1434,6 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         'DEBUG: Using cached tax list with ${Constant.taxList?.length ?? 0} items',
       );
-
       // Reset all values
       deliveryCharges = 0.0;
       subTotal = 0.0;
@@ -1474,11 +1441,9 @@ class CartControllerProvider extends ChangeNotifier {
       specialDiscountAmount = 0.0;
       taxAmount = 0.0;
       totalAmount = 0.0;
-      // Early return if cart is empty
       if (cartItem.isEmpty) {
         return;
       }
-
       if (vendorModel.id == null) {
         final martItems = cartItem.where((item) => _isMartItem(item)).toList();
         if (martItems.isNotEmpty) {
@@ -1486,10 +1451,8 @@ class CartControllerProvider extends ChangeNotifier {
             '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor in calculatePrice...',
           );
           try {
-            // Get the vendorID from the first mart item to load the specific mart vendor
             final firstMartItem = martItems.first;
             final vendorId = firstMartItem.vendorID;
-
             print(
               '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor for vendorID: $vendorId',
             );
@@ -2616,7 +2579,6 @@ class CartControllerProvider extends ChangeNotifier {
       isPaymentInProgress = false;
       isPaymentCompleted = false;
       _lastPaymentId = null;
-      _lastPaymentSignature = null;
       _lastPaymentTime = null;
 
       await _clearPersistentPaymentState();
@@ -2783,9 +2745,7 @@ class CartControllerProvider extends ChangeNotifier {
   void handlePaymentSuccess(PaymentSuccessResponse response) {
     try {
       isGlobalLocked.value = true;
-
       _lastPaymentId = response.paymentId;
-      _lastPaymentSignature = response.signature;
       _lastPaymentTime = DateTime.now();
       isPaymentCompleted = true;
 
@@ -2916,7 +2876,6 @@ class CartControllerProvider extends ChangeNotifier {
     isPaymentInProgress = false;
     isPaymentCompleted = false;
     _lastPaymentId = null;
-    _lastPaymentSignature = null;
     _lastPaymentTime = null;
     notifyListeners();
   }
@@ -2927,7 +2886,6 @@ class CartControllerProvider extends ChangeNotifier {
     if (paymentState == 'true') {
       isPaymentInProgress = true;
       _lastPaymentId = Preferences.getString(_paymentIdKey);
-      _lastPaymentSignature = Preferences.getString(_paymentSignatureKey);
       final paymentTimeStr = Preferences.getString(_paymentTimeKey);
       final paymentMethodStr = Preferences.getString(_paymentMethodKey);
 
@@ -3036,7 +2994,7 @@ class CartControllerProvider extends ChangeNotifier {
             ],
           ),
           actions: [
-            Container(
+            SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: () {
@@ -3229,21 +3187,9 @@ class CartControllerProvider extends ChangeNotifier {
       bool hasMartItems = cartItem.any(
         (item) => item.vendorID?.startsWith('mart_') == true,
       );
-
-      if (hasMartItems) {
-        final martItems = cartItem
-            .where((item) => item.vendorID?.startsWith('mart_') == true)
-            .toList();
-
-        for (int i = 0; i < martItems.length; i++) {
-          final item = martItems[i];
-        }
-      }
-
       if (!hasMartItems) {
         return;
       }
-
       double minOrderValue = 99.0; // Default value
       String minOrderMessage = 'Min Item value is ₹99';
       bool isSettingsActive = true; // Default to active
@@ -3290,10 +3236,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// 🔑 BULLETPROOF ADDRESS VALIDATION - NEVER FAILS
   Future<bool> _validateAddressBulletproof(BuildContext context) async {
-    final startTime = DateTime.now();
-
     try {
-      // CRITICAL CHECK 1: Address must exist
       if (selectedAddress == null) {
         ShowToastDialog.showToast(
           "Delivery address is required. Please add an address to continue.".tr,

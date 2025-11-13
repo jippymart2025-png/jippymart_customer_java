@@ -175,7 +175,7 @@ class GpsLocationService {
         // Check if cache is still valid
         if (now.difference(cacheTime) < _cacheExpiry) {
           print(
-            '[GPS_LOCATION] Using cached location: ${cachedLat}, ${cachedLng} - ${cachedAddress ?? 'No address'}',
+            '[GPS_LOCATION] Using cached location: $cachedLat, $cachedLng - ${cachedAddress ?? 'No address'}',
           );
           return Position(
             latitude: cachedLat,

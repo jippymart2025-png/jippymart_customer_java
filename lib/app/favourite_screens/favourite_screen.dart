@@ -720,7 +720,11 @@ class FavouriteScreen extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Text(
-                                "${Constant.calculateReview(reviewCount: productModel.reviewsCount!.toStringAsFixed(0), reviewSum: productModel.reviewsSum.toString())}",
+                                Constant.calculateReview(
+                                  reviewCount: productModel.reviewsCount!
+                                      .toStringAsFixed(0),
+                                  reviewSum: productModel.reviewsSum.toString(),
+                                ),
                                 style: TextStyle(
                                   color: AppThemeData.grey700,
                                   fontFamily: AppThemeData.medium,

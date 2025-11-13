@@ -31,9 +31,7 @@ class MobileDeepLinkService {
     );
 
     try {
-      // Handle incoming links when app is running
       _handleIncomingLinks();
-
       // Handle initial link when app is opened from a deep link
       await _handleInitialLink();
 

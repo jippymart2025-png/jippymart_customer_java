@@ -284,9 +284,7 @@ class ReviewListScreen extends StatelessWidget {
                                   ),
                                 const SizedBox(height: 5),
                                 Text(
-                                  Constant.timestampToDateTime(
-                                    ratingModel.createdAt!,
-                                  ),
+                                  ratingModel.createdAt.toString(),
                                   style: TextStyle(
                                     color: AppThemeData.grey600,
                                     fontSize: 14,

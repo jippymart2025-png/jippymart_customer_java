@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/models/mart_banner_model.dart';
@@ -7,370 +8,426 @@ import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 
 class MartFirestoreService extends GetxService {
   // Firebase Firestore instance
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Collection name
   static const String _collectionName = 'mart_items';
 
-  // Initialize the service
   Future<MartFirestoreService> init() async {
-    print('[MART FIRESTORE] 🚀 Initializing MartFirestoreService...');
-    print('[MART FIRESTORE] 🔥 Firestore instance: ${_firestore.app.name}');
-    print('[MART FIRESTORE] ✅ MartFirestoreService initialized successfully');
     return this;
   }
 
-  /// Get trending items from Firestore
+  /// Get trending items from API
   Future<List<MartItemModel>> getTrendingItems({int limit = 20}) async {
     try {
-      print('[MART FIRESTORE] 🔥 Fetching trending items from Firestore...');
-      // Query Firestore for trending items
-      final querySnapshot = await _firestore
-          .collection(_collectionName)
-          .where('isTrending', isEqualTo: true)
-          .where('isAvailable', isEqualTo: true)
-          .where('publish', isEqualTo: true)
-          .limit(limit)
-          .get();
+      print('[MART API] 🔥 Fetching trending items from API...');
 
-      print(
-        '[MART FIRESTORE] 🔥 Firestore query completed, found ${querySnapshot.docs.length} trending items',
+      // Make API request
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mart-items/trending'),
+        headers: await getHeaders(),
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No trending items found in Firestore');
+      print('[MART API] 🔥 API response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['status'] == true) {
+          final List<dynamic> itemsData = responseData['data'];
+          final int count = responseData['count'] ?? 0;
+          print('[MART API] 🔥 API returned $count trending items');
+          if (itemsData.isEmpty) {
+            print('[MART API] ⚠️ No trending items found in API response');
+            return [];
+          }
+          // Convert API data to MartItemModel
+          final items = itemsData
+              .map((itemData) {
+                try {
+                  // Create a copy of the item data and ensure it's a Map
+                  final Map<String, dynamic> data = Map<String, dynamic>.from(
+                    itemData,
+                  );
+
+                  // Handle any data transformations needed
+                  return _parseApiItem(data);
+                } catch (e) {
+                  print(
+                    '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
+                  );
+                  print('[MART API] Item data: $itemData');
+                  return null;
+                }
+              })
+              .whereType<MartItemModel>()
+              .toList();
+
+          print(
+            '[MART API] ✅ Successfully parsed ${items.length} trending items from API',
+          );
+
+          // Debug: Log the trending items
+          for (int i = 0; i < items.length; i++) {
+            final item = items[i];
+            print(
+              '[MART API]   ${i + 1}. ${item.name} - isTrending: ${item.isTrending}, price: ₹${item.price}',
+            );
+          }
+
+          return items;
+        } else {
+          print('[MART API] ❌ API returned error: ${responseData['message']}');
+          return [];
+        }
+      } else {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
-
-      // Convert Firestore documents to MartItemModel
-      final items = querySnapshot.docs
-          .map((doc) {
-            try {
-              final data = doc.data();
-
-              final Map<String, dynamic> itemData = Map<String, dynamic>.from(
-                data,
-              );
-
-              // Add document ID to the data
-              itemData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (itemData['addOnsPrice'] == null) itemData['addOnsPrice'] = [];
-              if (itemData['addOnsTitle'] == null) itemData['addOnsTitle'] = [];
-              if (itemData['options'] == null) itemData['options'] = [];
-              if (itemData['photos'] == null) itemData['photos'] = [];
-              if (itemData['subcategoryID'] == null)
-                itemData['subcategoryID'] = [];
-              if (itemData['product_specification'] == null)
-                itemData['product_specification'] = {};
-
-              // Handle numeric fields that might be strings
-              if (itemData['reviewCount'] is String) {
-                itemData['reviewCount'] =
-                    int.tryParse(itemData['reviewCount']) ?? 0;
-              }
-              if (itemData['reviewSum'] is String) {
-                itemData['reviewSum'] =
-                    double.tryParse(itemData['reviewSum']) ?? 0.0;
-              }
-
-              return MartItemModel.fromJson(itemData);
-            } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore document ${doc.id}: $e',
-              );
-              print('[MART FIRESTORE] Document data: ${doc.data()}');
-              return null;
-            }
-          })
-          .whereType<MartItemModel>()
-          .toList();
-
-      print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${items.length} trending items from Firestore',
-      );
-
-      // Debug: Log the trending items
-      for (int i = 0; i < items.length; i++) {
-        final item = items[i];
-        print(
-          '[MART FIRESTORE]   ${i + 1}. ${item.name} - isTrending: ${item.isTrending}, price: ₹${item.price}',
-        );
-      }
-
-      return items;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching trending items from Firestore: $e',
-      );
+      print('[MART API] ❌ Error fetching trending items from API: $e');
       return [];
     }
   }
 
-  /// Get featured items from Firestore
+  /// Helper method to parse API item data
+  MartItemModel _parseApiItem(Map<String, dynamic> data) {
+    // Handle data transformations from API format to model format
+    final Map<String, dynamic> itemData = Map<String, dynamic>.from(data);
+
+    // Ensure required fields have proper defaults
+    itemData['id'] = itemData['id']?.toString() ?? '';
+    itemData['name'] = itemData['name']?.toString() ?? '';
+    itemData['description'] = itemData['description']?.toString() ?? '';
+    itemData['photo'] = itemData['photo']?.toString() ?? '';
+
+    // Handle numeric fields
+    itemData['price'] = _parsePrice(itemData['price']);
+    itemData['disPrice'] = _parsePrice(itemData['disPrice']);
+    itemData['quantity'] = itemData['quantity'] ?? 0;
+
+    // Handle boolean fields with proper defaults
+    itemData['isAvailable'] = itemData['isAvailable'] ?? true;
+    itemData['publish'] = itemData['publish'] ?? true;
+    itemData['veg'] = itemData['veg'] ?? false;
+    itemData['nonveg'] = itemData['nonveg'] ?? false;
+    itemData['isTrending'] = itemData['isTrending'] ?? false;
+
+    // Handle list fields that might be strings in API response
+    itemData['addOnsTitle'] = _parseStringToList(itemData['addOnsTitle']);
+    itemData['addOnsPrice'] = _parseStringToList(itemData['addOnsPrice']);
+    itemData['photos'] = itemData['photos'] is List
+        ? List<String>.from(itemData['photos'])
+        : [];
+
+    // Handle options field that might be a JSON string
+    itemData['options'] = _parseOptions(itemData['options']);
+
+    // Handle product specification
+    if (itemData['product_specification'] == null) {
+      itemData['product_specification'] = {};
+    }
+
+    return MartItemModel.fromJson(itemData);
+  }
+
+  double _parsePrice(dynamic price) {
+    if (price == null) return 0.0;
+    if (price is num) return price.toDouble();
+    if (price is String) {
+      return double.tryParse(price) ?? 0.0;
+    }
+    return 0.0;
+  }
+
+  List<String> _parseStringToList(dynamic data) {
+    if (data == null) return [];
+    if (data is List) return List<String>.from(data);
+    if (data is String) {
+      try {
+        // Handle cases where the API returns JSON strings like "[]"
+        if (data.trim().startsWith('[') && data.trim().endsWith(']')) {
+          final parsed = json.decode(data) as List;
+          return List<String>.from(parsed);
+        }
+        return [data];
+      } catch (e) {
+        return [data];
+      }
+    }
+    return [];
+  }
+
+  List<Map<String, dynamic>> _parseOptions(dynamic options) {
+    if (options == null) return [];
+    if (options is List) return List<Map<String, dynamic>>.from(options);
+    if (options is String) {
+      try {
+        if (options.trim().startsWith('[') && options.trim().endsWith(']')) {
+          final parsed = json.decode(options) as List;
+          return List<Map<String, dynamic>>.from(parsed);
+        }
+        return [];
+      } catch (e) {
+        print('[MART API] Error parsing options: $e');
+        return [];
+      }
+    }
+    return [];
+  }
+
+  /// Get featured items from API
   Future<List<MartItemModel>> getFeaturedItems({int limit = 20}) async {
     try {
-      print('[MART FIRESTORE] ⭐ Fetching featured items from Firestore...');
+      print('[MART API] ⭐ Fetching featured items from API...');
 
-      // Query Firestore for featured items
-      final querySnapshot = await _firestore
-          .collection(_collectionName)
-          .where('isFeature', isEqualTo: true)
-          .where('isAvailable', isEqualTo: true)
-          .where('publish', isEqualTo: true)
-          .limit(limit)
-          .get();
-
-      print(
-        '[MART FIRESTORE] ⭐ Firestore query completed, found ${querySnapshot.docs.length} featured items',
+      // Make API request
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mart-items/featured'),
+        headers: await getHeaders(),
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No featured items found in Firestore');
+      print('[MART API] ⭐ API response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['status'] == true) {
+          final List<dynamic> itemsData = responseData['data'];
+          final int count = responseData['count'] ?? 0;
+
+          print('[MART API] ⭐ API returned $count featured items');
+
+          if (itemsData.isEmpty) {
+            print('[MART API] ⚠️ No featured items found in API response');
+            return [];
+          }
+
+          // Convert API data to MartItemModel
+          final items = itemsData
+              .map((itemData) {
+                try {
+                  // Create a copy of the item data and ensure it's a Map
+                  final Map<String, dynamic> data = Map<String, dynamic>.from(
+                    itemData,
+                  );
+
+                  // Handle any data transformations needed
+                  return _parseApiItem(data);
+                } catch (e) {
+                  print(
+                    '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
+                  );
+                  print('[MART API] Item data: $itemData');
+                  return null;
+                }
+              })
+              .whereType<MartItemModel>()
+              .toList();
+
+          print(
+            '[MART API] ✅ Successfully parsed ${items.length} featured items from API',
+          );
+
+          // Debug: Log the featured items
+          for (int i = 0; i < items.length; i++) {
+            final item = items[i];
+            print(
+              '[MART API]   ${i + 1}. ${item.name} - isFeature: ${item.isFeature}, price: ₹${item.price}',
+            );
+          }
+
+          return items;
+        } else {
+          print('[MART API] ❌ API returned error: ${responseData['message']}');
+          return [];
+        }
+      } else {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
-
-      // Convert Firestore documents to MartItemModel
-      final items = querySnapshot.docs
-          .map((doc) {
-            try {
-              final data = doc.data();
-
-              final Map<String, dynamic> itemData = Map<String, dynamic>.from(
-                data,
-              );
-
-              // Add document ID to the data
-              itemData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (itemData['addOnsPrice'] == null) itemData['addOnsPrice'] = [];
-              if (itemData['addOnsTitle'] == null) itemData['addOnsTitle'] = [];
-              if (itemData['options'] == null) itemData['options'] = [];
-              if (itemData['photos'] == null) itemData['photos'] = [];
-              if (itemData['subcategoryID'] == null)
-                itemData['subcategoryID'] = [];
-              if (itemData['product_specification'] == null)
-                itemData['product_specification'] = {};
-
-              // Handle numeric fields that might be strings
-              if (itemData['reviewCount'] is String) {
-                itemData['reviewCount'] =
-                    int.tryParse(itemData['reviewCount']) ?? 0;
-              }
-              if (itemData['reviewSum'] is String) {
-                itemData['reviewSum'] =
-                    double.tryParse(itemData['reviewSum']) ?? 0.0;
-              }
-
-              return MartItemModel.fromJson(itemData);
-            } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore document ${doc.id}: $e',
-              );
-              print('[MART FIRESTORE] Document data: ${doc.data()}');
-              return null;
-            }
-          })
-          .whereType<MartItemModel>()
-          .toList();
-
-      print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${items.length} featured items from Firestore',
-      );
-
-      // Debug: Log the featured items
-      for (int i = 0; i < items.length; i++) {
-        final item = items[i];
-        print(
-          '[MART FIRESTORE]   ${i + 1}. ${item.name} - isFeature: ${item.isFeature}, price: ₹${item.price}',
-        );
-      }
-
-      return items;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching featured items from Firestore: $e',
-      );
+      print('[MART API] ❌ Error fetching featured items from API: $e');
       return [];
     }
   }
 
-  /// Get items on sale from Firestore
+  /// Get items on sale from API
   Future<List<MartItemModel>> getItemsOnSale({int limit = 20}) async {
     try {
-      print('[MART FIRESTORE] 🏷️ Fetching items on sale from Firestore...');
+      print('[MART API] 🏷️ Fetching items on sale from API...');
 
-      // Query Firestore for items on sale (where disPrice < price)
-      final querySnapshot = await _firestore
-          .collection(_collectionName)
-          .where('isAvailable', isEqualTo: true)
-          .where('publish', isEqualTo: true)
-          .limit(limit)
-          .get();
-
-      print(
-        '[MART FIRESTORE] 🏷️ Firestore query completed, found ${querySnapshot.docs.length} items',
+      // Make API request
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mart-items/on-sale'),
+        headers: await getHeaders(),
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No items found in Firestore');
+      print('[MART API] 🏷️ API response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['status'] == true) {
+          final List<dynamic> itemsData = responseData['data'];
+          final int count = responseData['count'] ?? 0;
+
+          print('[MART API] 🏷️ API returned $count items on sale');
+
+          if (itemsData.isEmpty) {
+            print('[MART API] ⚠️ No items on sale found in API response');
+            return [];
+          }
+
+          // Convert API data to MartItemModel
+          final items = itemsData
+              .map((itemData) {
+                try {
+                  // Create a copy of the item data and ensure it's a Map
+                  final Map<String, dynamic> data = Map<String, dynamic>.from(
+                    itemData,
+                  );
+
+                  // Handle any data transformations needed
+                  return _parseApiItem(data);
+                } catch (e) {
+                  print(
+                    '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
+                  );
+                  print('[MART API] Item data: $itemData');
+                  return null;
+                }
+              })
+              .whereType<MartItemModel>()
+              .toList();
+
+          // Note: The API already returns only items on sale, so no need for additional filtering
+          // But we can add a safety check to ensure items have valid sale prices
+          final validSaleItems = items
+              .where(
+                (item) =>
+                    item.disPrice != null &&
+                    item.disPrice! > 0 &&
+                    item.disPrice! < item.price,
+              )
+              .toList();
+
+          print(
+            '[MART API] ✅ Successfully parsed ${validSaleItems.length} valid items on sale from API',
+          );
+
+          // Debug: Log the sale items with discount information
+          for (int i = 0; i < validSaleItems.length; i++) {
+            final item = validSaleItems[i];
+            final discountPercent =
+                ((item.price - item.disPrice!) / item.price * 100).round();
+            print(
+              '[MART API]   ${i + 1}. ${item.name} - Original: ₹${item.price}, Sale: ₹${item.disPrice} (${discountPercent}% off)',
+            );
+          }
+
+          return validSaleItems;
+        } else {
+          print('[MART API] ❌ API returned error: ${responseData['message']}');
+          return [];
+        }
+      } else {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
-
-      // Filter items on sale and convert to MartItemModel
-      final items = querySnapshot.docs
-          .map((doc) {
-            try {
-              final data = doc.data();
-              // Add document ID to the data
-              data['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (data['addOnsPrice'] == null) data['addOnsPrice'] = [];
-              if (data['addOnsTitle'] == null) data['addOnsTitle'] = [];
-              if (data['options'] == null) data['options'] = [];
-              if (data['photos'] == null) data['photos'] = [];
-              if (data['subcategoryID'] == null) data['subcategoryID'] = [];
-              if (data['product_specification'] == null)
-                data['product_specification'] = {};
-
-              // Handle numeric fields that might be strings
-              if (data['reviewCount'] is String) {
-                data['reviewCount'] = int.tryParse(data['reviewCount']) ?? 0;
-              }
-              if (data['reviewSum'] is String) {
-                data['reviewSum'] = double.tryParse(data['reviewSum']) ?? 0.0;
-              }
-
-              return MartItemModel.fromJson(data);
-            } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore document ${doc.id}: $e',
-              );
-              return null;
-            }
-          })
-          .whereType<MartItemModel>()
-          .toList();
-
-      // Filter for items on sale (where disPrice < price)
-      final saleItems = items
-          .where((item) => item.disPrice != null && item.disPrice! < item.price)
-          .toList();
-
-      print(
-        '[MART FIRESTORE] ✅ Successfully found ${saleItems.length} items on sale',
-      );
-
-      // Debug: Log the sale items
-      for (int i = 0; i < saleItems.length; i++) {
-        final item = saleItems[i];
-        print(
-          '[MART FIRESTORE]   ${i + 1}. ${item.name} - Original: ₹${item.price}, Sale: ₹${item.disPrice}',
-        );
-      }
-
-      return saleItems;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching items on sale from Firestore: $e',
-      );
+      print('[MART API] ❌ Error fetching items on sale from API: $e');
       return [];
     }
   }
 
-  /// Search items by name or description
+  /// Search items by name or description using API
   Future<List<MartItemModel>> searchItems({
     required String searchQuery,
     int limit = 20,
   }) async {
     try {
-      print('[MART FIRESTORE] 🔍 Searching for items: "$searchQuery"');
+      print('[MART API] 🔍 Searching for items: "$searchQuery"');
 
-      // Convert search query to lowercase for case-insensitive search
-      final query = searchQuery.toLowerCase();
-
-      // Query Firestore for items
-      final querySnapshot = await _firestore
-          .collection(_collectionName)
-          .where('isAvailable', isEqualTo: true)
-          .where('publish', isEqualTo: true)
-          .limit(limit)
-          .get();
-
-      print(
-        '[MART FIRESTORE] 🔍 Firestore query completed, found ${querySnapshot.docs.length} items',
+      // Make API request with search query parameter
+      final response = await http.get(
+        Uri.parse(
+          '${AppConst.baseUrl}mart-items/search?searchQuery=$searchQuery',
+        ),
+        headers: await getHeaders(),
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No items found in Firestore');
+      print('[MART API] 🔍 API response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['status'] == true) {
+          final List<dynamic> itemsData = responseData['data'];
+          final int count = responseData['count'] ?? 0;
+
+          print(
+            '[MART API] 🔍 API returned $count search results for "$searchQuery"',
+          );
+
+          if (itemsData.isEmpty) {
+            print(
+              '[MART API] ⚠️ No items found for search query: "$searchQuery"',
+            );
+            return [];
+          }
+
+          // Convert API data to MartItemModel
+          final searchResults = itemsData
+              .map((itemData) {
+                try {
+                  // Create a copy of the item data and ensure it's a Map
+                  final Map<String, dynamic> data = Map<String, dynamic>.from(
+                    itemData,
+                  );
+
+                  // Handle any data transformations needed
+                  return _parseApiItem(data);
+                } catch (e) {
+                  print(
+                    '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
+                  );
+                  print('[MART API] Item data: $itemData');
+                  return null;
+                }
+              })
+              .whereType<MartItemModel>()
+              .toList();
+
+          print(
+            '[MART API] ✅ Search completed, found ${searchResults.length} matching items for "$searchQuery"',
+          );
+
+          // Debug: Log the search results
+          for (int i = 0; i < searchResults.length; i++) {
+            final item = searchResults[i];
+            final shortDescription = item.description.length > 50
+                ? '${item.description.substring(0, 50)}...'
+                : item.description;
+            print('[MART API]   ${i + 1}. ${item.name} - $shortDescription');
+          }
+
+          return searchResults;
+        } else {
+          print('[MART API] ❌ API returned error: ${responseData['message']}');
+          return [];
+        }
+      } else {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
-
-      // Filter items by search query and convert to MartItemModel
-      final items = querySnapshot.docs
-          .map((doc) {
-            try {
-              final data = doc.data();
-              // Add document ID to the data
-              data['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (data['addOnsPrice'] == null) data['addOnsPrice'] = [];
-              if (data['addOnsTitle'] == null) data['addOnsTitle'] = [];
-              if (data['options'] == null) data['options'] = [];
-              if (data['photos'] == null) data['photos'] = [];
-              if (data['subcategoryID'] == null) data['subcategoryID'] = [];
-              if (data['product_specification'] == null)
-                data['product_specification'] = {};
-
-              // Handle numeric fields that might be strings
-              if (data['reviewCount'] is String) {
-                data['reviewCount'] = int.tryParse(data['reviewCount']) ?? 0;
-              }
-              if (data['reviewSum'] is String) {
-                data['reviewSum'] = double.tryParse(data['reviewSum']) ?? 0.0;
-              }
-
-              return MartItemModel.fromJson(data);
-            } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore document ${doc.id}: $e',
-              );
-              return null;
-            }
-          })
-          .whereType<MartItemModel>()
-          .toList();
-
-      // Filter by search query (name or description)
-      final searchResults = items.where((item) {
-        final name = item.name.toLowerCase();
-        final description = item.description.toLowerCase();
-        return name.contains(query) || description.contains(query);
-      }).toList();
-
-      print(
-        '[MART FIRESTORE] ✅ Search completed, found ${searchResults.length} matching items',
-      );
-
-      // Debug: Log the search results
-      for (int i = 0; i < searchResults.length; i++) {
-        final item = searchResults[i];
-        final shortDescription = item.description.length > 50
-            ? '${item.description.substring(0, 50)}...'
-            : item.description;
-        print('[MART FIRESTORE]   ${i + 1}. ${item.name} - $shortDescription');
-      }
-
-      return searchResults;
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Error searching items: $e');
+      print('[MART API] ❌ Error searching items: $e');
       return [];
     }
   }
@@ -387,7 +444,6 @@ class MartFirestoreService extends GetxService {
           .where('publish', isEqualTo: true)
           .limit(limit)
           .get();
-
       print(
         '[MART FIRESTORE] 📂 Firestore query completed, found ${querySnapshot.docs.length} categories',
       );
@@ -396,7 +452,6 @@ class MartFirestoreService extends GetxService {
         print('[MART FIRESTORE] ⚠️ No categories found in Firestore');
         return [];
       }
-
       // Convert Firestore documents to MartCategoryModel
       final categories = querySnapshot.docs
           .map((doc) {
@@ -404,7 +459,6 @@ class MartFirestoreService extends GetxService {
               final data = doc.data();
               // Add document ID to the data
               data['id'] = doc.id;
-
               // Handle array fields that might be null
               if (data['review_attributes'] == null)
                 data['review_attributes'] = [];
@@ -1159,27 +1213,22 @@ class MartFirestoreService extends GetxService {
           .where('publish', isEqualTo: true)
           .limit(limit)
           .get();
-
       print(
         '[MART FIRESTORE] 🔍 Firestore query completed, found ${querySnapshot.docs.length} categories',
       );
-
       if (querySnapshot.docs.isEmpty) {
         print('[MART FIRESTORE] ⚠️ No categories found in Firestore');
         return [];
       }
 
-      // Filter categories by search query and convert to MartCategoryModel
       final categories = querySnapshot.docs
           .map((doc) {
             try {
               final data = doc.data();
               final Map<String, dynamic> categoryData =
                   Map<String, dynamic>.from(data);
-
               // Add document ID to the data
               categoryData['id'] = doc.id;
-
               // Handle array fields that might be null
               if (categoryData['review_attributes'] == null)
                 categoryData['review_attributes'] = [];
@@ -1395,7 +1444,6 @@ class MartFirestoreService extends GetxService {
   }) async {
     try {
       print('[MART FIRESTORE] 🏪 Fetching mart vendors from Firestore...');
-
       // Query Firestore for vendors
       Query query = _firestore.collection('mart_vendors');
 
@@ -1418,7 +1466,6 @@ class MartFirestoreService extends GetxService {
         print('[MART FIRESTORE] ⚠️ No vendors found in Firestore');
         return [];
       }
-
       // Convert Firestore documents to MartVendorModel
       final vendors = querySnapshot.docs
           .map((doc) {
@@ -2229,7 +2276,6 @@ class MartFirestoreService extends GetxService {
           })
           .whereType<MartCategoryModel>()
           .toList();
-
       // Sort categories by category_order
       categories.sort(
         (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
@@ -2268,12 +2314,10 @@ class MartFirestoreService extends GetxService {
       print(
         '[MART FIRESTORE] 🔍 Firestore query completed, found ${querySnapshot.docs.length} categories',
       );
-
       if (querySnapshot.docs.isEmpty) {
         print('[MART FIRESTORE] ⚠️ No categories found in Firestore');
         return [];
       }
-
       // Convert Firestore documents to MartCategoryModel
       final categories = querySnapshot.docs
           .map((doc) {
@@ -2281,10 +2325,8 @@ class MartFirestoreService extends GetxService {
               final data = doc.data();
               final Map<String, dynamic> categoryData =
                   Map<String, dynamic>.from(data);
-
               // Add document ID to the data
               categoryData['id'] = doc.id;
-
               // Handle array fields that might be null
               if (categoryData['review_attributes'] == null)
                 categoryData['review_attributes'] = [];
@@ -2323,12 +2365,10 @@ class MartFirestoreService extends GetxService {
           '[MART FIRESTORE] 🔍 After search filtering: ${categories.length} categories',
         );
       }
-
       // Sort categories by category_order
       categories.sort(
         (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
       );
-
       print(
         '[MART FIRESTORE] ✅ Successfully parsed ${categories.length} filtered categories from Firestore',
       );
