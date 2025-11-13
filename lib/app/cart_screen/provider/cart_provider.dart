@@ -232,7 +232,7 @@ class CartControllerProvider extends ChangeNotifier {
                 ),
             ],
           ),
-       
+
           actions: [
             // Cancel Button
             TextButton(
@@ -1133,26 +1133,32 @@ class CartControllerProvider extends ChangeNotifier {
         }
       });
     }
-
     if (vendorModel.id != null &&
         (!_isCacheValid() || _cachedCouponList == null)) {
-      await _loadCoupons();
+      await _loadCoupons(restaurantId: vendorModel.id.toString());
     } else {
       if (vendorModel.id != null && _cachedCouponList == null) {
-        await _loadCoupons();
+        await _loadCoupons(restaurantId: vendorModel.id.toString());
       }
     }
     notifyListeners();
   }
 
-  Future<void> _loadCoupons() async {
+  Future<void> _loadCoupons({required String restaurantId}) async {
     try {
       _detectCurrentContext();
-      final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons();
-      final allVendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons();
-
+      final vendorCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: restaurantId,
+          );
+      final allVendorCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: restaurantId,
+          );
       final globalCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons();
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: restaurantId,
+          );
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>
@@ -1190,18 +1196,28 @@ class CartControllerProvider extends ChangeNotifier {
       // Mark used coupons
       await _markUsedCoupons();
     } catch (e) {
-      await _loadCouponsWithoutFiltering();
+      await _loadCouponsWithoutFiltering(restaurantId: restaurantId);
     }
   }
 
   // Fallback method to load coupons without context filtering
-  Future<void> _loadCouponsWithoutFiltering() async {
+  Future<void> _loadCouponsWithoutFiltering({
+    required String restaurantId,
+  }) async {
     try {
-      final vendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons();
-      final allVendorCoupons = await FireStoreUtils.getAllVendorPublicCoupons();
+      final vendorCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: restaurantId,
+          );
+      final allVendorCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: restaurantId,
+          );
 
       final globalCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons();
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: restaurantId,
+          );
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>
@@ -1348,7 +1364,7 @@ class CartControllerProvider extends ChangeNotifier {
   void ensureCouponsLoaded() {
     if (_cachedCouponList == null || _cachedCouponList!.isEmpty) {
       if (vendorModel.id != null) {
-        _loadCoupons();
+        _loadCoupons(restaurantId: vendorModel.id.toString());
       } else {
         _loadGlobalCouponsOnly();
       }
@@ -1368,7 +1384,9 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Load global coupons
       final globalCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons();
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: '',
+          );
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>

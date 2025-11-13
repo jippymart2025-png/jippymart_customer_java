@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 
 class ProductModel {
   int? fats;
@@ -26,7 +26,7 @@ class ProductModel {
   String? price;
   String? categoryID;
   String? description;
-  Timestamp? createdAt;
+  DateTime? createdAt;
   bool? isAvailable;
   String? categoryTitle;
 
@@ -92,23 +92,34 @@ class ProductModel {
   ProductModel.fromJson(Map<String, dynamic> json) {
     fats = json['fats'];
     vendorID = json['vendorID'];
-    veg = json['veg'];
-    publish = json['publish'];
-    addOnsTitle = json['addOnsTitle'];
+    // Convert int (0/1) to bool for boolean fields
+    veg = json['veg'] == 1 || json['veg'] == true;
+    publish = json['publish'] == 1 || json['publish'] == true;
+
+    // Parse addOnsTitle - handle both string and list formats
+    addOnsTitle = _parseJsonStringToList(json['addOnsTitle']);
+
     calories = json['calories'];
     proteins = json['proteins'];
-    addOnsPrice = json['addOnsPrice'];
+
+    // Parse addOnsPrice - handle both string and list formats
+    addOnsPrice = _parseJsonStringToList(json['addOnsPrice']);
+
     reviewsSum = json['reviewsSum'] ?? 0.0;
-    takeawayOption = json['takeawayOption'];
+    // Convert int (0/1) to bool for boolean fields
+    takeawayOption =
+        json['takeawayOption'] == 1 || json['takeawayOption'] == true;
     name = json['name'];
     reviewAttributes = json['reviewAttributes'];
-    productSpecification = json['product_specification'];
+
+    // Parse product_specification - handle both string and map formats
+    productSpecification = _parseJsonStringToMap(json['product_specification']);
+
     // Handle item_attribute field - it can be Map or List
     if (json['item_attribute'] != null) {
       if (json['item_attribute'] is Map<String, dynamic>) {
         itemAttribute = ItemAttribute.fromJson(json['item_attribute']);
       } else if (json['item_attribute'] is List) {
-        // Skip if it's a List - this is likely corrupted data
         print('⚠️ Product ${json['id']}: item_attribute is List, skipping...');
         itemAttribute = null;
       } else {
@@ -122,14 +133,68 @@ class ProductModel {
     grams = json['grams'];
     reviewsCount = json['reviewsCount'] ?? 0.0;
     disPrice = json['disPrice'] ?? "0";
-    photos = json['photos']?.cast<String>();
-    nonveg = json['nonveg'];
+
+    // Parse photos - handle both string and list formats
+    photos = _parseJsonStringToList<String>(json['photos'])?.cast<String>();
+
+    nonveg = json['nonveg'] == 1 || json['nonveg'] == true;
     photo = json['photo'];
     price = json['price'].toString();
     categoryID = json['categoryID'];
     description = json['description'];
-    createdAt = json['createdAt'];
-    isAvailable = json['isAvailable'];
+    createdAt = _parseDate(json['createdAt']);
+    // Convert int (0/1) to bool for boolean fields
+    isAvailable = json['isAvailable'] == 1 || json['isAvailable'] == true;
+  }
+
+  static DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is String) {
+      try {
+        String clean = value.replaceAll('"', '');
+        return DateTime.tryParse(clean);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  // Helper method to parse JSON string to List
+  static List<T>? _parseJsonStringToList<T>(dynamic value) {
+    if (value == null) return null;
+
+    if (value is List<T>) {
+      return value;
+    } else if (value is String) {
+      try {
+        final parsed = json.decode(value);
+        if (parsed is List) {
+          // Cast each element to T if possible
+          return parsed.cast<T>();
+        }
+      } catch (e) {
+        print('⚠️ Failed to parse JSON string to List: $value');
+      }
+    }
+    return null;
+  }
+
+  // Helper method to parse JSON string to Map
+  static Map<String, dynamic>? _parseJsonStringToMap(dynamic value) {
+    if (value == null) return null;
+
+    if (value is Map<String, dynamic>) {
+      return value;
+    } else if (value is String) {
+      try {
+        final parsed = json.decode(value);
+        if (parsed is Map<String, dynamic>) {
+          return parsed;
+        }
+      } catch (e) {
+        print('⚠️ Failed to parse JSON string to Map: $value');
+      }
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -138,20 +203,24 @@ class ProductModel {
     data['vendorID'] = vendorID;
     data['veg'] = veg;
     data['publish'] = publish;
-    if (addOnsTitle != null) {
-      data['addOnsTitle'] = addOnsTitle;
-    }
-    if (addOnsPrice != null) {
-      data['addOnsPrice'] = addOnsPrice;
-    }
+
+    // Convert lists back to JSON strings if needed by API
+    data['addOnsTitle'] = addOnsTitle != null ? json.encode(addOnsTitle) : "[]";
+
     data['calories'] = calories;
     data['proteins'] = proteins;
+
+    // Convert lists back to JSON strings if needed by API
+    data['addOnsPrice'] = addOnsPrice != null ? json.encode(addOnsPrice) : "[]";
 
     data['reviewsSum'] = reviewsSum;
     data['takeawayOption'] = takeawayOption;
     data['name'] = name;
     data['reviewAttributes'] = reviewAttributes;
-    data['product_specification'] = productSpecification;
+    data['product_specification'] = productSpecification != null
+        ? json.encode(productSpecification)
+        : "[]";
+
     if (itemAttribute != null) {
       data['item_attribute'] = itemAttribute?.toJson();
     }
@@ -160,7 +229,10 @@ class ProductModel {
     data['grams'] = grams;
     data['reviewsCount'] = reviewsCount;
     data['disPrice'] = disPrice;
-    data['photos'] = photos;
+
+    // Convert photos list back to JSON string if needed by API
+    data['photos'] = photos != null ? json.encode(photos) : "[]";
+
     data['nonveg'] = nonveg;
     data['photo'] = photo;
     data['price'] = price;
@@ -168,6 +240,7 @@ class ProductModel {
     data['description'] = description;
     data['createdAt'] = createdAt;
     data['isAvailable'] = isAvailable;
+
     return data;
   }
 }

@@ -61,13 +61,6 @@ class OrderDetailsProvider extends ChangeNotifier {
       );
     }
 
-    // Check if order has promotional items for delivery charge calculation
-    final hasPromotionalItems =
-        orderModel.products?.any(
-          (item) => item.promoId != null && item.promoId!.isNotEmpty,
-        ) ??
-        false;
-
     double sgst = 0.0;
     double gst = 0.0;
     if (orderModel.taxSetting != null) {

@@ -813,6 +813,67 @@ class FavouriteScreen extends StatelessWidget {
     );
   }
 
+  // Future<Map<String, dynamic>> getPrice(ProductModel productModel) async {
+  //   String price = "0.0";
+  //   String disPrice = "0.0";
+  //   List<String> selectedVariants = [];
+  //   List<String> selectedIndexVariants = [];
+  //   List<String> selectedIndexArray = [];
+  //   VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+  //     productModel.vendorID.toString(),
+  //   );
+  //
+  //   if (productModel.itemAttribute != null) {
+  //     if (productModel.itemAttribute!.attributes!.isNotEmpty) {
+  //       for (var element in productModel.itemAttribute!.attributes!) {
+  //         if (element.attributeOptions!.isNotEmpty) {
+  //           selectedVariants.add(
+  //             productModel
+  //                 .itemAttribute!
+  //                 .attributes![productModel.itemAttribute!.attributes!.indexOf(
+  //                   element,
+  //                 )]
+  //                 .attributeOptions![0]
+  //                 .toString(),
+  //           );
+  //           selectedIndexVariants.add(
+  //             '${productModel.itemAttribute!.attributes!.indexOf(element)} _${productModel.itemAttribute!.attributes![0].attributeOptions![0].toString()}',
+  //           );
+  //           selectedIndexArray.add(
+  //             '${productModel.itemAttribute!.attributes!.indexOf(element)}_0',
+  //           );
+  //         }
+  //       }
+  //     }
+  //     if (productModel.itemAttribute!.variants!
+  //         .where((element) => element.variantSku == selectedVariants.join('-'))
+  //         .isNotEmpty) {
+  //       price = Constant.productCommissionPrice(
+  //         vendorModel!,
+  //         productModel.itemAttribute!.variants!
+  //                 .where(
+  //                   (element) =>
+  //                       element.variantSku == selectedVariants.join('-'),
+  //                 )
+  //                 .first
+  //                 .variantPrice ??
+  //             '0',
+  //       );
+  //       disPrice = Constant.productCommissionPrice(vendorModel, '0');
+  //     }
+  //   } else {
+  //     price = Constant.productCommissionPrice(
+  //       vendorModel!,
+  //       productModel.price.toString(),
+  //     );
+  //     disPrice = Constant.productCommissionPrice(
+  //       vendorModel,
+  //       productModel.disPrice.toString(),
+  //     );
+  //   }
+  //
+  //   return {'price': price, 'disPrice': disPrice};
+  // }
   Future<Map<String, dynamic>> getPrice(ProductModel productModel) async {
     String price = "0.0";
     String disPrice = "0.0";
@@ -824,52 +885,47 @@ class FavouriteScreen extends StatelessWidget {
       productModel.vendorID.toString(),
     );
 
-    if (productModel.itemAttribute != null) {
-      if (productModel.itemAttribute!.attributes!.isNotEmpty) {
-        for (var element in productModel.itemAttribute!.attributes!) {
-          if (element.attributeOptions!.isNotEmpty) {
-            selectedVariants.add(
-              productModel
-                  .itemAttribute!
-                  .attributes![productModel.itemAttribute!.attributes!.indexOf(
-                    element,
-                  )]
-                  .attributeOptions![0]
-                  .toString(),
-            );
-            selectedIndexVariants.add(
-              '${productModel.itemAttribute!.attributes!.indexOf(element)} _${productModel.itemAttribute!.attributes![0].attributeOptions![0].toString()}',
-            );
-            selectedIndexArray.add(
-              '${productModel.itemAttribute!.attributes!.indexOf(element)}_0',
-            );
-          }
+    if (vendorModel == null) {
+      debugPrint('⚠️ Vendor not found for ID: ${productModel.vendorID}');
+      return {
+        'price': productModel.price ?? '0',
+        'disPrice': productModel.disPrice ?? '0',
+      };
+    }
+
+    final attrs = productModel.itemAttribute?.attributes ?? [];
+    final variants = productModel.itemAttribute?.variants ?? [];
+
+    if (attrs.isNotEmpty) {
+      for (var i = 0; i < attrs.length; i++) {
+        final element = attrs[i];
+        if (element.attributeOptions != null &&
+            element.attributeOptions!.isNotEmpty) {
+          final option = element.attributeOptions!.first;
+          selectedVariants.add(option);
+          selectedIndexVariants.add('$i$option');
+          selectedIndexArray.add('${i}_0');
         }
       }
-      if (productModel.itemAttribute!.variants!
-          .where((element) => element.variantSku == selectedVariants.join('-'))
-          .isNotEmpty) {
-        price = Constant.productCommissionPrice(
-          vendorModel!,
-          productModel.itemAttribute!.variants!
-                  .where(
-                    (element) =>
-                        element.variantSku == selectedVariants.join('-'),
-                  )
-                  .first
-                  .variantPrice ??
-              '0',
-        );
-        disPrice = Constant.productCommissionPrice(vendorModel, '0');
-      }
+
+      final matchedVariant = variants.firstWhere(
+        (v) => v.variantSku == selectedVariants.join('-'),
+        orElse: () => Variants(variantPrice: '0'),
+      );
+
+      price = Constant.productCommissionPrice(
+        vendorModel,
+        matchedVariant.variantPrice ?? '0',
+      );
+      disPrice = Constant.productCommissionPrice(vendorModel, '0');
     } else {
       price = Constant.productCommissionPrice(
-        vendorModel!,
-        productModel.price.toString(),
+        vendorModel,
+        productModel.price?.toString() ?? '0',
       );
       disPrice = Constant.productCommissionPrice(
         vendorModel,
-        productModel.disPrice.toString(),
+        productModel.disPrice?.toString() ?? '0',
       );
     }
 

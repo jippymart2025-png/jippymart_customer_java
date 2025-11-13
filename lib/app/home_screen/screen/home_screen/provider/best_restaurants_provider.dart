@@ -141,12 +141,11 @@ class BestRestaurantProvider extends ChangeNotifier {
 
   // Load related data (coupons, ads) in parallel (stories are now loaded separately)
   Future<void> _loadRelatedDataInParallel(List<VendorModel> restaurants) async {
-    print('[DEBUG] Loading related data in parallel');
     final futures = <Future<void>>[];
-
-    // Load coupons
     futures.add(
-      RestaurantDetailsProvider.getRestaurantCoupons().then((value) {
+      RestaurantDetailsProvider.getRestaurantCoupons(restaurantId: '').then((
+        value,
+      ) {
         couponRestaurantList.clear();
         couponList.clear();
         for (var element1 in value) {

@@ -139,14 +139,11 @@ class FavouriteProvider extends ChangeNotifier {
       if (productId.isEmpty || productId.length < 3) {
         throw Exception('Invalid product ID: $productId');
       }
-
       final userId = await SqlStorageConst.getFirebaseId();
-
       // Additional validation
       if (userId == null) {
         throw Exception('User ID is required');
       }
-
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}favorites/items'),
         headers: await getHeaders(),
@@ -193,7 +190,6 @@ class FavouriteProvider extends ChangeNotifier {
         headers: await getHeaders(),
         body: json.encode({"firebase_id": userId, "product_id": productId}),
       );
-
       log(
         "📱 removeFavouriteFood request: productId: $productId, userId: $userId",
       );
@@ -237,27 +233,22 @@ class FavouriteProvider extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-
         if (decoded is! Map<String, dynamic>) {
           throw Exception('Invalid response format');
         }
-
         final responseData = decoded;
         if (responseData['success'] == true) {
           final List<dynamic> foodsData = responseData['data'] ?? [];
-
           List<ProductModel> favoriteFoods = [];
           for (var foodData in foodsData) {
             try {
               if (foodData is Map<String, dynamic>) {
-                // If the API returns product data directly
                 favoriteFoods.add(ProductModel.fromJson(foodData));
               }
             } catch (e) {
               log('❌ Error parsing food item: $e');
             }
           }
-
           log('✅ Loaded ${favoriteFoods.length} favorite foods');
           return favoriteFoods;
         } else {
@@ -306,14 +297,12 @@ class FavouriteProvider extends ChangeNotifier {
   // Remove food item from favorites (UI method)
   Future<void> removeFavoriteFoodUI(String productId, int index) async {
     try {
-      // Remove from local lists immediately for fast UI response
       if (index >= 0 && index < favouriteFoodList.length) {
         favouriteFoodList.removeAt(index);
       }
       favouriteItemList.removeWhere((item) => item.productId == productId);
       notifyListeners();
 
-      // Call API in background
       await removeFavouriteFood(productId);
 
       log('🎯 Food item removed successfully from UI: $productId');

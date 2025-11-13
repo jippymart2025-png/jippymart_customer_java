@@ -27,7 +27,6 @@ import 'dart:async';
 import 'package:jippymart_customer/models/BannerModel.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/gps_location_service.dart';
-import 'package:jippymart_customer/utils/performance_optimizer.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';

@@ -24,212 +24,11 @@ class RestaurantDetailsScreen extends StatelessWidget {
 
   const RestaurantDetailsScreen({super.key, this.scrollToProductId});
 
-  void _showMenuModal(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      isDismissible: true,
-      enableDrag: true,
-      builder: (context) => GestureDetector(
-        onTap: () => Navigator.pop(context),
-        child: Container(
-          color: Colors.transparent,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: GestureDetector(
-              onTap: () {},
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 50, left: 20, right: 40),
-                height: MediaQuery.of(context).size.height * 0.35,
-                width: MediaQuery.of(context).size.width * 0.7,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 10,
-                      offset: const Offset(0, -2),
-                    ),
-                  ],
-                ),
-                child: Consumer<RestaurantDetailsProvider>(
-                  builder: (context, controller, _) {
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 5, bottom: 5),
-                      child: ListView.builder(
-                        itemCount: controller.vendorCategoryList.length,
-                        itemBuilder: (context, index) {
-                          final category = controller.vendorCategoryList[index];
-                          return _buildMenuItem(
-                            category.title.toString(),
-                            controller
-                                .getProductsByCategory(category.id.toString())
-                                .length,
-                            onTap: () {
-                              Navigator.pop(context);
-                              Future.delayed(
-                                const Duration(milliseconds: 300),
-                                () {
-                                  controller.scrollToCategory(index);
-                                },
-                              );
-                            },
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMenuItem(
-    String title,
-    int count, {
-    bool isNew = false,
-    void Function()? onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      child: GestureDetector(
-        onTap: onTap,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Row(
-                children: [
-                  Flexible(
-                    child: Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.black87,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                  if (isNew) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'NEW',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Text(
-              '$count items',
-              style: const TextStyle(
-                fontSize: 14,
-                color: Colors.grey,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Consumer<RestaurantDetailsProvider>(
       builder: (context, controller, _) {
         return Scaffold(
-          bottomNavigationBar: cartItem.isEmpty
-              ? null
-              : InkWell(
-                  onTap: () {
-                    Get.to(const CartCheckOutScreen());
-                  },
-                  child: SafeArea(
-                    child: Container(
-                      height: 70,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFF48000), Color(0xFFff0404)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 25),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${cartItem.length} items',
-                            style: TextStyle(
-                              fontFamily: AppThemeData.medium,
-                              color: AppThemeData.grey50,
-                              fontSize: 20,
-                            ),
-                          ),
-                          Text(
-                            'View Cart',
-                            style: TextStyle(
-                              fontFamily: AppThemeData.semiBold,
-                              color: AppThemeData.grey50,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-          floatingActionButton: Visibility(
-            visible: true,
-            child: FloatingActionButton(
-              onPressed: () {
-                _showMenuModal(context);
-              },
-              backgroundColor: Colors.black,
-              child: Padding(
-                padding: const EdgeInsets.all(0.0),
-                child: SvgPicture.asset(
-                  'assets/images/menu.svg',
-                  width: 44,
-                  height: 44,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           body: RefreshIndicator(
             onRefresh: () async {
               await controller.getArgument(
@@ -707,7 +506,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 16),
-                                  // Add spacing between search bar and filters
                                   SingleChildScrollView(
                                     scrollDirection: Axis.horizontal,
                                     child: Row(
@@ -1205,8 +1003,207 @@ class RestaurantDetailsScreen extends StatelessWidget {
                     ),
             ),
           ),
+
+          bottomNavigationBar: cartItem.isEmpty
+              ? null
+              : InkWell(
+                  onTap: () {
+                    Get.to(const CartCheckOutScreen());
+                  },
+                  child: SafeArea(
+                    child: Container(
+                      height: 70,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFF48000), Color(0xFFff0404)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${cartItem.length} items',
+                            style: TextStyle(
+                              fontFamily: AppThemeData.medium,
+                              color: AppThemeData.grey50,
+                              fontSize: 20,
+                            ),
+                          ),
+                          Text(
+                            'View Cart',
+                            style: TextStyle(
+                              fontFamily: AppThemeData.semiBold,
+                              color: AppThemeData.grey50,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              _showMenuModal(context);
+            },
+            backgroundColor: Colors.black,
+            child: Padding(
+              padding: const EdgeInsets.all(0.0),
+              child: SvgPicture.asset(
+                'assets/images/menu.svg',
+                width: 44,
+                height: 44,
+                colorFilter: const ColorFilter.mode(
+                  Colors.white,
+                  BlendMode.srcIn,
+                ),
+              ),
+            ),
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
+    );
+  }
+
+  void _showMenuModal(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: true,
+      enableDrag: true,
+      builder: (context) => GestureDetector(
+        onTap: () => Navigator.pop(context),
+        child: Container(
+          color: Colors.transparent,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: GestureDetector(
+              onTap: () {},
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 50, left: 20, right: 40),
+                height: MediaQuery.of(context).size.height * 0.35,
+                width: MediaQuery.of(context).size.width * 0.7,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, -2),
+                    ),
+                  ],
+                ),
+                child: Consumer<RestaurantDetailsProvider>(
+                  builder: (context, controller, _) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 5, bottom: 5),
+                      child: ListView.builder(
+                        itemCount: controller.vendorCategoryList.length,
+                        itemBuilder: (context, index) {
+                          final category = controller.vendorCategoryList[index];
+                          return _buildMenuItem(
+                            category.title.toString(),
+                            controller
+                                .getProductsByCategory(category.id.toString())
+                                .length,
+                            onTap: () {
+                              Navigator.pop(context);
+                              Future.delayed(
+                                const Duration(milliseconds: 300),
+                                () {
+                                  controller.scrollToCategory(index);
+                                },
+                              );
+                            },
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuItem(
+    String title,
+    int count, {
+    bool isNew = false,
+    void Function()? onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.black87,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                    ),
+                  ),
+                  if (isNew) ...[
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        'NEW',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Text(
+              '$count items',
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.grey,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

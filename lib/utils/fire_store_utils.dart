@@ -11,7 +11,6 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/AttributesModel.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/conversation_model.dart';
-import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/email_template_model.dart';
 import 'package:jippymart_customer/models/inbox_model.dart';
 import 'package:jippymart_customer/models/notification_model.dart';
@@ -439,64 +438,6 @@ class FireStoreUtils {
     return taxList;
   }
 
-  static Future<List<CouponModel>> getAllVendorPublicCoupons() async {
-    List<CouponModel> coupons = [];
-
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}coupons/restaurant'),
-        headers: await getHeaders(),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          final List<dynamic> data = responseData['data'];
-          for (var element in data) {
-            // Filter coupons that are enabled, public, and not expired
-            final bool isEnabled = element['isEnabled'] == true;
-            final bool isPublic = element['isPublic'] == true;
-            final bool isValid = _isCouponValid(element['expiresAt']);
-
-            if (isEnabled && isPublic && isValid) {
-              CouponModel couponModel = CouponModel.fromJson(element);
-              coupons.add(couponModel);
-            }
-          }
-        }
-      } else {
-        print('API call failed with status: ${response.statusCode}');
-      }
-    } catch (error) {
-      print('Error fetching coupons: $error');
-    }
-
-    return coupons;
-  }
-
-  // Helper method to check if coupon is still valid
-  static bool _isCouponValid(dynamic expiresAt) {
-    if (expiresAt == null) return true;
-
-    try {
-      if (expiresAt is String) {
-        final expiryDate = DateTime.parse(expiresAt);
-        return expiryDate.isAfter(DateTime.now());
-      } else if (expiresAt is Map) {
-        // Handle if it comes as a timestamp object
-        final timestamp = expiresAt['_seconds'] as int;
-        final expiryDate = DateTime.fromMillisecondsSinceEpoch(
-          timestamp * 1000,
-        );
-        return expiryDate.isAfter(DateTime.now());
-      }
-      return true;
-    } catch (e) {
-      print('Error parsing expiry date: $e');
-      return true; // If we can't parse, assume it's valid
-    }
-  }
-
   static Future<bool?> setProduct(ProductModel orderModel) async {
     bool isAdded = false;
     await fireStore
@@ -718,7 +659,6 @@ class FireStoreUtils {
       final String thumbnailUrl = await thumbnailRef.getDownloadURL();
       var metaData = await thumbnailRef.getMetadata();
       ShowToastDialog.closeLoader();
-
       return ChatVideoContainer(
         videoUrl: Url(
           url: videoUrl.toString(),
@@ -841,16 +781,24 @@ class FireStoreUtils {
 
   static Future<bool?> setRatingModel(RatingModel ratingModel) async {
     bool isAdded = false;
-    await fireStore
-        .collection(CollectionName.foodsReview)
-        .doc(ratingModel.id)
-        .set(ratingModel.toJson())
-        .then((value) {
-          isAdded = true;
-        })
-        .catchError((error) {
-          isAdded = false;
-        });
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}firestore/ratings'),
+        headers: await getHeaders(),
+        body: jsonEncode(ratingModel.toJson()),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        isAdded = true;
+      } else {
+        isAdded = false;
+        print('Error: ${response.statusCode} - ${response.body}');
+      }
+    } catch (error) {
+      isAdded = false;
+      print('Exception: $error');
+    }
+
     return isAdded;
   }
 
@@ -889,60 +837,84 @@ class FireStoreUtils {
     return advertisementList;
   }
 
-  /// **ULTRA-FAST PROMOTIONAL DATA FETCHING WITH LAZY LOADING**
+  /// **ULTRA-FAST PROMOTIONAL DATA FETCHING WITH API**
   static Future<List<Map<String, dynamic>>> fetchActivePromotions({
-    String? restaurantId,
+    required String restaurantId,
+    required String productId,
   }) async {
-    final now = Timestamp.now();
-    print('[DEBUG] ===== ULTRA-FAST PROMOTIONAL FETCH =====');
-    print('[DEBUG] Restaurant filter: $restaurantId');
-
     try {
-      // **ULTRA-FAST: Minimal query with only essential fields**
-      Query query = fireStore
-          .collection(CollectionName.promotions)
-          .where('isAvailable', isEqualTo: true)
-          .where('restaurant_id', isEqualTo: restaurantId)
-          .limit(
-            100,
-          ); // **INCREASED: Limit to 100 to show more promotional items**
+      // Build the API URL
+      final String apiUrl =
+          '${AppConst.baseUrl}firestore/promotions/by-product?'
+          'product_id=$productId&'
+          'restaurant_id=$restaurantId';
 
-      final querySnapshot = await query.get();
-      print('[DEBUG] Found ${querySnapshot.docs.length} promotions instantly');
-
-      final promotions = <Map<String, dynamic>>[];
-
-      // **PARALLEL PROCESSING: Process all docs simultaneously**
-      final futures = querySnapshot.docs.map((doc) async {
-        final data = doc.data() as Map<String, dynamic>;
-
-        // **LAZY TIME CHECK: Only check time if needed**
-        final startTime = data['start_time'] as Timestamp?;
-        final endTime = data['end_time'] as Timestamp?;
-
-        if (startTime != null && endTime != null) {
-          final isActive =
-              startTime.compareTo(now) <= 0 && endTime.compareTo(now) >= 0;
-          return isActive ? data : null;
-        }
-
-        return data; // Include if no time constraints
-      });
-
-      // **PARALLEL EXECUTION: All time checks happen simultaneously**
-      final results = await Future.wait(futures);
-      promotions.addAll(
-        results.where((item) => item != null).cast<Map<String, dynamic>>(),
+      print('[DEBUG] API Endpoint: $apiUrl');
+      // Make API call
+      final response = await http.get(
+        Uri.parse(apiUrl),
+        headers: await getHeaders(),
       );
 
-      print('[DEBUG] Final active promotions: ${promotions.length} items');
-      print('[DEBUG] ===== ULTRA-FAST FETCH COMPLETE =====');
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
 
-      return promotions;
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final promotionData = responseData['data'] as Map<String, dynamic>;
+          // Convert API response to match your existing data structure
+          final Map<String, dynamic> processedPromotion = {
+            ...promotionData,
+            'isAvailable': promotionData['isAvailable'] == 1 ? true : false,
+            'start_time': _parseTimestamp(promotionData['start_time']),
+            'end_time': _parseTimestamp(promotionData['end_time']),
+          };
+
+          // Check if promotion is currently active based on time
+          final startTime = processedPromotion['start_time'] as Timestamp?;
+          final endTime = processedPromotion['end_time'] as Timestamp?;
+
+          bool isActive = processedPromotion['isAvailable'] == true;
+
+          if (startTime != null && endTime != null) {
+            isActive =
+                isActive &&
+                startTime.compareTo(Timestamp.now()) <= 0 &&
+                endTime.compareTo(Timestamp.now()) >= 0;
+          }
+
+          print('[DEBUG] Promotion active status: $isActive');
+          print('[DEBUG] ===== ULTRA-FAST API FETCH COMPLETE =====');
+
+          return isActive ? [processedPromotion] : [];
+        } else {
+          print('[DEBUG] API returned unsuccessful response');
+          return [];
+        }
+      } else {
+        print('[DEBUG] API Error: ${response.statusCode}');
+        return [];
+      }
     } catch (e) {
-      print('[DEBUG] ERROR in ultra-fast fetch: $e');
+      print('[DEBUG] ERROR in ultra-fast API fetch: $e');
       return [];
     }
+  }
+
+  /// Helper method to parse timestamp strings to Firestore Timestamp
+  static Timestamp? _parseTimestamp(dynamic timestamp) {
+    if (timestamp == null) return null;
+
+    if (timestamp is String) {
+      try {
+        final dateTime = DateTime.parse(timestamp);
+        return Timestamp.fromDate(dateTime);
+      } catch (e) {
+        print('[DEBUG] Error parsing timestamp: $e');
+        return null;
+      }
+    }
+
+    return null;
   }
 
   /// Checks if a product is currently a promo item (OPTIMIZED)
@@ -950,7 +922,10 @@ class FireStoreUtils {
     required String productId,
     required String restaurantId,
   }) async {
-    final promos = await fetchActivePromotions(restaurantId: restaurantId);
+    final promos = await fetchActivePromotions(
+      restaurantId: restaurantId,
+      productId: productId,
+    );
     final promo = promos.firstWhere(
       (p) =>
           p['product_id'] == productId &&

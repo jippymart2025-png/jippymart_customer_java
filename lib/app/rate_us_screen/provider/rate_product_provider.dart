@@ -134,10 +134,8 @@ class RateProductProvider extends ChangeNotifier {
       productModel.reviewsCount = productReviewCount + 1;
       productModel.reviewsSum = productReviewSum + ratings;
       productModel.reviewAttributes = reviewProductAttributes;
-
       vendorModel.reviewsCount = vendorReviewCount + 1;
       vendorModel.reviewsSum = vendorReviewSum + ratings;
-
       if (reviewProductAttributes.isEmpty) {
         reviewAttribute.forEach((key, value) {
           ReviewsAttribute reviewsAttributeModel = ReviewsAttribute(

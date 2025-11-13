@@ -119,7 +119,6 @@ class MiniCartBar extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () async {
                     await Future.delayed(const Duration(milliseconds: 100));
-                    // Get.to(const CartScreen());
                     Get.to(const CartCheckOutScreen());
                   },
                   style: ElevatedButton.styleFrom(

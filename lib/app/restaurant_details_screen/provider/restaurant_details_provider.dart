@@ -28,12 +28,17 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   RestaurantDetailsProvider({this.scrollToProductId});
 
-  static Future<List<CouponModel>> getRestaurantCoupons() async {
+  static Future<List<CouponModel>> getRestaurantCoupons({
+    required String restaurantId,
+  }) async {
     try {
+      String url =
+          '${AppConst.baseUrl}coupons/restaurant?resturant_id=$restaurantId';
       final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}coupons/restaurant'),
+        Uri.parse(url),
         headers: await getHeaders(),
       );
+      print("getRestaurantCoupons ${url}");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -404,6 +409,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   Future<void> getArgument({required VendorModel vendorModels}) async {
     try {
       vendorModel = vendorModels;
+
       isLoading = true;
       notifyListeners();
       cartProvider.cartStream.listen((event) {
@@ -411,7 +417,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         cartItem.addAll(event);
       });
       animateSlider();
-      await _loadCriticalDataInParallel();
+      await _loadCriticalDataInParallel(
+        restaurantId: vendorModel.id.toString(),
+      );
       isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -570,7 +578,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       isNonVag = false;
       isOfferFilter = false;
       searchEditingController.clear();
-
       // Call API without filters
       loadProductsViaAPI();
     } catch (e) {
@@ -579,12 +586,16 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   /// PROMOTIONAL METHODS
-  Future<void> _loadPromotionalCache() async {
+  Future<void> _loadPromotionalCache({
+    required String productId,
+    required String restaurantId,
+  }) async {
     if (_promotionalCacheLoaded) return;
 
     try {
       await PromotionalCacheService.loadRestaurantPromotions(
-        vendorModel.id ?? '',
+        restaurantId: vendorModel.id ?? '',
+        productId: productId,
       );
       _promotionalCacheLoaded = true;
       notifyListeners();
@@ -646,30 +657,35 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required String restaurantId,
   }) {
     if (!_promotionalCacheLoaded) {
-      _loadPromotionalCache(); // **BACKGROUND LOADING: Non-blocking**
+      _loadPromotionalCache(
+        productId: productId,
+        restaurantId: restaurantId,
+      ); // **BACKGROUND LOADING: Non-blocking**
     }
     // Use cached data instead of Firebase query - INSTANT RESPONSE
     return _getCachedPromotionalData(productId, restaurantId);
   }
 
   /// PARALLEL DATA LOADING
-  Future<void> _loadCriticalDataInParallel() async {
-    await Future.wait([
-      loadProductsViaAPI(), // Now uses API instead of Firebase
-      loadFavorites(),
-    ]);
+  Future<void> _loadCriticalDataInParallel({
+    required String restaurantId,
+  }) async {
+    await Future.wait([loadProductsViaAPI(), loadFavorites()]);
     if (Constant.userModel != null) {
-      await Future.wait([_loadCoupons(), _loadAttributes()]);
+      await Future.wait([
+        _loadCoupons(restaurantId: restaurantId),
+        _loadAttributes(),
+      ]);
     } else {
       await _loadAttributes();
     }
   }
 
-  Future<void> _loadCoupons() async {
+  Future<void> _loadCoupons({required String restaurantId}) async {
     try {
-      List<CouponModel> apiCoupons = await getRestaurantCoupons();
-
-      // Filter valid coupons
+      List<CouponModel> apiCoupons = await getRestaurantCoupons(
+        restaurantId: restaurantId,
+      );
       couponList = apiCoupons.where((coupon) {
         return coupon.isEnabled == true && _isCouponValid(coupon);
       }).toList();
