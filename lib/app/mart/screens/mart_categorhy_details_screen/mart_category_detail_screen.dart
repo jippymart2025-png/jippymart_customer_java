@@ -452,7 +452,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
       );
     }
 
-    // Use StreamBuilder for real-time product updates
     return StreamBuilder<QuerySnapshot>(
       stream: _buildProductStream(controller),
       builder: (context, snapshot) {

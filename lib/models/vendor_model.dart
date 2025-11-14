@@ -107,6 +107,19 @@ class VendorModel {
     if (json['categoryID'] != null) {
       if (json['categoryID'] is List) {
         categoryID = json['categoryID'];
+      } else if (json['categoryID'] is String) {
+        // Handle string that should be a list
+        try {
+          final categoryString = json['categoryID'] as String;
+          final parsedCategories = jsons.json.decode(categoryString);
+          if (parsedCategories is List) {
+            categoryID = parsedCategories;
+          } else {
+            categoryID = [json['categoryID']];
+          }
+        } catch (e) {
+          categoryID = [json['categoryID']];
+        }
       } else {
         categoryID = [json['categoryID']];
       }
@@ -206,7 +219,30 @@ class VendorModel {
 
     specialDiscountEnable = json['specialDiscountEnable'];
     reviewsSum = json['reviewsSum'] ?? 0.0;
-    photos = json['photos'] ?? [];
+    // Handle photos - could be List or String
+    if (json['photos'] != null) {
+      if (json['photos'] is List) {
+        photos = json['photos'];
+      } else if (json['photos'] is String) {
+        // Try to parse the string as JSON array
+        try {
+          final photosString = json['photos'] as String;
+          final parsedPhotos = jsons.json.decode(photosString);
+          if (parsedPhotos is List) {
+            photos = parsedPhotos;
+          } else {
+            photos = [];
+          }
+        } catch (e) {
+          print('Error parsing photos string: $e');
+          photos = [];
+        }
+      } else {
+        photos = [];
+      }
+    } else {
+      photos = [];
+    }
     title = json['title'];
     if (json['coordinates'] != null) {
       final coord = json['coordinates'];

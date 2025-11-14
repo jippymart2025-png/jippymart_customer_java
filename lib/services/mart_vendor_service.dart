@@ -100,7 +100,6 @@ class MartVendorService {
           .where('categoryID', arrayContains: categoryId)
           .where('isOpen', isEqualTo: true)
           .get();
-
       return querySnapshot.docs
           .map((doc) => MartVendorModel.fromJson({...doc.data(), 'id': doc.id}))
           .toList();

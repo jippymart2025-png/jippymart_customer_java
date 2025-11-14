@@ -1626,13 +1626,11 @@ class MartProvider extends ChangeNotifier {
   /// Handle banner tap based on redirect type
 
   /// Fetch delivery settings from Firestore (DEPRECATED - Use settings/martDeliveryCharge instead)
-  @Deprecated('Use settings/martDeliveryCharge collection instead')
   Future<void> fetchDeliverySettings() async {
     try {
       print(
         '[MART CONTROLLER] 🚚 Fetching delivery settings from Firestore (DEPRECATED)',
       );
-
       // Fetch from settings/martDeliveryCharge collection
       final doc = await FirebaseFirestore.instance
           .collection('settings')

@@ -481,7 +481,6 @@ class FireStoreUtils {
       if (kDebugMode) {}
       return list;
     }
-
     try {
       final querySnapshot = await fireStore
           .collection(CollectionName.restaurantOrders)

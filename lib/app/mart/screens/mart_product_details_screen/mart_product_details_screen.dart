@@ -304,7 +304,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-
                     // Brand Information
                     if (widget.product.brandTitle != null &&
                         widget.product.brandTitle!.isNotEmpty) ...[
