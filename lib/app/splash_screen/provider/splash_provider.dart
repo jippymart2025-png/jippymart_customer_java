@@ -30,7 +30,8 @@ class SplashProvider extends ChangeNotifier {
   }
 
   void refreshFunction(BuildContext context) async {
-    addressListProvider.initFunction();
+    await _loadUserDataFromStorage();
+    await addressListProvider.initFunction();
     homeProvider.initFunction(context: context);
   }
 
@@ -52,9 +53,9 @@ class SplashProvider extends ChangeNotifier {
         _checkUpdatesInBackground();
         return;
       }
-      addressListProvider.initFunction();
-      homeProvider.initFunction(context: context);
       await _loadUserDataFromStorage();
+      await addressListProvider.initFunction();
+      await homeProvider.initFunction(context: context);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => DashBoardScreen()),
         (Route<dynamic> route) => false,

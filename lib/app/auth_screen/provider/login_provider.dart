@@ -8,6 +8,7 @@ import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provide
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/signup_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -129,7 +130,10 @@ class LoginProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> verifyOtp(BuildContext context) async {
+  Future<void> verifyOtp(
+    BuildContext context,
+    SplashProvider splashProvider,
+  ) async {
     ShowToastDialog.showLoader("Verifying OTP...".tr);
     isVerifying = true;
     notifyListeners();
@@ -167,12 +171,13 @@ class LoginProvider extends ChangeNotifier {
             active: true,
             walletAmount: userData['wallet_amount'] ?? 0,
           );
+          Constant.userModel = userModel;
           await SqlStorageConst.storeUserData(
             userModel,
             countryCode: countryCode,
           );
-          Constant.userModel = userModel;
           ShowToastDialog.closeLoader();
+          splashProvider.initFunction(context);
           Get.offAll(() => const DashBoardScreen());
         } else {
           ShowToastDialog.closeLoader();

@@ -43,6 +43,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
         selectFilter(arguments?['initialFilter']);
       });
     }
+    notifyListeners();
   }
 
   Future<void> _initializeData() async {
@@ -84,7 +85,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
 
       parentCategoryImageUrl = parentCategory.photo ?? '';
       print(
-        '[CATEGORY DETAIL] 📸 Parent category image URL: ${parentCategoryImageUrl}',
+        '[CATEGORY DETAIL] 📸 Parent category image URL: $parentCategoryImageUrl',
       );
     } catch (e) {
       print('[CATEGORY DETAIL] ❌ Error loading parent category image: $e');

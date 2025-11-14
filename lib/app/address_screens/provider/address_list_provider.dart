@@ -109,6 +109,8 @@ class AddressListProvider extends ChangeNotifier {
             headers: headers,
           )
           .timeout(timeout);
+      print("getUserProfile ${response.body}");
+      print("getUserProfile '${AppConst.baseUrl}users/profile/$userId'");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -122,7 +124,49 @@ class AddressListProvider extends ChangeNotifier {
         return null;
       }
     } catch (e) {
+      print("getUserProfile $e");
       return null;
+    }
+  }
+
+  Future<bool> deleteShippingAddress(String addressId) async {
+    try {
+      final userId = await SqlStorageConst.getFirebaseId();
+      if (userId == null || userId.isEmpty) {
+        log("❌ No user ID found");
+        return false;
+      }
+
+      final headers = await getHeaders();
+      headers['Content-Type'] = 'application/json';
+      headers['Accept'] = 'application/json';
+      // Use the specific address endpoint for deletion
+      final url =
+          '${AppConst.baseUrl}users/$userId/shipping-address/$addressId';
+
+      log("🟢 DELETE URL: $url");
+
+      final response = await http
+          .delete(Uri.parse(url), headers: headers)
+          .timeout(const Duration(seconds: 30));
+      log("🔵 STATUS: ${response.statusCode}");
+      log("🔵 BODY: ${response.body}");
+      if (response.statusCode == 200) {
+        final responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          print('✅ [API] Shipping address deleted successfully');
+          return true;
+        } else {
+          log("❌ API responded but success=false");
+          return false;
+        }
+      } else {
+        log("❌ Server responded with status: ${response.statusCode}");
+        return false;
+      }
+    } catch (e, st) {
+      log("❌ Exception during deleteShippingAddress: $e\n$st");
+      return false;
     }
   }
 
@@ -211,7 +255,6 @@ class AddressListProvider extends ChangeNotifier {
       headers['Accept'] = 'application/json';
       final url =
           '${AppConst.baseUrl}users/$userId/shipping-address?merge=true';
-      // 🔹 Prepare the request body exactly like your backend expects (a list)
       final shippingAddresses =
           userModel.shippingAddress?.map((address) {
             return {

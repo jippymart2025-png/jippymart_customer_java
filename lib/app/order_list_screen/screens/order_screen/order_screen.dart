@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/order_details_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -543,25 +544,29 @@ class OrderScreen extends StatelessWidget {
                           )
                         : orderModel.status == Constant.orderShipped ||
                               orderModel.status == Constant.orderInTransit
-                        ? Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                Get.to(
-                                  const LiveTrackingScreen(),
-                                  arguments: {"orderModel": orderModel},
-                                );
-                              },
-                              child: Text(
-                                "Track Order".tr,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppThemeData.primary300,
-                                  fontFamily: AppThemeData.semiBold,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
+                        ? Consumer<LiveTrackingProvider>(
+                            builder: (context, liveTrackingProvider, _) {
+                              return Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    liveTrackingProvider.initFunction(
+                                      orderModel: orderModel,
+                                    );
+                                    Get.to(const LiveTrackingScreen());
+                                  },
+                                  child: Text(
+                                    "Track Order".tr,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: AppThemeData.primary300,
+                                      fontFamily: AppThemeData.semiBold,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 16,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           )
                         : const SizedBox(),
                     Expanded(

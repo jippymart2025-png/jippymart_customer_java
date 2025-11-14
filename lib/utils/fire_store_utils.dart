@@ -43,34 +43,45 @@ class FireStoreUtils {
   static bool get isDatabaseHealthy => _isDatabaseHealthy;
 
   static Future getPaymentSettingsData() async {
-    await fireStore
-        .collection(CollectionName.settings)
-        .doc("razorpaySettings")
-        .get()
-        .then((value) async {
-          if (value.exists) {
-            RazorPayModel razorPayModel = RazorPayModel.fromJson(value.data()!);
-            await Preferences.setString(
-              Preferences.razorpaySettings,
-              jsonEncode(razorPayModel.toJson()),
-            );
-          }
-        });
-    await fireStore
-        .collection(CollectionName.settings)
-        .doc("CODSettings")
-        .get()
-        .then((value) async {
-          if (value.exists) {
-            CodSettingModel codSettingModel = CodSettingModel.fromJson(
-              value.data()!,
-            );
-            await Preferences.setString(
-              Preferences.codSettings,
-              jsonEncode(codSettingModel.toJson()),
-            );
-          }
-        });
+    try {
+      // Get RazorPay settings from API
+      final razorpayResponse = await http.get(
+        Uri.parse('${AppConst.baseUrl}firestore/settings/razorpay'),
+        headers: await getHeaders(),
+      );
+
+      if (razorpayResponse.statusCode == 200) {
+        final responseData = jsonDecode(razorpayResponse.body);
+        if (responseData['success'] == true) {
+          final razorpayData = responseData['data']['fields'];
+          RazorPayModel razorPayModel = RazorPayModel.fromJson(razorpayData);
+          await Preferences.setString(
+            Preferences.razorpaySettings,
+            jsonEncode(razorPayModel.toJson()),
+          );
+        }
+      }
+
+      final codResponse = await http.get(
+        Uri.parse('${AppConst.baseUrl}firestore/settings/cod'),
+        headers: await getHeaders(),
+      );
+
+      if (codResponse.statusCode == 200) {
+        final responseData = jsonDecode(codResponse.body);
+        if (responseData['success'] == true) {
+          final codData = responseData['data']['fields'];
+          CodSettingModel codSettingModel = CodSettingModel.fromJson(codData);
+          await Preferences.setString(
+            Preferences.codSettings,
+            jsonEncode(codSettingModel.toJson()),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error fetching payment settings: $e');
+      // Handle error appropriately
+    }
   }
 
   static Future<VendorModel?> getVendorById(String vendorId) async {
@@ -438,19 +449,28 @@ class FireStoreUtils {
     return taxList;
   }
 
-  static Future<bool?> setProduct(ProductModel orderModel) async {
-    bool isAdded = false;
-    await fireStore
-        .collection(CollectionName.vendorProducts)
-        .doc(orderModel.id)
-        .set(orderModel.toJson())
-        .then((value) {
-          isAdded = true;
-        })
-        .catchError((error) {
-          isAdded = false;
-        });
-    return isAdded;
+  static Future<bool> setProduct(ProductModel orderModel) async {
+    try {
+      final url = "${AppConst.baseUrl}firestore/setProduct?id=${orderModel.id}";
+
+      final body = jsonEncode(orderModel.toJson());
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: await getHeaders(),
+        body: body,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return true;
+      } else {
+        print("❌ Failed: ${response.body}");
+        return false;
+      }
+    } catch (e) {
+      print("❌ Error: $e");
+      return false;
+    }
   }
 
   static Future<List<OrderModel>> getAllOrder() async {
@@ -680,12 +700,13 @@ class FireStoreUtils {
         Uri.parse('${AppConst.baseUrl}vendor/$vendorId/reviews'),
         headers: await getHeaders(),
       );
+      print("getVendorReviews ${AppConst.baseUrl}vendor/$vendorId/reviews)}");
+      print("getVendorReviews " + response.body);
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
           final List<dynamic> data = responseData['data'];
           List<RatingModel> ratingList = [];
-
           for (var element in data) {
             RatingModel ratingModel = RatingModel.fromJson(element);
             ratingList.add(ratingModel);
@@ -787,7 +808,6 @@ class FireStoreUtils {
         headers: await getHeaders(),
         body: jsonEncode(ratingModel.toJson()),
       );
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         isAdded = true;
       } else {
@@ -802,15 +822,15 @@ class FireStoreUtils {
     return isAdded;
   }
 
-  static Future<VendorModel?> updateVendor(VendorModel vendor) async {
-    return await fireStore
-        .collection(CollectionName.vendors)
-        .doc(vendor.id)
-        .set(vendor.toJson())
-        .then((document) {
-          return vendor;
-        });
-  }
+  // static Future<VendorModel?> updateVendor(VendorModel vendor) async {
+  //   return await fireStore
+  //       .collection(CollectionName.vendors)
+  //       .doc(vendor.id)
+  //       .set(vendor.toJson())
+  //       .then((document) {
+  //         return vendor;
+  //       });
+  // }
 
   static Future<List<AdvertisementModel>> getAllAdvertisement() async {
     List<AdvertisementModel> advertisementList = [];
@@ -988,92 +1008,121 @@ class FireStoreUtils {
   }
 
   /// Get all vendors for search indexing - MEMORY OPTIMIZED
-  static Future<List<VendorModel>> getAllVendors({int? limit}) async {
-    try {
-      List<VendorModel> vendorList = [];
-      int safeLimit =
-          limit ?? 500; // Increased to 500 to match admin panel results
-      Query query;
-      if (Constant.selectedZone != null) {
-        query = FirebaseFirestore.instance
-            .collection(CollectionName.vendors)
-            .where('zoneId', isEqualTo: Constant.selectedZone!.id.toString())
-            .limit(safeLimit);
-        print(
-          '🔍 Loading vendors from zone: ${Constant.selectedZone!.name} (${Constant.selectedZone!.id})',
-        );
-      } else {
-        query = FirebaseFirestore.instance
-            .collection(CollectionName.vendors)
-            .limit(safeLimit);
-        print('🔍 No zone selected, loading all vendors');
-      }
-      QuerySnapshot querySnapshot = await query.get();
-      print(
-        '🔍 Found ${querySnapshot.docs.length} vendors in Firestore (limited to $safeLimit for memory safety)',
-      );
-      for (var document in querySnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          VendorModel vendorModel = VendorModel.fromJson(data);
-          // **FOOD CATEGORY FILTERING: Exclude mart vendors from search**
-          if (vendorModel.vType == null ||
-              vendorModel.vType!.toLowerCase() != 'mart') {
-            vendorList.add(vendorModel);
-          } else {
-            print('🔍 Mart vendor excluded from search: ${vendorModel.title}');
-          }
-        } catch (e) {
-          print('❌ Error parsing vendor ${document.id}: $e');
-        }
-      }
-
-      print('✅ Loaded ${vendorList.length} vendors for search');
-      return vendorList;
-    } catch (e) {
-      print('❌ Error loading all vendors: $e');
-      if (e.toString().contains('OutOfMemoryError')) {
-        print(
-          '🚨 OutOfMemoryError detected! Returning empty list to prevent crash.',
-        );
-      }
-      return [];
-    }
-  }
+  // static Future<List<VendorModel>> getAllVendors({int? limit}) async {
+  //   try {
+  //     List<VendorModel> vendorList = [];
+  //     int safeLimit =
+  //         limit ?? 500; // Increased to 500 to match admin panel results
+  //     Query query;
+  //     if (Constant.selectedZone != null) {
+  //       query = FirebaseFirestore.instance
+  //           .collection(CollectionName.vendors)
+  //           .where('zoneId', isEqualTo: Constant.selectedZone!.id.toString())
+  //           .limit(safeLimit);
+  //       print(
+  //         '🔍 Loading vendors from zone: ${Constant.selectedZone!.name} (${Constant.selectedZone!.id})',
+  //       );
+  //     } else {
+  //       query = FirebaseFirestore.instance
+  //           .collection(CollectionName.vendors)
+  //           .limit(safeLimit);
+  //       print('🔍 No zone selected, loading all vendors');
+  //     }
+  //     QuerySnapshot querySnapshot = await query.get();
+  //     print(
+  //       '🔍 Found ${querySnapshot.docs.length} vendors in Firestore (limited to $safeLimit for memory safety)',
+  //     );
+  //     for (var document in querySnapshot.docs) {
+  //       try {
+  //         final data = document.data() as Map<String, dynamic>;
+  //         VendorModel vendorModel = VendorModel.fromJson(data);
+  //         // **FOOD CATEGORY FILTERING: Exclude mart vendors from search**
+  //         if (vendorModel.vType == null ||
+  //             vendorModel.vType!.toLowerCase() != 'mart') {
+  //           vendorList.add(vendorModel);
+  //         } else {
+  //           print('🔍 Mart vendor excluded from search: ${vendorModel.title}');
+  //         }
+  //       } catch (e) {
+  //         print('❌ Error parsing vendor ${document.id}: $e');
+  //       }
+  //     }
+  //     print('✅ Loaded ${vendorList.length} vendors for search');
+  //     return vendorList;
+  //   } catch (e) {
+  //     print('❌ Error loading all vendors: $e');
+  //     if (e.toString().contains('OutOfMemoryError')) {
+  //       print(
+  //         '🚨 OutOfMemoryError detected! Returning empty list to prevent crash.',
+  //       );
+  //     }
+  //     return [];
+  //   }
+  // }
 
   /// Get all products for search indexing - MEMORY OPTIMIZED
-  static Future<List<ProductModel>> getAllProducts({int? limit}) async {
+
+  static Future<List<ProductModel>> getAllProducts({
+    int? limit,
+    int page = 1,
+  }) async {
     try {
       List<ProductModel> productList = [];
-      int safeLimit =
-          limit ?? 800; // Increased to 800 to match admin panel results
-      Query query = FirebaseFirestore.instance
-          .collection(CollectionName.vendorProducts)
-          .where('publish', isEqualTo: true)
-          .limit(safeLimit); // Always limit to prevent memory issues
-      QuerySnapshot querySnapshot = await query.get();
-      print(
-        '📊 Loaded ${querySnapshot.docs.length} published products (limited to $safeLimit for memory safety)',
-      );
-      for (var document in querySnapshot.docs) {
-        try {
-          ProductModel productModel = ProductModel.fromJson(
-            document.data() as Map<String, dynamic>,
+
+      final String baseUrl =
+          '${AppConst.baseUrl}products'; // Replace with your actual base URL
+      final Map<String, String> queryParams = {'page': page.toString()};
+      final Uri uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+      print('🌐 Fetching products from API: $uri');
+      // Make API request
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final List<dynamic> productsJson = responseData['data'];
+          final Map<String, dynamic> meta = responseData['meta'];
+
+          print(
+            '📊 API Response: Loaded ${productsJson.length} products (Page $page of ${meta['last_page']}, Total: ${meta['total']})',
           );
-          productList.add(productModel);
-        } catch (e) {
-          print('❌ Error parsing product ${document.id}: $e');
+
+          // Parse products
+          for (var productJson in productsJson) {
+            try {
+              ProductModel productModel = ProductModel.fromJson(productJson);
+              productList.add(productModel);
+            } catch (e) {
+              print('❌ Error parsing product ${productJson['id']}: $e');
+            }
+          }
+
+          print(
+            '✅ Successfully loaded ${productList.length} products from API',
+          );
+          return productList;
+        } else {
+          print('❌ API returned error: ${responseData['message']}');
+          return [];
         }
-      }
-      print('✅ Loaded ${productList.length} products for search');
-      return productList;
-    } catch (e) {
-      print('❌ Error loading all products: $e');
-      if (e.toString().contains('OutOfMemoryError')) {
+      } else {
         print(
-          '🚨 OutOfMemoryError detected! Returning empty list to prevent crash.',
+          '❌ HTTP Error: ${response.statusCode} - ${response.reasonPhrase}',
         );
+        return [];
       }
+    } catch (e) {
+      print('❌ Error loading products from API: $e');
+
+      if (e is http.ClientException) {
+        print('🌐 Network error: ${e.message}');
+      } else if (e is TimeoutException) {
+        print('⏰ Request timeout');
+      }
+
       return [];
     }
   }

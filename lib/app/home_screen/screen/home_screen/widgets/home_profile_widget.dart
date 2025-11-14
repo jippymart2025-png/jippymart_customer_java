@@ -52,7 +52,7 @@ Widget homeProfileAddressWidget({
                     ),
                   )
                 : Text(
-                    Constant.userModel!.fullName(),
+                    Constant.userModel!.fullName().toString(),
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontFamily: AppThemeData.medium,
@@ -63,11 +63,12 @@ Widget homeProfileAddressWidget({
             InkWell(
               onTap: () async {
                 if (Constant.userModel != null) {
-                  Get.to(const AddressListScreen())!.then((value) {
+                  Get.to(const AddressListScreen())?.then((value) {
                     if (value != null) {
-                      ShippingAddress addressModel = value;
-                      Constant.selectedLocation = addressModel;
-                      homeProvider.getData(context);
+                      homeProvider.changeLocationAddressFunction(
+                        addressModel: value,
+                        context: context,
+                      );
                     }
                   });
                 } else {
@@ -86,7 +87,6 @@ Widget homeProfileAddressWidget({
                             final lat = firstPlace.coordinates.latitude;
                             final lng = firstPlace.coordinates.longitude;
                             final address = firstPlace.address;
-
                             addressModel.addressAs = "Home";
                             addressModel.locality = address.toString();
                             addressModel.location = UserLocation(

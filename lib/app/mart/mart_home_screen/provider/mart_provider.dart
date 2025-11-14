@@ -25,10 +25,7 @@ class MartProvider extends ChangeNotifier {
   Future<void> loadCategoryProductsForSections() async {
     try {
       // Get all mart items
-      final allProducts = await _firestoreService.getMartItems(
-        search: null,
-        limit: 200, // Get more items to have enough for each category
-      );
+      final allProducts = await _firestoreService.getMartItems();
 
       // Group products by categoryTitle
       final Map<String, List<MartItemModel>> categoryMap = {};
@@ -79,28 +76,6 @@ class MartProvider extends ChangeNotifier {
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error loading products by category: $e');
     }
-  }
-
-  List<MartItemModel> getProductsForCategoryTitle(String categoryTitle) {
-    return categoryProductsMap[categoryTitle] ?? [];
-  }
-
-  /// Get products for a specific category
-  List<MartItemModel> getProductsForCategory(String categoryId) {
-    // Filter martItems by category ID
-    final categoryProducts = martItems
-        .where((item) => item.categoryID == categoryId)
-        .toList();
-
-    // If no products found in current martItems, try to load them
-    if (categoryProducts.isEmpty) {
-      // Trigger loading for this category
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        loadCategoryItems(categoryId);
-      });
-    }
-
-    return categoryProducts;
   }
 
   // Service injection
@@ -160,26 +135,6 @@ class MartProvider extends ChangeNotifier {
   ValueNotifier<int> currentTopBannerPage = ValueNotifier<int>(0);
   int currentBottomBannerPage = 0;
   Timer? _martBannerTimer;
-
-  // Getter for trending items where isTrending is true
-  List<MartItemModel> get filteredTrendingItems {
-    final filtered = trendingItems
-        .where((item) => item.isTrending == true)
-        .toList();
-    print(
-      '[MART CONTROLLER] 🔍 Filtered trending items: ${filtered.length}/${trendingItems.length} (isTrending=true)',
-    );
-    if (trendingItems.isNotEmpty) {
-      print('[MART CONTROLLER] 📊 Trending items breakdown:');
-      for (int i = 0; i < trendingItems.length; i++) {
-        final item = trendingItems[i];
-        print(
-          '[MART CONTROLLER]   ${i + 1}. ${item.name} - isTrending: ${item.isTrending}',
-        );
-      }
-    }
-    return filtered;
-  }
 
   // Current data
   MartVendorModel? currentVendor = MartVendorModel();
@@ -447,7 +402,6 @@ class MartProvider extends ChangeNotifier {
           );
         }
       }
-
       // Fallback to default coordinates (Ongole)
       return (latitude: 15.486434, longitude: 80.049588);
     } catch (e) {
@@ -475,16 +429,13 @@ class MartProvider extends ChangeNotifier {
       print('[MART CONTROLLER] ==========================================');
       print('[MART CONTROLLER] 🏪 loadMartVendors() called');
       print('[MART CONTROLLER] ==========================================');
-
       if (refresh) {
         print('[MART CONTROLLER] 🔄 Refresh mode - clearing existing vendors');
         martVendors.clear();
       }
-
       // Set loading state with timeout
       isVendorLoading = true;
       errorMessage = "";
-
       // Add timeout to prevent infinite loading
       bool timeoutReached = false;
       Timer? timeoutTimer;
@@ -516,10 +467,7 @@ class MartProvider extends ChangeNotifier {
         print('[MART CONTROLLER]    - longitude: ${location.longitude}');
         print('[MART CONTROLLER]    - radius: 10.0');
 
-        final vendors = await _firestoreService.getMartVendors(
-          isActive: true,
-          limit: 10,
-        );
+        final vendors = await _firestoreService.getMartVendors();
 
         if (timeoutReached) return;
 
@@ -570,12 +518,6 @@ class MartProvider extends ChangeNotifier {
   }
 
   /// Load more vendors (pagination)
-  Future<void> loadMoreVendors() async {
-    if (!hasMoreVendors || isVendorLoading) return;
-
-    currentVendorPage++;
-    await loadMartVendors();
-  }
 
   /// Select a vendor
   void selectVendor(String vendorId) {
@@ -587,37 +529,6 @@ class MartProvider extends ChangeNotifier {
     // Load vendor-specific data
     loadVendorCategories(vendorId);
     loadVendorItems(vendorId);
-  }
-
-  /// Search vendors
-  Future<void> searchVendors(String query) async {
-    try {
-      isVendorLoading = true;
-      errorMessage = "";
-
-      // Get user's current location or use default coordinates
-
-      // Try to get location from user model or preferences
-      if (Constant.userModel?.shippingAddress != null &&
-          Constant.userModel!.shippingAddress!.isNotEmpty) {
-        final defaultAddress = Constant.userModel!.shippingAddress!
-            .firstWhereOrNull((addr) => addr.isDefault == true);
-        if (defaultAddress?.location != null) {}
-      }
-
-      final vendors = await _firestoreService.getMartVendors(
-        search: query,
-        isActive: true,
-        limit: 20,
-      );
-      martVendors.clear();
-      martVendors.addAll(vendors);
-    } catch (e) {
-      print('[MART] Error searching vendors: $e');
-      errorMessage = "Failed to search vendors: $e";
-    } finally {
-      isVendorLoading = false;
-    }
   }
 
   // ==================== MART CATEGORIES ====================
@@ -679,56 +590,6 @@ class MartProvider extends ChangeNotifier {
   }
 
   /// Debug method to load ALL subcategories (no filters)
-  Future<void> loadAllSubcategoriesDebug() async {
-    try {
-      print(
-        '[MART CONTROLLER] 🔍 DEBUG: Loading ALL subcategories from Firestore (no filters)...',
-      );
-      isSubcategoryLoading = true;
-
-      // Clear existing subcategories
-      subcategoriesMap.clear();
-
-      // Get all subcategories directly (no filters)
-      final allSubcategories = await _firestoreService
-          .getAllSubcategoriesDebug();
-
-      if (allSubcategories.isNotEmpty) {
-        // Group subcategories by parent category for the map
-        final Map<String, List<MartSubcategoryModel>> groupedSubcategories = {};
-
-        for (final subcategory in allSubcategories) {
-          final parentId = subcategory.parentCategoryId ?? 'unknown';
-          if (!groupedSubcategories.containsKey(parentId)) {
-            groupedSubcategories[parentId] = [];
-          }
-          groupedSubcategories[parentId]!.add(subcategory);
-        }
-
-        // Update the subcategories map
-        subcategoriesMap.addAll(groupedSubcategories);
-
-        print(
-          '[MART CONTROLLER] 🔍 DEBUG: Loaded ${allSubcategories.length} total subcategories from ${groupedSubcategories.length} parent categories',
-        );
-        print(
-          '[MART CONTROLLER] 🔍 DEBUG: Subcategories map contains: ${subcategoriesMap.length} category entries',
-        );
-        subcategoriesMap.forEach((categoryId, subcategoryList) {
-          print(
-            '[MART CONTROLLER] 🔍 DEBUG: Category $categoryId: ${subcategoryList.length} subcategories',
-          );
-        });
-        notifyListeners();
-      } else {
-        print('[MART CONTROLLER] 🔍 DEBUG: No subcategories found at all');
-      }
-    } catch (e) {
-      print('[MART CONTROLLER] 🔍 DEBUG: Error loading all subcategories: $e');
-    } finally {
-      isSubcategoryLoading = false;
-    }
-  }
 
   /// Load sub-categories for a specific category
   Future<void> loadSubcategoriesForCategory(String categoryId) async {
@@ -762,7 +623,7 @@ class MartProvider extends ChangeNotifier {
       isCategoryLoading = true;
       errorMessage = "";
 
-      final categories = await _firestoreService.getPublishedCategories(
+      final categories = await _firestoreService.getFeaturedCategories(
         martId: vendorId,
       );
       martCategories.clear();
@@ -801,7 +662,7 @@ class MartProvider extends ChangeNotifier {
   Future<void> loadFeaturedCategories() async {
     try {
       final categories = await _firestoreService.getFeaturedCategories(
-        martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
+        martId: selectedVendorId.isNotEmpty ? selectedVendorId : "",
       );
       featuredCategories.clear();
       featuredCategories.addAll(categories);
@@ -832,10 +693,7 @@ class MartProvider extends ChangeNotifier {
         return;
       }
 
-      final items = await _firestoreService.getMartItems(
-        search: null,
-        limit: itemsPerPage,
-      );
+      final items = await _firestoreService.getMartItems();
 
       if (refresh) {
         martItems.clear();
@@ -1521,10 +1379,7 @@ class MartProvider extends ChangeNotifier {
       print('[MART CONTROLLER] 🔄 Fallback: Loading all items...');
 
       // Load items with API-compliant limit to avoid validation errors
-      final allItems = await _firestoreService.getMartItems(
-        search: null,
-        limit: 50, // API requires limit <= 50
-      );
+      final allItems = await _firestoreService.getMartItems();
 
       // Filter for trending items
       final trendingFromAll = allItems
@@ -1653,11 +1508,7 @@ class MartProvider extends ChangeNotifier {
     try {
       print('[MART CONTROLLER] 🏪 Streaming: Loading vendors...');
       // Load vendors
-      final vendors = await _firestoreService.getMartVendors(
-        isActive: true,
-        enabledDelivery: false,
-        limit: 10,
-      );
+      final vendors = await _firestoreService.getMartVendors();
       if (vendors.isNotEmpty) {
         martVendors.clear();
         martVendors.addAll(vendors);
@@ -1709,17 +1560,13 @@ class MartProvider extends ChangeNotifier {
     try {
       print('[MART CONTROLLER] 🏷️ Streaming: Loading items on sale...');
 
-      final items = await _firestoreService.getMartItems(
-        search: null,
-        limit: 20,
-      );
+      final items = await _firestoreService.getMartItems();
 
       final saleItems = items.where((item) => item.isOnSale == true).toList();
 
       // Stream the data as it becomes available
       itemsOnSale.clear();
       itemsOnSale.addAll(saleItems);
-
       print(
         '[MART CONTROLLER] ✅ Streaming: Items on sale loaded (${saleItems.length})',
       );
@@ -1732,8 +1579,6 @@ class MartProvider extends ChangeNotifier {
   Future<void> refreshStreamingData() async {
     try {
       print('[MART CONTROLLER] 🔄 Manual streaming refresh triggered...');
-
-      // Refresh all data streams in parallel
       await Future.wait([
         loadHomepageCategoriesStreaming(limit: 10),
         loadTrendingItemsStreaming(),
@@ -1749,39 +1594,6 @@ class MartProvider extends ChangeNotifier {
   }
 
   // ==================== SIMILAR PRODUCTS STREAM ====================
-
-  /// Stream similar products for a given product
-  Stream<List<MartItemModel>> streamSimilarProducts({
-    required String categoryId,
-    String? subcategoryId,
-    String? excludeProductId,
-    bool? isAvailable,
-    int limit = 6,
-  }) {
-    try {
-      print(
-        '[MART CONTROLLER] 📡 Starting similar products stream for category: $categoryId',
-      );
-      if (subcategoryId != null) {
-        print('[MART CONTROLLER] 📡 Subcategory filter: $subcategoryId');
-      }
-      if (excludeProductId != null) {
-        print('[MART CONTROLLER] 📡 Excluding product: $excludeProductId');
-      }
-
-      // Use the Firestore service stream method
-      return _firestoreService.streamSimilarProducts(
-        categoryId: categoryId,
-        subcategoryId: subcategoryId,
-        excludeProductId: excludeProductId,
-        isAvailable: isAvailable,
-        limit: limit,
-      );
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating similar products stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
 
   /// Stream all products from mart_items collection
   Stream<List<MartItemModel>> streamAllProducts({
@@ -1809,170 +1621,9 @@ class MartProvider extends ChangeNotifier {
 
   // ==================== SECTION-SPECIFIC PRODUCT STREAMS ====================
 
-  /// Stream products for Product Deals section
-  Stream<List<MartItemModel>> streamProductDeals({int limit = 10}) {
-    try {
-      print('[MART CONTROLLER] 📡 Starting Product Deals stream');
-      return _firestoreService.streamProductDeals(limit: limit);
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating Product Deals stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
-
-  /// Stream products for Hair Care section
-  Stream<List<MartItemModel>> streamHairCareProducts({int limit = 10}) {
-    try {
-      print('[MART CONTROLLER] 📡 Starting Hair Care stream');
-      return _firestoreService.streamHairCareProducts(limit: limit);
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating Hair Care stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
-
-  /// Stream products for Chocolates section
-  Stream<List<MartItemModel>> streamChocolateProducts({int limit = 10}) {
-    try {
-      print('[MART CONTROLLER] 📡 Starting Chocolates stream');
-      return _firestoreService.streamChocolateProducts(limit: limit);
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating Chocolates stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
-
-  /// Stream products for Playtime section
-  Stream<List<MartItemModel>> streamPlaytimeProducts({int limit = 10}) {
-    try {
-      print('[MART CONTROLLER] 📡 Starting Playtime stream');
-      return _firestoreService.streamPlaytimeProducts(limit: limit);
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating Playtime stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
-
-  /// Stream products for Baby Care section
-  Stream<List<MartItemModel>> streamBabyCareProducts({int limit = 10}) {
-    try {
-      print('[MART CONTROLLER] 📡 Starting Baby Care stream');
-      return _firestoreService.streamBabyCareProducts(limit: limit);
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating Baby Care stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
-
-  /// Stream products for Local Grocery section
-  Stream<List<MartItemModel>> streamLocalGroceryProducts({int limit = 10}) {
-    try {
-      print('[MART CONTROLLER] 📡 Starting Local Grocery stream');
-      return _firestoreService.streamLocalGroceryProducts(limit: limit);
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating Local Grocery stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
-
   // ==================== BANNER METHODS ====================
 
-  /// Stream banners by position (top, middle, bottom)
-  Stream<List<MartBannerModel>> streamBannersByPosition(
-    String position, {
-    int limit = 10,
-  }) {
-    try {
-      print('[MART CONTROLLER] 🎯 Streaming banners for position: $position');
-      return _firestoreService.streamBannersByPosition(position, limit: limit);
-    } catch (e) {
-      print(
-        '[MART CONTROLLER] ❌ Error creating banner stream for position $position: $e',
-      );
-      return Stream<List<MartBannerModel>>.empty();
-    }
-  }
-
-  /// Stream all published banners
-  Stream<List<MartBannerModel>> streamAllBanners({int limit = 20}) {
-    try {
-      print('[MART CONTROLLER] 🎯 Streaming all published banners');
-      return _firestoreService.streamAllBanners(limit: limit);
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating all banners stream: $e');
-      return Stream<List<MartBannerModel>>.empty();
-    }
-  }
-
-  /// Get banners by position (one-time fetch)
-  Future<List<MartBannerModel>> getBannersByPosition(
-    String position, {
-    int limit = 10,
-  }) async {
-    try {
-      print('[MART CONTROLLER] 🎯 Fetching banners for position: $position');
-      return await _firestoreService.getBannersByPosition(
-        position,
-        limit: limit,
-      );
-    } catch (e) {
-      print(
-        '[MART CONTROLLER] ❌ Error fetching banners for position $position: $e',
-      );
-      return <MartBannerModel>[];
-    }
-  }
-
   /// Handle banner tap based on redirect type
-  void handleBannerTap(MartBannerModel banner) {
-    try {
-      print(
-        '[MART CONTROLLER] 🎯 Banner tapped: ${banner.title} (${banner.redirectType})',
-      );
-
-      switch (banner.redirectType?.toLowerCase()) {
-        case 'product':
-          if (banner.productId != null && banner.productId!.isNotEmpty) {
-            // Navigate to product details
-            print(
-              '[MART CONTROLLER] 🎯 Navigating to product: ${banner.productId}',
-            );
-            // TODO: Implement product navigation
-            // Get.to(() => MartProductDetailsScreen(productId: banner.productId!));
-          }
-          break;
-
-        case 'category':
-          if (banner.storeId != null && banner.storeId!.isNotEmpty) {
-            // Navigate to category
-            print(
-              '[MART CONTROLLER] 🎯 Navigating to category: ${banner.storeId}',
-            );
-            // TODO: Implement category navigation
-            // Get.to(() => MartCategoryDetailScreen(categoryId: banner.storeId!));
-          }
-          break;
-
-        case 'external':
-          if (banner.externalLink != null && banner.externalLink!.isNotEmpty) {
-            // Open external link
-            print(
-              '[MART CONTROLLER] 🎯 Opening external link: ${banner.externalLink}',
-            );
-            // TODO: Implement external link opening
-            // launchUrl(Uri.parse(banner.externalLink!));
-          }
-          break;
-
-        default:
-          print(
-            '[MART CONTROLLER] ⚠️ Unknown redirect type: ${banner.redirectType}',
-          );
-      }
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error handling banner tap: $e');
-    }
-  }
 
   /// Fetch delivery settings from Firestore (DEPRECATED - Use settings/martDeliveryCharge instead)
   @Deprecated('Use settings/martDeliveryCharge collection instead')
@@ -2178,7 +1829,6 @@ class MartProvider extends ChangeNotifier {
 
       final products = await _firestoreService.getItemsBySection(
         section: section,
-        limit: 15,
       );
 
       sectionProducts[section] = products;
@@ -2307,11 +1957,9 @@ class MartProvider extends ChangeNotifier {
       _lastDocuments.clear();
       _currentPage = 0;
       _hasMoreSubcategories = true;
-
       final result = await _firestoreService.getHomepageSubcategoriesPaginated(
         limit: 10,
       );
-
       final subcategories =
           result['subcategories'] as List<MartSubcategoryModel>;
       final lastDoc = result['lastDocument'] as DocumentSnapshot?;

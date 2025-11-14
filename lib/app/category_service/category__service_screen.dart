@@ -905,12 +905,9 @@ class CateringServiceScreen extends StatelessWidget {
           ),
         ),
 
-        // Show additional text field when "Other" is selected
-        Obx(
-          () => controller.isOtherFunctionType.value
-              ? _buildOtherFunctionTypeField(controller: controller)
-              : const SizedBox.shrink(),
-        ),
+        controller.isOtherFunctionType.value
+            ? _buildOtherFunctionTypeField(controller: controller)
+            : const SizedBox.shrink(),
       ],
     );
   }

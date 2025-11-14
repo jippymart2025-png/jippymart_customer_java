@@ -10,6 +10,8 @@ import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
+  final hasPromotionalItems = controller.hasPromotionalItems();
+  final hasMartItems = controller.hasMartItemsInCart();
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: Column(
@@ -73,168 +75,16 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 10),
-                controller.selectedFoodType == 'TakeAway'
-                    ? const SizedBox()
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Delivery Fee".tr,
-                              textAlign: TextAlign.start,
-                              style: TextStyle(
-                                fontFamily: AppThemeData.regular,
-                                color: AppThemeData.grey600,
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                          // Check if cart has promotional items or mart items
-                          Obx(() {
-                            final hasPromotionalItems = controller
-                                .hasPromotionalItems();
-                            final hasMartItems = controller
-                                .hasMartItemsInCart();
-
-                            // Self delivery check
-                            if (controller.vendorModel.isSelfDelivery == true &&
-                                Constant.isSelfDeliveryFeature == true) {
-                              return Text(
-                                'Free Delivery',
-                                textAlign: TextAlign.start,
-                                style: TextStyle(
-                                  fontFamily: AppThemeData.regular,
-                                  color: AppThemeData.success400,
-                                  fontSize: 16,
-                                ),
-                              );
-                            }
-
-                            // Promotional items delivery logic
-                            if (hasPromotionalItems) {
-                              // For promotional items, always show "Free Delivery" UI with strikethrough ₹23
-                              // because promotional items are eligible for free delivery base
-                              return buildDeliveryFeeUI(
-                                isFreeDelivery: true,
-                                originalFee: 23.0,
-                                currentFee: controller.deliveryCharges,
-                              );
-                            }
-
-                            if (hasMartItems) {
-                              print(
-                                '[CART_UI] 🛒 Building mart delivery UI...',
-                              );
-
-                              // For mart items, use the same logic as restaurant items
-                              // Get mart delivery settings (static values like restaurant)
-                              double itemThreshold =
-                                  199.0; // Default mart threshold
-                              double freeDeliveryKm =
-                                  5.0; // Default mart free distance
-                              double baseDeliveryCharge =
-                                  23.0; // Static base charge
-
-                              final subtotal = controller.subTotal;
-                              final distance = controller.totalDistance;
-
-                              // Determine delivery eligibility and charges (same logic as restaurant)
-                              final isAboveThreshold =
-                                  subtotal >= itemThreshold;
-                              final isWithinFreeDistance =
-                                  distance <= freeDeliveryKm;
-
-                              if (isAboveThreshold) {
-                                // Above threshold - eligible for free delivery logic
-                                if (isWithinFreeDistance) {
-                                  return buildDeliveryFeeUI(
-                                    isFreeDelivery: true,
-                                    originalFee: baseDeliveryCharge,
-                                    currentFee: 0.0,
-                                  );
-                                } else {
-                                  // Free delivery with extra charge: Green "Free Delivery" + strikethrough base charge + extra charge
-
-                                  return buildDeliveryFeeUI(
-                                    isFreeDelivery: true,
-                                    originalFee: baseDeliveryCharge,
-                                    currentFee: controller.deliveryCharges,
-                                  );
-                                }
-                              } else {
-                                // Below threshold - regular paid delivery
-                                print(
-                                  '[CART_UI]   - Mart regular paid delivery',
-                                );
-                                return buildDeliveryFeeUI(
-                                  isFreeDelivery: false,
-                                  originalFee: 0.0,
-                                  currentFee: controller.deliveryCharges,
-                                );
-                              }
-                            }
-
-                            // Regular items delivery logic
-                            final threshold =
-                                controller
-                                    .deliveryChargeModel
-                                    .itemTotalThreshold ??
-                                299;
-                            final freeKm =
-                                controller
-                                    .deliveryChargeModel
-                                    .freeDeliveryDistanceKm ??
-                                7;
-                            final subtotal = controller.subTotal;
-                            final distance = controller.totalDistance;
-
-                            final isAboveThreshold = subtotal >= threshold;
-                            final isWithinFreeDistance = distance <= freeKm;
-
-                            // Get the base delivery charge for restaurant items (should be ₹23)
-                            double baseDeliveryCharge =
-                                (controller
-                                            .deliveryChargeModel
-                                            .baseDeliveryCharge ??
-                                        23.0)
-                                    .toDouble();
-                            print(
-                              '[CART_UI]   - Base delivery charge: ₹$baseDeliveryCharge',
-                            );
-
-                            if (isAboveThreshold) {
-                              if (isWithinFreeDistance) {
-                                print('[CART_UI]   - Standard free delivery');
-                                return buildDeliveryFeeUI(
-                                  isFreeDelivery: true,
-                                  originalFee: baseDeliveryCharge,
-                                  currentFee: 0.0,
-                                );
-                              } else {
-                                // Free delivery with extra charge: Green "Free Delivery" + strikethrough base charge + extra charge
-                                print(
-                                  '[CART_UI]   - Free delivery with extra charge',
-                                );
-                                return buildDeliveryFeeUI(
-                                  isFreeDelivery: true,
-                                  originalFee: baseDeliveryCharge,
-                                  // Show base charge, not calculated total
-                                  currentFee: controller.deliveryCharges,
-                                );
-                              }
-                            } else {
-                              // Below threshold - regular paid delivery
-                              print('[CART_UI]   - Regular paid delivery');
-                              return buildDeliveryFeeUI(
-                                isFreeDelivery: false,
-                                originalFee: 0.0,
-                                currentFee: controller.deliveryCharges,
-                              );
-                            }
-                          }),
-                        ],
-                      ),
-                const SizedBox(height: 10),
+                // DELIVERY FEE SECTION - Fixed logic
+                if (controller.selectedFoodType != 'TakeAway') ...[
+                  _buildDeliveryFeeSection(
+                    controller,
+                    hasPromotionalItems,
+                    hasMartItems,
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                // PLATFORM FEE SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -273,6 +123,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 10),
+                // SURGE FEE SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -287,7 +138,6 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                         ),
                       ),
                     ),
-
                     Row(
                       children: [
                         Text(
@@ -299,7 +149,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                             fontSize: 16,
                           ),
                         ),
-                        SizedBox(width: 10),
+                        const SizedBox(width: 10),
                         Text(
                           controller.surgePercent <= 0
                               ? "₹10"
@@ -326,6 +176,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                 const SizedBox(height: 10),
                 MySeparator(color: AppThemeData.grey200),
                 const SizedBox(height: 10),
+                // COUPON DISCOUNT SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -351,128 +202,124 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                             fontSize: 16,
                           ),
                         ),
-                        controller.selectedCouponModel.id != null &&
-                                controller.selectedCouponModel.id!.isNotEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.only(left: 8.0),
-                                child: InkWell(
-                                  onTap: () {
-                                    controller.selectedCouponModel =
-                                        CouponModel();
-                                    controller.couponCodeController.text = '';
-                                    controller.couponAmount = 0.0;
-                                    controller.calculatePrice();
-                                  },
-                                  child: Text(
-                                    "Remove",
-                                    style: TextStyle(
-                                      color: AppThemeData.danger300,
-                                      fontFamily: AppThemeData.medium,
-                                      fontSize: 14,
-                                      decoration: TextDecoration.underline,
-                                    ),
-                                  ),
+                        if (controller.selectedCouponModel.id != null &&
+                            controller.selectedCouponModel.id!.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: InkWell(
+                              onTap: () {
+                                controller.selectedCouponModel = CouponModel();
+                                controller.couponCodeController.text = '';
+                                controller.couponAmount = 0.0;
+                                controller.calculatePrice();
+                              },
+                              child: Text(
+                                "Remove".tr,
+                                style: TextStyle(
+                                  color: AppThemeData.danger300,
+                                  fontFamily: AppThemeData.medium,
+                                  fontSize: 14,
+                                  decoration: TextDecoration.underline,
                                 ),
-                              )
-                            : SizedBox.shrink(),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ],
                 ),
-                controller.specialDiscountAmount > 0
-                    ? Column(
-                        children: [
-                          const SizedBox(height: 10),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  "Special Discount".tr,
-                                  textAlign: TextAlign.start,
-                                  style: TextStyle(
-                                    fontFamily: AppThemeData.regular,
-                                    color: AppThemeData.grey600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                "- (${Constant.amountShow(amount: controller.specialDiscountAmount.toString())})",
-                                textAlign: TextAlign.start,
-                                style: TextStyle(
-                                  fontFamily: AppThemeData.regular,
-                                  color: AppThemeData.danger300,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
+                // SPECIAL DISCOUNT SECTION
+                if (controller.specialDiscountAmount > 0) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Special Discount".tr,
+                          textAlign: TextAlign.start,
+                          style: TextStyle(
+                            fontFamily: AppThemeData.regular,
+                            color: AppThemeData.grey600,
+                            fontSize: 16,
                           ),
-                        ],
-                      )
-                    : const SizedBox(),
-                const SizedBox(height: 10),
-                controller.selectedFoodType == 'TakeAway' ||
-                        (controller.vendorModel.isSelfDelivery == true &&
-                            Constant.isSelfDeliveryFeature == true)
-                    ? const SizedBox()
-                    : Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Delivery Tips".tr,
-                                  textAlign: TextAlign.start,
-                                  style: TextStyle(
-                                    fontFamily: AppThemeData.regular,
-                                    color: AppThemeData.grey600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                controller.deliveryTips == 0
-                                    ? const SizedBox()
-                                    : InkWell(
-                                        onTap: () {
-                                          controller.deliveryTips = 0;
-                                          controller.calculatePrice();
-                                        },
-                                        child: Text(
-                                          "Remove".tr,
-                                          textAlign: TextAlign.start,
-                                          style: TextStyle(
-                                            fontFamily: AppThemeData.medium,
-                                            color: AppThemeData.primary300,
-                                          ),
-                                        ),
-                                      ),
-                              ],
-                            ),
-                          ),
-                          Text(
-                            Constant.amountShow(
-                              amount: controller.deliveryTips.toString(),
-                            ),
-                            textAlign: TextAlign.start,
-                            style: TextStyle(
-                              fontFamily: AppThemeData.regular,
-                              color: AppThemeData.grey900,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
+                      Text(
+                        "- (${Constant.amountShow(amount: controller.specialDiscountAmount.toString())})",
+                        textAlign: TextAlign.start,
+                        style: TextStyle(
+                          fontFamily: AppThemeData.regular,
+                          color: AppThemeData.danger300,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 10),
+                // DELIVERY TIPS SECTION
+                if (controller.selectedFoodType != 'TakeAway' &&
+                    !(controller.vendorModel.isSelfDelivery == true &&
+                        Constant.isSelfDeliveryFeature == true)) ...[
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Delivery Tips".tr,
+                              textAlign: TextAlign.start,
+                              style: TextStyle(
+                                fontFamily: AppThemeData.regular,
+                                color: AppThemeData.grey600,
+                                fontSize: 16,
+                              ),
+                            ),
+                            if (controller.deliveryTips > 0)
+                              InkWell(
+                                onTap: () {
+                                  controller.deliveryTips = 0;
+                                  controller.calculatePrice();
+                                },
+                                child: Text(
+                                  "Remove".tr,
+                                  textAlign: TextAlign.start,
+                                  style: TextStyle(
+                                    fontFamily: AppThemeData.medium,
+                                    color: AppThemeData.primary300,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      Text(
+                        Constant.amountShow(
+                          amount: controller.deliveryTips.toString(),
+                        ),
+                        textAlign: TextAlign.start,
+                        style: TextStyle(
+                          fontFamily: AppThemeData.regular,
+                          color: AppThemeData.grey900,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 MySeparator(color: AppThemeData.grey200),
                 const SizedBox(height: 10),
+                // TAXES & CHARGES SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
                       child: Text(
-                        "Taxes & Charges",
+                        "Taxes & Charges".tr,
                         textAlign: TextAlign.start,
                         style: TextStyle(
                           fontFamily: AppThemeData.regular,
@@ -495,6 +342,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 10),
+                // TO PAY SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -528,5 +376,192 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
         ),
       ],
     ),
+  );
+}
+
+// Helper method to build delivery fee section
+Widget _buildDeliveryFeeSection(
+  CartControllerProvider controller,
+  bool hasPromotionalItems,
+  bool hasMartItems,
+) {
+  // Self delivery check
+  if (controller.vendorModel.isSelfDelivery == true &&
+      Constant.isSelfDeliveryFeature == true) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            "Delivery Fee".tr,
+            textAlign: TextAlign.start,
+            style: TextStyle(
+              fontFamily: AppThemeData.regular,
+              color: AppThemeData.grey600,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        Text(
+          'Free Delivery'.tr,
+          textAlign: TextAlign.start,
+          style: TextStyle(
+            fontFamily: AppThemeData.regular,
+            color: AppThemeData.success400,
+            fontSize: 16,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Promotional items delivery logic
+  if (hasPromotionalItems) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            "Delivery Fee".tr,
+            textAlign: TextAlign.start,
+            style: TextStyle(
+              fontFamily: AppThemeData.regular,
+              color: AppThemeData.grey600,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        buildDeliveryFeeUI(
+          isFreeDelivery: true,
+          originalFee: 23.0,
+          currentFee: controller.deliveryCharges,
+        ),
+      ],
+    );
+  }
+
+  // Mart items delivery logic
+  if (hasMartItems) {
+    print('[CART_UI] 🛒 Building mart delivery UI...');
+
+    // For mart items, use the same logic as restaurant items
+    double itemThreshold = 199.0; // Default mart threshold
+    double freeDeliveryKm = 5.0; // Default mart free distance
+    double baseDeliveryCharge = 23.0; // Static base charge
+
+    final subtotal = controller.subTotal;
+    final distance = controller.totalDistance;
+
+    // Determine delivery eligibility and charges (same logic as restaurant)
+    final isAboveThreshold = subtotal >= itemThreshold;
+    final isWithinFreeDistance = distance <= freeDeliveryKm;
+
+    Widget martDeliveryWidget;
+
+    if (isAboveThreshold) {
+      // Above threshold - eligible for free delivery logic
+      if (isWithinFreeDistance) {
+        martDeliveryWidget = buildDeliveryFeeUI(
+          isFreeDelivery: true,
+          originalFee: baseDeliveryCharge,
+          currentFee: 0.0,
+        );
+      } else {
+        // Free delivery with extra charge: Green "Free Delivery" + strikethrough base charge + extra charge
+        martDeliveryWidget = buildDeliveryFeeUI(
+          isFreeDelivery: true,
+          originalFee: baseDeliveryCharge,
+          currentFee: controller.deliveryCharges,
+        );
+      }
+    } else {
+      // Below threshold - regular paid delivery
+      print('[CART_UI]   - Mart regular paid delivery');
+      martDeliveryWidget = buildDeliveryFeeUI(
+        isFreeDelivery: false,
+        originalFee: 0.0,
+        currentFee: controller.deliveryCharges,
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            "Delivery Fee".tr,
+            textAlign: TextAlign.start,
+            style: TextStyle(
+              fontFamily: AppThemeData.regular,
+              color: AppThemeData.grey600,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        martDeliveryWidget,
+      ],
+    );
+  }
+
+  // Regular items delivery logic
+  final threshold = controller.deliveryChargeModel.itemTotalThreshold ?? 299;
+  final freeKm = controller.deliveryChargeModel.freeDeliveryDistanceKm ?? 7;
+  final subtotal = controller.subTotal;
+  final distance = controller.totalDistance;
+
+  final isAboveThreshold = subtotal >= threshold;
+  final isWithinFreeDistance = distance <= freeKm;
+
+  // Get the base delivery charge for restaurant items (should be ₹23)
+  double baseDeliveryCharge =
+      (controller.deliveryChargeModel.baseDeliveryCharge ?? 23.0).toDouble();
+  print('[CART_UI]   - Base delivery charge: ₹$baseDeliveryCharge');
+
+  Widget regularDeliveryWidget;
+
+  if (isAboveThreshold) {
+    if (isWithinFreeDistance) {
+      print('[CART_UI]   - Standard free delivery');
+      regularDeliveryWidget = buildDeliveryFeeUI(
+        isFreeDelivery: true,
+        originalFee: baseDeliveryCharge,
+        currentFee: 0.0,
+      );
+    } else {
+      // Free delivery with extra charge: Green "Free Delivery" + strikethrough base charge + extra charge
+      print('[CART_UI]   - Free delivery with extra charge');
+      regularDeliveryWidget = buildDeliveryFeeUI(
+        isFreeDelivery: true,
+        originalFee: baseDeliveryCharge,
+        // Show base charge, not calculated total
+        currentFee: controller.deliveryCharges,
+      );
+    }
+  } else {
+    // Below threshold - regular paid delivery
+    print('[CART_UI]   - Regular paid delivery');
+    regularDeliveryWidget = buildDeliveryFeeUI(
+      isFreeDelivery: false,
+      originalFee: 0.0,
+      currentFee: controller.deliveryCharges,
+    );
+  }
+
+  return Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Expanded(
+        child: Text(
+          "Delivery Fee".tr,
+          textAlign: TextAlign.start,
+          style: TextStyle(
+            fontFamily: AppThemeData.regular,
+            color: AppThemeData.grey600,
+            fontSize: 16,
+          ),
+        ),
+      ),
+      regularDeliveryWidget,
+    ],
   );
 }

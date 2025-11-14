@@ -464,7 +464,7 @@ Widget buildProductsWithoutCategories(
                                             .clear();
                                         controller.selectedIndexArray.clear();
                                         controller.selectedAddOns.clear();
-                                        controller.quantity.value = 1;
+                                        controller.quantity = 1;
                                         if (productModel.itemAttribute !=
                                             null) {
                                           if (productModel
@@ -512,10 +512,10 @@ Widget buildProductsWithoutCategories(
                                                   product.id ==
                                                   "${productModel.id}~${productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).isNotEmpty ? productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).first.variantId.toString() : ""}",
                                             );
-                                            controller.quantity.value =
+                                            controller.quantity =
                                                 element.quantity!;
                                           } else {
-                                            controller.quantity.value = 1;
+                                            controller.quantity = 1;
                                           }
                                         }
 

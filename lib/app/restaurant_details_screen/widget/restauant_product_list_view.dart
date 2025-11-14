@@ -530,7 +530,7 @@ class ProductListView extends StatelessWidget {
           controller.selectedIndexVariants.clear();
           controller.selectedIndexArray.clear();
           controller.selectedAddOns.clear();
-          controller.quantity.value = 1;
+          controller.quantity = 1;
 
           // Calculate initial price
           controller.calculatePrice(productModel);

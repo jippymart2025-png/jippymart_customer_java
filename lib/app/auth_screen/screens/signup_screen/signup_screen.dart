@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provider/signup_provider.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -142,44 +143,54 @@ class SignupScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    RoundedButtonFill(
-                      title: "Signup".tr,
-                      color: AppThemeData.primary300,
-                      textColor: AppThemeData.grey50,
-                      onPress: () async {
-                        if (controller.firstNameEditingController.value.text
-                            .trim()
-                            .isEmpty) {
-                          ShowToastDialog.showToast(
-                            "Please enter first name".tr,
-                          );
-                        } else if (controller
-                            .lastNameEditingController
-                            .value
-                            .text
-                            .trim()
-                            .isEmpty) {
-                          ShowToastDialog.showToast(
-                            "Please enter last name".tr,
-                          );
-                        } else if (controller.emailEditingController.value.text
-                            .trim()
-                            .isEmpty) {
-                          ShowToastDialog.showToast(
-                            "Please enter valid email".tr,
-                          );
-                        } else if (controller
-                            .phoneNUmberEditingController
-                            .value
-                            .text
-                            .trim()
-                            .isEmpty) {
-                          ShowToastDialog.showToast(
-                            "Please enter Phone number".tr,
-                          );
-                        } else {
-                          controller.signUpWithEmailAndPassword();
-                        }
+                    Consumer<SplashProvider>(
+                      builder: (context, splashProvider, _) {
+                        return RoundedButtonFill(
+                          title: "Signup".tr,
+                          color: AppThemeData.primary300,
+                          textColor: AppThemeData.grey50,
+                          onPress: () async {
+                            if (controller.firstNameEditingController.value.text
+                                .trim()
+                                .isEmpty) {
+                              ShowToastDialog.showToast(
+                                "Please enter first name".tr,
+                              );
+                            } else if (controller
+                                .lastNameEditingController
+                                .value
+                                .text
+                                .trim()
+                                .isEmpty) {
+                              ShowToastDialog.showToast(
+                                "Please enter last name".tr,
+                              );
+                            } else if (controller
+                                .emailEditingController
+                                .value
+                                .text
+                                .trim()
+                                .isEmpty) {
+                              ShowToastDialog.showToast(
+                                "Please enter valid email".tr,
+                              );
+                            } else if (controller
+                                .phoneNUmberEditingController
+                                .value
+                                .text
+                                .trim()
+                                .isEmpty) {
+                              ShowToastDialog.showToast(
+                                "Please enter Phone number".tr,
+                              );
+                            } else {
+                              controller.signUpWithEmailAndPassword(
+                                context,
+                                splashProvider,
+                              );
+                            }
+                          },
+                        );
                       },
                     ),
                   ],

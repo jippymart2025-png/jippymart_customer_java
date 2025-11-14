@@ -177,166 +177,7 @@ class EditProfileScreen extends StatelessWidget {
                                 width: 1,
                               ),
                             ),
-                            child: Obx(() {
-                              final userModel = controller.userModel;
-                              if (userModel.shippingAddress != null &&
-                                  userModel.shippingAddress!.isNotEmpty) {
-                                final addresses = userModel.shippingAddress!;
-                                if (addresses.length == 1) {
-                                  // Single address - show directly
-                                  final address = addresses.first;
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        address.addressAs ?? 'Address',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: AppThemeData.grey600,
-                                          fontFamily: AppThemeData.medium,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        address.getFullAddress(),
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          color: AppThemeData.grey800,
-                                          fontFamily: AppThemeData.regular,
-                                          fontWeight: FontWeight.w400,
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                } else {
-                                  // Multiple addresses - show count and default address
-                                  final defaultAddress = addresses.firstWhere(
-                                    (a) => a.isDefault == true,
-                                    orElse: () => addresses.first,
-                                  );
-
-                                  return Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              '${addresses.length} Addresses Saved',
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: AppThemeData.grey600,
-                                                fontFamily: AppThemeData.medium,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                          Text(
-                                            'Tap to view all',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppThemeData.primary300,
-                                              fontFamily: AppThemeData.regular,
-                                              fontWeight: FontWeight.w400,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      // Show default address
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: AppThemeData.grey100,
-                                          borderRadius: BorderRadius.circular(
-                                            6,
-                                          ),
-                                          border: Border.all(
-                                            color: AppThemeData.primary300
-                                                .withOpacity(0.3),
-                                            width: 1,
-                                          ),
-                                        ),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
-                                              children: [
-                                                Text(
-                                                  defaultAddress.addressAs ??
-                                                      'Address',
-                                                  style: TextStyle(
-                                                    fontSize: 13,
-                                                    color:
-                                                        AppThemeData.primary300,
-                                                    fontFamily:
-                                                        AppThemeData.semiBold,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 6,
-                                                        vertical: 2,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color:
-                                                        AppThemeData.primary300,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          4,
-                                                        ),
-                                                  ),
-                                                  child: Text(
-                                                    'DEFAULT',
-                                                    style: TextStyle(
-                                                      fontSize: 10,
-                                                      color: Colors.white,
-                                                      fontFamily:
-                                                          AppThemeData.semiBold,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              defaultAddress.getFullAddress(),
-                                              style: TextStyle(
-                                                fontSize: 14,
-                                                color: AppThemeData.grey700,
-                                                fontFamily:
-                                                    AppThemeData.regular,
-                                                fontWeight: FontWeight.w400,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                }
-                              } else {
-                                return Text(
-                                  'No address saved'.tr,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: AppThemeData.grey500,
-                                    fontFamily: AppThemeData.regular,
-                                    fontWeight: FontWeight.w400,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                );
-                              }
-                            }),
+                            child: _buildAddressContent(controller),
                           ),
                         ),
                       ],
@@ -448,5 +289,150 @@ class EditProfileScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  // Helper method to build address content
+  Widget _buildAddressContent(EditProfileProvider controller) {
+    final userModel = controller.userModel;
+    if (userModel.shippingAddress != null &&
+        userModel.shippingAddress!.isNotEmpty) {
+      final addresses = userModel.shippingAddress!;
+      if (addresses.length == 1) {
+        // Single address - show directly
+        final address = addresses.first;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              address.addressAs ?? 'Address',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppThemeData.grey600,
+                fontFamily: AppThemeData.medium,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              address.getFullAddress(),
+              style: TextStyle(
+                fontSize: 16,
+                color: AppThemeData.grey800,
+                fontFamily: AppThemeData.regular,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        );
+      } else {
+        // Multiple addresses - show count and default address
+        final defaultAddress = addresses.firstWhere(
+          (a) => a.isDefault == true,
+          orElse: () => addresses.first,
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${addresses.length} Addresses Saved',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppThemeData.grey600,
+                      fontFamily: AppThemeData.medium,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Text(
+                  'Tap to view all',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppThemeData.primary300,
+                    fontFamily: AppThemeData.regular,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Show default address
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppThemeData.grey100,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(
+                  color: AppThemeData.primary300.withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        defaultAddress.addressAs ?? 'Address',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppThemeData.primary300,
+                          fontFamily: AppThemeData.semiBold,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppThemeData.primary300,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'DEFAULT',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontFamily: AppThemeData.semiBold,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    defaultAddress.getFullAddress(),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppThemeData.grey700,
+                      fontFamily: AppThemeData.regular,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      }
+    } else {
+      return Text(
+        'No address saved'.tr,
+        style: TextStyle(
+          fontSize: 16,
+          color: AppThemeData.grey500,
+          fontFamily: AppThemeData.regular,
+          fontWeight: FontWeight.w400,
+          fontStyle: FontStyle.italic,
+        ),
+      );
+    }
   }
 }

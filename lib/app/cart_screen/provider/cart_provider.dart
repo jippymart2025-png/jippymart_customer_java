@@ -2114,7 +2114,6 @@ class CartControllerProvider extends ChangeNotifier {
           } catch (e) {}
           notifyListeners();
         } else {
-          // For restaurant items, use existing logic
           await FireStoreUtils.getProductById(
             tempProduc[i].id!.split('~').first,
           ).then((value) async {
@@ -2297,13 +2296,11 @@ class CartControllerProvider extends ChangeNotifier {
           notifyListeners();
         }
       }
-
       // Delete billing record if exists
       await FirebaseFirestore.instance
           .collection('order_Billing')
           .doc(orderId)
           .delete();
-
       notifyListeners();
     } catch (e) {}
   }

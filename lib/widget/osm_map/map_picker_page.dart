@@ -32,44 +32,42 @@ class MapPickerPage extends StatelessWidget {
       ),
       body: Stack(
         children: [
-          Obx(
-            () => FlutterMap(
-              mapController: mapController,
-              options: MapOptions(
-                initialCenter:
-                    controller.pickedPlace.value?.coordinates ??
-                    LatLng(20.5937, 78.9629), // Default India center
-                initialZoom: 13,
-                onTap: (tapPos, latlng) {
-                  controller.addLatLngOnly(latlng);
-                  mapController.move(latlng, mapController.camera.zoom);
-                },
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate:
-                      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  subdomains: const ['a', 'b', 'c'],
-                  userAgentPackageName: 'com.example.app',
-                ),
-                MarkerLayer(
-                  markers: controller.pickedPlace.value != null
-                      ? [
-                          Marker(
-                            point: controller.pickedPlace.value!.coordinates,
-                            width: 40,
-                            height: 40,
-                            child: const Icon(
-                              Icons.location_pin,
-                              size: 36,
-                              color: Colors.red,
-                            ),
-                          ),
-                        ]
-                      : [],
-                ),
-              ],
+          FlutterMap(
+            mapController: mapController,
+            options: MapOptions(
+              initialCenter:
+                  controller.pickedPlace.value?.coordinates ??
+                  const LatLng(20.5937, 78.9629), // Default India center
+              initialZoom: 13,
+              onTap: (tapPos, latlng) {
+                controller.addLatLngOnly(latlng);
+                mapController.move(latlng, mapController.camera.zoom);
+              },
             ),
+            children: [
+              TileLayer(
+                urlTemplate:
+                    'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                subdomains: const ['a', 'b', 'c'],
+                userAgentPackageName: 'com.example.app',
+              ),
+              MarkerLayer(
+                markers: controller.pickedPlace.value != null
+                    ? [
+                        Marker(
+                          point: controller.pickedPlace.value!.coordinates,
+                          width: 40,
+                          height: 40,
+                          child: const Icon(
+                            Icons.location_pin,
+                            size: 36,
+                            color: Colors.red,
+                          ),
+                        ),
+                      ]
+                    : [],
+              ),
+            ],
           ),
           Positioned(
             top: 16,
@@ -91,99 +89,103 @@ class MapPickerPage extends StatelessWidget {
                     onChanged: controller.searchPlace,
                   ),
                 ),
-                Obx(() {
-                  if (controller.searchResults.isEmpty)
-                    return const SizedBox.shrink();
-
-                  return Container(
-                    margin: const EdgeInsets.only(top: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: controller.searchResults.length,
-                      itemBuilder: (context, index) {
-                        final place = controller.searchResults[index];
-                        return ListTile(
-                          title: Text(place['display_name']),
-                          onTap: () {
-                            controller.selectSearchResult(place);
-                            final lat = double.parse(place['lat']);
-                            final lon = double.parse(place['lon']);
-                            final pos = LatLng(lat, lon);
-                            mapController.move(pos, 15);
-                            searchController.text = place['display_name'];
-                          },
-                        );
-                      },
-                    ),
-                  );
-                }),
+                _buildSearchResults(),
               ],
             ),
           ),
         ],
       ),
-      bottomNavigationBar: Obx(() {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                controller.pickedPlace.value != null
-                    ? "Picked Location:"
-                    : "No Location Picked",
-                style: TextStyle(
-                  color: AppThemeData.primary300,
-                  fontFamily: AppThemeData.semiBold,
-                  fontWeight: FontWeight.w600,
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        color: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              controller.pickedPlace.value != null
+                  ? "Picked Location:"
+                  : "No Location Picked",
+              style: TextStyle(
+                color: AppThemeData.primary300,
+                fontFamily: AppThemeData.semiBold,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 4),
+            if (controller.pickedPlace.value != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2.0),
+                child: Text(
+                  "${controller.pickedPlace.value!.address}\n(${controller.pickedPlace.value!.coordinates.latitude.toStringAsFixed(5)}, ${controller.pickedPlace.value!.coordinates.longitude.toStringAsFixed(5)})",
+                  style: const TextStyle(fontSize: 13),
                 ),
               ),
-              const SizedBox(height: 4),
-              if (controller.pickedPlace.value != null)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2.0),
-                  child: Text(
-                    "${controller.pickedPlace.value!.address}\n(${controller.pickedPlace.value!.coordinates.latitude.toStringAsFixed(5)}, ${controller.pickedPlace.value!.coordinates.longitude.toStringAsFixed(5)})",
-                    style: const TextStyle(fontSize: 13),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: RoundedButtonFill(
+                    title: "Conform Location".tr,
+                    color: AppThemeData.primary300,
+                    textColor: AppThemeData.grey50,
+                    height: 5,
+                    onPress: () async {
+                      final selected = controller.pickedPlace.value;
+                      if (selected != null) {
+                        Get.back(
+                          result: selected,
+                        ); // ✅ Return the selected place
+                        print("Selected location: $selected");
+                      }
+                    },
                   ),
                 ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: RoundedButtonFill(
-                      title: "Conform Location".tr,
-                      color: AppThemeData.primary300,
-                      textColor: AppThemeData.grey50,
-                      height: 5,
-                      onPress: () async {
-                        final selected = controller.pickedPlace.value;
-                        if (selected != null) {
-                          Get.back(
-                            result: selected,
-                          ); // ✅ Return the selected place
-                          print("Selected location: $selected");
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  IconButton(
-                    icon: const Icon(Icons.delete_forever, color: Colors.red),
-                    onPressed: controller.clearAll,
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      }),
+                const SizedBox(width: 10),
+                IconButton(
+                  icon: const Icon(Icons.delete_forever, color: Colors.red),
+                  onPressed: controller.clearAll,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper method to build search results
+  Widget _buildSearchResults() {
+    final searchResults = controller.searchResults;
+
+    if (searchResults.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: searchResults.length,
+        itemBuilder: (context, index) {
+          final place = searchResults[index];
+          return ListTile(
+            title: Text(place['display_name']),
+            onTap: () {
+              controller.selectSearchResult(place);
+              final lat = double.parse(place['lat']);
+              final lon = double.parse(place['lon']);
+              final pos = LatLng(lat, lon);
+              mapController.move(pos, 15);
+              searchController.text = place['display_name'];
+            },
+          );
+        },
+      ),
     );
   }
 }

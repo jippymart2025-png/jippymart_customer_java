@@ -3,7 +3,6 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as flutterMap;
-import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -70,30 +69,28 @@ class LiveTrackingScreen extends StatelessWidget {
                       ),
                   ],
                 )
-              : Obx(
-                  () => GoogleMap(
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
-                    mapType: MapType.terrain,
-                    zoomControlsEnabled: false,
-                    polylines: Set<Polyline>.of(controller.polyLines.values),
-                    padding: const EdgeInsets.only(top: 22.0),
-                    markers: Set<Marker>.of(controller.markers.values),
-                    onMapCreated: (GoogleMapController mapController) {
-                      controller.mapController = mapController;
-                    },
-                    initialCameraPosition: CameraPosition(
-                      zoom: 15,
-                      target: LatLng(
-                        controller.driverUserModel.location?.latitude != null
-                            ? controller.driverUserModel.location?.latitude ??
-                                  45.521563
-                            : 45.521563,
-                        controller.driverUserModel.location?.longitude != null
-                            ? controller.driverUserModel.location?.longitude ??
-                                  45.521563
-                            : 45.521563,
-                      ),
+              : GoogleMap(
+                  myLocationEnabled: true,
+                  myLocationButtonEnabled: true,
+                  mapType: MapType.terrain,
+                  zoomControlsEnabled: false,
+                  polylines: Set<Polyline>.of(controller.polyLines.values),
+                  padding: const EdgeInsets.only(top: 22.0),
+                  markers: Set<Marker>.of(controller.markers.values),
+                  onMapCreated: (GoogleMapController mapController) {
+                    controller.mapController = mapController;
+                  },
+                  initialCameraPosition: CameraPosition(
+                    zoom: 15,
+                    target: LatLng(
+                      controller.driverUserModel.location?.latitude != null
+                          ? controller.driverUserModel.location?.latitude ??
+                                45.521563
+                          : 45.521563,
+                      controller.driverUserModel.location?.longitude != null
+                          ? controller.driverUserModel.location?.longitude ??
+                                45.521563
+                          : 45.521563,
                     ),
                   ),
                 ),

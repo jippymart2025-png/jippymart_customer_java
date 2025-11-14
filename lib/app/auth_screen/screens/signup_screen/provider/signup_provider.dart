@@ -1,5 +1,6 @@
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -71,11 +72,10 @@ class SignupProvider extends ChangeNotifier {
     }
   }
 
-  signUpWithEmailAndPassword() async {
-    await signUp();
-  }
-
-  signUp() async {
+  signUpWithEmailAndPassword(
+    BuildContext context,
+    SplashProvider splashProvider,
+  ) async {
     ShowToastDialog.showLoader("Please wait".tr);
     try {
       String countryCode = countryCodeEditingController.text.replaceAll(
@@ -126,6 +126,7 @@ class SignupProvider extends ChangeNotifier {
         ShowToastDialog.showToast("Account created successfully".tr);
         if (newUser.shippingAddress != null &&
             newUser.shippingAddress!.isNotEmpty) {
+          splashProvider.initFunction(context);
           Get.offAll(const DashBoardScreen());
         } else {
           Get.offAll(const LocationPermissionScreen());

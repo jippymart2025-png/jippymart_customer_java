@@ -311,13 +311,15 @@ class AddressListScreen extends StatelessWidget {
                 onPressed: () async {
                   ShowToastDialog.showLoader("Please wait".tr);
                   try {
-                    controller.shippingAddressList.removeAt(index);
-                    controller.userModel.shippingAddress =
-                        controller.shippingAddressList;
-                    final success = await addressListProvider.updateUser(
-                      controller.userModel,
-                    );
+                    final addressId = controller.shippingAddressList[index].id;
+                    final success = await addressListProvider
+                        .deleteShippingAddress(addressId.toString());
                     if (success) {
+                      // Remove from local list only after successful API call
+                      controller.shippingAddressList.removeAt(index);
+                      controller.userModel.shippingAddress =
+                          controller.shippingAddressList;
+                      // Refresh user data
                       controller.getUser();
                       ShowToastDialog.closeLoader();
                       Get.back();
@@ -335,6 +337,34 @@ class AddressListScreen extends StatelessWidget {
                   style: const TextStyle(color: Colors.red),
                 ),
               ),
+              // CupertinoActionSheetAction(
+              //   onPressed: () async {
+              //     ShowToastDialog.showLoader("Please wait".tr);
+              //     try {
+              //       controller.shippingAddressList.removeAt(index);
+              //       controller.userModel.shippingAddress =
+              //           controller.shippingAddressList;
+              //       final success = await addressListProvider.updateUser(
+              //         controller.userModel,
+              //       );
+              //       if (success) {
+              //         controller.getUser();
+              //         ShowToastDialog.closeLoader();
+              //         Get.back();
+              //         ShowToastDialog.showToast("Address deleted".tr);
+              //       } else {
+              //         ShowToastDialog.closeLoader();
+              //         ShowToastDialog.showToast("Failed to delete address".tr);
+              //       }
+              //     } catch (e) {
+              //       ShowToastDialog.closeLoader();
+              //     }
+              //   },
+              //   child: Text(
+              //     'Delete'.tr,
+              //     style: const TextStyle(color: Colors.red),
+              //   ),
+              // ),
             ],
             cancelButton: CupertinoActionSheetAction(
               isDefaultAction: true,

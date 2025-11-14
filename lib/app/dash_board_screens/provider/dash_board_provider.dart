@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
@@ -69,16 +70,19 @@ class DashBoardProvider extends ChangeNotifier {
   /// Check if user has shipping addresses and show alert if none
   Future<void> _checkUserShippingAddresses() async {
     try {
-      await Future.delayed(const Duration(milliseconds: 3000));
+      await Future.delayed(const Duration(seconds: 3000));
       if (Constant.userModel != null) {
         final hasAddresses =
             Constant.userModel!.shippingAddress != null &&
             Constant.userModel!.shippingAddress!.isNotEmpty;
         if (!hasAddresses) {
+          log("_checkUserShippingAddresses ");
           _showAddressRequiredAlert();
         } else {}
       } else {}
-    } catch (e) {}
+    } catch (e) {
+      print("_checkUserShippingAddresses ${e.toString()}");
+    }
   }
 
   void _showAddressRequiredAlert() {

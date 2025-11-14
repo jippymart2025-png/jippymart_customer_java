@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jippymart_customer/models/mart_banner_model.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
@@ -259,8 +258,6 @@ class MartFirestoreService extends GetxService {
   /// Get items on sale from API
   Future<List<MartItemModel>> getItemsOnSale({int limit = 20}) async {
     try {
-      print('[MART API] 🏷️ Fetching items on sale from API...');
-
       // Make API request
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}mart-items/on-sale'),
@@ -352,7 +349,6 @@ class MartFirestoreService extends GetxService {
   }) async {
     try {
       print('[MART API] 🔍 Searching for items: "$searchQuery"');
-
       // Make API request with search query parameter
       final response = await http.get(
         Uri.parse(
@@ -402,11 +398,9 @@ class MartFirestoreService extends GetxService {
               })
               .whereType<MartItemModel>()
               .toList();
-
           print(
             '[MART API] ✅ Search completed, found ${searchResults.length} matching items for "$searchQuery"',
           );
-
           // Debug: Log the search results
           for (int i = 0; i < searchResults.length; i++) {
             final item = searchResults[i];
@@ -432,199 +426,62 @@ class MartFirestoreService extends GetxService {
   }
 
   // ==================== CATEGORIES METHODS ====================
-
-  /// Get all categories from Firestore
+  /// Get all categories from API
   Future<List<MartCategoryModel>> getCategories({int limit = 100}) async {
     try {
-      print('[MART FIRESTORE] 📂 Fetching categories from Firestore...');
-      // Query Firestore for categories - simplified to avoid index issues
-      final querySnapshot = await _firestore
-          .collection('mart_categories')
-          .where('publish', isEqualTo: true)
-          .limit(limit)
-          .get();
-      print(
-        '[MART FIRESTORE] 📂 Firestore query completed, found ${querySnapshot.docs.length} categories',
+      print('[MART API] 📂 Fetching categories from API...');
+      // Build the API URL
+      final url = '${AppConst.baseUrl}mart-items/getmartcategory';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No categories found in Firestore');
+      if (response.statusCode != 200) {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
-      // Convert Firestore documents to MartCategoryModel
-      final categories = querySnapshot.docs
-          .map((doc) {
-            try {
-              final data = doc.data();
-              // Add document ID to the data
-              data['id'] = doc.id;
-              // Handle array fields that might be null
-              if (data['review_attributes'] == null)
-                data['review_attributes'] = [];
 
-              // Handle numeric fields that might be strings
-              if (data['category_order'] is String) {
-                data['category_order'] =
-                    int.tryParse(data['category_order']) ?? 0;
-              }
-              if (data['section_order'] is String) {
-                data['section_order'] =
-                    int.tryParse(data['section_order']) ?? 0;
-              }
+      final responseData = json.decode(response.body);
 
-              return MartCategoryModel.fromJson(data);
-            } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore category document ${doc.id}: $e',
-              );
-              print('[MART FIRESTORE] Category data: ${doc.data()}');
-              return null;
-            }
-          })
-          .whereType<MartCategoryModel>()
-          .toList();
-
-      // Sort categories by category_order since we're not using orderBy
-      categories.sort(
-        (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
-      );
-
-      print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${categories.length} categories from Firestore (client-side ordered)',
-      );
-
-      // Debug: Log the categories
-      for (int i = 0; i < categories.length; i++) {
-        final category = categories[i];
-        final title = category.title ?? 'No Title';
-        final order = category.categoryOrder ?? 0;
-        final section = category.section ?? 'No Section';
+      if (!responseData['status']) {
         print(
-          '[MART FIRESTORE]   ${i + 1}. $title - Order: $order, Section: $section',
+          '[MART API] ❌ API returned false status: ${responseData['message']}',
         );
-      }
-
-      return categories;
-    } catch (e) {
-      print('[MART FIRESTORE] ❌ Error fetching categories from Firestore: $e');
-      return [];
-    }
-  }
-
-  /// Get homepage categories from Firestore
-  Future<List<MartCategoryModel>> getHomepageCategories({
-    int limit = 10,
-  }) async {
-    try {
-      print(
-        '[MART FIRESTORE] 🏠 Fetching homepage categories from Firestore...',
-      );
-      print('[MART FIRESTORE] 🔍 Collection: mart_categories');
-      print(
-        '[MART FIRESTORE] 🔍 Query: publish=true, show_in_homepage=true, orderBy=category_order',
-      );
-      print(
-        '[MART FIRESTORE] ✅ Using composite index for optimal performance!',
-      );
-
-      // Test Firestore connection
-      print('[MART FIRESTORE] 🔍 Testing Firestore connection...');
-      final testSnapshot = await _firestore
-          .collection('mart_categories')
-          .limit(1)
-          .get();
-      print(
-        '[MART FIRESTORE] ✅ Firestore connection successful, found ${testSnapshot.docs.length} documents',
-      );
-
-      // Query Firestore for homepage categories - simplified to avoid index issues
-      print('[MART FIRESTORE] 🔍 Using simplified query: publish=true only');
-      final querySnapshot = await _firestore
-          .collection('mart_categories')
-          .where('publish', isEqualTo: true)
-          .limit(limit)
-          .get();
-
-      // Filter for homepage categories on the client side
-      final homepageCategories = querySnapshot.docs.where((doc) {
-        final data = doc.data();
-        return data['show_in_homepage'] == true;
-      }).toList();
-
-      print(
-        '[MART FIRESTORE] 🔍 Found ${querySnapshot.docs.length} total categories, ${homepageCategories.length} are homepage categories',
-      );
-
-      if (homepageCategories.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No homepage categories found in Firestore');
-        print('[MART FIRESTORE] 🔍 Available categories:');
-        for (int i = 0; i < querySnapshot.docs.length && i < 5; i++) {
-          final doc = querySnapshot.docs[i];
-          final data = doc.data();
-          print(
-            '[MART FIRESTORE]   ${i + 1}. ${doc.id} - ${data['title']} - show_in_homepage: ${data['show_in_homepage']}',
-          );
-        }
-
-        // Fallback: Show first few categories even if they don't have show_in_homepage=true
-        if (querySnapshot.docs.isNotEmpty) {
-          print(
-            '[MART FIRESTORE] 🔄 Fallback: Using first ${querySnapshot.docs.length} categories',
-          );
-          final fallbackDocs = querySnapshot.docs.take(limit).toList();
-          return fallbackDocs
-              .map((doc) {
-                try {
-                  final data = doc.data();
-                  final Map<String, dynamic> categoryData =
-                      Map<String, dynamic>.from(data);
-                  categoryData['id'] = doc.id;
-                  if (categoryData['review_attributes'] == null)
-                    categoryData['review_attributes'] = [];
-                  if (categoryData['category_order'] is String) {
-                    categoryData['category_order'] =
-                        int.tryParse(categoryData['category_order']) ?? 0;
-                  }
-                  if (categoryData['section_order'] is String) {
-                    categoryData['section_order'] =
-                        int.tryParse(categoryData['section_order']) ?? 0;
-                  }
-                  return MartCategoryModel.fromJson(categoryData);
-                } catch (e) {
-                  print(
-                    '[MART FIRESTORE] ❌ Error parsing fallback category ${doc.id}: $e',
-                  );
-                  return null;
-                }
-              })
-              .whereType<MartCategoryModel>()
-              .toList();
-        }
-
         return [];
       }
 
-      // Use the filtered results
-      final finalDocs = homepageCategories;
-
       print(
-        '[MART FIRESTORE] 🏠 Firestore query completed, found ${finalDocs.length} homepage categories',
+        '[MART API] 📂 API call completed, found ${responseData['count']} categories',
       );
 
-      // Convert Firestore documents to MartCategoryModel
-      final categories = finalDocs
-          .map((doc) {
+      if (responseData['data'] == null || responseData['data'].isEmpty) {
+        print('[MART API] ⚠️ No categories found');
+        return [];
+      }
+
+      // Convert API response to MartCategoryModel
+      final categories = (responseData['data'] as List)
+          .map((item) {
             try {
-              final data = doc.data();
+              if (item == null) return null;
+
               final Map<String, dynamic> categoryData =
-                  Map<String, dynamic>.from(data);
+                  Map<String, dynamic>.from(item);
 
-              // Add document ID to the data
-              categoryData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (categoryData['review_attributes'] == null)
+              // Handle array fields that might be strings
+              if (categoryData['review_attributes'] is String) {
+                try {
+                  categoryData['review_attributes'] = json.decode(
+                    categoryData['review_attributes'],
+                  );
+                } catch (e) {
+                  categoryData['review_attributes'] = [];
+                }
+              } else if (categoryData['review_attributes'] == null) {
                 categoryData['review_attributes'] = [];
+              }
 
               // Handle numeric fields that might be strings
               if (categoryData['category_order'] is String) {
@@ -636,49 +493,185 @@ class MartFirestoreService extends GetxService {
                     int.tryParse(categoryData['section_order']) ?? 0;
               }
 
+              // Handle boolean fields that might be null
+              if (categoryData['show_in_homepage'] == null) {
+                categoryData['show_in_homepage'] = false;
+              }
+              if (categoryData['publish'] == null) {
+                categoryData['publish'] = true;
+              }
+              if (categoryData['has_subcategories'] == null) {
+                categoryData['has_subcategories'] = false;
+              }
+
+              // Handle subcategories_count
+              if (categoryData['subcategories_count'] == null) {
+                categoryData['subcategories_count'] = 0;
+              }
               return MartCategoryModel.fromJson(categoryData);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore homepage category document ${doc.id}: $e',
-              );
               return null;
             }
           })
           .whereType<MartCategoryModel>()
           .toList();
 
-      // Sort categories by category_order since we're not using orderBy
+      // Sort categories by category_order
       categories.sort(
         (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
       );
 
+      // Apply limit
+      final limitedResults = categories.take(limit).toList();
+
       print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${categories.length} homepage categories from Firestore (client-side ordered)',
+        '[MART API] ✅ Successfully parsed ${limitedResults.length} categories from API',
       );
 
-      // Debug: Log the homepage categories
-      for (int i = 0; i < categories.length; i++) {
-        final category = categories[i];
+      // Debug: Log the categories
+      for (int i = 0; i < limitedResults.length; i++) {
+        final category = limitedResults[i];
         final title = category.title ?? 'No Title';
         final order = category.categoryOrder ?? 0;
         final section = category.section ?? 'No Section';
         print(
-          '[MART FIRESTORE]   ${i + 1}. $title - Order: $order, Section: $section',
+          '[MART API]   ${i + 1}. $title - Order: $order, Section: $section',
         );
       }
 
-      return categories;
+      return limitedResults;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching homepage categories from Firestore: $e',
-      );
-      print('[MART FIRESTORE] ❌ Error type: ${e.runtimeType}');
-      print('[MART FIRESTORE] ❌ Error details: $e');
+      print('[MART API] ❌ Error fetching categories from API: $e');
       return [];
     }
   }
 
-  /// Get subcategories by parent category from Firestore
+  /// Get homepage categories from API
+  Future<List<MartCategoryModel>> getHomepageCategories({
+    int limit = 10,
+  }) async {
+    try {
+      print('[MART API] 🏠 Fetching homepage categories from API...');
+
+      // Build the API URL
+      final url = '${AppConst.baseUrl}mart-items/categoryhome';
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode != 200) {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
+        return [];
+      }
+
+      final responseData = json.decode(response.body);
+
+      if (!responseData['status']) {
+        print(
+          '[MART API] ❌ API returned false status: ${responseData['message']}',
+        );
+        return [];
+      }
+
+      print(
+        '[MART API] 🏠 API call completed, found ${responseData['count']} homepage categories',
+      );
+
+      if (responseData['data'] == null || responseData['data'].isEmpty) {
+        print('[MART API] ⚠️ No homepage categories found');
+        return [];
+      }
+
+      // Convert API response to MartCategoryModel
+      final categories = (responseData['data'] as List)
+          .map((item) {
+            try {
+              if (item == null) return null;
+
+              final Map<String, dynamic> categoryData =
+                  Map<String, dynamic>.from(item);
+
+              // Handle array fields that might be strings
+              if (categoryData['review_attributes'] is String) {
+                try {
+                  categoryData['review_attributes'] = json.decode(
+                    categoryData['review_attributes'],
+                  );
+                } catch (e) {
+                  categoryData['review_attributes'] = [];
+                }
+              } else if (categoryData['review_attributes'] == null) {
+                categoryData['review_attributes'] = [];
+              }
+
+              // Handle numeric fields that might be strings
+              if (categoryData['category_order'] is String) {
+                categoryData['category_order'] =
+                    int.tryParse(categoryData['category_order']) ?? 0;
+              }
+              if (categoryData['section_order'] is String) {
+                categoryData['section_order'] =
+                    int.tryParse(categoryData['section_order']) ?? 0;
+              }
+
+              // Handle boolean fields that might be null
+              if (categoryData['show_in_homepage'] == null) {
+                categoryData['show_in_homepage'] = false;
+              }
+              if (categoryData['publish'] == null) {
+                categoryData['publish'] = true;
+              }
+              if (categoryData['has_subcategories'] == null) {
+                categoryData['has_subcategories'] = false;
+              }
+
+              // Handle subcategories_count
+              if (categoryData['subcategories_count'] == null) {
+                categoryData['subcategories_count'] = 0;
+              }
+
+              return MartCategoryModel.fromJson(categoryData);
+            } catch (e) {
+              return null;
+            }
+          })
+          .whereType<MartCategoryModel>()
+          .toList();
+
+      // Sort categories by category_order
+      categories.sort(
+        (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
+      );
+
+      // Apply limit
+      final limitedResults = categories.take(limit).toList();
+
+      print(
+        '[MART API] ✅ Successfully parsed ${limitedResults.length} homepage categories from API',
+      );
+
+      // Debug: Log the homepage categories
+      for (int i = 0; i < limitedResults.length; i++) {
+        final category = limitedResults[i];
+        final title = category.title ?? 'No Title';
+        final order = category.categoryOrder ?? 0;
+        final section = category.section ?? 'No Section';
+        print(
+          '[MART API]   ${i + 1}. $title - Order: $order, Section: $section',
+        );
+      }
+
+      return limitedResults;
+    } catch (e) {
+      print('[MART API] ❌ Error fetching homepage categories from API: $e');
+      print('[MART API] ❌ Error type: ${e.runtimeType}');
+      print('[MART API] ❌ Error details: $e');
+      return [];
+    }
+  }
+
   Future<List<MartSubcategoryModel>> getSubcategoriesByParent({
     required String parentCategoryId,
     bool publish = true,
@@ -688,42 +681,64 @@ class MartFirestoreService extends GetxService {
   }) async {
     try {
       print(
-        '[MART FIRESTORE] 📋 Fetching subcategories for parent category: $parentCategoryId',
+        '[MART API] 📋 Fetching subcategories for parent category: $parentCategoryId',
       );
 
-      // Query Firestore for subcategories
-      final querySnapshot = await _firestore
-          .collection('mart_subcategories')
-          .where('parent_category_id', isEqualTo: parentCategoryId)
-          .where('publish', isEqualTo: publish)
-          .limit(limit)
-          .get();
+      // Build the API URL
+      final url =
+          '${AppConst.baseUrl}mart-items/sub_category?parent_category_id=$parentCategoryId';
 
-      print(
-        '[MART FIRESTORE] 📋 Firestore query completed, found ${querySnapshot.docs.length} subcategories',
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
       );
 
-      if (querySnapshot.docs.isEmpty) {
+      if (response.statusCode != 200) {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
+        return [];
+      }
+
+      final responseData = json.decode(response.body);
+
+      if (!responseData['status']) {
         print(
-          '[MART FIRESTORE] ⚠️ No subcategories found for parent category: $parentCategoryId',
+          '[MART API] ❌ API returned false status: ${responseData['message']}',
         );
         return [];
       }
 
-      // Convert Firestore documents to MartSubcategoryModel
-      final subcategories = querySnapshot.docs
-          .map((doc) {
+      print(
+        '[MART API] 📋 API call completed, found ${responseData['count']} subcategories',
+      );
+
+      if (responseData['data'] == null || responseData['data'].isEmpty) {
+        print(
+          '[MART API] ⚠️ No subcategories found for parent category: $parentCategoryId',
+        );
+        return [];
+      }
+
+      // Convert API response to MartSubcategoryModel
+      final subcategories = (responseData['data'] as List)
+          .map((item) {
             try {
-              final data = doc.data();
+              if (item == null) return null;
+
               final Map<String, dynamic> subcategoryData =
-                  Map<String, dynamic>.from(data);
+                  Map<String, dynamic>.from(item);
 
-              // Add document ID to the data
-              subcategoryData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (subcategoryData['review_attributes'] == null)
+              // Handle array fields that might be strings
+              if (subcategoryData['review_attributes'] is String) {
+                try {
+                  subcategoryData['review_attributes'] = json.decode(
+                    subcategoryData['review_attributes'],
+                  );
+                } catch (e) {
+                  subcategoryData['review_attributes'] = [];
+                }
+              } else if (subcategoryData['review_attributes'] == null) {
                 subcategoryData['review_attributes'] = [];
+              }
 
               // Handle numeric fields that might be strings
               if (subcategoryData['subcategory_order'] is String) {
@@ -739,43 +754,68 @@ class MartFirestoreService extends GetxService {
                     int.tryParse(subcategoryData['section_order']) ?? 0;
               }
 
+              // Handle boolean fields that might be null
+              if (subcategoryData['publish'] == null) {
+                subcategoryData['publish'] = true;
+              }
+              if (subcategoryData['show_in_homepage'] == null) {
+                subcategoryData['show_in_homepage'] = false;
+              }
+
               return MartSubcategoryModel.fromJson(subcategoryData);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore subcategory document ${doc.id}: $e',
-              );
-              print('[MART FIRESTORE] Subcategory data: ${doc.data()}');
               return null;
             }
           })
           .whereType<MartSubcategoryModel>()
           .toList();
 
-      // Sort subcategories by subcategory_order since we're not using orderBy
-      subcategories.sort(
-        (a, b) => (a.subcategoryOrder ?? 0).compareTo(b.subcategoryOrder ?? 0),
-      );
+      // Sort subcategories based on sort parameters
+      if (sortBy == 'subcategory_order') {
+        if (sortOrder == 'asc') {
+          subcategories.sort(
+            (a, b) =>
+                (a.subcategoryOrder ?? 0).compareTo(b.subcategoryOrder ?? 0),
+          );
+        } else {
+          subcategories.sort(
+            (a, b) =>
+                (b.subcategoryOrder ?? 0).compareTo(a.subcategoryOrder ?? 0),
+          );
+        }
+      } else if (sortBy == 'title') {
+        if (sortOrder == 'asc') {
+          subcategories.sort(
+            (a, b) => (a.title ?? '').compareTo(b.title ?? ''),
+          );
+        } else {
+          subcategories.sort(
+            (a, b) => (b.title ?? '').compareTo(a.title ?? ''),
+          );
+        }
+      }
+
+      // Apply limit
+      final limitedResults = subcategories.take(limit).toList();
 
       print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${subcategories.length} subcategories from Firestore (client-side ordered)',
+        '[MART API] ✅ Successfully parsed ${limitedResults.length} subcategories from API',
       );
 
       // Debug: Log the subcategories
-      for (int i = 0; i < subcategories.length; i++) {
-        final subcategory = subcategories[i];
+      for (int i = 0; i < limitedResults.length; i++) {
+        final subcategory = limitedResults[i];
         final title = subcategory.title ?? 'No Title';
         final order = subcategory.subcategoryOrder ?? 0;
         final parentId = subcategory.parentCategoryId ?? 'No Parent';
         print(
-          '[MART FIRESTORE]   ${i + 1}. $title - Order: $order, Parent: $parentId',
+          '[MART API]   ${i + 1}. $title - Order: $order, Parent: $parentId',
         );
       }
 
-      return subcategories;
+      return limitedResults;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching subcategories from Firestore: $e',
-      );
+      print('[MART API] ❌ Error fetching subcategories from API: $e');
       return [];
     }
   }
@@ -783,268 +823,147 @@ class MartFirestoreService extends GetxService {
   /// Get all homepage subcategories directly from Firestore
   Future<List<MartSubcategoryModel>> getAllHomepageSubcategories() async {
     try {
-      print(
-        '[MART FIRESTORE] 🔥 Fetching all homepage subcategories directly from Firestore...',
+      print('[MART API] 🔥 Fetching all homepage subcategories from API...');
+
+      final url = '${AppConst.baseUrl}mart-items/sub_category_home';
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
       );
 
-      Query query = _firestore.collection('mart_subcategories');
-      // First try with both filters and ordering
-      try {
-        query = query.where('show_in_homepage', isEqualTo: true);
-        query = query.where('publish', isEqualTo: true);
-        query = query.orderBy('subcategory_order', descending: false);
-
-        final querySnapshot = await query.get();
-        print(
-          ' [MART FIRESTORE] 🔥 Found ${querySnapshot.docs.length} homepage subcategories in Firestore (with ordering)',
-        );
-
-        // Log ALL documents found before parsing
-        print('[MART FIRESTORE] 📋 ALL DOCUMENTS FOUND:');
-        for (int i = 0; i < querySnapshot.docs.length; i++) {
-          final doc = querySnapshot.docs[i];
-          final data = doc.data();
-          print('[MART FIRESTORE] 📋 ${i + 1}. ID: ${doc.id}');
-          print('[MART FIRESTORE] 📋    Data: $data');
-          if (data is Map<String, dynamic>) {
-            print(
-              '[MART FIRESTORE] 📋    show_in_homepage: ${data['show_in_homepage']}',
-            );
-            print('[MART FIRESTORE] 📋    publish: ${data['publish']}');
-            print('[MART FIRESTORE] 📋    title: ${data['title']}');
-            print(
-              '[MART FIRESTORE] 📋    parent_category_id: ${data['parent_category_id']}',
-            );
-          }
-          print('[MART FIRESTORE] 📋    ---');
-        }
-
-        final subcategories = querySnapshot.docs
-            .map((doc) {
-              try {
-                final data = doc.data();
-                if (data == null) {
-                  print('[MART FIRESTORE] ❌ Document ${doc.id} has null data');
-                  return null;
-                }
-
-                // Ensure data is a Map<String, dynamic>
-                if (data is! Map<String, dynamic>) {
-                  print(
-                    '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}',
-                  );
-                  return null;
-                }
-
-                final Map<String, dynamic> subcategoryData =
-                    Map<String, dynamic>.from(data);
-
-                // Add document ID to the data
-                subcategoryData['id'] = doc.id;
-
-                // Log the data being passed to fromJson
-                print('[MART FIRESTORE] 🔍 Parsing document ${doc.id}:');
-                print('[MART FIRESTORE] 🔍   Raw data: $subcategoryData');
-
-                final subcategory = MartSubcategoryModel.fromJson(
-                  subcategoryData,
-                );
-                print(
-                  '[MART FIRESTORE] ✅ Successfully parsed ${doc.id}: ${subcategory.title}',
-                );
-                return subcategory;
-              } catch (e) {
-                print(
-                  '[MART FIRESTORE] ❌ Error parsing subcategory document ${doc.id}: $e',
-                );
-                print('[MART FIRESTORE] Document data: ${doc.data()}');
-                return null;
-              }
-            })
-            .whereType<MartSubcategoryModel>()
-            .toList();
-
-        // Sort subcategories by subcategory_order since we're not using orderBy
-        subcategories.sort(
-          (a, b) =>
-              (a.subcategoryOrder ?? 0).compareTo(b.subcategoryOrder ?? 0),
-        );
-
-        print(
-          '[MART FIRESTORE] ✅ Successfully parsed ${subcategories.length} homepage subcategories from Firestore',
-        );
-        print('[MART FIRESTORE] 📊 PARSED SUBCATEGORIES:');
-
-        // Debug: Log the homepage subcategories
-        for (int i = 0; i < subcategories.length; i++) {
-          final subcategory = subcategories[i];
-          print(
-            '[MART FIRESTORE]   ${i + 1}. ${subcategory.title} - Parent: ${subcategory.parentCategoryTitle} - Show in Homepage: ${subcategory.showInHomepage}',
-          );
-        }
-
-        return subcategories;
-      } catch (e) {
-        print(
-          '[MART FIRESTORE] ⚠️ First query failed (likely index issue), trying without ordering: $e',
-        );
-
-        // Fallback: try without ordering
-        query = _firestore.collection('mart_subcategories');
-        query = query.where('show_in_homepage', isEqualTo: true);
-        query = query.where('publish', isEqualTo: true);
-
-        final querySnapshot = await query.get();
-        print(
-          '[MART FIRESTORE] 🔥 Found ${querySnapshot.docs.length} homepage subcategories in Firestore (without ordering)',
-        );
-
-        // Log ALL documents found before parsing (fallback)
-        print('[MART FIRESTORE] 📋 ALL DOCUMENTS FOUND (FALLBACK):');
-        for (int i = 0; i < querySnapshot.docs.length; i++) {
-          final doc = querySnapshot.docs[i];
-          final data = doc.data();
-          print('[MART FIRESTORE] 📋 ${i + 1}. ID: ${doc.id}');
-          print('[MART FIRESTORE] 📋    Data: $data');
-          if (data is Map<String, dynamic>) {
-            print(
-              '[MART FIRESTORE] 📋    show_in_homepage: ${data['show_in_homepage']}',
-            );
-            print('[MART FIRESTORE] 📋    publish: ${data['publish']}');
-            print('[MART FIRESTORE] 📋    title: ${data['title']}');
-            print(
-              '[MART FIRESTORE] 📋    parent_category_id: ${data['parent_category_id']}',
-            );
-          }
-          print('[MART FIRESTORE] 📋    ---');
-        }
-
-        final subcategories = querySnapshot.docs
-            .map((doc) {
-              try {
-                final data = doc.data();
-                if (data == null) {
-                  print(
-                    '[MART FIRESTORE] ❌ Document ${doc.id} has null data (fallback)',
-                  );
-                  return null;
-                }
-
-                // Ensure data is a Map<String, dynamic>
-                if (data is! Map<String, dynamic>) {
-                  print(
-                    '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType} (fallback)',
-                  );
-                  return null;
-                }
-
-                final Map<String, dynamic> subcategoryData =
-                    Map<String, dynamic>.from(data);
-
-                // Add document ID to the data
-                subcategoryData['id'] = doc.id;
-
-                // Log the data being passed to fromJson (fallback)
-                print(
-                  '[MART FIRESTORE] 🔍 Parsing document ${doc.id} (fallback):',
-                );
-                print('[MART FIRESTORE] 🔍   Raw data: $subcategoryData');
-
-                final subcategory = MartSubcategoryModel.fromJson(
-                  subcategoryData,
-                );
-                print(
-                  '[MART FIRESTORE] ✅ Successfully parsed ${doc.id}: ${subcategory.title} (fallback)',
-                );
-                return subcategory;
-              } catch (e) {
-                print(
-                  '[MART FIRESTORE] ❌ Error parsing subcategory document ${doc.id}: $e (fallback)',
-                );
-                print('[MART FIRESTORE] Document data: ${doc.data()}');
-                return null;
-              }
-            })
-            .whereType<MartSubcategoryModel>()
-            .toList();
-
-        // Sort subcategories by subcategory_order since we're not using orderBy
-        subcategories.sort(
-          (a, b) =>
-              (a.subcategoryOrder ?? 0).compareTo(b.subcategoryOrder ?? 0),
-        );
-
-        print(
-          '[MART FIRESTORE] ✅ Successfully parsed ${subcategories.length} homepage subcategories from Firestore (fallback)',
-        );
-        print('[MART FIRESTORE] 📊 PARSED SUBCATEGORIES (FALLBACK):');
-
-        // Debug: Log the homepage subcategories
-        for (int i = 0; i < subcategories.length; i++) {
-          final subcategory = subcategories[i];
-          print(
-            '[MART FIRESTORE]   ${i + 1}. ${subcategory.title} - Parent: ${subcategory.parentCategoryTitle} - Show in Homepage: ${subcategory.showInHomepage}',
-          );
-        }
-
-        return subcategories;
+      if (response.statusCode != 200) {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
+        return [];
       }
-    } catch (e) {
+
+      final responseData = json.decode(response.body);
+
+      if (!responseData['status']) {
+        print(
+          '[MART API] ❌ API returned false status: ${responseData['message']}',
+        );
+        return [];
+      }
+
       print(
-        '[MART FIRESTORE] ❌ Error fetching homepage subcategories from Firestore: $e',
+        '[MART API] 🔥 API call completed, found ${responseData['count']} homepage subcategories',
       );
-      return [];
-    }
-  }
 
-  /// Get ALL subcategories from Firestore (for debugging - no filters)
-  Future<List<MartSubcategoryModel>> getAllSubcategoriesDebug() async {
-    try {
-      final querySnapshot = await _firestore
-          .collection('mart_subcategories')
-          .get();
+      if (responseData['data'] == null || responseData['data'].isEmpty) {
+        print('[MART API] ⚠️ No homepage subcategories found');
+        return [];
+      }
 
-      final subcategories = querySnapshot.docs
-          .map((doc) {
+      // Log ALL documents found before parsing
+      print('[MART API] 📋 ALL DOCUMENTS FOUND:');
+      for (int i = 0; i < responseData['data'].length; i++) {
+        final item = responseData['data'][i];
+        print('[MART API] 📋 ${i + 1}. ID: ${item['id']}');
+        print('[MART API] 📋    Data: $item');
+        print('[MART API] 📋    show_in_homepage: ${item['show_in_homepage']}');
+        print('[MART API] 📋    publish: ${item['publish']}');
+        print('[MART API] 📋    title: ${item['title']}');
+        print(
+          '[MART API] 📋    parent_category_id: ${item['parent_category_id']}',
+        );
+        print('[MART API] 📋    ---');
+      }
+
+      // Convert API response to MartSubcategoryModel
+      final subcategories = (responseData['data'] as List)
+          .map((item) {
             try {
-              final data = doc.data();
+              if (item == null) {
+                print('[MART API] ❌ Item is null');
+                return null;
+              }
 
               final Map<String, dynamic> subcategoryData =
-                  Map<String, dynamic>.from(data);
+                  Map<String, dynamic>.from(item);
 
-              // Add document ID to the data
-              subcategoryData['id'] = doc.id;
+              // Handle array fields that might be strings
+              if (subcategoryData['review_attributes'] is String) {
+                try {
+                  subcategoryData['review_attributes'] = json.decode(
+                    subcategoryData['review_attributes'],
+                  );
+                } catch (e) {
+                  subcategoryData['review_attributes'] = [];
+                }
+              } else if (subcategoryData['review_attributes'] == null) {
+                subcategoryData['review_attributes'] = [];
+              }
+
+              // Handle numeric fields that might be strings
+              if (subcategoryData['category_order'] is String) {
+                subcategoryData['category_order'] =
+                    int.tryParse(subcategoryData['category_order']) ?? 0;
+              }
+              if (subcategoryData['section_order'] is String) {
+                subcategoryData['section_order'] =
+                    int.tryParse(subcategoryData['section_order']) ?? 0;
+              }
+              if (subcategoryData['subcategory_order'] is String) {
+                subcategoryData['subcategory_order'] =
+                    int.tryParse(subcategoryData['subcategory_order']) ?? 0;
+              }
+
+              // Handle boolean fields that might be null
+              if (subcategoryData['show_in_homepage'] == null) {
+                subcategoryData['show_in_homepage'] = false;
+              }
+              if (subcategoryData['publish'] == null) {
+                subcategoryData['publish'] = true;
+              }
+
+              // Log the data being passed to fromJson
+              print('[MART API] 🔍 Parsing item ${subcategoryData['id']}:');
+              print('[MART API] 🔍   Raw data: $subcategoryData');
 
               final subcategory = MartSubcategoryModel.fromJson(
                 subcategoryData,
               );
               print(
-                '[MART FIRESTORE] 🔍 DEBUG: Successfully parsed ${doc.id}: ${subcategory.title}',
+                '[MART API] ✅ Successfully parsed ${subcategoryData['id']}: ${subcategory.title}',
               );
               return subcategory;
             } catch (e) {
               print(
-                '[MART FIRESTORE] 🔍 DEBUG: Error parsing subcategory document ${doc.id}: $e',
+                '[MART API] ❌ Error parsing subcategory item ${item['id']}: $e',
               );
-              print('[MART FIRESTORE] 🔍 DEBUG: Document data: ${doc.data()}');
+              print('[MART API] Item data: $item');
               return null;
             }
           })
           .whereType<MartSubcategoryModel>()
           .toList();
 
-      print(
-        '[MART FIRESTORE] 🔍 DEBUG: Successfully parsed ${subcategories.length} subcategories from Firestore',
+      // Sort subcategories by subcategory_order
+      subcategories.sort(
+        (a, b) => (a.subcategoryOrder ?? 0).compareTo(b.subcategoryOrder ?? 0),
       );
+
+      print(
+        '[MART API] ✅ Successfully parsed ${subcategories.length} homepage subcategories from API',
+      );
+      print('[MART API] 📊 PARSED SUBCATEGORIES:');
+
+      // Debug: Log the homepage subcategories
+      for (int i = 0; i < subcategories.length; i++) {
+        final subcategory = subcategories[i];
+        print(
+          '[MART API]   ${i + 1}. ${subcategory.title} - Parent: ${subcategory.parentCategoryTitle} - Show in Homepage: ${subcategory.showInHomepage}',
+        );
+      }
 
       return subcategories;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] 🔍 DEBUG: Error fetching all subcategories from Firestore: $e',
-      );
+      print('[MART API] ❌ Error fetching homepage subcategories from API: $e');
       return [];
     }
   }
+
+  /// Get ALL subcategories from Firestore (for debugging - no filters)
 
   /// Search subcategories by name or description
   Future<List<MartSubcategoryModel>> searchSubcategories({
@@ -1052,71 +971,110 @@ class MartFirestoreService extends GetxService {
     int limit = 20,
   }) async {
     try {
-      print('[MART FIRESTORE] 🔍 Searching for subcategories: "$searchQuery"');
+      print('[MART API] 🔍 Searching for subcategories: "$searchQuery"');
 
-      // Convert search query to lowercase for case-insensitive search
-      final query = searchQuery.toLowerCase();
+      // Build the API URL
+      final url =
+          '${AppConst.baseUrl}mart-items/searchSubcategories?query=${Uri.encodeComponent(searchQuery)}&limit=$limit';
 
-      // Query Firestore for subcategories
-      final querySnapshot = await _firestore
-          .collection('mart_subcategories')
-          .where('publish', isEqualTo: true)
-          .limit(limit)
-          .get();
-
-      print(
-        '[MART FIRESTORE] 🔍 Firestore query completed, found ${querySnapshot.docs.length} subcategories',
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No subcategories found in Firestore');
+      if (response.statusCode != 200) {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
 
-      // Filter subcategories by search query and convert to MartSubcategoryModel
-      final subcategories = querySnapshot.docs
-          .map((doc) {
-            try {
-              final data = doc.data();
-              // Add document ID to the data
-              data['id'] = doc.id;
+      final responseData = json.decode(response.body);
 
-              return MartSubcategoryModel.fromJson(data);
+      if (!responseData['success']) {
+        print('[MART API] ❌ API returned false status');
+        return [];
+      }
+
+      print(
+        '[MART API] 🔍 API search completed, found ${responseData['count']} subcategories',
+      );
+
+      if (responseData['data'] == null || responseData['data'].isEmpty) {
+        print(
+          '[MART API] ⚠️ No subcategories found for search: "$searchQuery"',
+        );
+        return [];
+      }
+
+      // Convert API response to MartSubcategoryModel
+      final subcategories = (responseData['data'] as List)
+          .map((item) {
+            try {
+              if (item == null) return null;
+
+              final Map<String, dynamic> subcategoryData =
+                  Map<String, dynamic>.from(item);
+
+              // Handle array fields that might be strings
+              if (subcategoryData['review_attributes'] is String) {
+                try {
+                  subcategoryData['review_attributes'] = json.decode(
+                    subcategoryData['review_attributes'],
+                  );
+                } catch (e) {
+                  subcategoryData['review_attributes'] = [];
+                }
+              } else if (subcategoryData['review_attributes'] == null) {
+                subcategoryData['review_attributes'] = [];
+              }
+
+              // Handle numeric fields that might be strings
+              if (subcategoryData['category_order'] is String) {
+                subcategoryData['category_order'] =
+                    int.tryParse(subcategoryData['category_order']) ?? 0;
+              }
+              if (subcategoryData['section_order'] is String) {
+                subcategoryData['section_order'] =
+                    int.tryParse(subcategoryData['section_order']) ?? 0;
+              }
+              if (subcategoryData['subcategory_order'] is String) {
+                subcategoryData['subcategory_order'] =
+                    int.tryParse(subcategoryData['subcategory_order']) ?? 0;
+              }
+
+              // Handle boolean fields that might be null
+              if (subcategoryData['show_in_homepage'] == null) {
+                subcategoryData['show_in_homepage'] = false;
+              }
+              if (subcategoryData['publish'] == null) {
+                subcategoryData['publish'] = true;
+              }
+
+              return MartSubcategoryModel.fromJson(subcategoryData);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore subcategory document ${doc.id}: $e',
-              );
               return null;
             }
           })
           .whereType<MartSubcategoryModel>()
           .toList();
 
-      // Filter by search query (title or description)
-      final searchResults = subcategories.where((subcategory) {
-        final title = (subcategory.title ?? '').toLowerCase();
-        final description = (subcategory.description ?? '').toLowerCase();
-        return title.contains(query) || description.contains(query);
-      }).toList();
-
       print(
-        '[MART FIRESTORE] ✅ Search completed, found ${searchResults.length} matching subcategories',
+        '[MART API] ✅ Search completed, found ${subcategories.length} matching subcategories for "$searchQuery"',
       );
 
       // Debug: Log the search results
-      for (int i = 0; i < searchResults.length; i++) {
-        final subcategory = searchResults[i];
+      for (int i = 0; i < subcategories.length; i++) {
+        final subcategory = subcategories[i];
         final title = subcategory.title ?? 'No Title';
         final description = subcategory.description ?? 'No Description';
         final shortDescription = description.length > 50
             ? '${description.substring(0, 50)}...'
             : description;
-        print('[MART FIRESTORE]   ${i + 1}. $title - $shortDescription');
+        print('[MART API]   ${i + 1}. $title - $shortDescription');
       }
 
-      return searchResults;
+      return subcategories;
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Error searching subcategories: $e');
+      print('[MART API] ❌ Error searching subcategories: $e');
       return [];
     }
   }
@@ -1127,36 +1085,59 @@ class MartFirestoreService extends GetxService {
     int limit = 20,
   }) async {
     try {
-      print('[MART FIRESTORE] 🔍 Searching for categories: "$searchQuery"');
+      print('[MART API] 🔍 Searching for categories: "$searchQuery"');
 
-      // Convert search query to lowercase for case-insensitive search
-      final query = searchQuery.toLowerCase();
+      // Build the API URL
+      final url =
+          '${AppConst.baseUrl}mart-items/searchCategories?query=${Uri.encodeComponent(searchQuery)}';
 
-      // Query Firestore for categories
-      final querySnapshot = await _firestore
-          .collection('mart_categories')
-          .where('publish', isEqualTo: true)
-          .limit(limit)
-          .get();
-      print(
-        '[MART FIRESTORE] 🔍 Firestore query completed, found ${querySnapshot.docs.length} categories',
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
       );
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No categories found in Firestore');
+
+      if (response.statusCode != 200) {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
 
-      final categories = querySnapshot.docs
-          .map((doc) {
+      final responseData = json.decode(response.body);
+
+      if (!responseData['success']) {
+        print('[MART API] ❌ API returned false status');
+        return [];
+      }
+
+      print(
+        '[MART API] 🔍 API search completed, found ${responseData['count']} categories',
+      );
+
+      if (responseData['data'] == null || responseData['data'].isEmpty) {
+        print('[MART API] ⚠️ No categories found for search: "$searchQuery"');
+        return [];
+      }
+
+      // Convert API response to MartCategoryModel
+      final categories = (responseData['data'] as List)
+          .map((item) {
             try {
-              final data = doc.data();
+              if (item == null) return null;
+
               final Map<String, dynamic> categoryData =
-                  Map<String, dynamic>.from(data);
-              // Add document ID to the data
-              categoryData['id'] = doc.id;
-              // Handle array fields that might be null
-              if (categoryData['review_attributes'] == null)
+                  Map<String, dynamic>.from(item);
+
+              // Handle array fields that might be strings
+              if (categoryData['review_attributes'] is String) {
+                try {
+                  categoryData['review_attributes'] = json.decode(
+                    categoryData['review_attributes'],
+                  );
+                } catch (e) {
+                  categoryData['review_attributes'] = [];
+                }
+              } else if (categoryData['review_attributes'] == null) {
                 categoryData['review_attributes'] = [];
+              }
 
               // Handle numeric fields that might be strings
               if (categoryData['category_order'] is String) {
@@ -1168,286 +1149,326 @@ class MartFirestoreService extends GetxService {
                     int.tryParse(categoryData['section_order']) ?? 0;
               }
 
+              // Handle boolean fields that might be null
+              if (categoryData['show_in_homepage'] == null) {
+                categoryData['show_in_homepage'] = false;
+              }
+              if (categoryData['publish'] == null) {
+                categoryData['publish'] = true;
+              }
+              if (categoryData['has_subcategories'] == null) {
+                categoryData['has_subcategories'] = false;
+              }
+
+              // Handle subcategories_count
+              if (categoryData['subcategories_count'] == null) {
+                categoryData['subcategories_count'] = 0;
+              }
+
               return MartCategoryModel.fromJson(categoryData);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore category document ${doc.id}: $e',
-              );
               return null;
             }
           })
           .whereType<MartCategoryModel>()
           .toList();
 
-      // Filter by search query (title or description)
-      final searchResults = categories.where((category) {
-        final title = category.title?.toLowerCase() ?? '';
-        final description = category.description?.toLowerCase() ?? '';
-        return title.contains(query) || description.contains(query);
-      }).toList();
+      // Apply limit (since API might return more than our limit)
+      final limitedResults = categories.take(limit).toList();
 
       print(
-        '[MART FIRESTORE] ✅ Search completed, found ${searchResults.length} matching categories',
+        '[MART API] ✅ Search completed, found ${limitedResults.length} matching categories for "$searchQuery"',
       );
 
       // Debug: Log the search results
-      for (int i = 0; i < searchResults.length; i++) {
-        final category = searchResults[i];
+      for (int i = 0; i < limitedResults.length; i++) {
+        final category = limitedResults[i];
         final title = category.title ?? 'No Title';
         final description = category.description ?? 'No Description';
         final shortDescription = description.length > 50
             ? '${description.substring(0, 50)}...'
             : description;
-        print('[MART FIRESTORE]   ${i + 1}. $title - $shortDescription');
+        print('[MART API]   ${i + 1}. $title - $shortDescription');
       }
 
-      return searchResults;
+      return limitedResults;
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Error searching categories: $e');
+      print('[MART API] ❌ Error searching categories: $e');
       return [];
     }
   }
 
-  /// Get mart vendors from Firestore
-  Future<List<MartVendorModel>> getMartVendors({
-    String? search,
-    bool? isActive,
-    bool? enabledDelivery,
-    int limit = 20,
-  }) async {
+  //changed here
+
+  /// Get mart vendors from API
+  Future<List<MartVendorModel>> getMartVendors({String? search}) async {
     try {
-      print('[MART FIRESTORE] 🏪 Fetching mart vendors from Firestore...');
-      // Query Firestore for vendors
-      Query query = _firestore.collection('mart_vendors');
+      print('[MART API] 🏪 Fetching mart vendors from API...');
 
-      if (isActive != null) {
-        query = query.where('isActive', isEqualTo: isActive);
+      // Build query parameters
+      final Map<String, String> queryParams = {};
+
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
       }
 
-      if (enabledDelivery != null) {
-        query = query.where('enabledDelivery', isEqualTo: enabledDelivery);
-      }
+      // Build URI
+      final uri = Uri.parse(
+        '${AppConst.baseUrl}mart-items/getMartVendors',
+      ).replace(queryParameters: queryParams);
 
-      // Execute the query
-      final querySnapshot = await query.limit(limit).get();
+      // Make API request
+      final response = await http.get(uri, headers: await getHeaders());
 
       print(
-        '[MART FIRESTORE] 🏪 Firestore query completed, found ${querySnapshot.docs.length} vendors',
+        '[MART API] 🏪 API request completed with status: ${response.statusCode}',
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No vendors found in Firestore');
+      if (response.statusCode != 200) {
+        print(
+          '[MART API] ❌ API request failed with status: ${response.statusCode}',
+        );
         return [];
       }
-      // Convert Firestore documents to MartVendorModel
-      final vendors = querySnapshot.docs
-          .map((doc) {
+
+      // Parse response body
+      final responseBody = json.decode(response.body);
+
+      if (responseBody == null || responseBody['success'] != true) {
+        print('[MART API] ⚠️ No vendors found in API response');
+        return [];
+      }
+
+      final List<dynamic> vendorsData = responseBody['data'] ?? [];
+
+      print('[MART API] 🏪 API returned ${vendorsData.length} vendors');
+
+      if (vendorsData.isEmpty) {
+        print('[MART API] ⚠️ No vendors found in API');
+        return [];
+      }
+
+      // Convert API response to MartVendorModel
+      final vendors = vendorsData
+          .map((vendorData) {
             try {
-              final data = doc.data();
-              if (data == null) {
-                print(
-                  '[MART FIRESTORE] ⚠️ Document data is null for ${doc.id}',
-                );
+              if (vendorData == null) {
+                print('[MART API] ⚠️ Vendor data is null');
                 return null;
               }
 
               // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
+              if (vendorData is! Map<String, dynamic>) {
                 print(
-                  '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}',
+                  '[MART API] ⚠️ Vendor data is not a Map, type: ${vendorData.runtimeType}',
                 );
                 return null;
               }
 
-              final Map<String, dynamic> vendorData = Map<String, dynamic>.from(
-                data,
+              final Map<String, dynamic> vendorMap = Map<String, dynamic>.from(
+                vendorData,
               );
 
-              // Add document ID to the data
-              vendorData['id'] = doc.id;
+              // Handle JSON string fields that need parsing
+              _handleJsonStringFields(vendorMap);
 
-              return MartVendorModel.fromJson(vendorData);
+              // Handle numeric and boolean fields
+              _handleNumericAndBooleanFields(vendorMap);
+
+              return MartVendorModel.fromJson(vendorMap);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore vendor document ${doc.id}: $e',
-              );
+              print('[MART API] ❌ Error parsing API vendor data: $e');
               return null;
             }
           })
           .whereType<MartVendorModel>()
           .toList();
 
-      // Apply search filter on client side if needed
-      if (search != null && search.isNotEmpty) {
-        final searchLower = search.toLowerCase();
-        vendors.removeWhere(
-          (vendor) =>
-              vendor.name != null &&
-              !vendor.name!.toLowerCase().contains(searchLower),
-        );
-        print(
-          '[MART FIRESTORE] 🔍 After search filtering: ${vendors.length} vendors',
-        );
-      }
-
       print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${vendors.length} vendors from Firestore',
+        '[MART API] ✅ Successfully parsed ${vendors.length} vendors from API',
       );
 
       return vendors;
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Error fetching vendors from Firestore: $e');
+      print('[MART API] ❌ Error fetching vendors from API: $e');
       return [];
     }
   }
 
-  /// Get published categories from Firestore
-  Future<List<MartCategoryModel>> getPublishedCategories({
-    String? martId,
-  }) async {
-    try {
-      print(
-        '[MART FIRESTORE] 📂 Fetching published categories from Firestore...',
-      );
+  /// Helper method to handle JSON string fields
+  void _handleJsonStringFields(Map<String, dynamic> vendorData) {
+    final jsonStringFields = [
+      'photos',
+      'workingHours',
+      'categoryID',
+      'categoryTitle',
+      'filters',
+      'adminCommission',
+      'specialDiscount',
+      'coordinates',
+      'g',
+    ];
 
-      // Query Firestore for published categories
-      Query query = _firestore
-          .collection('mart_categories')
-          .where('publish', isEqualTo: true);
-
-      if (martId != null && martId.isNotEmpty) {
-        query = query.where('mart_id', isEqualTo: martId);
+    for (final field in jsonStringFields) {
+      if (vendorData[field] is String) {
+        try {
+          final parsed = json.decode(vendorData[field]);
+          vendorData[field] = parsed;
+        } catch (e) {
+          print('[MART API] ⚠️ Failed to parse JSON field $field: $e');
+          // Set to appropriate default based on field type
+          if (field == 'photos' ||
+              field == 'categoryID' ||
+              field == 'categoryTitle') {
+            vendorData[field] = [];
+          } else if (field == 'workingHours' || field == 'specialDiscount') {
+            vendorData[field] = [];
+          } else if (field == 'filters' ||
+              field == 'adminCommission' ||
+              field == 'coordinates' ||
+              field == 'g') {
+            vendorData[field] = {};
+          }
+        }
+      } else if (vendorData[field] == null) {
+        // Set appropriate defaults for null fields
+        if (field == 'photos' ||
+            field == 'categoryID' ||
+            field == 'categoryTitle') {
+          vendorData[field] = [];
+        } else if (field == 'workingHours' || field == 'specialDiscount') {
+          vendorData[field] = [];
+        } else if (field == 'filters' ||
+            field == 'adminCommission' ||
+            field == 'coordinates' ||
+            field == 'g') {
+          vendorData[field] = {};
+        }
       }
-
-      final querySnapshot = await query.limit(100).get();
-
-      print(
-        '[MART FIRESTORE] 📂 Firestore query completed, found ${querySnapshot.docs.length} published categories',
-      );
-
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No published categories found');
-        return [];
-      }
-
-      // Convert Firestore documents to MartCategoryModel
-      final categories = querySnapshot.docs
-          .map((doc) {
-            try {
-              final data = doc.data();
-              if (data == null) return null;
-
-              // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
-                print(
-                  '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}',
-                );
-                return null;
-              }
-
-              final Map<String, dynamic> categoryData =
-                  Map<String, dynamic>.from(data);
-
-              // Add document ID to the data
-              categoryData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (categoryData['review_attributes'] == null)
-                categoryData['review_attributes'] = [];
-
-              // Handle numeric fields that might be strings
-              if (categoryData['category_order'] is String) {
-                categoryData['category_order'] =
-                    int.tryParse(categoryData['category_order']) ?? 0;
-              }
-              if (categoryData['section_order'] is String) {
-                categoryData['section_order'] =
-                    int.tryParse(categoryData['section_order']) ?? 0;
-              }
-
-              return MartCategoryModel.fromJson(categoryData);
-            } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore category document ${doc.id}: $e',
-              );
-              return null;
-            }
-          })
-          .whereType<MartCategoryModel>()
-          .toList();
-
-      // Sort categories by category_order
-      categories.sort(
-        (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
-      );
-
-      print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${categories.length} published categories from Firestore',
-      );
-
-      return categories;
-    } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching published categories from Firestore: $e',
-      );
-      return [];
     }
   }
 
-  /// Get featured categories from Firestore
+  /// Helper method to handle numeric and boolean fields
+  void _handleNumericAndBooleanFields(Map<String, dynamic> vendorData) {
+    // Handle numeric fields
+    final numericFields = [
+      'specialDiscountEnable',
+      'latitude',
+      'longitude',
+      'DeliveryCharge',
+      'restaurantCost',
+      'hidephotos',
+      'reststatus',
+      'isOpen',
+      'publish',
+      'enabledDelivery',
+      'enabledDiveInFuture',
+      'dine_in_active',
+      'isSelfDelivery',
+    ];
+
+    for (final field in numericFields) {
+      if (vendorData[field] is String) {
+        if (field == 'latitude' ||
+            field == 'longitude' ||
+            field == 'DeliveryCharge' ||
+            field == 'restaurantCost') {
+          vendorData[field] = double.tryParse(vendorData[field]) ?? 0.0;
+        } else {
+          vendorData[field] = int.tryParse(vendorData[field]) ?? 0;
+        }
+      }
+    }
+
+    // Handle boolean-like fields (0/1 or true/false)
+    final boolFields = [
+      'specialDiscountEnable',
+      'hidephotos',
+      'reststatus',
+      'isOpen',
+      'publish',
+      'enabledDelivery',
+      'enabledDiveInFuture',
+      'dine_in_active',
+      'isSelfDelivery',
+    ];
+
+    for (final field in boolFields) {
+      if (vendorData[field] is String) {
+        final value = vendorData[field].toLowerCase();
+        vendorData[field] = value == 'true' || value == '1';
+      } else if (vendorData[field] is int) {
+        vendorData[field] = vendorData[field] == 1;
+      }
+    }
+
+    // Handle review counts
+    if (vendorData['reviewsCount'] is String) {
+      vendorData['reviewsCount'] =
+          int.tryParse(vendorData['reviewsCount']) ?? 0;
+    }
+
+    // Handle review sums
+    if (vendorData['reviewsSum'] is String) {
+      vendorData['reviewsSum'] =
+          double.tryParse(vendorData['reviewsSum']) ?? 0.0;
+    }
+  }
+
+  /// Get published categories from Firestoresdf
+  ///
+  /// sdf
   Future<List<MartCategoryModel>> getFeaturedCategories({
     String? martId,
   }) async {
     try {
-      print(
-        '[MART FIRESTORE] ⭐ Fetching featured categories from Firestore...',
-      );
-
-      // Query Firestore for featured categories
-      Query query = _firestore
-          .collection('mart_categories')
-          .where('publish', isEqualTo: true)
-          .where('isFeature', isEqualTo: true);
-
+      print('[MART API] ⭐ Fetching featured categories from API...');
+      // Build the API URL
+      String url = '${AppConst.baseUrl}mart-items/getFeaturedCategories';
       if (martId != null && martId.isNotEmpty) {
-        query = query.where('mart_id', isEqualTo: martId);
+        url += '?martId=$martId';
       }
-
-      final querySnapshot = await query.limit(50).get();
-
-      print(
-        '[MART FIRESTORE] ⭐ Firestore query completed, found ${querySnapshot.docs.length} featured categories',
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
       );
-
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No featured categories found');
+      if (response.statusCode != 200) {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
-
-      // Convert Firestore documents to MartCategoryModel
-      final categories = querySnapshot.docs
-          .map((doc) {
+      final responseData = json.decode(response.body);
+      if (!responseData['success']) {
+        print('[MART API] ❌ API returned false status');
+        return [];
+      }
+      print(
+        '[MART API] ⭐ API call completed, found ${responseData['count']} featured categories',
+      );
+      if (responseData['data'] == null || responseData['data'].isEmpty) {
+        print('[MART API] ⚠️ No featured categories found');
+        return [];
+      }
+      // Convert API response to MartCategoryModel
+      final categories = (responseData['data'] as List)
+          .map((item) {
             try {
-              final data = doc.data();
-              if (data == null) return null;
-
-              // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
-                print(
-                  '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}',
-                );
-                return null;
-              }
+              if (item == null) return null;
 
               final Map<String, dynamic> categoryData =
-                  Map<String, dynamic>.from(data);
+                  Map<String, dynamic>.from(item);
 
-              // Add document ID to the data
-              categoryData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (categoryData['review_attributes'] == null)
+              // Handle array fields that might be strings
+              if (categoryData['review_attributes'] is String) {
+                try {
+                  categoryData['review_attributes'] = json.decode(
+                    categoryData['review_attributes'],
+                  );
+                } catch (e) {
+                  categoryData['review_attributes'] = [];
+                }
+              } else if (categoryData['review_attributes'] == null) {
                 categoryData['review_attributes'] = [];
+              }
 
               // Handle numeric fields that might be strings
               if (categoryData['category_order'] is String) {
@@ -1459,11 +1480,24 @@ class MartFirestoreService extends GetxService {
                     int.tryParse(categoryData['section_order']) ?? 0;
               }
 
+              // Handle boolean fields that might be null
+              if (categoryData['show_in_homepage'] == null) {
+                categoryData['show_in_homepage'] = false;
+              }
+              if (categoryData['publish'] == null) {
+                categoryData['publish'] = true;
+              }
+              if (categoryData['has_subcategories'] == null) {
+                categoryData['has_subcategories'] = false;
+              }
+
+              // Handle subcategories_count
+              if (categoryData['subcategories_count'] == null) {
+                categoryData['subcategories_count'] = 0;
+              }
+
               return MartCategoryModel.fromJson(categoryData);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore category document ${doc.id}: $e',
-              );
               return null;
             }
           })
@@ -1474,21 +1508,17 @@ class MartFirestoreService extends GetxService {
       categories.sort(
         (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
       );
-
       print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${categories.length} featured categories from Firestore',
+        '[MART API] ✅ Successfully parsed ${categories.length} featured categories from API',
       );
-
       return categories;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching featured categories from Firestore: $e',
-      );
+      print('[MART API] ❌ Error fetching featured categories from API: $e');
       return [];
     }
   }
 
-  /// Get items by vendor from Firestore
+  /// Get items by vendor from API
   Future<List<MartItemModel>> getItemsByVendor({
     required String vendorId,
     String? categoryId,
@@ -1497,107 +1527,184 @@ class MartFirestoreService extends GetxService {
     int limit = 20,
   }) async {
     try {
-      print('[MART FIRESTORE] 🏪 Fetching items for vendor: $vendorId');
+      print('[MART API] 🏪 Fetching items for vendor: $vendorId');
 
-      // Query Firestore for items by vendor
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('vendorID', isEqualTo: vendorId);
+      // Build query parameters
+      final Map<String, String> queryParams = {'vendorId': vendorId};
 
-      if (isAvailable != null) {
-        query = query.where('isAvailable', isEqualTo: isAvailable);
+      if (categoryId != null && categoryId.isNotEmpty) {
+        queryParams['categoryId'] = categoryId;
       }
 
-      final querySnapshot = await query.limit(limit).get();
+      if (isAvailable != null) {
+        queryParams['isAvailable'] = isAvailable.toString();
+      }
+
+      // Build URI
+      final uri = Uri.parse(
+        '${AppConst.baseUrl}mart-items/by-vendor',
+      ).replace(queryParameters: queryParams);
+
+      // Make API request
+      final response = await http.get(uri, headers: await getHeaders());
 
       print(
-        '[MART FIRESTORE] 🏪 Firestore query completed, found ${querySnapshot.docs.length} items for vendor',
+        '[MART API] 🏪 API request completed with status: ${response.statusCode}',
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No items found for vendor: $vendorId');
+      if (response.statusCode != 200) {
+        print(
+          '[MART API] ❌ API request failed with status: ${response.statusCode}',
+        );
         return [];
       }
 
-      // Convert Firestore documents to MartItemModel
-      final items = querySnapshot.docs
-          .map((doc) {
+      // Parse response body
+      final responseBody = json.decode(response.body);
+      final responseData = responseBody;
+
+      if (responseData == null || responseData['status'] != true) {
+        print('[MART API] ⚠️ No items found for vendor: $vendorId');
+        return [];
+      }
+
+      final List<dynamic> itemsData = responseData['data'] ?? [];
+
+      print('[MART API] 🏪 API returned ${itemsData.length} items for vendor');
+
+      if (itemsData.isEmpty) {
+        print('[MART API] ⚠️ No items found for vendor: $vendorId');
+        return [];
+      }
+
+      // Convert API response to MartItemModel
+      final items = itemsData
+          .map((itemData) {
             try {
-              final data = doc.data();
-              if (data == null) return null;
+              if (itemData == null) return null;
 
               // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
+              if (itemData is! Map<String, dynamic>) {
                 print(
-                  '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}',
+                  '[MART API] ⚠️ Item data is not a Map, type: ${itemData.runtimeType}',
                 );
                 return null;
               }
 
-              final Map<String, dynamic> itemData = Map<String, dynamic>.from(
-                data,
+              final Map<String, dynamic> itemMap = Map<String, dynamic>.from(
+                itemData,
               );
 
-              // Add document ID to the data
-              itemData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (itemData['addOnsPrice'] == null) itemData['addOnsPrice'] = [];
-              if (itemData['addOnsTitle'] == null) itemData['addOnsTitle'] = [];
-              if (itemData['options'] == null) itemData['options'] = [];
-              if (itemData['photos'] == null) itemData['photos'] = [];
-              if (itemData['review_attributes'] == null)
-                itemData['review_attributes'] = [];
-              if (itemData['subcategoryID'] == null)
-                itemData['subcategoryID'] = [];
+              // Handle array fields that might be strings or null
+              _handleArrayFields(itemMap);
 
               // Handle numeric fields that might be strings
-              if (itemData['reviewCount'] is String) {
-                itemData['reviewCount'] =
-                    int.tryParse(itemData['reviewCount']) ?? 0;
-              }
-              if (itemData['reviewSum'] is String) {
-                itemData['reviewSum'] =
-                    int.tryParse(itemData['reviewSum']) ?? 0;
-              }
-              if (itemData['price'] is String) {
-                itemData['price'] = double.tryParse(itemData['price']) ?? 0.0;
-              }
+              _handleNumericFields(itemMap);
 
-              return MartItemModel.fromJson(itemData);
+              return MartItemModel.fromJson(itemMap);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore item document ${doc.id}: $e',
-              );
+              print('[MART API] ❌ Error parsing API item data: $e');
               return null;
             }
           })
           .whereType<MartItemModel>()
           .toList();
 
-      // Filter by category if provided
-      if (categoryId != null && categoryId.isNotEmpty) {
-        items.removeWhere((item) => item.categoryID != categoryId);
-        print(
-          '[MART FIRESTORE] 🔍 After category filtering: ${items.length} items',
-        );
-      }
-
       print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${items.length} items for vendor from Firestore',
+        '[MART API] ✅ Successfully parsed ${items.length} items for vendor from API',
       );
-
       return items;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching items by vendor from Firestore: $e',
-      );
+      print('[MART API] ❌ Error fetching items by vendor from API: $e');
       return [];
     }
   }
 
-  /// Get items by category only from Firestore
+  /// Helper method to handle array fields
+  void _handleArrayFields(Map<String, dynamic> itemData) {
+    final arrayFields = [
+      'addOnsPrice',
+      'addOnsTitle',
+      'options',
+      'photos',
+      'review_attributes',
+      'subcategoryID',
+    ];
+
+    for (final field in arrayFields) {
+      if (itemData[field] == null) {
+        itemData[field] = [];
+      } else if (itemData[field] is String) {
+        // Try to parse JSON string to list
+        try {
+          final parsed = json.decode(itemData[field]);
+          if (parsed is List) {
+            itemData[field] = parsed;
+          } else {
+            itemData[field] = [];
+          }
+        } catch (e) {
+          itemData[field] = [];
+        }
+      }
+    }
+  }
+
+  /// Helper method to handle numeric fields
+  void _handleNumericFields(Map<String, dynamic> itemData) {
+    // Handle reviewCount
+    if (itemData['reviewCount'] is String) {
+      itemData['reviewCount'] = int.tryParse(itemData['reviewCount']) ?? 0;
+    }
+
+    // Handle reviewSum - this might be a double based on your API response
+    if (itemData['reviewSum'] is String) {
+      itemData['reviewSum'] = double.tryParse(itemData['reviewSum']) ?? 0.0;
+    }
+
+    // Handle price fields
+    final priceFields = ['price', 'disPrice'];
+    for (final field in priceFields) {
+      if (itemData[field] is String) {
+        itemData[field] = double.tryParse(itemData[field]) ?? 0.0;
+      }
+    }
+
+    // Handle other numeric fields
+    final numericFields = ['quantity', 'calories', 'grams', 'proteins', 'fats'];
+    for (final field in numericFields) {
+      if (itemData[field] is String) {
+        itemData[field] = int.tryParse(itemData[field]) ?? 0;
+      }
+    }
+
+    // Handle boolean fields that might be strings
+    final boolFields = [
+      'publish',
+      'isAvailable',
+      'nonveg',
+      'veg',
+      'takeawayOption',
+      'isStealOfMoment',
+      'isTrending',
+      'isSeasonal',
+      'has_options',
+      'options_toggle',
+      'options_enabled',
+      'isBestSeller',
+      'isNew',
+      'isSpotlight',
+      'isFeature',
+    ];
+
+    for (final field in boolFields) {
+      if (itemData[field] is String) {
+        final value = itemData[field].toLowerCase();
+        itemData[field] = value == 'true' || value == '1';
+      }
+    }
+  }
+
   Future<List<MartItemModel>> getItemsByCategoryOnly({
     required String categoryId,
     bool? isAvailable,
@@ -1605,79 +1712,80 @@ class MartFirestoreService extends GetxService {
     int limit = 20,
   }) async {
     try {
-      print('[MART FIRESTORE] 📂 Fetching items for category: $categoryId');
+      print('[MART API] 📂 Fetching items for category: $categoryId');
 
-      // Query Firestore for items by category
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('categoryID', isEqualTo: categoryId);
+      // Build query parameters
+      final Map<String, String> queryParams = {'categoryId': categoryId};
 
       if (isAvailable != null) {
-        query = query.where('isAvailable', isEqualTo: isAvailable);
+        queryParams['isAvailable'] = isAvailable.toString();
       }
 
-      final querySnapshot = await query.limit(limit).get();
+      // Build URI
+      final uri = Uri.parse(
+        '${AppConst.baseUrl}mart-items/by-category-only',
+      ).replace(queryParameters: queryParams);
+
+      // Make API request
+      final response = await http.get(uri, headers: await getHeaders());
 
       print(
-        '[MART FIRESTORE] 📂 Firestore query completed, found ${querySnapshot.docs.length} items for category',
+        '[MART API] 📂 API request completed with status: ${response.statusCode}',
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No items found for category: $categoryId');
+      if (response.statusCode != 200) {
+        print(
+          '[MART API] ❌ API request failed with status: ${response.statusCode}',
+        );
+        return [];
+      }
+      // Parse response body
+      final responseBody = json.decode(response.body);
+      if (responseBody == null || responseBody['status'] != true) {
+        print('[MART API] ⚠️ No items found for category: $categoryId');
+        return [];
+      }
+      final List<dynamic> itemsData = responseBody['data'] ?? [];
+
+      print(
+        '[MART API] 📂 API returned ${itemsData.length} items for category',
+      );
+
+      if (itemsData.isEmpty) {
+        print('[MART API] ⚠️ No items found for category: $categoryId');
         return [];
       }
 
-      // Convert Firestore documents to MartItemModel
-      final items = querySnapshot.docs
-          .map((doc) {
+      // Convert API response to MartItemModel
+      final items = itemsData
+          .map((itemData) {
             try {
-              final data = doc.data();
-              if (data == null) return null;
+              if (itemData == null) return null;
 
               // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
+              if (itemData is! Map<String, dynamic>) {
                 print(
-                  '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}',
+                  '[MART API] ⚠️ Item data is not a Map, type: ${itemData.runtimeType}',
                 );
                 return null;
               }
 
-              final Map<String, dynamic> itemData = Map<String, dynamic>.from(
-                data,
+              final Map<String, dynamic> itemMap = Map<String, dynamic>.from(
+                itemData,
               );
 
-              // Add document ID to the data
-              itemData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (itemData['addOnsPrice'] == null) itemData['addOnsPrice'] = [];
-              if (itemData['addOnsTitle'] == null) itemData['addOnsTitle'] = [];
-              if (itemData['options'] == null) itemData['options'] = [];
-              if (itemData['photos'] == null) itemData['photos'] = [];
-              if (itemData['review_attributes'] == null)
-                itemData['review_attributes'] = [];
-              if (itemData['subcategoryID'] == null)
-                itemData['subcategoryID'] = [];
+              // Handle array fields that might be strings or null
+              _handleArrayFields(itemMap);
 
               // Handle numeric fields that might be strings
-              if (itemData['reviewCount'] is String) {
-                itemData['reviewCount'] =
-                    int.tryParse(itemData['reviewCount']) ?? 0;
-              }
-              if (itemData['reviewSum'] is String) {
-                itemData['reviewSum'] =
-                    int.tryParse(itemData['reviewSum']) ?? 0;
-              }
-              if (itemData['price'] is String) {
-                itemData['price'] = double.tryParse(itemData['price']) ?? 0.0;
-              }
+              _handleNumericFields(itemMap);
 
-              return MartItemModel.fromJson(itemData);
+              // Handle boolean fields
+              _handleBooleanFields(itemMap);
+
+              return MartItemModel.fromJson(itemMap);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore item document ${doc.id}: $e',
-              );
+              print('[MART API] ❌ Error parsing API item data: $e');
               return null;
             }
           })
@@ -1685,312 +1793,385 @@ class MartFirestoreService extends GetxService {
           .toList();
 
       print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${items.length} items for category from Firestore',
+        '[MART API] ✅ Successfully parsed ${items.length} items for category from API',
       );
 
       return items;
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error fetching items by category only from Firestore: $e',
-      );
+      print('[MART API] ❌ Error fetching items by category only from API: $e');
       return [];
+    }
+  }
+
+  /// Helper method to handle array fields
+
+  /// Helper method to handle numeric fields
+
+  /// Helper method to handle boolean fields
+  void _handleBooleanFields(Map<String, dynamic> itemData) {
+    final boolFields = [
+      'publish',
+      'isAvailable',
+      'nonveg',
+      'veg',
+      'takeawayOption',
+      'isStealOfMoment',
+      'isTrending',
+      'isSeasonal',
+      'has_options',
+      'options_toggle',
+      'options_enabled',
+      'isBestSeller',
+      'isNew',
+      'isSpotlight',
+      'isFeature',
+    ];
+
+    for (final field in boolFields) {
+      if (itemData[field] is String) {
+        final value = itemData[field].toLowerCase();
+        itemData[field] = value == 'true' || value == '1';
+      } else if (itemData[field] is int) {
+        itemData[field] = itemData[field] == 1;
+      }
     }
   }
 
   /// Get unique sections from mart_items collection (optimized for speed)
   Future<List<String>> getUniqueSections() async {
     try {
-      print(
-        '[MART FIRESTORE] 📂 Fetching unique sections from mart_items (OPTIMIZED)...',
-      );
+      print('[MART API] 📂 Fetching unique sections from API...');
 
-      // Query Firestore with smaller limit for faster response (we only need a sample to get sections)
-      final querySnapshot = await _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .limit(50) // Reduced limit for faster response
-          .get()
+      // Make API call to get sections
+      final response = await http
+          .get(
+            Uri.parse('${AppConst.baseUrl}mart-items/sections'),
+            headers: await getHeaders(),
+          )
           .timeout(
             const Duration(seconds: 5),
             onTimeout: () {
-              print('[MART FIRESTORE] ⏰ Sections query timeout');
+              print('[MART API] ⏰ Sections API timeout');
               throw TimeoutException(
-                'Sections query timeout',
+                'Sections API timeout',
                 const Duration(seconds: 5),
               );
             },
           );
 
       print(
-        '[MART FIRESTORE] 📂 Firestore query completed, found ${querySnapshot.docs.length} items',
+        '[MART API] 📂 API call completed with status: ${response.statusCode}',
       );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No items found');
+        if (responseData['status'] == true) {
+          final List<dynamic> sectionsData = responseData['data'];
+          final sections = sectionsData.cast<String>().toList()..sort();
+
+          print(
+            '[MART API] ✅ Found ${sections.length} unique sections: $sections',
+          );
+          for (int i = 0; i < sections.length; i++) {
+            print('[MART API] 📂 Section ${i + 1}: "${sections[i]}"');
+          }
+          return sections;
+        } else {
+          print(
+            '[MART API] ⚠️ API returned false status: ${responseData['message']}',
+          );
+          return [];
+        }
+      } else {
+        print('[MART API] ❌ API error: ${response.statusCode}');
         return [];
       }
-
-      // Extract unique sections
-      Set<String> uniqueSections = {};
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data();
-        final section = data['section'] as String?;
-        if (section != null && section.isNotEmpty) {
-          uniqueSections.add(section);
-        }
-      }
-      //
-      final sections = uniqueSections.toList()..sort();
-      // final sections = uniqueSections.toList();
-      print(
-        '[MART FIRESTORE] ✅ Found ${sections.length} unique sections: $sections',
-      );
-
-      // Debug: Print each section individually
-      for (int i = 0; i < sections.length; i++) {
-        print('[MART FIRESTORE] 📂 Section ${i + 1}: "${sections[i]}"');
-      }
-
-      return sections;
+    } on TimeoutException catch (e) {
+      print('[MART API] ⏰ Timeout fetching sections: $e');
+      return [];
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Error fetching unique sections: $e');
+      print('[MART API] ❌ Error fetching unique sections: $e');
       return [];
     }
   }
 
-  /// Get items by section from Firestore
+  /// Get items by section from API
   Future<List<MartItemModel>> getItemsBySection({
     required String section,
-    int limit = 15,
   }) async {
     try {
-      print('[MART FIRESTORE] 🛍️ Fetching items for section: $section');
+      print('[MART API] 🛍️ Fetching items for section: $section');
 
-      // Query Firestore for items by section
-      final querySnapshot = await _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('section', isEqualTo: section)
-          .limit(limit)
-          .get();
+      // Build query parameters
+      final Map<String, String> queryParams = {'section': section};
+      // Build URI
+      final uri = Uri.parse(
+        '${AppConst.baseUrl}mart-items/by-section',
+      ).replace(queryParameters: queryParams);
 
+      // Make API request
+      final response = await http.get(uri, headers: await getHeaders());
       print(
-        '[MART FIRESTORE] 🛍️ Firestore query completed, found ${querySnapshot.docs.length} items for section "$section"',
+        '[MART API] 🛍️ API request completed with status: ${response.statusCode}',
       );
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No items found for section: $section');
+      if (response.statusCode != 200) {
+        print(
+          '[MART API] ❌ API request failed with status: ${response.statusCode}',
+        );
+        return [];
+      }
+      // Parse response body
+      final responseBody = json.decode(response.body);
+      if (responseBody == null || responseBody['status'] != true) {
+        print('[MART API] ⚠️ No items found for section: $section');
         return [];
       }
 
-      // Convert Firestore documents to MartItemModel
-      final items = querySnapshot.docs
-          .map((doc) {
-            try {
-              final data = doc.data();
-              final Map<String, dynamic> itemData = Map<String, dynamic>.from(
-                data,
-              );
-
-              // Add document ID to the data
-              itemData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (itemData['addOnsPrice'] == null) itemData['addOnsPrice'] = [];
-              if (itemData['addOnsTitle'] == null) itemData['addOnsTitle'] = [];
-              if (itemData['options'] == null) itemData['options'] = [];
-              if (itemData['photos'] == null) itemData['photos'] = [];
-              if (itemData['subcategoryID'] == null)
-                itemData['subcategoryID'] = '';
-              if (itemData['product_specification'] == null)
-                itemData['product_specification'] = {};
-
-              // Handle numeric fields that might be strings
-              if (itemData['reviewCount'] is String) {
-                itemData['reviewCount'] =
-                    int.tryParse(itemData['reviewCount']) ?? 0;
-              }
-              if (itemData['reviewSum'] is String) {
-                itemData['reviewSum'] =
-                    double.tryParse(itemData['reviewSum']) ?? 0.0;
-              }
-              if (itemData['price'] is String) {
-                itemData['price'] = double.tryParse(itemData['price']) ?? 0.0;
-              }
-              if (itemData['disPrice'] is String) {
-                itemData['disPrice'] =
-                    double.tryParse(itemData['disPrice']) ?? 0.0;
-              }
-              if (itemData['quantity'] is String) {
-                itemData['quantity'] = int.tryParse(itemData['quantity']) ?? 0;
-              }
-              if (itemData['calories'] is String) {
-                itemData['calories'] = int.tryParse(itemData['calories']) ?? 0;
-              }
-              if (itemData['proteins'] is String) {
-                itemData['proteins'] =
-                    double.tryParse(itemData['proteins']) ?? 0.0;
-              }
-              if (itemData['fats'] is String) {
-                itemData['fats'] = double.tryParse(itemData['fats']) ?? 0.0;
-              }
-              if (itemData['grams'] is String) {
-                itemData['grams'] = double.tryParse(itemData['grams']) ?? 0.0;
-              }
-              if (itemData['options_count'] is String) {
-                itemData['options_count'] =
-                    int.tryParse(itemData['options_count']) ?? 0;
-              }
-
-              // Handle boolean fields that might be null
-              if (itemData['has_options'] == null) {
-                itemData['has_options'] = false;
-              }
-              if (itemData['isAvailable'] == null) {
-                itemData['isAvailable'] = true;
-              }
-              if (itemData['isBestSeller'] == null) {
-                itemData['isBestSeller'] = false;
-              }
-              if (itemData['isFeature'] == null) itemData['isFeature'] = false;
-              if (itemData['isNew'] == null) itemData['isNew'] = false;
-              if (itemData['isSeasonal'] == null) {
-                itemData['isSeasonal'] = false;
-              }
-              if (itemData['isSpotlight'] == null) {
-                itemData['isSpotlight'] = false;
-              }
-              if (itemData['isStealOfMoment'] == null)
-                itemData['isStealOfMoment'] = false;
-              if (itemData['isTrending'] == null)
-                itemData['isTrending'] = false;
-              if (itemData['veg'] == null) itemData['veg'] = true;
-              if (itemData['nonveg'] == null) itemData['nonveg'] = false;
-              if (itemData['takeawayOption'] == null)
-                itemData['takeawayOption'] = false;
-              if (itemData['publish'] == null) itemData['publish'] = true;
-
-              return MartItemModel.fromJson(itemData);
-            } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore item document ${doc.id}: $e',
-              );
-              return null;
-            }
-          })
-          .whereType<MartItemModel>()
-          .toList();
-
+      final List<dynamic> itemsData = responseBody['data'] ?? [];
       print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${items.length} items for section "$section"',
+        '[MART API] 🛍️ API returned ${itemsData.length} items for section "$section"',
       );
-      return items;
-    } catch (e) {
-      print('[MART FIRESTORE] ❌ Error fetching items by section: $e');
-      return [];
-    }
-  }
-
-  /// Get all mart items from Firestore
-  Future<List<MartItemModel>> getMartItems({
-    String? search,
-    int limit = 100,
-  }) async {
-    try {
-      print('[MART FIRESTORE] 🛍️ Fetching all mart items from Firestore...');
-
-      // Query Firestore for all items
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true);
-
-      final querySnapshot = await query.limit(limit).get();
-
-      print(
-        '[MART FIRESTORE] 🛍️ Firestore query completed, found ${querySnapshot.docs.length} items',
-      );
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ No items found in Firestore');
+      if (itemsData.isEmpty) {
+        print('[MART API] ⚠️ No items found for section: $section');
         return [];
       }
-
-      // Convert Firestore documents to MartItemModel
-      final items = querySnapshot.docs
-          .map((doc) {
+      // Convert API response to MartItemModel
+      final items = itemsData
+          .map((itemData) {
             try {
-              final data = doc.data();
-              if (data == null) return null;
+              if (itemData == null) return null;
 
               // Ensure data is a Map<String, dynamic>
-              if (data is! Map<String, dynamic>) {
+              if (itemData is! Map<String, dynamic>) {
                 print(
-                  '[MART FIRESTORE] ⚠️ Document data is not a Map for ${doc.id}, type: ${data.runtimeType}',
+                  '[MART API] ⚠️ Item data is not a Map, type: ${itemData.runtimeType}',
                 );
                 return null;
               }
 
-              final Map<String, dynamic> itemData = Map<String, dynamic>.from(
-                data,
+              final Map<String, dynamic> itemMap = Map<String, dynamic>.from(
+                itemData,
               );
 
-              // Add document ID to the data
-              itemData['id'] = doc.id;
-
-              // Handle array fields that might be null
-              if (itemData['addOnsPrice'] == null) itemData['addOnsPrice'] = [];
-              if (itemData['addOnsTitle'] == null) itemData['addOnsTitle'] = [];
-              if (itemData['options'] == null) itemData['options'] = [];
-              if (itemData['photos'] == null) itemData['photos'] = [];
-              if (itemData['review_attributes'] == null)
-                itemData['review_attributes'] = [];
-              if (itemData['subcategoryID'] == null)
-                itemData['subcategoryID'] = [];
+              // Handle array fields that might be strings or null
+              _handleArrayFields(itemMap);
 
               // Handle numeric fields that might be strings
-              if (itemData['reviewCount'] is String) {
-                itemData['reviewCount'] =
-                    int.tryParse(itemData['reviewCount']) ?? 0;
-              }
-              if (itemData['reviewSum'] is String) {
-                itemData['reviewSum'] =
-                    int.tryParse(itemData['reviewSum']) ?? 0;
-              }
-              if (itemData['price'] is String) {
-                itemData['price'] = double.tryParse(itemData['price']) ?? 0.0;
-              }
+              _handleNumericFields(itemMap);
 
-              return MartItemModel.fromJson(itemData);
+              // Handle boolean fields
+              _handleBooleanFields(itemMap);
+
+              // Handle JSON string fields
+              _handleJsonStringFields(itemMap);
+
+              return MartItemModel.fromJson(itemMap);
             } catch (e) {
-              print(
-                '[MART FIRESTORE] ❌ Error parsing Firestore item document ${doc.id}: $e',
-              );
+              print('[MART API] ❌ Error parsing API item data: $e');
               return null;
             }
           })
           .whereType<MartItemModel>()
           .toList();
 
-      // Apply search filter on client side if needed
-      if (search != null && search.isNotEmpty) {
-        final searchLower = search.toLowerCase();
-        items.removeWhere(
-          (item) =>
-              !item.name.toLowerCase().contains(searchLower) &&
-              !item.description.toLowerCase().contains(searchLower),
-        );
-        print(
-          '[MART FIRESTORE] 🔍 After search filtering: ${items.length} items',
-        );
-      }
-
       print(
-        '[MART FIRESTORE] ✅ Successfully parsed ${items.length} mart items from Firestore',
+        '[MART API] ✅ Successfully parsed ${items.length} items for section "$section"',
       );
-
       return items;
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Error fetching mart items from Firestore: $e');
+      print('[MART API] ❌ Error fetching items by section: $e');
       return [];
+    }
+  }
+
+  /// Helper method to handle numeric fields
+  /// Helper method to handle boolean fields
+
+  /// Helper method to handle JSON string fields
+  /// Get all mart items from Firestore
+  Future<List<MartItemModel>> getMartItems() async {
+    try {
+      print('[MART API] 🛍️ Fetching all mart items from API...');
+
+      // Make API call to get all mart items
+      final response = await http
+          .get(
+            Uri.parse('${AppConst.baseUrl}mart-items/all'),
+            headers: await getHeaders(),
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[MART API] ⏰ Mart items API timeout');
+              throw TimeoutException(
+                'Mart items API timeout',
+                const Duration(seconds: 10),
+              );
+            },
+          );
+
+      print(
+        '[MART API] 🛍️ API call completed with status: ${response.statusCode}',
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['status'] == true) {
+          final List<dynamic> itemsData = responseData['data'];
+          final int count = responseData['count'] ?? itemsData.length;
+
+          print('[MART API] 🛍️ API returned $count items');
+
+          if (itemsData.isEmpty) {
+            print('[MART API] ⚠️ No items found in API response');
+            return [];
+          }
+
+          // Convert API data to MartItemModel
+          final items = itemsData
+              .map((itemData) {
+                try {
+                  if (itemData == null) return null;
+
+                  // Ensure data is a Map<String, dynamic>
+                  if (itemData is! Map<String, dynamic>) {
+                    print(
+                      '[MART API] ⚠️ Item data is not a Map, type: ${itemData.runtimeType}',
+                    );
+                    return null;
+                  }
+
+                  final Map<String, dynamic> itemMap =
+                      Map<String, dynamic>.from(itemData);
+
+                  // Handle JSON string fields that need to be parsed
+                  _parseJsonStringFields(itemMap);
+
+                  // Handle numeric fields that might be strings
+                  _convertNumericFields(itemMap);
+
+                  // Handle array fields that might be null or strings
+                  _initializeArrayFields(itemMap);
+
+                  return MartItemModel.fromJson(itemMap);
+                } catch (e) {
+                  print(
+                    '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
+                  );
+                  return null;
+                }
+              })
+              .whereType<MartItemModel>()
+              .toList();
+
+          print(
+            '[MART API] ✅ Successfully parsed ${items.length} mart items from API',
+          );
+
+          return items;
+        } else {
+          print(
+            '[MART API] ⚠️ API returned false status: ${responseData['message']}',
+          );
+          return [];
+        }
+      } else {
+        print('[MART API] ❌ API error: ${response.statusCode}');
+        return [];
+      }
+    } on TimeoutException catch (e) {
+      print('[MART API] ⏰ Timeout fetching mart items: $e');
+      return [];
+    } catch (e) {
+      print('[MART API] ❌ Error fetching mart items from API: $e');
+      return [];
+    }
+  }
+
+  // Helper method to parse JSON string fields
+  void _parseJsonStringFields(Map<String, dynamic> itemMap) {
+    final jsonFields = [
+      'addOnsTitle',
+      'addOnsPrice',
+      'options',
+      'product_specification',
+      'addOnesPrice',
+    ];
+
+    for (final field in jsonFields) {
+      if (itemMap[field] is String) {
+        try {
+          final stringValue = itemMap[field] as String;
+          if (stringValue.isNotEmpty) {
+            itemMap[field] = json.decode(stringValue);
+          } else {
+            itemMap[field] = [];
+          }
+        } catch (e) {
+          print('[MART API] ⚠️ Error parsing $field as JSON: $e');
+          itemMap[field] = [];
+        }
+      }
+    }
+  }
+
+  // Helper method to convert numeric fields
+  void _convertNumericFields(Map<String, dynamic> itemMap) {
+    final numericFields = [
+      'price',
+      'disPrice',
+      'quantity',
+      'calories',
+      'grams',
+      'proteins',
+      'fats',
+      'reviewCount',
+      'reviewSum',
+      'max_price',
+      'min_price',
+      'savings_percentage',
+    ];
+
+    for (final field in numericFields) {
+      if (itemMap[field] is String) {
+        final stringValue = itemMap[field] as String;
+        if (stringValue.isNotEmpty) {
+          if (field == 'price' ||
+              field == 'disPrice' ||
+              field == 'savings_percentage' ||
+              field == 'max_price' ||
+              field == 'min_price') {
+            itemMap[field] = double.tryParse(stringValue) ?? 0.0;
+          } else {
+            itemMap[field] = int.tryParse(stringValue) ?? 0;
+          }
+        } else {
+          itemMap[field] = 0;
+        }
+      } else if (itemMap[field] == null) {
+        itemMap[field] = 0;
+      }
+    }
+  }
+
+  // Helper method to initialize array fields
+  void _initializeArrayFields(Map<String, dynamic> itemMap) {
+    final arrayFields = [
+      'addOnsTitle',
+      'addOnsPrice',
+      'options',
+      'photos',
+      'review_attributes',
+      'subcategoryID',
+      'addOnesPrice',
+    ];
+
+    for (final field in arrayFields) {
+      if (itemMap[field] == null) {
+        itemMap[field] = [];
+      }
     }
   }
 
@@ -1998,91 +2179,120 @@ class MartFirestoreService extends GetxService {
 
   /// Get mart vendor details from Firestore
 
-  /// Get item by ID from Firestore
   Future<MartItemModel?> getItemById(String itemId) async {
     try {
-      print('[MART FIRESTORE] 🔍 Getting item by ID: $itemId');
+      print('[MART API] 🔍 Getting item by ID: $itemId');
 
-      // First try to get by document ID (in case the document ID matches the product ID)
-      final docSnapshot = await _firestore
-          .collection('mart_items')
-          .doc(itemId)
-          .get();
-
-      if (docSnapshot.exists) {
-        print('[MART FIRESTORE] ✅ Found item by document ID: $itemId');
-        final data = docSnapshot.data();
-        if (data != null) {
-          final Map<String, dynamic> itemData = Map<String, dynamic>.from(data);
-          itemData['id'] = docSnapshot.id;
-          return MartItemModel.fromJson(itemData);
-        }
-      }
-
-      // If not found by document ID, try to find by 'id' field
-      print(
-        '[MART FIRESTORE] 🔍 Document ID not found, searching by id field: $itemId',
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mart-items/getItemById?id=$itemId'),
+        headers: await getHeaders(),
       );
-      final querySnapshot = await _firestore
-          .collection('mart_items')
-          .where('id', isEqualTo: itemId)
-          .limit(1)
-          .get();
 
-      if (querySnapshot.docs.isEmpty) {
-        print('[MART FIRESTORE] ⚠️ Item not found by id field: $itemId');
+      if (response.statusCode != 200) {
+        print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return null;
       }
 
-      print('[MART FIRESTORE] ✅ Found item by id field: $itemId');
-      final doc = querySnapshot.docs.first;
+      final responseData = json.decode(response.body);
 
-      final data = doc.data();
-
-      final Map<String, dynamic> itemData = Map<String, dynamic>.from(data);
-
-      // Add document ID to the data
-      itemData['id'] = doc.id;
-
-      // Handle array fields that might be null
-      if (itemData['addOnsPrice'] == null) itemData['addOnsPrice'] = [];
-      if (itemData['addOnsTitle'] == null) itemData['addOnsTitle'] = [];
-      if (itemData['options'] == null) itemData['options'] = [];
-      if (itemData['photos'] == null) itemData['photos'] = [];
-      if (itemData['review_attributes'] == null)
-        itemData['review_attributes'] = [];
-      if (itemData['subcategoryID'] == null) itemData['subcategoryID'] = [];
-      if (itemData['variants'] == null) itemData['variants'] = [];
-      if (itemData['attributes'] == null) itemData['attributes'] = [];
-      if (itemData['tags'] == null) itemData['tags'] = [];
-      if (itemData['allergens'] == null) itemData['allergens'] = [];
-      if (itemData['nutritionalInfo'] == null) itemData['nutritionalInfo'] = [];
-
+      if (!responseData['status']) {
+        print(
+          '[MART API] ❌ API returned false status: ${responseData['message']}',
+        );
+        return null;
+      }
+      if (responseData['data'] == null || responseData['data'].isEmpty) {
+        print('[MART API] ⚠️ Item not found: $itemId');
+        return null;
+      }
+      print('[MART API] ✅ Found item: $itemId');
+      final itemData = responseData['data'][0];
+      // Convert the item data to proper format
+      final Map<String, dynamic> processedData = Map<String, dynamic>.from(
+        itemData,
+      );
+      // Ensure ID is set
+      processedData['id'] = itemId;
+      // Handle array fields that might be strings or null
+      _processArrayField(processedData, 'addOnsPrice');
+      _processArrayField(processedData, 'addOnsTitle');
+      _processArrayField(processedData, 'options');
+      _processArrayField(processedData, 'photos');
+      _processArrayField(processedData, 'review_attributes');
+      _processArrayField(processedData, 'subcategoryID');
+      _processArrayField(processedData, 'variants');
+      _processArrayField(processedData, 'attributes');
+      _processArrayField(processedData, 'tags');
+      _processArrayField(processedData, 'allergens');
+      _processArrayField(processedData, 'nutritionalInfo');
       // Handle numeric fields that might be strings
-      if (itemData['reviewCount'] is String) {
-        itemData['reviewCount'] = int.tryParse(itemData['reviewCount']) ?? 0;
+      if (processedData['reviewCount'] is String) {
+        processedData['reviewCount'] =
+            int.tryParse(processedData['reviewCount']) ?? 0;
       }
-      if (itemData['reviewSum'] is String) {
-        itemData['reviewSum'] = int.tryParse(itemData['reviewSum']) ?? 0;
+      if (processedData['reviewSum'] is String) {
+        processedData['reviewSum'] =
+            double.tryParse(processedData['reviewSum']) ?? 0.0;
       }
-      if (itemData['price'] is String) {
-        itemData['price'] = double.tryParse(itemData['price']) ?? 0.0;
+      if (processedData['price'] is String) {
+        processedData['price'] = double.tryParse(processedData['price']) ?? 0.0;
       }
-      if (itemData['disPrice'] is String) {
-        itemData['disPrice'] = double.tryParse(itemData['disPrice']) ?? 0.0;
+      if (processedData['disPrice'] is String) {
+        processedData['disPrice'] =
+            double.tryParse(processedData['disPrice']) ?? 0.0;
       }
-
-      final item = MartItemModel.fromJson(itemData);
-      print('[MART FIRESTORE] ✅ Successfully retrieved item: ${item.name}');
+      // Handle stringified JSON fields
+      _processJsonField(processedData, 'addOnsTitle');
+      _processJsonField(processedData, 'addOnsPrice');
+      _processJsonField(processedData, 'options');
+      _processJsonField(processedData, 'product_specification');
+      final item = MartItemModel.fromJson(processedData);
+      print('[MART API] ✅ Successfully retrieved item: ${item.name}');
 
       return item;
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Error getting item by ID $itemId: $e');
+      print('[MART API] ❌ Error getting item by ID $itemId: $e');
       return null;
     }
   }
 
-  /// Stream similar products by category from Firestore
+  // Helper function to process array fields
+  void _processArrayField(Map<String, dynamic> data, String fieldName) {
+    if (data[fieldName] == null) {
+      data[fieldName] = [];
+    } else if (data[fieldName] is String) {
+      // Try to parse string as JSON array
+      try {
+        final parsed = json.decode(data[fieldName]);
+        if (parsed is List) {
+          data[fieldName] = parsed;
+        } else {
+          data[fieldName] = [];
+        }
+      } catch (e) {
+        data[fieldName] = [];
+      }
+    }
+  }
+
+  // Helper function to process JSON string fields
+  void _processJsonField(Map<String, dynamic> data, String fieldName) {
+    if (data[fieldName] is String) {
+      try {
+        data[fieldName] = json.decode(data[fieldName]);
+      } catch (e) {
+        // If parsing fails, keep the original value or set to empty array
+        if (fieldName == 'addOnsTitle' ||
+            fieldName == 'addOnsPrice' ||
+            fieldName == 'options') {
+          data[fieldName] = [];
+        } else if (fieldName == 'product_specification') {
+          data[fieldName] = {};
+        }
+      }
+    }
+  }
+
   Stream<List<MartItemModel>> streamSimilarProducts({
     required String categoryId,
     String? subcategoryId,
@@ -2092,626 +2302,223 @@ class MartFirestoreService extends GetxService {
   }) {
     try {
       print(
-        '[MART FIRESTORE] 📡 Starting stream for similar products - category: $categoryId',
+        '[MART API] 📡 Starting stream for similar products - category: $categoryId',
       );
       if (subcategoryId != null) {
-        print('[MART FIRESTORE] 📡 Subcategory filter: $subcategoryId');
+        print('[MART API] 📡 Subcategory filter: $subcategoryId');
       }
       if (excludeProductId != null) {
-        print('[MART FIRESTORE] 📡 Excluding product: $excludeProductId');
+        print('[MART API] 📡 Excluding product: $excludeProductId');
       }
+      // Build the API URL with query parameters
+      final uri = Uri.parse('${AppConst.baseUrl}mart-items/by-category')
+          .replace(
+            queryParameters: {
+              'categoryId': categoryId,
+              if (subcategoryId != null && subcategoryId.isNotEmpty)
+                'subcategoryId': subcategoryId,
+              if (isAvailable != null) 'isAvailable': isAvailable.toString(),
+              'limit': (limit + (excludeProductId != null ? 1 : 0)).toString(),
+            },
+          );
 
-      // Build the query
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true);
+      print('[MART API] 📡 API URL: $uri');
 
-      // Add category filter
-      if (categoryId.isNotEmpty) {
-        query = query.where('categoryID', isEqualTo: categoryId);
-      }
+      // Since we can't create a true real-time stream with HTTP API,
+      // we'll use a periodic stream that polls the API at intervals
+      return Stream.periodic(const Duration(seconds: 30), (_) async {
+        try {
+          final response = await http
+              .get(uri, headers: await getHeaders())
+              .timeout(
+                const Duration(seconds: 10),
+                onTimeout: () {
+                  print('[MART API] ⏰ Similar products API timeout');
+                  throw TimeoutException('Similar products API timeout');
+                },
+              );
 
-      // Add subcategory filter if provided
-      if (subcategoryId != null && subcategoryId.isNotEmpty) {
-        // Updated: subcategoryID is now a string, not an array
-        query = query.where('subcategoryID', isEqualTo: subcategoryId);
-      }
+          print(
+            '[MART API] 📡 API call completed with status: ${response.statusCode}',
+          );
 
-      // Add availability filter if provided
-      if (isAvailable != null) {
-        query = query.where('isAvailable', isEqualTo: isAvailable);
-      }
-
-      // Apply limit
-      query = query.limit(
-        limit + (excludeProductId != null ? 1 : 0),
-      ); // Get one extra in case we need to exclude
-
-      // Return stream that converts Firestore snapshots to MartItemModel list
-      return query
-          .snapshots()
-          .map((snapshot) {
-            print(
-              '[MART FIRESTORE] 📡 Stream update: ${snapshot.docs.length} documents received',
+          if (response.statusCode == 200) {
+            final Map<String, dynamic> responseData = json.decode(
+              response.body,
             );
 
-            if (snapshot.docs.isEmpty) {
+            if (responseData['status'] == true) {
+              final List<dynamic> itemsData = responseData['data'];
+              final int count = responseData['count'] ?? itemsData.length;
+
+              print('[MART API] 📡 API returned $count items');
+
+              if (itemsData.isEmpty) {
+                print(
+                  '[MART API] ⚠️ No items found in API response for category: $categoryId',
+                );
+                return <MartItemModel>[];
+              }
+
+              // Convert API data to MartItemModel
+              final items = itemsData
+                  .map((itemData) {
+                    try {
+                      if (itemData is! Map<String, dynamic>) {
+                        print(
+                          '[MART API] ⚠️ Item data is not a Map, type: ${itemData.runtimeType}',
+                        );
+                        return null;
+                      }
+
+                      final Map<String, dynamic> itemMap =
+                          Map<String, dynamic>.from(itemData);
+
+                      // Pre-process data before model creation
+                      _preprocessItemData(itemMap);
+
+                      return MartItemModel.fromJson(itemMap);
+                    } catch (e) {
+                      print(
+                        '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
+                      );
+                      return null;
+                    }
+                  })
+                  .whereType<MartItemModel>()
+                  .toList();
+
+              // Exclude the current product if specified
+              List<MartItemModel> filteredItems = items;
+              if (excludeProductId != null) {
+                filteredItems = items
+                    .where((item) => item.id != excludeProductId)
+                    .toList();
+              }
+
+              // Limit to requested amount
+              final finalItems = filteredItems.take(limit).toList();
+
               print(
-                '[MART FIRESTORE] ⚠️ No items found in stream for category: $categoryId',
+                '[MART API] 📡 Stream returning ${finalItems.length} similar products',
+              );
+              return finalItems;
+            } else {
+              print(
+                '[MART API] ⚠️ API returned false status: ${responseData['message']}',
               );
               return <MartItemModel>[];
             }
-
-            // Convert Firestore documents to MartItemModel
-            final items = snapshot.docs
-                .map((doc) {
-                  try {
-                    final itemData = doc.data() as Map<String, dynamic>;
-                    itemData['id'] = doc.id;
-
-                    // Handle numeric fields that might be strings
-                    if (itemData['reviewCount'] is String) {
-                      itemData['reviewCount'] =
-                          int.tryParse(itemData['reviewCount']) ?? 0;
-                    }
-                    if (itemData['reviewSum'] is String) {
-                      itemData['reviewSum'] =
-                          int.tryParse(itemData['reviewSum']) ?? 0;
-                    }
-                    if (itemData['price'] is String) {
-                      itemData['price'] =
-                          double.tryParse(itemData['price']) ?? 0.0;
-                    }
-                    if (itemData['disPrice'] is String) {
-                      itemData['disPrice'] =
-                          double.tryParse(itemData['disPrice']) ?? 0.0;
-                    }
-                    if (itemData['calories'] is String) {
-                      itemData['calories'] =
-                          int.tryParse(itemData['calories']) ?? 0;
-                    }
-                    if (itemData['proteins'] is String) {
-                      itemData['proteins'] =
-                          int.tryParse(itemData['proteins']) ?? 0;
-                    }
-                    if (itemData['fats'] is String) {
-                      itemData['fats'] = int.tryParse(itemData['fats']) ?? 0;
-                    }
-                    if (itemData['grams'] is String) {
-                      itemData['grams'] = int.tryParse(itemData['grams']) ?? 0;
-                    }
-
-                    return MartItemModel.fromJson(itemData);
-                  } catch (e) {
-                    print(
-                      '[MART FIRESTORE] ❌ Error parsing Firestore item document ${doc.id}: $e',
-                    );
-                    return null;
-                  }
-                })
-                .whereType<MartItemModel>()
-                .toList();
-
-            // Exclude the current product if specified
-            if (excludeProductId != null) {
-              items.removeWhere((item) => item.id == excludeProductId);
-            }
-
-            // Limit to requested amount
-            final finalItems = items.take(limit).toList();
-
-            print(
-              '[MART FIRESTORE] 📡 Stream returning ${finalItems.length} similar products',
-            );
-            return finalItems;
-          })
-          .handleError((error) {
-            print(
-              '[MART FIRESTORE] ❌ Stream error for similar products: $error',
-            );
+          } else {
+            print('[MART API] ❌ API error: ${response.statusCode}');
             return <MartItemModel>[];
-          });
+          }
+        } on TimeoutException catch (e) {
+          print('[MART API] ⏰ Timeout in stream for similar products: $e');
+          return <MartItemModel>[];
+        } catch (e) {
+          print('[MART API] ❌ Error in stream for similar products: $e');
+          return <MartItemModel>[];
+        }
+      }).asyncMap((event) => event).handleError((error) {
+        print('[MART API] ❌ Stream error for similar products: $error');
+        return <MartItemModel>[];
+      });
     } catch (e) {
-      print(
-        '[MART FIRESTORE] ❌ Error creating stream for similar products: $e',
-      );
+      print('[MART API] ❌ Error creating stream for similar products: $e');
       return Stream.value(<MartItemModel>[]);
     }
   }
 
-  /// Stream all products from mart_items collection
+  // Helper method to preprocess item data
+  void _preprocessItemData(Map<String, dynamic> itemMap) {
+    // Handle numeric fields that might be strings
+    final numericFields = [
+      'reviewCount',
+      'reviewSum',
+      'price',
+      'disPrice',
+      'calories',
+      'proteins',
+      'fats',
+      'grams',
+      'max_price',
+      'min_price',
+      'savings_percentage',
+    ];
+
+    for (final field in numericFields) {
+      if (itemMap[field] is String) {
+        final stringValue = itemMap[field] as String;
+        if (stringValue.isNotEmpty) {
+          if (field == 'price' ||
+              field == 'disPrice' ||
+              field == 'savings_percentage' ||
+              field == 'max_price' ||
+              field == 'min_price') {
+            itemMap[field] = double.tryParse(stringValue) ?? 0.0;
+          } else {
+            itemMap[field] = int.tryParse(stringValue) ?? 0;
+          }
+        } else {
+          itemMap[field] = 0;
+        }
+      } else if (itemMap[field] == null) {
+        itemMap[field] = 0;
+      }
+    }
+
+    // Handle JSON string fields
+    final jsonFields = [
+      'addOnsTitle',
+      'addOnsPrice',
+      'options',
+      'product_specification',
+      'addOnesPrice',
+    ];
+
+    for (final field in jsonFields) {
+      if (itemMap[field] is String) {
+        try {
+          final stringValue = itemMap[field] as String;
+          if (stringValue.isNotEmpty) {
+            itemMap[field] = json.decode(stringValue);
+          } else {
+            itemMap[field] = [];
+          }
+        } catch (e) {
+          print('[MART API] ⚠️ Error parsing $field as JSON: $e');
+          itemMap[field] = [];
+        }
+      }
+    }
+  }
+
+  /// Stream all products from API
   Stream<List<MartItemModel>> streamAllProducts({
     String? excludeProductId,
     bool? isAvailable,
     int limit = 10,
   }) {
     try {
-      print('[MART FIRESTORE] 📡 Starting stream for all products');
-      if (excludeProductId != null) {
-        print('[MART FIRESTORE] 📡 Excluding product: $excludeProductId');
-      }
-
-      // Build the query for all products
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true);
-
-      // Add availability filter if provided
-      if (isAvailable != null) {
-        query = query.where('isAvailable', isEqualTo: isAvailable);
-      }
-
-      // Apply limit
-      query = query.limit(
-        limit + (excludeProductId != null ? 1 : 0),
-      ); // Get one extra in case we need to exclude
-
-      // Return stream that converts Firestore snapshots to MartItemModel list
-      return query
-          .snapshots()
-          .map((snapshot) {
-            print(
-              '[MART FIRESTORE] 📡 Stream update: ${snapshot.docs.length} documents received',
-            );
-            print('[MART FIRESTORE] 📡 Stream metadata: ${snapshot.metadata}');
-
-            if (snapshot.docs.isEmpty) {
-              print('[MART FIRESTORE] ⚠️ No items found in stream');
-              return <MartItemModel>[];
-            }
-
-            // Convert Firestore documents to MartItemModel
-            final items = <MartItemModel>[];
-            for (final doc in snapshot.docs) {
-              try {
-                final itemData = doc.data() as Map<String, dynamic>;
-                itemData['id'] = doc.id;
-
-                print(
-                  '[MART FIRESTORE] 📡 Processing document ${doc.id}: ${itemData['name']}',
-                );
-
-                // Handle numeric fields that might be strings
-                if (itemData['reviewCount'] is String) {
-                  itemData['reviewCount'] =
-                      int.tryParse(itemData['reviewCount']) ?? 0;
-                }
-                if (itemData['reviewSum'] is String) {
-                  itemData['reviewSum'] =
-                      int.tryParse(itemData['reviewSum']) ?? 0;
-                }
-                if (itemData['price'] is String) {
-                  itemData['price'] = double.tryParse(itemData['price']) ?? 0.0;
-                }
-                if (itemData['disPrice'] is String) {
-                  itemData['disPrice'] =
-                      double.tryParse(itemData['disPrice']) ?? 0.0;
-                }
-                if (itemData['calories'] is String) {
-                  itemData['calories'] =
-                      int.tryParse(itemData['calories']) ?? 0;
-                }
-                if (itemData['proteins'] is String) {
-                  itemData['proteins'] =
-                      int.tryParse(itemData['proteins']) ?? 0;
-                }
-                if (itemData['fats'] is String) {
-                  itemData['fats'] = int.tryParse(itemData['fats']) ?? 0;
-                }
-                if (itemData['grams'] is String) {
-                  itemData['grams'] = int.tryParse(itemData['grams']) ?? 0;
-                }
-
-                final item = MartItemModel.fromJson(itemData);
-                items.add(item);
-                print(
-                  '[MART FIRESTORE] 📡 Successfully parsed item: ${item.name}',
-                );
-              } catch (e) {
-                print(
-                  '[MART FIRESTORE] ❌ Error parsing Firestore item document ${doc.id}: $e',
-                );
-                print('[MART FIRESTORE] ❌ Item data: ${doc.data()}');
-              }
-            }
-
-            // Exclude the current product if specified
-            if (excludeProductId != null) {
-              items.removeWhere((item) => item.id == excludeProductId);
-            }
-
-            // Limit to requested amount
-            final finalItems = items.take(limit).toList();
-
-            print(
-              '[MART FIRESTORE] 📡 Stream returning ${finalItems.length} products',
-            );
-            print(
-              '[MART FIRESTORE] 📡 Product names: ${finalItems.map((item) => item.name).toList()}',
-            );
-            return finalItems;
-          })
-          .handleError((error) {
-            print('[MART FIRESTORE] ❌ Stream error for all products: $error');
-            return <MartItemModel>[];
-          });
+      print('[MART API] 📡 Starting stream for all products');
+      return Stream.periodic(
+        const Duration(seconds: 30),
+        (_) => getMartItems(),
+      ).asyncMap((future) => future);
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Error creating stream for all products: $e');
+      print('[MART API] ❌ Error creating stream for all products: $e');
       return Stream.value(<MartItemModel>[]);
     }
-  }
-
-  // ==================== SECTION-SPECIFIC PRODUCT STREAMS ====================
-
-  /// Stream products for Product Deals section
-  Stream<List<MartItemModel>> streamProductDeals({int limit = 10}) {
-    try {
-      print('[MART FIRESTORE] 📡 Starting stream for Product Deals section');
-
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('isAvailable', isEqualTo: true)
-          .where('isStealOfMoment', isEqualTo: true) // Trending deals
-          .limit(limit);
-
-      return query
-          .snapshots()
-          .map((snapshot) {
-            print(
-              '[MART FIRESTORE] 📡 Product Deals stream: ${snapshot.docs.length} documents',
-            );
-            return _parseSnapshotToMartItems(snapshot);
-          })
-          .handleError((error) {
-            print('[MART FIRESTORE] ❌ Stream error for Product Deals: $error');
-            return <MartItemModel>[];
-          });
-    } catch (e) {
-      print('[MART FIRESTORE] ❌ Error creating Product Deals stream: $e');
-      return Stream.value(<MartItemModel>[]);
-    }
-  }
-
-  /// Stream products for Hair Care section
-  Stream<List<MartItemModel>> streamHairCareProducts({int limit = 10}) {
-    try {
-      print('[MART FIRESTORE] 📡 Starting stream for Hair Care section');
-
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('isAvailable', isEqualTo: true)
-          .where('categoryTitle', isEqualTo: 'Hair Care') // Hair care category
-          .limit(limit);
-
-      return query
-          .snapshots()
-          .map((snapshot) {
-            print(
-              '[MART FIRESTORE] 📡 Hair Care stream: ${snapshot.docs.length} documents',
-            );
-            return _parseSnapshotToMartItems(snapshot);
-          })
-          .handleError((error) {
-            print('[MART FIRESTORE] ❌ Stream error for Hair Care: $error');
-            return <MartItemModel>[];
-          });
-    } catch (e) {
-      print('[MART FIRESTORE] ❌ Error creating Hair Care stream: $e');
-      return Stream.value(<MartItemModel>[]);
-    }
-  }
-
-  /// Stream products for Chocolates section
-  Stream<List<MartItemModel>> streamChocolateProducts({int limit = 10}) {
-    try {
-      print('[MART FIRESTORE] 📡 Starting stream for Chocolates section');
-
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('isAvailable', isEqualTo: true)
-          .where(
-            'categoryTitle',
-            isEqualTo: 'Chocolates',
-          ) // Chocolates category
-          .limit(limit);
-
-      return query
-          .snapshots()
-          .map((snapshot) {
-            print(
-              '[MART FIRESTORE] 📡 Chocolates stream: ${snapshot.docs.length} documents',
-            );
-            return _parseSnapshotToMartItems(snapshot);
-          })
-          .handleError((error) {
-            print('[MART FIRESTORE] ❌ Stream error for Chocolates: $error');
-            return <MartItemModel>[];
-          });
-    } catch (e) {
-      print('[MART FIRESTORE] ❌ Error creating Chocolates stream: $e');
-      return Stream.value(<MartItemModel>[]);
-    }
-  }
-
-  /// Stream products for Playtime section
-  Stream<List<MartItemModel>> streamPlaytimeProducts({int limit = 10}) {
-    try {
-      print('[MART FIRESTORE] 📡 Starting stream for Playtime section');
-
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('isAvailable', isEqualTo: true)
-          .where('isTrending', isEqualTo: true) // Trending products
-          .limit(limit);
-
-      return query
-          .snapshots()
-          .map((snapshot) {
-            print(
-              '[MART FIRESTORE] 📡 Playtime stream: ${snapshot.docs.length} documents',
-            );
-            return _parseSnapshotToMartItems(snapshot);
-          })
-          .handleError((error) {
-            print('[MART FIRESTORE] ❌ Stream error for Playtime: $error');
-            return <MartItemModel>[];
-          });
-    } catch (e) {
-      print('[MART FIRESTORE] ❌ Error creating Playtime stream: $e');
-      return Stream.value(<MartItemModel>[]);
-    }
-  }
-
-  /// Stream products for Baby Care section
-  Stream<List<MartItemModel>> streamBabyCareProducts({int limit = 10}) {
-    try {
-      print('[MART FIRESTORE] 📡 Starting stream for Baby Care section');
-
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('isAvailable', isEqualTo: true)
-          .where('categoryTitle', isEqualTo: 'Baby Care') // Baby care category
-          .limit(limit);
-
-      return query
-          .snapshots()
-          .map((snapshot) {
-            print(
-              '[MART FIRESTORE] 📡 Baby Care stream: ${snapshot.docs.length} documents',
-            );
-            return _parseSnapshotToMartItems(snapshot);
-          })
-          .handleError((error) {
-            print('[MART FIRESTORE] ❌ Stream error for Baby Care: $error');
-            return <MartItemModel>[];
-          });
-    } catch (e) {
-      print('[MART FIRESTORE] ❌ Error creating Baby Care stream: $e');
-      return Stream.value(<MartItemModel>[]);
-    }
-  }
-
-  /// Stream products for Local Grocery section
-  Stream<List<MartItemModel>> streamLocalGroceryProducts({int limit = 10}) {
-    try {
-      print('[MART FIRESTORE] 📡 Starting stream for Local Grocery section');
-
-      Query query = _firestore
-          .collection('mart_items')
-          .where('publish', isEqualTo: true)
-          .where('isAvailable', isEqualTo: true)
-          .where(
-            'categoryTitle',
-            isEqualTo: 'Local Grocery',
-          ) // Local grocery category
-          .limit(limit);
-
-      return query
-          .snapshots()
-          .map((snapshot) {
-            print(
-              '[MART FIRESTORE] 📡 Local Grocery stream: ${snapshot.docs.length} documents',
-            );
-            return _parseSnapshotToMartItems(snapshot);
-          })
-          .handleError((error) {
-            print('[MART FIRESTORE] ❌ Stream error for Local Grocery: $error');
-            return <MartItemModel>[];
-          });
-    } catch (e) {
-      print('[MART FIRESTORE] ❌ Error creating Local Grocery stream: $e');
-      return Stream.value(<MartItemModel>[]);
-    }
-  }
-
-  /// Helper method to parse Firestore snapshot to MartItemModel list
-  List<MartItemModel> _parseSnapshotToMartItems(QuerySnapshot snapshot) {
-    if (snapshot.docs.isEmpty) {
-      return <MartItemModel>[];
-    }
-
-    return snapshot.docs
-        .map((doc) {
-          try {
-            final itemData = doc.data() as Map<String, dynamic>;
-            itemData['id'] = doc.id;
-
-            // Handle numeric fields that might be strings
-            if (itemData['reviewCount'] is String) {
-              itemData['reviewCount'] =
-                  int.tryParse(itemData['reviewCount']) ?? 0;
-            }
-            if (itemData['reviewSum'] is String) {
-              itemData['reviewSum'] = int.tryParse(itemData['reviewSum']) ?? 0;
-            }
-            if (itemData['price'] is String) {
-              itemData['price'] = double.tryParse(itemData['price']) ?? 0.0;
-            }
-            if (itemData['disPrice'] is String) {
-              itemData['disPrice'] =
-                  double.tryParse(itemData['disPrice']) ?? 0.0;
-            }
-            if (itemData['calories'] is String) {
-              itemData['calories'] = int.tryParse(itemData['calories']) ?? 0;
-            }
-            if (itemData['proteins'] is String) {
-              itemData['proteins'] = int.tryParse(itemData['proteins']) ?? 0;
-            }
-            if (itemData['fats'] is String) {
-              itemData['fats'] = int.tryParse(itemData['fats']) ?? 0;
-            }
-            if (itemData['grams'] is String) {
-              itemData['grams'] = int.tryParse(itemData['grams']) ?? 0;
-            }
-
-            return MartItemModel.fromJson(itemData);
-          } catch (e) {
-            print('[MART FIRESTORE] ❌ Error parsing document ${doc.id}: $e');
-            return null;
-          }
-        })
-        .whereType<MartItemModel>()
-        .toList();
   }
 
   // ==================== BANNER METHODS ====================
 
-  /// Stream banners by position (top, middle, bottom)
-  Stream<List<MartBannerModel>> streamBannersByPosition(
-    String position, {
-    int limit = 10,
-  }) {
-    try {
-      print('DEBUG: Streaming banners for position: $position');
-
-      return FirebaseFirestore.instance
-          .collection('mart_banners')
-          .where('is_publish', isEqualTo: true)
-          .where('position', isEqualTo: position)
-          .orderBy('set_order')
-          .limit(limit)
-          .snapshots()
-          .map((snapshot) {
-            print(
-              'DEBUG: Banner snapshot received with ${snapshot.docs.length} documents',
-            );
-
-            final banners = <MartBannerModel>[];
-            for (var doc in snapshot.docs) {
-              try {
-                final banner = MartBannerModel.fromMap(doc.data(), doc.id);
-                banners.add(banner);
-                print(
-                  'DEBUG: Added banner: ${banner.title} (order: ${banner.setOrder})',
-                );
-              } catch (e) {
-                print('ERROR: Failed to parse banner document ${doc.id}: $e');
-              }
-            }
-
-            print(
-              'DEBUG: Returning ${banners.length} banners for position: $position',
-            );
-            return banners;
-          });
-    } catch (e) {
-      print('ERROR: Failed to stream banners for position $position: $e');
-      return Stream.value([]);
-    }
-  }
-
   /// Stream all published banners
-  Stream<List<MartBannerModel>> streamAllBanners({int limit = 20}) {
-    try {
-      print('DEBUG: Streaming all published banners');
-
-      return FirebaseFirestore.instance
-          .collection('mart_banners')
-          .where('is_publish', isEqualTo: true)
-          .orderBy('position')
-          .orderBy('set_order')
-          .limit(limit)
-          .snapshots()
-          .map((snapshot) {
-            print(
-              'DEBUG: All banners snapshot received with ${snapshot.docs.length} documents',
-            );
-
-            final banners = <MartBannerModel>[];
-            for (var doc in snapshot.docs) {
-              try {
-                final banner = MartBannerModel.fromMap(doc.data(), doc.id);
-                banners.add(banner);
-                print(
-                  'DEBUG: Added banner: ${banner.title} (position: ${banner.position}, order: ${banner.setOrder})',
-                );
-              } catch (e) {
-                print('ERROR: Failed to parse banner document ${doc.id}: $e');
-              }
-            }
-
-            print('DEBUG: Returning ${banners.length} total banners');
-            return banners;
-          });
-    } catch (e) {
-      print('ERROR: Failed to stream all banners: $e');
-      return Stream.value([]);
-    }
-  }
-
-  /// Get banners by position (one-time fetch)
-  Future<List<MartBannerModel>> getBannersByPosition(
-    String position, {
-    int limit = 10,
-  }) async {
-    try {
-      print('DEBUG: Fetching banners for position: $position');
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('mart_banners')
-          .where('is_publish', isEqualTo: true)
-          .where('position', isEqualTo: position)
-          .orderBy('set_order')
-          .limit(limit)
-          .get();
-
-      print(
-        'DEBUG: Banner fetch completed with ${snapshot.docs.length} documents',
-      );
-
-      final banners = <MartBannerModel>[];
-      for (var doc in snapshot.docs) {
-        try {
-          final banner = MartBannerModel.fromMap(doc.data(), doc.id);
-          banners.add(banner);
-          print(
-            'DEBUG: Added banner: ${banner.title} (order: ${banner.setOrder})',
-          );
-        } catch (e) {
-          print('ERROR: Failed to parse banner document ${doc.id}: $e');
-        }
-      }
-
-      print(
-        'DEBUG: Returning ${banners.length} banners for position: $position',
-      );
-      return banners;
-    } catch (e) {
-      print('ERROR: Failed to fetch banners for position $position: $e');
-      return [];
-    }
-  }
-
   /// Stream items by brand ID
   Stream<List<MartItemModel>> streamItemsByBrand(String brandID) {
     try {
       print('[MART FIRESTORE] 🔍 Streaming items for brand: $brandID');
-
       return _firestore
           .collection(_collectionName)
           .where('brandID', isEqualTo: brandID)
@@ -2789,18 +2596,15 @@ class MartFirestoreService extends GetxService {
           .where('publish', isEqualTo: true)
           .orderBy('subcategory_order', descending: false)
           .limit(limit);
-
       if (lastDocument != null) {
         query = query.startAfterDocument(lastDocument);
       }
-
       final querySnapshot = await query.get();
       final subcategories = querySnapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         data['id'] = doc.id;
         return MartSubcategoryModel.fromJson(data);
       }).toList();
-
       return {
         'subcategories': subcategories,
         'lastDocument': querySnapshot.docs.isNotEmpty

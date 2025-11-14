@@ -151,10 +151,11 @@ class _MartSearchScreenState extends State<MartSearchScreen>
         ),
         child: Stack(
           children: [
-            ...List.generate(8, (index) { // 🔑 Reduced from 12 to 8 emojis
+            ...List.generate(8, (index) {
+              // 🔑 Reduced from 12 to 8 emojis
               final screenWidth = MediaQuery.of(context).size.width;
               final screenHeight = MediaQuery.of(context).size.height;
-              
+
               // 🔑 Position only at edges and diagonals
               double left, top;
               switch (index) {
@@ -194,7 +195,7 @@ class _MartSearchScreenState extends State<MartSearchScreen>
                   left = 0;
                   top = 0;
               }
-              
+
               return Positioned(
                 left: left,
                 top: top,
@@ -203,25 +204,35 @@ class _MartSearchScreenState extends State<MartSearchScreen>
                   builder: (context, child) {
                     // 🔑 Subtle edge animation with smaller movement
                     final time = _floatingController.value;
-                    final horizontalOffset = 8 * (index % 2 == 0 ? 1 : -1) * 
+                    final horizontalOffset =
+                        8 *
+                        (index % 2 == 0 ? 1 : -1) *
                         (0.5 + 0.5 * (time + index * 0.1));
-                    final verticalOffset = 6 * (index % 3 == 0 ? 1 : -1) * 
+                    final verticalOffset =
+                        6 *
+                        (index % 3 == 0 ? 1 : -1) *
                         (0.5 + 0.5 * (time + index * 0.1));
-                    final opacity = 0.3 + 0.15 * (0.5 + 0.5 * (time + index * 0.05));
-                    
+                    final opacity =
+                        0.3 + 0.15 * (0.5 + 0.5 * (time + index * 0.05));
+
                     return Transform.translate(
                       offset: Offset(horizontalOffset, verticalOffset),
                       child: Transform.rotate(
-                        angle: 0.02 * (time + index * 0.1), // 🔑 Very subtle rotation
+                        angle: 0.02 * (time + index * 0.1),
+                        // 🔑 Very subtle rotation
                         child: Transform.scale(
-                          scale: 0.98 + 0.04 * (0.5 + 0.5 * (time + index * 0.05)), // 🔑 Very subtle scaling
+                          scale:
+                              0.98 + 0.04 * (0.5 + 0.5 * (time + index * 0.05)),
+                          // 🔑 Very subtle scaling
                           child: Opacity(
                             opacity: opacity.clamp(0.0, 1.0),
                             child: Text(
                               floatingEmojis[index % floatingEmojis.length],
                               style: TextStyle(
-                                fontSize: 16 + (index % 3) * 4, // 🔑 Reduced size for edge positioning
-                                shadows: [ // 🔑 Added text shadow for better visibility
+                                fontSize: 16 + (index % 3) * 4,
+                                // 🔑 Reduced size for edge positioning
+                                shadows: [
+                                  // 🔑 Added text shadow for better visibility
                                   Shadow(
                                     color: Colors.black.withOpacity(0.1),
                                     blurRadius: 2,
@@ -257,12 +268,15 @@ class _MartSearchScreenState extends State<MartSearchScreen>
                           Container(
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.2),
-                              borderRadius:
-                                  BorderRadius.circular(MartTheme.buttonRadius),
+                              borderRadius: BorderRadius.circular(
+                                MartTheme.buttonRadius,
+                              ),
                             ),
                             child: IconButton(
-                              icon: const Icon(Icons.arrow_back_ios,
-                                  color: Colors.white),
+                              icon: const Icon(
+                                Icons.arrow_back_ios,
+                                color: Colors.white,
+                              ),
                               onPressed: () => Get.back(),
                             ),
                           ),
@@ -286,7 +300,6 @@ class _MartSearchScreenState extends State<MartSearchScreen>
                               ],
                             ),
                           ),
-
                         ],
                       ),
                     ),

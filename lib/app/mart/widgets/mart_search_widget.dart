@@ -782,38 +782,33 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   // }
 
   Widget _buildTrendingSearches() {
-    return Obx(() {
-      if (_isLoadingTrending) {
-        return _buildTrendingSearchesLoading();
-      }
+    if (_isLoadingTrending) {
+      return _buildTrendingSearchesLoading();
+    }
+    if (_trendingSearches.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    // Sort by popularity and take top 40
+    final sortedSearches = List<Map<String, dynamic>>.from(_trendingSearches)
+      ..sort((a, b) => (b['popularity'] ?? 0).compareTo(a['popularity'] ?? 0));
 
-      if (_trendingSearches.isEmpty) {
-        return const SizedBox.shrink();
-      }
+    final topSearches = sortedSearches.take(40).toList();
 
-      // Sort by popularity and take top 40
-      final sortedSearches = List<Map<String, dynamic>>.from(
-        _trendingSearches,
-      )..sort((a, b) => (b['popularity'] ?? 0).compareTo(a['popularity'] ?? 0));
-
-      final topSearches = sortedSearches.take(40).toList();
-
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 🔑 Simplified header without suggestions count and reload button
-          const Text(
-            '🔥 Trending Searches',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF333333),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 🔑 Simplified header without suggestions count and reload button
+        const Text(
+          '🔥 Trending Searches',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF333333),
           ),
-          _buildTrendingSearchesGrid(topSearches),
-        ],
-      );
-    });
+        ),
+        _buildTrendingSearchesGrid(topSearches),
+      ],
+    );
   }
 
   Widget _buildTrendingSearchesLoading() {

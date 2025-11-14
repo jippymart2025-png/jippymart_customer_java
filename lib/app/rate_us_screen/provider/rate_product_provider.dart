@@ -189,7 +189,7 @@ class RateProductProvider extends ChangeNotifier {
       );
 
       await FireStoreUtils.setRatingModel(ratingProduct);
-      await FireStoreUtils.updateVendor(vendorModel);
+      // await FireStoreUtils.updateVendor(vendorModel);
       await FireStoreUtils.setProduct(productModel);
       ShowToastDialog.closeLoader();
       Get.back();
@@ -199,7 +199,7 @@ class RateProductProvider extends ChangeNotifier {
   }
 
   final ImagePicker _imagePicker = ImagePicker();
-  RxList images = <dynamic>[].obs;
+  List images = <dynamic>[];
 
   Future pickFile({required ImageSource source}) async {
     try {

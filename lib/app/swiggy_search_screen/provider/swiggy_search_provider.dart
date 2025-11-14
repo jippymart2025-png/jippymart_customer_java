@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
@@ -196,9 +197,31 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // **MEMORY SAFE: Use smaller limits for progressive loading**
       // Load more vendors with strict limits
-      List<VendorModel> moreVendors = await FireStoreUtils.getAllVendors(
-        limit: 10,
-      ); // Reduced from 30 to 10
+      // List<VendorModel> moreVendors = await FireStoreUtils.getAllVendors(
+      //   limit: 10,
+      // );
+      final String? zoneId = Constant.selectedZone?.id;
+      final double latitude =
+          Constant.selectedLocation.location?.latitude ?? 0.0;
+      final double longitude =
+          Constant.selectedLocation.location?.longitude ?? 0.0;
+
+      if (zoneId == null || zoneId.isEmpty) {
+        print('[DEBUG] No zone ID available, skipping restaurant fetch');
+        return;
+      }
+      // Fetch restaurants from API with optional filter
+      List<VendorModel> moreVendors =
+          await BestRestaurantProvider.getNearestRestaurants(
+            zoneId: zoneId,
+            latitude: latitude,
+            longitude: longitude,
+            radius: double.parse(Constant.radius),
+            onFiltersReceived:
+                (List<String> availableFilters, String? currentFilter) {},
+          );
+
+      // Reduced from 30 to 10
       for (var vendor in moreVendors) {
         if (vendor.title != null && vendor.title!.isNotEmpty) {
           trieSearch.insert(vendor.title!, vendor, relevanceScore: 1.5);
@@ -252,9 +275,30 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("🔄 Loading vendors in batches (memory optimized)...");
 
       // **MEMORY SAFETY: Use strict limits to prevent OutOfMemoryError**
-      List<VendorModel> vendors = await FireStoreUtils.getAllVendors(
-        limit: FAST_VENDOR_LIMIT,
-      );
+      // List<VendorModel> vendors = await FireStoreUtils.getAllVendors(
+      //   limit: FAST_VENDOR_LIMIT,
+      // );
+      final String? zoneId = Constant.selectedZone?.id;
+      final double latitude =
+          Constant.selectedLocation.location?.latitude ?? 0.0;
+      final double longitude =
+          Constant.selectedLocation.location?.longitude ?? 0.0;
+
+      if (zoneId == null || zoneId.isEmpty) {
+        print('[DEBUG] No zone ID available, skipping restaurant fetch');
+        return;
+      }
+      // Fetch restaurants from API with optional filter
+      List<VendorModel> vendors =
+          await BestRestaurantProvider.getNearestRestaurants(
+            zoneId: zoneId,
+            latitude: latitude,
+            longitude: longitude,
+            radius: double.parse(Constant.radius),
+            onFiltersReceived:
+                (List<String> availableFilters, String? currentFilter) {},
+          );
+
       print(
         "📊 Loaded ${vendors.length} vendors (memory safe limit: $FAST_VENDOR_LIMIT)",
       );
@@ -506,55 +550,6 @@ class SwiggySearchProvider extends ChangeNotifier {
   }
 
   /// **DEBUG METHOD - Show all loaded restaurants**
-  void debugShowAllRestaurants() async {
-    try {
-      var allRestaurants = await FireStoreUtils.getAllVendors();
-      print("🔍 DEBUG: All loaded restaurants (${allRestaurants.length}):");
-      for (int i = 0; i < allRestaurants.length; i++) {
-        var r = allRestaurants[i];
-        print("  ${i + 1}. '${r.title}' (ID: ${r.id})");
-      }
-    } catch (e) {
-      print("❌ Error loading restaurants for debug: $e");
-    }
-  }
-
-  /// **DEBUG METHOD - Test restaurant search**
-  void debugTestRestaurantSearch(String query) async {
-    try {
-      print("🔍 DEBUG: Testing restaurant search for '$query'");
-      var allRestaurants = await FireStoreUtils.getAllVendors();
-      var lowerQuery = query.toLowerCase();
-
-      print("Total restaurants loaded: ${allRestaurants.length}");
-
-      var matches = allRestaurants
-          .where(
-            (r) =>
-                (r.title != null &&
-                r.title!.toLowerCase().contains(lowerQuery)),
-          )
-          .toList();
-
-      print("Restaurants matching '$query': ${matches.length}");
-      for (var r in matches) {
-        print("  - '${r.title}' (ID: ${r.id})");
-      }
-
-      if (matches.isEmpty) {
-        print("No matches found. Sample restaurant titles:");
-        for (
-          int i = 0;
-          i < (allRestaurants.length > 5 ? 5 : allRestaurants.length);
-          i++
-        ) {
-          print("  ${i + 1}. '${allRestaurants[i].title}'");
-        }
-      }
-    } catch (e) {
-      print("❌ Error in debug test: $e");
-    }
-  }
 
   /// **LOAD MORE RESULTS (PAGINATION) - ENHANCED MULTI-COLLECTION**
   void loadMoreResults() {
@@ -714,10 +709,26 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       // **MEMORY SAFE: Use strict limits to prevent OutOfMemoryError**
       try {
-        // **CRITICAL: Use memory-safe limits to prevent crashes**
-        allRestaurants = await FireStoreUtils.getAllVendors(
-          limit: MAX_VENDORS_PER_SEARCH,
-        ); // Limit to 25 restaurants
+        final String? zoneId = Constant.selectedZone?.id;
+        final double latitude =
+            Constant.selectedLocation.location?.latitude ?? 0.0;
+        final double longitude =
+            Constant.selectedLocation.location?.longitude ?? 0.0;
+
+        if (zoneId == null || zoneId.isEmpty) {
+          print('[DEBUG] No zone ID available, skipping restaurant fetch');
+          return;
+        }
+        // Fetch restaurants from API with optional filter
+        List<VendorModel> allRestaurants =
+            await BestRestaurantProvider.getNearestRestaurants(
+              zoneId: zoneId,
+              latitude: latitude,
+              longitude: longitude,
+              radius: double.parse(Constant.radius),
+              onFiltersReceived:
+                  (List<String> availableFilters, String? currentFilter) {},
+            );
         allProducts = await FireStoreUtils.getAllProductsInZone(
           limit: MAX_PRODUCTS_PER_SEARCH,
         ); // Limit to 40 products
@@ -1042,7 +1053,9 @@ class SwiggySearchProvider extends ChangeNotifier {
       }
     } finally {
       isLoadingData = false;
+      notifyListeners();
     }
+    notifyListeners();
   }
 
   /// **CLEAR ALL DATA**

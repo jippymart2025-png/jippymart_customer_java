@@ -294,7 +294,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   final CartProvider cartProvider = CartProvider();
 
   // Category management
-  RxInt selectedCategoryIndex = 0.obs;
+  int selectedCategoryIndex = 0;
   final Map<String, GlobalKey> categoryKeys = {};
   Map<String, List<ProductModel>> categoryProductsMap = {};
 
@@ -714,7 +714,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   Future<void> _loadAttributes() async {
     await FireStoreUtils.getAttributes().then((value) {
-      attributesList.value = value;
+      attributesList = value;
       notifyListeners();
     });
   }
@@ -801,12 +801,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   // Cart and product management
-  RxList<AttributesModel> attributesList = <AttributesModel>[].obs;
-  RxList selectedVariants = [].obs;
-  RxList selectedIndexVariants = [].obs;
-  RxList selectedIndexArray = [].obs;
-  RxList selectedAddOns = [].obs;
-  RxInt quantity = 1.obs;
+  List<AttributesModel> attributesList = <AttributesModel>[];
+  List selectedVariants = [];
+  List selectedIndexVariants = [];
+  List selectedIndexArray = [];
+  List selectedAddOns = [];
+  int quantity = 1;
 
   calculatePrice(ProductModel productModel) {
     String mainPrice = "0";
@@ -860,10 +860,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
                 .toString();
       }
     }
-    adOnsPrice = (quantity.value * double.parse(adOnsPrice)).toString();
+    adOnsPrice = (quantity * double.parse(adOnsPrice)).toString();
     mainPrice =
         ((double.parse(variantPrice.toString()) *
-                    double.parse(quantity.value.toString())) +
+                    double.parse(quantity.toString())) +
                 double.parse(adOnsPrice.toString()))
             .toString();
     return mainPrice;

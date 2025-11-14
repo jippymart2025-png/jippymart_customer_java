@@ -18,6 +18,7 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 import '../cart_check_out_page/cart_check_out_screen.dart';
+import '../review_list_screen/provider/review_list_provider.dart';
 
 class RestaurantDetailsScreen extends StatelessWidget {
   final String? scrollToProductId;
@@ -332,26 +333,39 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                               ),
                                             ),
                                           ),
-                                          InkWell(
-                                            onTap: () {
-                                              Get.to(
-                                                const ReviewListScreen(),
-                                                arguments: {
-                                                  "vendorModel":
-                                                      controller.vendorModel,
+                                          Consumer<ReviewListProvider>(
+                                            builder:
+                                                (
+                                                  context,
+                                                  reviewListProvider,
+                                                  _,
+                                                ) {
+                                                  return InkWell(
+                                                    onTap: () {
+                                                      reviewListProvider
+                                                          .initFunction(
+                                                            vendorModels:
+                                                                controller
+                                                                    .vendorModel,
+                                                          );
+                                                      Get.to(
+                                                        const ReviewListScreen(),
+                                                      );
+                                                    },
+                                                    child: Text(
+                                                      "${controller.vendorModel.reviewsCount} ${'Ratings'.tr}",
+                                                      style: TextStyle(
+                                                        decoration:
+                                                            TextDecoration
+                                                                .underline,
+                                                        color: AppThemeData
+                                                            .grey700,
+                                                        fontFamily: AppThemeData
+                                                            .regular,
+                                                      ),
+                                                    ),
+                                                  );
                                                 },
-                                              );
-                                            },
-                                            child: Text(
-                                              "${controller.vendorModel.reviewsCount} ${'Ratings'.tr}",
-                                              style: TextStyle(
-                                                decoration:
-                                                    TextDecoration.underline,
-                                                color: AppThemeData.grey700,
-                                                fontFamily:
-                                                    AppThemeData.regular,
-                                              ),
-                                            ),
                                           ),
                                         ],
                                       ),

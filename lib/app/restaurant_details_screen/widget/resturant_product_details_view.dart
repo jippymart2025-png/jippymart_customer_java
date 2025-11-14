@@ -366,15 +366,10 @@ class ProductDetailsView extends StatelessWidget {
                                                                   product.id ==
                                                                   "${productModel.id}~${productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).isNotEmpty ? productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).first.variantId.toString() : ""}",
                                                             );
-                                                        controller
-                                                                .quantity
-                                                                .value =
+                                                        controller.quantity =
                                                             element.quantity!;
                                                       } else {
-                                                        controller
-                                                                .quantity
-                                                                .value =
-                                                            1;
+                                                        controller.quantity = 1;
                                                       }
 
                                                       controller.calculatePrice(
@@ -607,8 +602,8 @@ class ProductDetailsView extends StatelessWidget {
                           InkWell(
                             onTap: isItemAvailable
                                 ? () {
-                                    if (controller.quantity.value > 1) {
-                                      controller.quantity.value -= 1;
+                                    if (controller.quantity > 1) {
+                                      controller.quantity -= 1;
                                     }
                                   }
                                 : null,
@@ -622,7 +617,7 @@ class ProductDetailsView extends StatelessWidget {
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             child: Text(
-                              controller.quantity.value.toString(),
+                              controller.quantity.toString(),
                               textAlign: TextAlign.start,
                               maxLines: 1,
                               style: TextStyle(
@@ -650,7 +645,7 @@ class ProductDetailsView extends StatelessWidget {
                                           .isPromotionalItemQuantityAllowed(
                                             productModel.id ?? '',
                                             productModel.vendorID ?? '',
-                                            controller.quantity.value + 1,
+                                            controller.quantity + 1,
                                           );
 
                                       if (!isAllowed) {
@@ -668,10 +663,10 @@ class ProductDetailsView extends StatelessWidget {
                                     }
 
                                     if (productModel.itemAttribute == null) {
-                                      if (controller.quantity.value <=
+                                      if (controller.quantity <=
                                               (productModel.quantity ?? 0) ||
                                           (productModel.quantity ?? 0) == -1) {
-                                        controller.quantity.value += 1;
+                                        controller.quantity += 1;
                                       } else {
                                         ShowToastDialog.showToast(
                                           "Out of stock".tr,
@@ -690,10 +685,10 @@ class ProductDetailsView extends StatelessWidget {
                                             .variantQuantity
                                             .toString(),
                                       );
-                                      if (controller.quantity.value <=
+                                      if (controller.quantity <=
                                               totalQuantity ||
                                           totalQuantity == -1) {
-                                        controller.quantity.value += 1;
+                                        controller.quantity += 1;
                                       } else {
                                         ShowToastDialog.showToast(
                                           "Out of stock".tr,
@@ -743,7 +738,7 @@ class ProductDetailsView extends StatelessWidget {
                                         .isPromotionalItemQuantityAllowed(
                                           productModel.id ?? '',
                                           productModel.vendorID ?? '',
-                                          controller.quantity.value,
+                                          controller.quantity,
                                         );
 
                                     if (!isAllowed) {
@@ -795,7 +790,7 @@ class ProductDetailsView extends StatelessWidget {
                                       price: finalPrice,
                                       discountPrice: finalDiscountPrice,
                                       isIncrement: true,
-                                      quantity: controller.quantity.value,
+                                      quantity: controller.quantity,
                                     );
                                   } else {
                                     String variantPrice = "0";
@@ -896,7 +891,7 @@ class ProductDetailsView extends StatelessWidget {
                                       discountPrice: "0",
                                       isIncrement: true,
                                       variantInfo: variantInfo,
-                                      quantity: controller.quantity.value,
+                                      quantity: controller.quantity,
                                     );
                                   }
 

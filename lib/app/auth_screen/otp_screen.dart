@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/auth_screen/provider/login_provider.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -132,17 +133,24 @@ class OtpScreen extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 50),
-                      RoundedButtonFill(
-                        title: controller.isVerifying
-                            ? "Verifying...".tr
-                            : "Verify & Next".tr,
-                        color: AppThemeData.primary300,
-                        textColor: AppThemeData.grey50,
-                        onPress: controller.isVerifying
-                            ? null
-                            : () async {
-                                await controller.verifyOtp(context);
-                              },
+                      Consumer<SplashProvider>(
+                        builder: (context, splashProvider, _) {
+                          return RoundedButtonFill(
+                            title: controller.isVerifying
+                                ? "Verifying...".tr
+                                : "Verify & Next".tr,
+                            color: AppThemeData.primary300,
+                            textColor: AppThemeData.grey50,
+                            onPress: controller.isVerifying
+                                ? null
+                                : () async {
+                                    await controller.verifyOtp(
+                                      context,
+                                      splashProvider,
+                                    );
+                                  },
+                          );
+                        },
                       ),
                       const SizedBox(height: 40),
                       Text.rich(

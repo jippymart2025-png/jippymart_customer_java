@@ -154,7 +154,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
   void _navigateToBrandProducts(String? brandID, String brandTitle) {
     if (brandID != null && brandID.isNotEmpty) {
-      // Navigate to brand products page
       Get.to(
         () => MartBrandProductsScreen(brandID: brandID, brandTitle: brandTitle),
       );
@@ -312,7 +311,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                       const SizedBox(height: 8),
                       GestureDetector(
                         onTap: () {
-                          // Navigate to brand products page
                           _navigateToBrandProducts(
                             widget.product.brandID,
                             widget.product.brandTitle!,
@@ -573,77 +571,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
                     const SizedBox(height: 16),
 
-                    // Quantity Selector
-                    // Row(
-                    //   children: [
-                    //     const Text(
-                    //       'Quantity:',
-                    //       style: TextStyle(
-                    //         fontSize: 16,
-                    //         fontWeight: FontWeight.bold,
-                    //       ),
-                    //     ),
-                    //     const SizedBox(width: 16),
-                    //     Container(
-                    //       decoration: BoxDecoration(
-                    //         border: Border.all(color: Colors.grey[300]!),
-                    //         borderRadius: BorderRadius.circular(8),
-                    //       ),
-                    //       child: Row(
-                    //         children: [
-                    //           IconButton(
-                    //             onPressed: quantity > 1 ? () {
-                    //               setState(() {
-                    //                 quantity--;
-                    //               });
-                    //             } : null,
-                    //             icon: const Icon(Icons.remove),
-                    //           ),
-                    //           Container(
-                    //             padding: const EdgeInsets.symmetric(horizontal: 16),
-                    //             child: Text(
-                    //               quantity.toString(),
-                    //               style: const TextStyle(
-                    //                 fontSize: 16,
-                    //                 fontWeight: FontWeight.bold,
-                    //               ),
-                    //             ),
-                    //           ),
-                    //           IconButton(
-                    //             onPressed: () {
-                    //               setState(() {
-                    //                 quantity++;
-                    //               });
-                    //             },
-                    //             icon: const Icon(Icons.add),
-                    //           ),
-                    //         ],
-                    //       ),
-                    //     ),
-                    //   ],
-                    // ),
                     const SizedBox(height: 10),
-
-                    // Description
-                    // if (widget.product.description != null && widget.product.description!.isNotEmpty) ...[
-                    //   const Text(
-                    //     'Description',
-                    //     style: TextStyle(
-                    //       fontSize: 18,
-                    //       fontWeight: FontWeight.bold,
-                    //     ),
-                    //   ),
-                    //   const SizedBox(height: 8),
-                    //   Text(
-                    //     widget.product.description!,
-                    //     style: TextStyle(
-                    //       color: Colors.grey[700],
-                    //       fontSize: 14,
-                    //       height: 1.5,
-                    //     ),
-                    //   ),
-                    //   const SizedBox(height: 20),
-                    // ],
 
                     // Product Details (using description if available)
                     if (widget.product.description != null &&
@@ -1222,7 +1150,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
   Widget _buildSimilarProducts() {
     final controller = Provider.of<MartProvider>(context, listen: false);
-
     // Debug logging
     print('[SIMILAR PRODUCTS] Current product: ${widget.product.name}');
     print(

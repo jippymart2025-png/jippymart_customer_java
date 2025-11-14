@@ -298,12 +298,9 @@ class MartCategoryDetailScreen extends StatelessWidget {
               itemCount: controller.subcategories.length,
               itemBuilder: (context, index) {
                 final category = controller.subcategories[index];
-
-                return Obx(() {
-                  final isSelected =
-                      controller.selectedSubCategoryId == category.id;
-                  return _buildCategoryItem(category, isSelected, controller);
-                });
+                final isSelected =
+                    controller.selectedSubCategoryId == category.id;
+                return _buildCategoryItem(category, isSelected, controller);
               },
             ),
     );
@@ -318,7 +315,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
       onTap: () => controller.selectSubCategory(category.id ?? ''),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        // 🔑 Reduced vertical from 8 to 4
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           gradient: isSelected
@@ -326,20 +322,15 @@ class MartCategoryDetailScreen extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFFF1FBEa), // #f1fbea - top color
-                    Color(0xFF00998a), // #e4f7d4 - bottom color
+                    Color(0xFFF1FBEA), // #f1fbea - top color
+                    Color(0xFF00998A), // #00998a - bottom color (fixed hex)
                   ],
-                  stops: [0.0, 1.0], // Full gradient from top to bottom
+                  stops: [0.0, 1.0],
                 )
               : null,
           color: isSelected ? null : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          border: Border(
-            // left: BorderSide(
-            //   color: isSelected ? const Color(0xFF292966) : Colors.transparent,
-            //   width: 3,
-            // ),
-          ),
+          border: Border(),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -361,45 +352,10 @@ class MartCategoryDetailScreen extends StatelessWidget {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(22),
-                child: Obx(() {
-                  final validImageUrl = category
-                      .getValidImageUrlWithParentFallback(
-                        controller.parentCategoryImageUrl,
-                      );
-                  final hasValidPhoto = validImageUrl.isNotEmpty;
-                  print(
-                    '[CATEGORY DETAIL UI] 📸 Category: ${category.title}, ValidImageUrl: $validImageUrl, HasValidPhoto: $hasValidPhoto',
-                  );
-
-                  if (hasValidPhoto) {
-                    return NetworkImageWidget(
-                      imageUrl: validImageUrl,
-                      width: 45,
-                      height: 45,
-                      fit: BoxFit.cover,
-                      errorWidget: Icon(
-                        _getCategoryIcon(category.title ?? ''),
-                        color: isSelected
-                            ? Colors.white
-                            : const Color(0xFF292966),
-                        size: 22,
-                      ),
-                    );
-                  } else {
-                    return Icon(
-                      _getCategoryIcon(category.title ?? ''),
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF292966),
-                      size: 22,
-                    );
-                  }
-                }),
+                child: _buildCategoryIcon(category, isSelected, controller),
               ),
             ),
-
             const SizedBox(height: 6),
-
             // Category name
             Text(
               category.title ?? 'Unknown Category',
@@ -418,278 +374,310 @@ class MartCategoryDetailScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildCategoryIcon(
+    MartSubcategoryModel category,
+    bool isSelected,
+    CategoryDetailsProvider controller,
+  ) {
+    final validImageUrl = category.getValidImageUrlWithParentFallback(
+      controller.parentCategoryImageUrl,
+    );
+    final hasValidPhoto = validImageUrl.isNotEmpty;
+
+    print(
+      '[CATEGORY DETAIL UI] 📸 Category: ${category.title}, ValidImageUrl: $validImageUrl, HasValidPhoto: $hasValidPhoto',
+    );
+
+    if (hasValidPhoto) {
+      return NetworkImageWidget(
+        imageUrl: validImageUrl,
+        width: 45,
+        height: 45,
+        fit: BoxFit.cover,
+        errorWidget: Icon(
+          _getCategoryIcon(category.title ?? ''),
+          color: isSelected ? Colors.white : const Color(0xFF292966),
+          size: 22,
+        ),
+      );
+    } else {
+      return Icon(
+        _getCategoryIcon(category.title ?? ''),
+        color: isSelected ? Colors.white : const Color(0xFF292966),
+        size: 22,
+      );
+    }
+  }
+
   Widget _buildProductContent(CategoryDetailsProvider controller) {
-    return Obx(() {
-      if (controller.isLoadingProducts) {
-        return const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF292966)),
-          ),
-        );
-      }
-      if (controller.errorMessage.isNotEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              Text(
-                controller.errorMessage,
-                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                textAlign: TextAlign.center,
+    if (controller.isLoadingProducts) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF292966)),
+        ),
+      );
+    }
+    if (controller.errorMessage.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              controller.errorMessage,
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: controller.refreshData,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF292966),
+                foregroundColor: Colors.white,
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: controller.refreshData,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF292966),
-                  foregroundColor: Colors.white,
+              child: const Text('Retry'),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: controller.testFirestoreEndpoints,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Test Firestore'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Use StreamBuilder for real-time product updates
+    return StreamBuilder<QuerySnapshot>(
+      stream: _buildProductStream(controller),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+                const SizedBox(height: 16),
+                Text(
+                  'Error loading products: ${snapshot.error}',
+                  style: TextStyle(fontSize: 16, color: Colors.red[600]),
+                  textAlign: TextAlign.center,
                 ),
-                child: const Text('Retry'),
-              ),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: controller.testFirestoreEndpoints,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange,
-                  foregroundColor: Colors.white,
-                ),
-                child: const Text('Test Firestore'),
-              ),
-            ],
-          ),
-        );
-      }
-
-      // Use StreamBuilder for real-time product updates
-      return StreamBuilder<QuerySnapshot>(
-        stream: _buildProductStream(controller),
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error loading products: ${snapshot.error}',
-                    style: TextStyle(fontSize: 16, color: Colors.red[600]),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF292966)),
-              ),
-            );
-          }
-
-          final products = snapshot.data?.docs ?? [];
-
-          if (products.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.shopping_bag_outlined,
-                    size: 48,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No products found',
-                    style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Try selecting a different category or filter',
-                    style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: controller.refreshData,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final screenWidth = constraints.maxWidth;
-                final isTablet = screenWidth > 600;
-                final isLargePhone = screenWidth > 400;
-
-                final crossAxisCount = isTablet ? 3 : 2;
-                final spacing = isTablet ? 12.0 : (isLargePhone ? 8.0 : 4.0);
-                final horizontalPadding = isTablet
-                    ? 16.0
-                    : (isLargePhone ? 8.0 : 4.0);
-
-                // 🔑 Auto-adjustable layout using Wrap for truly flexible card heights
-                return SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    left: horizontalPadding,
-                    right: horizontalPadding,
-                    bottom:
-                        MediaQuery.of(context).padding.bottom +
-                        8, // 🔑 Reduced from 16 to 8
-                    top: 4, // 🔑 Added small top padding instead of 0
-                  ),
-                  child: Wrap(
-                    alignment: WrapAlignment.start,
-                    // 🔑 Ensure products start from the left
-                    crossAxisAlignment: WrapCrossAlignment.start,
-                    // 🔑 Ensure products start from the top
-                    runAlignment: WrapAlignment.start,
-                    // 🔑 Ensure runs start from the top
-                    spacing: spacing,
-                    runSpacing: spacing,
-                    children: products.map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-
-                      // Transform the data to match the expected format
-                      final transformedData = Map<String, dynamic>.from(data);
-
-                      // Add document ID
-                      transformedData['id'] = doc.id;
-
-                      // Handle array fields that might be null
-                      if (transformedData['addOnsPrice'] == null)
-                        transformedData['addOnsPrice'] = [];
-                      if (transformedData['addOnsTitle'] == null)
-                        transformedData['addOnsTitle'] = [];
-                      if (transformedData['options'] == null)
-                        transformedData['options'] = [];
-                      if (transformedData['photos'] == null)
-                        transformedData['photos'] = [];
-                      // Updated: subcategoryID is now a string, not an array
-                      if (transformedData['subcategoryID'] == null)
-                        transformedData['subcategoryID'] = '';
-                      if (transformedData['product_specification'] == null)
-                        transformedData['product_specification'] = {};
-
-                      // Handle numeric fields that might be strings (this fixes the rating issue)
-                      if (transformedData['reviewCount'] is String) {
-                        transformedData['reviewCount'] =
-                            int.tryParse(transformedData['reviewCount']) ?? 0;
-                      }
-                      if (transformedData['reviewSum'] is String) {
-                        transformedData['reviewSum'] =
-                            double.tryParse(transformedData['reviewSum']) ??
-                            0.0;
-                      }
-
-                      // Handle other numeric fields that might be strings
-                      if (transformedData['price'] is String) {
-                        transformedData['price'] =
-                            double.tryParse(transformedData['price']) ?? 0.0;
-                      }
-                      if (transformedData['disPrice'] is String) {
-                        transformedData['disPrice'] =
-                            double.tryParse(transformedData['disPrice']) ?? 0.0;
-                      }
-                      if (transformedData['quantity'] is String) {
-                        transformedData['quantity'] =
-                            int.tryParse(transformedData['quantity']) ?? 0;
-                      }
-                      if (transformedData['calories'] is String) {
-                        transformedData['calories'] =
-                            int.tryParse(transformedData['calories']) ?? 0;
-                      }
-                      if (transformedData['proteins'] is String) {
-                        transformedData['proteins'] =
-                            double.tryParse(transformedData['proteins']) ?? 0.0;
-                      }
-                      if (transformedData['fats'] is String) {
-                        transformedData['fats'] =
-                            double.tryParse(transformedData['fats']) ?? 0.0;
-                      }
-                      if (transformedData['grams'] is String) {
-                        transformedData['grams'] =
-                            double.tryParse(transformedData['grams']) ?? 0.0;
-                      }
-                      if (transformedData['options_count'] is String) {
-                        transformedData['options_count'] =
-                            int.tryParse(transformedData['options_count']) ?? 0;
-                      }
-
-                      // Handle boolean fields that might be null
-                      if (transformedData['has_options'] == null)
-                        transformedData['has_options'] = false;
-                      if (transformedData['isAvailable'] == null)
-                        transformedData['isAvailable'] = true;
-                      if (transformedData['isBestSeller'] == null)
-                        transformedData['isBestSeller'] = false;
-                      if (transformedData['isFeature'] == null)
-                        transformedData['isFeature'] = false;
-                      if (transformedData['isNew'] == null)
-                        transformedData['isNew'] = false;
-                      if (transformedData['isSeasonal'] == null)
-                        transformedData['isSeasonal'] = false;
-                      if (transformedData['isSpotlight'] == null)
-                        transformedData['isSpotlight'] = false;
-                      if (transformedData['isStealOfMoment'] == null)
-                        transformedData['isStealOfMoment'] = false;
-                      if (transformedData['isTrending'] == null)
-                        transformedData['isTrending'] = false;
-                      if (transformedData['veg'] == null)
-                        transformedData['veg'] = true;
-                      if (transformedData['nonveg'] == null)
-                        transformedData['nonveg'] = false;
-                      if (transformedData['takeawayOption'] == null)
-                        transformedData['takeawayOption'] = false;
-                      if (transformedData['publish'] == null)
-                        transformedData['publish'] = true;
-
-                      final product = MartItemModel.fromJson(transformedData);
-
-                      // Debug: Log rating information
-                      print('[CATEGORY DETAIL] 📊 Product: ${product.name}');
-                      print(
-                        '[CATEGORY DETAIL] 📊 Review Count: ${product.reviewCount} (type: ${product.reviewCount.runtimeType})',
-                      );
-                      print(
-                        '[CATEGORY DETAIL] 📊 Review Sum: ${product.reviewSum} (type: ${product.reviewSum.runtimeType})',
-                      );
-                      print(
-                        '[CATEGORY DETAIL] 📊 Average Rating: ${product.averageRating}',
-                      );
-                      print(
-                        '[CATEGORY DETAIL] 📊 Total Reviews: ${product.totalReviews}',
-                      );
-
-                      // Calculate card width based on screen size and crossAxisCount
-                      final cardWidth =
-                          (screenWidth -
-                              horizontalPadding * 2 -
-                              spacing * (crossAxisCount - 1)) /
-                          crossAxisCount;
-
-                      // Using MartProductCard with calculated width for proper sizing
-                      return SizedBox(
-                        width: cardWidth,
-                        child: MartProductCard(
-                          product: product,
-
-                          screenWidth: screenWidth,
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                );
-              },
+              ],
             ),
           );
-        },
-      );
-    });
+        }
+
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF292966)),
+            ),
+          );
+        }
+
+        final products = snapshot.data?.docs ?? [];
+
+        if (products.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.shopping_bag_outlined,
+                  size: 48,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No products found',
+                  style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Try selecting a different category or filter',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: controller.refreshData,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final isTablet = screenWidth > 600;
+              final isLargePhone = screenWidth > 400;
+
+              final crossAxisCount = isTablet ? 3 : 2;
+              final spacing = isTablet ? 12.0 : (isLargePhone ? 8.0 : 4.0);
+              final horizontalPadding = isTablet
+                  ? 16.0
+                  : (isLargePhone ? 8.0 : 4.0);
+
+              // 🔑 Auto-adjustable layout using Wrap for truly flexible card heights
+              return SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: horizontalPadding,
+                  right: horizontalPadding,
+                  bottom:
+                      MediaQuery.of(context).padding.bottom +
+                      8, // 🔑 Reduced from 16 to 8
+                  top: 4, // 🔑 Added small top padding instead of 0
+                ),
+                child: Wrap(
+                  alignment: WrapAlignment.start,
+                  // 🔑 Ensure products start from the left
+                  crossAxisAlignment: WrapCrossAlignment.start,
+                  // 🔑 Ensure products start from the top
+                  runAlignment: WrapAlignment.start,
+                  // 🔑 Ensure runs start from the top
+                  spacing: spacing,
+                  runSpacing: spacing,
+                  children: products.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+
+                    // Transform the data to match the expected format
+                    final transformedData = Map<String, dynamic>.from(data);
+
+                    // Add document ID
+                    transformedData['id'] = doc.id;
+
+                    // Handle array fields that might be null
+                    if (transformedData['addOnsPrice'] == null)
+                      transformedData['addOnsPrice'] = [];
+                    if (transformedData['addOnsTitle'] == null)
+                      transformedData['addOnsTitle'] = [];
+                    if (transformedData['options'] == null)
+                      transformedData['options'] = [];
+                    if (transformedData['photos'] == null)
+                      transformedData['photos'] = [];
+                    // Updated: subcategoryID is now a string, not an array
+                    if (transformedData['subcategoryID'] == null)
+                      transformedData['subcategoryID'] = '';
+                    if (transformedData['product_specification'] == null)
+                      transformedData['product_specification'] = {};
+
+                    // Handle numeric fields that might be strings (this fixes the rating issue)
+                    if (transformedData['reviewCount'] is String) {
+                      transformedData['reviewCount'] =
+                          int.tryParse(transformedData['reviewCount']) ?? 0;
+                    }
+                    if (transformedData['reviewSum'] is String) {
+                      transformedData['reviewSum'] =
+                          double.tryParse(transformedData['reviewSum']) ?? 0.0;
+                    }
+
+                    // Handle other numeric fields that might be strings
+                    if (transformedData['price'] is String) {
+                      transformedData['price'] =
+                          double.tryParse(transformedData['price']) ?? 0.0;
+                    }
+                    if (transformedData['disPrice'] is String) {
+                      transformedData['disPrice'] =
+                          double.tryParse(transformedData['disPrice']) ?? 0.0;
+                    }
+                    if (transformedData['quantity'] is String) {
+                      transformedData['quantity'] =
+                          int.tryParse(transformedData['quantity']) ?? 0;
+                    }
+                    if (transformedData['calories'] is String) {
+                      transformedData['calories'] =
+                          int.tryParse(transformedData['calories']) ?? 0;
+                    }
+                    if (transformedData['proteins'] is String) {
+                      transformedData['proteins'] =
+                          double.tryParse(transformedData['proteins']) ?? 0.0;
+                    }
+                    if (transformedData['fats'] is String) {
+                      transformedData['fats'] =
+                          double.tryParse(transformedData['fats']) ?? 0.0;
+                    }
+                    if (transformedData['grams'] is String) {
+                      transformedData['grams'] =
+                          double.tryParse(transformedData['grams']) ?? 0.0;
+                    }
+                    if (transformedData['options_count'] is String) {
+                      transformedData['options_count'] =
+                          int.tryParse(transformedData['options_count']) ?? 0;
+                    }
+
+                    // Handle boolean fields that might be null
+                    if (transformedData['has_options'] == null)
+                      transformedData['has_options'] = false;
+                    if (transformedData['isAvailable'] == null)
+                      transformedData['isAvailable'] = true;
+                    if (transformedData['isBestSeller'] == null)
+                      transformedData['isBestSeller'] = false;
+                    if (transformedData['isFeature'] == null)
+                      transformedData['isFeature'] = false;
+                    if (transformedData['isNew'] == null)
+                      transformedData['isNew'] = false;
+                    if (transformedData['isSeasonal'] == null)
+                      transformedData['isSeasonal'] = false;
+                    if (transformedData['isSpotlight'] == null)
+                      transformedData['isSpotlight'] = false;
+                    if (transformedData['isStealOfMoment'] == null)
+                      transformedData['isStealOfMoment'] = false;
+                    if (transformedData['isTrending'] == null)
+                      transformedData['isTrending'] = false;
+                    if (transformedData['veg'] == null)
+                      transformedData['veg'] = true;
+                    if (transformedData['nonveg'] == null)
+                      transformedData['nonveg'] = false;
+                    if (transformedData['takeawayOption'] == null)
+                      transformedData['takeawayOption'] = false;
+                    if (transformedData['publish'] == null)
+                      transformedData['publish'] = true;
+
+                    final product = MartItemModel.fromJson(transformedData);
+
+                    // Debug: Log rating information
+                    print('[CATEGORY DETAIL] 📊 Product: ${product.name}');
+                    print(
+                      '[CATEGORY DETAIL] 📊 Review Count: ${product.reviewCount} (type: ${product.reviewCount.runtimeType})',
+                    );
+                    print(
+                      '[CATEGORY DETAIL] 📊 Review Sum: ${product.reviewSum} (type: ${product.reviewSum.runtimeType})',
+                    );
+                    print(
+                      '[CATEGORY DETAIL] 📊 Average Rating: ${product.averageRating}',
+                    );
+                    print(
+                      '[CATEGORY DETAIL] 📊 Total Reviews: ${product.totalReviews}',
+                    );
+
+                    // Calculate card width based on screen size and crossAxisCount
+                    final cardWidth =
+                        (screenWidth -
+                            horizontalPadding * 2 -
+                            spacing * (crossAxisCount - 1)) /
+                        crossAxisCount;
+
+                    // Using MartProductCard with calculated width for proper sizing
+                    return SizedBox(
+                      width: cardWidth,
+                      child: MartProductCard(
+                        product: product,
+
+                        screenWidth: screenWidth,
+                      ),
+                    );
+                  }).toList(),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
   Stream<QuerySnapshot> _buildProductStream(

@@ -1,6 +1,7 @@
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/chat_screens/chat_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
 import 'package:jippymart_customer/app/rate_us_screen/rate_product_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -2686,15 +2687,19 @@ class OrderDetailsScreen extends StatelessWidget {
                         child:
                             order.status == Constant.orderShipped ||
                                 order.status == Constant.orderInTransit
-                            ? RoundedButtonFill(
-                                title: "Track Order".tr,
-                                height: 5.5,
-                                color: AppThemeData.warning300,
-                                textColor: AppThemeData.grey900,
-                                onPress: () async {
-                                  Get.to(
-                                    const LiveTrackingScreen(),
-                                    arguments: {"orderModel": order},
+                            ? Consumer<LiveTrackingProvider>(
+                                builder: (context, liveTrackingProvider, _) {
+                                  return RoundedButtonFill(
+                                    title: "Track Order".tr,
+                                    height: 5.5,
+                                    color: AppThemeData.warning300,
+                                    textColor: AppThemeData.grey900,
+                                    onPress: () async {
+                                      liveTrackingProvider.initFunction(
+                                        orderModel: order,
+                                      );
+                                      Get.to(const LiveTrackingScreen());
+                                    },
                                   );
                                 },
                               )

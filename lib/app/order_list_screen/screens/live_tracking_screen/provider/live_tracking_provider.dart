@@ -19,132 +19,119 @@ class LiveTrackingProvider extends ChangeNotifier {
   GoogleMapController? mapController;
   final flutterMap.MapController osmMapController = flutterMap.MapController();
 
-  void initFunction() {
+  void initFunction({required OrderModel orderModel}) {
     addMarkerSetup();
-    getArgument();
+    getArgument(orderModel: orderModel);
   }
 
   OrderModel orderModel = OrderModel();
   UserModel driverUserModel = UserModel();
   bool isLoading = true;
-
-  location.LatLng source = location.LatLng(
-    21.1702,
-    72.8311,
-  ); // Start (e.g., Surat)
+  location.LatLng source = location.LatLng(21.1702, 72.8311);
   location.LatLng current = location.LatLng(21.1800, 72.8400);
   location.LatLng destination = location.LatLng(
     21.2000,
     72.8600,
   ); // Destination
-
-  getArgument() async {
-    dynamic argumentData = Get.arguments;
-    if (argumentData != null) {
-      orderModel = argumentData['orderModel'];
-      FireStoreUtils.fireStore
-          .collection(CollectionName.restaurantOrders)
-          .doc(orderModel.id)
-          .snapshots()
-          .listen((event) {
-            if (event.data() != null) {
-              OrderModel orderModelStream = OrderModel.fromJson(event.data()!);
-              orderModel = orderModelStream;
-              FireStoreUtils.fireStore
-                  .collection(CollectionName.users)
-                  .doc(orderModel.driverID)
-                  .snapshots()
-                  .listen((event) {
-                    if (event.data() != null) {
-                      driverUserModel = UserModel.fromJson(event.data()!);
-                      if (Constant.selectedMapType != 'osm') {
-                        if (orderModel.status == Constant.orderShipped) {
-                          getPolyline(
-                            sourceLatitude: driverUserModel.location!.latitude,
-                            sourceLongitude:
-                                driverUserModel.location!.longitude,
-                            destinationLatitude: orderModel.vendor!.latitude,
-                            destinationLongitude: orderModel.vendor!.longitude,
-                          );
-                        } else if (orderModel.status ==
-                            Constant.orderInTransit) {
-                          getPolyline(
-                            sourceLatitude: driverUserModel.location!.latitude,
-                            sourceLongitude:
-                                driverUserModel.location!.longitude,
-                            destinationLatitude:
-                                orderModel.address!.location!.latitude,
-                            destinationLongitude:
-                                orderModel.address!.location!.longitude,
-                          );
-                        } else {
-                          getPolyline(
-                            sourceLatitude:
-                                orderModel.address!.location!.latitude,
-                            sourceLongitude:
-                                orderModel.address!.location!.longitude,
-                            destinationLatitude: orderModel.vendor!.latitude,
-                            destinationLongitude: orderModel.vendor!.longitude,
-                          );
-                        }
+  getArgument({required OrderModel orderModel}) async {
+    FireStoreUtils.fireStore
+        .collection(CollectionName.restaurantOrders)
+        .doc(orderModel.id)
+        .snapshots()
+        .listen((event) {
+          if (event.data() != null) {
+            OrderModel orderModelStream = OrderModel.fromJson(event.data()!);
+            orderModel = orderModelStream;
+            FireStoreUtils.fireStore
+                .collection(CollectionName.users)
+                .doc(orderModel.driverID)
+                .snapshots()
+                .listen((event) {
+                  if (event.data() != null) {
+                    driverUserModel = UserModel.fromJson(event.data()!);
+                    if (Constant.selectedMapType != 'osm') {
+                      if (orderModel.status == Constant.orderShipped) {
+                        getPolyline(
+                          sourceLatitude: driverUserModel.location!.latitude,
+                          sourceLongitude: driverUserModel.location!.longitude,
+                          destinationLatitude: orderModel.vendor!.latitude,
+                          destinationLongitude: orderModel.vendor!.longitude,
+                        );
+                      } else if (orderModel.status == Constant.orderInTransit) {
+                        getPolyline(
+                          sourceLatitude: driverUserModel.location!.latitude,
+                          sourceLongitude: driverUserModel.location!.longitude,
+                          destinationLatitude:
+                              orderModel.address!.location!.latitude,
+                          destinationLongitude:
+                              orderModel.address!.location!.longitude,
+                        );
                       } else {
-                        if (orderModel.status == Constant.orderShipped) {
-                          current = location.LatLng(
-                            driverUserModel.location!.latitude ?? 0.0,
-                            driverUserModel.location!.longitude ?? 0.0,
-                          );
-                          source = location.LatLng(
-                            orderModel.vendor!.latitude ?? 0.0,
-                            orderModel.vendor!.longitude ?? 0.0,
-                          );
-                          destination = location.LatLng(
-                            orderModel.address!.location!.latitude ?? 0.0,
-                            orderModel.address!.location!.longitude ?? 0.0,
-                          );
-                          fetchRoute(current, source);
-                          animateToSource();
-                        } else if (orderModel.status ==
-                            Constant.orderInTransit) {
-                          current = location.LatLng(
-                            driverUserModel.location!.latitude ?? 0.0,
-                            driverUserModel.location!.longitude ?? 0.0,
-                          );
-                          source = location.LatLng(
-                            orderModel.vendor!.latitude ?? 0.0,
-                            orderModel.vendor!.longitude ?? 0.0,
-                          );
-                          destination = location.LatLng(
-                            orderModel.address!.location!.latitude ?? 0.0,
-                            orderModel.address!.location!.longitude ?? 0.0,
-                          );
-                          fetchRoute(current, destination);
-                          animateToSource();
-                        } else {
-                          current = location.LatLng(
-                            driverUserModel.location!.latitude ?? 0.0,
-                            driverUserModel.location!.longitude ?? 0.0,
-                          );
-                          source = location.LatLng(
-                            orderModel.vendor!.latitude ?? 0.0,
-                            orderModel.vendor!.longitude ?? 0.0,
-                          );
-                          destination = location.LatLng(
-                            orderModel.address!.location!.latitude ?? 0.0,
-                            orderModel.address!.location!.longitude ?? 0.0,
-                          );
-                          fetchRoute(current, source);
-                          animateToSource();
-                        }
+                        getPolyline(
+                          sourceLatitude:
+                              orderModel.address!.location!.latitude,
+                          sourceLongitude:
+                              orderModel.address!.location!.longitude,
+                          destinationLatitude: orderModel.vendor!.latitude,
+                          destinationLongitude: orderModel.vendor!.longitude,
+                        );
+                      }
+                    } else {
+                      if (orderModel.status == Constant.orderShipped) {
+                        current = location.LatLng(
+                          driverUserModel.location!.latitude ?? 0.0,
+                          driverUserModel.location!.longitude ?? 0.0,
+                        );
+                        source = location.LatLng(
+                          orderModel.vendor!.latitude ?? 0.0,
+                          orderModel.vendor!.longitude ?? 0.0,
+                        );
+                        destination = location.LatLng(
+                          orderModel.address!.location!.latitude ?? 0.0,
+                          orderModel.address!.location!.longitude ?? 0.0,
+                        );
+                        fetchRoute(current, source);
+                        animateToSource();
+                      } else if (orderModel.status == Constant.orderInTransit) {
+                        current = location.LatLng(
+                          driverUserModel.location!.latitude ?? 0.0,
+                          driverUserModel.location!.longitude ?? 0.0,
+                        );
+                        source = location.LatLng(
+                          orderModel.vendor!.latitude ?? 0.0,
+                          orderModel.vendor!.longitude ?? 0.0,
+                        );
+                        destination = location.LatLng(
+                          orderModel.address!.location!.latitude ?? 0.0,
+                          orderModel.address!.location!.longitude ?? 0.0,
+                        );
+                        fetchRoute(current, destination);
+                        animateToSource();
+                      } else {
+                        current = location.LatLng(
+                          driverUserModel.location!.latitude ?? 0.0,
+                          driverUserModel.location!.longitude ?? 0.0,
+                        );
+                        source = location.LatLng(
+                          orderModel.vendor!.latitude ?? 0.0,
+                          orderModel.vendor!.longitude ?? 0.0,
+                        );
+                        destination = location.LatLng(
+                          orderModel.address!.location!.latitude ?? 0.0,
+                          orderModel.address!.location!.longitude ?? 0.0,
+                        );
+                        fetchRoute(current, source);
+                        animateToSource();
                       }
                     }
-                  });
+                  }
+                });
 
-              if (orderModel.status == Constant.orderCompleted) {
-                Get.back();
-              }
+            if (orderModel.status == Constant.orderCompleted) {
+              Get.back();
             }
-          });
-    }
+          }
+        });
     isLoading = false;
     notifyListeners();
   }
@@ -159,7 +146,7 @@ class LiveTrackingProvider extends ChangeNotifier {
     );
   }
 
-  RxList<location.LatLng> routePoints = <location.LatLng>[].obs;
+  List<location.LatLng> routePoints = <location.LatLng>[];
 
   Future<void> fetchRoute(
     location.LatLng source,
@@ -168,7 +155,6 @@ class LiveTrackingProvider extends ChangeNotifier {
     final url = Uri.parse(
       'https://router.project-osrm.org/route/v1/driving/${source.longitude},${source.latitude};${destination.longitude},${destination.latitude}?overview=full&geometries=geojson',
     );
-
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
@@ -268,7 +254,7 @@ class LiveTrackingProvider extends ChangeNotifier {
     }
   }
 
-  RxMap<MarkerId, Marker> markers = <MarkerId, Marker>{}.obs;
+  Map<MarkerId, Marker> markers = <MarkerId, Marker>{};
 
   addMarker({
     required double? latitude,
@@ -307,7 +293,7 @@ class LiveTrackingProvider extends ChangeNotifier {
     } else {}
   }
 
-  RxMap<PolylineId, Polyline> polyLines = <PolylineId, Polyline>{}.obs;
+  Map<PolylineId, Polyline> polyLines = <PolylineId, Polyline>{};
   PolylinePoints polylinePoints = PolylinePoints(apiKey: Constant.mapAPIKey);
 
   _addPolyLine(List<LatLng> polylineCoordinates) {

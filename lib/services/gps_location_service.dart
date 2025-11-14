@@ -257,6 +257,19 @@ class GpsLocationService {
     }
   }
 
+  // Add this to your GpsLocationService class
+  static Future<void> clearCachedLocationAddress() async {
+    try {
+      final box = GetStorage();
+      await box.remove('user_location');
+      await box.remove('cached_gps_location');
+      await box.remove('last_known_location');
+      print('[GPS_SERVICE] Cleared cached location data');
+    } catch (e) {
+      print('[GPS_SERVICE] Error clearing cache: $e');
+    }
+  }
+
   /// **Get Location for Zone Detection**
   ///
   /// This is the main method to be called for zone detection
