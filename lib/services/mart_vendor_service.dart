@@ -1,14 +1,11 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'package:http/http.dart' as http;
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
 class MartVendorService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  static const String _collectionName = 'vendors';
-
   static Future<List<MartVendorModel>> getAllMartVendors({
     String search = 'Jippy mart',
   }) async {
@@ -172,12 +169,15 @@ class MartVendorService {
   // Get mart vendor by ID
   static Future<MartVendorModel?> getMartVendorById(String vendorId) async {
     try {
-      final doc = await _firestore
-          .collection(_collectionName)
-          .doc(vendorId)
-          .get();
-      if (doc.exists) {
-        return MartVendorModel.fromJson({...doc.data()!, 'id': doc.id});
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mart-vendor/$vendorId'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true) {
+          return MartVendorModel.fromJson(jsonResponse['data']);
+        }
       }
       return null;
     } catch (e) {
@@ -187,18 +187,21 @@ class MartVendorService {
   }
 
   // Get default mart vendor (first available)
+
   static Future<MartVendorModel?> getDefaultMartVendor() async {
     try {
-      final querySnapshot = await _firestore
-          .collection(_collectionName)
-          .where('vType', isEqualTo: 'mart')
-          .where('isOpen', isEqualTo: true)
-          .limit(1)
-          .get();
-      if (querySnapshot.docs.isNotEmpty) {
-        final doc = querySnapshot.docs.first;
-        return MartVendorModel.fromJson({...doc.data(), 'id': doc.id});
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mart-vendor/default'),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+          return MartVendorModel.fromJson(jsonResponse['data']);
+        }
       }
+      print('Error fetching default mart vendor: ${response.statusCode}');
       return null;
     } catch (e) {
       print('Error fetching default mart vendor: $e');
@@ -212,59 +215,63 @@ class MartVendorService {
   ) async {
     try {
       print('🔍 [MART_VENDOR_SERVICE] Querying mart vendors for zone: $zoneId');
-      print(
-        '📊 [MART_VENDOR_SERVICE] Query: vType="mart" (filtering by zone in memory, regardless of isOpen status)',
+      print('🌐 [MART_VENDOR_SERVICE] Using API endpoint for zone: $zoneId');
+      // Make API call to your endpoint
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mart-vendor/zone/$zoneId'),
+        headers: await getHeaders(),
       );
-      final allMartVendors = await _firestore
-          .collection(_collectionName)
-          .where('vType', isEqualTo: 'mart')
-          .get();
-      print(
-        '📊 [MART_VENDOR_SERVICE] Found ${allMartVendors.docs.length} total mart vendors in database',
-      );
-      // Filter by zone and isOpen in memory (more reliable than Firestore query)
-      final filteredVendors = <MartVendorModel>[];
-      for (var doc in allMartVendors.docs) {
-        try {
-          final data = doc.data();
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        log(" getMartVendorsByZone ${response.body}");
+        if (jsonResponse['success'] == true) {
+          final List<dynamic> data = jsonResponse['data'];
           print(
-            '🔍 [MART_VENDOR_SERVICE] Processing vendor document: ${doc.id}',
+            '📊 [MART_VENDOR_SERVICE] API returned ${data.length} mart vendors for zone: $zoneId',
           );
-          print('   Raw data keys: ${data.keys.toList()}');
-          final vendor = MartVendorModel.fromJson({...data, 'id': doc.id});
-          print('🔍 [MART_VENDOR_SERVICE] Checking vendor: ${vendor.title}');
-          print('   Zone ID: ${vendor.zoneId} (target: $zoneId)');
-          print('   Is Open: ${vendor.isOpen}');
-          print('   vType: ${vendor.vType}');
-          // Check if vendor matches our criteria (zone only, regardless of open/closed status)
-          if (vendor.zoneId == zoneId) {
-            print(
-              '✅ [MART_VENDOR_SERVICE] Vendor matches zone criteria - adding to results',
-            );
-            print('   - Zone ID matches: ${vendor.zoneId}');
-            print('   - Is Open: ${vendor.isOpen}');
-            filteredVendors.add(vendor);
-          } else {
-            print(
-              '❌ [MART_VENDOR_SERVICE] Vendor does not match zone criteria',
-            );
-            print('   - Zone ID mismatch: ${vendor.zoneId} != $zoneId');
+
+          // Convert API response to MartVendorModel objects
+          final List<MartVendorModel> vendors = [];
+
+          for (var vendorData in data) {
+            try {
+              print(
+                '🔍 [MART_VENDOR_SERVICE] Processing vendor: ${vendorData['title']}',
+              );
+              print('   Zone ID: ${vendorData['zoneId']}');
+              print('   Is Open: ${vendorData['isOpen']}');
+              print('   vType: ${vendorData['vType']}');
+              // Convert to MartVendorModel
+              final vendor = MartVendorModel.fromJson({
+                ...vendorData,
+                'id': vendorData['id'],
+              });
+              vendors.add(vendor);
+              print(
+                '✅ [MART_VENDOR_SERVICE] Successfully added vendor: ${vendor.title}',
+              );
+            } catch (e) {
+              print('❌ [MART_VENDOR_SERVICE] Error processing vendor data: $e');
+              print('   Raw vendor data: $vendorData');
+              // Continue with next vendor
+            }
           }
-        } catch (e) {
           print(
-            '❌ [MART_VENDOR_SERVICE] Error processing vendor document ${doc.id}: $e',
+            '📊 [MART_VENDOR_SERVICE] Final results: ${vendors.length} vendors',
           );
-          print('   Raw data: ${doc.data()}');
-          // Continue with next vendor
+          return vendors;
+        } else {
+          print('❌ [MART_VENDOR_SERVICE] API returned success: false');
+          print('   Response: $jsonResponse');
+          return [];
         }
+      } else {
+        print(
+          '❌ [MART_VENDOR_SERVICE] API request failed with status: ${response.statusCode}',
+        );
+        print('   Response body: ${response.body}');
+        return [];
       }
-
-      print(
-        '📊 [MART_VENDOR_SERVICE] Final filtered results: ${filteredVendors.length} vendors',
-      );
-
-      // Return the filtered results
-      return filteredVendors;
     } catch (e) {
       print(
         '❌ [MART_VENDOR_SERVICE] Error fetching mart vendors by zone $zoneId: $e',

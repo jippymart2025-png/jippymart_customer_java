@@ -318,29 +318,7 @@ class AddressListScreen extends StatelessWidget {
                   ),
                   CupertinoActionSheetAction(
                     onPressed: () async {
-                      ShowToastDialog.showLoader("Please wait".tr);
-                      try {
-                        final addressId =
-                            controller.shippingAddressList[index].id;
-                        final success = await addressListProvider
-                            .deleteShippingAddress(addressId.toString());
-                        if (success) {
-                          controller.shippingAddressList.removeAt(index);
-                          controller.userModel.shippingAddress =
-                              controller.shippingAddressList;
-                          homeProvider.ensureUserModelIsLoaded();
-                          ShowToastDialog.closeLoader();
-                          Get.back();
-                          ShowToastDialog.showToast("Address deleted".tr);
-                        } else {
-                          ShowToastDialog.closeLoader();
-                          ShowToastDialog.showToast(
-                            "Failed to delete address".tr,
-                          );
-                        }
-                      } catch (e) {
-                        ShowToastDialog.closeLoader();
-                      }
+                      await controller.deleteAddressFunction(index: index);
                     },
                     child: Text(
                       'Delete'.tr,

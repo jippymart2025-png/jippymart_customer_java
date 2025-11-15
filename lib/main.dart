@@ -103,7 +103,6 @@ void main() async {
   Get.put(MartFirestoreService(), permanent: true);
   final cartProvider = CartProvider();
   await cartProvider.checkCartPersistence();
-
   runApp(MyApp());
 }
 

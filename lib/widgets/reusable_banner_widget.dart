@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -17,7 +18,7 @@ import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
 
 /// Reusable banner widget that works with both BannerModel and MartBannerModel
-class ReusableBannerWidget extends StatelessWidget {
+class ReusableBannerWidget extends StatefulWidget {
   final List<dynamic>
   banners; // Can be List<BannerModel> or List<MartBannerModel>
   final PageController pageController;
@@ -30,7 +31,7 @@ class ReusableBannerWidget extends StatelessWidget {
   final Function()? onPanEnd;
   final double? width;
 
-  const ReusableBannerWidget({
+  ReusableBannerWidget({
     super.key,
     required this.banners,
     required this.pageController,
@@ -45,31 +46,36 @@ class ReusableBannerWidget extends StatelessWidget {
   });
 
   @override
+  State<ReusableBannerWidget> createState() => _ReusableBannerWidgetState();
+}
+
+class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
+  @override
   Widget build(BuildContext context) {
-    if (banners.isEmpty) {
+    if (widget.banners.isEmpty) {
       return const SizedBox.shrink();
     }
 
     // For infinite scrolling, we need at least 2 banners
-    if (banners.length < 2) {
+    if (widget.banners.length < 2) {
       return SizedBox(
-        height: height,
-        width: width,
+        height: widget.height,
+        width: widget.width,
         child: GestureDetector(
-          onPanStart: (_) => onPanStart?.call(),
-          onPanEnd: (_) => onPanEnd?.call(),
+          onPanStart: (_) => widget.onPanStart?.call(),
+          onPanEnd: (_) => widget.onPanEnd?.call(),
           child: PageView.builder(
             physics: const BouncingScrollPhysics(),
-            controller: pageController,
+            controller: widget.pageController,
             scrollDirection: Axis.horizontal,
-            itemCount: banners.length,
+            itemCount: widget.banners.length,
             padEnds: false,
             pageSnapping: true,
             onPageChanged: (value) {
-              currentPage.value = value;
+              widget.currentPage.value = value;
             },
             itemBuilder: (BuildContext context, int index) {
-              return _buildBannerItem(context, banners[index]);
+              return _buildBannerItem(context, widget.banners[index]);
             },
           ),
         ),
@@ -78,28 +84,28 @@ class ReusableBannerWidget extends StatelessWidget {
 
     // Infinite scrolling implementation
     return SizedBox(
-      height: height,
-      width: width,
+      height: widget.height,
+      width: widget.width,
       child: GestureDetector(
-        onPanStart: (_) => onPanStart?.call(),
-        onPanEnd: (_) => onPanEnd?.call(),
+        onPanStart: (_) => widget.onPanStart?.call(),
+        onPanEnd: (_) => widget.onPanEnd?.call(),
         child: PageView.builder(
           physics: const BouncingScrollPhysics(),
-          controller: pageController,
+          controller: widget.pageController,
           scrollDirection: Axis.horizontal,
-          itemCount: banners.length * 1000,
+          itemCount: widget.banners.length * 1000,
           // Create a large number for infinite effect
           padEnds: false,
           pageSnapping: true,
           onPageChanged: (value) {
             // Calculate the actual banner index
-            int actualIndex = value % banners.length;
-            currentPage.value = actualIndex;
+            int actualIndex = value % widget.banners.length;
+            widget.currentPage.value = actualIndex;
           },
           itemBuilder: (BuildContext context, int index) {
             // Calculate the actual banner index
-            int actualIndex = index % banners.length;
-            return _buildBannerItem(context, banners[actualIndex]);
+            int actualIndex = index % widget.banners.length;
+            return _buildBannerItem(context, widget.banners[actualIndex]);
           },
         ),
       ),
@@ -272,7 +278,7 @@ class ReusableBannerWidget extends StatelessWidget {
         case 'category':
         case 'mart_category':
           print('[BANNER NAVIGATION] 📂 Category redirect');
-          await _handleCategoryRedirect(redirectId);
+          await _handleCategoryRedirect(redirectId, context);
           break;
         case 'external_link':
           print('[BANNER NAVIGATION] 🔗 External link redirect');
@@ -381,19 +387,24 @@ class ReusableBannerWidget extends StatelessWidget {
     }
   }
 
-  Future<void> _handleCategoryRedirect(String categoryId) async {
-    ShowToastDialog.showLoader("Please wait".tr);
+  late CategoryDetailsProvider categoryDetailsProvider;
 
+  Future<void> _handleCategoryRedirect(
+    String categoryId,
+    BuildContext context,
+  ) async {
+    ShowToastDialog.showLoader("Please wait".tr);
+    categoryDetailsProvider = Provider.of<CategoryDetailsProvider>(
+      context,
+      listen: false,
+    );
     try {
-      // Navigate to category detail screen with the category ID
       ShowToastDialog.closeLoader();
-      Get.to(
-        () => const MartCategoryDetailScreen(),
-        arguments: {
-          'categoryId': categoryId,
-          'categoryName': 'Category', // You can fetch the actual name if needed
-        },
+      categoryDetailsProvider.initFunction(
+        categoryIds: categoryId,
+        categoryNames: 'Category',
       );
+      Get.to(() => const MartCategoryDetailScreen());
     } catch (e) {
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast("Error loading category details".tr);

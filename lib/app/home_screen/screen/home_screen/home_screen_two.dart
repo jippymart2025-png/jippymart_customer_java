@@ -10,6 +10,7 @@ import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/ma
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/story_view_widget.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -39,8 +40,8 @@ class HomeScreenTwo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<HomeProvider, MartProvider>(
-      builder: (context, controller, martProvider, _) {
+    return Consumer3<HomeProvider, MartProvider, MartNavigationProvider>(
+      builder: (context, controller, martProvider, martNavigationProvider, _) {
         return Scaffold(
           body: Container(
             decoration: BoxDecoration(
@@ -118,6 +119,9 @@ class HomeScreenTwo extends StatelessWidget {
                               children: [
                                 martFoodTabBarWidgetHome(
                                   martProvider: martProvider,
+                                  martNavigationProvider:
+                                      martNavigationProvider,
+                                  context: context,
                                 ),
                                 homeProfileAddressWidget(
                                   homeProvider: controller,

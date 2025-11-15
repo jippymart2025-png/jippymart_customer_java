@@ -59,10 +59,7 @@ class MapViewProvider extends ChangeNotifier {
             child: GestureDetector(
               onTap: () {
                 restaurantDetailsProvider.initFunction(vendorModels: element);
-                Get.to(
-                  const RestaurantDetailsScreen(),
-                  arguments: {"vendorModel": element},
-                );
+                Get.to(const RestaurantDetailsScreen());
               },
               child: departureOsmIcon,
             ),
@@ -111,12 +108,7 @@ class MapViewProvider extends ChangeNotifier {
           restaurantDetailsProvider.initFunction(
             vendorModels: bestRestaurantProvider.allNearestRestaurant[index],
           );
-          Get.to(
-            const RestaurantDetailsScreen(),
-            arguments: {
-              "vendorModel": bestRestaurantProvider.allNearestRestaurant[index],
-            },
-          );
+          Get.to(const RestaurantDetailsScreen());
         },
       ),
       position: LatLng(latitude ?? 0.0, longitude ?? 0.0),

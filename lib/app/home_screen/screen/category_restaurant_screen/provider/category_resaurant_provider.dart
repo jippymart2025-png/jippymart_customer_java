@@ -1,27 +1,31 @@
 import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 class CategoryRestaurantProvider extends ChangeNotifier {
   bool isLoading = true;
 
   VendorCategoryModel vendorCategoryModel = VendorCategoryModel();
   List<VendorModel> allNearestRestaurant = <VendorModel>[];
+  late HomeProvider homeProvider;
 
-  initFunction(VendorCategoryModel vendorCategoryModels) async {
+  initFunction({
+    required VendorCategoryModel vendorCategoryModels,
+    required BuildContext context,
+  }) async {
+    homeProvider = Provider.of(context, listen: false);
     vendorCategoryModel = vendorCategoryModels;
-    await getZone();
+    await homeProvider.getZone();
     await getRestaurant();
-    Future.delayed(Duration(seconds: 1), () {
-      isLoading = false;
-      notifyListeners();
-    });
+    isLoading = false;
     notifyListeners();
   }
 
@@ -64,27 +68,22 @@ class CategoryRestaurantProvider extends ChangeNotifier {
           Constant.selectedLocation.location?.latitude ?? 0.0;
       final double longitude =
           Constant.selectedLocation.location?.longitude ?? 0.0;
-
       if (zoneId == null) {
         return;
       }
-
       final response = await getAllNearestRestaurantByCategoryId(
         categoryId: vendorCategoryModel.id.toString(),
         latitude: latitude,
         longitude: longitude,
         radius: double.parse(Constant.radius),
       );
-
+      print("getRestaurant " + response['data'].toString());
       if (response['success'] == true) {
         final List<dynamic> data = response['data'];
-
         allNearestRestaurant.clear();
-
         for (var vendorData in data) {
           try {
             VendorModel vendorModel = VendorModel.fromJson(vendorData);
-            // Apply your existing filtering logic
             if ((Constant.isSubscriptionModelApplied == true ||
                     Constant.adminCommission?.isEnabled == true) &&
                 vendorModel.subscriptionPlan != null) {
@@ -118,7 +117,6 @@ class CategoryRestaurantProvider extends ChangeNotifier {
             print('Error parsing vendor data: $e');
           }
         }
-
         print("Total vendors found: ${allNearestRestaurant.length}");
       } else {
         print("API returned unsuccessful response: ${response['message']}");
@@ -126,24 +124,5 @@ class CategoryRestaurantProvider extends ChangeNotifier {
     } catch (e) {
       print("Error in getRestaurant: $e");
     }
-  }
-
-  getZone() async {
-    // await FireStoreUtils.getZone().then((value) {
-    //   if (value != null) {
-    //     for (int i = 0; i < value.length; i++) {
-    //       if (Constant.isPointInPolygon(
-    //           LatLng(Constant.selectedLocation.location!.latitude ?? 0.0,
-    //               Constant.selectedLocation.location!.longitude ?? 0.0),
-    //           value[i].area!)) {
-    //         Constant.selectedZone = value[i];
-    //         Constant.isZoneAvailable = true;
-    //         break;
-    //       } else {
-    //         Constant.isZoneAvailable = false;
-    //       }
-    //     }
-    //   }
-    // });
   }
 }

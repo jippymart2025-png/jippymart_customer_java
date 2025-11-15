@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/home_screen/screen/category_restaurant_screen/category_restaurant_screen.dart';
+import 'package:jippymart_customer/app/home_screen/screen/category_restaurant_screen/provider/category_resaurant_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/view_all_category_screen/provider/view_all_categroy_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
@@ -80,80 +81,87 @@ class ViewAllCategoryScreen extends StatelessWidget {
     VendorCategoryModel category,
     BuildContext context,
   ) {
-    return Card(
-      elevation: 0,
-      shadowColor: Colors.grey.withOpacity(0.3),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: AppThemeData.grey50,
-      child: InkWell(
-        onTap: () {
-          Get.to(
-            const CategoryRestaurantScreen(),
-            arguments: {"vendorCategoryModel": category, "dineIn": false},
-            transition: Transition.cupertino,
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              // Category Image
-              Container(
-                width: 70,
-                height: 70,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.grey.shade100,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.grey.withOpacity(0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: NetworkImageWidget(
-                    imageUrl: category.photo.toString(),
-                    fit: BoxFit.cover,
-                    // placeholder: Container(
-                    //   decoration: BoxDecoration(
-                    //     shape: BoxShape.circle,
-                    //     color: isDark ? AppThemeData.grey800 : AppThemeData.grey200,
-                    //   ),
-                    //   child: Icon(
-                    //     Icons.category,
-                    //     color: isDark ? AppThemeData.grey400 : AppThemeData.grey500,
-                    //     size: 30,
-                    //   ),
-                    // ),
-                  ),
-                ),
-              ),
-
-              // Category Name
-              const SizedBox(height: 8),
-              Flexible(
-                child: Text(
-                  category.title ?? '',
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppThemeData.grey900,
-                    fontFamily: AppThemeData.medium,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    height: 1.2,
-                  ),
-                ),
-              ),
-            ],
+    return Consumer<CategoryRestaurantProvider>(
+      builder: (context, categoryRestaurantProvider, _) {
+        return Card(
+          elevation: 0,
+          shadowColor: Colors.grey.withOpacity(0.3),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-        ),
-      ),
+          color: AppThemeData.grey50,
+          child: InkWell(
+            onTap: () {
+              print(" _buildCategoryItem");
+              categoryRestaurantProvider.initFunction(
+                vendorCategoryModels: category,
+                context: context,
+              );
+              Get.to(const CategoryRestaurantScreen());
+            },
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Category Image
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.grey.shade100,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: NetworkImageWidget(
+                        imageUrl: category.photo.toString(),
+                        fit: BoxFit.cover,
+                        // placeholder: Container(
+                        //   decoration: BoxDecoration(
+                        //     shape: BoxShape.circle,
+                        //     color: isDark ? AppThemeData.grey800 : AppThemeData.grey200,
+                        //   ),
+                        //   child: Icon(
+                        //     Icons.category,
+                        //     color: isDark ? AppThemeData.grey400 : AppThemeData.grey500,
+                        //     size: 30,
+                        //   ),
+                        // ),
+                      ),
+                    ),
+                  ),
+
+                  // Category Name
+                  const SizedBox(height: 8),
+                  Flexible(
+                    child: Text(
+                      category.title ?? '',
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppThemeData.grey900,
+                        fontFamily: AppThemeData.medium,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

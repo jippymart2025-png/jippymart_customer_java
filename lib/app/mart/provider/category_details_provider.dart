@@ -26,21 +26,25 @@ class CategoryDetailsProvider extends ChangeNotifier {
   String searchQuery = '';
   String selectedFilter = '';
   late String initialSubcategoryId; // Add this field
-  void initFunction() {
-    final arguments = Get.arguments as Map<String, dynamic>?;
-    categoryId = arguments?['categoryId'] ?? '';
-    categoryName = arguments?['categoryName'] ?? 'Category';
-    sectionName = arguments?['sectionName'] ?? '';
-    initialSubcategoryId = arguments?['subcategoryId'] ?? ''; // ✅ ADD THIS
+  void initFunction({
+    String? categoryIds,
+    String? categoryNames,
+    String? sectionNames,
+    String? subcategoryId,
+    String? initialFilters,
+  }) {
+    categoryId = categoryIds ?? '';
+    categoryName = categoryNames ?? '';
+    sectionName = sectionNames ?? '';
+    initialSubcategoryId = subcategoryId ?? '';
     print(
       '[CATEGORY DETAIL] 🚀 Initializing for category: $categoryName (ID: $categoryId)',
     );
     print('[CATEGORY DETAIL] 🎯 Initial subcategory: $initialSubcategoryId');
     _initializeData();
-    if (arguments?['initialFilter'] == 'trending' ||
-        arguments?['initialFilter'] == 'featured') {
+    if (initialFilters == 'trending' || initialFilters == 'featured') {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        selectFilter(arguments?['initialFilter']);
+        selectFilter(initialFilters);
       });
     }
     notifyListeners();

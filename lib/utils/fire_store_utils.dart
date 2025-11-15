@@ -5,7 +5,6 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/chat_screens/ChatVideoContainer.dart';
-import 'package:jippymart_customer/constant/collection_name.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/AttributesModel.dart';

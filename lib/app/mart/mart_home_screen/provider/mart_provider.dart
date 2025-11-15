@@ -1681,7 +1681,6 @@ class MartProvider extends ChangeNotifier {
 
       final result = await _firestoreService.getHomepageSubcategoriesPaginated(
         limit: 10,
-        lastDocument: _lastDocuments.isNotEmpty ? _lastDocuments.last : null,
       );
 
       final nextPageSubcategories =

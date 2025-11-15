@@ -78,8 +78,6 @@ class SwiggySearchProvider extends ChangeNotifier {
   List<VendorCategoryModel> _remainingCategories = [];
 
   // **FIRESTORE PAGINATION CURSORS**
-  DocumentSnapshot? _lastVendorDocument;
-  DocumentSnapshot? _lastProductDocument;
 
   // **DEBOUNCE TIMER**
   Timer? _debounceTimer;
@@ -1166,110 +1164,6 @@ class SwiggySearchProvider extends ChangeNotifier {
 
   // **OPTIMIZED FIRESTORE QUERY METHODS**
 
-  /// **SEARCH VENDORS WITH FIRESTORE QUERIES (MEMORY EFFICIENT)**
-  Future<List<VendorModel>> _searchVendorsWithFirestore({
-    required String query,
-    int limit = 20,
-    DocumentSnapshot? startAfter,
-  }) async {
-    try {
-      print('🔍 Firestore vendor search for: "$query" (limit: $limit)');
-
-      if (query.trim().isEmpty) {
-        return [];
-      }
-
-      final lowerQuery = query.toLowerCase();
-      List<VendorModel> results = [];
-
-      // **OPTIMIZED: Use Firestore queries instead of loading all data**
-      Query firestoreQuery = FirebaseFirestore.instance
-          .collection('vendors')
-          .where('isActive', isEqualTo: true)
-          .limit(limit);
-
-      // Add pagination if startAfter is provided
-      if (startAfter != null) {
-        firestoreQuery = firestoreQuery.startAfterDocument(startAfter);
-      }
-
-      QuerySnapshot querySnapshot = await firestoreQuery.get();
-
-      // Filter results on client side (for complex searches)
-      for (var document in querySnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          final vendor = VendorModel.fromJson(data);
-
-          // Check if vendor matches search query
-          if (_vendorMatchesQuery(vendor, lowerQuery)) {
-            results.add(vendor);
-          }
-        } catch (e) {
-          print('❌ Error parsing vendor ${document.id}: $e');
-        }
-      }
-
-      print('✅ Found ${results.length} matching vendors via Firestore');
-      return results;
-    } catch (e) {
-      print('❌ Error searching vendors with Firestore: $e');
-      return [];
-    }
-  }
-
-  /// **SEARCH PRODUCTS WITH FIRESTORE QUERIES (MEMORY EFFICIENT)**
-  Future<List<ProductModel>> _searchProductsWithFirestore({
-    required String query,
-    int limit = 20,
-    DocumentSnapshot? startAfter,
-  }) async {
-    try {
-      print('🔍 Firestore product search for: "$query" (limit: $limit)');
-
-      if (query.trim().isEmpty) {
-        return [];
-      }
-
-      final lowerQuery = query.toLowerCase();
-      List<ProductModel> results = [];
-
-      // **OPTIMIZED: Use Firestore queries instead of loading all data**
-      Query firestoreQuery = FirebaseFirestore.instance
-          .collection('vendorProducts')
-          .where('publish', isEqualTo: true)
-          .limit(limit);
-
-      // Add pagination if startAfter is provided
-      if (startAfter != null) {
-        firestoreQuery = firestoreQuery.startAfterDocument(startAfter);
-      }
-
-      QuerySnapshot querySnapshot = await firestoreQuery.get();
-
-      // Filter results on client side (for complex searches)
-      for (var document in querySnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          final product = ProductModel.fromJson(data);
-
-          // Check if product matches search query
-          if (_productMatchesQuery(product, lowerQuery)) {
-            results.add(product);
-          }
-        } catch (e) {
-          print('❌ Error parsing product ${document.id}: $e');
-        }
-      }
-
-      print('✅ Found ${results.length} matching products via Firestore');
-      return results;
-    } catch (e) {
-      print('❌ Error searching products with Firestore: $e');
-      return [];
-    }
-  }
-
   /// **PREFIX SEARCH WITH FIRESTORE (MOST EFFICIENT FOR AUTOCOMPLETE)**
   Future<List<dynamic>> _searchWithPrefix({
     required String query,
@@ -1277,22 +1171,16 @@ class SwiggySearchProvider extends ChangeNotifier {
   }) async {
     try {
       print('🔍 Firestore prefix search for: "$query" (limit: $limit)');
-
       if (query.trim().isEmpty) {
         return [];
       }
       List<dynamic> results = [];
-
       Query vendorQuery = FirebaseFirestore.instance
           .collection('vendors')
           .where('isActive', isEqualTo: true)
           .where('title', isGreaterThanOrEqualTo: query)
-          .where(
-            'title',
-            isLessThan: '$query\uf8ff',
-          ) // \uf8ff is the highest Unicode character
-          .limit(limit ~/ 2); // Half the limit for vendors
-
+          .where('title', isLessThan: '$query\uf8ff')
+          .limit(limit ~/ 2);
       QuerySnapshot vendorSnapshot = await vendorQuery.get();
       for (var document in vendorSnapshot.docs) {
         try {
@@ -1302,177 +1190,11 @@ class SwiggySearchProvider extends ChangeNotifier {
           print('❌ Error parsing vendor ${document.id}: $e');
         }
       }
-
-      // Search products by name prefix
-      Query productQuery = FirebaseFirestore.instance
-          .collection('vendorProducts')
-          .where('publish', isEqualTo: true)
-          .where('name', isGreaterThanOrEqualTo: query)
-          .where('name', isLessThan: '$query\uf8ff')
-          .limit(limit ~/ 2); // Half the limit for products
-
-      QuerySnapshot productSnapshot = await productQuery.get();
-      for (var document in productSnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          results.add(ProductModel.fromJson(data));
-        } catch (e) {
-          print('❌ Error parsing product ${document.id}: $e');
-        }
-      }
-
       print('✅ Prefix search found ${results.length} results via Firestore');
       return results;
     } catch (e) {
       print('❌ Error in prefix search: $e');
       return [];
-    }
-  }
-
-  /// **Check if vendor matches search query**
-  bool _vendorMatchesQuery(VendorModel vendor, String lowerQuery) {
-    return (vendor.title?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (vendor.description?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (vendor.location?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (vendor.categoryTitle?.any(
-              (cat) => cat.toLowerCase().contains(lowerQuery),
-            ) ??
-            false) ||
-        (vendor.id?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (vendor.phonenumber?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (vendor.vType?.toLowerCase().contains(lowerQuery) ?? false);
-  }
-
-  /// **Check if product matches search query**
-  bool _productMatchesQuery(ProductModel product, String lowerQuery) {
-    return (product.name?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (product.description?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (product.categoryID?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (product.vendorID?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (product.id?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (product.price?.toLowerCase().contains(lowerQuery) ?? false) ||
-        (product.disPrice?.toLowerCase().contains(lowerQuery) ?? false);
-  }
-
-  /// **OPTIMIZED SEARCH USING FIRESTORE QUERIES**
-  Future<void> performOptimizedSearch(String query) async {
-    if (query.isEmpty) {
-      _clearSearchResults();
-      return;
-    }
-
-    try {
-      print("🔍 Optimized Firestore search for: '$query'");
-      isSearching = true;
-      hasSearched = true;
-
-      // Reset pagination state
-      _lastVendorDocument = null;
-      _lastProductDocument = null;
-      hasMoreResults = true;
-
-      // **PARALLEL SEARCH: Search vendors and products simultaneously using Firestore**
-      final futures = await Future.wait([
-        _searchVendorsWithFirestore(
-          query: query,
-          limit: MAX_VENDORS_PER_SEARCH,
-        ),
-        _searchProductsWithFirestore(
-          query: query,
-          limit: MAX_PRODUCTS_PER_SEARCH,
-        ),
-        getVendorCategory(), // Categories are usually small
-      ]);
-
-      final vendorResults = futures[0] as List<VendorModel>;
-      final productResults = futures[1] as List<ProductModel>;
-      final categoryResults = futures[2] as List<VendorCategoryModel>;
-
-      // Filter categories based on query
-      final filteredCategories = categoryResults.where((category) {
-        final lowerQuery = query.toLowerCase();
-        return (category.title?.toLowerCase().contains(lowerQuery) ?? false) ||
-            (category.description?.toLowerCase().contains(lowerQuery) ?? false);
-      }).toList();
-
-      // Update observable lists
-      restaurantResults.assignAll(vendorResults);
-      productResults.assignAll(productResults);
-      categoryResults.assignAll(filteredCategories);
-
-      // Check if there are more results - FIXED: hasMoreResults should be true when we haven't reached limits yet
-      hasMoreResults =
-          vendorResults.length < MAX_VENDORS_PER_SEARCH ||
-          productResults.length < MAX_PRODUCTS_PER_SEARCH;
-
-      // Save to recent searches
-      _saveRecentSearch(query);
-
-      // Hide suggestions
-      showSuggestions = false;
-      isSearching = false;
-
-      logMemoryUsage("After Optimized Search");
-    } catch (e) {
-      if (e.toString().contains('OutOfMemoryError')) {
-        _emergencyMemoryCleanup();
-      }
-      isSearching = false;
-    }
-  }
-
-  /// **LOAD MORE RESULTS USING FIRESTORE PAGINATION**
-  Future<void> loadMoreResultsOptimized() async {
-    if (isLoadingMore || !hasMoreResults) {
-      return;
-    }
-
-    try {
-      isLoadingMore = true;
-      print("🔄 Loading more results via Firestore pagination...");
-
-      final currentQuery = searchText;
-      if (currentQuery.isEmpty) {
-        isLoadingMore = false;
-        return;
-      }
-
-      // **PAGINATED SEARCH: Use startAfter for efficient pagination**
-      final futures = await Future.wait([
-        _searchVendorsWithFirestore(
-          query: currentQuery,
-          limit: MAX_VENDORS_PER_SEARCH,
-          startAfter: _lastVendorDocument,
-        ),
-        _searchProductsWithFirestore(
-          query: currentQuery,
-          limit: MAX_PRODUCTS_PER_SEARCH,
-          startAfter: _lastProductDocument,
-        ),
-      ]);
-
-      final moreVendors = futures[0] as List<VendorModel>;
-      final moreProducts = futures[1] as List<ProductModel>;
-
-      // Add to existing results
-      restaurantResults.addAll(moreVendors);
-      productResults.addAll(moreProducts);
-
-      // Update pagination state - FIXED: hasMoreResults should be true when we haven't reached limits yet
-      hasMoreResults =
-          moreVendors.length < MAX_VENDORS_PER_SEARCH ||
-          moreProducts.length < MAX_PRODUCTS_PER_SEARCH;
-
-      print(
-        "📊 Loaded more results via Firestore: ${moreVendors.length} vendors, ${moreProducts.length} products",
-      );
-      print(
-        "📊 Total results: ${restaurantResults.length} vendors, ${productResults.length} products",
-      );
-    } catch (e) {
-      print("❌ Error loading more results via Firestore: $e");
-    } finally {
-      isLoadingMore = false;
     }
   }
 
@@ -1485,8 +1207,6 @@ class SwiggySearchProvider extends ChangeNotifier {
 
     try {
       print("💡 Getting suggestions via Firestore prefix search for: '$query'");
-
-      // **PREFIX SEARCH: Most efficient for autocomplete**
       final suggestions = await _searchWithPrefix(
         query: query,
         limit: SUGGESTION_LIMIT,

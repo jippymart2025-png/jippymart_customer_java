@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
@@ -415,155 +416,161 @@ class MartSubcategoriesSection extends StatelessWidget {
   /// Build enhanced individual subcategory item with better UI
   Widget _buildEnhancedSubcategoryItem(MartSubcategoryModel subcategory) {
     final gradientColors = _getSubcategoryGradient(subcategory.title ?? '');
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 2),
-      child: InkWell(
-        onTap: () {
-          if (subcategory.parentCategoryId != null &&
-              subcategory.parentCategoryId!.isNotEmpty) {
-            Get.to(
-              () => const MartCategoryDetailScreen(),
-              arguments: {
-                'categoryId': subcategory.parentCategoryId!,
-                'categoryName': subcategory.parentCategoryTitle ?? 'Category',
-                'subcategoryId': subcategory.id ?? '',
-              },
-            );
-          } else {
-            print(
-              '[MART HOME] 🏷️ Warning: Subcategory ${subcategory.title} has no parent category ID',
-            );
-          }
-        },
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Enhanced Category Card with shadow and gradient
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: gradientColors,
+    return Consumer<CategoryDetailsProvider>(
+      builder: (context, categoryDetailsProvider, _) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 2),
+          child: InkWell(
+            onTap: () {
+              if (subcategory.parentCategoryId != null &&
+                  subcategory.parentCategoryId!.isNotEmpty) {
+                categoryDetailsProvider.initFunction(
+                  categoryIds: subcategory.parentCategoryId!,
+                  categoryNames: subcategory.parentCategoryTitle ?? 'Category',
+                  subcategoryId: subcategory.id ?? '',
+                );
+                Get.to(() => const MartCategoryDetailScreen());
+              } else {
+                print(
+                  '[MART HOME] 🏷️ Warning: Subcategory ${subcategory.title} has no parent category ID',
+                );
+              }
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Enhanced Category Card with shadow and gradient
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: gradientColors,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.03),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Stack(
+                      children: [
+                        // Background pattern
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                gradientColors[0].withOpacity(0.8),
+                                gradientColors[1].withOpacity(0.8),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Image or Icon
+                        Center(
+                          child:
+                              (subcategory.validImageUrl.isNotEmpty ||
+                                  (subcategory.photo != null &&
+                                      subcategory.photo!.isNotEmpty))
+                              ? NetworkImageWidget(
+                                  imageUrl: subcategory.validImageUrl.isNotEmpty
+                                      ? subcategory.validImageUrl
+                                      : subcategory.photo!,
+                                  width: 48,
+                                  height: 48,
+                                  fit: BoxFit.cover,
+                                  errorWidget: Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: Colors.white.withOpacity(0.3),
+                                    ),
+                                    child: Icon(
+                                      _getSubcategoryIcon(
+                                        subcategory.title ?? '',
+                                      ),
+                                      color: const Color(0xFF00998a),
+                                      size: 24,
+                                    ),
+                                  ),
+                                )
+                              : Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withOpacity(0.3),
+                                  ),
+                                  child: Icon(
+                                    _getSubcategoryIcon(
+                                      subcategory.title ?? '',
+                                    ),
+                                    color: const Color(0xFF00998a),
+                                    size: 24,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.03),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Stack(
-                  children: [
-                    // Background pattern
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            gradientColors[0].withOpacity(0.8),
-                            gradientColors[1].withOpacity(0.8),
-                          ],
+                const SizedBox(height: 12),
+                // Enhanced Text Container
+                Container(
+                  width: 72,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Column(
+                    children: [
+                      SizedBox(
+                        height: 28, // enough for up to 2 lines
+                        child: Text(
+                          subcategory.title ?? 'Category',
+                          style: const TextStyle(
+                            fontFamily: 'Montserrat',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            height: 1.2,
+                            color: Color(0xFF1A1A1A),
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                    ),
-
-                    // Image or Icon
-                    Center(
-                      child:
-                          (subcategory.validImageUrl.isNotEmpty ||
-                              (subcategory.photo != null &&
-                                  subcategory.photo!.isNotEmpty))
-                          ? NetworkImageWidget(
-                              imageUrl: subcategory.validImageUrl.isNotEmpty
-                                  ? subcategory.validImageUrl
-                                  : subcategory.photo!,
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                              errorWidget: Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withOpacity(0.3),
-                                ),
-                                child: Icon(
-                                  _getSubcategoryIcon(subcategory.title ?? ''),
-                                  color: const Color(0xFF00998a),
-                                  size: 24,
-                                ),
-                              ),
-                            )
-                          : Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withOpacity(0.3),
-                              ),
-                              child: Icon(
-                                _getSubcategoryIcon(subcategory.title ?? ''),
-                                color: const Color(0xFF00998a),
-                                size: 24,
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Enhanced Text Container
-            Container(
-              width: 72,
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Column(
-                children: [
-                  SizedBox(
-                    height: 28, // enough for up to 2 lines
-                    child: Text(
-                      subcategory.title ?? 'Category',
-                      style: const TextStyle(
-                        fontFamily: 'Montserrat',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                        color: Color(0xFF1A1A1A),
+                      const SizedBox(height: 2),
+                      Container(
+                        width: 16,
+                        height: 2,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00998a).withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(1),
+                        ),
                       ),
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Container(
-                    width: 16,
-                    height: 2,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF00998a).withOpacity(0.5),
-                      borderRadius: BorderRadius.circular(1),
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

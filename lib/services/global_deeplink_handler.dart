@@ -1,16 +1,19 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/category_service/category__service_screen.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
-import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/utils/crash_prevention.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+
+import '../app/mart/provider/category_details_provider.dart'
+    show CategoryDetailsProvider;
+import 'mart_firestore_service.dart';
 
 /// 🔗 Global Deeplink Handler Service
 ///
@@ -33,8 +36,10 @@ class GlobalDeeplinkHandler {
   /// Initialize the GlobalDeeplinkHandler
   static void init() {
     print('🔗 [MAIN] Initializing GlobalDeeplinkHandler FIRST...');
+
     _instance._handleInitialLink();
     _instance._listenToIncomingLinks();
+
     print('🔗 [MAIN] GlobalDeeplinkHandler initialized successfully');
   }
 
@@ -140,14 +145,18 @@ class GlobalDeeplinkHandler {
 
   /// Navigate to product details using GetX
   void _navigateToProduct(String productId, BuildContext context) async {
+    final martController = Provider.of<MartProvider>(context, listen: false);
+    final martNavigationProvider = Provider.of<MartNavigationProvider>(
+      context,
+      listen: false,
+    );
     try {
-      final martController = Provider.of<MartProvider>(context, listen: false);
-
       final product = await martController.getProductById(productId);
       if (product != null) {
         await Future.delayed(Duration(milliseconds: 500));
         Get.to(() => MartProductDetailsScreen(product: product));
       } else {
+        martNavigationProvider.initFunction(context: context);
         navigatorKey.currentState?.push(
           MaterialPageRoute(builder: (_) => const MartNavigationScreen()),
         );
@@ -157,6 +166,7 @@ class GlobalDeeplinkHandler {
       print('❌ [GLOBAL_DEEPLINK] Error navigating to product: $e');
       print('🔗 [GLOBAL_DEEPLINK] Redirecting to mart home due to error...');
       // Navigate to mart home on error
+      martNavigationProvider.initFunction(context: context);
       navigatorKey.currentState?.push(
         MaterialPageRoute(builder: (_) => const MartNavigationScreen()),
       );
@@ -215,6 +225,8 @@ class GlobalDeeplinkHandler {
 
   /// Process deep link with enhanced crash prevention
   Future<void> _processDeeplink(String url, BuildContext context) async {
+    MartNavigationProvider martNavigationProvider =
+        Provider.of<MartNavigationProvider>(context, listen: false);
     try {
       print(
         '🔗 [GLOBAL_DEEPLINK] Processing deep link with enhanced crash prevention: $url',
@@ -240,7 +252,7 @@ class GlobalDeeplinkHandler {
           _navigateToRestaurant(restaurantId, context);
         }
       } else if (url.contains('/mart/')) {
-        _navigateToMart(url);
+        _navigateToMart(url, martNavigationProvider, context);
       } else if (url.contains('/product/')) {
         final productId = _extractProductId(url);
         if (productId != null) {
@@ -249,7 +261,7 @@ class GlobalDeeplinkHandler {
       } else if (url.contains('/category/')) {
         final categoryId = _extractCategoryId(url);
         if (categoryId != null) {
-          _navigateToCategory(categoryId);
+          _navigateToCategory(categoryId, context);
         }
       }
 
@@ -285,10 +297,15 @@ class GlobalDeeplinkHandler {
   }
 
   /// Navigate to mart
-  void _navigateToMart(String url) {
+  void _navigateToMart(
+    String url,
+    MartNavigationProvider martNavigationProvider,
+    BuildContext context,
+  ) {
     try {
       print('🔗 [GLOBAL_DEEPLINK] 🛒 Navigating to mart: $url');
       // Navigate to mart home screen
+      martNavigationProvider.initFunction(context: context);
       Get.offAll(() => const MartNavigationScreen());
     } catch (e) {
       print('❌ [GLOBAL_DEEPLINK] Error navigating to mart: $e');
@@ -296,55 +313,53 @@ class GlobalDeeplinkHandler {
   }
 
   /// Navigate to category
-  Future<void> _navigateToCategory(String categoryId) async {
+  Future<void> _navigateToCategory(
+    String categoryId,
+    BuildContext context,
+  ) async {
     try {
       print('🔗 [GLOBAL_DEEPLINK] 📂 Navigating to category: $categoryId');
 
-      // **FIXED: Use the same working logic as FinalDeepLinkService**
+      // **CHANGED: Use API call instead of Firebase**
       print(
-        '🔗 [GLOBAL_DEEPLINK] 🔍 Fetching category data for ID: $categoryId',
+        '🔗 [GLOBAL_DEEPLINK] 🔍 Fetching category data for ID: $categoryId via API',
       );
 
-      // Use direct Firestore query to get category by ID
-      final categoryDoc = await FirebaseFirestore.instance
-          .collection('mart_categories')
-          .doc(categoryId)
-          .get();
+      // Use API to get category by ID and items
+      final categoryItems = await MartFirestoreService().getItemsByCategoryOnly(
+        categoryId: categoryId,
+      );
 
-      MartCategoryModel? category;
-      if (categoryDoc.exists) {
-        final data = categoryDoc.data()!;
-        data['id'] = categoryDoc.id;
-        category = MartCategoryModel.fromJson(data);
-      }
-
-      if (category != null) {
-        print('🔗 [GLOBAL_DEEPLINK] ✅ Found category: ${category.title}');
+      if (categoryItems.isNotEmpty) {
+        final firstItem = categoryItems.first;
+        final categoryName = firstItem.name;
         print(
-          '🔗 [GLOBAL_DEEPLINK] Category Status: ${category.publish == true ? "PUBLISHED" : "UNPUBLISHED"}',
+          '🔗 [GLOBAL_DEEPLINK] ✅ Found ${categoryItems.length} items for category',
         );
+        print('🔗 [GLOBAL_DEEPLINK] Category Name: $categoryName');
 
         // Wait briefly for app to be ready
         print('🔗 [GLOBAL_DEEPLINK] Waiting briefly for app to be ready...');
         await Future.delayed(Duration(milliseconds: 500));
 
-        // Navigate to specific category detail screen with actual category name
+        // Navigate to specific category detail screen with items data
         print(
           '🔗 [GLOBAL_DEEPLINK] Navigating to specific category detail screen...',
         );
-        Get.to(
-          () => const MartCategoryDetailScreen(),
-          arguments: {
-            'categoryId': categoryId,
-            'categoryName':
-                category.title ?? 'Category', // Use actual category title
-          },
+        CategoryDetailsProvider categoryDetailsProvider =
+            Provider.of<CategoryDetailsProvider>(context, listen: false);
+        categoryDetailsProvider.initFunction(
+          categoryIds: categoryId,
+          categoryNames: categoryName,
         );
+        Get.to(() => const MartCategoryDetailScreen());
         print(
-          '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to specific category detail screen!',
+          '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to specific category detail screen with ${categoryItems.length} items!',
         );
       } else {
-        print('🔗 [GLOBAL_DEEPLINK] ❌ Category not found for ID: $categoryId');
+        print(
+          '🔗 [GLOBAL_DEEPLINK] ❌ No items found for category ID: $categoryId',
+        );
         print('🔗 [GLOBAL_DEEPLINK] Redirecting to dashboard...');
         Get.toNamed('/');
       }

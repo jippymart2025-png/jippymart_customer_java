@@ -9,6 +9,9 @@ import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:provider/provider.dart';
 
+import '../provider/category_details_provider.dart'
+    show CategoryDetailsProvider;
+
 class MartSearchWidget extends StatefulWidget {
   final bool showHistory;
   final bool showCategories;
@@ -468,18 +471,18 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
     }
   }
 
-  void _onCategoryTap(MartCategoryModel category) {
+  void _onCategoryTap(
+    MartCategoryModel category,
+    CategoryDetailsProvider categoryDetailsProvider,
+  ) {
     if (widget.onCategoryTap != null) {
       widget.onCategoryTap!(category);
     } else {
-      // Default navigation to category detail
-      Get.to(
-        () => const MartCategoryDetailScreen(),
-        arguments: {
-          'categoryId': category.id ?? '',
-          'categoryName': category.title ?? 'Category',
-        },
+      categoryDetailsProvider.initFunction(
+        categoryIds: category.id ?? '',
+        categoryNames: category.title ?? 'Category',
       );
+      Get.to(() => const MartCategoryDetailScreen());
     }
   }
 
@@ -1162,40 +1165,45 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   }
 
   Widget _buildCategoriesSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.all(16),
-          child: Text(
-            'Categories',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-        ),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: searchController.categoryResults.length,
-          itemBuilder: (context, index) {
-            final category = searchController.categoryResults[index];
-            return ListTile(
-              leading: CircleAvatar(
-                backgroundImage: category.photo != null
-                    ? NetworkImage(category.photo!)
-                    : null,
-                child: category.photo == null
-                    ? const Icon(Icons.category)
-                    : null,
+    return Consumer<CategoryDetailsProvider>(
+      builder: (context, categoryDetailsProvider, _) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                'Categories',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              title: Text(category.title ?? ''),
-              subtitle: Text(category.description ?? ''),
-              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-              onTap: () => _onCategoryTap(category),
-            );
-          },
-        ),
-        const Divider(),
-      ],
+            ),
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: searchController.categoryResults.length,
+              itemBuilder: (context, index) {
+                final category = searchController.categoryResults[index];
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: category.photo != null
+                        ? NetworkImage(category.photo!)
+                        : null,
+                    child: category.photo == null
+                        ? const Icon(Icons.category)
+                        : null,
+                  ),
+                  title: Text(category.title ?? ''),
+                  subtitle: Text(category.description ?? ''),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () =>
+                      _onCategoryTap(category, categoryDetailsProvider),
+                );
+              },
+            ),
+            const Divider(),
+          ],
+        );
+      },
     );
   }
 

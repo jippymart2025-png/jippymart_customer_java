@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
@@ -257,120 +258,122 @@ Widget _buildCategoriesGrid(MartProvider controller, Size size) {
 // Enhanced Category Item with Modern Design
 Widget _buildCategoryItem(MartCategoryModel category, int index, Size size) {
   final categoryData = _getCategoryData(category.title ?? '');
-  return AnimatedContainer(
-    duration: Duration(milliseconds: 400 + (index * 100)),
-    curve: Curves.easeOutBack,
-    child: InkWell(
-      onTap: () {
-        Get.to(
-          () => const MartCategoryDetailScreen(),
-          arguments: {
-            'categoryId': category.id ?? '',
-            'categoryName': category.title ?? 'Category',
+  return Consumer<CategoryDetailsProvider>(
+    builder: (context, categoryDetailsProvider, _) {
+      return AnimatedContainer(
+        duration: Duration(milliseconds: 400 + (index * 100)),
+        curve: Curves.easeOutBack,
+        child: InkWell(
+          onTap: () {
+            categoryDetailsProvider.initFunction(
+              categoryIds: category.id ?? '',
+              categoryNames: category.title ?? 'Category',
+            );
+            Get.to(() => const MartCategoryDetailScreen());
           },
-        );
-      },
-      borderRadius: BorderRadius.circular(20),
-      child: SizedBox(
-        width: size.width * 0.11,
-        // decoration: BoxDecoration(
-        //   borderRadius: BorderRadius.circular(20),
-        //   color: Colors.white,
-        //   boxShadow: [
-        //     BoxShadow(
-        //       color: categoryData['color']!.withOpacity(0.15),
-        //       blurRadius: 20,
-        //       offset: const Offset(0, 8),
-        //     ),
-        //     BoxShadow(
-        //       color: Colors.black.withOpacity(0.05),
-        //       blurRadius: 5,
-        //       offset: const Offset(0, 2),
-        //     ),
-        //   ],
-        //   border: Border.all(
-        //     color: Colors.grey.withOpacity(0.1),
-        //     width: 1,
-        //   ),
-        // ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Icon Container with Enhanced Design
-            Container(
-              width: 64,
-              height: 64,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    categoryData['color']!,
-                    _adjustColorBrightness(categoryData['color']!, -0.2),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: categoryData['color']!.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                  BoxShadow(
-                    color: Colors.white.withOpacity(0.8),
-                    blurRadius: 4,
-                    offset: const Offset(-2, -2),
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  // Background Pattern
-                  Positioned(
-                    right: 6,
-                    bottom: 6,
-                    child: Icon(
-                      categoryData['icon'],
-                      color: Colors.white.withOpacity(0.2),
-                      size: 20,
+          borderRadius: BorderRadius.circular(20),
+          child: SizedBox(
+            width: size.width * 0.11,
+            // decoration: BoxDecoration(
+            //   borderRadius: BorderRadius.circular(20),
+            //   color: Colors.white,
+            //   boxShadow: [
+            //     BoxShadow(
+            //       color: categoryData['color']!.withOpacity(0.15),
+            //       blurRadius: 20,
+            //       offset: const Offset(0, 8),
+            //     ),
+            //     BoxShadow(
+            //       color: Colors.black.withOpacity(0.05),
+            //       blurRadius: 5,
+            //       offset: const Offset(0, 2),
+            //     ),
+            //   ],
+            //   border: Border.all(
+            //     color: Colors.grey.withOpacity(0.1),
+            //     width: 1,
+            //   ),
+            // ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Icon Container with Enhanced Design
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        categoryData['color']!,
+                        _adjustColorBrightness(categoryData['color']!, -0.2),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: categoryData['color']!.withOpacity(0.4),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                      BoxShadow(
+                        color: Colors.white.withOpacity(0.8),
+                        blurRadius: 4,
+                        offset: const Offset(-2, -2),
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
-                  // Main Icon
-                  Center(
-                    child: Icon(
-                      categoryData['icon'],
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                  child: Stack(
+                    children: [
+                      // Background Pattern
+                      Positioned(
+                        right: 6,
+                        bottom: 6,
+                        child: Icon(
+                          categoryData['icon'],
+                          color: Colors.white.withOpacity(0.2),
+                          size: 20,
+                        ),
+                      ),
+                      // Main Icon
+                      Center(
+                        child: Icon(
+                          categoryData['icon'],
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            // Category Name
-            SizedBox(
-              // constraints: const BoxConstraints(maxWidth: 90),
-              height: 40,
-              child: Text(
-                category.title ?? 'Category',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF2D3748),
-                  height: 1.2,
                 ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+                const SizedBox(height: 12),
+                // Category Name
+                SizedBox(
+                  // constraints: const BoxConstraints(maxWidth: 90),
+                  height: 40,
+                  child: Text(
+                    category.title ?? 'Category',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF2D3748),
+                      height: 1.2,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(height: 4),
+              ],
             ),
-            const SizedBox(height: 4),
-          ],
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 }
 

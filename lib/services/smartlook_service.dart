@@ -4,7 +4,9 @@ import 'package:path_provider/path_provider.dart';
 
 class SmartlookService {
   static final SmartlookService _instance = SmartlookService._internal();
+
   factory SmartlookService() => _instance;
+
   SmartlookService._internal();
 
   final Smartlook _smartlook = Smartlook.instance;
@@ -14,45 +16,35 @@ class SmartlookService {
   Future<void> initialize(String projectKey, {String? region}) async {
     try {
       print('[SMARTLOOK] 🚀 Starting SmartLook initialization...');
-      
       // ✅ CRITICAL: Validate and cleanup storage directory before initialization
       await _validateStorageDirectory();
-      
       // ✅ ENHANCED: Clean up any corrupted session files during startup
       await cleanupStorage();
-      
       // ✅ NEW: Additional cleanup for the specific error we're seeing
       await _cleanupCorruptedSessionFiles();
-      
       // ✅ NEW: Force clean storage if previous attempts failed
       await _forceCleanStorage();
-      
       print('[SMARTLOOK] 📁 Storage prepared, setting project key...');
-      
       // Set project key FIRST before starting recording
       _smartlook.preferences.setProjectKey(projectKey);
-      
       // Note: Region setting is not available in this version
       // if (region != null) {
       //   _smartlook.preferences.setRegion(region);
       // }
-      
       print('[SMARTLOOK] 🎬 Starting recording...');
-      
       // Start recording AFTER setting project key
       _smartlook.start();
       _isInitialized = true;
-      
-      print('[SMARTLOOK] ✅ Successfully initialized with project key: $projectKey');
+      print(
+        '[SMARTLOOK] ✅ Successfully initialized with project key: $projectKey',
+      );
     } catch (e) {
       print('[SMARTLOOK] ❌ Initialization error: $e');
       _isInitialized = false;
-      
       // ✅ ENHANCED: Try multiple recovery strategies
       try {
         print('[SMARTLOOK] 🔧 Attempting recovery...');
         await _handleInitializationFailure();
-        
         // Try to reinitialize after recovery
         print('[SMARTLOOK] 🔄 Retrying initialization after recovery...');
         _smartlook.preferences.setProjectKey(projectKey);
@@ -72,17 +64,14 @@ class SmartlookService {
       print('[SMARTLOOK] 🧹 Force cleaning storage...');
       final Directory appDir = await getApplicationDocumentsDirectory();
       final Directory smartlookDir = Directory('${appDir.path}/smartlook');
-      
       // Delete entire SmartLook directory
       if (await smartlookDir.exists()) {
         await smartlookDir.delete(recursive: true);
         print('[SMARTLOOK] 🗑️ Deleted existing SmartLook directory');
       }
-      
       // Recreate clean directory
       await smartlookDir.create(recursive: true);
       print('[SMARTLOOK] 📁 Created fresh SmartLook directory');
-      
     } catch (e) {
       print('[SMARTLOOK] Force clean storage error: $e');
     }
@@ -93,7 +82,6 @@ class SmartlookService {
     try {
       final Directory appDir = await getApplicationDocumentsDirectory();
       final Directory smartlookDir = Directory('${appDir.path}/smartlook');
-      
       if (await smartlookDir.exists()) {
         // ✅ CRITICAL FIX: Validate directory before operations
         final stat = await smartlookDir.stat();
@@ -103,18 +91,20 @@ class SmartlookService {
           await smartlookDir.create(recursive: true);
           return;
         }
-        
+
         // Look for the specific session recording directory structure
-        final Directory sessionRecordingDir = Directory('${smartlookDir.path}/session_recording');
+        final Directory sessionRecordingDir = Directory(
+          '${smartlookDir.path}/session_recording',
+        );
         if (await sessionRecordingDir.exists()) {
-          print('[SMARTLOOK] Found session_recording directory - cleaning up...');
-          
+          print(
+            '[SMARTLOOK] Found session_recording directory - cleaning up...',
+          );
           // ✅ SAFE DELETE: Use enhanced deletion with validation
           await _safeDeleteDirectory(sessionRecordingDir);
           await sessionRecordingDir.create(recursive: true);
           print('[SMARTLOOK] Deleted corrupted session_recording directory');
         }
-        
         // ✅ NEW: Clean up other problematic directories that cause crashes
         final List<String> problemDirs = ['sessions', 'temp', 'cache'];
         for (String dirName in problemDirs) {
@@ -130,7 +120,7 @@ class SmartlookService {
       print('[SMARTLOOK] Error cleaning up corrupted session files: $e');
     }
   }
-  
+
   /// ✅ NEW: Safe directory deletion that prevents the crash
   Future<void> _safeDeleteDirectory(Directory dir) async {
     try {
@@ -141,7 +131,9 @@ class SmartlookService {
           // Use a more careful deletion approach
           await dir.delete(recursive: true);
         } else {
-          print('[SMARTLOOK] Path is not a directory, deleting as file: ${dir.path}');
+          print(
+            '[SMARTLOOK] Path is not a directory, deleting as file: ${dir.path}',
+          );
           await File(dir.path).delete();
         }
       }
@@ -160,20 +152,19 @@ class SmartlookService {
   Future<void> _handleInitializationFailure() async {
     try {
       print('[SMARTLOOK] Attempting recovery from initialization failure...');
-      
+
       // Clean up all Smartlook storage
       final Directory appDir = await getApplicationDocumentsDirectory();
       final Directory smartlookDir = Directory('${appDir.path}/smartlook');
-      
+
       if (await smartlookDir.exists()) {
         await smartlookDir.delete(recursive: true);
         print('[SMARTLOOK] Deleted all Smartlook storage for clean restart');
       }
-      
+
       // Recreate directory
       await smartlookDir.create(recursive: true);
       print('[SMARTLOOK] Recreated Smartlook storage directory');
-      
     } catch (e) {
       print('[SMARTLOOK] Recovery failed: $e');
     }
@@ -185,44 +176,47 @@ class SmartlookService {
       // Get app documents directory
       final Directory appDir = await getApplicationDocumentsDirectory();
       final Directory smartlookDir = Directory('${appDir.path}/smartlook');
-      
       // ✅ CRITICAL: Always recreate directory to prevent FileTreeWalk errors
       if (await smartlookDir.exists()) {
-        print('[SMARTLOOK] Removing existing directory to prevent corruption...');
+        print(
+          '[SMARTLOOK] Removing existing directory to prevent corruption...',
+        );
         await smartlookDir.delete(recursive: true);
       }
-      
       // Create fresh directory
       await smartlookDir.create(recursive: true);
-      print('[SMARTLOOK] Created fresh storage directory: ${smartlookDir.path}');
-      
+      print(
+        '[SMARTLOOK] Created fresh storage directory: ${smartlookDir.path}',
+      );
       // ✅ NEW: Create subdirectories that Smartlook expects
       final Directory sessionDir = Directory('${smartlookDir.path}/sessions');
       await sessionDir.create(recursive: true);
-      
       final Directory tempDir = Directory('${smartlookDir.path}/temp');
       await tempDir.create(recursive: true);
-      
       // Verify directory is writable and accessible
       final testFile = File('${smartlookDir.path}/test_write.tmp');
       await testFile.writeAsString('test');
       await testFile.delete();
-      
       // ✅ NEW: Verify subdirectories are accessible
       await sessionDir.list().first;
       await tempDir.list().first;
-      
-      print('[SMARTLOOK] Storage directory validated with subdirectories: ${smartlookDir.path}');
+      print(
+        '[SMARTLOOK] Storage directory validated with subdirectories: ${smartlookDir.path}',
+      );
     } catch (e) {
       print('[SMARTLOOK] Storage directory validation failed: $e');
       // ✅ NEW: Try alternative directory if main one fails
       try {
-        final Directory altDir = Directory('${(await getTemporaryDirectory()).path}/smartlook');
+        final Directory altDir = Directory(
+          '${(await getTemporaryDirectory()).path}/smartlook',
+        );
         if (await altDir.exists()) {
           await altDir.delete(recursive: true);
         }
         await altDir.create(recursive: true);
-        print('[SMARTLOOK] Using alternative storage directory: ${altDir.path}');
+        print(
+          '[SMARTLOOK] Using alternative storage directory: ${altDir.path}',
+        );
       } catch (e2) {
         print('[SMARTLOOK] Alternative storage directory also failed: $e2');
       }
@@ -313,7 +307,9 @@ class SmartlookService {
     try {
       // Note: setProperty method is not available in this version
       // User properties can be set through other means if needed
-      print('[SMARTLOOK] User properties set: $properties (method not available in this version)');
+      print(
+        '[SMARTLOOK] User properties set: $properties (method not available in this version)',
+      );
     } catch (e) {
       print('[SMARTLOOK] Error setting user properties: $e');
     }
@@ -334,7 +330,9 @@ class SmartlookService {
   void setSensitiveDataMasking(bool enabled) {
     try {
       // Note: setSensitiveDataMasking is not available in this version
-      print('[SMARTLOOK] Sensitive data masking ${enabled ? 'enabled' : 'disabled'} (method not available in this version)');
+      print(
+        '[SMARTLOOK] Sensitive data masking ${enabled ? 'enabled' : 'disabled'} (method not available in this version)',
+      );
     } catch (e) {
       print('[SMARTLOOK] Error setting sensitive data masking: $e');
     }
@@ -348,7 +346,9 @@ class SmartlookService {
       // ⚠️ PLACEHOLDER: Recording quality setting not available in current SDK version
       // This will be implemented when Smartlook SDK adds quality control
       print('[SMARTLOOK] Recording quality setting requested: $quality');
-      print('[SMARTLOOK] Note: Quality settings not available in current SDK version (4.1.27)');
+      print(
+        '[SMARTLOOK] Note: Quality settings not available in current SDK version (4.1.27)',
+      );
       print('[SMARTLOOK] This is a placeholder for future SDK versions');
     } catch (e) {
       print('[SMARTLOOK] Error setting recording quality: $e');
@@ -360,20 +360,19 @@ class SmartlookService {
     try {
       final Directory appDir = await getApplicationDocumentsDirectory();
       final Directory smartlookDir = Directory('${appDir.path}/smartlook');
-      
       if (await smartlookDir.exists()) {
         // ✅ CRITICAL: Validate directory before listing contents
         if (!await _isValidDirectory(smartlookDir)) {
-          print('[SMARTLOOK] Invalid directory detected - recreating: ${smartlookDir.path}');
+          print(
+            '[SMARTLOOK] Invalid directory detected - recreating: ${smartlookDir.path}',
+          );
           await smartlookDir.delete(recursive: true);
           await smartlookDir.create(recursive: true);
           return;
         }
-        
         // Clean up any corrupted session files
         final List<FileSystemEntity> files = await smartlookDir.list().toList();
         int cleanedCount = 0;
-        
         for (FileSystemEntity file in files) {
           try {
             // ✅ ENHANCED: Check if it's a valid file/directory before processing
@@ -397,16 +396,20 @@ class SmartlookService {
             try {
               if (file is Directory) {
                 await file.delete(recursive: true);
-                print('[SMARTLOOK] Force deleted corrupted directory: ${file.path}');
+                print(
+                  '[SMARTLOOK] Force deleted corrupted directory: ${file.path}',
+                );
               }
             } catch (e2) {
               print('[SMARTLOOK] Force delete failed: ${file.path} - $e2');
             }
           }
         }
-        
+
         if (cleanedCount > 0) {
-          print('[SMARTLOOK] Storage cleanup completed - $cleanedCount items removed');
+          print(
+            '[SMARTLOOK] Storage cleanup completed - $cleanedCount items removed',
+          );
         } else {
           print('[SMARTLOOK] Storage cleanup completed - no items to remove');
         }
@@ -433,7 +436,7 @@ class SmartlookService {
     try {
       // Check if directory exists and is readable
       if (!await dir.exists()) return false;
-      
+
       // Try to list contents to verify it's accessible
       await dir.list().first;
       return true;
@@ -447,19 +450,19 @@ class SmartlookService {
   Future<void> restartWithCleanStorage() async {
     try {
       print('[SMARTLOOK] Restarting with clean storage...');
-      
+
       // Stop current recording
       stopRecording();
-      
+
       // Clean up storage
       await cleanupStorage();
-      
+
       // Reinitialize
       await _validateStorageDirectory();
-      
+
       // Restart recording
       startRecording();
-      
+
       print('[SMARTLOOK] Restart completed successfully');
     } catch (e) {
       print('[SMARTLOOK] Restart error: $e');
@@ -486,20 +489,20 @@ class SmartlookService {
   Future<bool> forceReinitialize(String projectKey, {String? region}) async {
     try {
       print('[SMARTLOOK] 🔄 Force reinitializing SmartLook...');
-      
+
       // Stop current recording
       try {
         _smartlook.stop();
       } catch (e) {
         print('[SMARTLOOK] Error stopping current recording: $e');
       }
-      
+
       // Force clean storage
       await _forceCleanStorage();
-      
+
       // Reinitialize
       await initialize(projectKey, region: region);
-      
+
       if (_isInitialized) {
         print('[SMARTLOOK] ✅ Force reinitialization successful');
         return true;
@@ -514,13 +517,18 @@ class SmartlookService {
   }
 
   /// ✅ NEW: Check SmartLook health and attempt recovery if needed
-  Future<bool> checkHealthAndRecover(String projectKey, {String? region}) async {
+  Future<bool> checkHealthAndRecover(
+    String projectKey, {
+    String? region,
+  }) async {
     try {
       if (!_isInitialized) {
-        print('[SMARTLOOK] 🔍 SmartLook not initialized - attempting recovery...');
+        print(
+          '[SMARTLOOK] 🔍 SmartLook not initialized - attempting recovery...',
+        );
         return await forceReinitialize(projectKey, region: region);
       }
-      
+
       // Try to get session URL to test if SmartLook is working
       try {
         await _smartlook.user.session.getUrl();
@@ -541,23 +549,25 @@ class SmartlookService {
   Future<void> preventSessionRecordingStorageCrash() async {
     try {
       print('[SMARTLOOK] 🛡️ Preventing SessionRecordingStorage crashes...');
-      
+
       final Directory appDir = await getApplicationDocumentsDirectory();
       final Directory smartlookDir = Directory('${appDir.path}/smartlook');
-      
+
       // ✅ CRITICAL: Ensure directory structure exists and is valid
       if (!await smartlookDir.exists()) {
         await smartlookDir.create(recursive: true);
         print('[SMARTLOOK] Created Smartlook directory');
       }
-      
+
       // ✅ NEW: Create the specific session recording directory structure
-      final Directory sessionRecordingDir = Directory('${smartlookDir.path}/session_recording');
+      final Directory sessionRecordingDir = Directory(
+        '${smartlookDir.path}/session_recording',
+      );
       if (!await sessionRecordingDir.exists()) {
         await sessionRecordingDir.create(recursive: true);
         print('[SMARTLOOK] Created session_recording directory');
       }
-      
+
       // ✅ NEW: Create subdirectories that prevent FileTreeWalk errors
       final List<String> subdirs = [
         'session_recording/active',
@@ -565,9 +575,9 @@ class SmartlookService {
         'session_recording/temp',
         'sessions',
         'temp',
-        'cache'
+        'cache',
       ];
-      
+
       for (String subdir in subdirs) {
         final Directory dir = Directory('${smartlookDir.path}/$subdir');
         if (!await dir.exists()) {
@@ -575,7 +585,7 @@ class SmartlookService {
           print('[SMARTLOOK] Created subdirectory: $subdir');
         }
       }
-      
+
       // ✅ NEW: Verify all directories are accessible (prevents FileTreeWalk errors)
       for (String subdir in subdirs) {
         final Directory dir = Directory('${smartlookDir.path}/$subdir');
@@ -588,13 +598,17 @@ class SmartlookService {
           await dir.create(recursive: true);
         }
       }
-      
-      print('[SMARTLOOK] 🛡️ SessionRecordingStorage crash prevention completed');
+
+      print(
+        '[SMARTLOOK] 🛡️ SessionRecordingStorage crash prevention completed',
+      );
     } catch (e) {
-      print('[SMARTLOOK] ❌ SessionRecordingStorage crash prevention failed: $e');
+      print(
+        '[SMARTLOOK] ❌ SessionRecordingStorage crash prevention failed: $e',
+      );
     }
   }
 
   /// Get Smartlook instance for advanced usage
   Smartlook get instance => _smartlook;
-} 
+}

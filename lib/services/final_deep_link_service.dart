@@ -4,8 +4,10 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
@@ -39,11 +41,16 @@ class FinalDeepLinkService {
   bool _initialized = false;
   String? _pendingDeepLink; // Added to store pending deep link
   bool _hasProcessedDeepLink = false; // Flag to prevent duplicate processing
+  late CategoryDetailsProvider categoryDetailsProvider;
 
   Future<void> init(
     GlobalKey<NavigatorState> navigatorKey,
     BuildContext context,
   ) async {
+    categoryDetailsProvider = Provider.of<CategoryDetailsProvider>(
+      context,
+      listen: false,
+    );
     if (_initialized) {
       return; // Prevent multiple subscriptions
     }
@@ -61,7 +68,7 @@ class FinalDeepLinkService {
           print(
             '🔗 [FLUTTER] PRINT TEST - Received link from Android (event): $url',
           );
-          _handleLink(url, context);
+          _handleLink(url, context, categoryDetailsProvider);
         }
       },
       onError: (error) {
@@ -72,18 +79,21 @@ class FinalDeepLinkService {
 
     // 2) Also query initial link (fallback if stream did not get cold-start link)
     log('🔗 [FLUTTER] Querying initial link...');
-    await _getInitialLink(context);
+    await _getInitialLink(context, categoryDetailsProvider);
 
     log('🔗 [FINAL DEEP LINK SERVICE] ✅ Singleton initialized successfully');
   }
 
-  Future<void> _getInitialLink(BuildContext context) async {
+  Future<void> _getInitialLink(
+    BuildContext context,
+    CategoryDetailsProvider categoryDetailsProvider,
+  ) async {
     try {
       final String? initial = await _methodChannel.invokeMethod<String>(
         'getInitialLink',
       );
       if (initial != null) {
-        _handleLink(initial, context);
+        _handleLink(initial, context, categoryDetailsProvider);
       } else {}
     } on PlatformException catch (e) {
       log('❌ [FLUTTER] getInitialLink failed: $e');
@@ -91,7 +101,11 @@ class FinalDeepLinkService {
     }
   }
 
-  void _handleLink(String url, BuildContext context) async {
+  void _handleLink(
+    String url,
+    BuildContext context,
+    CategoryDetailsProvider categoryDetailsProvider,
+  ) async {
     _hasProcessedDeepLink = false;
     if (_hasProcessedDeepLink) {
       print(
@@ -135,7 +149,7 @@ class FinalDeepLinkService {
         );
       }
 
-      _newSimpleDeepLinkHandler(url, context);
+      _newSimpleDeepLinkHandler(url, context, categoryDetailsProvider);
     } else {
       print(
         '🔥🔥🔥 [FLUTTER] User not logged in, deep link will be processed after login',
@@ -180,7 +194,11 @@ class FinalDeepLinkService {
       );
       GlobalDeeplinkHandler.instance.storeDeeplink(_pendingDeepLink!, context);
 
-      _newSimpleDeepLinkHandler(_pendingDeepLink!, context);
+      _newSimpleDeepLinkHandler(
+        _pendingDeepLink!,
+        context,
+        categoryDetailsProvider,
+      );
       _pendingDeepLink = null; // Clear after processing
     } else {
       print('🔥🔥🔥 [FLUTTER] No pending deep link to process');
@@ -231,7 +249,10 @@ class FinalDeepLinkService {
   }
 
   /// **NEW: Navigate to category with actual data**
-  void _navigateToCategoryWithData(String categoryId) async {
+  void _navigateToCategoryWithData(
+    String categoryId,
+    CategoryDetailsProvider categoryDetailsProvider,
+  ) async {
     try {
       print('🔥 [NEW HANDLER] ===== CATEGORY DEEP LINK NAVIGATION =====');
       print('🔥 [NEW HANDLER] Category ID: $categoryId');
@@ -266,14 +287,11 @@ class FinalDeepLinkService {
         print(
           '🔥 [NEW HANDLER] Navigating to specific category detail screen...',
         );
-        Get.to(
-          () => const MartCategoryDetailScreen(),
-          arguments: {
-            'categoryId': categoryId,
-            'categoryName':
-                category.title ?? 'Category', // Use actual category title
-          },
+        categoryDetailsProvider.initFunction(
+          categoryIds: categoryId,
+          categoryNames: category.title ?? 'Category',
         );
+        Get.to(() => const MartCategoryDetailScreen());
         print(
           '🔥✅ [NEW HANDLER] Successfully navigated to specific category detail screen!',
         );
@@ -291,7 +309,10 @@ class FinalDeepLinkService {
     }
   }
 
-  void _navigateToMartHome() async {
+  void _navigateToMartHome({
+    required MartNavigationProvider martNavigationProvider,
+    required BuildContext context,
+  }) async {
     try {
       print(
         '\n🔗 [DEEP_LINK_SERVICE] ===== DEEP LINK MART NAVIGATION STARTED =====',
@@ -316,6 +337,7 @@ class FinalDeepLinkService {
         print(
           '🎯 [DEEP_LINK_SERVICE] Navigation: Deep Link -> MartNavigationScreen',
         );
+        martNavigationProvider.initFunction(context: context);
         // Navigate to mart navigation screen using GlobalDeeplinkHandler navigator key
         GlobalDeeplinkHandler.navigatorKey.currentState?.push(
           MaterialPageRoute(builder: (context) => const MartNavigationScreen()),
@@ -398,7 +420,11 @@ class FinalDeepLinkService {
     print('🔥🔥🔥 [FLUTTER] Reset all flags for new deep link processing');
   }
 
-  void _newSimpleDeepLinkHandler(String url, BuildContext context) async {
+  void _newSimpleDeepLinkHandler(
+    String url,
+    BuildContext context,
+    CategoryDetailsProvider categoryDetailsProvider,
+  ) async {
     // Wait for Navigator to be available
     int attempts = 0;
     while (GlobalDeeplinkHandler.navigatorKey.currentState == null &&
@@ -462,12 +488,12 @@ class FinalDeepLinkService {
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'category') {
         final categoryId = pathSegments[1];
         print('🔥 [NEW HANDLER] HTTPS scheme - Category ID: $categoryId');
-        _navigateToCategoryWithData(categoryId);
+        _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
         return;
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'categories') {
         final categoryId = pathSegments[1];
         print('🔥 ¸ $categoryId');
-        _navigateToCategoryWithData(categoryId);
+        _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
         return;
       }
       if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
@@ -479,7 +505,10 @@ class FinalDeepLinkService {
         productId = pathSegments[0];
       }
     }
-
+    final martNavigationProvider = Provider.of<MartNavigationProvider>(
+      context,
+      listen: false,
+    );
     if (productId != null) {
       try {
         try {
@@ -498,13 +527,22 @@ class FinalDeepLinkService {
               ),
             );
           } else {
-            _navigateToMartHome();
+            _navigateToMartHome(
+              martNavigationProvider: martNavigationProvider,
+              context: context,
+            );
           }
         } catch (e) {
-          _navigateToMartHome();
+          _navigateToMartHome(
+            martNavigationProvider: martNavigationProvider,
+            context: context,
+          );
         }
       } catch (e) {
-        _navigateToMartHome();
+        _navigateToMartHome(
+          martNavigationProvider: martNavigationProvider,
+          context: context,
+        );
       }
     } else {
       print('❌ [NEW HANDLER] No product ID found in URL');

@@ -1,18 +1,18 @@
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categories_screen/mart_categories_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/mart_home_screen.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_categories_screen/provider/mart_category_controller.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_profile_screen/mart_profile_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class MartNavigationProvider extends ChangeNotifier {
   int selectedIndex = 0;
   List<Widget> pageList = <Widget>[];
+  late MartCategoryProvider martCategoryProvider;
 
-  MartNavigationProvider() {
-    initFunction();
-  }
-
-  void initFunction() {
+  void initFunction({required BuildContext context}) {
+    martCategoryProvider = Provider.of(context, listen: false);
     _initializePages();
   }
 
@@ -32,6 +32,9 @@ class MartNavigationProvider extends ChangeNotifier {
 
   void changeIndex(int index) {
     selectedIndex = index;
+    if (index == 1) {
+      martCategoryProvider.initFunction();
+    }
     notifyListeners(); // Add this to ensure UI updates
   }
 

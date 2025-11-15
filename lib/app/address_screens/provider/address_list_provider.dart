@@ -376,11 +376,34 @@ class AddressListProvider extends ChangeNotifier {
           ShowToastDialog.showToast("Failed to save address".tr);
         }
       } catch (e) {
+        print(" saveAddressFunction  ${e.toString()} ");
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast("Error saving address".tr);
       } finally {
         setLoading(false);
       }
+    }
+  }
+
+  Future<void> deleteAddressFunction({required int index}) async {
+    ShowToastDialog.showLoader("Please wait".tr);
+    try {
+      final addressId = shippingAddressList[index].id;
+      final success = await deleteShippingAddress(addressId.toString());
+      if (success) {
+        shippingAddressList.removeAt(index);
+        userModel.shippingAddress = shippingAddressList;
+        homeProvider.ensureUserModelIsLoaded();
+        ShowToastDialog.closeLoader();
+        Get.back();
+        ShowToastDialog.showToast("Address deleted".tr);
+        notifyListeners();
+      } else {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("Failed to delete address".tr);
+      }
+    } catch (e) {
+      ShowToastDialog.closeLoader();
     }
   }
 }

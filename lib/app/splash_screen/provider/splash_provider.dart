@@ -31,7 +31,6 @@ class SplashProvider extends ChangeNotifier {
 
   void refreshFunction(BuildContext context) async {
     await _loadUserDataFromStorage();
-    await addressListProvider.initFunction(context: context);
     homeProvider.initFunction(context: context);
   }
 
@@ -54,8 +53,8 @@ class SplashProvider extends ChangeNotifier {
         return;
       }
       await _loadUserDataFromStorage();
-      await addressListProvider.initFunction(context: context);
       await homeProvider.initFunction(context: context);
+      await addressListProvider.initFunction(context: context);
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (context) => DashBoardScreen()),
         (Route<dynamic> route) => false,
@@ -99,9 +98,12 @@ class SplashProvider extends ChangeNotifier {
           active: true,
         );
         Constant.userModel = userModel;
+        print(" _loadAllDataInParallel  1 ${Constant.userModel?.firebaseId} ");
         notifyListeners();
       } else {}
-    } catch (e) {}
+    } catch (e) {
+      print(" _loadAllDataInParallel  2 ${e.toString()} ");
+    }
   }
 
   void _checkUpdatesInBackground() {

@@ -430,14 +430,11 @@ class MartFirestoreService extends GetxService {
   Future<List<MartCategoryModel>> getCategories({int limit = 100}) async {
     try {
       print('[MART API] 📂 Fetching categories from API...');
-      // Build the API URL
       final url = '${AppConst.baseUrl}mart-items/getmartcategory';
-
       final response = await http.get(
         Uri.parse(url),
         headers: await getHeaders(),
       );
-
       if (response.statusCode != 200) {
         print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
@@ -1731,11 +1728,9 @@ class MartFirestoreService extends GetxService {
         return [];
       }
       final List<dynamic> itemsData = responseBody['data'] ?? [];
-
       print(
         '[MART API] 📂 API returned ${itemsData.length} items for category',
       );
-
       if (itemsData.isEmpty) {
         print('[MART API] ⚠️ No items found for category: $categoryId');
         return [];
@@ -2567,33 +2562,62 @@ class MartFirestoreService extends GetxService {
 
   Future<Map<String, dynamic>> getHomepageSubcategoriesPaginated({
     int limit = 10,
-    DocumentSnapshot? lastDocument,
+    int page = 1,
   }) async {
     try {
-      Query query = _firestore
-          .collection('mart_subcategories')
-          .where('show_in_homepage', isEqualTo: true)
-          .where('publish', isEqualTo: true)
-          .orderBy('subcategory_order', descending: false)
-          .limit(limit);
-      if (lastDocument != null) {
-        query = query.startAfterDocument(lastDocument);
+      // Build the API URL with query parameters
+      final url = Uri.parse('${AppConst.baseUrl}mart-items/sub_category_home')
+          .replace(
+            queryParameters: {
+              'limit': limit.toString(),
+              'page': page.toString(),
+            },
+          );
+
+      // Make the API call
+      final response = await http.get(url, headers: await getHeaders());
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['status'] == true) {
+          // Convert the API data to MartSubcategoryModel objects
+          final subcategories = (responseData['data'] as List).map((item) {
+            return MartSubcategoryModel.fromJson(item);
+          }).toList();
+
+          // Get meta information for pagination
+          final meta = responseData['meta'] as Map<String, dynamic>;
+          final currentPage = meta['page'] as int;
+          final totalItems = meta['total'] as int;
+          final lastPage = meta['last_page'] as int;
+
+          return {
+            'subcategories': subcategories,
+            'currentPage': currentPage,
+            'totalItems': totalItems,
+            'hasNextPage': currentPage < lastPage,
+            'lastPage': lastPage,
+          };
+        } else {
+          throw Exception(
+            'API returned false status: ${responseData['message']}',
+          );
+        }
+      } else {
+        throw Exception(
+          'HTTP error ${response.statusCode}: ${response.reasonPhrase}',
+        );
       }
-      final querySnapshot = await query.get();
-      final subcategories = querySnapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return MartSubcategoryModel.fromJson(data);
-      }).toList();
-      return {
-        'subcategories': subcategories,
-        'lastDocument': querySnapshot.docs.isNotEmpty
-            ? querySnapshot.docs.last
-            : null,
-      };
     } catch (e) {
-      print('[MART FIRESTORE] ❌ Paginated query error: $e');
-      return {'subcategories': [], 'lastDocument': null};
+      print('[API] ❌ Paginated query error: $e');
+      return {
+        'subcategories': [],
+        'currentPage': 1,
+        'totalItems': 0,
+        'hasNextPage': false,
+        'lastPage': 1,
+      };
     }
   }
 }

@@ -119,7 +119,8 @@ class CategoryView extends StatelessWidget {
                         return GestureDetector(
                           onTap: () {
                             categoryRestaurantProvider.initFunction(
-                              vendorCategoryModel,
+                              vendorCategoryModels: vendorCategoryModel,
+                              context: context,
                             );
                             Get.to(const CategoryRestaurantScreen());
                           },

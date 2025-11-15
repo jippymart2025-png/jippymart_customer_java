@@ -41,6 +41,9 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
+import '../../../models/mart_item_model.dart';
+import '../../../services/mart_firestore_service.dart';
+
 class CartControllerProvider extends ChangeNotifier {
   Future<void> showPaymentMethodDialog(BuildContext context) async {
     final canProceed = await validateAndPlaceOrderBulletproof(context);
@@ -2034,6 +2037,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Validate order before payment to prevent payment without order
+  // Validate order before payment to prevent payment without order
   Future<bool> validateOrderBeforePayment(BuildContext context) async {
     try {
       if (cartItem.isEmpty) {
@@ -2047,8 +2051,6 @@ class CartControllerProvider extends ChangeNotifier {
       } catch (e) {
         return false;
       }
-
-      // 🔑 BULLETPROOF ADDRESS VALIDATION - NEVER SKIPS
       final addressValid = await _validateAddressBulletproof(context);
       if (!addressValid) {
         return false;
@@ -2081,35 +2083,95 @@ class CartControllerProvider extends ChangeNotifier {
         // Handle case where vendor model is not set (e.g., mart items)
       }
 
+      // First, validate all items in cart for availability
+      for (var item in cartItem) {
+        bool isMartItem = item.vendorID?.startsWith('mart_') == true;
+
+        if (isMartItem) {
+          // For mart items, fetch from API instead of Firebase
+          try {
+            // final martItems = await getMartItems();
+            // final martItem = martItems.firstWhere(
+            //       (mart) => mart.id == item.id!,
+            //   orElse: () => MartItemModel(),
+            // );
+            final martItems = await MartFirestoreService().getMartItems();
+            final martItem = martItems.firstWhere(
+              (mart) => mart.id == item.id!,
+              orElse: () => MartItemModel(
+                id: '',
+                name: '',
+                description: '',
+                price: 0,
+                photo: '',
+                isAvailable: false,
+                publish: false,
+                veg: false,
+                nonveg: false,
+                quantity: 0,
+              ),
+            );
+
+            final availableQuantity = martItem.quantity;
+            final orderedQuantity = item.quantity ?? 0;
+            if (availableQuantity != -1 &&
+                availableQuantity < orderedQuantity) {
+              final itemName = martItem.displayName;
+              ShowToastDialog.showToast(
+                "$itemName is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity",
+              );
+              return false;
+            }
+          } catch (e) {
+            print('[ORDER VALIDATION] ❌ Error validating mart items: $e');
+            ShowToastDialog.showToast(
+              "Error validating mart items. Please try again.",
+            );
+            return false;
+          }
+        } else {
+          // For restaurant items, use existing Firebase logic
+          final product = await FireStoreUtils.getProductById(item.id!);
+          if (product == null) {
+            ShowToastDialog.showToast(
+              "Some items in your cart are no longer available.".tr,
+            );
+            return false;
+          }
+
+          // Check stock availability (skip unlimited stock items)
+          if (product.quantity != -1) {
+            int availableQuantity = product.quantity ?? 0;
+            int orderedQuantity = item.quantity ?? 0;
+
+            if (availableQuantity < orderedQuantity) {
+              ShowToastDialog.showToast(
+                "${product.name} is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity"
+                    .tr,
+              );
+              return false;
+            }
+          }
+        }
+      }
+
+      // After validation, update quantities (this part might need adjustment based on your API)
       for (int i = 0; i < tempProduc.length; i++) {
         // Check if this is a mart item (has 'mart_' prefix in vendorID)
         bool isMartItem = tempProduc[i].vendorID?.startsWith('mart_') == true;
 
         if (isMartItem) {
-          // For mart items, update quantity in mart_items collection
-          try {
-            final martItemDoc = await FirebaseFirestore.instance
-                .collection('mart_items')
-                .doc(tempProduc[i].id!.split('~').first)
-                .get();
+          // TODO: You'll need to implement an API endpoint to update mart item quantities
+          // For now, we'll skip the quantity update for mart items via API
+          // since getMartItems() is a GET request and doesn't update quantities
+          print(
+            '[ORDER VALIDATION] ⚠️ Mart item quantity update skipped - API update needed',
+          );
 
-            if (martItemDoc.exists) {
-              final martItemData = martItemDoc.data()!;
-              final currentQuantity = martItemData['quantity'] ?? -1;
-
-              if (currentQuantity != -1) {
-                int newQuantity = currentQuantity - tempProduc[i].quantity!;
-                if (newQuantity < 0) newQuantity = 0;
-
-                await FirebaseFirestore.instance
-                    .collection('mart_items')
-                    .doc(tempProduc[i].id!.split('~').first)
-                    .update({'quantity': newQuantity});
-              }
-            }
-          } catch (e) {}
-          notifyListeners();
+          // If you have an API endpoint to update quantities, you would call it here:
+          // await updateMartItemQuantity(tempProduc[i].id!.split('~').first, tempProduc[i].quantity!);
         } else {
+          // Existing Firebase logic for restaurant items
           await FireStoreUtils.getProductById(
             tempProduc[i].id!.split('~').first,
           ).then((value) async {
@@ -2162,80 +2224,17 @@ class CartControllerProvider extends ChangeNotifier {
 
             await FireStoreUtils.setProduct(productModel);
           });
-          notifyListeners();
         }
+        notifyListeners();
       }
 
-      // Check if items are still available and have sufficient stock
-      for (var item in cartItem) {
-        // Check if this is a mart item (has 'mart_' prefix in vendorID)
-        bool isMartItem = item.vendorID?.startsWith('mart_') == true;
-
-        if (isMartItem) {
-          // For mart items, fetch from mart_items collection
-          try {
-            final martItemDoc = await FirebaseFirestore.instance
-                .collection('mart_items')
-                .doc(item.id!)
-                .get();
-
-            if (!martItemDoc.exists) {
-              ShowToastDialog.showToast(
-                "Some mart items in your cart are no longer available.",
-              );
-              return false;
-            }
-
-            final martItemData = martItemDoc.data()!;
-            final availableQuantity = martItemData['quantity'] ?? -1;
-            final orderedQuantity = item.quantity ?? 0;
-
-            // Check stock availability (skip unlimited stock items)
-            if (availableQuantity != -1 &&
-                availableQuantity < orderedQuantity) {
-              final itemName = martItemData['title'] ?? 'Mart Item';
-              ShowToastDialog.showToast(
-                "$itemName is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity",
-              );
-              return false;
-            }
-          } catch (e) {
-            ShowToastDialog.showToast(
-              "Error validating mart items. Please try again.",
-            );
-            return false;
-          }
-        } else {
-          // For restaurant items, use existing logic
-          final product = await FireStoreUtils.getProductById(item.id!);
-          if (product == null) {
-            ShowToastDialog.showToast(
-              "Some items in your cart are no longer available.".tr,
-            );
-            return false;
-          }
-
-          // Check stock availability (skip unlimited stock items)
-          if (product.quantity != -1) {
-            int availableQuantity = product.quantity ?? 0;
-            int orderedQuantity = item.quantity ?? 0;
-
-            if (availableQuantity < orderedQuantity) {
-              ShowToastDialog.showToast(
-                "${product.name} is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity"
-                    .tr,
-              );
-              return false;
-            }
-          }
-        }
-      }
       notifyListeners();
       return true;
     } catch (e) {
       // Check if this is a zone validation error and show specific message
       if (e.toString().contains('Delivery zone validation failed') ||
           e.toString().contains('Delivery distance validation failed')) {
+        // Handle zone validation errors if needed
       } else {
         // Generic validation error
         ShowToastDialog.showToast(
@@ -3250,9 +3249,7 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-
       final address = selectedAddress!;
-
       // CRITICAL CHECK 2: Address must have valid ID
       if (address.id == null || address.id!.trim().isEmpty) {
         ShowToastDialog.showToast(
@@ -3312,7 +3309,6 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 4 PASSED - Valid locality: "${address.locality}"',
       );
-
       // CRITICAL CHECK 5: Address must have valid coordinates
       if (address.location == null ||
           address.location!.latitude == null ||
@@ -3323,7 +3319,6 @@ class CartControllerProvider extends ChangeNotifier {
           "Please select a delivery address with valid location coordinates."
               .tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
@@ -3341,10 +3336,8 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-
       final lat = address.location!.latitude!;
       final lng = address.location!.longitude!;
-
       if (lat < 6.0 || lat > 37.0 || lng < 68.0 || lng > 97.0) {
         ShowToastDialog.showToast(
           "Please select a delivery address within our service area.".tr,
@@ -3353,15 +3346,12 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-
       if (address.zoneId == null || address.zoneId!.isEmpty) {
-        // 🔑 CRITICAL: Try to detect zone ID for addresses that don't have one
         String? detectedZoneId = await _detectZoneIdForCoordinates(
           address.location!.latitude!,
           address.location!.longitude!,
           context,
         );
-
         if (detectedZoneId != null) {
           address.zoneId = detectedZoneId;
         } else {

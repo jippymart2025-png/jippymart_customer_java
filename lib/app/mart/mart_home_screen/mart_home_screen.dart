@@ -2,6 +2,7 @@ import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provi
 import 'package:jippymart_customer/app/mart/mart_home_screen/widget/grocery_component_widget.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/widget/mart_header_card.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/widget/mart_home_search_widget.dart';
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/widgets/playtime_product_card.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
@@ -1040,8 +1041,8 @@ class _MartDynamicSectionsEnhancedState
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<MartProvider>(
-      builder: (context, controller, _) {
+    return Consumer2<MartProvider, CategoryDetailsProvider>(
+      builder: (context, controller, categoryDetailsProvider, _) {
         // if (!_hasTriggeredLoading) {
         //   _hasTriggeredLoading = true;
         //   WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1079,104 +1080,109 @@ class _MartDynamicSectionsEnhancedState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    categoryName,
-                    style: TextStyle(
-                      fontFamily: 'Montserrat',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1A1A),
-                      letterSpacing: -0.5,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                  ),
+      child: Consumer<CategoryDetailsProvider>(
+        builder: (context, categoryDetailsProvider, _) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 4,
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () {
-                    print(
-                      '[MART DYNAMIC SECTIONS] 🔗 Navigating to category: $categoryName',
-                    );
-
-                    // Find the category ID for this category title
-                    final category = controller.martCategories.firstWhere(
-                      (cat) => cat.title == categoryName,
-                      orElse: () =>
-                          MartCategoryModel(id: '', title: categoryName),
-                    );
-
-                    Get.to(
-                      () => MartCategoryDetailScreen(),
-                      arguments: {
-                        'categoryId':
-                            category.id ??
-                            'category_${categoryName.toLowerCase().replaceAll(' ', '_')}',
-                        'categoryName': categoryName,
-                        'initialFilter': 'category',
-                      },
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: ColorConst.martPrimary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
                       child: Text(
-                        'View All',
+                        categoryName,
                         style: TextStyle(
                           fontFamily: 'Montserrat',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: ColorConst.martPrimary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF1A1A1A),
+                          letterSpacing: -0.5,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        print(
+                          '[MART DYNAMIC SECTIONS] 🔗 Navigating to category: $categoryName',
+                        );
+
+                        // Find the category ID for this category title
+                        final category = controller.martCategories.firstWhere(
+                          (cat) => cat.title == categoryName,
+                          orElse: () =>
+                              MartCategoryModel(id: '', title: categoryName),
+                        );
+                        categoryDetailsProvider.initFunction(
+                          categoryIds:
+                              category.id ??
+                              'category_${categoryName.toLowerCase().replaceAll(' ', '_')}',
+                          categoryNames: categoryName,
+                          sectionNames: 'category',
+                        );
+                        Get.to(() => MartCategoryDetailScreen());
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: ColorConst.martPrimary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          child: Text(
+                            'View All',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: ColorConst.martPrimary,
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: SizedBox(
+                  height: 215,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      return PlaytimeProductCard(
+                        volume:
+                            '${product.grams ?? 0}${_getVolumeUnit(product)}',
+                        productName: product.name,
+                        discount: '${_calculateDiscount(product)}% OFF',
+                        currentPrice: '₹${product.disPrice ?? product.price}',
+                        originalPrice: '₹${product.price}',
+                        screenWidth: widget.screenWidth,
+                        imageUrl: product.photo,
+                        product: product,
+                      );
+                    },
                   ),
                 ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: SizedBox(
-              height: 215,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: products.length,
-                itemBuilder: (context, index) {
-                  final product = products[index];
-                  return PlaytimeProductCard(
-                    volume: '${product.grams ?? 0}${_getVolumeUnit(product)}',
-                    productName: product.name,
-                    discount: '${_calculateDiscount(product)}% OFF',
-                    currentPrice: '₹${product.disPrice ?? product.price}',
-                    originalPrice: '₹${product.price}',
-                    screenWidth: widget.screenWidth,
-                    imageUrl: product.photo,
-                    product: product,
-                  );
-                },
               ),
-            ),
-          ),
 
-          const SizedBox(height: 24), // Add spacing between sections
-        ],
+              const SizedBox(height: 24), // Add spacing between sections
+            ],
+          );
+        },
       ),
     );
   }
@@ -1263,44 +1269,45 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
                     letterSpacing: -0.5,
                   ),
                 ),
-                GestureDetector(
-                  onTap: () {
-                    print(
-                      '[MART DYNAMIC SECTIONS] 🔗 Navigating to section: $sectionName',
-                    );
-                    Get.to(
-                      () => MartCategoryDetailScreen(),
-                      arguments: {
-                        'categoryId':
-                            'section_${sectionName.toLowerCase().replaceAll(' ', '_')}',
-                        'categoryName': sectionName,
-                        'initialFilter': 'section',
-                        'sectionName': sectionName,
-                        // Pass the actual section name
+                Consumer<CategoryDetailsProvider>(
+                  builder: (context, categoryDetailsProvider, _) {
+                    return GestureDetector(
+                      onTap: () {
+                        print(
+                          '[MART DYNAMIC SECTIONS] 🔗 Navigating to section: $sectionName',
+                        );
+                        categoryDetailsProvider.initFunction(
+                          categoryIds:
+                              'section_${sectionName.toLowerCase().replaceAll(' ', '_')}',
+                          categoryNames: sectionName,
+                          sectionNames: 'section',
+                          initialFilters: sectionName,
+                        );
+                        Get.to(() => MartCategoryDetailScreen());
                       },
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: ColorConst.martPrimary.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      child: Text(
-                        'View All',
-                        style: TextStyle(
-                          fontFamily: 'Montserrat',
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: ColorConst.martPrimary,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: ColorConst.martPrimary.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          child: Text(
+                            'View All',
+                            style: TextStyle(
+                              fontFamily: 'Montserrat',
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: ColorConst.martPrimary,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -1494,52 +1501,59 @@ class MartDynamicCategoriesSection extends StatelessWidget {
           );
         }
 
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Section Title
-              const Text(
-                'Categories',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D1B69),
-                ),
-              ),
-              const SizedBox(height: 16),
+        return Consumer<CategoryDetailsProvider>(
+          builder: (context, categoryDetailsProvider, _) {
+            return Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Section Title
+                  const Text(
+                    'Categories',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D1B69),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-              // Dynamic Categories Grid
-              GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 4,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 16,
-                childAspectRatio: 0.75,
-                // Fixed overflow issue
-                children: controller.featuredCategories
-                    .map(
-                      (category) => _DynamicCategoryItem(
-                        category: category,
-                        onTap: () {
-                          // Navigate to category detail screen
-                          Get.to(
-                            () => const MartCategoryDetailScreen(),
-                            arguments: {
-                              'categoryId': category.id,
-                              'categoryName': category.title,
+                  // Dynamic Categories Grid
+                  GridView.count(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisCount: 4,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 16,
+                    childAspectRatio: 0.75,
+                    // Fixed overflow issue
+                    children: controller.featuredCategories
+                        .map(
+                          (category) => _DynamicCategoryItem(
+                            category: category,
+                            onTap: () {
+                              categoryDetailsProvider.initFunction(
+                                categoryIds: category.id,
+                                categoryNames: category.title,
+                              );
+                              Get.to(
+                                () => const MartCategoryDetailScreen(),
+                                arguments: {
+                                  'categoryId': category.id,
+                                  'categoryName': category.title,
+                                },
+                              );
                             },
-                          );
-                        },
-                      ),
-                    )
-                    .toList(),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

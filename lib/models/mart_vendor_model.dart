@@ -108,20 +108,38 @@ class MartVendorModel {
     author = json['author'];
     authorName = json['authorName'];
     authorProfilePic = json['authorProfilePic'];
-    // Location & Coordinates
+
     latitude = json['latitude'] is num
         ? json['latitude']?.toDouble()
         : double.tryParse(json['latitude']?.toString() ?? '');
     longitude = json['longitude'] is num
         ? json['longitude']?.toDouble()
         : double.tryParse(json['longitude']?.toString() ?? '');
-    coordinates = json['coordinates'];
 
-    // Business Settings
-    isOpen = json['isOpen'];
-    enabledDelivery = json['enabledDelivery'];
-    hidephotos = json['hidephotos'];
-    specialDiscountEnable = json['specialDiscountEnable'];
+    // FIX: Properly handle coordinates
+    if (json['coordinates'] != null) {
+      if (json['coordinates'] is GeoPoint) {
+        coordinates = json['coordinates'];
+      } else if (json['coordinates'] is Map) {
+        final coordsMap = json['coordinates'] as Map<String, dynamic>;
+        final lat = coordsMap['latitude'] is num
+            ? coordsMap['latitude']?.toDouble()
+            : double.tryParse(coordsMap['latitude']?.toString() ?? '');
+        final lng = coordsMap['longitude'] is num
+            ? coordsMap['longitude']?.toDouble()
+            : double.tryParse(coordsMap['longitude']?.toString() ?? '');
+
+        if (lat != null && lng != null) {
+          coordinates = GeoPoint(lat, lng);
+        }
+      }
+    }
+
+    // FIX: Boolean field handling - handle both bool and int types
+    isOpen = _parseBool(json['isOpen']);
+    enabledDelivery = _parseBool(json['enabledDelivery']);
+    hidephotos = _parseBool(json['hidephotos']);
+    specialDiscountEnable = _parseBool(json['specialDiscountEnable']);
 
     // Categories
     if (json['categoryID'] != null) {
@@ -152,8 +170,19 @@ class MartVendorModel {
         ? AdminCommission.fromJson(json['adminCommission'])
         : null;
 
-    // Timestamps
-    createdAt = json['createdAt'];
+    // Timestamps - handle both String and Timestamp
+    if (json['createdAt'] != null) {
+      if (json['createdAt'] is String) {
+        try {
+          createdAt = Timestamp.fromDate(DateTime.parse(json['createdAt']));
+        } catch (e) {
+          print('⚠️ Error parsing createdAt: $e');
+          createdAt = null;
+        }
+      } else if (json['createdAt'] is Timestamp) {
+        createdAt = json['createdAt'];
+      }
+    }
 
     // Photos
     photo = json['photo'];
@@ -168,7 +197,23 @@ class MartVendorModel {
 
     // Subscription
     subscriptionPlanId = json['subscriptionPlanId'];
-    subscriptionExpiryDate = json['subscriptionExpiryDate'];
+
+    // Handle subscriptionExpiryDate similar to createdAt
+    if (json['subscriptionExpiryDate'] != null) {
+      if (json['subscriptionExpiryDate'] is String) {
+        try {
+          subscriptionExpiryDate = Timestamp.fromDate(
+            DateTime.parse(json['subscriptionExpiryDate']),
+          );
+        } catch (e) {
+          print('⚠️ Error parsing subscriptionExpiryDate: $e');
+          subscriptionExpiryDate = null;
+        }
+      } else if (json['subscriptionExpiryDate'] is Timestamp) {
+        subscriptionExpiryDate = json['subscriptionExpiryDate'];
+      }
+    }
+
     subscriptionTotalOrders = json['subscriptionTotalOrders']?.toString();
 
     // Additional Fields
@@ -182,6 +227,17 @@ class MartVendorModel {
     if (json['restaurantMenuPhotos'] != null) {
       restaurantMenuPhotos = List<String>.from(json['restaurantMenuPhotos']);
     }
+  }
+
+  // Helper method to parse boolean values from both bool and int
+  bool? _parseBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      return value.toLowerCase() == 'true' || value == '1';
+    }
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -198,11 +254,19 @@ class MartVendorModel {
     data['authorName'] = authorName;
     data['authorProfilePic'] = authorProfilePic;
 
-    // Location & Coordinates
+    // Location & Coordinates - FIXED
     data['latitude'] = latitude;
     data['longitude'] = longitude;
-    data['coordinates'] = coordinates;
 
+    // FIX: Convert GeoPoint back to Map for JSON serialization
+    if (coordinates != null) {
+      data['coordinates'] = {
+        'latitude': coordinates!.latitude,
+        'longitude': coordinates!.longitude,
+      };
+    } else {
+      data['coordinates'] = null;
+    }
     // Business Settings
     data['isOpen'] = isOpen;
     data['enabledDelivery'] = enabledDelivery;

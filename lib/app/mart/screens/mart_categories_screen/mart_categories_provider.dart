@@ -1,5 +1,6 @@
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart'
     show MartProvider;
+import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
@@ -234,101 +235,107 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
   }
 
   Widget _buildCategoryCard(MartCategoryModel category) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Get.to(
-            () => const MartCategoryDetailScreen(),
-            arguments: {
-              'categoryId': category.id,
-              'categoryName': category.title ?? 'Category',
+    return Consumer<CategoryDetailsProvider>(
+      builder: (context, categoryDetailsProvider, _) {
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () {
+              categoryDetailsProvider.initFunction(
+                categoryIds: category.id,
+                categoryNames: category.title ?? 'Category',
+              );
+              Get.to(() => const MartCategoryDetailScreen());
             },
-          );
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(12),
-          margin: EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-                spreadRadius: 1,
-              ),
-            ],
-            border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.start,
-            children: [
-              Container(
-                width: 83,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0EFFE),
-                  // Slightly darker purple for better contrast
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: MartTheme.jippyMartButton.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(12),
+              margin: EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 1,
+                  ),
+                ],
+                border: Border.all(
+                  color: Colors.grey.withOpacity(0.1),
+                  width: 1,
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
-                  child: category.photo != null && category.photo!.isNotEmpty
-                      ? NetworkImageWidget(
-                          imageUrl: category.photo!,
-                          fit: BoxFit.cover,
-                          errorWidget: Container(
-                            color: const Color(0xFFF0EFFE),
-                            child: Icon(
-                              Icons.category_rounded,
-                              size: 24,
-                              color: MartTheme.jippyMartButton,
-                            ),
-                          ),
-                        )
-                      : Container(
-                          color: const Color(0xFFF0EFFE),
-                          child: Icon(
-                            Icons.category_rounded,
-                            size: 24,
-                            color: MartTheme.jippyMartButton,
-                          ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 83,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0EFFE),
+                      // Slightly darker purple for better contrast
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: MartTheme.jippyMartButton.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
-                ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child:
+                          category.photo != null && category.photo!.isNotEmpty
+                          ? NetworkImageWidget(
+                              imageUrl: category.photo!,
+                              fit: BoxFit.cover,
+                              errorWidget: Container(
+                                color: const Color(0xFFF0EFFE),
+                                child: Icon(
+                                  Icons.category_rounded,
+                                  size: 24,
+                                  color: MartTheme.jippyMartButton,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              color: const Color(0xFFF0EFFE),
+                              child: Icon(
+                                Icons.category_rounded,
+                                size: 24,
+                                color: MartTheme.jippyMartButton,
+                              ),
+                            ),
+                    ),
+                  ),
+                  SizedBox(width: 30),
+                  Text(
+                    category.title ?? 'Category',
+                    style: TextStyle(
+                      fontFamily: 'Montserrat',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: ColorConst.blackColor,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Spacer(),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: ColorConst.blackColor,
+                  ),
+                ],
               ),
-              SizedBox(width: 30),
-              Text(
-                category.title ?? 'Category',
-                style: TextStyle(
-                  fontFamily: 'Montserrat',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: ColorConst.blackColor,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Spacer(),
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: ColorConst.blackColor,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

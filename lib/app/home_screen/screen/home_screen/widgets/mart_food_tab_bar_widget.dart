@@ -2,15 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/widgets/coming_soon_dialog.dart';
 
-Widget martFoodTabBarWidgetHome({required MartProvider martProvider}) {
-  Future<void> checkMartAvailability(MartProvider martProvider) async {
+Widget martFoodTabBarWidgetHome({
+  required MartProvider martProvider,
+  required MartNavigationProvider martNavigationProvider,
+  required BuildContext context,
+}) {
+  Future<void> checkMartAvailability(
+    MartProvider martProvider,
+    MartNavigationProvider martNavigationProvider,
+    BuildContext context,
+  ) async {
+    print(" checkMartAvailability 0");
     martProvider.initFunction();
     try {
       if (Constant.selectedZone?.id == null) {
+        print(" checkMartAvailability 1");
         ComingSoonDialogHelper.show(
           title: "COMING SOON".tr,
           message:
@@ -20,6 +31,7 @@ Widget martFoodTabBarWidgetHome({required MartProvider martProvider}) {
       }
       final martVendors = await MartZoneUtils.getCachedMartVendors();
       if (martVendors.isEmpty) {
+        print(" checkMartAvailability 2");
         ComingSoonDialogHelper.show(
           title: "COMING SOON".tr,
           message:
@@ -35,6 +47,7 @@ Widget martFoodTabBarWidgetHome({required MartProvider martProvider}) {
         );
         return;
       }
+      martNavigationProvider.initFunction(context: context);
       Get.to(() => const MartNavigationScreen());
     } catch (e) {
       debugPrint("❌ Mart check failed: $e");
@@ -84,7 +97,11 @@ Widget martFoodTabBarWidgetHome({required MartProvider martProvider}) {
         Expanded(
           child: GestureDetector(
             onTap: () {
-              checkMartAvailability(martProvider);
+              checkMartAvailability(
+                martProvider,
+                martNavigationProvider,
+                context,
+              );
             },
             child: Container(
               margin: const EdgeInsets.all(4),
