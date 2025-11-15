@@ -1,7 +1,7 @@
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/widget/grocery_component_widget.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/widget/mart_header_card.dart';
-import 'package:jippymart_customer/app/mart/mart_search_screen.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/widget/mart_home_search_widget.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/widgets/playtime_product_card.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
@@ -9,7 +9,6 @@ import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
-import 'package:jippymart_customer/widget/animated_search_hint.dart';
 import 'package:jippymart_customer/widgets/reusable_banner_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -30,35 +29,28 @@ class MartHomeScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         body: Consumer<MartProvider>(
           builder: (context, controller, _) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (controller.featuredCategories.isEmpty &&
-                  !controller.isCategoryLoading &&
-                  !controller.isHomepageCategoriesLoaded) {
-                controller.loadHomepageCategoriesStreaming(limit: 6);
-              }
-              if (controller.featuredItems.isEmpty &&
-                  !controller.isProductLoading) {
-                controller.loadFeaturedItemsStreaming();
-              }
-              if (controller.trendingItems.isEmpty &&
-                  !controller.isTrendingLoading) {
-                controller.loadTrendingItemsStreaming();
-              }
-              // Load subcategories for the subcategories section
-              if (controller.subcategories.isEmpty &&
-                  !controller.isSubcategoryLoading) {
-                if (controller.featuredCategories.isNotEmpty) {
-                  final mainCategory = controller.featuredCategories[0];
-                  controller.loadSubcategoriesStreaming(mainCategory.id ?? '');
-                }
-              }
-              Future.microtask(() {
-                controller.loadMartBannersStream();
-              });
-              if (controller.martTopBanners.isNotEmpty) {
-                controller.startMartBannerTimer();
-              }
-            });
+            // WidgetsBinding.instance.addPostFrameCallback((_) {
+            //   if (controller.featuredCategories.isEmpty &&
+            //       !controller.isCategoryLoading &&
+            //       !controller.isHomepageCategoriesLoaded) {
+            //     controller.loadHomepageCategoriesStreaming(limit: 6);
+            //   }
+            //   if (controller.featuredItems.isEmpty &&
+            //       !controller.isProductLoading) {
+            //     controller.loadFeaturedItemsStreaming();
+            //   }
+            //   if (controller.trendingItems.isEmpty &&
+            //       !controller.isTrendingLoading) {
+            //     controller.loadTrendingItemsStreaming();
+            //   }
+            //   if (controller.subcategories.isEmpty &&
+            //       !controller.isSubcategoryLoading) {
+            //     if (controller.featuredCategories.isNotEmpty) {
+            //       final mainCategory = controller.featuredCategories[0];
+            //       controller.loadSubcategoriesStreaming(mainCategory.id ?? '');
+            //     }
+            //   }
+            // });
             return SingleChildScrollView(
               child: Column(
                 children: [
@@ -81,81 +73,7 @@ class MartHomeScreen extends StatelessWidget {
                           children: [
                             MartHeaderCard(screenWidth: screenWidth),
                             SizedBox(height: 10),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: InkWell(
-                                onTap: () {
-                                  Get.to(() => const MartSearchScreen());
-                                },
-                                child: AnimatedSearchHint(
-                                  controller: null,
-                                  enable: false,
-                                  fillColor: Colors.white,
-                                  fontFamily: 'Outfit-Bold',
-                                  textStyle: TextStyle(
-                                    fontFamily: 'Outfit-Bold',
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                    color: Colors.black,
-                                  ),
-                                  hintTextStyle: TextStyle(
-                                    fontFamily: 'Outfit-Bold',
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 15,
-                                    color: Colors.grey,
-                                  ),
-                                  suffix: Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                    ),
-                                    child: SvgPicture.asset(
-                                      "assets/icons/ic_search.svg",
-                                      color: Color(0xFFff5201),
-                                    ),
-                                  ),
-                                  hints: [
-                                    "Search 'milk'",
-                                    "Search 'bread'",
-                                    "Search 'rice'",
-                                    "Search 'atta'",
-                                    "Search 'oil'",
-                                    "Search 'sugar'",
-                                    "Search 'tea'",
-                                    "Search 'coffee'",
-                                    "Search 'snacks'",
-                                    "Search 'biscuits'",
-                                    "Search 'cold drinks'",
-                                    "Search 'toothpaste'",
-                                    "Search 'detergent'",
-                                    "Search 'shampoo'",
-                                    "Search 'soap'",
-                                    "Search 'cleaning supplies'",
-                                    "Search 'baby care'",
-                                    "Search 'personal care'",
-                                    "Search 'frozen food'",
-                                    "Search 'fresh vegetables'",
-                                    "Search 'fruits'",
-                                    "Search 'eggs'",
-                                    "Search 'dry fruits'",
-                                    "Search 'masala'",
-                                    "Search 'instant food'",
-                                    "Search 'breakfast items'",
-                                    "Search 'stationery'",
-                                    "Search 'pet food'",
-                                    "Search 'household essentials'",
-                                    "Search 'kitchen items'",
-                                    "Search 'offers near you'",
-                                    "Search 'best deals'",
-                                    "Search 'today’s discount'",
-                                    "Search 'new arrivals'",
-                                    "Search 'bestsellers'",
-                                  ],
-                                  interval: const Duration(seconds: 2),
-                                ),
-                              ),
-                            ),
+                            homeSearchWidget(),
                             SizedBox(height: 10),
                             controller.martTopBanners.isNotEmpty
                                 ? Column(
@@ -1118,29 +1036,20 @@ class MartDynamicSectionsEnhanced extends StatefulWidget {
 
 class _MartDynamicSectionsEnhancedState
     extends State<MartDynamicSectionsEnhanced> {
-  bool _hasTriggeredLoading = false;
+  // bool _hasTriggeredLoading = false;
 
-  // @override
-  //   void initState() {
-  //   final controller = Get.put(MartController());
-  //   controller.  loadCategoryProductsForSections();
-  //     super.initState();
-  //   }
   @override
   Widget build(BuildContext context) {
     return Consumer<MartProvider>(
       builder: (context, controller, _) {
-        // Trigger category products loading
-        if (!_hasTriggeredLoading) {
-          _hasTriggeredLoading = true;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            controller.loadCategoryProductsForSections();
-          });
-        }
-
+        // if (!_hasTriggeredLoading) {
+        //   _hasTriggeredLoading = true;
+        //   WidgetsBinding.instance.addPostFrameCallback((_) {
+        //     controller.loadCategoryProductsForSections();
+        //   });
+        // }
         final categoryProducts = controller.categoryProductsMap;
         final uniqueCategories = controller.uniqueCategoryTitles;
-
         if (uniqueCategories.isEmpty) {
           return const SizedBox.shrink();
         }

@@ -4,6 +4,7 @@ import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -14,6 +15,7 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 
 class AddressListProvider extends ChangeNotifier {
   UserModel userModel = UserModel();
@@ -28,14 +30,16 @@ class AddressListProvider extends ChangeNotifier {
   UserLocation location = UserLocation();
   ShippingAddress shippingModel = ShippingAddress();
   bool isLoading = false;
+  late HomeProvider homeProvider;
 
   void setLoading(bool value) {
     isLoading = value;
     notifyListeners();
   }
 
-  Future<void> initFunction() async {
-    await getUser();
+  Future<void> initFunction({required BuildContext context}) async {
+    homeProvider = Provider.of(context, listen: false);
+    // await getUser();
   }
 
   void useMyCurrentLocation() async {
@@ -79,24 +83,24 @@ class AddressListProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  getUser() async {
-    setLoading(true);
-    final userId = await SqlStorageConst.getFirebaseId();
-    if (userId == null || userId.isEmpty) {
-      setLoading(false);
-      return;
-    }
-    await getUserProfile(userId).then((value) {
-      if (value != null) {
-        userModel = value;
-        if (userModel.shippingAddress != null) {
-          shippingAddressList = userModel.shippingAddress!;
-          notifyListeners();
-        }
-      }
-    });
-    setLoading(false);
-  }
+  // getUser() async {
+  //   setLoading(true);
+  //   // final userId = await SqlStorageConst.getFirebaseId();
+  //   // if (userId == null || userId.isEmpty) {
+  //   //   setLoading(false);
+  //   //   return;
+  //   // }
+  //   // await getUserProfile(userId).then((value) {
+  //   //   if (value != null) {
+  //   //     userModel = value;
+  //   //     if (userModel.shippingAddress != null) {
+  //   //       shippingAddressList = userModel.shippingAddress!;
+  //   //       notifyListeners();
+  //   //     }
+  //   //   }
+  //   // });
+  //   setLoading(false);
+  // }
 
   static const Duration timeout = Duration(seconds: 30);
 
@@ -363,7 +367,7 @@ class AddressListProvider extends ChangeNotifier {
         final success = await addressListProvider.updateUser(userModel);
         if (success) {
           shippingAddressList = updatedAddressList;
-          getUser();
+          homeProvider.ensureUserModelIsLoaded();
           ShowToastDialog.closeLoader();
           Get.back();
           ShowToastDialog.showToast("Address saved successfully".tr);

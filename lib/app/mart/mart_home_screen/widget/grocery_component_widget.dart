@@ -16,15 +16,12 @@ Widget groceryComponent(Size size) {
         SizedBox(height: 20),
         Consumer<MartProvider>(
           builder: (context, controller, _) {
-            // Loading State
             if (controller.isCategoryLoading) {
               return _buildCategoryShimmer();
             }
-            // Error State
             if (controller.errorMessage.isNotEmpty) {
               return _buildErrorState(controller);
             }
-            // Empty State
             if (controller.featuredCategories.isEmpty) {
               if (!controller.isHomepageCategoriesLoaded) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -33,8 +30,6 @@ Widget groceryComponent(Size size) {
               }
               return _buildEmptyState();
             }
-
-            // Success State - Premium Categories Grid
             return _buildCategoriesGrid(controller, size);
           },
         ),
@@ -247,7 +242,6 @@ Widget _buildCategoriesGrid(MartProvider controller, Size size) {
     child: ListView.separated(
       padding: EdgeInsets.zero,
       scrollDirection: Axis.horizontal,
-      // physics: NeverScrollableScrollPhysics(),
       itemCount: controller.featuredCategories.length > 5
           ? 5
           : controller.featuredCategories.length,

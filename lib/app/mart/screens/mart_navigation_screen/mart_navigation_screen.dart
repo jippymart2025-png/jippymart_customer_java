@@ -20,12 +20,11 @@ class MartNavigationScreen extends StatelessWidget {
       data: MartTheme.theme,
       child: Consumer<MartNavigationProvider>(
         builder: (context, navController, _) {
-          print("Current Index: ${navController.selectedIndex.value}"); // Debug
           return PopScope(
             canPop: false,
             onPopInvoked: (didPop) async {
               if (didPop) return;
-              if (navController.selectedIndex.value == 0) {
+              if (navController.selectedIndex == 0) {
                 Get.back();
               } else {
                 navController.goToHome();
@@ -34,10 +33,10 @@ class MartNavigationScreen extends StatelessWidget {
             child: Scaffold(
               backgroundColor: const Color(0xFFF6F6FF),
               body: IndexedStack(
-                index: navController.selectedIndex.value,
+                index: navController.selectedIndex,
                 children: navController.pageList,
               ),
-              bottomNavigationBar: navController.selectedIndex.value != 2
+              bottomNavigationBar: navController.selectedIndex != 2
                   ? _buildEnhancedNavigationBar(navController)
                   : const SizedBox.shrink(),
             ),
@@ -110,7 +109,7 @@ class MartNavigationScreen extends StatelessWidget {
     required MartNavigationProvider controller,
     Widget? badge,
   }) {
-    final isActive = controller.selectedIndex.value == index;
+    final isActive = controller.selectedIndex == index;
     final primaryColor = ColorConst.orangeLight;
     return GestureDetector(
       onTap: () {

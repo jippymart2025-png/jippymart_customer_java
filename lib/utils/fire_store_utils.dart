@@ -476,34 +476,86 @@ class FireStoreUtils {
   static Future<List<OrderModel>> getAllOrder() async {
     List<OrderModel> list = [];
     final currentUid = await SqlStorageConst.getFirebaseId();
-    if (kDebugMode) {}
+    if (kDebugMode) {
+      print('Current UID: $currentUid');
+    }
     if (currentUid == null) {
-      if (kDebugMode) {}
+      if (kDebugMode) {
+        print('No current UID found, returning empty list');
+      }
       return list;
     }
     try {
-      final querySnapshot = await fireStore
-          .collection(CollectionName.restaurantOrders)
-          .where("authorID", isEqualTo: currentUid)
-          .orderBy("createdAt", descending: true)
-          .get();
+      final Map<String, String> queryParams = {
+        'authorId': currentUid,
+        // 'filter': 'cancelled',
+        // 'filter': 'rejected',
+        // 'filter': 'pending',
+        // 'filter': 'preparing',
+        // 'filter': 'completed',
+      };
+      final uri = Uri.parse(
+        '${AppConst.baseUrl}orders',
+      ).replace(queryParameters: queryParams);
 
-      if (kDebugMode) {}
+      if (kDebugMode) {
+        print('API URL: $uri');
+      }
 
-      for (var element in querySnapshot.docs) {
-        try {
-          OrderModel orderModel = OrderModel.fromJson(element.data());
-          list.add(orderModel);
-          if (kDebugMode) {}
-        } catch (e) {
-          if (kDebugMode) {}
+      // Make API call
+      final response = await http.get(uri, headers: await getHeaders());
+
+      if (kDebugMode) {
+        print('API Response Status: ${response.statusCode}');
+        print('API Response Body: ${response.body}');
+      }
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final List<dynamic> ordersData = responseData['data'];
+          if (kDebugMode) {
+            print('Found ${ordersData.length} orders in API response');
+          }
+          // Process each order
+          for (var orderData in ordersData) {
+            try {
+              OrderModel orderModel = OrderModel.fromJson(orderData);
+              list.add(orderModel);
+
+              if (kDebugMode) {
+                print('Successfully parsed order: ${orderModel.id}');
+              }
+            } catch (e) {
+              if (kDebugMode) {
+                print('Error parsing order data: $e');
+                print('Problematic order data: $orderData');
+              }
+            }
+          }
+          // Sort by createdAt in descending order (since API might not guarantee order)
+          list = list.where((order) => order.createdAt != null).toList();
+          list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
+        } else {
+          if (kDebugMode) {
+            print('API returned success: false');
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print('API call failed with status: ${response.statusCode}');
         }
       }
     } catch (error) {
-      if (kDebugMode) {}
+      if (kDebugMode) {
+        print('Error in getAllOrder API call: $error');
+      }
     }
 
-    if (kDebugMode) {}
+    if (kDebugMode) {
+      print('Returning ${list.length} orders');
+    }
+
     return list;
   }
 
@@ -756,15 +808,18 @@ class FireStoreUtils {
   ) async {
     VendorCategoryModel? vendorCategoryModel;
     try {
-      await fireStore
-          .collection(CollectionName.vendorCategories)
-          .doc(categoryId)
-          .get()
-          .then((value) {
-            if (value.exists) {
-              vendorCategoryModel = VendorCategoryModel.fromJson(value.data()!);
-            }
-          });
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}firestore/vendor-categories/$categoryId'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+          vendorCategoryModel = VendorCategoryModel.fromJson(
+            jsonResponse['data'],
+          );
+        }
+      }
     } catch (e) {
       return null;
     }
@@ -832,28 +887,51 @@ class FireStoreUtils {
   // }
 
   static Future<List<AdvertisementModel>> getAllAdvertisement() async {
-    List<AdvertisementModel> advertisementList = [];
-    await fireStore
-        .collection(CollectionName.advertisements)
-        .where('status', isEqualTo: 'approved')
-        .where('paymentStatus', isEqualTo: true)
-        .where('startDate', isLessThanOrEqualTo: DateTime.now())
-        .where('endDate', isGreaterThan: DateTime.now())
-        .orderBy('priority', descending: false)
-        .get()
-        .then((value) {
-          for (var element in value.docs) {
-            AdvertisementModel advertisementModel = AdvertisementModel.fromJson(
-              element.data(),
-            );
-            if (advertisementModel.isPaused == null ||
-                advertisementModel.isPaused == false) {
-              advertisementList.add(advertisementModel);
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}firestore/advertisements/active'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final List<dynamic> advertisementsData =
+              responseData['data']['advertisements'];
+
+          List<AdvertisementModel> advertisementList = [];
+
+          for (var element in advertisementsData) {
+            try {
+              AdvertisementModel advertisementModel =
+                  AdvertisementModel.fromJson(element);
+
+              // Apply the same filtering logic
+              if (advertisementModel.isPaused == null ||
+                  advertisementModel.isPaused == false) {
+                advertisementList.add(advertisementModel);
+              }
+            } catch (e) {
+              // Handle individual advertisement parsing errors
+              print('Error parsing advertisement: $e');
             }
           }
-        })
-        .catchError((error) {});
-    return advertisementList;
+
+          return advertisementList;
+        } else {
+          throw Exception(
+            'API returned unsuccessful response: ${responseData['message']}',
+          );
+        }
+      } else {
+        throw Exception(
+          'HTTP error ${response.statusCode}: ${response.reasonPhrase}',
+        );
+      }
+    } catch (error) {
+      print('Error fetching advertisements: $error');
+      return []; // Return empty list on error, similar to your catchError
+    }
   }
 
   /// **ULTRA-FAST PROMOTIONAL DATA FETCHING WITH API**
@@ -955,48 +1033,61 @@ class FireStoreUtils {
     return promo.isNotEmpty ? promo : null;
   }
 
-  // **SEARCH UTILITY METHODS**
   static Future<List<ProductModel>> getAllProductsInZone({int? limit}) async {
     try {
-      List<ProductModel> productList = [];
-      int safeLimit = limit ?? 800;
-      // ✅ STEP 1: Get vendors of selected zone
-      List<String> allowedVendorIds = [];
+      print(
+        "🔍 Fetching products from API for zone: ${Constant.selectedZone?.name}",
+      );
+
+      // Prepare API parameters
+      final Map<String, String> queryParams = {};
+
+      // Add zone_id if selected
       if (Constant.selectedZone != null) {
-        print("🔍 Filtering products by zone: ${Constant.selectedZone!.name}");
-        QuerySnapshot vendorSnapshot = await FirebaseFirestore.instance
-            .collection(CollectionName.vendors)
-            .where('zoneId', isEqualTo: Constant.selectedZone!.id.toString())
-            .get();
-        allowedVendorIds = vendorSnapshot.docs
-            .map((e) => e.id.toString())
-            .toList();
-        print("✅ Found ${allowedVendorIds.length} vendors in this zone");
+        queryParams['zone_id'] = Constant.selectedZone!.id.toString();
       }
-      Query query = FirebaseFirestore.instance
-          .collection(CollectionName.vendorProducts)
-          .limit(safeLimit);
-      QuerySnapshot querySnapshot = await query.get();
-      for (var document in querySnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          ProductModel product = ProductModel.fromJson(data);
-          if (Constant.selectedZone != null) {
-            if (allowedVendorIds.contains(product.vendorID)) {
-              productList.add(product);
-            }
-          } else {
-            productList.add(product);
-          }
-        } catch (e) {
-          print('❌ Error parsing product ${document.id}: $e');
-        }
+      // Add limit if provided
+      if (limit != null) {
+        queryParams['limit'] = limit.toString();
       }
 
-      print('✅ Loaded ${productList.length} zone-filtered products for search');
-      return productList;
+      // Make API call
+      final response = await http.get(
+        Uri.parse(
+          '${AppConst.baseUrl}firestore/search/products',
+        ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final List<dynamic> productsData = responseData['data']['products'];
+          final List<ProductModel> productList = [];
+
+          for (var productData in productsData) {
+            try {
+              // Use the API JSON factory constructor
+              ProductModel product = ProductModel.fromApiJson(productData);
+              productList.add(product);
+            } catch (e) {
+              print('❌ Error parsing product ${productData['id']}: $e');
+            }
+          }
+
+          print('✅ Loaded ${productList.length} products from API');
+          return productList;
+        } else {
+          print('❌ API returned error: ${responseData['message']}');
+          return [];
+        }
+      } else {
+        print('❌ HTTP error ${response.statusCode}: ${response.body}');
+        return [];
+      }
     } catch (e) {
-      print('❌ Error loading all products: $e');
+      print('❌ Error loading products from API: $e');
       if (e.toString().contains('OutOfMemoryError')) {
         print(
           '🚨 OutOfMemoryError detected! Returning empty list to prevent crash.',

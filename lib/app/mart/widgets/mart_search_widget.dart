@@ -51,10 +51,8 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   Future<void> _loadTrendingSearches() async {
     try {
       _isLoadingTrending = true;
-
       // Try to get trending searches from API first
       final trendingFromAPI = await _getTrendingSearchesFromAPI();
-
       if (trendingFromAPI.isNotEmpty) {
         _trendingSearches = trendingFromAPI;
         print(
@@ -797,7 +795,6 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 🔑 Simplified header without suggestions count and reload button
         const Text(
           '🔥 Trending Searches',
           style: TextStyle(

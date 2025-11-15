@@ -552,7 +552,6 @@ class MartFirestoreService extends GetxService {
   }) async {
     try {
       print('[MART API] 🏠 Fetching homepage categories from API...');
-
       // Build the API URL
       final url = '${AppConst.baseUrl}mart-items/categoryhome';
 
@@ -615,7 +614,6 @@ class MartFirestoreService extends GetxService {
                 categoryData['section_order'] =
                     int.tryParse(categoryData['section_order']) ?? 0;
               }
-
               // Handle boolean fields that might be null
               if (categoryData['show_in_homepage'] == null) {
                 categoryData['show_in_homepage'] = false;
@@ -626,12 +624,10 @@ class MartFirestoreService extends GetxService {
               if (categoryData['has_subcategories'] == null) {
                 categoryData['has_subcategories'] = false;
               }
-
               // Handle subcategories_count
               if (categoryData['subcategories_count'] == null) {
                 categoryData['subcategories_count'] = 0;
               }
-
               return MartCategoryModel.fromJson(categoryData);
             } catch (e) {
               return null;
@@ -639,19 +635,15 @@ class MartFirestoreService extends GetxService {
           })
           .whereType<MartCategoryModel>()
           .toList();
-
       // Sort categories by category_order
       categories.sort(
         (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
       );
-
       // Apply limit
       final limitedResults = categories.take(limit).toList();
-
       print(
         '[MART API] ✅ Successfully parsed ${limitedResults.length} homepage categories from API',
       );
-
       // Debug: Log the homepage categories
       for (int i = 0; i < limitedResults.length; i++) {
         final category = limitedResults[i];
@@ -662,7 +654,6 @@ class MartFirestoreService extends GetxService {
           '[MART API]   ${i + 1}. $title - Order: $order, Section: $section',
         );
       }
-
       return limitedResults;
     } catch (e) {
       print('[MART API] ❌ Error fetching homepage categories from API: $e');
@@ -717,7 +708,6 @@ class MartFirestoreService extends GetxService {
         );
         return [];
       }
-
       // Convert API response to MartSubcategoryModel
       final subcategories = (responseData['data'] as List)
           .map((item) {
@@ -769,7 +759,6 @@ class MartFirestoreService extends GetxService {
           })
           .whereType<MartSubcategoryModel>()
           .toList();
-
       // Sort subcategories based on sort parameters
       if (sortBy == 'subcategory_order') {
         if (sortOrder == 'asc') {
@@ -1204,14 +1193,10 @@ class MartFirestoreService extends GetxService {
   Future<List<MartVendorModel>> getMartVendors({String? search}) async {
     try {
       print('[MART API] 🏪 Fetching mart vendors from API...');
-
-      // Build query parameters
       final Map<String, String> queryParams = {};
-
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
-
       // Build URI
       final uri = Uri.parse(
         '${AppConst.baseUrl}mart-items/getMartVendors',
@@ -1842,7 +1827,6 @@ class MartFirestoreService extends GetxService {
     try {
       print('[MART API] 📂 Fetching unique sections from API...');
 
-      // Make API call to get sections
       final response = await http
           .get(
             Uri.parse('${AppConst.baseUrl}mart-items/sections'),
@@ -1993,8 +1977,6 @@ class MartFirestoreService extends GetxService {
   Future<List<MartItemModel>> getMartItems() async {
     try {
       print('[MART API] 🛍️ Fetching all mart items from API...');
-
-      // Make API call to get all mart items
       final response = await http
           .get(
             Uri.parse('${AppConst.baseUrl}mart-items/all'),
@@ -2014,7 +1996,6 @@ class MartFirestoreService extends GetxService {
       print(
         '[MART API] 🛍️ API call completed with status: ${response.statusCode}',
       );
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
 
@@ -2046,7 +2027,6 @@ class MartFirestoreService extends GetxService {
                   final Map<String, dynamic> itemMap =
                       Map<String, dynamic>.from(itemData);
 
-                  // Handle JSON string fields that need to be parsed
                   _parseJsonStringFields(itemMap);
 
                   // Handle numeric fields that might be strings

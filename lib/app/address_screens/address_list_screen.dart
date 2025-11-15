@@ -1,5 +1,6 @@
 import 'package:geolocator/geolocator.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -251,131 +252,140 @@ class AddressListScreen extends StatelessWidget {
   ) {
     showCupertinoModalPopup<void>(
       context: context,
-      builder: (BuildContext context) => Consumer<AddressListProvider>(
-        builder: (context, addressListProvider, _) {
-          return CupertinoActionSheet(
-            actions: <CupertinoActionSheetAction>[
-              CupertinoActionSheetAction(
-                onPressed: () async {
-                  ShowToastDialog.showLoader("Please wait".tr);
-                  try {
-                    List<ShippingAddress> tempShippingAddress = [];
-                    for (var element in controller.shippingAddressList) {
-                      ShippingAddress addressModel = element;
-                      if (addressModel.id ==
-                          controller.shippingAddressList[index].id) {
-                        addressModel.isDefault = true;
-                      } else {
-                        addressModel.isDefault = false;
+      builder: (BuildContext context) =>
+          Consumer2<AddressListProvider, HomeProvider>(
+            builder: (context, addressListProvider, homeProvider, _) {
+              return CupertinoActionSheet(
+                actions: <CupertinoActionSheetAction>[
+                  CupertinoActionSheetAction(
+                    onPressed: () async {
+                      ShowToastDialog.showLoader("Please wait".tr);
+                      try {
+                        List<ShippingAddress> tempShippingAddress = [];
+                        for (var element in controller.shippingAddressList) {
+                          ShippingAddress addressModel = element;
+                          if (addressModel.id ==
+                              controller.shippingAddressList[index].id) {
+                            addressModel.isDefault = true;
+                          } else {
+                            addressModel.isDefault = false;
+                          }
+                          tempShippingAddress.add(element);
+                        }
+                        controller.userModel.shippingAddress =
+                            tempShippingAddress;
+                        final success = await addressListProvider.updateUser(
+                          controller.userModel,
+                        );
+                        if (success) {
+                          homeProvider
+                              .ensureUserModelIsLoaded(); // Refresh from API
+                          ShowToastDialog.closeLoader();
+                          Get.back();
+                          ShowToastDialog.showToast(
+                            "Default address updated".tr,
+                          );
+                        } else {
+                          ShowToastDialog.closeLoader();
+                          ShowToastDialog.showToast(
+                            "Failed to update default address".tr,
+                          );
+                        }
+                      } catch (e) {
+                        ShowToastDialog.closeLoader();
                       }
-                      tempShippingAddress.add(element);
-                    }
-                    controller.userModel.shippingAddress = tempShippingAddress;
-                    final success = await addressListProvider.updateUser(
-                      controller.userModel,
-                    );
-                    if (success) {
-                      controller.getUser(); // Refresh from API
-                      ShowToastDialog.closeLoader();
+                    },
+                    child: Text(
+                      'Default'.tr,
+                      style: const TextStyle(color: Colors.blue),
+                    ),
+                  ),
+                  CupertinoActionSheetAction(
+                    onPressed: () async {
                       Get.back();
-                      ShowToastDialog.showToast("Default address updated".tr);
-                    } else {
-                      ShowToastDialog.closeLoader();
-                      ShowToastDialog.showToast(
-                        "Failed to update default address".tr,
+                      controller.clearData();
+                      controller.setData(controller.shippingAddressList[index]);
+                      AddressListScreen.addAddressBottomSheet(
+                        context,
+                        controller,
+                        index: index,
                       );
-                    }
-                  } catch (e) {
-                    ShowToastDialog.closeLoader();
-                  }
-                },
-                child: Text(
-                  'Default'.tr,
-                  style: const TextStyle(color: Colors.blue),
+                    },
+                    child: const Text(
+                      'Edit',
+                      style: TextStyle(color: Colors.blue),
+                    ),
+                  ),
+                  CupertinoActionSheetAction(
+                    onPressed: () async {
+                      ShowToastDialog.showLoader("Please wait".tr);
+                      try {
+                        final addressId =
+                            controller.shippingAddressList[index].id;
+                        final success = await addressListProvider
+                            .deleteShippingAddress(addressId.toString());
+                        if (success) {
+                          controller.shippingAddressList.removeAt(index);
+                          controller.userModel.shippingAddress =
+                              controller.shippingAddressList;
+                          homeProvider.ensureUserModelIsLoaded();
+                          ShowToastDialog.closeLoader();
+                          Get.back();
+                          ShowToastDialog.showToast("Address deleted".tr);
+                        } else {
+                          ShowToastDialog.closeLoader();
+                          ShowToastDialog.showToast(
+                            "Failed to delete address".tr,
+                          );
+                        }
+                      } catch (e) {
+                        ShowToastDialog.closeLoader();
+                      }
+                    },
+                    child: Text(
+                      'Delete'.tr,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                  // CupertinoActionSheetAction(
+                  //   onPressed: () async {
+                  //     ShowToastDialog.showLoader("Please wait".tr);
+                  //     try {
+                  //       controller.shippingAddressList.removeAt(index);
+                  //       controller.userModel.shippingAddress =
+                  //           controller.shippingAddressList;
+                  //       final success = await addressListProvider.updateUser(
+                  //         controller.userModel,
+                  //       );
+                  //       if (success) {
+                  //         controller.getUser();
+                  //         ShowToastDialog.closeLoader();
+                  //         Get.back();
+                  //         ShowToastDialog.showToast("Address deleted".tr);
+                  //       } else {
+                  //         ShowToastDialog.closeLoader();
+                  //         ShowToastDialog.showToast("Failed to delete address".tr);
+                  //       }
+                  //     } catch (e) {
+                  //       ShowToastDialog.closeLoader();
+                  //     }
+                  //   },
+                  //   child: Text(
+                  //     'Delete'.tr,
+                  //     style: const TextStyle(color: Colors.red),
+                  //   ),
+                  // ),
+                ],
+                cancelButton: CupertinoActionSheetAction(
+                  isDefaultAction: true,
+                  onPressed: () {
+                    Get.back();
+                  },
+                  child: Text('Cancel'.tr),
                 ),
-              ),
-              CupertinoActionSheetAction(
-                onPressed: () async {
-                  Get.back();
-                  controller.clearData();
-                  controller.setData(controller.shippingAddressList[index]);
-                  AddressListScreen.addAddressBottomSheet(
-                    context,
-                    controller,
-                    index: index,
-                  );
-                },
-                child: const Text('Edit', style: TextStyle(color: Colors.blue)),
-              ),
-              CupertinoActionSheetAction(
-                onPressed: () async {
-                  ShowToastDialog.showLoader("Please wait".tr);
-                  try {
-                    final addressId = controller.shippingAddressList[index].id;
-                    final success = await addressListProvider
-                        .deleteShippingAddress(addressId.toString());
-                    if (success) {
-                      // Remove from local list only after successful API call
-                      controller.shippingAddressList.removeAt(index);
-                      controller.userModel.shippingAddress =
-                          controller.shippingAddressList;
-                      // Refresh user data
-                      controller.getUser();
-                      ShowToastDialog.closeLoader();
-                      Get.back();
-                      ShowToastDialog.showToast("Address deleted".tr);
-                    } else {
-                      ShowToastDialog.closeLoader();
-                      ShowToastDialog.showToast("Failed to delete address".tr);
-                    }
-                  } catch (e) {
-                    ShowToastDialog.closeLoader();
-                  }
-                },
-                child: Text(
-                  'Delete'.tr,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-              // CupertinoActionSheetAction(
-              //   onPressed: () async {
-              //     ShowToastDialog.showLoader("Please wait".tr);
-              //     try {
-              //       controller.shippingAddressList.removeAt(index);
-              //       controller.userModel.shippingAddress =
-              //           controller.shippingAddressList;
-              //       final success = await addressListProvider.updateUser(
-              //         controller.userModel,
-              //       );
-              //       if (success) {
-              //         controller.getUser();
-              //         ShowToastDialog.closeLoader();
-              //         Get.back();
-              //         ShowToastDialog.showToast("Address deleted".tr);
-              //       } else {
-              //         ShowToastDialog.closeLoader();
-              //         ShowToastDialog.showToast("Failed to delete address".tr);
-              //       }
-              //     } catch (e) {
-              //       ShowToastDialog.closeLoader();
-              //     }
-              //   },
-              //   child: Text(
-              //     'Delete'.tr,
-              //     style: const TextStyle(color: Colors.red),
-              //   ),
-              // ),
-            ],
-            cancelButton: CupertinoActionSheetAction(
-              isDefaultAction: true,
-              onPressed: () {
-                Get.back();
-              },
-              child: Text('Cancel'.tr),
-            ),
-          );
-        },
-      ),
+              );
+            },
+          ),
     );
   }
 

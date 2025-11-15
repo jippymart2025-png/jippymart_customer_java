@@ -3,11 +3,10 @@ import 'package:jippymart_customer/app/mart/screens/mart_categories_screen/mart_
 import 'package:jippymart_customer/app/mart/mart_home_screen/mart_home_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_profile_screen/mart_profile_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
 class MartNavigationProvider extends ChangeNotifier {
-  RxInt selectedIndex = 0.obs;
-  RxList<Widget> pageList = <Widget>[].obs;
+  int selectedIndex = 0;
+  List<Widget> pageList = <Widget>[];
 
   MartNavigationProvider() {
     initFunction();
@@ -18,7 +17,7 @@ class MartNavigationProvider extends ChangeNotifier {
   }
 
   void _initializePages() {
-    pageList.value = [
+    pageList = [
       const MartHomeScreen(),
       const MartCategoriesScreen(),
       const CartScreen(
@@ -32,7 +31,7 @@ class MartNavigationProvider extends ChangeNotifier {
   }
 
   void changeIndex(int index) {
-    selectedIndex.value = index;
+    selectedIndex = index;
     notifyListeners(); // Add this to ensure UI updates
   }
 

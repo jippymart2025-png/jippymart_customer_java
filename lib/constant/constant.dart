@@ -38,9 +38,7 @@ import 'package:uuid/uuid.dart';
 List<CartProductModel> cartItem = <CartProductModel>[];
 
 class Constant {
-  static String userRoleDriver = 'driver';
   static String userRoleCustomer = 'customer';
-  static String userRoleVendor = 'vendor';
   static ShippingAddress selectedLocation = ShippingAddress();
   static UserModel? userModel;
   static const globalUrl = "https://foodie.siswebapp.com/";
@@ -119,10 +117,10 @@ class Constant {
   static bool isEnableAdsFeature = true;
 
   static String amountShow({required String? amount}) {
-    if (currencyModel!.symbolAtRight == true) {
-      return "${double.parse(amount.toString()).toStringAsFixed(currencyModel!.decimalDigits ?? 0)} ${currencyModel!.symbol.toString()}";
+    if (currencyModel?.symbolAtRight == true) {
+      return "${double.parse(amount.toString()).toStringAsFixed(currencyModel?.decimalDigits ?? 0)} ${currencyModel?.symbol.toString()}";
     } else {
-      return "${currencyModel!.symbol.toString()} ${amount == null || amount.isEmpty ? "0.0" : double.parse(amount.toString()).toStringAsFixed(currencyModel!.decimalDigits ?? 0)}";
+      return "${currencyModel?.symbol.toString()} ${amount == null || amount.isEmpty ? "0.0" : double.parse(amount.toString()).toStringAsFixed(currencyModel?.decimalDigits ?? 0)}";
     }
   }
 

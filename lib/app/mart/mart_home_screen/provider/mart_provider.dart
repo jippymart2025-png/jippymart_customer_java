@@ -24,12 +24,8 @@ class MartProvider extends ChangeNotifier {
 
   Future<void> loadCategoryProductsForSections() async {
     try {
-      // Get all mart items
       final allProducts = await _firestoreService.getMartItems();
-
-      // Group products by categoryTitle
       final Map<String, List<MartItemModel>> categoryMap = {};
-
       for (final product in allProducts) {
         final categoryTitle = product.categoryTitle ?? 'Uncategorized';
 
@@ -158,12 +154,58 @@ class MartProvider extends ChangeNotifier {
 
   void initFunction() {
     loadMartBannersStream();
+    loadFeaturedCategories();
     loadCategoryProductsForSections();
-    _preloadSections();
-    _initializeServices();
-    setupSearchListener();
+
+    ///
+    // _preloadSections();
+    // _initializeServices();
+    // setupSearchListener();
+    if (martTopBanners.isNotEmpty) {
+      startMartBannerTimer();
+    }
     notifyListeners();
   }
+
+  Future<void> refreshData() async {
+    try {
+      print('[MART CONTROLLER] ==========================================');
+      print('[MART CONTROLLER] 🔄 refreshData() called');
+      print('[MART CONTROLLER] ==========================================');
+
+      isLoading = true;
+      errorMessage = "";
+      // Reset homepage categories flag to allow reloading
+      isHomepageCategoriesLoaded = false;
+      await Future.wait([
+        loadMartVendors(refresh: true),
+        loadHomepageCategoriesStreaming(limit: 10),
+        loadFeaturedItems(),
+        loadItemsOnSale(),
+        loadFeaturedCategories(),
+        loadSpotlightItems(),
+        loadStealsItems(),
+      ]);
+    } catch (e) {
+      print('[MART] Error refreshing data: $e');
+      errorMessage = "Failed to refresh data: $e";
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  //
+  // void initFunction() {
+  //   loadMartBannersStream();
+  //   loadCategoryProductsForSections();
+  //   _preloadSections();
+  //   _initializeServices();
+  //   setupSearchListener();
+  //   if (martTopBanners.isNotEmpty) {
+  //     startMartBannerTimer();
+  //   }
+  //   notifyListeners();
+  // }
 
   void onClose() {
     _searchDebouncer?.cancel();
@@ -232,30 +274,21 @@ class MartProvider extends ChangeNotifier {
         print("getMartBottomBannersStream ${response.body}");
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseData = json.decode(response.body);
-
           if (responseData['success'] == true) {
             List<MartBannerModel> bannerList = [];
             List<MartBannerModel> filteredBannerList = [];
-            // Process each banner from API response
             for (var bannerData in responseData['data']) {
               MartBannerModel banner = MartBannerModel.fromJson({
                 ...bannerData,
                 'id': bannerData['id'].toString(),
               });
               bannerList.add(banner);
-              // Filter banners by zone
               bool shouldShowBanner = false;
-
-              // If banner has no zone specified, show it to all zones
               if (banner.zoneId == null || banner.zoneId!.isEmpty) {
                 shouldShowBanner = true;
-              }
-              // If customer zone is null/not set, show all banners (fallback behavior)
-              else if (customerZoneId == null || customerZoneId.isEmpty) {
+              } else if (customerZoneId == null || customerZoneId.isEmpty) {
                 shouldShowBanner = true;
-              }
-              // If banner zone matches customer zone
-              else if (banner.zoneId == customerZoneId) {
+              } else if (banner.zoneId == customerZoneId) {
                 shouldShowBanner = true;
               }
 
@@ -293,7 +326,6 @@ class MartProvider extends ChangeNotifier {
   void _initializeBannerStreams() {
     getMartBottomBannersStream().listen(
       (banners) {
-        print('[MART CONTROLLER] Lazy load - Top banners: ${banners.length}');
         martTopBanners = banners;
         notifyListeners();
         if (banners.isNotEmpty) {
@@ -301,17 +333,13 @@ class MartProvider extends ChangeNotifier {
         }
       },
       onError: (error) {
-        print('[MART CONTROLLER] Lazy load error for top banners: $error');
         martTopBanners.clear();
       },
     );
-
     notifyListeners();
   }
 
-  /// Initialize banner PageControllers at middle position for infinite scrolling
   void _initializeBannerControllers() {
-    // Initialize top banner controller at middle position
     if (martTopBanners.isNotEmpty && martTopBanners.length > 1) {
       int middlePosition =
           (martTopBanners.length * 1000) ~/
@@ -322,7 +350,6 @@ class MartProvider extends ChangeNotifier {
       martTopBannerController = PageController(initialPage: 0);
       currentTopBannerPage.value = 0;
     }
-    // Initialize bottom banner controller at middle position
     if (martBottomBanners.isNotEmpty && martBottomBanners.length > 1) {
       int middlePosition =
           (martBottomBanners.length * 1000) ~/
@@ -334,81 +361,6 @@ class MartProvider extends ChangeNotifier {
       currentBottomBannerPage = 0;
     }
     notifyListeners();
-    print(
-      '[MART CONTROLLER] Banner controllers initialized for infinite scrolling',
-    );
-  }
-
-  // Initialize services with streaming data loading
-  Future<void> _initializeServices() async {
-    try {
-      print('[MART CONTROLLER] ==========================================');
-      print(
-        '[MART CONTROLLER] _initializeServices() called - FIREBASE ONLY MODE',
-      );
-      print('[MART CONTROLLER] ==========================================');
-
-      // Firestore is always available when the app is running
-      print('[MART CONTROLLER] 🔥 Firestore service is available');
-
-      // Start streaming data loading - each section loads independently
-      print('[MART CONTROLLER] 🚀 Starting streaming data loading...');
-
-      // 1. Load homepage categories first (highest priority - users see this immediately)
-      print('[MART CONTROLLER] 🏠 Loading homepage categories first...');
-      loadHomepageCategoriesStreaming(limit: 10);
-
-      // 2. Load trending items in parallel (high priority)
-      print('[MART CONTROLLER] 🔥 Loading trending items in parallel...');
-      loadTrendingItemsStreaming();
-
-      // 3. Load featured items in parallel (medium priority)
-      print('[MART CONTROLLER] ⭐ Loading featured items in parallel...');
-      loadFeaturedItemsStreaming();
-
-      // 4. Load sections immediately in parallel (high priority - users expect to see them)
-      print('[MART CONTROLLER] 📂 Loading sections immediately in parallel...');
-      _loadSectionsInParallel();
-
-      // 5. Load all categories in background (lower priority)
-      print('[MART CONTROLLER] 📂 Loading all categories in background...');
-      loadCategoriesStreaming();
-
-      // 6. Load vendors in background (lowest priority)
-      print('[MART CONTROLLER] 🏪 Loading vendors in background...');
-      _loadVendorsStreaming();
-
-      print(
-        '[MART CONTROLLER] ✅ Streaming initialization started - data will load progressively',
-      );
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error in _initializeServices: $e');
-      errorMessage = 'Failed to initialize services: $e';
-    }
-  }
-
-  /// Get user location from shipping address or use default
-  Future<({double? latitude, double? longitude})> _getUserLocation() async {
-    try {
-      // Try to get location from user model or preferences
-      if (Constant.userModel?.shippingAddress != null &&
-          Constant.userModel!.shippingAddress!.isNotEmpty) {
-        final defaultAddress = Constant.userModel!.shippingAddress!
-            .firstWhereOrNull((addr) => addr.isDefault == true);
-        if (defaultAddress?.location != null) {
-          return (
-            latitude: defaultAddress!.location!.latitude,
-            longitude: defaultAddress.location!.longitude,
-          );
-        }
-      }
-      // Fallback to default coordinates (Ongole)
-      return (latitude: 15.486434, longitude: 80.049588);
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error getting user location: $e');
-      // Fallback to default coordinates
-      return (latitude: 15.486434, longitude: 80.049588);
-    }
   }
 
   // Setup search debouncer
@@ -426,11 +378,7 @@ class MartProvider extends ChangeNotifier {
   /// Load mart vendors
   Future<void> loadMartVendors({bool refresh = false}) async {
     try {
-      print('[MART CONTROLLER] ==========================================');
-      print('[MART CONTROLLER] 🏪 loadMartVendors() called');
-      print('[MART CONTROLLER] ==========================================');
       if (refresh) {
-        print('[MART CONTROLLER] 🔄 Refresh mode - clearing existing vendors');
         martVendors.clear();
       }
       // Set loading state with timeout
@@ -442,35 +390,15 @@ class MartProvider extends ChangeNotifier {
 
       timeoutTimer = Timer(const Duration(seconds: 15), () {
         timeoutReached = true;
-        print('[MART CONTROLLER] ⏰ Vendor loading timeout reached');
         isVendorLoading = false;
         errorMessage = "Vendor loading timed out. Please try again.";
       });
 
       try {
-        // Get user location
-        print('[MART CONTROLLER] 📍 Getting user location...');
-        final location = await _getUserLocation();
-        print(
-          '[MART CONTROLLER] 📍 Found user location: ${location.latitude}, ${location.longitude}',
-        );
-
         if (timeoutReached) return;
-
-        print(
-          '[MART CONTROLLER] 📞 Calling _martService.getMartVendors() with:',
-        );
-        print('[MART CONTROLLER]    - isActive: true');
-        print('[MART CONTROLLER]    - page: 1');
-        print('[MART CONTROLLER]    - limit: 10');
-        print('[MART CONTROLLER]    - latitude: ${location.latitude}');
-        print('[MART CONTROLLER]    - longitude: ${location.longitude}');
-        print('[MART CONTROLLER]    - radius: 10.0');
 
         final vendors = await _firestoreService.getMartVendors();
-
         if (timeoutReached) return;
-
         print(
           '[MART CONTROLLER] ✅ Vendors loaded successfully: ${vendors.length} vendors',
         );
@@ -478,10 +406,8 @@ class MartProvider extends ChangeNotifier {
         if (refresh) {
           martVendors.clear();
         }
-
         martVendors.addAll(vendors);
 
-        // Auto-select first vendor if none selected
         if (selectedVendorId.isEmpty && vendors.isNotEmpty) {
           final firstVendor = vendors.first;
           selectedVendorId = firstVendor.id!;
@@ -622,14 +548,11 @@ class MartProvider extends ChangeNotifier {
     try {
       isCategoryLoading = true;
       errorMessage = "";
-
       final categories = await _firestoreService.getFeaturedCategories(
         martId: vendorId,
       );
       martCategories.clear();
       martCategories.addAll(categories);
-
-      // Reset category selection
       if (categories.isNotEmpty) {
         final firstCategory = categories.first;
         if (firstCategory.id != null) {
@@ -959,34 +882,6 @@ class MartProvider extends ChangeNotifier {
   // ==================== UTILITY METHODS ====================
 
   /// Refresh all data
-  Future<void> refreshData() async {
-    try {
-      print('[MART CONTROLLER] ==========================================');
-      print('[MART CONTROLLER] 🔄 refreshData() called');
-      print('[MART CONTROLLER] ==========================================');
-
-      isLoading = true;
-      errorMessage = "";
-
-      // Reset homepage categories flag to allow reloading
-      isHomepageCategoriesLoaded = false;
-
-      await Future.wait([
-        loadMartVendors(refresh: true),
-        loadHomepageCategoriesStreaming(limit: 10),
-        loadFeaturedItems(),
-        loadItemsOnSale(),
-        loadFeaturedCategories(),
-        loadSpotlightItems(),
-        loadStealsItems(),
-      ]);
-    } catch (e) {
-      print('[MART] Error refreshing data: $e');
-      errorMessage = "Failed to refresh data: $e";
-    } finally {
-      isLoading = false;
-    }
-  }
 
   /// Get item by ID
   Future<MartItemModel?> getItemById(String itemId) async {
@@ -1056,212 +951,19 @@ class MartProvider extends ChangeNotifier {
     return await getItemById(productId);
   }
 
-  /// Legacy: getCategoryById
-  MartCategoryModel? getCategoryById(String categoryId) {
-    try {
-      return martCategories.firstWhere((category) => category.id == categoryId);
-    } catch (e) {
-      return null;
-    }
-  }
-
-  Future<void> loadHomepageCategories({int limit = 10}) async {
-    try {
-      if (isCategoryLoading) {
-        return;
-      }
-      if (isHomepageCategoriesLoaded && featuredCategories.isNotEmpty) {
-        return;
-      }
-      isCategoryLoading = true;
-      errorMessage = '';
-
-      final categories = await _firestoreService.getHomepageCategories(
-        limit: limit,
-      );
-
-      if (categories.isNotEmpty) {
-        // Filter for categories that should be shown on homepage
-        final homepageCategories = categories
-            .where(
-              (category) =>
-                  category.showInHomepage == true && category.publish == true,
-            )
-            .toList();
-
-        if (homepageCategories.isNotEmpty) {
-          featuredCategories.assignAll(homepageCategories);
-          print(
-            '[MART CONTROLLER] ✅ Homepage categories loaded successfully: ${homepageCategories.length} categories',
-          );
-        } else {
-          // If no homepage categories, use all categories
-          featuredCategories.assignAll(categories);
-          print(
-            '[MART CONTROLLER] ⚠️ No homepage categories found, using all categories: ${categories.length} categories',
-          );
-        }
-      } else {
-        print('[MART CONTROLLER] ⚠️ No categories found at all');
-      }
-
-      // Mark as loaded
-      isHomepageCategoriesLoaded = true;
-      isCategoryLoading = false;
-    } catch (e) {
-      isCategoryLoading = false;
-      isHomepageCategoriesLoaded = false; // Reset flag on error
-      errorMessage =
-          'Unable to load homepage categories. Please try again later.';
-    }
-  }
-
   /// Load trending items from API
-  Future<void> loadTrendingItems() async {
-    try {
-      // Prevent multiple simultaneous calls
-      if (isTrendingLoading) {
-        return;
-      }
-
-      isTrendingLoading = true;
-      errorMessage = '';
-
-      final items = await _firestoreService.getTrendingItems();
-
-      if (items.isNotEmpty) {
-        trendingItems.assignAll(items);
-      } else {
-        trendingItems.clear();
-        print('[MART CONTROLLER] ⚠️ No trending items found from API');
-      }
-
-      isTrendingLoading = false;
-    } catch (e) {
-      isTrendingLoading = false;
-      errorMessage = 'Unable to load trending items. Please try again later.';
-      print('[MART CONTROLLER] ❌ Error loading trending items: $e');
-    }
-  }
 
   /// Comprehensive search across categories, items, and subcategories
-  Future<Map<String, dynamic>> performComprehensiveSearch(String query) async {
-    try {
-      print('[MART CONTROLLER] ==========================================');
-      print('[MART CONTROLLER] 🔍 performComprehensiveSearch() called');
-      print('[MART CONTROLLER] 📋 Query: $query');
-      print('[MART CONTROLLER] ==========================================');
-
-      if (query.isEmpty) {
-        return {
-          'categories': <MartCategoryModel>[],
-          'items': <MartItemModel>[],
-          'subcategories': <MartSubcategoryModel>[],
-        };
-      }
-
-      if (query.length < 2) {
-        print(
-          '[MART CONTROLLER] ⚠️ Search query too short (minimum 2 characters)',
-        );
-        return {
-          'categories': <MartCategoryModel>[],
-          'items': <MartItemModel>[],
-          'subcategories': <MartSubcategoryModel>[],
-        };
-      }
-
-      // Perform parallel searches
-      final futures = await Future.wait([
-        _firestoreService.searchCategories(searchQuery: query, limit: 10),
-        _firestoreService.searchItems(searchQuery: query, limit: 20),
-        _firestoreService.searchSubcategories(searchQuery: query, limit: 10),
-      ]);
-
-      final categories = futures[0] as List<MartCategoryModel>;
-      final items = futures[1] as List<MartItemModel>;
-      final subcategories = futures[2] as List<MartSubcategoryModel>;
-
-      print('[MART CONTROLLER] ✅ Comprehensive search completed:');
-      print('[MART CONTROLLER]   - Categories: ${categories.length}');
-      print('[MART CONTROLLER]   - Items: ${items.length}');
-      print('[MART CONTROLLER]   - Subcategories: ${subcategories.length}');
-
-      return {
-        'categories': categories,
-        'items': items,
-        'subcategories': subcategories,
-      };
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error in comprehensive search: $e');
-      return {
-        'categories': <MartCategoryModel>[],
-        'items': <MartItemModel>[],
-        'subcategories': <MartSubcategoryModel>[],
-      };
-    }
-  }
 
   /// Search categories with debouncing
-  Future<void> searchCategories(String query) async {
-    try {
-      print('[MART CONTROLLER] ==========================================');
-      print('[MART CONTROLLER] 🔍 searchCategories() called');
-      print('[MART CONTROLLER] 📋 Query: $query');
-      print('[MART CONTROLLER] ==========================================');
-
-      if (query.isEmpty) {
-        // If search is empty, load all categories from Firestore
-        await loadCategoriesStreaming();
-        return;
-      }
-
-      if (query.length < 2) {
-        print(
-          '[MART CONTROLLER] ⚠️ Search query too short (minimum 2 characters)',
-        );
-        return;
-      }
-
-      isCategoryLoading = true;
-      errorMessage = '';
-
-      print(
-        '[MART CONTROLLER] 📞 Calling _firestoreService.searchCategories()...',
-      );
-      final categories = await _firestoreService.searchCategories(
-        searchQuery: query,
-        limit: 20,
-      );
-
-      if (categories.isNotEmpty) {
-        martCategories.assignAll(categories);
-        print(
-          '[MART CONTROLLER] ✅ Search results loaded: ${categories.length} categories',
-        );
-      } else {
-        martCategories.clear();
-        print('[MART CONTROLLER] ⚠️ No search results found');
-      }
-
-      isCategoryLoading = false;
-    } catch (e) {
-      isCategoryLoading = false;
-      errorMessage = 'Search failed. Please try again later.';
-      print('[MART CONTROLLER] ❌ Error searching categories: $e');
-    }
-  }
 
   // ==================== STREAMING DATA LOADING METHODS ====================
-
-  /// Load homepage categories with streaming updates using Firestore
   Future<void> loadHomepageCategoriesStreaming({int limit = 10}) async {
     try {
       print(
         '[MART CONTROLLER] 🏠 Streaming: Loading homepage categories from Firestore...',
       );
       isCategoryLoading = true;
-
       // Try Firestore first (fastest path)
       try {
         print(
@@ -1270,7 +972,6 @@ class MartProvider extends ChangeNotifier {
         final categories = await _firestoreService.getHomepageCategories(
           limit: limit,
         );
-
         if (categories.isNotEmpty) {
           // Stream the data as it becomes available
           featuredCategories.clear();
@@ -1278,7 +979,6 @@ class MartProvider extends ChangeNotifier {
 
           // Clear any previous error messages
           errorMessage = '';
-
           print(
             '[MART CONTROLLER] ✅ Streaming: Homepage categories loaded from Firestore (${categories.length})',
           );
@@ -1713,16 +1413,6 @@ class MartProvider extends ChangeNotifier {
 
   // ==================== SECTIONS LOADING ====================
 
-  /// Preload sections immediately when controller is created
-  void _preloadSections() {
-    print('[MART CONTROLLER] 🚀 Preloading sections immediately...');
-    print(
-      '[MART CONTROLLER] 📊 Controller state: availableSections=${availableSections.length}',
-    );
-    // Start loading sections in background immediately
-    _loadSectionsInParallel();
-  }
-
   /// Load sections in true parallel (immediate and fast)
   Future<void> _loadSectionsInParallel() async {
     try {
@@ -1734,13 +1424,11 @@ class MartProvider extends ChangeNotifier {
 
       // Start loading sections and products in parallel immediately
       final sectionsFuture = _firestoreService.getUniqueSections();
-
       // Get sections first
       final sections = await sectionsFuture;
       print(
         '[MART CONTROLLER] 📂 Found ${sections.length} unique sections: $sections',
       );
-
       if (sections.isNotEmpty) {
         // Clear and add sections immediately
         availableSections.clear();

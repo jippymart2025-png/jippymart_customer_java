@@ -1099,13 +1099,10 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Load ultra-fast calculation cache before calculating price
       await _loadCalculationCache();
-
       // Force price calculation
       await calculatePrice();
-
       // Check payment method after cart data is loaded
       checkAndUpdatePaymentMethod();
-      // Update cart readiness state
       updateCartReadiness();
     });
     selectedFoodType = Preferences.getString(
@@ -1213,7 +1210,6 @@ class CartControllerProvider extends ChangeNotifier {
           await RestaurantDetailsProvider.getRestaurantCoupons(
             restaurantId: restaurantId,
           );
-
       final globalCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons(
             restaurantId: restaurantId,

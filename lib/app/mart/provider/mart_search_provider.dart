@@ -55,6 +55,7 @@ class MartSearchProvider extends ChangeNotifier {
     } finally {
       isLoading = false;
     }
+    notifyListeners();
   }
 
   // Search items via API
@@ -110,12 +111,14 @@ class MartSearchProvider extends ChangeNotifier {
           print(
             '[MART_SEARCH] ✅ API search successful: ${items.length} items found',
           );
+          notifyListeners();
         } else {
           searchResults.clear();
           errorMessage = data['message'] ?? 'No results found';
           print(
             '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}',
           );
+          notifyListeners();
         }
       } else {
         searchResults.clear();
@@ -124,11 +127,13 @@ class MartSearchProvider extends ChangeNotifier {
           '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}',
         );
         print('[MART_SEARCH] ❌ Error details: ${response.body}');
+        notifyListeners();
       }
     } catch (e) {
       print('[MART_SEARCH] ❌ API search failed: $e');
       searchResults.clear();
       errorMessage = 'Search failed. Please check your connection.';
+      notifyListeners();
       rethrow;
     }
   }
@@ -152,6 +157,7 @@ class MartSearchProvider extends ChangeNotifier {
     } finally {
       isLoading = false;
     }
+    notifyListeners();
   }
 
   // Search categories via API
@@ -204,12 +210,15 @@ class MartSearchProvider extends ChangeNotifier {
           '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}',
         );
       }
+      notifyListeners();
     } catch (e) {
+      notifyListeners();
       print('[MART_SEARCH] ❌ API category search failed: $e');
       categoryResults.clear();
       errorMessage = 'Category search failed. Please check your connection.';
       rethrow;
     }
+    notifyListeners();
   }
 
   // Combined search (items only - no categories)
@@ -226,6 +235,7 @@ class MartSearchProvider extends ChangeNotifier {
     await searchItems(query);
 
     isSearching = false;
+    notifyListeners();
   }
 
   // Load more items (pagination)
@@ -233,6 +243,7 @@ class MartSearchProvider extends ChangeNotifier {
     if (hasMoreItems && !isLoading && searchQuery.isNotEmpty) {
       await searchItems(searchQuery, page: currentPage + 1, append: true);
     }
+    notifyListeners();
   }
 
   // Clear all results
@@ -244,6 +255,7 @@ class MartSearchProvider extends ChangeNotifier {
     errorMessage = '';
     currentPage = 1;
     hasMoreItems = false;
+    notifyListeners();
   }
 
   // Save search query to history
@@ -254,16 +266,19 @@ class MartSearchProvider extends ChangeNotifier {
         searchHistory.removeLast();
       }
     }
+    notifyListeners();
   }
 
   // Clear search history
   void clearSearchHistory() {
     searchHistory.clear();
+    notifyListeners();
   }
 
   // Remove item from search history
   void removeFromHistory(String query) {
     searchHistory.remove(query);
+    notifyListeners();
   }
 
   // Get featured items using API
@@ -279,6 +294,7 @@ class MartSearchProvider extends ChangeNotifier {
     } finally {
       isLoading = false;
     }
+    notifyListeners();
   }
 
   // Get featured items via API
@@ -329,13 +345,16 @@ class MartSearchProvider extends ChangeNotifier {
           '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}',
         );
       }
+      notifyListeners();
     } catch (e) {
       print('[MART_SEARCH] ❌ API featured items request failed: $e');
       searchResults.clear();
       errorMessage =
           'Failed to load featured items. Please check your connection.';
+      notifyListeners();
       rethrow;
     }
+    notifyListeners();
   }
 
   // Get trending searches from API
@@ -368,20 +387,28 @@ class MartSearchProvider extends ChangeNotifier {
           print(
             '[MART_SEARCH] ✅ Trending searches loaded: ${trendingData.length} items',
           );
+          notifyListeners();
+
           return trendingData;
         } else {
           print(
             '[MART_SEARCH] ⚠️ API returned success=false: ${data['message']}',
           );
+          notifyListeners();
+
           return [];
         }
       } else {
         print(
           '[MART_SEARCH] ❌ API request failed with status: ${response.statusCode}',
         );
+        notifyListeners();
+
         return [];
       }
     } catch (e) {
+      notifyListeners();
+
       print('[MART_SEARCH] ❌ Error fetching trending searches: $e');
       return [];
     }
@@ -433,20 +460,4 @@ class MartSearchProvider extends ChangeNotifier {
   }
 
   // Health check
-  Future<bool> healthCheck() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/search/health'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-      );
-
-      return response.statusCode == 200;
-    } catch (e) {
-      print('[MART_SEARCH] ❌ Health check failed: $e');
-      return false;
-    }
-  }
 }

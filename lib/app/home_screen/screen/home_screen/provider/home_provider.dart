@@ -402,7 +402,6 @@ class HomeProvider extends ChangeNotifier {
     );
     favouriteProvider = Provider.of<FavouriteProvider>(context, listen: false);
     orderProvider = Provider.of<OrderProvider>(context, listen: false);
-
     martProvider = Provider.of<MartProvider>(context, listen: false);
     _loadAllDataInParallel(context);
     scrollController.addListener(() {
@@ -476,7 +475,7 @@ class HomeProvider extends ChangeNotifier {
   Future<void> _loadAllDataInParallel(BuildContext context) async {
     isLoadingFunction(true);
     getCartData();
-    await _ensureUserModelIsLoaded();
+    await ensureUserModelIsLoaded();
     await _ensureUserLocationIsSet();
     await getZone();
     await Future.wait([
@@ -599,7 +598,7 @@ class HomeProvider extends ChangeNotifier {
   }
 
   /// **ENSURE USER MODEL IS LOADED BEFORE LOCATION DETECTION**
-  Future<void> _ensureUserModelIsLoaded() async {
+  Future<void> ensureUserModelIsLoaded() async {
     if (Constant.userModel != null) {
       return;
     }
@@ -608,12 +607,21 @@ class HomeProvider extends ChangeNotifier {
       final userModel = await AddressListProvider.getUserProfile(
         userId.toString(),
       );
-      notifyListeners();
       if (userModel != null) {
         Constant.userModel = userModel;
-        notifyListeners();
+        if (userModel.shippingAddress != null) {
+          addressListProvider.shippingAddressList = userModel.shippingAddress!;
+          notifyListeners();
+        }
         return;
       }
+      notifyListeners();
+
+      // if (userModel != null) {
+      //   Constant.userModel = userModel;
+      //   notifyListeners();
+      //   return;
+      // }
     } catch (e) {
       print('[DEBUG] Error loading user model fresh: $e');
     }

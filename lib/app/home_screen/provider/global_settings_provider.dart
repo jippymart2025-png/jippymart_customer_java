@@ -4,14 +4,10 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/edit_profile_screen/provider/edit_profile_provider.dart';
-import 'package:jippymart_customer/constant/collection_name.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
-import 'package:jippymart_customer/models/currency_model.dart';
-import 'package:jippymart_customer/models/mail_setting.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/notification_service.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
@@ -25,27 +21,6 @@ class GlobalSettingsProvider extends ChangeNotifier {
   }
 
   getCurrentCurrency(BuildContext context) async {
-    FireStoreUtils.fireStore
-        .collection(CollectionName.currencies)
-        .where("isActive", isEqualTo: true)
-        .snapshots()
-        .listen((event) {
-          if (event.docs.isNotEmpty) {
-            Constant.currencyModel = CurrencyModel.fromJson(
-              event.docs.first.data(),
-            );
-          } else {
-            Constant.currencyModel = CurrencyModel(
-              id: "",
-              code: "USD",
-              decimalDigits: 2,
-              enable: true,
-              name: "US Dollar",
-              symbol: "\$",
-              symbolAtRight: false,
-            );
-          }
-        });
     await getSettings(context);
   }
 
@@ -55,13 +30,11 @@ class GlobalSettingsProvider extends ChangeNotifier {
         Uri.parse('${AppConst.baseUrl}settings/mobile'),
         headers: await getHeaders(),
       );
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['success'] == true) {
           final Map<String, dynamic> documents = data['data']['documents'];
           final Map<String, dynamic> derived = data['data']['derived'];
-          // Set all constants from the API response
           _setConstantsFromApi(documents, derived);
         }
       } else {
@@ -77,14 +50,11 @@ class GlobalSettingsProvider extends ChangeNotifier {
     // Subscription model
     Constant.isSubscriptionModelApplied =
         documents['restaurant']?['subscription_model'] ?? false;
-
     // Restaurant nearby settings
     Constant.radius = documents['RestaurantNearBy']?['radios'] ?? '15';
-    Constant.driverRadios =
-        documents['RestaurantNearBy']?['driverRadios'] ?? '5';
+
     Constant.distanceType =
         documents['RestaurantNearBy']?['distanceType'] ?? 'km';
-
     // Global settings
     Constant.isEnableAdsFeature =
         documents['globalSettings']?['isEnableAdsFeature'] ?? false;
@@ -137,25 +107,8 @@ class GlobalSettingsProvider extends ChangeNotifier {
     Constant.storyEnable = documents['story']?['isEnabled'] ?? false;
     print('[DEBUG] Story enable setting loaded: ${Constant.storyEnable}');
 
-    // Referral amount
-    Constant.referralAmount =
-        documents['referral_amount']?['referralAmount']?.toString() ?? '0';
-
     // Placeholder image
     Constant.placeholderImage = documents['placeHolderImage']?['image'] ?? '';
-
-    // Email settings
-    if (documents['emailSetting'] != null) {
-      Constant.mailSettings = MailSettings.fromJson(documents['emailSetting']!);
-    }
-
-    // Special discount offer
-    Constant.specialDiscountOffer =
-        documents['specialDiscountOffer']?['isEnable'] == "true";
-
-    // Dine-in settings
-    Constant.isEnabledForCustomer =
-        documents['DineinForRestaurant']?['isEnabledForCustomer'] ?? false;
 
     // Admin commission
     if (documents['AdminCommission'] != null) {
@@ -163,7 +116,7 @@ class GlobalSettingsProvider extends ChangeNotifier {
         documents['AdminCommission']!,
       );
     }
-
+    notifyListeners();
     // You can also use derived data if needed
     print('[DEBUG] Settings loaded successfully from API');
   }

@@ -56,7 +56,9 @@ class CouponListView extends StatelessWidget {
                       child: Center(
                         child: Text(
                           offerModel.discountType == "Fix Price"
-                              ? Constant.amountShow(amount: offerModel.discount)
+                              ? Constant.amountShow(
+                                  amount: offerModel.discount.toString(),
+                                )
                               : "${offerModel.discount}%",
                           style: TextStyle(
                             color: AppThemeData.grey50,

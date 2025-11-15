@@ -327,7 +327,9 @@ class ProductListView extends StatelessWidget {
                             children: [
                               Flexible(
                                 child: Text(
-                                  Constant.amountShow(amount: disPrice),
+                                  Constant.amountShow(
+                                    amount: disPrice.toString(),
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(

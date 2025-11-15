@@ -123,7 +123,6 @@ class RateProductProvider extends ChangeNotifier {
         }
       });
     }
-
     isLoading = false;
     notifyListeners();
   }

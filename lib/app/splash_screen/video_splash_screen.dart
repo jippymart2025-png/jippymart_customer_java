@@ -1,3 +1,4 @@
+import 'package:jippymart_customer/app/home_screen/provider/global_settings_provider.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -11,11 +12,17 @@ class VideoSplashScreen extends StatefulWidget {
 
 class _VideoSplashScreenState extends State<VideoSplashScreen> {
   late SplashProvider splashProvider;
+  late GlobalSettingsProvider globalSettingsProvider;
 
   @override
   void initState() {
     splashProvider = Provider.of<SplashProvider>(context, listen: false);
+    globalSettingsProvider = Provider.of<GlobalSettingsProvider>(
+      context,
+      listen: false,
+    );
     splashProvider.initFunction(context);
+    globalSettingsProvider.initFunction(context);
     super.initState();
   }
 

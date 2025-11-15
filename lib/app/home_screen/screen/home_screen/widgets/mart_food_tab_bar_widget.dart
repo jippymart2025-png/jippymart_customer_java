@@ -8,7 +8,7 @@ import 'package:jippymart_customer/widgets/coming_soon_dialog.dart';
 
 Widget martFoodTabBarWidgetHome({required MartProvider martProvider}) {
   Future<void> checkMartAvailability(MartProvider martProvider) async {
-    // martProvider.initFunction();
+    martProvider.initFunction();
     try {
       if (Constant.selectedZone?.id == null) {
         ComingSoonDialogHelper.show(

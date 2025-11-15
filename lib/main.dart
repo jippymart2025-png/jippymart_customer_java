@@ -279,7 +279,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         builder: EasyLoading.init(),
         home: Consumer<GlobalSettingsProvider>(
           builder: (context, controller, _) {
-            controller.initFunction(context);
             return const VideoSplashScreen();
           },
         ),
