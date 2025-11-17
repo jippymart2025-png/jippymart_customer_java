@@ -11,41 +11,60 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 class CartProvider with ChangeNotifier {
-  final _cartStreamController =
-      StreamController<List<CartProductModel>>.broadcast();
-  List<CartProductModel> _cartItems = [];
+  CartProvider._internal() {
+    _initialize();
+  }
 
-  Stream<List<CartProductModel>> get cartStream => _cartStreamController.stream;
+  static final CartProvider _instance = CartProvider._internal();
 
-  CartProvider() {
+  factory CartProvider() => _instance;
+
+  void _initialize() {
+    if (_initialized) return;
+    _initialized = true;
     initCart();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       initCart();
     });
   }
 
+  bool _initialized = false;
+  bool _isSyncing = false;
+
+  final _cartStreamController =
+      StreamController<List<CartProductModel>>.broadcast();
+  List<CartProductModel> _cartItems = [];
+
+  Stream<List<CartProductModel>> get cartStream => _cartStreamController.stream;
+
   Future<void> initCart() async {
-    if (kDebugMode) {
-      print('DEBUG: CartProvider _initCart() called');
-    }
-    _cartItems = await DatabaseHelper.instance.fetchCartProducts();
-    if (kDebugMode) {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    try {
+      if (kDebugMode) {
+        print('DEBUG: CartProvider _initCart() called');
+      }
+      _cartItems = await DatabaseHelper.instance.fetchCartProducts();
+      if (kDebugMode) {
+        print(
+          'DEBUG: CartProvider - Fetched ${_cartItems.length} items from database',
+        );
+      }
+      cartItem.clear();
+      cartItem.addAll(_cartItems);
+      if (kDebugMode) {
+        print(
+          'DEBUG: CartProvider - Synced ${cartItem.length} items to global cartItem',
+        );
+      }
+      _cartStreamController.sink.add(_cartItems);
+      notifyListeners();
       print(
-        'DEBUG: CartProvider - Fetched ${_cartItems.length} items from database',
+        'DEBUG: CartProvider - Stream updated with ${_cartItems.length} items',
       );
+    } finally {
+      _isSyncing = false;
     }
-    cartItem.clear();
-    cartItem.addAll(_cartItems);
-    if (kDebugMode) {
-      print(
-        'DEBUG: CartProvider - Synced ${cartItem.length} items to global cartItem',
-      );
-    }
-    _cartStreamController.sink.add(_cartItems);
-    notifyListeners();
-    print(
-      'DEBUG: CartProvider - Stream updated with ${_cartItems.length} items',
-    );
   }
 
   Future<bool> addToCart(

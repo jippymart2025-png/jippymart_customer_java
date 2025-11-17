@@ -35,7 +35,7 @@ import 'package:video_compress/video_compress.dart';
 import 'package:http/http.dart' as http;
 
 class FireStoreUtils {
-  static FirebaseFirestore fireStore = FirebaseFirestore.instance;
+  // static FirebaseFirestore fireStore = FirebaseFirestore.instance;
   static final bool _isDatabaseHealthy = true;
   static String?
   backendUserId; // Set this from LoginController after OTP verification
@@ -130,7 +130,7 @@ class FireStoreUtils {
   }
 
   StreamController<List<VendorModel>>? getNearestVendorController;
-
+  
   Stream<List<VendorModel>> getAllNearestRestaurant({bool? isDining}) async* {
     try {
       getNearestVendorController =
@@ -348,29 +348,78 @@ class FireStoreUtils {
   /// Stream method to get mart bottom banners (position: "bottom") - Lazy loading
   // Stream method to get mart bottom banners (position: "bottom") - Lazy loading
 
-  static Future<ProductModel?> getProductById(String productId) async {
-    ProductModel? productModel;
+  static final Map<String, _CachedProduct> _productCache = {};
+  static final Map<String, Future<ProductModel?>> _pendingProductRequests = {};
+  static const Duration _productCacheDuration = Duration(minutes: 5);
+
+  static ProductModel? _getCachedProduct(String productId) {
+    final cachedEntry = _productCache[productId];
+    if (cachedEntry == null) return null;
+
+    final isExpired =
+        DateTime.now().difference(cachedEntry.fetchedAt) > _productCacheDuration;
+    if (isExpired) {
+      _productCache.remove(productId);
+      return null;
+    }
+    return cachedEntry.product;
+  }
+
+  static Future<ProductModel?> getProductById(
+    String productId, {
+    bool forceRefresh = false,
+  }) async {
+    if (productId.isEmpty) return null;
+
+    if (!forceRefresh) {
+      final cachedProduct = _getCachedProduct(productId);
+      if (cachedProduct != null) {
+        return cachedProduct;
+      }
+
+      final pendingRequest = _pendingProductRequests[productId];
+      if (pendingRequest != null) {
+        return pendingRequest;
+      }
+    }
+
+    final request = _fetchProductFromApi(productId);
+    _pendingProductRequests[productId] = request;
+
+    try {
+      final productModel = await request;
+      if (productModel != null) {
+        _productCache[productId] = _CachedProduct(product: productModel);
+      }
+      return productModel;
+    } finally {
+      _pendingProductRequests.remove(productId);
+    }
+  }
+
+  static Future<ProductModel?> _fetchProductFromApi(String productId) async {
     try {
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}products/$productId'),
         headers: await getHeaders(),
       );
-      print("getProductById ${response.body}");
+
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          productModel = ProductModel.fromJson(jsonResponse['data']);
+          return ProductModel.fromJson(jsonResponse['data']);
         }
       } else {
-        print('API call failed with status: ${response.statusCode}');
-        return null;
+        print(
+          '[PRODUCT_API] getProductById failed '
+          'status=${response.statusCode} productId=$productId',
+        );
       }
     } catch (e, s) {
-      print('Error fetching product: $e');
-      print('Stack trace: $s');
-      return null;
+      print('[PRODUCT_API] Error fetching product $productId: $e');
+      print(s);
     }
-    return productModel;
+    return null;
   }
 
   static Future<List<AttributesModel>> getAttributes() async {
@@ -1372,4 +1421,11 @@ class FireStoreUtils {
       return [];
     }
   }
+}
+
+class _CachedProduct {
+  _CachedProduct({required this.product}) : fetchedAt = DateTime.now();
+
+  final ProductModel product;
+  final DateTime fetchedAt;
 }

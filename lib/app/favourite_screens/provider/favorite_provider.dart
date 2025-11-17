@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 
@@ -13,6 +14,7 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:http/http.dart' as http;
 
 class FavouriteProvider extends ChangeNotifier {
+  static const Duration _networkTimeout = Duration(seconds: 15);
   bool favouriteRestaurant = true;
   List<FavouriteModel> favouriteList = <FavouriteModel>[];
   List<VendorModel> favouriteVendorList = <VendorModel>[];
@@ -37,14 +39,16 @@ class FavouriteProvider extends ChangeNotifier {
   static Future<void> addFavouriteRestaurant(String restaurantId) async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
-      final response = await http.post(
-        Uri.parse('${AppConst.baseUrl}favorites/restaurants'),
-        headers: await getHeaders(),
-        body: json.encode({
-          "firebase_id": userId,
-          "restaurant_id": restaurantId,
-        }),
-      );
+      final response = await http
+          .post(
+            Uri.parse('${AppConst.baseUrl}favorites/restaurants'),
+            headers: await getHeaders(),
+            body: json.encode({
+              "firebase_id": userId,
+              "restaurant_id": restaurantId,
+            }),
+          )
+          .timeout(_networkTimeout);
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -55,6 +59,9 @@ class FavouriteProvider extends ChangeNotifier {
       } else {
         throw Exception('Failed to add favorite: ${response.statusCode}');
       }
+    } on TimeoutException catch (e) {
+      log('❌ Timeout adding favorite restaurant: $e');
+      rethrow;
     } catch (e) {
       log('❌ Error adding favorite restaurant: $e');
       rethrow;
@@ -65,14 +72,16 @@ class FavouriteProvider extends ChangeNotifier {
   static Future<void> removeFavouriteRestaurant(String restaurantId) async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
-      final response = await http.delete(
-        Uri.parse('${AppConst.baseUrl}favorites/restaurants'),
-        headers: await getHeaders(),
-        body: json.encode({
-          "firebase_id": userId,
-          "restaurant_id": restaurantId,
-        }),
-      );
+      final response = await http
+          .delete(
+            Uri.parse('${AppConst.baseUrl}favorites/restaurants'),
+            headers: await getHeaders(),
+            body: json.encode({
+              "firebase_id": userId,
+              "restaurant_id": restaurantId,
+            }),
+          )
+          .timeout(_networkTimeout);
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -85,6 +94,9 @@ class FavouriteProvider extends ChangeNotifier {
       } else {
         throw Exception('Failed to remove favorite: ${response.statusCode}');
       }
+    } on TimeoutException catch (e) {
+      log('❌ Timeout removing favorite restaurant: $e');
+      rethrow;
     } catch (e) {
       log('❌ Error removing favorite restaurant: $e');
       rethrow;
@@ -95,10 +107,12 @@ class FavouriteProvider extends ChangeNotifier {
   static Future<List<VendorModel>> getFavouriteRestaurants() async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}favorites/restaurants/$userId'),
-        headers: await getHeaders(),
-      );
+      final response = await http
+          .get(
+            Uri.parse('${AppConst.baseUrl}favorites/restaurants/$userId'),
+            headers: await getHeaders(),
+          )
+          .timeout(_networkTimeout);
       log("📱 getFavouriteRestaurants response: ${response.body}");
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
@@ -120,6 +134,9 @@ class FavouriteProvider extends ChangeNotifier {
       } else {
         throw Exception('Failed to fetch favorites: ${response.statusCode}');
       }
+    } on TimeoutException catch (e) {
+      log('❌ Timeout fetching favorite restaurants: $e');
+      return [];
     } catch (e, st) {
       log('❌ Error fetching favorite restaurants: $e\n$st');
       throw Exception('Failed to fetch favorite restaurants: $e');

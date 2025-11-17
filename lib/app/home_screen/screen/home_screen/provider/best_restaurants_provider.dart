@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
@@ -12,6 +13,9 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 
 class BestRestaurantProvider extends ChangeNotifier {
+  static const Duration _networkTimeout = Duration(seconds: 15);
+  Future<void>? _storiesLoadingTask;
+  Future<void>? _relatedDataLoadingTask;
   bool isLoading = true;
   String? currentFilter;
   List<String> availableFilters = [];
@@ -69,12 +73,26 @@ class BestRestaurantProvider extends ChangeNotifier {
       newArrivalRestaurantList.addAll(restaurants);
       popularRestaurantList.addAll(restaurants);
       Constant.restaurantList = allNearestRestaurant;
-      // Load stories from API
-      await _loadStoriesFromAPI(zoneId);
-      // Load other related data in parallel (excluding stories)
-      await _loadRelatedDataInParallel(allNearestRestaurant);
+      notifyListeners();
+      // Kick off secondary content loads without blocking the UI
+      _storiesLoadingTask = _loadStoriesFromAPI(zoneId).then((_) {
+        notifyListeners();
+      });
+      _storiesLoadingTask?.catchError((e) {
+        print('[DEBUG] Error in background story load: $e');
+      });
+
+      _relatedDataLoadingTask =
+          _loadRelatedDataInParallel(allNearestRestaurant).then((_) {
+        notifyListeners();
+      });
+      _relatedDataLoadingTask?.catchError((e) {
+        print('[DEBUG] Error in background related-data load: $e');
+      });
+
       // Calculate distances and sort
       await _processRestaurantData(allNearestRestaurant);
+      notifyListeners();
       // **DEBUG: Log restaurant diagnostics**
       logRestaurantDiagnostics();
     } catch (e) {
@@ -111,7 +129,9 @@ class BestRestaurantProvider extends ChangeNotifier {
 
       print('[STORY_API] Fetching stories from: $uri');
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(_networkTimeout);
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
@@ -133,6 +153,9 @@ class BestRestaurantProvider extends ChangeNotifier {
         print('[STORY_API] HTTP error: ${response.statusCode}');
         throw Exception('Failed to load stories: ${response.statusCode}');
       }
+    } on TimeoutException catch (e) {
+      print('[STORY_API] Timeout fetching stories: $e');
+      return [];
     } catch (e) {
       print('[STORY_API] Error fetching stories: $e');
       rethrow;
@@ -210,7 +233,9 @@ class BestRestaurantProvider extends ChangeNotifier {
       final uri = Uri.parse(url);
       print('[RESTAURANT_API] Fetching restaurants from: $uri');
 
-      final response = await http.get(uri, headers: headers);
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(_networkTimeout);
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
@@ -246,6 +271,9 @@ class BestRestaurantProvider extends ChangeNotifier {
         print('[RESTAURANT_API] HTTP error: ${response.statusCode}');
         throw Exception('Failed to load restaurants: ${response.statusCode}');
       }
+    } on TimeoutException catch (e) {
+      print('[RESTAURANT_API] Timeout fetching restaurants: $e');
+      return [];
     } catch (e) {
       print('[RESTAURANT_API] Error fetching restaurants: $e');
       rethrow;

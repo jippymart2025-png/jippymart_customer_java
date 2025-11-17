@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -20,6 +21,7 @@ import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 
 class LoginProvider extends ChangeNotifier {
+  static const Duration _authTimeout = Duration(seconds: 20);
   TextEditingController emailEditingController = TextEditingController();
   TextEditingController passwordEditingController = TextEditingController();
   bool passwordVisible = true;
@@ -69,11 +71,13 @@ class LoginProvider extends ChangeNotifier {
       };
       http.Response response;
       if (method == 'POST') {
-        response = await http.post(
-          url,
-          headers: headers,
-          body: json.encode(data),
-        );
+        response = await http
+            .post(
+              url,
+              headers: headers,
+              body: json.encode(data),
+            )
+            .timeout(_authTimeout);
       } else {
         throw Exception('Unsupported HTTP method');
       }
@@ -82,6 +86,8 @@ class LoginProvider extends ChangeNotifier {
       } else {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
+    } on TimeoutException {
+      throw Exception('Request timed out. Please try again.');
     } catch (e) {
       rethrow;
     }
@@ -134,20 +140,32 @@ class LoginProvider extends ChangeNotifier {
     BuildContext context,
     SplashProvider splashProvider,
   ) async {
+    final otp = otpEditingController.value.text.trim();
+    if (otp.length < 4) {
+      ShowToastDialog.showToast("Please enter valid OTP".tr);
+      return;
+    }
     ShowToastDialog.showLoader("Verifying OTP...".tr);
     isVerifying = true;
     notifyListeners();
     try {
-      String cleanCountryCode = countryCode.replaceAll('+', '');
-      String fullPhoneNumber =
-          '$cleanCountryCode${phoneEditingController.value.text.trim()}';
+      final cleanCountryCode = countryCode.replaceAll('+', '');
+      final enteredPhone = phoneEditingController.value.text.trim();
+      String fullPhoneNumber = phoneNumber.isNotEmpty
+          ? phoneNumber
+          : '$cleanCountryCode$enteredPhone';
+      if (fullPhoneNumber.isEmpty) {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("Phone number missing. Please retry.".tr);
+        return;
+      }
       SignupProvider signupProvider = Provider.of<SignupProvider>(
         context,
         listen: false,
       );
       final response = await _makeApiCall('verify-otp', {
         'phone': fullPhoneNumber,
-        'otp': otpEditingController.value.text.trim(),
+        'otp': otp,
       }, 'POST');
       if (response['success'] == true) {
         authToken = response['token'] ?? '';
@@ -158,15 +176,23 @@ class LoginProvider extends ChangeNotifier {
             value: response['user']['id'].toString(),
           );
         }
+        final userData = response['user'] ?? {};
+        final firebaseId = (userData['firebase_id'] ??
+                userData['firebaseId'] ??
+                userData['firebaseID'] ??
+                userData['id'])
+            ?.toString();
+        if (firebaseId != null && firebaseId.isNotEmpty) {
+          await secureStorage.write(key: 'firebase_id', value: firebaseId);
+        }
         if (response['is_registered'] == true) {
-          final userData = response['user'];
           UserModel userModel = UserModel(
             id: userData['id'].toString(),
             firstName: userData['firstName'] ?? '',
             lastName: userData['lastName'] ?? '',
             email: userData['email'] ?? '',
             phoneNumber: userData['phoneNumber'] ?? '',
-            firebaseId: userData['firebase_id'] ?? '',
+            firebaseId: firebaseId ?? '',
             role: Constant.userRoleCustomer,
             active: true,
             walletAmount: userData['wallet_amount'] ?? 0,
@@ -176,8 +202,8 @@ class LoginProvider extends ChangeNotifier {
             userModel,
             countryCode: countryCode,
           );
+          await splashProvider.refreshFunction(context);
           ShowToastDialog.closeLoader();
-          splashProvider.initFunction(context);
           Get.offAll(() => const DashBoardScreen());
         } else {
           ShowToastDialog.closeLoader();

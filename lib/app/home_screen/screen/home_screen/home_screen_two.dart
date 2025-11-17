@@ -67,9 +67,7 @@ class HomeScreenTwo extends StatelessWidget {
                   onRefresh: () async {
                     controller.getRefresh(context);
                   },
-                  child:
-                      controller.isLoading &&
-                          bestRestaurantProvider.allNearestRestaurant.isEmpty
+                  child: controller.isLoading
                       ? const RestaurantLoadingWidget()
                       : Constant.isZoneAvailable == false
                       ? Padding(

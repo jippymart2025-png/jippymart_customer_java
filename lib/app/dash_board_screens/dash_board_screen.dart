@@ -9,19 +9,46 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:provider/provider.dart';
 
-class DashBoardScreen extends StatelessWidget {
+class DashBoardScreen extends StatefulWidget {
   const DashBoardScreen({super.key});
+
+  @override
+  State<DashBoardScreen> createState() => _DashBoardScreenState();
+}
+
+class _DashBoardScreenState extends State<DashBoardScreen> {
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeDashboard();
+    });
+  }
+
+  Future<void> _initializeDashboard() async {
+    if (!mounted || _isInitialized) return;
+    final dashBoardProvider = context.read<DashBoardProvider>();
+    await dashBoardProvider.initFunction(context);
+    if (!mounted) return;
+    setState(() {
+      _isInitialized = true;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer2<DashBoardProvider, CartControllerProvider>(
       builder: (context, controller, cartControllerProvider, _) {
-        final safePageList = controller.pageList.isNotEmpty
-            ? controller.pageList
-            : [const SizedBox()];
+        if (controller.pageList.isEmpty) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
         final safeIndex = controller.selectedIndex.clamp(
           0,
-          safePageList.length - 1,
+          controller.pageList.length - 1,
         );
         return PopScope(
           canPop: controller.canPopNow,
@@ -43,7 +70,10 @@ class DashBoardScreen extends StatelessWidget {
             }
           },
           child: Scaffold(
-            body: IndexedStack(index: safeIndex, children: safePageList),
+            body: IndexedStack(
+              index: safeIndex,
+              children: controller.pageList,
+            ),
             bottomNavigationBar: _buildBottomNavigationBar(
               controller,
               cartControllerProvider,

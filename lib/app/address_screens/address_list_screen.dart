@@ -638,7 +638,6 @@ class AddressListScreen extends StatelessWidget {
                                       await Geolocator.openLocationSettings();
                                       return;
                                     }
-
                                     LocationPermission permission =
                                         await Geolocator.checkPermission();
                                     if (permission ==

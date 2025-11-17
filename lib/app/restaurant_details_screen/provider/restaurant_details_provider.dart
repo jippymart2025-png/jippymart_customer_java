@@ -410,7 +410,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   Future<void> getArgument({required VendorModel vendorModels}) async {
     try {
       vendorModel = vendorModels;
-
       isLoading = true;
       notifyListeners();
       cartProvider.cartStream.listen((event) {

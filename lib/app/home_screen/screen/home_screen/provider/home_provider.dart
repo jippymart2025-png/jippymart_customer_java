@@ -18,6 +18,7 @@ import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_deta
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
+import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
@@ -37,6 +38,8 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HomeProvider extends ChangeNotifier {
+  static const Duration _networkTimeout = Duration(seconds: 15);
+
   void changeLocationAddressFunction({
     required BuildContext context,
     required ShippingAddress addressModel,
@@ -59,12 +62,14 @@ class HomeProvider extends ChangeNotifier {
     try {
       final headers = await getHeaders();
       print('[ZONE_API] Getting current zone for: $latitude, $longitude');
-      final response = await http.get(
-        Uri.parse(
-          '${AppConst.baseUrl}zones/current?latitude=$latitude&longitude=$longitude',
-        ),
-        headers: headers,
-      );
+      final response = await http
+          .get(
+            Uri.parse(
+              '${AppConst.baseUrl}zones/current?latitude=$latitude&longitude=$longitude',
+            ),
+            headers: headers,
+          )
+          .timeout(_networkTimeout);
       print('[ZONE_API] Response status: ${response.statusCode}');
       print('[ZONE_API] Response body: ${response.body}');
       if (response.statusCode == 200) {
@@ -81,6 +86,9 @@ class HomeProvider extends ChangeNotifier {
         print('[ZONE_API] HTTP error: ${response.statusCode}');
         return null;
       }
+    } on TimeoutException catch (e) {
+      print('[ZONE_API] Timeout getting current zone: $e');
+      return null;
     } catch (e) {
       print('[ZONE_API] Error getting current zone: $e');
       return null;
@@ -91,12 +99,14 @@ class HomeProvider extends ChangeNotifier {
   static Future<String?> detectZoneId(double latitude, double longitude) async {
     try {
       print('[ZONE_API] Detecting zone ID for: $latitude, $longitude');
-      final response = await http.get(
-        Uri.parse(
-          '${AppConst.baseUrl}zones/detect-id?latitude=$latitude&longitude=$longitude',
-        ),
-        headers: headers,
-      );
+      final response = await http
+          .get(
+            Uri.parse(
+              '${AppConst.baseUrl}zones/detect-id?latitude=$latitude&longitude=$longitude',
+            ),
+            headers: headers,
+          )
+          .timeout(_networkTimeout);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
@@ -111,6 +121,9 @@ class HomeProvider extends ChangeNotifier {
         print('[ZONE_API] HTTP error: ${response.statusCode}');
         return null;
       }
+    } on TimeoutException catch (e) {
+      print('[ZONE_API] Timeout detecting zone ID: $e');
+      return null;
     } catch (e) {
       print('[ZONE_API] Error detecting zone ID: $e');
       return null;
@@ -123,12 +136,14 @@ class HomeProvider extends ChangeNotifier {
     double longitude,
   ) async {
     try {
-      final response = await http.get(
-        Uri.parse(
-          '${AppConst.baseUrl}zones/check-service-area?latitude=$latitude&longitude=$longitude',
-        ),
-        headers: headers,
-      );
+      final response = await http
+          .get(
+            Uri.parse(
+              '${AppConst.baseUrl}zones/check-service-area?latitude=$latitude&longitude=$longitude',
+            ),
+            headers: headers,
+          )
+          .timeout(_networkTimeout);
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
@@ -258,10 +273,9 @@ class HomeProvider extends ChangeNotifier {
     try {
       print('[DEBUG] Setting fallback zone...');
       // Try to get any published zone as fallback from API
-      final allZonesResponse = await http.get(
-        Uri.parse('${AppConst.baseUrl}zones/all'),
-        headers: headers,
-      );
+      final allZonesResponse = await http
+          .get(Uri.parse('${AppConst.baseUrl}zones/all'), headers: headers)
+          .timeout(_networkTimeout);
 
       if (allZonesResponse.statusCode == 200) {
         final data = json.decode(allZonesResponse.body);
@@ -314,6 +328,11 @@ class HomeProvider extends ChangeNotifier {
       Constant.isZoneAvailable = false;
       print('[DEBUG] No fallback zone available!');
       notifyListeners();
+    } on TimeoutException catch (e) {
+      print('[DEBUG] Timeout while setting fallback zone: $e');
+      Constant.selectedZone = null;
+      Constant.isZoneAvailable = false;
+      notifyListeners();
     } catch (e) {
       print('[DEBUG] Error setting fallback zone: $e');
       Constant.selectedZone = null;
@@ -350,15 +369,25 @@ class HomeProvider extends ChangeNotifier {
   }
 
   final CartProvider cartProvider = CartProvider();
+  bool _cartListenerAttached = false;
+  StreamSubscription<List<CartProductModel>>? _cartSubscription;
+  bool _orderProviderInitialized = false;
+  bool _martInitialized = false;
+  bool _favouriteProviderInitialized = false;
+  Future<void>? _ongoingLoad;
   final ScrollController scrollController = ScrollController();
+  bool _isScrollListenerAttached = false;
   bool isNavBarVisible = true;
 
-  getCartData() async {
-    cartProvider.cartStream.listen((event) async {
-      cartItem.clear();
-      cartItem.addAll(event);
+  void getCartData() {
+    if (_cartListenerAttached) return;
+    _cartListenerAttached = true;
+    _cartSubscription = cartProvider.cartStream.listen((event) {
+      cartItem
+        ..clear()
+        ..addAll(event);
+      notifyListeners();
     });
-    notifyListeners();
   }
 
   bool isLoading = true;
@@ -405,22 +434,26 @@ class HomeProvider extends ChangeNotifier {
     orderProvider = Provider.of<OrderProvider>(context, listen: false);
     martProvider = Provider.of<MartProvider>(context, listen: false);
     splashProvider = Provider.of<SplashProvider>(context, listen: false);
-    _loadAllDataInParallel(context);
-    scrollController.addListener(() {
-      if (scrollController.position.userScrollDirection.toString() ==
-          'ScrollDirection.reverse') {
-        if (isNavBarVisible) isNavBarVisible = false;
-      } else if (scrollController.position.userScrollDirection.toString() ==
-          'ScrollDirection.forward') {
-        if (!isNavBarVisible) isNavBarVisible = true;
-      }
-    });
+    if (!_isScrollListenerAttached) {
+      scrollController.addListener(() {
+        if (scrollController.position.userScrollDirection.toString() ==
+            'ScrollDirection.reverse') {
+          if (isNavBarVisible) isNavBarVisible = false;
+        } else if (scrollController.position.userScrollDirection.toString() ==
+            'ScrollDirection.forward') {
+          if (!isNavBarVisible) isNavBarVisible = true;
+        }
+      });
+      _isScrollListenerAttached = true;
+    }
     notifyListeners();
     startBannerTimer();
+    await _loadAllDataInParallel(context, waitForSupplemental: false);
   }
 
   void onClose() {
     _bannerTimer?.cancel();
+    _cartSubscription?.cancel();
 
     if (pageController.hasClients) {
       pageController.dispose();
@@ -474,42 +507,94 @@ class HomeProvider extends ChangeNotifier {
   List<VendorModel> favouriteList = <VendorModel>[];
 
   // Optimized parallel data loading
-  Future<void> _loadAllDataInParallel(BuildContext context) async {
-    isLoadingFunction(true);
-    getCartData();
-    await ensureUserModelIsLoaded();
-    await _ensureUserLocationIsSet();
-    await getZone();
-    await Future.wait([
-      categoryViewProvider.loadVendorCategories(),
-      _loadBanners(),
-      _loadFavorites(),
-      bestRestaurantProvider.loadRestaurantsAndRelatedData(),
-    ]);
-    favouriteProvider.initFunction();
-    orderProvider.initFunction();
-    dashBoardProvider.initFunction(context);
-    martProvider.initFunction();
-    await Future.delayed(const Duration(seconds: 2));
-    if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
-      splashProvider.refreshFunction(context);
+  Future<void> _loadAllDataInParallel(
+    BuildContext context, {
+    bool waitForSupplemental = true,
+    bool forceRefresh = false,
+  }) async {
+    if (_ongoingLoad != null && !forceRefresh) {
+      return _ongoingLoad!;
     }
-    notifyListeners();
-    setLoading();
+    final loadFuture = _performInitialLoad(
+      context,
+      waitForSupplemental: waitForSupplemental,
+    );
+    _ongoingLoad = loadFuture;
+    try {
+      await loadFuture;
+    } finally {
+      if (_ongoingLoad == loadFuture) {
+        _ongoingLoad = null;
+      }
+    }
   }
 
-  setLoading() async {
-    await Future.delayed(Duration(seconds: 1), () async {
-      if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
-        await Future.delayed(Duration(seconds: 2), () {
-          isLoadingFunction(false);
-        });
-      } else {
-        isLoadingFunction(false);
+  Future<void> _performInitialLoad(
+    BuildContext context, {
+    required bool waitForSupplemental,
+  }) async {
+    isLoadingFunction(true);
+    getCartData();
+    try {
+      if (Constant.userModel == null) {
+        await ensureUserModelIsLoaded();
+      } else if (Constant.userModel!.shippingAddress != null &&
+          Constant.userModel!.shippingAddress!.isNotEmpty &&
+          addressListProvider.shippingAddressList.isEmpty) {
+        addressListProvider.shippingAddressList =
+            Constant.userModel!.shippingAddress!;
+        notifyListeners();
       }
-      notifyListeners();
-    });
-    notifyListeners();
+      await _ensureUserLocationIsSet();
+      await getZone();
+
+      final categoryFuture = categoryViewProvider.loadVendorCategories();
+      final bannerFuture = _loadBanners();
+      final restaurantFuture = bestRestaurantProvider
+          .loadRestaurantsAndRelatedData();
+
+      if (waitForSupplemental) {
+        await Future.wait([
+          categoryFuture,
+          bannerFuture,
+          restaurantFuture,
+        ], eagerError: true);
+        isLoadingFunction(false);
+      } else {
+        await restaurantFuture;
+        isLoadingFunction(false);
+        unawaited(
+          categoryFuture.catchError((error, stack) {
+            log('[HOME_PROVIDER] Category load failed: $error\n$stack');
+          }),
+        );
+        unawaited(
+          bannerFuture.catchError((error, stack) {
+            log('[HOME_PROVIDER] Banner load failed: $error\n$stack');
+          }),
+        );
+      }
+
+      if (!_favouriteProviderInitialized) {
+        _favouriteProviderInitialized = true;
+        unawaited(favouriteProvider.initFunction());
+      }
+      if (!_orderProviderInitialized) {
+        _orderProviderInitialized = true;
+        unawaited(orderProvider.initFunction());
+      }
+
+      if (!_martInitialized) {
+        _martInitialized = true;
+        Future.microtask(() => martProvider.initFunction());
+      }
+    } catch (e, stack) {
+      log('[HOME_PROVIDER] Error loading home data: $e\n$stack');
+      ShowToastDialog.showToast(
+        "Unable to load Home data right now. Pull to refresh to try again.".tr,
+      );
+      isLoadingFunction(false);
+    }
   }
 
   // Load vendor categories in parallel
@@ -525,7 +610,9 @@ class HomeProvider extends ChangeNotifier {
       }
       final headers = await getHeaders();
       log('[BANNER_API] Fetching top banners from: $url');
-      final response = await http.get(Uri.parse(url), headers: headers);
+      final response = await http
+          .get(Uri.parse(url), headers: headers)
+          .timeout(_networkTimeout);
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         log(' getHomeTopBanner  ${response.body}');
@@ -546,6 +633,9 @@ class HomeProvider extends ChangeNotifier {
         log('[BANNER_API] HTTP error: ${response.statusCode}');
         throw Exception('Failed to load top banners: ${response.statusCode}');
       }
+    } on TimeoutException catch (e) {
+      log('[BANNER_API] Timeout fetching top banners: $e');
+      rethrow;
     } catch (e) {
       log('[BANNER_API] Error fetching top banners: $e');
       rethrow;
@@ -597,7 +687,6 @@ class HomeProvider extends ChangeNotifier {
       await FavouriteProvider.getFavouriteRestaurants().then((value) {
         favouriteList = value;
         notifyListeners();
-
         print('[DEBUG] Favorites loaded: ${value.length}');
       });
     }
@@ -646,19 +735,30 @@ class HomeProvider extends ChangeNotifier {
 
   /// **ENSURE USER MODEL IS LOADED BEFORE LOCATION DETECTION**
   Future<void> ensureUserModelIsLoaded() async {
-    // if (Constant.userModel != null) {
-    //
-    //   return;
-    // }
     try {
+      if (Constant.userModel != null) {
+        if (Constant.userModel!.shippingAddress != null &&
+            Constant.userModel!.shippingAddress!.isNotEmpty &&
+            addressListProvider.shippingAddressList.isEmpty) {
+          addressListProvider.shippingAddressList =
+              Constant.userModel!.shippingAddress!;
+          notifyListeners();
+        }
+        return;
+      }
+
       final userId = await SqlStorageConst.getFirebaseId();
-      final userModel = await AddressListProvider.getUserProfile(
-        userId.toString(),
-      );
+      if (userId == null || userId.isEmpty) {
+        print('[DEBUG] No stored user ID while ensuring user model');
+        return;
+      }
+
+      final userModel = await AddressListProvider.getUserProfile(userId);
       print(" ensureUserModelIsLoaded 2");
       if (userModel != null) {
         Constant.userModel = userModel;
-        if (userModel.shippingAddress != null) {
+        if (userModel.shippingAddress != null &&
+            userModel.shippingAddress!.isNotEmpty) {
           print(" ensureUserModelIsLoaded 3");
           addressListProvider.shippingAddressList = userModel.shippingAddress!;
           notifyListeners();
@@ -666,11 +766,6 @@ class HomeProvider extends ChangeNotifier {
         return;
       }
       notifyListeners();
-      // if (userModel != null) {
-      //   Constant.userModel = userModel;
-      //   notifyListeners();
-      //   return;
-      // }
     } catch (e) {
       print('[DEBUG] Error loading user model fresh: $e');
     }
@@ -821,11 +916,19 @@ class HomeProvider extends ChangeNotifier {
   }
 
   getData(BuildContext context) async {
-    await _loadAllDataInParallel(context);
+    await _loadAllDataInParallel(
+      context,
+      waitForSupplemental: true,
+      forceRefresh: true,
+    );
   }
 
   Future<void> getRefresh(BuildContext context) async {
-    await _loadAllDataInParallel(context);
+    await _loadAllDataInParallel(
+      context,
+      waitForSupplemental: true,
+      forceRefresh: true,
+    );
   }
 
   getFavouriteRestaurant() async {

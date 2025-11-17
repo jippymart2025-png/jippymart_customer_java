@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
@@ -13,7 +12,6 @@ import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
-
 import 'package:provider/provider.dart';
 
 class SplashProvider extends ChangeNotifier {
@@ -30,9 +28,9 @@ class SplashProvider extends ChangeNotifier {
     });
   }
 
-  void refreshFunction(BuildContext context) async {
+  Future<void> refreshFunction(BuildContext context) async {
     await _loadUserDataFromStorage();
-    homeProvider.initFunction(context: context);
+    await homeProvider.initFunction(context: context);
   }
 
   void _navigateToMainApp(BuildContext context) async {

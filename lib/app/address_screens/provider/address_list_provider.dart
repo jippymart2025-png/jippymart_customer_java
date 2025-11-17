@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -17,6 +18,7 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 class AddressListProvider extends ChangeNotifier {
+  static const Duration _networkTimeout = Duration(seconds: 20);
   UserModel userModel = UserModel();
   List<ShippingAddress> shippingAddressList = <ShippingAddress>[];
   List saveAsList = ['Home', 'Work', 'Hotel', 'other'];
@@ -126,6 +128,9 @@ class AddressListProvider extends ChangeNotifier {
       } else {
         return null;
       }
+    } on TimeoutException catch (e) {
+      print("getUserProfile timeout $e");
+      return null;
     } catch (e) {
       print("getUserProfile $e");
       return null;
@@ -286,7 +291,7 @@ class AddressListProvider extends ChangeNotifier {
             headers: headers,
             body: jsonEncode(shippingAddresses), // ✅ Array directly
           )
-          .timeout(const Duration(seconds: 30));
+          .timeout(_networkTimeout);
       log("🔵 STATUS: ${response.statusCode}");
       log("🔵 BODY: ${response.body}");
       if (response.statusCode == 200) {
@@ -304,6 +309,9 @@ class AddressListProvider extends ChangeNotifier {
         log("❌ Server responded with status: ${response.statusCode}");
         return false;
       }
+    } on TimeoutException catch (e) {
+      log("❌ Timeout during updateUser: $e");
+      return false;
     } catch (e, st) {
       log("❌ Exception during updateUser: $e\n$st");
       return false;
@@ -327,6 +335,10 @@ class AddressListProvider extends ChangeNotifier {
       setLoading(true);
       ShowToastDialog.showLoader("Please wait".tr);
       try {
+        final userId = await SqlStorageConst.getFirebaseId();
+        if (userId == null || userId.isEmpty) {
+          throw Exception('Missing user id. Please re-login.');
+        }
         // Prepare the shipping address model
         final shippingModels = ShippingAddress(
           id: shippingModel.id ?? Constant.getUuid(),
@@ -366,18 +378,28 @@ class AddressListProvider extends ChangeNotifier {
         final success = await addressListProvider.updateUser(userModel);
         if (success) {
           shippingAddressList = updatedAddressList;
-          homeProvider.ensureUserModelIsLoaded();
+          await homeProvider.ensureUserModelIsLoaded();
+          await homeProvider.getZone();
           ShowToastDialog.closeLoader();
           Get.back();
           ShowToastDialog.showToast("Address saved successfully".tr);
         } else {
           ShowToastDialog.closeLoader();
-          ShowToastDialog.showToast("Failed to save address".tr);
+          ShowToastDialog.showToast(
+            "Failed to save address. Please try again.".tr,
+          );
         }
+      } on TimeoutException {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("Request timed out. Try again.".tr);
       } catch (e) {
         print(" saveAddressFunction  ${e.toString()} ");
         ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast("Error saving address".tr);
+        ShowToastDialog.showToast(
+          e.toString().contains('Unauthorized')
+              ? "Session expired. Please login again.".tr
+              : "Error saving address".tr,
+        );
       } finally {
         setLoading(false);
       }
