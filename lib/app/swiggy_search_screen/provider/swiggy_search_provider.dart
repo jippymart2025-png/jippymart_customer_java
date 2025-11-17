@@ -680,7 +680,6 @@ class SwiggySearchProvider extends ChangeNotifier {
     searchText = query;
     hasSearched = true;
     isLoadingData = true;
-
     if (query.trim().isEmpty) {
       restaurantResults.clear();
       productResults.clear();
@@ -699,12 +698,10 @@ class SwiggySearchProvider extends ChangeNotifier {
 
     try {
       print("🔍 Enhanced search for: '$query'");
-
       // 🔎 Get results from Firestore (or local lists)
       List<VendorModel> allRestaurants = [];
       List<ProductModel> allProducts = [];
       List<VendorCategoryModel> allCategories = [];
-
       // **MEMORY SAFE: Use strict limits to prevent OutOfMemoryError**
       try {
         final String? zoneId = Constant.selectedZone?.id;
@@ -785,7 +782,8 @@ class SwiggySearchProvider extends ChangeNotifier {
                     p.categoryID!.toLowerCase().contains(lowerQuery)) ||
                 (p.vendorID != null &&
                     p.vendorID!.toLowerCase().contains(lowerQuery)) ||
-                (p.id != null && p.id!.toLowerCase().contains(lowerQuery)) ||
+                (p.id != null &&
+                    p.id.toString().toLowerCase().contains(lowerQuery)) ||
                 (p.price != null &&
                     p.price!.toLowerCase().contains(lowerQuery)) ||
                 (p.disPrice != null &&
@@ -1552,7 +1550,6 @@ class SwiggySearchProvider extends ChangeNotifier {
     }
   }
 
-  /// **OPTIMIZED CATEGORY SEARCH - Main fields**
   Future<List<VendorCategoryModel>> _searchCategoriesOptimized(
     String query,
     int limit,
@@ -1560,27 +1557,25 @@ class SwiggySearchProvider extends ChangeNotifier {
     try {
       print("🔍 Optimized category search for: '$query' (limit: $limit)");
 
-      // **SINGLE QUERY: Load categories (no prefix matching)**
-      Query firestoreQuery = FirebaseFirestore.instance
-          .collection(CollectionName.vendorCategories)
-          .limit(limit);
-
-      QuerySnapshot querySnapshot = await firestoreQuery.get();
+      // **API CALL: Load categories instead of Firebase**
+      List<VendorCategoryModel> allCategories = await getVendorCategory();
 
       List<VendorCategoryModel> results = [];
-      for (var document in querySnapshot.docs) {
+      for (var category in allCategories) {
         try {
-          final data = document.data() as Map<String, dynamic>;
-          final category = VendorCategoryModel.fromJson(data);
-
           // **SMART MATCHING: Check title first, then description**
           if (_categoryMatchesPrimaryQuery(category, query)) {
             results.add(category);
+            // Apply limit after matching
+            if (results.length >= limit) {
+              break;
+            }
           }
         } catch (e) {
-          print('❌ Error parsing category ${document.id}: $e');
+          print('❌ Error processing category: $e');
         }
       }
+
       notifyListeners();
       print("✅ Found ${results.length} categories via optimized search");
       return results;

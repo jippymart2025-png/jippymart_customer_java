@@ -322,7 +322,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   Future<void> loadFavorites() async {
     try {
       if (Constant.userModel != null) {
-        // Load favorite restaurants
         final favoriteRestaurants =
             await FavouriteProvider.getFavouriteRestaurants();
         isRestaurantFavorite = favoriteRestaurants.any(
@@ -330,7 +329,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         );
         // Load favorite items
         final favoriteItems = await FavouriteProvider.getFavouriteFoods();
-        favoriteProductIds = favoriteItems.map((item) => item.id!).toList();
+        favoriteProductIds = favoriteItems
+            .map((item) => item.id.toString())
+            .toList();
 
         notifyListeners();
       }
@@ -880,21 +881,21 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }) async {
     if (isIncrement) {
       final promo = _getCachedPromotionalData(
-        productModel.id ?? '',
-        vendorModel.id ?? '',
+        productModel.id.toString(),
+        vendorModel.id.toString(),
       );
 
       if (promo != null) {
         final isAllowed = isPromotionalItemQuantityAllowed(
-          productModel.id ?? '',
-          vendorModel.id ?? '',
+          productModel.id.toString() ?? '',
+          vendorModel.id.toString() ?? '',
           quantity,
         );
 
         if (!isAllowed) {
           final limit = getPromotionalItemLimit(
-            productModel.id ?? '',
-            vendorModel.id ?? '',
+            productModel.id.toString() ?? '',
+            vendorModel.id.toString() ?? '',
           );
           ShowToastDialog.showToast(
             "Maximum $limit items allowed for this promotional offer".tr,
@@ -937,7 +938,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       cartProductModel.extras = selectedAddOns.isEmpty ? [] : selectedAddOns;
       if (isIncrement) {
         final promo = _getCachedPromotionalData(
-          productModel.id ?? '',
+          productModel.id.toString() ?? '',
           vendorModel.id ?? '',
         );
         if (promo != null) {
@@ -945,7 +946,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         }
       }
     } else {
-      cartProductModel.id = productModel.id!;
+      cartProductModel.id = productModel.id.toString();
       cartProductModel.name = productModel.name!;
       cartProductModel.photo = productModel.photo!;
       cartProductModel.categoryId = productModel.categoryID!;
@@ -959,7 +960,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       cartProductModel.extras = selectedAddOns.isEmpty ? [] : selectedAddOns;
       if (isIncrement) {
         final promo = await FireStoreUtils.getActivePromotionForProduct(
-          productId: productModel.id ?? '',
+          productId: productModel.id.toString() ?? '',
           restaurantId: vendorModel.id ?? '',
         );
         if (promo != null) {
@@ -984,19 +985,19 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     if (1 <= (productModel.quantity ?? 0) ||
         (productModel.quantity ?? 0) == -1) {
       final promo = getActivePromotionForProduct(
-        productId: productModel.id ?? '',
+        productId: productModel.id.toString() ?? '',
         restaurantId: productModel.vendorID ?? '',
       );
       // Check promotional item limit
       if (promo != null) {
         final isAllowed = isPromotionalItemQuantityAllowed(
-          productModel.id ?? '',
+          productModel.id.toString() ?? '',
           productModel.vendorID ?? '',
           1,
         );
         if (!isAllowed) {
           final limit = getPromotionalItemLimit(
-            productModel.id ?? '',
+            productModel.id.toString() ?? '',
             productModel.vendorID ?? '',
           );
           ShowToastDialog.showToast(

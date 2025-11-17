@@ -226,7 +226,7 @@ class ProductListView extends StatelessWidget {
                     Builder(
                       builder: (context) {
                         final promo = controller.getActivePromotionForProduct(
-                          productId: productModel.id ?? '',
+                          productId: productModel.id.toString() ?? '',
                           restaurantId: productModel.vendorID ?? '',
                         );
                         if (promo != null) {
@@ -261,7 +261,7 @@ class ProductListView extends StatelessWidget {
                     Builder(
                       builder: (context) {
                         final promo = controller.getActivePromotionForProduct(
-                          productId: productModel.id ?? '',
+                          productId: productModel.id.toString() ?? '',
                           restaurantId: productModel.vendorID ?? '',
                         );
                         final hasPromo = promo != null;
@@ -433,7 +433,7 @@ class ProductListView extends StatelessWidget {
               Builder(
                 builder: (context) {
                   final promo = controller.getActivePromotionForProduct(
-                    productId: productModel.id ?? '',
+                    productId: productModel.id.toString() ?? '',
                     restaurantId: productModel.vendorID ?? '',
                   );
 
@@ -469,18 +469,22 @@ class ProductListView extends StatelessWidget {
                 child: InkWell(
                   onTap: () async {
                     // Validate product before toggling favorite
-                    if (productModel.id == null || productModel.id!.isEmpty) {
+                    if (productModel.id == null ||
+                        productModel.id.toString().isEmpty) {
                       ShowToastDialog.showToast("Invalid product data");
                       return;
                     }
 
                     try {
-                      await controller.toggleProductFavorite(productModel.id!);
+                      await controller.toggleProductFavorite(
+                        productModel.id!.toString(),
+                      );
                     } catch (e) {
                       ShowToastDialog.showToast("Failed to update favorites");
                     }
                   },
-                  child: controller.isProductFavorite(productModel.id ?? "")
+                  child:
+                      controller.isProductFavorite(productModel.id.toString())
                       ? SvgPicture.asset("assets/icons/ic_like_fill.svg")
                       : SvgPicture.asset("assets/icons/ic_like.svg"),
                 ),
@@ -557,7 +561,7 @@ class ProductListView extends StatelessWidget {
               onTap: () async {
                 // Check for promotional price
                 final promo = await FireStoreUtils.getActivePromotionForProduct(
-                  productId: productModel.id ?? '',
+                  productId: productModel.id.toString() ?? '',
                   restaurantId: productModel.vendorID ?? '',
                 );
 
@@ -613,7 +617,7 @@ class ProductListView extends StatelessWidget {
                   // Check for promotional price and limit
                   final promo =
                       await FireStoreUtils.getActivePromotionForProduct(
-                        productId: productModel.id ?? '',
+                        productId: productModel.id.toString() ?? '',
                         restaurantId: productModel.vendorID ?? '',
                       );
 
@@ -621,7 +625,7 @@ class ProductListView extends StatelessWidget {
                   if (promo != null) {
                     final isAllowed = controller
                         .isPromotionalItemQuantityAllowed(
-                          productModel.id ?? '',
+                          productModel.id.toString() ?? '',
                           productModel.vendorID ?? '',
                           cartItem
                                   .firstWhere((p0) => p0.id == productModel.id)
@@ -631,7 +635,7 @@ class ProductListView extends StatelessWidget {
 
                     if (!isAllowed) {
                       final limit = controller.getPromotionalItemLimit(
-                        productModel.id ?? '',
+                        productModel.id.toString() ?? '',
                         productModel.vendorID ?? '',
                       );
                       ShowToastDialog.showToast(

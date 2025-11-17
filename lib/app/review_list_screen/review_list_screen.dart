@@ -77,30 +77,19 @@ class ReviewListScreen extends StatelessWidget {
                                 Visibility(
                                   visible: ratingModel.productId != null,
                                   child: FutureBuilder(
-                                    future: FireStoreUtils.fireStore
-                                        .collection(
-                                          CollectionName.vendorProducts,
-                                        )
-                                        .doc(
-                                          ratingModel.productId
-                                              ?.split('~')
-                                              .first,
-                                        )
-                                        .get(),
+                                    future: FireStoreUtils.getProductById(
+                                      ratingModel.productId!.split('~').first,
+                                    ),
                                     builder: (context, snapshot) {
                                       if (snapshot.connectionState ==
                                           ConnectionState.waiting) {
                                         return const Text('');
                                       } else {
-                                        if (snapshot.hasError) {
+                                        if (snapshot.hasError ||
+                                            snapshot.data == null) {
                                           return const Text('');
-                                        } else if (snapshot.data == null) {
-                                          return const Text('');
-                                        } else if (snapshot.data != null) {
-                                          ProductModel model =
-                                              ProductModel.fromJson(
-                                                snapshot.data!.data()!,
-                                              );
+                                        } else {
+                                          ProductModel model = snapshot.data!;
                                           return Text(
                                             '${'Rate for'.tr} - ${model.name ?? ''}',
                                             style: TextStyle(
@@ -109,8 +98,6 @@ class ReviewListScreen extends StatelessWidget {
                                               fontFamily: AppThemeData.semiBold,
                                             ),
                                           );
-                                        } else {
-                                          return const Text('');
                                         }
                                       }
                                     },
@@ -171,29 +158,22 @@ class ReviewListScreen extends StatelessWidget {
                                         child: Row(
                                           children: [
                                             FutureBuilder(
-                                              future: FireStoreUtils.fireStore
-                                                  .collection(
-                                                    CollectionName
-                                                        .reviewAttributes,
-                                                  )
-                                                  .doc(key)
-                                                  .get(),
+                                              future:
+                                                  FireStoreUtils.getVendorReviewAttribute(
+                                                    key,
+                                                  ),
+                                              // API call instead of Firebase
                                               builder: (context, snapshot) {
                                                 if (snapshot.connectionState ==
                                                     ConnectionState.waiting) {
                                                   return const Text('');
                                                 } else {
-                                                  if (snapshot.hasError) {
-                                                    return const Text('');
-                                                  } else if (snapshot.data ==
-                                                      null) {
+                                                  if (snapshot.hasError ||
+                                                      snapshot.data == null) {
                                                     return const Text('');
                                                   } else {
                                                     ReviewAttributeModel model =
-                                                        ReviewAttributeModel.fromJson(
-                                                          snapshot.data!
-                                                              .data()!,
-                                                        );
+                                                        snapshot.data!;
                                                     return Expanded(
                                                       child: Text(
                                                         model.title.toString(),

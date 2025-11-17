@@ -152,7 +152,7 @@ class MartProvider extends ChangeNotifier {
   bool filterNonVegOnly = false;
   bool filterAvailableOnly = true;
 
-  void initFunction() {
+  void initFunction() async {
     loadMartBannersStream();
     loadFeaturedCategories();
     loadCategoryProductsForSections();

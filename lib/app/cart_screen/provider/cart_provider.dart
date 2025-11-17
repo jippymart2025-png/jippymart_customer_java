@@ -47,6 +47,19 @@ import '../../../models/mart_item_model.dart';
 import '../../../services/mart_firestore_service.dart';
 
 class CartControllerProvider extends ChangeNotifier {
+  // ProductModel? productModelImageDetails;
+  //
+  // void cartProductDetailsImageProductListFunction() {
+  //   CartProductModel cartProductModel = cartItem[index];
+  //   ProductModel? productModel;
+  //   FireStoreUtils.getProductById(cartProductModel.id!.split('~').first).then((
+  //     value,
+  //   ) {
+  //     productModelImageDetails = value;
+  //     notifyListeners();
+  //   });
+  // }
+
   Future<void> showPaymentMethodDialog(BuildContext context) async {
     final canProceed = await validateAndPlaceOrderBulletproof(context);
     if (!canProceed) {
@@ -1569,7 +1582,6 @@ class CartControllerProvider extends ChangeNotifier {
         subTotal += (itemPrice * quantity) + (extrasPrice * quantity);
       }
 
-      // 2. Now calculate delivery fee using the correct subtotal
       if (cartItem.isNotEmpty) {
         if (selectedFoodType == "Delivery") {
           if (selectedAddress?.location?.latitude != null &&
@@ -1969,6 +1981,7 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
     } else {
+      print("addToCart removeFromCart");
       cartProvider.removeFromCart(cartProductModel, quantity);
       notifyListeners();
     }
@@ -2368,7 +2381,6 @@ class CartControllerProvider extends ChangeNotifier {
           return;
         }
       }
-      // Prepare cart products
       for (CartProductModel cartProduct in cartItem) {
         CartProductModel tempCart = cartProduct;
         if (cartProduct.extrasPrice == '0') {
@@ -2377,149 +2389,58 @@ class CartControllerProvider extends ChangeNotifier {
         tempProduc.add(tempCart);
         orderedProducts.add(tempCart);
       }
-
       Map<String, dynamic> specialDiscountMap = {
         'special_discount': specialDiscountAmount,
         'special_discount_label': specialDiscount,
         'specialType': specialType,
       };
+      // Create OrderModel instance for later use
       OrderModel orderModel = OrderModel();
 
-      final querySnapshot = await FirebaseFirestore.instance
-          .collection('restaurant_orders')
-          .where(FieldPath.documentId, isGreaterThanOrEqualTo: 'Jippy3000000')
-          .where(FieldPath.documentId, isLessThan: 'Jippy4')
-          .orderBy(FieldPath.documentId, descending: true)
-          .limit(1)
-          .get();
-
+      // **REPLACED: Firebase query with API call**
       int maxNumber = 5;
-      if (querySnapshot.docs.isNotEmpty) {
-        final id = querySnapshot.docs.first.id;
-        final match = RegExp(r'Jippy3(\d{7})').firstMatch(id);
-        if (match != null) {
-          final num = int.tryParse(match.group(1)!);
-          if (num != null && num > maxNumber) {
-            maxNumber = num;
+
+      try {
+        final response = await http.get(
+          Uri.parse('${AppConst.baseUrl}firestore/getLatestOrderInRange'),
+          headers: await getHeaders(),
+        );
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          if (responseData['success'] == true &&
+              responseData['order'] != null) {
+            final orderData = responseData['order'];
+            final String orderIdFromApi = orderData['id'].toString();
+            // Extract numeric part from order ID (assuming format like "Jippy3000001")
+            final match = RegExp(r'Jippy3(\d+)').firstMatch(orderIdFromApi);
+            if (match != null) {
+              final num = int.tryParse(match.group(1)!);
+              if (num != null && num > maxNumber) {
+                maxNumber = num;
+              }
+            }
           }
+        } else {
+          print('⚠️ API call failed with status: ${response.statusCode}');
+          // Continue with default maxNumber
         }
+      } catch (e) {
+        print('⚠️ Error fetching latest order: $e');
+        // Continue with default maxNumber
       }
+
       final nextNumber = maxNumber + 1;
-      orderModel.id = 'Jippy3${nextNumber.toString().padLeft(7, '0')}';
-      orderId = orderModel.id;
-      print('DEBUG: Generated Order ID: ${orderModel.id}');
+      String generatedOrderId =
+          'Jippy3${nextNumber.toString().padLeft(7, '0')}';
+      orderId = generatedOrderId;
+      orderModel.id = generatedOrderId;
+      print('DEBUG: Generated Order ID: $generatedOrderId');
 
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
-
-      // Handle vendor details - check if vendor model is set
-      if (vendorModel.id != null) {
-        // Restaurant order - use existing vendor model
-        orderModel.vendorID = vendorModel.id;
-        orderModel.vendor = vendorModel;
-        orderModel.adminCommission = vendorModel.adminCommission != null
-            ? vendorModel.adminCommission!.amount
-            : Constant.adminCommission!.amount;
-        orderModel.adminCommissionType = vendorModel.adminCommission != null
-            ? vendorModel.adminCommission!.commissionType
-            : Constant.adminCommission!.commissionType;
-      } else {
-        // Mart order - fetch the actual mart vendor from Firebase
-        try {
-          print('DEBUG: Fetching mart vendor for order...');
-          final martVendor = await MartVendorService.getDefaultMartVendor();
-          if (martVendor != null) {
-            orderModel.vendorID = martVendor.id;
-            // Convert MartVendorModel to VendorModel for compatibility
-            orderModel.vendor = VendorModel(
-              id: martVendor.id,
-              title: martVendor.title,
-              location: martVendor.location,
-              phonenumber: martVendor.phonenumber,
-              latitude: martVendor.latitude,
-              longitude: martVendor.longitude,
-              isOpen: martVendor.isOpen,
-              vType: martVendor.vType,
-              author: martVendor.author,
-              authorName: martVendor.authorName,
-              authorProfilePic: martVendor.authorProfilePic,
-              adminCommission: martVendor.adminCommission,
-              // deliveryCharge will be set to default below
-              workingHours: martVendor.workingHours
-                  ?.map(
-                    (wh) => WorkingHours(
-                      day: wh.day,
-                      timeslot: wh.timeslot
-                          ?.map((ts) => Timeslot(from: ts.from, to: ts.to))
-                          .toList(),
-                    ),
-                  )
-                  .toList(),
-            );
-            orderModel.adminCommission =
-                martVendor.adminCommission?.amount ??
-                Constant.adminCommission!.amount;
-            orderModel.adminCommissionType =
-                martVendor.adminCommission?.commissionType ??
-                Constant.adminCommission!.commissionType;
-          } else {
-            // Fallback to default values if no mart vendor found
-            orderModel.vendorID = 'mart_default';
-            // Create a default vendor object instead of setting to null
-            orderModel.vendor = VendorModel(
-              id: 'mart_default',
-              title: 'Jippy Mart',
-              location: 'Default Location',
-              phonenumber: '0000000000',
-              latitude: 15.48649,
-              // Default Ongole coordinates for mart
-              longitude: 80.04967,
-              isOpen: true,
-              vType: 'mart',
-              author: 'default',
-              authorName: 'Jippy Mart',
-              authorProfilePic: null,
-              adminCommission: AdminCommission(
-                amount: Constant.adminCommission!.amount,
-                commissionType: Constant.adminCommission!.commissionType,
-                isEnabled: true,
-              ),
-            );
-            orderModel.adminCommission = Constant.adminCommission!.amount;
-            orderModel.adminCommissionType =
-                Constant.adminCommission!.commissionType;
-          }
-        } catch (e) {
-          orderModel.vendorID = 'mart_default';
-          orderModel.vendor = VendorModel(
-            id: 'mart_default',
-            title: 'Jippy Mart',
-            location: 'Default Location',
-            phonenumber: '0000000000',
-            latitude: 15.48649,
-            // Default Ongole coordinates for mart
-            longitude: 80.04967,
-            isOpen: true,
-            vType: 'mart',
-            author: 'default',
-            authorName: 'Jippy Mart',
-            authorProfilePic: null,
-            adminCommission: AdminCommission(
-              amount: Constant.adminCommission!.amount,
-              commissionType: Constant.adminCommission!.commissionType,
-              isEnabled: true,
-            ),
-          );
-          orderModel.adminCommission = Constant.adminCommission!.amount;
-          orderModel.adminCommissionType =
-              Constant.adminCommission!.commissionType;
-        }
-      }
-      String admin_fee = "0";
-      if (surgePercent > 0) {
-        admin_fee = await getAdminSurgeFee();
-      }
+      orderModel.vendorID = vendorModel.id;
+      orderModel.vendor = vendorModel;
       orderModel.products = tempProduc;
       orderModel.specialDiscount = specialDiscountMap;
       orderModel.paymentMethod = selectedPaymentMethod;
@@ -2532,50 +2453,86 @@ class CartControllerProvider extends ChangeNotifier {
       orderModel.tipAmount = deliveryTips.toString();
       orderModel.toPayAmount = totalAmount;
       orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime);
-      orderModel.surgeFee = "${surgePercent + int.parse(admin_fee)}";
-      if (vendorModel.id != null &&
-          vendorModel.latitude != null &&
-          vendorModel.longitude != null) {
-        Constant.calculateDistance(
-          vendorModel.latitude!,
-          vendorModel.longitude!,
-          selectedAddress?.location?.latitude ?? 0.0,
-          selectedAddress?.location?.longitude ?? 0.0,
-        );
-        notifyListeners();
+
+      // Prepare API request payload
+      Map<String, dynamic> orderPayload = {
+        "order_id": generatedOrderId,
+        "author_id": await SqlStorageConst.getFirebaseId(),
+        "cart_items": tempProduc.map((item) => item.toJson()).toList(),
+        "selected_address": {
+          "address_id": selectedAddress?.id,
+          "label": selectedAddress?.address,
+          "address_line": selectedAddress?.address,
+          "city": selectedAddress?.addressAs,
+          "lat": selectedAddress?.location?.latitude,
+          "lng": selectedAddress?.location?.longitude,
+        },
+        "payment_method": selectedPaymentMethod,
+        "total_amount": totalAmount,
+        "delivery_charges": deliveryCharges.toString(),
+        "tip_amount": deliveryTips.toString(),
+        "coupon_id": selectedCouponModel.id ?? '',
+        "coupon_code": selectedCouponModel.code ?? '',
+        "discount": couponAmount,
+        "schedule_time": scheduleDateTime.toIso8601String(),
+        "surge_percent": surgePercent,
+        "admin_surge_fee": await getAdminSurgeFee(),
+        "special_discount": specialDiscountMap,
+        "vendor_id": vendorModel.id ?? 'mart_default',
+        "status": Constant.orderPlaced,
+        "created_at": DateTime.now().toIso8601String(),
+      };
+
+      // **API CALL: Store the order**
+      print('🌐 Creating order via API...');
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}mobile/orders'),
+        headers: await getHeaders(),
+        body: json.encode(orderPayload),
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('API returned status code: ${response.statusCode}');
       }
 
-      // Store the order
-      await FirebaseFirestore.instance
-          .collection('restaurant_orders')
-          .doc(orderModel.id)
-          .set(orderModel.toJson());
+      final responseData = json.decode(response.body);
+      if (responseData['success'] != true) {
+        throw Exception('API returned error: ${responseData['message']}');
+      }
+
+      print('✅ Order created successfully via API');
+
       notifyListeners();
+
+      // Execute additional tasks
       final additionalTasks = <Future>[];
-      if (orderModel.couponId != null && orderModel.couponId!.isNotEmpty) {
-        additionalTasks.add(markCouponAsUsed(orderModel.couponId!));
+      if (selectedCouponModel.id != null &&
+          selectedCouponModel.id!.isNotEmpty) {
+        additionalTasks.add(markCouponAsUsed(selectedCouponModel.id!));
+      }
+
+      // Create order billing record via API if needed
+      String adminFee = "0";
+      if (surgePercent > 0) {
+        adminFee = await getAdminSurgeFee();
       }
 
       additionalTasks.add(
-        FirebaseFirestore.instance
-            .collection('order_Billing')
-            .doc(orderModel.id)
-            .set({
-              'orderId': orderModel.id,
-              'ToPay': orderModel.toPayAmount,
-              'createdAt': Timestamp.now(),
-              'surge_fee': surgePercent,
-              'admin_surge_fee': admin_fee,
-              'total_surge_fee': "${surgePercent + int.parse(admin_fee)}",
-            }),
+        _createOrderBilling(
+          generatedOrderId,
+          totalAmount.toString(),
+          surgePercent.toInt(),
+          adminFee,
+        ),
       );
-      if (orderModel.vendor != null && orderModel.vendor!.author != null) {
+
+      if (vendorModel.id != null && vendorModel.author != null) {
         additionalTasks.add(
           AddressListProvider.getUserProfile(
-            orderModel.vendor!.author.toString(),
+            vendorModel.author.toString(),
           ).then((value) {
             if (value != null) {
-              if (orderModel.scheduleTime != null) {
+              if (scheduleDateTime.isAfter(DateTime.now())) {
                 SendNotification.sendFcmMessage(
                   Constant.scheduleOrder,
                   value.fcmToken ?? '',
@@ -2592,6 +2549,7 @@ class CartControllerProvider extends ChangeNotifier {
           }),
         );
       }
+
       additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
 
       await Future.wait(additionalTasks);
@@ -2606,6 +2564,7 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       notifyListeners();
+
       // Navigate to order success screen
       Get.off(
         const OrderPlacingScreen(),
@@ -2633,6 +2592,39 @@ class CartControllerProvider extends ChangeNotifier {
         await rollbackFailedOrder(orderId, orderedProducts);
       }
       notifyListeners();
+    }
+  }
+
+  // Helper method to create order billing via API
+  Future<void> _createOrderBilling(
+    String orderId,
+    String totalAmount,
+    int surgePercent,
+    String adminFee,
+  ) async {
+    try {
+      final billingPayload = {
+        'order_id': orderId,
+        'to_pay': totalAmount,
+        'created_at': DateTime.now().toIso8601String(),
+        'surge_fee': surgePercent,
+        'admin_surge_fee': adminFee,
+        'total_surge_fee': "${surgePercent + int.parse(adminFee)}",
+      };
+
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}order-billing'),
+        headers: await getHeaders(),
+        body: json.encode(billingPayload),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('✅ Order billing created successfully');
+      } else {
+        print('⚠️ Failed to create order billing: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('❌ Error creating order billing: $e');
     }
   }
 

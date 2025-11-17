@@ -512,7 +512,9 @@ class _SearchScreenState extends State<SearchScreen> {
             restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
             // Navigate to restaurant details screen with the product ID to scroll to
             Get.to(
-              () => RestaurantDetailsScreen(scrollToProductId: productModel.id),
+              () => RestaurantDetailsScreen(
+                scrollToProductId: productModel.id.toString(),
+              ),
             );
           }
         },

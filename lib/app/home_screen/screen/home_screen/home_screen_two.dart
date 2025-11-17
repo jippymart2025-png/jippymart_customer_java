@@ -40,102 +40,117 @@ class HomeScreenTwo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<HomeProvider, MartProvider, MartNavigationProvider>(
-      builder: (context, controller, martProvider, martNavigationProvider, _) {
-        return Scaffold(
-          body: Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(ImageConst.backgroundImage),
-                fit: BoxFit.cover,
-              ),
-            ),
-            child: RefreshIndicator(
-              onRefresh: () async {
-                controller.getRefresh(context);
-              },
-              child: controller.isLoading
-                  ? const RestaurantLoadingWidget()
-                  : Constant.isZoneAvailable == false
-                  ? Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            "assets/images/location.gif",
-                            height: 120,
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            Constant.isZoneAvailable == false
-                                ? "Service Not Available in Your Area".tr
-                                : "No Restaurants Found in Your Area".tr,
-                            style: TextStyle(
-                              color: AppThemeData.grey800,
-                              fontSize: 22,
-                              fontFamily: AppThemeData.semiBold,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            Constant.isZoneAvailable == false
-                                ? "We don't currently deliver to your location. Please try a different address within our service area."
-                                      .tr
-                                : "Currently, there are no available restaurants in your zone. Try changing your location to find nearby options."
-                                      .tr,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: AppThemeData.grey500,
-                              fontSize: 16,
-                              fontFamily: AppThemeData.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          RoundedButtonFill(
-                            title: "Change Zone".tr,
-                            width: 55,
-                            height: 5.5,
-                            color: AppThemeData.primary300,
-                            textColor: AppThemeData.grey50,
-                            onPress: () async {
-                              Get.offAll(const LocationPermissionScreen());
-                            },
-                          ),
-                        ],
-                      ),
-                    )
-                  : Padding(
-                      padding: EdgeInsets.only(
-                        top: MediaQuery.of(context).viewPadding.top,
-                      ),
-                      child: Column(
-                        children: [
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                martFoodTabBarWidgetHome(
-                                  martProvider: martProvider,
-                                  martNavigationProvider:
-                                      martNavigationProvider,
-                                  context: context,
+    return Consumer4<
+      HomeProvider,
+      MartProvider,
+      MartNavigationProvider,
+      BestRestaurantProvider
+    >(
+      builder:
+          (
+            context,
+            controller,
+            martProvider,
+            martNavigationProvider,
+            bestRestaurantProvider,
+            _,
+          ) {
+            return Scaffold(
+              body: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage(ImageConst.backgroundImage),
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    controller.getRefresh(context);
+                  },
+                  child:
+                      controller.isLoading &&
+                          bestRestaurantProvider.allNearestRestaurant.isEmpty
+                      ? const RestaurantLoadingWidget()
+                      : Constant.isZoneAvailable == false
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                "assets/images/location.gif",
+                                height: 120,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                Constant.isZoneAvailable == false
+                                    ? "Service Not Available in Your Area".tr
+                                    : "No Restaurants Found in Your Area".tr,
+                                style: TextStyle(
+                                  color: AppThemeData.grey800,
+                                  fontSize: 22,
+                                  fontFamily: AppThemeData.semiBold,
                                 ),
-                                homeProfileAddressWidget(
-                                  homeProvider: controller,
-                                  context: context,
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                Constant.isZoneAvailable == false
+                                    ? "We don't currently deliver to your location. Please try a different address within our service area."
+                                          .tr
+                                    : "Currently, there are no available restaurants in your zone. Try changing your location to find nearby options."
+                                          .tr,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: AppThemeData.grey500,
+                                  fontSize: 16,
+                                  fontFamily: AppThemeData.bold,
                                 ),
-                                const SizedBox(height: 20),
-                                homeScreenSearchWidget(),
-                                const SizedBox(height: 10),
-                              ],
-                            ),
+                              ),
+                              const SizedBox(height: 20),
+                              RoundedButtonFill(
+                                title: "Change Zone".tr,
+                                width: 55,
+                                height: 5.5,
+                                color: AppThemeData.primary300,
+                                textColor: AppThemeData.grey50,
+                                onPress: () async {
+                                  Get.offAll(const LocationPermissionScreen());
+                                },
+                              ),
+                            ],
                           ),
-                          Consumer<BestRestaurantProvider>(
-                            builder: (context, bestRestaurantProvider, _) {
-                              return Expanded(
+                        )
+                      : Padding(
+                          padding: EdgeInsets.only(
+                            top: MediaQuery.of(context).viewPadding.top,
+                          ),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    martFoodTabBarWidgetHome(
+                                      martProvider: martProvider,
+                                      martNavigationProvider:
+                                          martNavigationProvider,
+                                      context: context,
+                                    ),
+                                    homeProfileAddressWidget(
+                                      homeProvider: controller,
+                                      context: context,
+                                    ),
+                                    const SizedBox(height: 20),
+                                    homeScreenSearchWidget(),
+                                    const SizedBox(height: 10),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
                                 child: SingleChildScrollView(
                                   child: Column(
                                     children: [
@@ -309,74 +324,72 @@ class HomeScreenTwo extends StatelessWidget {
                                     ],
                                   ),
                                 ),
-                              );
-                            },
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-            ),
-          ),
-          floatingActionButton: Stack(
-            children: [
-              const Positioned(
-                bottom: 0,
-                left: 16,
-                right: 0,
-                child: MiniCartBar(),
+                        ),
+                ),
               ),
-              Positioned(
-                bottom: cartItem.isNotEmpty ? 100 : 16,
-                // Position above mini cart if active, otherwise at bottom
-                right: 0,
-                // Consistent right margin
-                child: FloatingActionButton(
-                  onPressed: () async {
-                    const String phoneNumber =
-                        '+919390579864'; // Your actual WhatsApp number
-                    const String message =
-                        'Hello! I need help with my order.'; // Customize the message
-                    final Uri whatsappUrl = Uri.parse(
-                      'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}',
-                    );
-                    try {
-                      if (await canLaunchUrl(whatsappUrl)) {
-                        await launchUrl(
-                          whatsappUrl,
-                          mode: LaunchMode.externalApplication,
+              floatingActionButton: Stack(
+                children: [
+                  const Positioned(
+                    bottom: 0,
+                    left: 16,
+                    right: 0,
+                    child: MiniCartBar(),
+                  ),
+                  Positioned(
+                    bottom: cartItem.isNotEmpty ? 100 : 16,
+                    // Position above mini cart if active, otherwise at bottom
+                    right: 0,
+                    // Consistent right margin
+                    child: FloatingActionButton(
+                      onPressed: () async {
+                        const String phoneNumber =
+                            '+919390579864'; // Your actual WhatsApp number
+                        const String message =
+                            'Hello! I need help with my order.'; // Customize the message
+                        final Uri whatsappUrl = Uri.parse(
+                          'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}',
                         );
-                      } else {
-                        final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
-                        if (await canLaunchUrl(phoneUrl)) {
-                          await launchUrl(
-                            phoneUrl,
-                            mode: LaunchMode.externalApplication,
-                          );
+                        try {
+                          if (await canLaunchUrl(whatsappUrl)) {
+                            await launchUrl(
+                              whatsappUrl,
+                              mode: LaunchMode.externalApplication,
+                            );
+                          } else {
+                            final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
+                            if (await canLaunchUrl(phoneUrl)) {
+                              await launchUrl(
+                                phoneUrl,
+                                mode: LaunchMode.externalApplication,
+                              );
+                            }
+                          }
+                        } catch (e) {
+                          print('Error launching WhatsApp: $e');
                         }
-                      }
-                    } catch (e) {
-                      print('Error launching WhatsApp: $e');
-                    }
-                  },
-                  backgroundColor: Colors.green, // WhatsApp green color
-                  child: Padding(
-                    padding: const EdgeInsets.all(0.0),
-                    child: SvgPicture.asset(
-                      'assets/images/whatsapp.svg',
-                      width: 44,
-                      height: 44,
-                      colorFilter: const ColorFilter.mode(
-                        Colors.white,
-                        BlendMode.srcIn,
+                      },
+                      backgroundColor: Colors.green, // WhatsApp green color
+                      child: Padding(
+                        padding: const EdgeInsets.all(0.0),
+                        child: SvgPicture.asset(
+                          'assets/images/whatsapp.svg',
+                          width: 44,
+                          height: 44,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-        );
-      },
+            );
+          },
     );
   }
 }

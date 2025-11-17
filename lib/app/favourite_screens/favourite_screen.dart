@@ -672,7 +672,7 @@ class FavouriteScreen extends StatelessWidget {
                                   try {
                                     await favouriteProvider
                                         .removeFavoriteFoodUI(
-                                          productModel.id!,
+                                          productModel.id.toString(),
                                           index,
                                         );
                                     ScaffoldMessenger.of(context).showSnackBar(

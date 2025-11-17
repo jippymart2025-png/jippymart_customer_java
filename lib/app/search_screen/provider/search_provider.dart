@@ -131,7 +131,7 @@ class TrieSearch {
   String _getId(dynamic data) {
     try {
       if (data is VendorModel) return data.id ?? '';
-      if (data is ProductModel) return data.id ?? '';
+      if (data is ProductModel) return data.id.toString() ?? '';
       return '';
     } catch (e) {
       if (kDebugMode) {

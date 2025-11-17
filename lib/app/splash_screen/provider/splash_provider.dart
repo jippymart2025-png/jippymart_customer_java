@@ -13,6 +13,7 @@ import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+
 import 'package:provider/provider.dart';
 
 class SplashProvider extends ChangeNotifier {

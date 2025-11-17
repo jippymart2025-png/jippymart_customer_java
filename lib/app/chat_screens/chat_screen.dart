@@ -22,10 +22,109 @@ import 'package:provider/provider.dart';
 
 import 'ChatVideoContainer.dart';
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key, required this.userId});
 
   final String? userId;
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final ScrollController _scrollController = ScrollController();
+  List<ConversationModel> _messages = [];
+  bool _isLoading = true;
+  bool _hasMore = true;
+  int _currentPage = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+    _setupScrollListener();
+  }
+
+  void _setupScrollListener() {
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels ==
+          _scrollController.position.maxScrollExtent) {
+        _loadMoreMessages();
+      }
+    });
+  }
+
+  Future<void> _loadMessages({bool loadMore = false}) async {
+    if (!loadMore) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
+    try {
+      final ChatProvider controller = Provider.of<ChatProvider>(
+        context,
+        listen: false,
+      );
+      // Replace with your API call
+      final response = await FireStoreUtils.getChatMessages(
+        orderId: controller.orderId,
+        chatType: controller.chatType?.toLowerCase() ?? 'driver',
+        page: _currentPage,
+      );
+
+      if (response['status'] == true) {
+        final data = response['data'];
+        final List<dynamic> messagesData = data['data'];
+
+        final List<ConversationModel> newMessages = messagesData
+            .map((json) => ConversationModel.fromJson(json))
+            .toList();
+
+        setState(() {
+          if (loadMore) {
+            _messages.addAll(newMessages);
+          } else {
+            _messages = newMessages;
+          }
+
+          _hasMore = data['next_page_url'] != null;
+          _isLoading = false;
+        });
+
+        // Scroll to bottom when new messages are loaded
+        if (!loadMore) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollToBottom();
+          });
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      print('Error loading messages: $e');
+    }
+  }
+
+  Future<void> _loadMoreMessages() async {
+    if (!_hasMore || _isLoading) return;
+
+    setState(() {
+      _currentPage++;
+    });
+
+    await _loadMessages(loadMore: true);
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,33 +152,35 @@ class ChatScreen extends StatelessWidget {
                   onTap: () {
                     FocusScope.of(context).unfocus();
                   },
-                  child: FirestorePagination(
-                    controller: controller.scrollController,
-                    physics: const BouncingScrollPhysics(),
-                    itemBuilder: (context, documentSnapshots, index) {
-                      ConversationModel inboxModel = ConversationModel.fromJson(
-                        documentSnapshots[index].data() as Map<String, dynamic>,
-                      );
-                      return chatItemView(
-                        inboxModel.senderId == userId,
-                        inboxModel,
-                      );
-                    },
-                    onEmpty: Constant.showEmptyView(
-                      message: "No Conversion found".tr,
-                    ),
-                    query: FirebaseFirestore.instance
-                        .collection(
-                          controller.chatType == "Driver"
-                              ? 'chat_driver'
-                              : 'chat_restaurant',
+                  child: _isLoading && _messages.isEmpty
+                      ? const Center(child: CircularProgressIndicator())
+                      : _messages.isEmpty
+                      ? Constant.showEmptyView(
+                          message: "No Conversion found".tr,
                         )
-                        .doc(controller.orderId)
-                        .collection("thread")
-                        .orderBy('createdAt', descending: false),
-                    isLive: true,
-                    viewType: ViewType.list,
-                  ),
+                      : ListView.builder(
+                          controller: _scrollController,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _messages.length + (_hasMore ? 1 : 0),
+                          itemBuilder: (context, index) {
+                            if (index == _messages.length) {
+                              return _hasMore
+                                  ? const Padding(
+                                      padding: EdgeInsets.all(16.0),
+                                      child: Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    )
+                                  : const SizedBox.shrink();
+                            }
+
+                            ConversationModel inboxModel = _messages[index];
+                            return chatItemView(
+                              inboxModel.senderId == widget.userId,
+                              inboxModel,
+                            );
+                          },
+                        ),
                 ),
               ),
               Container(
@@ -126,21 +227,16 @@ class ChatScreen extends StatelessWidget {
                                       .messageController
                                       .text
                                       .isNotEmpty) {
-                                    controller.sendMessage(
+                                    await controller.sendMessage(
                                       controller.messageController.text,
                                       null,
                                       '',
                                       'text',
                                     );
-                                    Timer(
-                                      const Duration(milliseconds: 500),
-                                      () => controller.scrollController.jumpTo(
-                                        controller
-                                            .scrollController
-                                            .position
-                                            .maxScrollExtent,
-                                      ),
-                                    );
+                                    // Reload messages after sending
+                                    _currentPage = 1;
+                                    await _loadMessages();
+                                    _scrollToBottom();
                                     controller.messageController.clear();
                                   }
                                 },
@@ -148,26 +244,21 @@ class ChatScreen extends StatelessWidget {
                             ),
                           ),
                           InkWell(
-                            onTap: () {
+                            onTap: () async {
                               if (controller
                                   .messageController
                                   .text
                                   .isNotEmpty) {
-                                controller.sendMessage(
+                                await controller.sendMessage(
                                   controller.messageController.text,
                                   null,
                                   '',
                                   'text',
                                 );
-                                Timer(
-                                  const Duration(milliseconds: 500),
-                                  () => controller.scrollController.jumpTo(
-                                    controller
-                                        .scrollController
-                                        .position
-                                        .maxScrollExtent,
-                                  ),
-                                );
+                                // Reload messages after sending
+                                _currentPage = 1;
+                                await _loadMessages();
+                                _scrollToBottom();
                                 controller.messageController.clear();
                               }
                             },
@@ -282,9 +373,7 @@ class ChatScreen extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     DateFormat('MMM d, yyyy hh:mm aa').format(
-                      DateTime.fromMillisecondsSinceEpoch(
-                        data.createdAt!.millisecondsSinceEpoch,
-                      ),
+                      DateTime.parse(data.createdAt.toString()).toLocal(),
                     ),
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
@@ -376,11 +465,9 @@ class ChatScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 5),
                 Text(
-                  DateFormat('MMM d, yyyy hh:mm aa').format(
-                    DateTime.fromMillisecondsSinceEpoch(
-                      data.createdAt!.millisecondsSinceEpoch,
-                    ),
-                  ),
+                  DateFormat(
+                    'MMM d, yyyy hh:mm aa',
+                  ).format(DateTime.parse(data.createdAt.toString()).toLocal()),
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
               ],
@@ -404,7 +491,11 @@ class ChatScreen extends StatelessWidget {
                 File(image.path),
                 context,
               );
-              controller.sendMessage('', url, '', 'image');
+              await controller.sendMessage('', url, '', 'image');
+              // Reload messages after sending
+              _currentPage = 1;
+              await _loadMessages();
+              _scrollToBottom();
             }
           },
           child: Text("Choose image from gallery".tr),
@@ -423,12 +514,16 @@ class ChatScreen extends StatelessWidget {
                     File(galleryVideo.path),
                   );
               if (videoContainer != null) {
-                controller.sendMessage(
+                await controller.sendMessage(
                   '',
                   videoContainer.videoUrl,
                   videoContainer.thumbnailUrl,
                   'video',
                 );
+                // Reload messages after sending
+                _currentPage = 1;
+                await _loadMessages();
+                _scrollToBottom();
               }
             }
           },
@@ -446,23 +541,15 @@ class ChatScreen extends StatelessWidget {
                 File(image.path),
                 context,
               );
-              controller.sendMessage('', url, '', 'image');
+              await controller.sendMessage('', url, '', 'image');
+              // Reload messages after sending
+              _currentPage = 1;
+              await _loadMessages();
+              _scrollToBottom();
             }
           },
           child: Text("Take a picture".tr),
         ),
-        // CupertinoActionSheetAction(
-        //   isDestructiveAction: false,
-        //   onPressed: () async {
-        //     Get.back();
-        //     XFile? recordedVideo = await controller.imagePicker.pickVideo(source: ImageSource.camera);
-        //     if (recordedVideo != null) {
-        //       ChatVideoContainer videoContainer = await FireStoreUtils.uploadChatVideoToFireStorage(File(recordedVideo.path), context);
-        //       controller.sendMessage('', videoContainer.videoUrl, videoContainer.thumbnailUrl, 'video');
-        //     }
-        //   },
-        //   child: Text("Record video".tr),
-        // )
       ],
       cancelButton: CupertinoActionSheetAction(
         child: Text('Cancel'.tr),
@@ -472,5 +559,11 @@ class ChatScreen extends StatelessWidget {
       ),
     );
     showCupertinoModalPopup(context: context, builder: (context) => action);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 }

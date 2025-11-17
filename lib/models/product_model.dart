@@ -15,7 +15,7 @@ class ProductModel {
   Map<String, dynamic>? reviewAttributes;
   Map<String, dynamic>? productSpecification;
   ItemAttribute? itemAttribute;
-  String? id;
+  int? id;
   int? quantity;
   int? grams;
   num? reviewsCount;
@@ -132,19 +132,34 @@ class ProductModel {
     quantity = json['quantity'];
     grams = json['grams'];
     reviewsCount = json['reviewsCount'] ?? 0.0;
-    disPrice = json['disPrice'] ?? "0";
+
+    // FIX: Handle both string and int for disPrice
+    disPrice = _parsePrice(json['disPrice']) ?? "0";
 
     // Parse photos - handle both string and list formats
     photos = _parseJsonStringToList<String>(json['photos'])?.cast<String>();
 
     nonveg = json['nonveg'] == 1 || json['nonveg'] == true;
     photo = json['photo'];
-    price = json['price'].toString();
+
+    // FIX: Handle both string and int for price (THIS IS LINE 131)
+    price = _parsePrice(json['price']) ?? "0";
+
     categoryID = json['categoryID'];
     description = json['description'];
     createdAt = _parseDate(json['createdAt']);
     // Convert int (0/1) to bool for boolean fields
     isAvailable = json['isAvailable'] == 1 || json['isAvailable'] == true;
+  }
+
+  // Add this helper method to handle price parsing
+  static String? _parsePrice(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is int) return value.toString();
+    if (value is double) return value.toString();
+    if (value is num) return value.toString();
+    return null;
   }
 
   static DateTime? _parseDate(dynamic value) {

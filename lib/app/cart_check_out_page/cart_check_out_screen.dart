@@ -13,12 +13,10 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:provider/provider.dart';
 
-// Cart theme enum for different color schemes
-
 class CartCheckOutScreen extends StatefulWidget {
   final bool hideBackButton;
-  final String? source; // 'food' or 'mart' or null for auto-detect
-  final bool isFromMartNavigation; // true if accessed from mart navigation tabs
+  final String? source;
+  final bool isFromMartNavigation;
 
   const CartCheckOutScreen({
     super.key,

@@ -15,6 +15,7 @@ import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provi
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/product_model.dart';
@@ -384,6 +385,7 @@ class HomeProvider extends ChangeNotifier {
   late FavouriteProvider favouriteProvider;
   late OrderProvider orderProvider;
   late MartProvider martProvider;
+  late SplashProvider splashProvider;
 
   Future<void> initFunction({required BuildContext context}) async {
     categoryViewProvider = Provider.of<CategoryViewProvider>(
@@ -402,6 +404,7 @@ class HomeProvider extends ChangeNotifier {
     favouriteProvider = Provider.of<FavouriteProvider>(context, listen: false);
     orderProvider = Provider.of<OrderProvider>(context, listen: false);
     martProvider = Provider.of<MartProvider>(context, listen: false);
+    splashProvider = Provider.of<SplashProvider>(context, listen: false);
     _loadAllDataInParallel(context);
     scrollController.addListener(() {
       if (scrollController.position.userScrollDirection.toString() ==
@@ -487,6 +490,10 @@ class HomeProvider extends ChangeNotifier {
     orderProvider.initFunction();
     dashBoardProvider.initFunction(context);
     martProvider.initFunction();
+    await Future.delayed(const Duration(seconds: 2));
+    if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
+      splashProvider.refreshFunction(context);
+    }
     notifyListeners();
     setLoading();
   }

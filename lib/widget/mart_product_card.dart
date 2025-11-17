@@ -106,7 +106,7 @@ class _MartProductCardState extends State<MartProductCard>
 
       // Create cart product model
       final cartProduct = CartProductModel(
-        id: widget.product.id,
+        id: widget.product.id.toString(),
         name: widget.product.name,
         photo: widget.product.photo,
         price: widget.product.price,
@@ -127,11 +127,11 @@ class _MartProductCardState extends State<MartProductCard>
       if (success) {
         // Show success animation
         await _showAddToCartAnimation();
-
         // Trigger cart animation if cart icon key is provided
         if (widget.cartIconKey != null) {
-          // Trigger flying animation to cart
-          CartAnimationHelper.triggerAnimation(widget.product.id ?? 'default');
+          CartAnimationHelper.triggerAnimation(
+            widget.product.id.toString() ?? 'default',
+          );
         }
 
         // Update quantity
@@ -184,7 +184,7 @@ class _MartProductCardState extends State<MartProductCard>
     try {
       // Create cart product model
       final cartProduct = CartProductModel(
-        id: widget.product.id,
+        id: widget.product.id.toString(),
         name: widget.product.name,
         photo: widget.product.photo,
         price: widget.product.price,

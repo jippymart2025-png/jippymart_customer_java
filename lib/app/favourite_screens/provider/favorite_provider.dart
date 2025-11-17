@@ -18,7 +18,6 @@ class FavouriteProvider extends ChangeNotifier {
   List<VendorModel> favouriteVendorList = <VendorModel>[];
   List<FavouriteItemModel> favouriteItemList = <FavouriteItemModel>[];
   List<ProductModel> favouriteFoodList = <ProductModel>[];
-
   bool isLoading = true;
 
   Future<void> initFunction() async {
@@ -101,14 +100,11 @@ class FavouriteProvider extends ChangeNotifier {
         headers: await getHeaders(),
       );
       log("📱 getFavouriteRestaurants response: ${response.body}");
-
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);
-
         if (decoded is! Map<String, dynamic>) {
           throw Exception('Invalid response format');
         }
-
         final responseData = decoded;
         if (responseData['success'] == true) {
           final List<dynamic> restaurantsData = responseData['data'] ?? [];
@@ -345,13 +341,13 @@ class FavouriteProvider extends ChangeNotifier {
   // Toggle food favorite status
   Future<void> toggleFoodFavorite(ProductModel product) async {
     try {
-      if (isFoodFavorite(product.id!)) {
+      if (isFoodFavorite(product.id.toString())) {
         await removeFavoriteFoodUI(
-          product.id!,
+          product.id.toString(),
           favouriteFoodList.indexWhere((p) => p.id == product.id),
         );
       } else {
-        await addFavoriteFoodUI(product.id!, product);
+        await addFavoriteFoodUI(product.id.toString(), product);
       }
     } catch (e) {
       log('❌ Error toggling food favorite: $e');
@@ -387,7 +383,7 @@ class FavouriteProvider extends ChangeNotifier {
         for (var product in foodFavourites) {
           favouriteItemList.add(
             FavouriteItemModel(
-              productId: product.id,
+              productId: product.id.toString(),
               storeId: product.vendorID,
               userId: userId,
             ),

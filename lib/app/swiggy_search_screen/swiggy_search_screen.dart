@@ -1870,7 +1870,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
 
       // Create CartProductModel
       CartProductModel cartProductModel = CartProductModel(
-        id: product.id,
+        id: product.id.toString(),
         categoryId: product.categoryID,
         name: product.name,
         photo: product.photo,

@@ -154,7 +154,7 @@ Widget buildProductsWithoutCategories(
                             FutureBuilder<Map<String, dynamic>?>(
                               future:
                                   FireStoreUtils.getActivePromotionForProduct(
-                                    productId: productModel.id ?? '',
+                                    productId: productModel.id.toString() ?? '',
                                     restaurantId: productModel.vendorID ?? '',
                                   ),
                               builder: (context, promoSnapshot) {
@@ -192,7 +192,7 @@ Widget buildProductsWithoutCategories(
                       FutureBuilder<Map<String, dynamic>?>(
                         future: Future.value(
                           controller.getActivePromotionForProduct(
-                            productId: productModel.id ?? '',
+                            productId: productModel.id.toString() ?? '',
                             restaurantId: productModel.vendorID ?? '',
                           ),
                         ),
@@ -366,7 +366,7 @@ Widget buildProductsWithoutCategories(
                 FutureBuilder<Map<String, dynamic>?>(
                   future: Future.value(
                     controller.getActivePromotionForProduct(
-                      productId: productModel.id ?? '',
+                      productId: productModel.id.toString() ?? '',
                       restaurantId: productModel.vendorID ?? '',
                     ),
                   ),
@@ -423,7 +423,7 @@ Widget buildProductsWithoutCategories(
                         );
                       } else {
                         FavouriteItemModel favouriteModel = FavouriteItemModel(
-                          productId: productModel.id,
+                          productId: productModel.id.toString(),
                           storeId: controller.vendorModel.id,
                           userId: userId,
                         );
@@ -555,7 +555,9 @@ Widget buildProductsWithoutCategories(
                                                 final promo =
                                                     await FireStoreUtils.getActivePromotionForProduct(
                                                       productId:
-                                                          productModel.id ?? '',
+                                                          productModel.id
+                                                              .toString() ??
+                                                          '',
                                                       restaurantId:
                                                           productModel
                                                               .vendorID ??
@@ -668,7 +670,8 @@ Widget buildProductsWithoutCategories(
                                                   final promo = controller
                                                       .getActivePromotionForProduct(
                                                         productId:
-                                                            productModel.id ??
+                                                            productModel.id
+                                                                .toString() ??
                                                             '',
                                                         restaurantId:
                                                             productModel
@@ -680,7 +683,9 @@ Widget buildProductsWithoutCategories(
                                                   if (promo != null) {
                                                     final isAllowed = controller
                                                         .isPromotionalItemQuantityAllowed(
-                                                          productModel.id ?? '',
+                                                          productModel.id
+                                                                  .toString() ??
+                                                              '',
                                                           productModel
                                                                   .vendorID ??
                                                               '',
@@ -699,7 +704,8 @@ Widget buildProductsWithoutCategories(
                                                     if (!isAllowed) {
                                                       final limit = controller
                                                           .getPromotionalItemLimit(
-                                                            productModel.id ??
+                                                            productModel.id
+                                                                    .toString() ??
                                                                 '',
                                                             productModel
                                                                     .vendorID ??
@@ -777,7 +783,9 @@ Widget buildProductsWithoutCategories(
                                           final promo = controller
                                               .getActivePromotionForProduct(
                                                 productId:
-                                                    productModel.id ?? '',
+                                                    productModel.id
+                                                        .toString() ??
+                                                    '',
                                                 restaurantId:
                                                     productModel.vendorID ?? '',
                                               );
@@ -786,7 +794,8 @@ Widget buildProductsWithoutCategories(
                                           if (promo != null) {
                                             final isAllowed = controller
                                                 .isPromotionalItemQuantityAllowed(
-                                                  productModel.id ?? '',
+                                                  productModel.id.toString() ??
+                                                      '',
                                                   productModel.vendorID ?? '',
                                                   1,
                                                 );
@@ -794,7 +803,9 @@ Widget buildProductsWithoutCategories(
                                             if (!isAllowed) {
                                               final limit = controller
                                                   .getPromotionalItemLimit(
-                                                    productModel.id ?? '',
+                                                    productModel.id
+                                                            .toString() ??
+                                                        '',
                                                     productModel.vendorID ?? '',
                                                   );
                                               ShowToastDialog.showToast(

@@ -107,13 +107,12 @@ class ProductDetailsView extends StatelessWidget {
                                           productModel.id.toString(),
                                         );
                                       } else {
-                                        FavouriteItemModel favouriteModel =
-                                            FavouriteItemModel(
-                                              productId: productModel.id,
-                                              storeId:
-                                                  controller.vendorModel.id,
-                                              userId: userId,
-                                            );
+                                        FavouriteItemModel
+                                        favouriteModel = FavouriteItemModel(
+                                          productId: productModel.id.toString(),
+                                          storeId: controller.vendorModel.id,
+                                          userId: userId,
+                                        );
                                         controller.favouriteItemList.add(
                                           favouriteModel,
                                         );
@@ -635,7 +634,8 @@ class ProductDetailsView extends StatelessWidget {
                                     // Check for promotional item limit before incrementing (ULTRA-FAST - ZERO ASYNC)
                                     final promo = controller
                                         .getActivePromotionForProduct(
-                                          productId: productModel.id ?? '',
+                                          productId:
+                                              productModel.id.toString() ?? '',
                                           restaurantId:
                                               productModel.vendorID ?? '',
                                         );
@@ -643,7 +643,7 @@ class ProductDetailsView extends StatelessWidget {
                                     if (promo != null) {
                                       final isAllowed = controller
                                           .isPromotionalItemQuantityAllowed(
-                                            productModel.id ?? '',
+                                            productModel.id.toString() ?? '',
                                             productModel.vendorID ?? '',
                                             controller.quantity + 1,
                                           );
@@ -651,7 +651,7 @@ class ProductDetailsView extends StatelessWidget {
                                       if (!isAllowed) {
                                         final limit = controller
                                             .getPromotionalItemLimit(
-                                              productModel.id ?? '',
+                                              productModel.id.toString() ?? '',
                                               productModel.vendorID ?? '',
                                             );
                                         ShowToastDialog.showToast(
@@ -728,7 +728,8 @@ class ProductDetailsView extends StatelessWidget {
                                   // Check for promotional item limit before adding to cart (ULTRA-FAST - ZERO ASYNC)
                                   final promo = controller
                                       .getActivePromotionForProduct(
-                                        productId: productModel.id ?? '',
+                                        productId:
+                                            productModel.id.toString() ?? '',
                                         restaurantId:
                                             productModel.vendorID ?? '',
                                       );
@@ -736,7 +737,7 @@ class ProductDetailsView extends StatelessWidget {
                                   if (promo != null) {
                                     final isAllowed = controller
                                         .isPromotionalItemQuantityAllowed(
-                                          productModel.id ?? '',
+                                          productModel.id.toString() ?? '',
                                           productModel.vendorID ?? '',
                                           controller.quantity,
                                         );
@@ -744,7 +745,7 @@ class ProductDetailsView extends StatelessWidget {
                                     if (!isAllowed) {
                                       final limit = controller
                                           .getPromotionalItemLimit(
-                                            productModel.id ?? '',
+                                            productModel.id.toString() ?? '',
                                             productModel.vendorID ?? '',
                                           );
                                       ShowToastDialog.showToast(

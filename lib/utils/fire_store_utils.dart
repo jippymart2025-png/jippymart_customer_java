@@ -41,6 +41,30 @@ class FireStoreUtils {
   backendUserId; // Set this from LoginController after OTP verification
   static bool get isDatabaseHealthy => _isDatabaseHealthy;
 
+  // Add this method to your FireStoreUtils class
+  static Future<Map<String, dynamic>> getChatMessages({
+    required String orderId,
+    required String chatType,
+    required int page,
+  }) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '${AppConst.baseUrl}chat/$orderId/messages?chat_type=$chatType&page=$page',
+        ),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Failed to load messages');
+      }
+    } catch (e) {
+      throw Exception('Failed to load messages: $e');
+    }
+  }
+
   static Future getPaymentSettingsData() async {
     try {
       // Get RazorPay settings from API
@@ -331,6 +355,7 @@ class FireStoreUtils {
         Uri.parse('${AppConst.baseUrl}products/$productId'),
         headers: await getHeaders(),
       );
+      print("getProductById ${response.body}");
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
