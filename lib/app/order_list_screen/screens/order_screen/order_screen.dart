@@ -1,4 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
@@ -12,13 +13,16 @@ import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 class OrderScreen extends StatelessWidget {
   const OrderScreen({super.key});
@@ -779,23 +783,72 @@ class OrderScreen extends StatelessWidget {
 // }
 // Fetch the 'ToPay' value from the 'order_Billing' collection for a given order ID
 Future<double?> fetchOrderToPay(String orderId) async {
-  final doc = await FirebaseFirestore.instance
-      .collection('order_Billing')
-      .doc(orderId)
-      .get();
-  if (doc.exists && doc.data() != null && doc.data()!['ToPay'] != null) {
-    return double.tryParse(doc.data()!['ToPay'].toString());
+  try {
+    print("💰 Fetching order to pay for order: $orderId");
+
+    // **API CALL: Fetch billing information**
+    final Uri uri = Uri.parse(
+      '${AppConst.baseUrl}mobile/orders/$orderId/billing/to-pay',
+    );
+
+    print("🌐 Making API request to: ${uri.toString()}");
+
+    final response = await http.get(uri, headers: await getHeaders());
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      if (responseData['success'] == true) {
+        final Map<String, dynamic> data = responseData['data'];
+
+        // Check if billing record was found and has to_pay value
+        if (data['found'] == true && data['to_pay'] != null) {
+          final toPay = data['to_pay'];
+          final toPayValue = toPay is int
+              ? toPay.toDouble()
+              : double.tryParse(toPay.toString());
+
+          print("✅ Order to pay found: $toPayValue");
+          return toPayValue;
+        } else {
+          print("❌ Billing record not found or missing to_pay value");
+          return null;
+        }
+      } else {
+        print("❌ API returned error: ${responseData['message']}");
+        return null;
+      }
+    } else {
+      print("❌ HTTP error: ${response.statusCode}");
+      return null;
+    }
+  } catch (e) {
+    print("❌ Fetch order to pay failed: $e");
+    return null;
   }
-  return null;
 }
 
 Future<double?> fetchOrderSergeFee(String orderId) async {
-  final doc = await FirebaseFirestore.instance
-      .collection('order_Billing')
-      .doc(orderId)
-      .get();
-  if (doc.exists && doc.data() != null && doc.data()!['surge_fee'] != null) {
-    return double.tryParse(doc.data()!['surge_fee'].toString());
+  try {
+    final response = await http.get(
+      Uri.parse('${AppConst.baseUrl}mobile/orders/$orderId/billing/surge-fee'),
+      headers: await getHeaders(),
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data = json.decode(response.body);
+
+      if (data['success'] == true && data['data'] != null) {
+        final billingData = data['data'];
+        return billingData['total_surge_fee']?.toDouble();
+      }
+    }
+
+    // If request fails or data not found, return null
+    return null;
+  } catch (e) {
+    // Handle any errors that occur during the API call
+    print('Error fetching surge fee: $e');
+    return null;
   }
-  return null;
 }

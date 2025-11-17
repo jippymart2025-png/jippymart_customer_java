@@ -1,17 +1,19 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'dart:io';
+import 'package:http/http.dart' as http;
 
 class AppUpdateService {
-  static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   /// Check if a version is older than another version
   static bool isVersionOlder(String current, String latest) {
     try {
@@ -203,27 +205,35 @@ class AppUpdateService {
     return platformUrl;
   }
 
-  /// Fetch latest version info from Firestore
   static Future<Map<String, dynamic>?> getLatestVersionInfo() async {
     try {
-      print('[UPDATE DEBUG] Fetching version info from Firestore...');
-      print('[UPDATE DEBUG] Collection: app_settings, Document: version_info');
+      print('[UPDATE DEBUG] Fetching version info from API...');
+      print('[UPDATE DEBUG] Endpoint: {{baseURL}}mobile/app/version');
 
-      DocumentSnapshot doc = await _firestore
-          .collection('app_settings')
-          .doc('version_info')
-          .get();
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mobile/app/version'),
+        headers: await getHeaders(),
+      );
 
-      if (doc.exists) {
-        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-        print('[UPDATE DEBUG] Firestore document found!');
-        print('[UPDATE DEBUG] Document data:');
-        data.forEach((key, value) {
-          print('[UPDATE DEBUG]   $key: "$value" (${value.runtimeType})');
-        });
-        return data;
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final Map<String, dynamic> data = responseData['data'];
+          print('[UPDATE DEBUG] API response successful!');
+          print('[UPDATE DEBUG] Version data:');
+          data.forEach((key, value) {
+            print('[UPDATE DEBUG]   $key: "$value" (${value.runtimeType})');
+          });
+          return data;
+        } else {
+          print('[UPDATE DEBUG] API returned unsuccessful response');
+          return null;
+        }
       } else {
-        print('[UPDATE DEBUG] Firestore document does not exist!');
+        print(
+          '[UPDATE DEBUG] API request failed with status: ${response.statusCode}',
+        );
         return null;
       }
     } catch (e) {

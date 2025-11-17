@@ -1328,38 +1328,41 @@ class MartProvider extends ChangeNotifier {
   /// Fetch delivery settings from Firestore (DEPRECATED - Use settings/martDeliveryCharge instead)
   Future<void> fetchDeliverySettings() async {
     try {
-      print(
-        '[MART CONTROLLER] 🚚 Fetching delivery settings from Firestore (DEPRECATED)',
+      print('[MART CONTROLLER] 🚚 Fetching delivery settings from API');
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mobile/settings/mart-delivery-charge'),
+        headers: await getHeaders(),
       );
-      // Fetch from settings/martDeliveryCharge collection
-      final doc = await FirebaseFirestore.instance
-          .collection('settings')
-          .doc('martDeliveryCharge')
-          .get();
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          deliverySettings = MartDeliverySettingsModel(
+            freeDeliveryThreshold:
+                (data['item_total_threshold'] as num?)?.toDouble() ?? 199.0,
+            deliveryPromotionText: data['delivery_promotion_text'] ?? 'Daily',
+            isActive: data['is_active'] ?? true,
+            minOrderValue:
+                (data['min_order_value'] as num?)?.toDouble() ?? 99.0,
+            minOrderMessage:
+                data['min_order_message'] ?? 'Min Item value is ₹99',
+          );
 
-      if (doc.exists) {
-        final data = doc.data()!;
-        deliverySettings = MartDeliverySettingsModel(
-          freeDeliveryThreshold:
-              (data['item_total_threshold'] as num?)?.toDouble() ?? 99.0,
-          deliveryPromotionText: data['delivery_promotion_text'] ?? 'Daily',
-          isActive: data['is_active'] ?? true,
-          minOrderValue:
-              (data['item_total_threshold'] as num?)?.toDouble() ?? 99.0,
-          minOrderMessage: data['min_order_message'] ?? 'Min Item value is ₹99',
-        );
+          print('[MART CONTROLLER] ✅ Delivery settings fetched successfully');
+        } else {
+          throw Exception("API returned unsuccessful response");
+        }
       } else {
-        deliverySettings = MartDeliverySettingsModel(
-          freeDeliveryThreshold: 99.0,
-          deliveryPromotionText: 'Daily',
-          isActive: true,
-          minOrderValue: 99.0,
-          minOrderMessage: 'Min Item value is ₹99',
+        throw Exception(
+          "Failed to fetch delivery settings: ${response.statusCode}",
         );
       }
     } catch (e) {
+      print('[MART CONTROLLER] ❌ Error fetching delivery settings: $e');
+
+      // Fallback to default values
       deliverySettings = MartDeliverySettingsModel(
-        freeDeliveryThreshold: 99.0,
+        freeDeliveryThreshold: 199.0,
         deliveryPromotionText: 'Daily',
         isActive: true,
         minOrderValue: 99.0,

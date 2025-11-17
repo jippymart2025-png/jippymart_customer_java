@@ -1,4 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
+
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/widgets/mart_product_card.dart';
@@ -8,7 +9,10 @@ import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 class MartBrandProductsScreen extends StatefulWidget {
   final String brandID;
@@ -30,8 +34,6 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
 
   late CartControllerProvider cartControllerProvider;
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   MartBrandModel? brandData;
 
   @override
@@ -48,14 +50,21 @@ class _MartBrandProductsScreenState extends State<MartBrandProductsScreen> {
 
   Future<void> _fetchBrandData() async {
     try {
-      final doc = await _firestore
-          .collection('brands')
-          .doc(widget.brandID)
-          .get();
-      if (doc.exists) {
-        setState(() {
-          brandData = MartBrandModel.fromJson(doc.data()!);
-        });
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mobile/brands/${widget.brandID}'),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+
+        if (jsonResponse['success'] == true) {
+          setState(() {
+            brandData = MartBrandModel.fromJson(jsonResponse['data']['brand']);
+          });
+        }
+      } else {
+        print('Error fetching brand data: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching brand data: $e');

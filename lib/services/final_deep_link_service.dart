@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:developer';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
@@ -22,6 +20,7 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart' show Provider;
 import '../app/category_service/category__service_screen.dart';
+import 'mart_firestore_service.dart';
 
 class FinalDeepLinkService {
   // Singleton pattern
@@ -256,21 +255,18 @@ class FinalDeepLinkService {
     try {
       print('🔥 [NEW HANDLER] ===== CATEGORY DEEP LINK NAVIGATION =====');
       print('🔥 [NEW HANDLER] Category ID: $categoryId');
-
-      // **FIXED: Fetch actual category name from Firestore**
+      // **FIXED: Fetch actual category name from API**
       print('🔥 [NEW HANDLER] 🔍 Fetching category data for ID: $categoryId');
-
-      // Use direct Firestore query to get category by ID
-      final categoryDoc = await FirebaseFirestore.instance
-          .collection('mart_categories')
-          .doc(categoryId)
-          .get();
-
+      // Use API to get all categories and find the specific one
       MartCategoryModel? category;
-      if (categoryDoc.exists) {
-        final data = categoryDoc.data()!;
-        data['id'] = categoryDoc.id;
-        category = MartCategoryModel.fromJson(data);
+      final categories = await MartFirestoreService().getCategories(
+        limit: 1000,
+      );
+      for (var cat in categories) {
+        if (cat.id == categoryId) {
+          category = cat;
+          break;
+        }
       }
 
       if (category != null) {

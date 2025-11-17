@@ -68,7 +68,6 @@ class ChatScreen extends StatelessWidget {
                     onEmpty: Constant.showEmptyView(
                       message: "No Conversion found".tr,
                     ),
-                    // orderBy is compulsory to enable pagination
                     query: FirebaseFirestore.instance
                         .collection(
                           controller.chatType == "Driver"

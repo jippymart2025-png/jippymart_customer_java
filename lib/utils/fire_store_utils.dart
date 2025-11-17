@@ -588,10 +588,8 @@ class FireStoreUtils {
         Uri.parse('${AppConst.baseUrl}firestore/notifications/$type'),
         headers: await getHeaders(),
       );
-
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-
         if (jsonResponse['success'] == true) {
           return NotificationModel.fromJson(jsonResponse['data']);
         } else {
@@ -622,55 +620,163 @@ class FireStoreUtils {
     }
   }
 
-  static Future addDriverInbox(InboxModel inboxModel) async {
-    return await fireStore
-        .collection("chat_driver")
-        .doc(inboxModel.orderId)
-        .set(inboxModel.toJson())
-        .then((document) {
-          return inboxModel;
-        });
-  }
-
-  static Future addDriverChat(ConversationModel conversationModel) async {
-    return await fireStore
-        .collection("chat_driver")
-        .doc(conversationModel.orderId)
-        .collection("thread")
-        .doc(conversationModel.id)
-        .set(conversationModel.toJson())
-        .then((document) {
-          return conversationModel;
-        });
-  }
-
-  static Future addRestaurantInbox(InboxModel inboxModel) async {
+  static Future<InboxModel> addDriverInbox(InboxModel inboxModel) async {
     try {
-      await fireStore
-          .collection("chat_restaurant")
-          .doc(inboxModel.orderId)
-          .set(inboxModel.toJson());
-      debugPrint(
-        '[FIRESTORE] addRestaurantInbox SUCCESS: orderId=${inboxModel.orderId}',
+      // Your API base URL
+      // Prepare the request body
+      final Map<String, dynamic> requestBody = {
+        "order_id": inboxModel.orderId,
+        "restaurant_id": inboxModel.restaurantId,
+        "restaurant_name": inboxModel.restaurantName,
+        "restaurant_profile_image": inboxModel.restaurantProfileImage,
+        "customer_id": inboxModel.customerId,
+        "customer_name": inboxModel.customerName,
+        "customer_profile_image": inboxModel.customerProfileImage,
+        "last_sender_id": inboxModel.lastSenderId,
+        "last_message": inboxModel.lastMessage,
+        "chat_type": inboxModel.chatType,
+        "created_at": inboxModel.createdAt?.toString(),
+      };
+      // Remove null values from the request body
+      requestBody.removeWhere((key, value) => value == null);
+      // Make the POST request
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}mobile/chat/driver/inbox'),
+        headers: await getHeaders(),
+        body: json.encode(requestBody),
       );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return inboxModel;
+      } else {
+        throw Exception(
+          'Failed to add driver inbox: ${response.statusCode} - ${response.body}',
+        );
+      }
     } catch (e) {
-      debugPrint('[FIRESTORE] addRestaurantInbox ERROR: $e');
+      // Handle network errors or other exceptions
+      throw Exception('Failed to add driver inbox: $e');
     }
   }
 
-  static Future addRestaurantChat(ConversationModel conversationModel) async {
+  static Future<ConversationModel> addDriverChat(
+    ConversationModel conversationModel,
+  ) async {
     try {
-      await fireStore
-          .collection("chat_restaurant")
-          .doc(conversationModel.orderId)
-          .collection("thread")
-          .doc(conversationModel.id)
-          .set(conversationModel.toJson());
-      debugPrint(
-        '[FIRESTORE] addRestaurantChat SUCCESS: orderId=${conversationModel.orderId}, messageId=${conversationModel.id}',
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}mobile/chat/driver/messages'),
+        headers: await getHeaders(),
+        body: jsonEncode({
+          "chat_id": conversationModel.id,
+          "order_id": conversationModel.orderId,
+          "sender_id": conversationModel.senderId,
+          "receiver_id": conversationModel.receiverId,
+          "message_type": conversationModel.messageType,
+          "message": conversationModel.message,
+          "created_at": conversationModel.createdAt?.toString(),
+        }),
       );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint(
+          '[API] addDriverChat SUCCESS: orderId=${conversationModel.orderId}, messageId=${conversationModel.id}',
+        );
+        return conversationModel;
+      } else {
+        debugPrint(
+          '[API] addDriverChat ERROR: ${response.statusCode} - ${response.body}',
+        );
+        throw Exception(
+          'Failed to send driver message: ${response.statusCode}',
+        );
+      }
     } catch (e) {
-      debugPrint('[FIRESTORE] addRestaurantChat ERROR: $e');
+      debugPrint('[API] addDriverChat ERROR: $e');
+      rethrow;
+    }
+  }
+
+  static Future<void> addRestaurantInbox(InboxModel inboxModel) async {
+    try {
+      // Your API base URL
+
+      // Prepare the request body
+      final Map<String, dynamic> requestBody = {
+        "order_id": inboxModel.orderId,
+        "restaurant_id": inboxModel.restaurantId,
+        "restaurant_name": inboxModel.restaurantName,
+        "restaurant_profile_image": inboxModel.restaurantProfileImage,
+        "customer_id": inboxModel.customerId,
+        "customer_name": inboxModel.customerName,
+        "customer_profile_image": inboxModel.customerProfileImage,
+        "last_sender_id": inboxModel.lastSenderId,
+        "last_message": inboxModel.lastMessage,
+        "chat_type": "restaurant", // Default to "restaurant" as per API spec
+        "created_at": inboxModel.createdAt.toString(),
+      };
+
+      // Remove null values from the request body
+      requestBody.removeWhere((key, value) => value == null);
+
+      // Make the POST request
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}mobile/chat/restaurant/inbox'),
+        headers: await getHeaders(),
+        body: json.encode(requestBody),
+      );
+
+      // Check if the request was successful
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint(
+          '[API] addRestaurantInbox SUCCESS: orderId=${inboxModel.orderId}',
+        );
+      } else {
+        // Handle error response
+        debugPrint(
+          '[API] addRestaurantInbox ERROR: ${response.statusCode} - ${response.body}',
+        );
+        throw Exception(
+          'Failed to add restaurant inbox: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      debugPrint('[API] addRestaurantInbox ERROR: $e');
+      // Re-throw the exception to maintain the same error behavior
+      throw e;
+    }
+  }
+
+  static Future<void> addRestaurantChat(
+    ConversationModel conversationModel,
+  ) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}mobile/chat/restaurant/messages'),
+        headers: await getHeaders(),
+        body: jsonEncode({
+          "chat_id": conversationModel.id,
+          "order_id": conversationModel.orderId,
+          "sender_id": conversationModel.senderId,
+          "receiver_id": conversationModel.receiverId,
+          "message_type": conversationModel.messageType,
+          "message": conversationModel.message,
+          "url": conversationModel.url,
+          "video_thumbnail": conversationModel.videoThumbnail,
+          "created_at": conversationModel.createdAt?.toString(),
+        }),
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        debugPrint(
+          '[API] addRestaurantChat SUCCESS: orderId=${conversationModel.orderId}, messageId=${conversationModel.id}',
+        );
+      } else {
+        debugPrint(
+          '[API] addRestaurantChat ERROR: ${response.statusCode} - ${response.body}',
+        );
+        throw Exception('Failed to send message: ${response.statusCode}');
+      }
+    } catch (e) {
+      debugPrint('[API] addRestaurantChat ERROR: $e');
+      rethrow; // Re-throw to handle the error in the calling function
     }
   }
 

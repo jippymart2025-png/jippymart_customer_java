@@ -1170,27 +1170,52 @@ class SwiggySearchProvider extends ChangeNotifier {
     int limit = 20,
   }) async {
     try {
-      print('🔍 Firestore prefix search for: "$query" (limit: $limit)');
+      print('🔍 API prefix search for: "$query" (limit: $limit)');
+
       if (query.trim().isEmpty) {
         return [];
       }
-      List<dynamic> results = [];
-      Query vendorQuery = FirebaseFirestore.instance
-          .collection('vendors')
-          .where('isActive', isEqualTo: true)
-          .where('title', isGreaterThanOrEqualTo: query)
-          .where('title', isLessThan: '$query\uf8ff')
-          .limit(limit ~/ 2);
-      QuerySnapshot vendorSnapshot = await vendorQuery.get();
-      for (var document in vendorSnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          results.add(VendorModel.fromJson(data));
-        } catch (e) {
-          print('❌ Error parsing vendor ${document.id}: $e');
-        }
+
+      final String? zoneId = Constant.selectedZone?.id;
+      final double latitude =
+          Constant.selectedLocation.location?.latitude ?? 0.0;
+      final double longitude =
+          Constant.selectedLocation.location?.longitude ?? 0.0;
+
+      if (zoneId == null || zoneId.isEmpty) {
+        print('[DEBUG] No zone ID available, skipping restaurant search');
+        return [];
       }
-      print('✅ Prefix search found ${results.length} results via Firestore');
+
+      List<dynamic> results = [];
+
+      // Use your existing API function to search restaurants
+      final restaurants = await BestRestaurantProvider.getNearestRestaurants(
+        zoneId: zoneId,
+        latitude: latitude,
+        longitude: longitude,
+        radius: double.parse(Constant.radius),
+        filter: query,
+        onFiltersReceived:
+            (
+              List<String> availableFilters,
+              String? currentFilter,
+            ) {}, // Use the search query as filter
+      );
+
+      // Filter restaurants locally to match the prefix search behavior
+      final filteredRestaurants = restaurants
+          .where((restaurant) {
+            final title = restaurant.title?.toLowerCase() ?? '';
+            final searchQuery = query.toLowerCase();
+            return title.startsWith(searchQuery);
+          })
+          .take(limit ~/ 2)
+          .toList();
+
+      results.addAll(filteredRestaurants);
+
+      print('✅ Prefix search found ${results.length} results via API');
       return results;
     } catch (e) {
       print('❌ Error in prefix search: $e');
@@ -1353,31 +1378,62 @@ class SwiggySearchProvider extends ChangeNotifier {
     try {
       print("🔍 Optimized vendor search for: '$query' (limit: $limit)");
 
-      // **SINGLE QUERY: Load vendors with zone filtering (no prefix matching)**
-      Query firestoreQuery = FirebaseFirestore.instance
-          .collection(CollectionName.vendors)
-          .where('zoneId', isEqualTo: Constant.selectedZone?.id.toString())
-          .limit(limit);
-
-      QuerySnapshot querySnapshot = await firestoreQuery.get();
-
-      List<VendorModel> results = [];
-      for (var document in querySnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          final vendor = VendorModel.fromJson(data);
-
-          // **SMART MATCHING: Check title first, then description**
-          if (_vendorMatchesPrimaryQuery(vendor, query)) {
-            results.add(vendor);
-          }
-        } catch (e) {
-          print('❌ Error parsing vendor ${document.id}: $e');
-        }
+      // Get the zone ID
+      final zoneId = Constant.selectedZone?.id.toString();
+      if (zoneId == null) {
+        print("❌ No zone selected");
+        return [];
       }
-      notifyListeners();
-      print("✅ Found ${results.length} vendors via optimized search");
-      return results;
+
+      // **API CALL: Load vendors with zone filtering**
+      final Uri uri = Uri.parse(
+        '${AppConst.baseUrl}restaurants/by-zone/$zoneId',
+      );
+
+      print("🌐 Making API request to: ${uri.toString()}");
+
+      final response = await http.get(uri, headers: await getHeaders());
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final List<dynamic> data = responseData['data'];
+          List<VendorModel> allVendors = [];
+
+          // Parse all vendors from API response
+          for (var vendorData in data) {
+            try {
+              final vendor = VendorModel.fromJson(vendorData);
+              allVendors.add(vendor);
+            } catch (e) {
+              print('❌ Error parsing vendor: $e');
+            }
+          }
+
+          // **SMART MATCHING: Filter vendors based on search query**
+          List<VendorModel> results = [];
+          for (var vendor in allVendors) {
+            if (_vendorMatchesPrimaryQuery(vendor, query)) {
+              results.add(vendor);
+            }
+
+            // Apply limit
+            if (results.length >= limit) {
+              break;
+            }
+          }
+          notifyListeners();
+          print("✅ Found ${results.length} vendors via optimized search");
+          return results;
+        } else {
+          print("❌ API returned error: ${responseData['message']}");
+          return [];
+        }
+      } else {
+        print("❌ HTTP error: ${response.statusCode}");
+        return [];
+      }
     } catch (e) {
       print("❌ Optimized vendor search failed: $e");
       return [];
@@ -1390,58 +1446,108 @@ class SwiggySearchProvider extends ChangeNotifier {
   ) async {
     try {
       print("🔍 Optimized product search for: '$query' (limit: $limit)");
-
       // ✅ STEP 1: Identify allowed vendor IDs based on selected zone
       List<String> allowedVendorIds = [];
       if (Constant.selectedZone != null) {
         print("🌍 Filtering products for zone: ${Constant.selectedZone!.name}");
-        QuerySnapshot vendorSnapshot = await FirebaseFirestore.instance
-            .collection(CollectionName.vendors)
-            .where('zoneId', isEqualTo: Constant.selectedZone!.id.toString())
-            .get();
 
-        allowedVendorIds = vendorSnapshot.docs
-            .map((e) => e.id.toString())
-            .toList();
-        print("✅ Found ${allowedVendorIds.length} vendors in this zone");
-      }
+        final String zoneId = Constant.selectedZone!.id.toString();
+        final String vendorsUrl =
+            '${AppConst.baseUrl}restaurants/by-zone/$zoneId';
 
-      // ✅ STEP 2: Query published products only
-      Query firestoreQuery = FirebaseFirestore.instance
-          .collection(CollectionName.vendorProducts)
-          // .where('publish', isEqualTo: true)
-          .limit(limit);
+        final vendorsResponse = await http
+            .get(Uri.parse(vendorsUrl), headers: await getHeaders())
+            .timeout(const Duration(seconds: 30));
 
-      QuerySnapshot querySnapshot = await firestoreQuery.get();
-
-      List<ProductModel> results = [];
-      for (var document in querySnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          final product = ProductModel.fromJson(data);
-
-          // ✅ STEP 3: Apply zone-based filter
-          if (Constant.selectedZone != null) {
-            if (!allowedVendorIds.contains(product.vendorID)) {
-              continue; // Skip products outside the selected zone
-            }
+        if (vendorsResponse.statusCode == 200) {
+          final Map<String, dynamic> vendorsData = json.decode(
+            vendorsResponse.body,
+          );
+          if (vendorsData['success'] == true) {
+            final List<dynamic> vendorsJson = vendorsData['data'];
+            allowedVendorIds = vendorsJson
+                .map<String>((vendor) => vendor['id'].toString())
+                .toList();
+            print("✅ Found ${allowedVendorIds.length} vendors in this zone");
+          } else {
+            print(
+              '❌ API returned error fetching vendors: ${vendorsData['message']}',
+            );
           }
-
-          // ✅ STEP 4: Smart search filtering
-          if (_productMatchesPrimaryQuery(product, query)) {
-            results.add(product);
-          }
-        } catch (e) {
-          print('❌ Error parsing product ${document.id}: $e');
+        } else {
+          print('❌ HTTP Error fetching vendors: ${vendorsResponse.statusCode}');
         }
       }
-      notifyListeners();
-      print(
-        "✅ Found ${results.length} zone-filtered products via optimized search",
-      );
-      return results;
+
+      // ✅ STEP 2: Query published products from API
+      final String baseUrl = '${AppConst.baseUrl}products';
+      final Map<String, String> queryParams = {
+        'page': '1',
+        'per_page': limit.toString(),
+      };
+
+      final Uri uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+      print('🌐 Fetching products for optimized search: $uri');
+
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 30));
+
+      List<ProductModel> results = [];
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final List<dynamic> productsJson = responseData['data'];
+
+          for (var productJson in productsJson) {
+            try {
+              final product = ProductModel.fromJson(productJson);
+
+              // ✅ STEP 3: Apply zone-based filter
+              if (Constant.selectedZone != null) {
+                if (!allowedVendorIds.contains(product.vendorID)) {
+                  continue; // Skip products outside the selected zone
+                }
+              }
+              // ✅ STEP 4: Smart search filtering
+              if (_productMatchesPrimaryQuery(product, query)) {
+                results.add(product);
+              }
+              // Stop if we've reached the limit
+              if (results.length >= limit) {
+                break;
+              }
+            } catch (e) {
+              print('❌ Error parsing product ${productJson['id']}: $e');
+            }
+          }
+          notifyListeners();
+          print(
+            "✅ Found ${results.length} zone-filtered products via optimized search",
+          );
+          return results;
+        } else {
+          print(
+            '❌ API returned error in optimized product search: ${responseData['message']}',
+          );
+          return [];
+        }
+      } else {
+        print(
+          '❌ HTTP Error in optimized product search: ${response.statusCode}',
+        );
+        return [];
+      }
     } catch (e) {
       print("❌ Optimized product search failed: $e");
+
+      if (e is http.ClientException) {
+        print('🌐 Network error in optimized product search: ${e.message}');
+      } else if (e is TimeoutException) {
+        print('⏰ Optimized product search request timeout');
+      }
+
       return [];
     }
   }
@@ -1491,33 +1597,65 @@ class SwiggySearchProvider extends ChangeNotifier {
   ) async {
     try {
       print("🔍 Fallback vendor search in descriptions for: '$query'");
-
-      Query firestoreQuery = FirebaseFirestore.instance
-          .collection(CollectionName.vendors)
-          .where('zoneId', isEqualTo: Constant.selectedZone?.id.toString())
-          .limit(limit);
-
-      QuerySnapshot querySnapshot = await firestoreQuery.get();
-
-      List<VendorModel> results = [];
-      for (var document in querySnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          final vendor = VendorModel.fromJson(data);
-
-          // **FALLBACK MATCHING: Check description fields**
-          if (_vendorMatchesFallbackQuery(vendor, query)) {
-            results.add(vendor);
-          }
-        } catch (e) {
-          print('❌ Error parsing vendor ${document.id}: $e');
-        }
+      // Use the restaurants by zone endpoint
+      final String zoneId = Constant.selectedZone?.id.toString() ?? '';
+      if (zoneId.isEmpty) {
+        print('❌ No zone selected for vendor search');
+        return [];
       }
-      notifyListeners();
-      print("✅ Found ${results.length} vendors via fallback search");
-      return results;
+
+      final String baseUrl = '${AppConst.baseUrl}restaurants/by-zone/$zoneId';
+      print('🌐 Fetching vendors for fallback search: $baseUrl');
+
+      final response = await http
+          .get(Uri.parse(baseUrl), headers: await getHeaders())
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final List<dynamic> vendorsJson = responseData['data'];
+
+          List<VendorModel> results = [];
+          for (var vendorJson in vendorsJson) {
+            try {
+              final vendor = VendorModel.fromJson(vendorJson);
+
+              // **FALLBACK MATCHING: Check description fields**
+              if (_vendorMatchesFallbackQuery(vendor, query)) {
+                results.add(vendor);
+              }
+              // Stop if we've reached the limit
+              if (results.length >= limit) {
+                break;
+              }
+            } catch (e) {
+              print('❌ Error parsing vendor ${vendorJson['id']}: $e');
+            }
+          }
+          notifyListeners();
+          print("✅ Found ${results.length} vendors via fallback search");
+          return results;
+        } else {
+          print(
+            '❌ API returned error in fallback vendor search: ${responseData['message']}',
+          );
+          return [];
+        }
+      } else {
+        print('❌ HTTP Error in fallback vendor search: ${response.statusCode}');
+        return [];
+      }
     } catch (e) {
       print("❌ Fallback vendor search failed: $e");
+
+      if (e is http.ClientException) {
+        print('🌐 Network error in fallback vendor search: ${e.message}');
+      } else if (e is TimeoutException) {
+        print('⏰ Fallback vendor search request timeout');
+      }
+
       return [];
     }
   }
@@ -1530,32 +1668,64 @@ class SwiggySearchProvider extends ChangeNotifier {
     try {
       print("🔍 Fallback product search in descriptions for: '$query'");
 
-      Query firestoreQuery = FirebaseFirestore.instance
-          .collection(CollectionName.vendorProducts)
-          .where('publish', isEqualTo: true)
-          .limit(limit);
+      final String baseUrl = '${AppConst.baseUrl}products';
+      final Map<String, String> queryParams = {
+        'page': '1', // Start from first page for search
+        'limit': limit.toString(),
+      };
+      final Uri uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+      print('🌐 Fetching products for fallback search: $uri');
 
-      QuerySnapshot querySnapshot = await firestoreQuery.get();
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 30));
 
-      List<ProductModel> results = [];
-      for (var document in querySnapshot.docs) {
-        try {
-          final data = document.data() as Map<String, dynamic>;
-          final product = ProductModel.fromJson(data);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
 
-          // **FALLBACK MATCHING: Check description fields**
-          if (_productMatchesFallbackQuery(product, query)) {
-            results.add(product);
+        if (responseData['success'] == true) {
+          final List<dynamic> productsJson = responseData['data'];
+
+          List<ProductModel> results = [];
+          for (var productJson in productsJson) {
+            try {
+              final product = ProductModel.fromJson(productJson);
+              // **FALLBACK MATCHING: Check description fields**
+              if (_productMatchesFallbackQuery(product, query)) {
+                results.add(product);
+              }
+
+              // Stop if we've reached the limit
+              if (results.length >= limit) {
+                break;
+              }
+            } catch (e) {
+              print('❌ Error parsing product ${productJson['id']}: $e');
+            }
           }
-        } catch (e) {
-          print('❌ Error parsing product ${document.id}: $e');
+
+          notifyListeners();
+          print("✅ Found ${results.length} products via fallback search");
+          return results;
+        } else {
+          print(
+            '❌ API returned error in fallback search: ${responseData['message']}',
+          );
+          return [];
         }
+      } else {
+        print('❌ HTTP Error in fallback search: ${response.statusCode}');
+        return [];
       }
-      notifyListeners();
-      print("✅ Found ${results.length} products via fallback search");
-      return results;
     } catch (e) {
       print("❌ Fallback product search failed: $e");
+
+      if (e is http.ClientException) {
+        print('🌐 Network error in fallback search: ${e.message}');
+      } else if (e is TimeoutException) {
+        print('⏰ Fallback search request timeout');
+      }
+
       return [];
     }
   }
@@ -1568,26 +1738,42 @@ class SwiggySearchProvider extends ChangeNotifier {
     try {
       print("🔍 Fallback category search in descriptions for: '$query'");
 
-      Query firestoreQuery = FirebaseFirestore.instance
-          .collection(CollectionName.vendorCategories)
-          .limit(limit);
+      // Make API call to get categories
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}categories'),
+        headers: await getHeaders(),
+      );
 
-      QuerySnapshot querySnapshot = await firestoreQuery.get();
+      if (response.statusCode != 200) {
+        print("❌ API call failed with status: ${response.statusCode}");
+        return [];
+      }
 
+      final jsonResponse = json.decode(response.body);
+
+      if (!jsonResponse['success']) {
+        print("❌ API returned unsuccessful response");
+        return [];
+      }
+
+      final List<dynamic> data = jsonResponse['data'];
       List<VendorCategoryModel> results = [];
-      for (var document in querySnapshot.docs) {
+      for (var item in data) {
         try {
-          final data = document.data() as Map<String, dynamic>;
-          final category = VendorCategoryModel.fromJson(data);
-
+          final category = VendorCategoryModel.fromJson(item);
           // **FALLBACK MATCHING: Check description fields**
           if (_categoryMatchesFallbackQuery(category, query)) {
             results.add(category);
           }
+          // Apply limit
+          if (results.length >= limit) {
+            break;
+          }
         } catch (e) {
-          print('❌ Error parsing category ${document.id}: $e');
+          print('❌ Error parsing category ${item['id']}: $e');
         }
       }
+
       notifyListeners();
       print("✅ Found ${results.length} categories via fallback search");
       return results;

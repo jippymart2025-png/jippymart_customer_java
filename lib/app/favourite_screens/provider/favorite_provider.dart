@@ -100,7 +100,6 @@ class FavouriteProvider extends ChangeNotifier {
         Uri.parse('${AppConst.baseUrl}favorites/restaurants/$userId'),
         headers: await getHeaders(),
       );
-
       log("📱 getFavouriteRestaurants response: ${response.body}");
 
       if (response.statusCode == 200) {

@@ -33,6 +33,8 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/razorpay_crash_prevention.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widgets/delivery_zone_alert_dialog.dart'
     show DeliveryZoneAlertDialog;
@@ -281,34 +283,52 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<Map<String, dynamic>> getSurgeRules() async {
-    final doc = await FirebaseFirestore.instance
-        .collection("surge_rules")
-        .doc("surge_settings")
-        .get();
-    if (doc.exists) {
-      print(" doc data ${doc.data()}");
-      return doc.data()!;
-    } else {
-      throw Exception("Surge rules not found");
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          print("API response data: ${responseData['data']}");
+          return responseData['data'];
+        } else {
+          throw Exception("API returned unsuccessful response");
+        }
+      } else {
+        throw Exception("Failed to fetch surge rules: ${response.statusCode}");
+      }
+    } catch (e) {
+      throw Exception("Error fetching surge rules: $e");
     }
   }
 
   Future<String> getAdminSurgeFee() async {
-    final doc = await FirebaseFirestore.instance
-        .collection("surge_rules")
-        .doc("surge_settings")
-        .get();
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mobile/surge-rules/admin-fee'),
+        headers: await getHeaders(),
+      );
 
-    if (doc.exists) {
-      final data = doc.data();
-      if (data != null && data.containsKey('admin_surge_fee')) {
-        print("Admin Surge Fee: ${data['admin_surge_fee']}");
-        return data['admin_surge_fee'].toString(); // return as String
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true) {
+          final adminSurgeFee = responseData['data']['admin_surge_fee']
+              .toString();
+          print("Admin Surge Fee: $adminSurgeFee");
+          return adminSurgeFee;
+        } else {
+          throw Exception("API returned unsuccessful response");
+        }
       } else {
-        throw Exception("Field 'admin_surge_fee' not found in surge_settings");
+        throw Exception(
+          "Failed to fetch admin surge fee: ${response.statusCode}",
+        );
       }
-    } else {
-      throw Exception("Document surge_settings not found");
+    } catch (e) {
+      throw Exception("Error fetching admin surge fee: $e");
     }
   }
 
@@ -327,7 +347,6 @@ class CartControllerProvider extends ChangeNotifier {
 
   final CartProvider cartProvider = CartProvider();
   TextEditingController reMarkController = TextEditingController();
-
   Map<String, dynamic>? _martDeliverySettings;
   TextEditingController couponCodeController = TextEditingController();
   TextEditingController tipsController = TextEditingController();
@@ -1411,25 +1430,36 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Separate method to mark used coupons
+  // Separate method to mark used coupons
   Future<void> _markUsedCoupons() async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
-      final usedCouponsSnapshot = await FirebaseFirestore.instance
-          .collection('used_coupons')
-          .where('userId', isEqualTo: userId)
-          .get();
-      final usedCouponIds = usedCouponsSnapshot.docs
-          .map((doc) => doc['couponId'] as String)
-          .toSet();
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mobile/coupons/used?userId=$userId'),
+        headers: await getHeaders(),
+      );
 
-      // Mark used coupons in both lists
-      for (var coupon in couponList) {
-        coupon.isEnabled = !usedCouponIds.contains(coupon.id);
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final List<dynamic> usedCoupons = responseData['data']['coupons'];
+          final usedCouponIds = usedCoupons
+              .map((coupon) => coupon['couponId'] as String)
+              .toSet();
+          // Mark used coupons in both lists
+          for (var coupon in couponList) {
+            coupon.isEnabled = !usedCouponIds.contains(coupon.id);
+          }
+          for (var coupon in allCouponList) {
+            coupon.isEnabled = !usedCouponIds.contains(coupon.id);
+          }
+          notifyListeners();
+        } else {
+          print('DEBUG: API returned unsuccessful response');
+        }
+      } else {
+        print('DEBUG: Failed to fetch used coupons: ${response.statusCode}');
       }
-      for (var coupon in allCouponList) {
-        coupon.isEnabled = !usedCouponIds.contains(coupon.id);
-      }
-      notifyListeners();
     } catch (e) {
       print('DEBUG: Error marking used coupons: $e');
     }
@@ -1846,13 +1876,18 @@ class CartControllerProvider extends ChangeNotifier {
   /// Fetch mart delivery charge settings from Firestore
   Future<Map<String, dynamic>?> _fetchMartDeliveryChargeSettings() async {
     try {
-      final doc = await FirebaseFirestore.instance
-          .collection('settings')
-          .doc('martDeliveryCharge')
-          .get();
-      if (doc.exists) {
-        final data = doc.data()!;
-        return data;
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}mobile/settings/mart-delivery-charge'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          final data = responseData['data'];
+          return data;
+        } else {
+          return null;
+        }
       } else {
         return null;
       }
@@ -2252,52 +2287,32 @@ class CartControllerProvider extends ChangeNotifier {
     List<CartProductModel> products,
   ) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('restaurant_orders')
-          .doc(orderId)
-          .delete();
-      for (var product in products) {
-        bool isMartItem = product.vendorID?.startsWith('mart_') == true;
-        if (isMartItem) {
-          try {
-            final martItemDoc = await FirebaseFirestore.instance
-                .collection('mart_items')
-                .doc(product.id!)
-                .get();
-            if (martItemDoc.exists) {
-              final martItemData = martItemDoc.data()!;
-              final currentQuantity = martItemData['quantity'] ?? 0;
-              final orderedQuantity = product.quantity ?? 0;
-              final newQuantity = currentQuantity + orderedQuantity;
-
-              await FirebaseFirestore.instance
-                  .collection('mart_items')
-                  .doc(product.id!)
-                  .update({'quantity': newQuantity});
-            }
-          } catch (e) {}
-          notifyListeners();
-        } else {
-          // For restaurant items, use existing logic
-          final productModel = await FireStoreUtils.getProductById(product.id!);
-          if (productModel != null) {
-            int currentQuantity = productModel.quantity ?? 0;
-            int orderedQuantity = product.quantity ?? 0;
-            int newQuantity = currentQuantity + orderedQuantity;
-            productModel.quantity = newQuantity;
-            await FireStoreUtils.setProduct(productModel);
-          }
-
-          notifyListeners();
-        }
+      // Prepare the request body
+      final Map<String, dynamic> requestBody = {
+        "order_id": orderId,
+        "products": products
+            .map((product) => {"id": product.id, "quantity": product.quantity})
+            .toList(),
+      };
+      // Make API call to rollback failed order
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}/mobile/orders/rollback-failed'),
+        headers: await getHeaders(),
+        body: jsonEncode(requestBody),
+      );
+      if (response.statusCode == 200) {
+        print('Order rollback successful for order: $orderId');
+        notifyListeners();
+      } else {
+        // Handle API error
+        print('Failed to rollback order: ${response.statusCode}');
+        throw Exception('Failed to rollback order: ${response.statusCode}');
       }
-      // Delete billing record if exists
-      await FirebaseFirestore.instance
-          .collection('order_Billing')
-          .doc(orderId)
-          .delete();
-      notifyListeners();
-    } catch (e) {}
+    } catch (e) {
+      print('Error rolling back order: $e');
+      // Re-throw the exception or handle it as needed
+      rethrow;
+    }
   }
 
   /// finderone
@@ -3163,14 +3178,26 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Add this method to mark a coupon as used for the current user
   Future<void> markCouponAsUsed(String couponId) async {
-    final userId = await SqlStorageConst.getFirebaseId();
-    await FirebaseFirestore.instance.collection('used_coupons').add({
-      'userId': userId,
-      'couponId': couponId,
-      'usedAt': FieldValue.serverTimestamp(),
-    });
-    // After marking as used, re-fetch coupon lists to update their status
-    await getCartData();
+    try {
+      final headers = await getHeaders();
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}/mobile/coupons/$couponId/used'),
+        headers: headers,
+      );
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print('Coupon marked as used successfully');
+        // After marking as used, re-fetch coupon lists to update their status
+        await getCartData();
+      } else {
+        // Handle error response
+        throw Exception(
+          'Failed to mark coupon as used: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error marking coupon as used: $e');
+      throw Exception('Failed to mark coupon as used: $e');
+    }
   }
 
   bool isCurrentDateInRange(DateTime startDate, DateTime endDate) {

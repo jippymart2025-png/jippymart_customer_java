@@ -149,15 +149,12 @@ class DriverInboxScreen extends StatelessWidget {
         },
         shrinkWrap: true,
         onEmpty: Constant.showEmptyView(message: "No Conversion found".tr),
-        // orderBy is compulsory to enable pagination
         query: FirebaseFirestore.instance
             .collection('chat_driver')
             .where("customerId", isEqualTo: userId)
             .orderBy('createdAt', descending: true),
-        //Change types customerId
         viewType: ViewType.list,
         initialLoader: Constant.loader(),
-        // to fetch real-time data
         isLive: true,
       ),
     );

@@ -1,6 +1,5 @@
 import 'dart:async';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
@@ -13,8 +12,11 @@ import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
 
 class MartProductDetailsScreen extends StatefulWidget {
   final dynamic product;
@@ -34,7 +36,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   int cartQuantity = 0;
   Timer? _cartStatusTimer;
   Timer? _loadingTimeoutTimer;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   MartBrandModel? brandData;
 
   @override
@@ -42,14 +43,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkCartStatus();
-
-    // Fetch delivery settings from Firestore
     _fetchDeliverySettings();
-
-    // Fetch brand data if available
     _fetchBrandData();
-
-    // Set up a timer to periodically check cart status
     _cartStatusTimer = Timer.periodic(Duration(seconds: 2), (timer) {
       if (mounted) {
         _checkCartStatus();
@@ -71,14 +66,24 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   Future<void> _fetchBrandData() async {
     if (widget.product.brandID != null && widget.product.brandID!.isNotEmpty) {
       try {
-        final doc = await _firestore
-            .collection('brands')
-            .doc(widget.product.brandID)
-            .get();
-        if (doc.exists) {
-          setState(() {
-            brandData = MartBrandModel.fromJson(doc.data()!);
-          });
+        final response = await http.get(
+          Uri.parse(
+            '${AppConst.baseUrl}mobile/brands/${widget.product.brandID}',
+          ),
+          headers: await getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final jsonResponse = json.decode(response.body);
+          if (jsonResponse['success'] == true) {
+            setState(() {
+              brandData = MartBrandModel.fromJson(
+                jsonResponse['data']['brand'],
+              );
+            });
+          }
+        } else {
+          print('Error fetching brand data: ${response.statusCode}');
         }
       } catch (e) {
         print('Error fetching brand data: $e');
@@ -146,7 +151,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   }
 
   void _refreshCartStatus() {
-    // Refresh cart status after adding/removing items
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkCartStatus();
     });
@@ -158,7 +162,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         () => MartBrandProductsScreen(brandID: brandID, brandTitle: brandTitle),
       );
     } else {
-      // Show error message if brand ID is not available
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Brand information not available'),
@@ -171,11 +174,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Refresh cart status when screen is built (when returning from cart screen)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkCartStatus();
     });
-
     return WillPopScope(
       onWillPop: () async {
         _checkCartStatus();
@@ -800,9 +801,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
           try {
             CartControllerProvider cartControllerProvider =
                 Provider.of<CartControllerProvider>(context, listen: false);
-
             final martVendorID = "mart_${widget.product.vendorID ?? 'unknown'}";
-
             final cartProduct = CartProductModel(
               id: widget.product.id,
               name: widget.product.name,
@@ -823,21 +822,17 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               variantInfo: null,
               promoId: null,
             );
-
             final success = await cartControllerProvider.addToCart(
               cartProductModel: cartProduct,
               isIncrement: true,
               quantity: quantity,
             );
-
             // Only show success message if item was actually added
             if (success) {
               // Wait a bit for the cart to update
               await Future.delayed(Duration(milliseconds: 500));
-
               // Refresh cart status to update UI
               _refreshCartStatus();
-
               // Show success message
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
