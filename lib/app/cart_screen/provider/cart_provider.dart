@@ -537,11 +537,43 @@ class CartControllerProvider extends ChangeNotifier {
               locality.contains('Current Location')) {
             return null;
           }
-          String? detectedZoneId = await _detectZoneIdForCoordinates(
-            lat,
-            lng,
-            context,
-          );
+          // Try multiple sources for zone ID
+          String? detectedZoneId;
+
+          // PRIORITY 1: Use zoneId from Constant.selectedLocation if available
+          if (Constant.selectedLocation.zoneId != null &&
+              Constant.selectedLocation.zoneId!.isNotEmpty) {
+            detectedZoneId = Constant.selectedLocation.zoneId;
+            print(
+              '[HOME_SCREEN_ADDRESS] ✅ Using zoneId from Constant.selectedLocation: $detectedZoneId',
+            );
+          }
+          // PRIORITY 2: Use zoneId from Constant.selectedZone if available
+          else if (Constant.selectedZone?.id != null &&
+              Constant.selectedZone!.id!.isNotEmpty) {
+            detectedZoneId = Constant.selectedZone!.id;
+            print(
+              '[HOME_SCREEN_ADDRESS] ✅ Using zoneId from Constant.selectedZone: $detectedZoneId',
+            );
+          }
+          // PRIORITY 3: Try to detect zone ID from coordinates
+          else {
+            detectedZoneId = await _detectZoneIdForCoordinates(
+              lat,
+              lng,
+              context,
+            );
+            if (detectedZoneId != null) {
+              print(
+                '[HOME_SCREEN_ADDRESS] ✅ Detected zoneId from coordinates: $detectedZoneId',
+              );
+            } else {
+              print(
+                '[HOME_SCREEN_ADDRESS] ⚠️ Could not detect zoneId from coordinates',
+              );
+            }
+          }
+
           notifyListeners();
           return ShippingAddress(
             id: 'home_screen_address_${DateTime.now().millisecondsSinceEpoch}',
@@ -560,6 +592,66 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (e) {
       print('📍 [HOME_SCREEN_ADDRESS] ❌ Error getting home screen address: $e');
       return null;
+    }
+  }
+
+  /// Sync selectedAddress with Constant.selectedLocation if needed
+  /// This ensures cart address stays in sync when location changes on home screen
+  Future<void> syncAddressWithHomeLocation(BuildContext context) async {
+    try {
+      // Check if Constant.selectedLocation has valid coordinates
+      if (Constant.selectedLocation.location?.latitude != null &&
+          Constant.selectedLocation.location?.longitude != null) {
+        final homeLat = Constant.selectedLocation.location!.latitude!;
+        final homeLng = Constant.selectedLocation.location!.longitude!;
+
+        // Check if current selectedAddress matches Constant.selectedLocation
+        final currentLat = selectedAddress?.location?.latitude;
+        final currentLng = selectedAddress?.location?.longitude;
+
+        // If coordinates don't match, sync the address
+        if (currentLat == null ||
+            currentLng == null ||
+            currentLat != homeLat ||
+            currentLng != homeLng) {
+          final homeScreenAddress = await _getCurrentLocationAddress(context);
+          if (homeScreenAddress != null) {
+            selectedAddress = homeScreenAddress;
+            // Ensure zoneId is set (it should be set by _getCurrentLocationAddress, but verify)
+            if ((selectedAddress!.zoneId == null ||
+                    selectedAddress!.zoneId!.isEmpty) &&
+                Constant.selectedLocation.zoneId != null &&
+                Constant.selectedLocation.zoneId!.isNotEmpty) {
+              selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
+              print(
+                '[CART_SYNC] ✅ Set zoneId from Constant.selectedLocation: ${selectedAddress!.zoneId}',
+              );
+            }
+            // Update surge value for new location
+            initialLiseSurgeValue(homeLat, homeLng);
+            // Recalculate prices with new address
+            calculatePrice();
+            print(
+              '[CART_SYNC] ✅ Synced selectedAddress with Constant.selectedLocation (zoneId: ${selectedAddress!.zoneId})',
+            );
+            notifyListeners();
+          }
+        } else {
+          // Coordinates match, but check if zoneId needs syncing
+          if ((selectedAddress?.zoneId == null ||
+                  selectedAddress!.zoneId!.isEmpty) &&
+              Constant.selectedLocation.zoneId != null &&
+              Constant.selectedLocation.zoneId!.isNotEmpty) {
+            selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
+            print(
+              '[CART_SYNC] ✅ Synced zoneId while coordinates match: ${selectedAddress!.zoneId}',
+            );
+            notifyListeners();
+          }
+        }
+      }
+    } catch (e) {
+      print('[CART_SYNC] ❌ Error syncing address with home location: $e');
     }
   }
 
@@ -3578,8 +3670,29 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// 🔑 BULLETPROOF ADDRESS VALIDATION - NEVER FAILS
-  Future<bool> _validateAddressBulletproof(BuildContext context) async {
+  Future<bool> _validateAddressBulletproof(
+    BuildContext context, {
+    bool isRetry = false,
+  }) async {
     try {
+      if (!isRetry &&
+          (selectedAddress == null ||
+              selectedAddress!.location?.latitude == null ||
+              selectedAddress!.location?.longitude == null ||
+              selectedAddress!.location!.latitude == 0.0 ||
+              selectedAddress!.location!.longitude == 0.0 ||
+              selectedAddress!.address == null ||
+              selectedAddress!.address!.isEmpty ||
+              selectedAddress!.address == 'Current Location')) {
+        final homeScreenAddress = await _getCurrentLocationAddress(context);
+        if (homeScreenAddress != null) {
+          selectedAddress = homeScreenAddress;
+          print(
+            '[CART_VALIDATION] ✅ Synced selectedAddress with Constant.selectedLocation',
+          );
+        }
+      }
+
       if (selectedAddress == null) {
         ShowToastDialog.showToast(
           "Delivery address is required. Please add an address to continue.".tr,
@@ -3617,7 +3730,6 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-
       if (address.locality == null ||
           address.locality!.trim().isEmpty ||
           address.locality!.trim() == 'null') {
@@ -3641,13 +3753,27 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 4 PASSED - Valid locality: "${address.locality}"',
       );
-      //finded
-      // CRITICAL CHECK 5: Address must have valid coordinates
       if (address.location == null ||
           address.location!.latitude == null ||
           address.location!.longitude == null ||
           address.location!.latitude == 0.0 ||
           address.location!.longitude == 0.0) {
+        print('[CART_VALIDATION] ❌ CHECK 5 FAILED - Invalid coordinates');
+        print('[CART_VALIDATION] Location: ${address.location?.toJson()}');
+        print('[CART_VALIDATION] Address: ${address.address}');
+        print('[CART_VALIDATION] Locality: ${address.locality}');
+        if (!isRetry) {
+          final homeScreenAddress = await _getCurrentLocationAddress(context);
+          if (homeScreenAddress != null &&
+              homeScreenAddress.location?.latitude != null &&
+              homeScreenAddress.location?.longitude != null) {
+            selectedAddress = homeScreenAddress;
+            print(
+              '[CART_VALIDATION] ✅ Retry sync successful - using home screen address',
+            );
+            return await _validateAddressBulletproof(context, isRetry: true);
+          }
+        }
         ShowToastDialog.showToast(
           "Please select a delivery address with valid location coordinates."
               .tr,
@@ -3655,7 +3781,6 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-      // CRITICAL CHECK 6: BLOCK ALL FALLBACK ZONES - NO EXCEPTIONS
       if (address.id!.startsWith('fallback_zone_') ||
           address.address == 'Ongole' ||
           address.address == 'Service Area' ||
@@ -3679,14 +3804,51 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
       if (address.zoneId == null || address.zoneId!.isEmpty) {
-        String? detectedZoneId = await _detectZoneIdForCoordinates(
-          address.location!.latitude!,
-          address.location!.longitude!,
-          context,
-        );
-        if (detectedZoneId != null) {
+        String? detectedZoneId;
+
+        // PRIORITY 1: Try to use zoneId from Constant.selectedLocation
+        if (Constant.selectedLocation.zoneId != null &&
+            Constant.selectedLocation.zoneId!.isNotEmpty) {
+          detectedZoneId = Constant.selectedLocation.zoneId;
+          print(
+            '[CART_VALIDATION] ✅ Using zoneId from Constant.selectedLocation: $detectedZoneId',
+          );
+        }
+        // PRIORITY 2: Try to use zoneId from Constant.selectedZone
+        else if (Constant.selectedZone?.id != null &&
+            Constant.selectedZone!.id!.isNotEmpty) {
+          detectedZoneId = Constant.selectedZone!.id;
+          print(
+            '[CART_VALIDATION] ✅ Using zoneId from Constant.selectedZone: $detectedZoneId',
+          );
+        }
+        // PRIORITY 3: Try to detect zone ID from coordinates
+        else {
+          detectedZoneId = await _detectZoneIdForCoordinates(
+            address.location!.latitude!,
+            address.location!.longitude!,
+            context,
+          );
+          if (detectedZoneId != null) {
+            print(
+              '[CART_VALIDATION] ✅ Detected zoneId from coordinates: $detectedZoneId',
+            );
+          }
+        }
+        if (detectedZoneId != null && detectedZoneId.isNotEmpty) {
           address.zoneId = detectedZoneId;
+          Constant.selectedLocation.zoneId = detectedZoneId;
+          print(
+            '[CART_VALIDATION] ✅ Zone ID set successfully: $detectedZoneId',
+          );
         } else {
+          print('[CART_VALIDATION] ❌ All zone detection methods failed');
+          print(
+            '[CART_VALIDATION] Constant.selectedLocation.zoneId: ${Constant.selectedLocation.zoneId}',
+          );
+          print(
+            '[CART_VALIDATION] Constant.selectedZone?.id: ${Constant.selectedZone?.id}',
+          );
           ShowToastDialog.showToast(
             "Address zone not detected. Please update your address or contact support."
                 .tr,

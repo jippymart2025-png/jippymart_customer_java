@@ -73,8 +73,15 @@ class _CartScreenState extends State<CartScreen> {
     _isRefreshing = true;
     
     controller.forceRefreshCart();
-    if (controller.selectedAddress == null) {
+    // Always check and sync address with Constant.selectedLocation
+    // This ensures address is updated when location changes on home screen
+    if (controller.selectedAddress == null ||
+        controller.selectedAddress!.location?.latitude == null ||
+        controller.selectedAddress!.location?.longitude == null) {
       controller.initializeAddress(context);
+    } else {
+      // Even if address exists, sync with Constant.selectedLocation to ensure consistency
+      controller.syncAddressWithHomeLocation(context);
     }
     Future.delayed(const Duration(milliseconds: 500), () {
       controller.checkAndUpdatePaymentMethod();
@@ -228,10 +235,30 @@ class _CartScreenState extends State<CartScreen> {
                                             addressModel.location?.longitude !=
                                                 null) {
                                           try {
-                                            if (Constant.selectedZone != null) {
-                                              addressModel.zoneId =
-                                                  Constant.selectedZone!.id;
-                                            } else {
+                                            // PRIORITY 1: Use zoneId from addressModel if already set
+                                            if (addressModel.zoneId != null && 
+                                                addressModel.zoneId!.isNotEmpty) {
+                                              print(
+                                                '✅ [CART_ADDRESS_CHANGE] Using zoneId from addressModel: ${addressModel.zoneId}',
+                                              );
+                                            }
+                                            // PRIORITY 2: Use zoneId from Constant.selectedLocation
+                                            else if (Constant.selectedLocation.zoneId != null && 
+                                                     Constant.selectedLocation.zoneId!.isNotEmpty) {
+                                              addressModel.zoneId = Constant.selectedLocation.zoneId;
+                                              print(
+                                                '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedLocation: ${addressModel.zoneId}',
+                                              );
+                                            }
+                                            // PRIORITY 3: Use zoneId from Constant.selectedZone
+                                            else if (Constant.selectedZone != null) {
+                                              addressModel.zoneId = Constant.selectedZone!.id;
+                                              print(
+                                                '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedZone: ${addressModel.zoneId}',
+                                              );
+                                            }
+                                            // PRIORITY 4: Try to detect zone ID from coordinates
+                                            else {
                                               final zoneId =
                                                   await MartZoneUtils.getZoneIdForCoordinates(
                                                     addressModel
@@ -245,7 +272,7 @@ class _CartScreenState extends State<CartScreen> {
                                               if (zoneId.isNotEmpty) {
                                                 addressModel.zoneId = zoneId;
                                                 print(
-                                                  '✅ [CART_ADDRESS_CHANGE] Mart zone detected: $zoneId',
+                                                  '✅ [CART_ADDRESS_CHANGE] Detected zone from coordinates: $zoneId',
                                                 );
                                               } else {
                                                 print(

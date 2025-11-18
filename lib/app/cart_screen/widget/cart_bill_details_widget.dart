@@ -443,15 +443,12 @@ Widget _buildDeliveryFeeSection(
   // Mart items delivery logic
   if (hasMartItems) {
     print('[CART_UI] 🛒 Building mart delivery UI...');
-
     // For mart items, use the same logic as restaurant items
     double itemThreshold = 199.0; // Default mart threshold
     double freeDeliveryKm = 5.0; // Default mart free distance
     double baseDeliveryCharge = 23.0; // Static base charge
-
     final subtotal = controller.subTotal;
     final distance = controller.totalDistance;
-
     // Determine delivery eligibility and charges (same logic as restaurant)
     final isAboveThreshold = subtotal >= itemThreshold;
     final isWithinFreeDistance = distance <= freeDeliveryKm;

@@ -278,6 +278,11 @@ class HomeProvider extends ChangeNotifier {
         if (detectedZone != null) {
           Constant.selectedZone = detectedZone;
           Constant.isZoneAvailable = zoneModel.isZoneAvailable == true;
+          // Also update Constant.selectedLocation.zoneId for consistency
+          if (detectedZone.id != null && detectedZone.id!.isNotEmpty) {
+            Constant.selectedLocation.zoneId = detectedZone.id;
+            print('[DEBUG] ✅ Set Constant.selectedLocation.zoneId: ${detectedZone.id}');
+          }
           print(
             '[DEBUG] User location:  ${Constant.isZoneAvailable} $latitude, $longitude',
           );
