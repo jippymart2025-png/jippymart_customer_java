@@ -33,16 +33,24 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
             
             // Validate product ID before making API call
             String? productId;
-            if (cartProductModel.id != null && cartProductModel.id!.isNotEmpty) {
+            if (cartProductModel.id != null && 
+                cartProductModel.id!.isNotEmpty && 
+                cartProductModel.id!.toLowerCase() != 'null') {
               final parts = cartProductModel.id!.split('~');
-              if (parts.isNotEmpty && parts.first.isNotEmpty) {
+              if (parts.isNotEmpty && parts.first.isNotEmpty && parts.first.toLowerCase() != 'null') {
                 productId = parts.first;
               }
             }
             
             // If no valid product ID, skip API call and show product with cart data
-            if (productId == null || productId.isEmpty) {
-              print('[CART_PRODUCT] Invalid or null product ID: ${cartProductModel.id}');
+            if (productId == null || 
+                productId.isEmpty || 
+                productId.trim().isEmpty ||
+                productId.toLowerCase() == 'null') {
+              // Only log if it's not already a known invalid value to reduce noise
+              if (cartProductModel.id != null && cartProductModel.id!.toLowerCase() != 'null') {
+                print('[CART_PRODUCT] Invalid or null product ID: ${cartProductModel.id}');
+              }
               return _buildProductItem(cartProductModel, null);
             }
             

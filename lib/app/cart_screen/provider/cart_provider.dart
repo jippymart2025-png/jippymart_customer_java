@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -11,7 +12,6 @@ import 'package:jippymart_customer/app/restaurant_details_screen/provider/restau
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/send_notification.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
@@ -297,25 +297,31 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<Map<String, dynamic>> getSurgeRules() async {
     try {
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
-        headers: await getHeaders(),
-      ).timeout(const Duration(seconds: 10));
-      
+      final response = await http
+          .get(
+            Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
+            headers: await getHeaders(),
+          )
+          .timeout(const Duration(seconds: 10));
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
           print("API response data: ${responseData['data']}");
           return responseData['data'] ?? {};
         } else {
-          print('[CART_PROVIDER] Surge rules API returned unsuccessful response');
+          print(
+            '[CART_PROVIDER] Surge rules API returned unsuccessful response',
+          );
           return {}; // Return empty map instead of throwing
         }
       } else if (response.statusCode == 429) {
         print('[CART_PROVIDER] Rate limited when fetching surge rules');
         return {}; // Return empty map on rate limit
       } else {
-        print('[CART_PROVIDER] Failed to fetch surge rules: ${response.statusCode}');
+        print(
+          '[CART_PROVIDER] Failed to fetch surge rules: ${response.statusCode}',
+        );
         return {}; // Return empty map instead of throwing
       }
     } on TimeoutException {
@@ -408,6 +414,9 @@ class CartControllerProvider extends ChangeNotifier {
   List<CouponModel>? _cachedCouponList;
   DateTime? _lastCacheTime;
   static const Duration cacheExpiry = Duration(minutes: 5);
+
+  // Flag to prevent multiple simultaneous coupon loads
+  bool _isLoadingCoupons = false;
 
   // Context detection for coupon filtering
   String _currentContext = "restaurant"; // Default to restaurant
@@ -756,17 +765,13 @@ class CartControllerProvider extends ChangeNotifier {
             "Missing required fields: ${missingFields.join(', ')}. Please complete your profile.";
       }
       notifyListeners();
-
       ShowToastDialog.showToast(message);
       return false;
     }
-
     final addressValid = await _validateAddressBulletproof(context);
-
     if (!addressValid) {
       return false;
     }
-
     try {
       await validateMinimumOrderValue();
     } catch (e) {
@@ -984,7 +989,6 @@ class CartControllerProvider extends ChangeNotifier {
       cartItem.clear();
       // Clear cart from database
       await DatabaseHelper.instance.deleteAllCartProducts();
-
       subTotal = 0.0;
       totalAmount = 0.0;
       deliveryCharges = 0.0;
@@ -993,7 +997,6 @@ class CartControllerProvider extends ChangeNotifier {
       taxAmount = 0.0;
       deliveryTips = 0.0;
       selectedPaymentMethod = '';
-
       // Verify cart is actually empty
       final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
 
@@ -1194,21 +1197,38 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<void> _loadCoupons({required String restaurantId}) async {
+    // Prevent multiple simultaneous calls
+    if (_isLoadingCoupons) {
+      print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
+      return;
+    }
+
+    // Validate restaurant ID before making API call
+    if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
+      print('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
+      // Try to load global coupons instead
+      await _loadGlobalCouponsOnly();
+      return;
+    }
+    _isLoadingCoupons = true;
+
     try {
       _detectCurrentContext();
-      final vendorCoupons =
+
+      // Make only ONE API call instead of three identical calls
+      final allCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons(
             restaurantId: restaurantId,
+          ).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[COUPON_LOAD] ⏱️ Coupon API call timed out');
+              return <CouponModel>[];
+            },
           );
-      final allVendorCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          );
-      final globalCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          );
-      final filteredGlobalCoupons = globalCoupons
+
+      // Filter global coupons (those without restaurant ID or with 'ALL')
+      final filteredGlobalCoupons = allCoupons
           .where(
             (c) =>
                 c.resturantId == null ||
@@ -1217,12 +1237,22 @@ class CartControllerProvider extends ChangeNotifier {
           )
           .toList();
 
-      final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
-      final combinedAllCoupons = [
-        ...allVendorCoupons,
-        ...filteredGlobalCoupons,
-      ];
+      // Filter vendor-specific coupons
+      final vendorCoupons = allCoupons
+          .where(
+            (c) =>
+                c.resturantId != null &&
+                c.resturantId!.isNotEmpty &&
+                c.resturantId!.toUpperCase() != 'ALL' &&
+                c.resturantId == restaurantId,
+          )
+          .toList();
 
+      // Combine vendor and global coupons
+      final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
+      final combinedAllCoupons = [...allCoupons];
+
+      // Apply context filtering
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: combinedCoupons.cast<CouponModel>(),
         contextType: _currentContext,
@@ -1244,8 +1274,56 @@ class CartControllerProvider extends ChangeNotifier {
       notifyListeners();
       // Mark used coupons
       await _markUsedCoupons();
+    } on SocketException catch (e) {
+      print('[COUPON_LOAD] ❌ Connection error: $e');
+      // Use cached coupons if available, otherwise empty list
+      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+        couponList = _cachedCouponList!;
+        allCouponList = _cachedCouponList!;
+        notifyListeners();
+      } else {
+        couponList = [];
+        allCouponList = [];
+        notifyListeners();
+      }
+    } on http.ClientException catch (e) {
+      print(
+        '[COUPON_LOAD] ❌ ClientException (connection refused or network error): $e',
+      );
+      // Use cached coupons if available, otherwise empty list
+      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+        couponList = _cachedCouponList!;
+        allCouponList = _cachedCouponList!;
+        notifyListeners();
+      } else {
+        couponList = [];
+        allCouponList = [];
+        notifyListeners();
+      }
     } catch (e) {
-      await _loadCouponsWithoutFiltering(restaurantId: restaurantId);
+      print('[COUPON_LOAD] ❌ Error loading coupons: $e');
+      // Check for rate limit (429) or other errors
+      final errorString = e.toString();
+      if (errorString.contains('429') ||
+          errorString.contains('Status code: 429')) {
+        print(
+          '[COUPON_LOAD] ⚠️ Rate limit (429) - using cached coupons if available',
+        );
+        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+          couponList = _cachedCouponList!;
+          allCouponList = _cachedCouponList!;
+          notifyListeners();
+        } else {
+          couponList = [];
+          allCouponList = [];
+          notifyListeners();
+        }
+      } else {
+        // Try fallback method only for non-rate-limit errors
+        await _loadCouponsWithoutFiltering(restaurantId: restaurantId);
+      }
+    } finally {
+      _isLoadingCoupons = false;
     }
   }
 
@@ -1253,20 +1331,46 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _loadCouponsWithoutFiltering({
     required String restaurantId,
   }) async {
+    // Prevent multiple simultaneous calls
+    if (_isLoadingCoupons) {
+      print(
+        '[COUPON_LOAD] ⚠️ Fallback coupon load already in progress, skipping...',
+      );
+      return;
+    }
+
+    // Validate restaurant ID
+    if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
+      print('[COUPON_LOAD] ⚠️ Fallback: Skipping - empty restaurant ID');
+      // Use cached coupons if available
+      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+        couponList = _cachedCouponList!;
+        allCouponList = _cachedCouponList!;
+        notifyListeners();
+      } else {
+        couponList = [];
+        allCouponList = [];
+        notifyListeners();
+      }
+      return;
+    }
+
+    _isLoadingCoupons = true;
+
     try {
-      final vendorCoupons =
+      // Make only ONE API call
+      final allCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons(
             restaurantId: restaurantId,
+          ).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[COUPON_LOAD] ⏱️ Fallback: Coupon API call timed out');
+              return <CouponModel>[];
+            },
           );
-      final allVendorCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          );
-      final globalCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          );
-      final filteredGlobalCoupons = globalCoupons
+
+      final filteredGlobalCoupons = allCoupons
           .where(
             (c) =>
                 c.resturantId == null ||
@@ -1275,11 +1379,18 @@ class CartControllerProvider extends ChangeNotifier {
           )
           .toList();
 
+      final vendorCoupons = allCoupons
+          .where(
+            (c) =>
+                c.resturantId != null &&
+                c.resturantId!.isNotEmpty &&
+                c.resturantId!.toUpperCase() != 'ALL' &&
+                c.resturantId == restaurantId,
+          )
+          .toList();
+
       final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
-      final combinedAllCoupons = [
-        ...allVendorCoupons,
-        ...filteredGlobalCoupons,
-      ];
+      final combinedAllCoupons = [...allCoupons];
 
       _cachedCouponList = combinedCoupons.cast<CouponModel>();
       _updateCacheTime();
@@ -1290,12 +1401,69 @@ class CartControllerProvider extends ChangeNotifier {
       notifyListeners();
       // Mark used coupons
       await _markUsedCoupons();
+    } on SocketException catch (e) {
+      print('[COUPON_LOAD] ❌ Fallback: Connection error: $e');
+      // Use cached coupons if available
+      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+        couponList = _cachedCouponList!;
+        allCouponList = _cachedCouponList!;
+        notifyListeners();
+      } else {
+        couponList = [];
+        allCouponList = [];
+        notifyListeners();
+      }
+    } on http.ClientException catch (e) {
+      print(
+        '[COUPON_LOAD] ❌ Fallback: ClientException (connection refused or network error): $e',
+      );
+      // Use cached coupons if available
+      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+        couponList = _cachedCouponList!;
+        allCouponList = _cachedCouponList!;
+        notifyListeners();
+      } else {
+        couponList = [];
+        allCouponList = [];
+        notifyListeners();
+      }
     } catch (e) {
       print('[COUPON_LOAD] ❌ Fallback coupon loading also failed: $e');
+      // Check for rate limit (429) or other errors
+      final errorString = e.toString();
+      if (errorString.contains('429') ||
+          errorString.contains('Status code: 429')) {
+        print(
+          '[COUPON_LOAD] ⚠️ Fallback: Rate limit (429) - using cached coupons if available',
+        );
+        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+          couponList = _cachedCouponList!;
+          allCouponList = _cachedCouponList!;
+          notifyListeners();
+        } else {
+          couponList = [];
+          allCouponList = [];
+          notifyListeners();
+        }
+      } else {
+        // Use cached coupons if available, otherwise empty list
+        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+          couponList = _cachedCouponList!;
+          allCouponList = _cachedCouponList!;
+          notifyListeners();
+        } else {
+          couponList = [];
+          allCouponList = [];
+          notifyListeners();
+        }
+      }
+    } finally {
+      _isLoadingCoupons = false;
     }
   }
 
   // Detect current context based on cart items
+  // NOTE: This method should NOT call notifyListeners() as it may be called during build
   void _detectCurrentContext() {
     try {
       bool hasMartItems = false;
@@ -1323,14 +1491,17 @@ class CartControllerProvider extends ChangeNotifier {
           _currentContext = "restaurant";
         }
       }
-      notifyListeners();
+      // Removed notifyListeners() to prevent setState during build errors
+      // The caller should call notifyListeners() if needed after this method
     } catch (e) {
       _currentContext = "restaurant";
-      notifyListeners();
+      // Removed notifyListeners() to prevent setState during build errors
     }
   }
 
   // Helper method to determine if an item is from mart
+  // NOTE: This is a pure function and should NEVER call notifyListeners()
+  // It may be called during widget build, so it must not trigger state changes
   bool _isMartItem(CartProductModel item) {
     try {
       if (item.vendorID != null && item.vendorID!.startsWith("mart_")) {
@@ -1362,13 +1533,15 @@ class CartControllerProvider extends ChangeNotifier {
           return true;
         }
       }
-      notifyListeners();
       return false; // Default to restaurant if no mart indicators found
     } catch (e) {
       return false;
     }
   }
 
+  // Check if cart has mart items
+  // NOTE: This is a pure function and should NEVER call notifyListeners()
+  // It may be called during widget build, so it must not trigger state changes
   bool hasMartItemsInCart() {
     try {
       return cartItem.any((item) => _isMartItem(item));
@@ -1410,31 +1583,60 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Ensure coupons are loaded when cart screen opens
   void ensureCouponsLoaded() {
-    if (_cachedCouponList == null || _cachedCouponList!.isEmpty) {
-      if (vendorModel.id != null) {
-        _loadCoupons(restaurantId: vendorModel.id.toString());
-      } else {
-        _loadGlobalCouponsOnly();
-      }
-    } else {
-      // Update the observable list with cached coupons
-      if (couponList.isEmpty && _cachedCouponList!.isNotEmpty) {
+    // Prevent multiple simultaneous calls
+    if (_isLoadingCoupons) {
+      print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
+      return;
+    }
+
+    // If we have cached coupons, use them immediately
+    if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+      if (couponList.isEmpty) {
         couponList = _cachedCouponList!;
+        allCouponList = _cachedCouponList!;
+        notifyListeners();
+      }
+      // Only refresh if cache is expired
+      if (_isCacheValid()) {
+        return; // Cache is still valid, no need to reload
       }
     }
-    notifyListeners();
+
+    // Load coupons if cache is empty or expired
+    if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
+      _loadCoupons(restaurantId: vendorModel.id.toString());
+    } else {
+      _loadGlobalCouponsOnly();
+    }
   }
 
   // Load only global coupons when no vendor ID is available
   Future<void> _loadGlobalCouponsOnly() async {
+    // Prevent multiple simultaneous calls
+    if (_isLoadingCoupons) {
+      print(
+        '[COUPON_LOAD] ⚠️ Global coupon load already in progress, skipping...',
+      );
+      return;
+    }
+
+    _isLoadingCoupons = true;
+
     try {
       _detectCurrentContext();
 
-      // Load global coupons
+      // Load global coupons with timeout and error handling
       final globalCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons(
             restaurantId: '',
+          ).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[COUPON_LOAD] ⏱️ Global coupon API call timed out');
+              return <CouponModel>[];
+            },
           );
+
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>
@@ -1443,19 +1645,74 @@ class CartControllerProvider extends ChangeNotifier {
                 c.resturantId?.toUpperCase() == 'ALL',
           )
           .toList();
+
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: filteredGlobalCoupons.cast<CouponModel>(),
         contextType: _currentContext,
         fallbackEnabled: true,
       );
+
       _cachedCouponList = contextFilteredCoupons;
       _updateCacheTime();
+
       // Update observable lists
       couponList = contextFilteredCoupons;
       allCouponList = filteredGlobalCoupons.cast<CouponModel>();
       notifyListeners();
+    } on SocketException catch (e) {
+      print('[COUPON_LOAD] ❌ Global: Connection error: $e');
+      // Use cached coupons if available
+      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+        couponList = _cachedCouponList!;
+        allCouponList = _cachedCouponList!;
+        notifyListeners();
+      } else {
+        couponList = [];
+        allCouponList = [];
+        notifyListeners();
+      }
+    } on http.ClientException catch (e) {
+      print('[COUPON_LOAD] ❌ Global: ClientException: $e');
+      // Use cached coupons if available
+      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+        couponList = _cachedCouponList!;
+        allCouponList = _cachedCouponList!;
+        notifyListeners();
+      } else {
+        couponList = [];
+        allCouponList = [];
+        notifyListeners();
+      }
     } catch (e) {
       print('[COUPON_DEBUG] ❌ Error loading global coupons: $e');
+      // Check for rate limit (429) or bad request (400)
+      final errorString = e.toString();
+      if (errorString.contains('429') ||
+          errorString.contains('400') ||
+          errorString.contains('Status code: 429') ||
+          errorString.contains('Status code: 400')) {
+        print(
+          '[COUPON_LOAD] ⚠️ Global: Rate limit or bad request - using cached coupons if available',
+        );
+        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+          couponList = _cachedCouponList!;
+          allCouponList = _cachedCouponList!;
+          notifyListeners();
+        } else {
+          couponList = [];
+          allCouponList = [];
+          notifyListeners();
+        }
+      } else {
+        // For other errors, try to use cached data
+        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+          couponList = _cachedCouponList!;
+          allCouponList = _cachedCouponList!;
+          notifyListeners();
+        }
+      }
+    } finally {
+      _isLoadingCoupons = false;
     }
   }
 
@@ -2196,7 +2453,25 @@ class CartControllerProvider extends ChangeNotifier {
           }
         } else {
           // For restaurant items, use existing Firebase logic
-          final product = await FireStoreUtils.getProductById(item.id!);
+          // Validate product ID before making API call
+          final productId = item.id;
+          if (productId == null ||
+              productId.isEmpty ||
+              productId == 'null' ||
+              productId.trim().isEmpty) {
+            print('[CART_VALIDATION] Invalid product ID: $productId');
+            ShowToastDialog.showToast(
+              "Some items in your cart have invalid product information.".tr,
+            );
+            return false;
+          }
+
+          // Extract base product ID if it contains variant separator
+          final baseProductId = productId.contains('~')
+              ? productId.split('~').first
+              : productId;
+
+          final product = await FireStoreUtils.getProductById(baseProductId);
           if (product == null) {
             ShowToastDialog.showToast(
               "Some items in your cart are no longer available.".tr,
@@ -2452,7 +2727,6 @@ class CartControllerProvider extends ChangeNotifier {
       orderId = generatedOrderId;
       orderModel.id = generatedOrderId;
       print('DEBUG: Generated Order ID: $generatedOrderId');
-
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
@@ -2499,7 +2773,6 @@ class CartControllerProvider extends ChangeNotifier {
         "status": Constant.orderPlaced,
         "created_at": DateTime.now().toIso8601String(),
       };
-
       // **API CALL: Store the order**
       print('🌐 Creating order via API...');
       final response = await http.post(
@@ -2516,11 +2789,8 @@ class CartControllerProvider extends ChangeNotifier {
       if (responseData['success'] != true) {
         throw Exception('API returned error: ${responseData['message']}');
       }
-
       print('✅ Order created successfully via API');
-
       notifyListeners();
-
       // Execute additional tasks
       final additionalTasks = <Future>[];
       if (selectedCouponModel.id != null &&
@@ -2651,48 +2921,60 @@ class CartControllerProvider extends ChangeNotifier {
 
   getPaymentSettings() async {
     try {
-      await FireStoreUtils.getPaymentSettingsData().then((value) {
-        try {
-          final razorpaySettingsStr = Preferences.getString(Preferences.razorpaySettings);
-          final codSettingsStr = Preferences.getString(Preferences.codSettings);
-          
-          if (razorpaySettingsStr.isNotEmpty) {
-            razorPayModel = RazorPayModel.fromJson(
-              jsonDecode(razorpaySettingsStr),
-            );
-          }
-          
-          if (codSettingsStr.isNotEmpty) {
-            cashOnDeliverySettingModel = CodSettingModel.fromJson(
-              jsonDecode(codSettingsStr),
-            );
-          }
-          
-          if (cashOnDeliverySettingModel.isEnabled == true &&
-              subTotal <= 599 &&
-              !hasMartItemsInCart()) {
-            selectedPaymentMethod = PaymentGateway.cod.name;
-          } else if (razorPayModel.isEnabled == true) {
-            selectedPaymentMethod = PaymentGateway.razorpay.name;
-          }
-          razorPay?.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlePaymentSuccess);
-          razorPay?.on(Razorpay.EVENT_EXTERNAL_WALLET, handleExternalWaller);
-          razorPay?.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
-          checkAndUpdatePaymentMethod();
-        } catch (e) {
-          print('[CART_PROVIDER] Error parsing payment settings: $e');
-          // Continue with default payment method selection
-          if (razorPayModel.isEnabled == true) {
-            selectedPaymentMethod = PaymentGateway.razorpay.name;
-          }
-        }
-      }).catchError((e) {
-        print('[CART_PROVIDER] Error fetching payment settings: $e');
-        // Set default payment method on error
-        if (razorPayModel.isEnabled == true) {
-          selectedPaymentMethod = PaymentGateway.razorpay.name;
-        }
-      });
+      await FireStoreUtils.getPaymentSettingsData()
+          .then((value) {
+            try {
+              final razorpaySettingsStr = Preferences.getString(
+                Preferences.razorpaySettings,
+              );
+              final codSettingsStr = Preferences.getString(
+                Preferences.codSettings,
+              );
+
+              if (razorpaySettingsStr.isNotEmpty) {
+                razorPayModel = RazorPayModel.fromJson(
+                  jsonDecode(razorpaySettingsStr),
+                );
+              }
+
+              if (codSettingsStr.isNotEmpty) {
+                cashOnDeliverySettingModel = CodSettingModel.fromJson(
+                  jsonDecode(codSettingsStr),
+                );
+              }
+
+              if (cashOnDeliverySettingModel.isEnabled == true &&
+                  subTotal <= 599 &&
+                  !hasMartItemsInCart()) {
+                selectedPaymentMethod = PaymentGateway.cod.name;
+              } else if (razorPayModel.isEnabled == true) {
+                selectedPaymentMethod = PaymentGateway.razorpay.name;
+              }
+              razorPay?.on(
+                Razorpay.EVENT_PAYMENT_SUCCESS,
+                handlePaymentSuccess,
+              );
+              razorPay?.on(
+                Razorpay.EVENT_EXTERNAL_WALLET,
+                handleExternalWaller,
+              );
+              razorPay?.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
+              checkAndUpdatePaymentMethod();
+            } catch (e) {
+              print('[CART_PROVIDER] Error parsing payment settings: $e');
+              // Continue with default payment method selection
+              if (razorPayModel.isEnabled == true) {
+                selectedPaymentMethod = PaymentGateway.razorpay.name;
+              }
+            }
+          })
+          .catchError((e) {
+            print('[CART_PROVIDER] Error fetching payment settings: $e');
+            // Set default payment method on error
+            if (razorPayModel.isEnabled == true) {
+              selectedPaymentMethod = PaymentGateway.razorpay.name;
+            }
+          });
     } catch (e) {
       print('[CART_PROVIDER] Error in getPaymentSettings: $e');
     }
@@ -3322,7 +3604,6 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-
       if (address.address == null ||
           address.address!.trim().isEmpty ||
           address.address!.trim() == 'null') {
@@ -3330,11 +3611,9 @@ class CartControllerProvider extends ChangeNotifier {
           "Please select a valid delivery address with complete address details."
               .tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
-
       if (address.address!.trim() == 'Current Location' &&
           (address.location?.latitude == null ||
               address.location?.longitude == null)) {
@@ -3372,6 +3651,7 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 4 PASSED - Valid locality: "${address.locality}"',
       );
+      //finded
       // CRITICAL CHECK 5: Address must have valid coordinates
       if (address.location == null ||
           address.location!.latitude == null ||

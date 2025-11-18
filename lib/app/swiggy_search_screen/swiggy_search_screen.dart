@@ -26,6 +26,10 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   final TextEditingController searchController = TextEditingController();
   final CartProvider cartProvider = CartProvider();
   final FocusNode searchFocusNode = FocusNode();
+  
+  // Cache vendor details to avoid repeated API calls
+  final Map<String, VendorModel?> _vendorCache = {};
+  final Map<String, Future<VendorModel?>> _vendorFutures = {};
 
   @override
   void initState() {
@@ -950,10 +954,15 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   }
 
   Widget _buildProductsList(SwiggySearchProvider controller) {
+    // Limit initial display to improve performance
+    final displayLimit = controller.productResults.length > 50 
+        ? 50 
+        : controller.productResults.length;
+    
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: controller.productResults.length,
+      itemCount: displayLimit,
       itemBuilder: (context, index) {
         ProductModel product = controller.productResults[index];
         return _buildProductCard(product);
@@ -1458,10 +1467,42 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   const SizedBox(height: 20),
 
                   // **COMBINED RESTAURANT & PRICE CARD**
-                  if (product.vendorID != null)
+                  if (product.vendorID != null && product.vendorID!.isNotEmpty)
                     FutureBuilder<VendorModel?>(
                       future: _getVendorDetails(product.vendorID!),
                       builder: (context, snapshot) {
+                        // Show loading state
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: AppThemeData.grey100,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Row(
+                              children: [
+                                const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  "Loading restaurant details...",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppThemeData.grey600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        // Show error state
+                        if (snapshot.hasError) {
+                          return const SizedBox.shrink(); // Hide on error
+                        }
+                        // Show data
                         if (snapshot.hasData && snapshot.data != null) {
                           final vendor = snapshot.data!;
                           return Container(
@@ -1828,12 +1869,42 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  // **GET VENDOR DETAILS**
+  // **GET VENDOR DETAILS - WITH CACHING**
   Future<VendorModel?> _getVendorDetails(String vendorID) async {
+    // Return cached value if available
+    if (_vendorCache.containsKey(vendorID)) {
+      return _vendorCache[vendorID];
+    }
+    
+    // Return existing future if already loading
+    if (_vendorFutures.containsKey(vendorID)) {
+      return _vendorFutures[vendorID];
+    }
+    
+    // Create new future and cache it
+    final future = _fetchVendorDetails(vendorID);
+    _vendorFutures[vendorID] = future;
+    
+    try {
+      final vendor = await future;
+      _vendorCache[vendorID] = vendor;
+      return vendor;
+    } catch (e) {
+      print("Error getting vendor details: $e");
+      _vendorCache[vendorID] = null; // Cache null to avoid retrying
+      return null;
+    } finally {
+      // Remove from futures map after completion
+      _vendorFutures.remove(vendorID);
+    }
+  }
+  
+  // **FETCH VENDOR DETAILS FROM API**
+  Future<VendorModel?> _fetchVendorDetails(String vendorID) async {
     try {
       return await FireStoreUtils.getVendorById(vendorID);
     } catch (e) {
-      print("Error getting vendor details: $e");
+      print("Error fetching vendor details: $e");
       return null;
     }
   }

@@ -16,16 +16,36 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
-class CouponListScreen extends StatelessWidget {
+class CouponListScreen extends StatefulWidget {
   const CouponListScreen({super.key});
+
+  @override
+  State<CouponListScreen> createState() => _CouponListScreenState();
+}
+
+class _CouponListScreenState extends State<CouponListScreen> {
+  bool _hasInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load coupons only once when screen is first opened
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_hasInitialized) {
+        _hasInitialized = true;
+        final controller = Provider.of<CartControllerProvider>(
+          context,
+          listen: false,
+        );
+        controller.ensureCouponsLoaded();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<CartControllerProvider>(
       builder: (context, controller, _) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          controller.ensureCouponsLoaded();
-        });
         if (controller.couponList.isEmpty) {
           return Scaffold(
             backgroundColor: AppThemeData.surface,

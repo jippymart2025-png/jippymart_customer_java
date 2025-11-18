@@ -117,10 +117,22 @@ class Constant {
   static bool isEnableAdsFeature = true;
 
   static String amountShow({required String? amount}) {
-    if (currencyModel?.symbolAtRight == true) {
-      return "${double.parse(amount.toString()).toStringAsFixed(currencyModel?.decimalDigits ?? 0)} ${currencyModel?.symbol.toString()}";
+    // Provide default values when currencyModel is null
+    final symbol = currencyModel?.symbol ?? '₹';
+    final decimalDigits = currencyModel?.decimalDigits ?? 2;
+    final symbolAtRight = currencyModel?.symbolAtRight ?? false;
+    
+    // Parse amount safely
+    final amountValue = amount == null || amount.isEmpty 
+        ? 0.0 
+        : (double.tryParse(amount.toString()) ?? 0.0);
+    
+    final formattedAmount = amountValue.toStringAsFixed(decimalDigits);
+    
+    if (symbolAtRight == true) {
+      return "$formattedAmount $symbol";
     } else {
-      return "${currencyModel?.symbol.toString()} ${amount == null || amount.isEmpty ? "0.0" : double.parse(amount.toString()).toStringAsFixed(currencyModel?.decimalDigits ?? 0)}";
+      return "$symbol $formattedAmount";
     }
   }
 

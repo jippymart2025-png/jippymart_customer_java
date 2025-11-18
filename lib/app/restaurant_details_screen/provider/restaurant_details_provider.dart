@@ -33,7 +33,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }) async {
     try {
       String url =
-          '${AppConst.baseUrl}coupons/restaurant?resturant_id=$restaurantId';
+          "${AppConst.baseUrl}coupons/restaurant${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
       final response = await http.get(
         Uri.parse(url),
         headers: await getHeaders(),

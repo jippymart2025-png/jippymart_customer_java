@@ -8,13 +8,11 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/trie_search.dart';
-import 'package:jippymart_customer/constant/collection_name.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 
 class SwiggySearchProvider extends ChangeNotifier {
@@ -95,22 +93,22 @@ class SwiggySearchProvider extends ChangeNotifier {
       1000; // Increased to match admin panel results
   static const Duration DEBOUNCE_DELAY = Duration(milliseconds: 300);
 
-  // **MEMORY SAFE LIMITS - INCREASED TO MATCH ADMIN PANEL**
-  static const int FAST_VENDOR_LIMIT = 500; // Increased to show more vendors
-  static const int FAST_PRODUCT_LIMIT = 800; // Increased to show more products
+  // **MEMORY SAFE LIMITS - OPTIMIZED FOR PERFORMANCE**
+  static const int FAST_VENDOR_LIMIT = 100; // Reduced for better performance
+  static const int FAST_PRODUCT_LIMIT = 200; // Reduced for better performance
   static const int MAX_VENDORS_PER_SEARCH =
-      500; // Increased to show more vendors in search
+      100; // Reduced for better performance
   static const int MAX_PRODUCTS_PER_SEARCH =
-      800; // Increased to show more products in search
+      200; // Reduced for better performance
   static const int SUGGESTION_LIMIT = 10; // Maximum suggestions to show
 
-  // **ENHANCED MULTI-COLLECTION SEARCH LIMITS - INCREASED TO MATCH ADMIN PANEL**
+  // **ENHANCED MULTI-COLLECTION SEARCH LIMITS - OPTIMIZED FOR PERFORMANCE**
   static const int RESTAURANT_SEARCH_LIMIT =
-      500; // Restaurants per search (increased from 50)
+      50; // Restaurants per search (reduced for performance)
   static const int PRODUCT_SEARCH_LIMIT =
-      800; // Products per search (increased from 100)
+      100; // Products per search (reduced for performance)
   static const int CATEGORY_SEARCH_LIMIT =
-      200; // Categories per search (increased from 20)
+      50; // Categories per search (reduced for performance)
 
   void initFunction() {
     _initializeSearch();
@@ -578,6 +576,8 @@ class SwiggySearchProvider extends ChangeNotifier {
 
     if (text.isEmpty) {
       showSuggestions = false;
+      hasSearched = false;
+      _clearSearchResults();
       return;
     }
 
@@ -586,9 +586,9 @@ class SwiggySearchProvider extends ChangeNotifier {
       _updateSuggestions(text);
     });
 
-    // Auto-search after user stops typing (slower)
-    _searchTimer = Timer(const Duration(milliseconds: 1500), () {
-      if (text.trim().isNotEmpty) {
+    // Auto-search after user stops typing (increased delay to prevent multiple searches)
+    _searchTimer = Timer(const Duration(milliseconds: 800), () {
+      if (text.trim().isNotEmpty && text.trim() == searchText.trim()) {
         print("🔍 Auto-triggering search for: '$text'");
         performSearch(text.trim());
       }
@@ -677,14 +677,27 @@ class SwiggySearchProvider extends ChangeNotifier {
 
   /// **PERFORM SEARCH - ENHANCED VERSION (as suggested) - MEMORY OPTIMIZED**
   Future<void> performSearch(String query) async {
+    // Cancel any pending search timers
+    _debounceTimer?.cancel();
+    _searchTimer?.cancel();
+    
+    // Prevent multiple simultaneous searches
+    if (isSearching || isLoadingData) {
+      print("⚠️ Search already in progress, skipping duplicate search");
+      return;
+    }
+    
     searchText = query;
     hasSearched = true;
     isLoadingData = true;
+    isSearching = true;
+    
     if (query.trim().isEmpty) {
       restaurantResults.clear();
       productResults.clear();
       categoryResults.clear();
       isLoadingData = false;
+      isSearching = false;
       return;
     }
 
@@ -1044,14 +1057,15 @@ class SwiggySearchProvider extends ChangeNotifier {
       // **MEMORY MONITORING: Log memory usage after search**
       logMemoryUsage("After Search Completion");
     } catch (e) {
+      print("❌ Error in performSearch: $e");
       if (e.toString().contains('OutOfMemoryError')) {
         _emergencyMemoryCleanup();
       }
     } finally {
       isLoadingData = false;
+      isSearching = false;
       notifyListeners();
     }
-    notifyListeners();
   }
 
   /// **CLEAR ALL DATA**
@@ -1500,11 +1514,27 @@ class SwiggySearchProvider extends ChangeNotifier {
 
           for (var productJson in productsJson) {
             try {
-              final product = ProductModel.fromJson(productJson);
+              // Wrap in try-catch to handle parsing errors gracefully
+              ProductModel? product;
+              try {
+                product = ProductModel.fromJson(productJson);
+              } catch (parseError, stackTrace) {
+                print('❌ Error parsing product JSON: $parseError');
+                print('❌ Product ID: ${productJson['id']}');
+                print('❌ Stack trace: $stackTrace');
+                // Skip this product and continue with next one
+                continue;
+              }
+
+              // Validate product has required fields
+              if (product.id == null) {
+                print('⚠️ Skipping product with null ID: ${productJson['id']}');
+                continue;
+              }
 
               // ✅ STEP 3: Apply zone-based filter
               if (Constant.selectedZone != null) {
-                if (!allowedVendorIds.contains(product.vendorID)) {
+                if (product.vendorID == null || !allowedVendorIds.contains(product.vendorID)) {
                   continue; // Skip products outside the selected zone
                 }
               }
@@ -1516,8 +1546,11 @@ class SwiggySearchProvider extends ChangeNotifier {
               if (results.length >= limit) {
                 break;
               }
-            } catch (e) {
-              print('❌ Error parsing product ${productJson['id']}: $e');
+            } catch (e, stackTrace) {
+              print('❌ Unexpected error processing product ${productJson['id']}: $e');
+              print('❌ Stack trace: $stackTrace');
+              // Continue with next product instead of crashing
+              continue;
             }
           }
           notifyListeners();
@@ -1684,7 +1717,24 @@ class SwiggySearchProvider extends ChangeNotifier {
           List<ProductModel> results = [];
           for (var productJson in productsJson) {
             try {
-              final product = ProductModel.fromJson(productJson);
+              // Wrap in try-catch to handle parsing errors gracefully
+              ProductModel? product;
+              try {
+                product = ProductModel.fromJson(productJson);
+              } catch (parseError, stackTrace) {
+                print('❌ Error parsing product JSON in fallback search: $parseError');
+                print('❌ Product ID: ${productJson['id']}');
+                print('❌ Stack trace: $stackTrace');
+                // Skip this product and continue with next one
+                continue;
+              }
+
+              // Validate product has required fields
+              if (product.id == null) {
+                print('⚠️ Skipping product with null ID in fallback search: ${productJson['id']}');
+                continue;
+              }
+
               // **FALLBACK MATCHING: Check description fields**
               if (_productMatchesFallbackQuery(product, query)) {
                 results.add(product);
@@ -1694,8 +1744,11 @@ class SwiggySearchProvider extends ChangeNotifier {
               if (results.length >= limit) {
                 break;
               }
-            } catch (e) {
-              print('❌ Error parsing product ${productJson['id']}: $e');
+            } catch (e, stackTrace) {
+              print('❌ Unexpected error processing product in fallback search ${productJson['id']}: $e');
+              print('❌ Stack trace: $stackTrace');
+              // Continue with next product instead of crashing
+              continue;
             }
           }
 
