@@ -196,7 +196,6 @@ class EditProfileProvider extends ChangeNotifier {
           print('Error adding profile picture: $e');
         }
       }
-
       // Send request
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);

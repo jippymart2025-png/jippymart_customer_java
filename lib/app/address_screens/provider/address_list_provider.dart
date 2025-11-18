@@ -41,9 +41,7 @@ class AddressListProvider extends ChangeNotifier {
     if (_addressesInitialized && shippingAddressList.isNotEmpty) {
       return; // Already initialized
     }
-    
     homeProvider = Provider.of(context, listen: false);
-    
     // Load addresses from userModel if available
     if (Constant.userModel != null &&
         Constant.userModel!.shippingAddress != null &&
@@ -53,7 +51,7 @@ class AddressListProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    
+
     // If userModel is not loaded or addresses are empty, try to load it
     if (shippingAddressList.isEmpty) {
       try {
@@ -74,7 +72,7 @@ class AddressListProvider extends ChangeNotifier {
         print('[ADDRESS_LIST_PROVIDER] Error loading addresses: $e');
       }
     }
-    
+
     _addressesInitialized = true;
   }
 

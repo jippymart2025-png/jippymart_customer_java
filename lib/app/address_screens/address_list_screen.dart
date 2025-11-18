@@ -28,7 +28,6 @@ class AddressListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AddressListProvider>(
       builder: (context, controller, _) {
-        // Ensure addresses are loaded when screen is first displayed
         WidgetsBinding.instance.addPostFrameCallback((_) {
           controller.initFunction(context: context);
         });

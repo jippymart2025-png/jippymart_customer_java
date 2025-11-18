@@ -49,7 +49,6 @@ class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
         _showUnsupportedFilterMessage();
         return;
     }
-
     // Apply filter through API
     provider.applyFilter(apiFilter);
   }

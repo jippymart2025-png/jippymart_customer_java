@@ -146,7 +146,6 @@ class MartZoneUtils {
         );
         return '';
       }
-
       // Check if zone is available and valid
       if (zoneModel.isZoneAvailable != true || zoneModel.zone == null) {
         print('❌ [MART_ZONE_UTILS] No zone available at these coordinates');

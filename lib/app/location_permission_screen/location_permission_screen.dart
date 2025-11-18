@@ -1,5 +1,7 @@
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/location_permission_screen/provider/location_permission_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -80,7 +82,6 @@ class LocationPermissionScreen extends StatelessWidget {
                                   showLoader: true,
                                   showError: true,
                                 );
-
                             if (success) {
                               Get.offAll(const DashBoardScreen());
                             }
@@ -124,7 +125,6 @@ class LocationPermissionScreen extends StatelessWidget {
                                 final lat = firstPlace.coordinates.latitude;
                                 final lng = firstPlace.coordinates.longitude;
                                 final address = firstPlace.address;
-
                                 ShippingAddress addressModel =
                                     ShippingAddress();
                                 addressModel.addressAs = "Home";
@@ -194,24 +194,42 @@ class LocationPermissionScreen extends StatelessWidget {
                   const SizedBox(height: 10),
                   Constant.userModel == null
                       ? const SizedBox()
-                      : RoundedButtonFill(
-                          title: "Enter Manually location".tr,
-                          color: AppThemeData.primary300,
-                          textColor: AppThemeData.grey50,
-                          isRight: false,
-                          onPress: () async {
-                            Get.to(const AddressListScreen())!.then((
-                              value,
-                            ) async {
-                              if (value != null) {
-                                ShippingAddress addressModel = value;
-                                Constant.selectedLocation = addressModel;
-                                await updateLocationInLocal(
-                                  addressModel.location!,
+                      : Consumer2<AddressListProvider, HomeProvider>(
+                          builder: (context, addressListProvider, homeProvider, _) {
+                            return RoundedButtonFill(
+                              title: "Enter Manually location".tr,
+                              color: AppThemeData.primary300,
+                              textColor: AppThemeData.grey50,
+                              isRight: false,
+                              onPress: () async {
+                                addressListProvider.initFunction(
+                                  context: context,
                                 );
-                                Get.offAll(const DashBoardScreen());
-                              }
-                            });
+                                Get.to(const AddressListScreen())?.then((
+                                  value,
+                                ) {
+                                  if (value != null) {
+                                    homeProvider.changeLocationAddressFunction(
+                                      addressModel: value,
+                                      context: context,
+                                    );
+                                    Get.offAll(const DashBoardScreen());
+                                  }
+                                });
+                                // Get.to(const AddressListScreen())!.then((
+                                //   value,
+                                // ) async {
+                                //   if (value != null) {
+                                //     ShippingAddress addressModel = value;
+                                //     Constant.selectedLocation = addressModel;
+                                //     await updateLocationInLocal(
+                                //       addressModel.location!,
+                                //     );
+                                //     Get.offAll(const DashBoardScreen());
+                                //   }
+                                // });
+                              },
+                            );
                           },
                         ),
                   const SizedBox(height: 10),

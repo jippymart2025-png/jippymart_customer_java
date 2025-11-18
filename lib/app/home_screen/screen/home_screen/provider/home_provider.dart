@@ -44,33 +44,76 @@ class HomeProvider extends ChangeNotifier {
     required BuildContext context,
     required ShippingAddress addressModel,
   }) async {
-    Constant.selectedLocation = addressModel;
-    print("changeLocationAddressFunction ${addressModel.toJson().toString()}");
+    // Ensure address and locality are properly set
+    // Use getFullAddress() to get a proper address string if address/locality are empty
+    String? finalAddress = addressModel.address;
+    String? finalLocality = addressModel.locality;
     
-    // Save location to local storage
-    if (addressModel.location != null) {
+    // If address is empty or null, use locality
+    if (finalAddress == null || finalAddress.isEmpty || finalAddress == 'Current Location') {
+      finalAddress = finalLocality;
+    }
+    
+    // If locality is empty or null, use address
+    if (finalLocality == null || finalLocality.isEmpty || finalLocality == 'Current Location') {
+      finalLocality = finalAddress;
+    }
+    
+    // If both are still empty, we should not save this as a valid address
+    // But for now, let's ensure we have something meaningful
+    if ((finalAddress == null || finalAddress.isEmpty) && 
+        (finalLocality == null || finalLocality.isEmpty)) {
+      log('[HOME_PROVIDER] Warning: Address model has no address or locality set');
+      // Don't proceed if there's no valid address information
+      return;
+    }
+    
+    // Create a new ShippingAddress with properly set address and locality
+    final updatedAddressModel = ShippingAddress(
+      id: addressModel.id,
+      addressAs: addressModel.addressAs ?? 'Home',
+      address: finalAddress,
+      locality: finalLocality,
+      landmark: addressModel.landmark,
+      location: addressModel.location,
+      isDefault: addressModel.isDefault,
+      zoneId: addressModel.zoneId,
+    );
+    
+    Constant.selectedLocation = updatedAddressModel;
+    notifyListeners();
+    log("changeLocationAddressFunction ${updatedAddressModel.toJson().toString()}");
+    
+    if (updatedAddressModel.location != null) {
       try {
         final box = GetStorage();
         await box.write('user_location', {
-          'latitude': addressModel.location!.latitude,
-          'longitude': addressModel.location!.longitude,
-          'address': addressModel.address ?? addressModel.locality ?? '',
-          'locality': addressModel.locality ?? '',
+          'latitude': updatedAddressModel.location!.latitude,
+          'longitude': updatedAddressModel.location!.longitude,
+          'address': finalAddress ?? '',
+          'locality': finalLocality ?? '',
           'timestamp': DateTime.now().millisecondsSinceEpoch,
         });
+        print(
+          "changeLocationAddressFunction saved: latitude=${updatedAddressModel.location?.latitude}, longitude=${updatedAddressModel.location?.longitude}, address=$finalAddress, locality=$finalLocality",
+        );
+        // Detect and set zone for the new location
+        if (updatedAddressModel.location?.latitude != null &&
+            updatedAddressModel.location?.longitude != null) {
+          await getZone();
+        }
       } catch (e) {
         print('[HOME_PROVIDER] Error saving location: $e');
       }
     }
     
-    // Detect and set zone for the new location
-    if (addressModel.location?.latitude != null &&
-        addressModel.location?.longitude != null) {
-      await getZone();
-    }
-    
-    // Reload all data with the new location
-    getData(context);
+    // Refresh data but skip location setup since we just set it
+    await _loadAllDataInParallel(
+      context,
+      waitForSupplemental: true,
+      forceRefresh: true,
+      skipLocationSetup: true, // Skip _ensureUserLocationIsSet since we just set the location
+    );
     notifyListeners();
   }
 
@@ -94,6 +137,9 @@ class HomeProvider extends ChangeNotifier {
             headers: headers,
           )
           .timeout(_networkTimeout);
+      print(
+        ' getCurrentZone  ${AppConst.baseUrl}zones/current?latitude=$latitude&longitude=$longitude',
+      );
       print('[ZONE_API] Response status: ${response.statusCode}');
       print('[ZONE_API] Response body: ${response.body}');
       if (response.statusCode == 200) {
@@ -239,6 +285,7 @@ class HomeProvider extends ChangeNotifier {
             '[DEBUG] Zone detected: ${detectedZone.name} (${detectedZone.id})',
           );
           print('[DEBUG] Is zone available: ${Constant.isZoneAvailable}');
+          notifyListeners();
         } else {
           await _setFallbackZone();
         }
@@ -535,6 +582,7 @@ class HomeProvider extends ChangeNotifier {
     BuildContext context, {
     bool waitForSupplemental = true,
     bool forceRefresh = false,
+    bool skipLocationSetup = false,
   }) async {
     if (_ongoingLoad != null && !forceRefresh) {
       return _ongoingLoad!;
@@ -542,6 +590,7 @@ class HomeProvider extends ChangeNotifier {
     final loadFuture = _performInitialLoad(
       context,
       waitForSupplemental: waitForSupplemental,
+      skipLocationSetup: skipLocationSetup,
     );
     _ongoingLoad = loadFuture;
     try {
@@ -556,6 +605,7 @@ class HomeProvider extends ChangeNotifier {
   Future<void> _performInitialLoad(
     BuildContext context, {
     required bool waitForSupplemental,
+    bool skipLocationSetup = false,
   }) async {
     isLoadingFunction(true);
     getCartData();
@@ -569,14 +619,20 @@ class HomeProvider extends ChangeNotifier {
             Constant.userModel!.shippingAddress!;
         notifyListeners();
       }
-      await _ensureUserLocationIsSet();
-      await getZone();
-
+      // Skip location setup if location was just manually changed
+      if (!skipLocationSetup) {
+        await _ensureUserLocationIsSet();
+        await getZone();
+      } else {
+        log('[HOME_PROVIDER] Skipping _ensureUserLocationIsSet() - location was just manually set');
+        // Zone is already set in changeLocationAddressFunction, so no need to call again
+        // Only call getZone if it wasn't called in changeLocationAddressFunction
+        // (This shouldn't happen, but adding as safety check)
+      }
       final categoryFuture = categoryViewProvider.loadVendorCategories();
       final bannerFuture = _loadBanners();
       final restaurantFuture = bestRestaurantProvider
           .loadRestaurantsAndRelatedData();
-
       if (waitForSupplemental) {
         await Future.wait([
           categoryFuture,
@@ -598,7 +654,6 @@ class HomeProvider extends ChangeNotifier {
           }),
         );
       }
-
       if (!_favouriteProviderInitialized) {
         _favouriteProviderInitialized = true;
         unawaited(favouriteProvider.initFunction());
@@ -607,7 +662,6 @@ class HomeProvider extends ChangeNotifier {
         _orderProviderInitialized = true;
         unawaited(orderProvider.initFunction());
       }
-
       if (!_martInitialized) {
         _martInitialized = true;
         Future.microtask(() => martProvider.initFunction());
@@ -617,6 +671,8 @@ class HomeProvider extends ChangeNotifier {
       ShowToastDialog.showToast(
         "Unable to load Home data right now. Pull to refresh to try again.".tr,
       );
+      isLoadingFunction(false);
+    } finally {
       isLoadingFunction(false);
     }
   }
@@ -797,9 +853,23 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<void> _ensureUserLocationIsSet() async {
+    // Check if location is already set with valid coordinates
     if (Constant.selectedLocation.location?.latitude != null &&
         Constant.selectedLocation.location?.longitude != null) {
-      return;
+      // Also check if address/locality are already set and valid (not empty or "Current Location")
+      final currentAddress = Constant.selectedLocation.address ?? '';
+      final currentLocality = Constant.selectedLocation.locality ?? '';
+      final hasValidAddress = currentAddress.isNotEmpty && 
+                              currentAddress != 'Current Location' &&
+                              !currentAddress.contains('Current Location');
+      final hasValidLocality = currentLocality.isNotEmpty && 
+                               currentLocality != 'Current Location' &&
+                               !currentLocality.contains('Current Location');
+      
+      // If we have valid address information, don't override it
+      if (hasValidAddress || hasValidLocality) {
+        return;
+      }
     }
     for (int attempt = 1; attempt <= 3; attempt++) {
       if (Constant.userModel != null &&
@@ -824,7 +894,16 @@ class HomeProvider extends ChangeNotifier {
             savedLocation['longitude'] != null) {
           String savedAddress = savedLocation['address'] ?? '';
           String savedLocality = savedLocation['locality'] ?? '';
-          if (savedAddress.isEmpty || savedLocality.isEmpty) {
+          
+          // Only try to fill empty address/locality if they're truly empty (not "Current Location")
+          final isAddressInvalid = savedAddress.isEmpty || 
+                                   savedAddress == 'Current Location' ||
+                                   savedAddress.contains('Current Location');
+          final isLocalityInvalid = savedLocality.isEmpty || 
+                                    savedLocality == 'Current Location' ||
+                                    savedLocality.contains('Current Location');
+          
+          if (isAddressInvalid || isLocalityInvalid) {
             try {
               final gpsCacheInfo =
                   await GpsLocationService.getCachedAddressInfo();
@@ -841,9 +920,20 @@ class HomeProvider extends ChangeNotifier {
                       savedLocation['latitude'],
                       savedLocation['longitude'],
                     );
-                savedAddress = fullAddress;
-                savedLocality = fullAddress;
-                print('[DEBUG] Got address from coordinates');
+                if (fullAddress.isNotEmpty) {
+                  savedAddress = fullAddress;
+                  savedLocality = fullAddress;
+                  print('[DEBUG] Got address from coordinates');
+                } else {
+                  // If we still can't get address, don't set "Current Location" 
+                  // Just use what we have (might be empty, but better than "Current Location")
+                  print('[DEBUG] Could not retrieve address from coordinates');
+                  // Only set "Current Location" as last resort if both are truly empty
+                  if (savedAddress.isEmpty && savedLocality.isEmpty) {
+                    savedAddress = 'Current Location';
+                    savedLocality = 'Current Location';
+                  }
+                }
               }
               await box.write('user_location', {
                 'latitude': savedLocation['latitude'],
@@ -854,8 +944,12 @@ class HomeProvider extends ChangeNotifier {
               });
               notifyListeners();
             } catch (e) {
-              savedAddress = 'Current Location';
-              savedLocality = 'Current Location';
+              print('[DEBUG] Error getting address info: $e');
+              // Only set "Current Location" if both are truly empty
+              if (savedAddress.isEmpty && savedLocality.isEmpty) {
+                savedAddress = 'Current Location';
+                savedLocality = 'Current Location';
+              }
             }
           }
 
@@ -902,7 +996,9 @@ class HomeProvider extends ChangeNotifier {
           );
           return;
         }
-      } catch (e) {}
+      } catch (e) {
+        print("_ensureUserLocationIsSet $e}");
+      }
 
       if (Constant.userModel == null) {
         await Future.delayed(Duration(milliseconds: 500));

@@ -116,25 +116,19 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       if (offerOnly == true) {
         queryParams['offer_only'] = 'true';
       }
-
       final uri = Uri.parse(
         '${AppConst.baseUrl}restaurants/$restaurantId/product-feed',
       ).replace(queryParameters: queryParams);
-
       print('🔍 API Call: $uri');
-
       // Add timeout
       final response = await http
           .get(uri, headers: await getHeaders())
           .timeout(Duration(seconds: 10));
-
       log(
         'getRestaurantProducts Response for $restaurantId: ${response.statusCode}',
       );
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
-
         if (data['success'] == true) {
           print('✅ Successfully loaded products for restaurant $restaurantId');
           return data['data'];

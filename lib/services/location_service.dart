@@ -19,7 +19,6 @@ class LocationService {
       if (showLoader) {
         ShowToastDialog.showLoader("Getting your location...".tr);
       }
-
       // Check if location services are enabled
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -32,7 +31,6 @@ class LocationService {
         }
         return null;
       }
-
       // Check and request permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
@@ -124,13 +122,14 @@ class LocationService {
         latitude: position.latitude,
         longitude: position.longitude,
       );
-
+      print(
+        "createShippingAddressFromLocation ${position.latitude} ${position.longitude}",
+      );
       // Get address string
       String? addressString = await getAddressFromCoordinates(
         position.latitude,
         position.longitude,
       );
-
       if (addressString != null) {
         addressModel.locality = addressString;
         addressModel.address = addressString; // Add address field
@@ -139,7 +138,6 @@ class LocationService {
         addressModel.locality = "Current Location";
         addressModel.address = "Current Location";
       }
-
       // 🔑 CRITICAL: Detect zone ID for current location
       String? detectedZoneId = await _detectZoneIdForCoordinates(
         position.latitude,
@@ -173,14 +171,11 @@ class LocationService {
         showLoader: showLoader,
         showError: showError,
       );
-
       if (addressModel == null) {
         return false;
       }
-
       // Update global location
       Constant.selectedLocation = addressModel;
-
       // Save to local storage
       await Preferences.setString(
         'user_location',
@@ -218,16 +213,18 @@ class LocationService {
     double longitude,
   ) async {
     try {
-      log('[LOCATION_SERVICE] Starting zone detection for coordinates: $latitude, $longitude');
-      
+      log(
+        '[LOCATION_SERVICE] Starting zone detection for coordinates: $latitude, $longitude',
+      );
+
       // Use HomeProvider's detectZoneId method which calls the API
       final zoneId = await HomeProvider.detectZoneId(latitude, longitude);
-      
+
       if (zoneId != null && zoneId.isNotEmpty) {
         log('[LOCATION_SERVICE] Zone detected: $zoneId');
         return zoneId;
       }
-      
+
       log('[LOCATION_SERVICE] No zone detected for coordinates');
       return null;
     } catch (e) {

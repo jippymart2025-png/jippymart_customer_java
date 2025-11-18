@@ -9,6 +9,7 @@ import 'package:google_maps_place_picker_mb/google_maps_place_picker.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
+import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/profile_screen/profile_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -41,7 +42,7 @@ Widget homeProfileAddressWidget({
             Constant.userModel == null
                 ? InkWell(
                     onTap: () {
-                      Get.offAll(const LoginScreen());
+                      Get.offAll(const PhoneNumberScreen());
                     },
                     child: Text(
                       "Login".tr,
@@ -62,12 +63,12 @@ Widget homeProfileAddressWidget({
                       fontSize: 12,
                     ),
                   ),
-            Consumer<AddressListProvider>(
-              builder: (context, addressListProvider, _) {
+            Consumer2<AddressListProvider, HomeProvider>(
+              builder: (context, addressListProvider, homeProviderConsumer, _) {
                 return InkWell(
                   onTap: () async {
-                    addressListProvider.initFunction(context: context);
                     if (Constant.userModel != null) {
+                      addressListProvider.initFunction(context: context);
                       Get.to(const AddressListScreen())?.then((value) {
                         if (value != null) {
                           homeProvider.changeLocationAddressFunction(
@@ -96,12 +97,16 @@ Widget homeProfileAddressWidget({
                                 final address = firstPlace.address;
                                 addressModel.addressAs = "Home";
                                 addressModel.locality = address.toString();
+                                addressModel.address = address
+                                    .toString(); // Set address field too
                                 addressModel.location = UserLocation(
                                   latitude: lat,
                                   longitude: lng,
                                 );
-                                Constant.selectedLocation = addressModel;
-                                homeProvider.getData(context);
+                                homeProvider.changeLocationAddressFunction(
+                                  addressModel: addressModel,
+                                  context: context,
+                                );
                                 Get.back();
                               }
                             } else {
@@ -117,13 +122,19 @@ Widget homeProfileAddressWidget({
                                       addressModel.locality = result
                                           .formattedAddress!
                                           .toString();
+                                      addressModel.address = result
+                                          .formattedAddress!
+                                          .toString(); // Set address field too
                                       addressModel.location = UserLocation(
                                         latitude: result.geometry!.location.lat,
                                         longitude:
                                             result.geometry!.location.lng,
                                       );
-                                      Constant.selectedLocation = addressModel;
-                                      homeProvider.getData(context);
+                                      homeProvider
+                                          .changeLocationAddressFunction(
+                                            addressModel: addressModel,
+                                            context: context,
+                                          );
                                       Get.back();
                                     },
                                     initialPosition: const LatLng(
@@ -143,6 +154,7 @@ Widget homeProfileAddressWidget({
                               );
                             }
                           } catch (e) {
+                            print("placemarkFromCoordinates $e");
                             await placemarkFromCoordinates(
                               19.228825,
                               72.854118,
@@ -156,11 +168,14 @@ Widget homeProfileAddressWidget({
                               String currentLocation =
                                   "${placeMark.name}, ${placeMark.subLocality}, ${placeMark.locality}, ${placeMark.administrativeArea}, ${placeMark.postalCode}, ${placeMark.country}";
                               addressModel.locality = currentLocation;
+                              addressModel.address =
+                                  currentLocation; // Set address field too
                             });
-
-                            Constant.selectedLocation = addressModel;
                             ShowToastDialog.closeLoader();
-                            homeProvider.getData(context);
+                            homeProvider.changeLocationAddressFunction(
+                              addressModel: addressModel,
+                              context: context,
+                            );
                           }
                         },
                         context: context,

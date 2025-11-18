@@ -145,9 +145,7 @@ class CartControllerProvider extends ChangeNotifier {
                   activeColor: Colors.orange,
                 ),
               ),
-
               SizedBox(height: 10),
-
               // Razorpay Option
               Container(
                 width: double.infinity,
@@ -577,7 +575,6 @@ class CartControllerProvider extends ChangeNotifier {
           TextButton(
             onPressed: () {
               Get.back();
-
               Get.to(() => const AddressListScreen());
             },
             child: Text('Add Address'.tr),
@@ -604,11 +601,8 @@ class CartControllerProvider extends ChangeNotifier {
         print('[DEBUG] No zone available');
         return null;
       }
-
       final zone = zoneModel.zone!;
       print('[DEBUG] Checking zone: ${zone.name} (${zone.id})');
-
-      // Check if coordinates fall within the zone polygon
       if (zone.area != null && zone.area!.isNotEmpty) {
         if (Constant.isPointInPolygon(
           LatLng(latitude, longitude),
@@ -3634,7 +3628,6 @@ class CartControllerProvider extends ChangeNotifier {
         Get.to(() => const AddressListScreen());
         return false;
       }
-
       if (address.locality!.trim() == 'Current Location' &&
           (address.location?.latitude == null ||
               address.location?.longitude == null)) {
@@ -3642,11 +3635,9 @@ class CartControllerProvider extends ChangeNotifier {
           "Current location must have valid coordinates. Please add a proper address."
               .tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
-
       print(
         '🏠 [BULLETPROOF_ADDRESS] ✅ CHECK 4 PASSED - Valid locality: "${address.locality}"',
       );
@@ -3684,7 +3675,6 @@ class CartControllerProvider extends ChangeNotifier {
         ShowToastDialog.showToast(
           "Please select a delivery address within our service area.".tr,
         );
-
         Get.to(() => const AddressListScreen());
         return false;
       }
@@ -3701,7 +3691,6 @@ class CartControllerProvider extends ChangeNotifier {
             "Address zone not detected. Please update your address or contact support."
                 .tr,
           );
-
           Get.to(() => const AddressListScreen());
           return false;
         }

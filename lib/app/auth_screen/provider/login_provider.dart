@@ -200,7 +200,7 @@ class LoginProvider extends ChangeNotifier {
             countryCode: countryCode,
           );
           notifyListeners();
-          await splashProvider.refreshFunction(context);
+          splashProvider.refreshFunction(context);
           ShowToastDialog.closeLoader();
           Get.offAll(() => const DashBoardScreen());
         } else {
