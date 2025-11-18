@@ -145,7 +145,10 @@ class VendorModel {
     g = json['g'] != null ? G.fromJson(json['g']) : null;
     hidephotos = json['hidephotos'];
     reststatus = json['reststatus'];
-    isOpen = json['isOpen'];
+
+    // FIX: Check both 'isOpen' and 'is_open' fields
+    isOpen = json['isOpen'] ?? json['is_open'] ?? true;
+
     filters = json['filters'] != null
         ? Filters.fromJson(json['filters'])
         : null;
@@ -300,7 +303,8 @@ class VendorModel {
           : double.tryParse(json['distance'].toString());
     }
 
-    isActive = json['isActive'];
+    // FIX: Check both 'isActive' and 'is_active' fields
+    isActive = json['isActive'] ?? json['is_active'] ?? true;
   }
 
   // In VendorModel.fromJson method, add these lines if needed:
@@ -319,8 +323,9 @@ class VendorModel {
           ? json['distance']
           : double.tryParse(json['distance'].toString()),
       vType: json['vType'],
-      isActive: json['isActive'],
-      isOpen: json['isOpen'],
+      // FIX: Check both field names in API JSON
+      isActive: json['isActive'] ?? json['is_active'] ?? true,
+      isOpen: json['isOpen'] ?? json['is_open'] ?? true,
       subscriptionPlan: json['subscriptionPlan'],
       subscriptionTotalOrders: json['subscriptionTotalOrders'],
       subscriptionExpiryDate: json['subscriptionExpiryDate'],

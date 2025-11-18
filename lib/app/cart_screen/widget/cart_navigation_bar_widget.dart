@@ -43,7 +43,6 @@ Widget cartNavigationBarWidget(
                 }
                 // print("${controller.vendorModel.value.author.toString()} "
                 //     " ${controller.vendorModel.value.authorName.toString()}  ${controller.vendorModel.value.categoryTitle.toString()}  vendorModel.value.author ");
-
                 await controller.showPaymentMethodDialog(context);
                 if (controller.selectedPaymentMethod.isNotEmpty) {
                   await _processPayment(controller, context);

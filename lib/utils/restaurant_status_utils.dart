@@ -42,10 +42,14 @@ class RestaurantStatusUtils {
   // static bool canAcceptOrders(VendorModel vendor) {
   //   return isRestaurantOpen(vendor);
   // }
-
   static bool canAcceptOrders(VendorModel vendor) {
-    return vendor.isOpen == true && vendor.isActive == true;
+    // Only check is_open field since isActive is not provided in API
+    return vendor.isOpen == true;
   }
+
+  // static bool canAcceptOrders(VendorModel vendor) {
+  //   return vendor.isOpen == true && vendor.isActive == true;
+  // }
 
   static Widget getStatusWidget(VendorModel vendor) {
     final status = getRestaurantStatus(vendor);

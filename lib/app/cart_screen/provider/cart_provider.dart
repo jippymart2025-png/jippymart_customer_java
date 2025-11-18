@@ -94,7 +94,6 @@ class CartControllerProvider extends ChangeNotifier {
                 style: TextStyle(fontSize: 14, color: Colors.grey[700]),
               ),
               SizedBox(height: 20),
-              // COD Option
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
@@ -141,6 +140,7 @@ class CartControllerProvider extends ChangeNotifier {
                   groupValue: selectedPaymentMethod,
                   onChanged: (value) {
                     selectedPaymentMethod = value!;
+                    notifyListeners();
                   },
                   activeColor: Colors.orange,
                 ),
@@ -758,7 +758,6 @@ class CartControllerProvider extends ChangeNotifier {
           !user.email!.contains('@')) {
         missingFields.add("Valid Email Address");
       }
-
       String message = "Please complete your profile before placing an order.";
       if (missingFields.isNotEmpty) {
         message =
