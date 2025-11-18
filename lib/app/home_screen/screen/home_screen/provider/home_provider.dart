@@ -43,10 +43,34 @@ class HomeProvider extends ChangeNotifier {
   void changeLocationAddressFunction({
     required BuildContext context,
     required ShippingAddress addressModel,
-  }) {
+  }) async {
     Constant.selectedLocation = addressModel;
-    getData(context);
     print("changeLocationAddressFunction ${addressModel.toJson().toString()}");
+    
+    // Save location to local storage
+    if (addressModel.location != null) {
+      try {
+        final box = GetStorage();
+        await box.write('user_location', {
+          'latitude': addressModel.location!.latitude,
+          'longitude': addressModel.location!.longitude,
+          'address': addressModel.address ?? addressModel.locality ?? '',
+          'locality': addressModel.locality ?? '',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
+      } catch (e) {
+        print('[HOME_PROVIDER] Error saving location: $e');
+      }
+    }
+    
+    // Detect and set zone for the new location
+    if (addressModel.location?.latitude != null &&
+        addressModel.location?.longitude != null) {
+      await getZone();
+    }
+    
+    // Reload all data with the new location
+    getData(context);
     notifyListeners();
   }
 

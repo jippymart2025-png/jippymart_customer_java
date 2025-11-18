@@ -86,11 +86,11 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 3));
-    FirebaseFirestore.instance.settings = const Settings(
-      persistenceEnabled: true,
-      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-      sslEnabled: true,
-    );
+    // FirebaseFirestore.instance.settings = const Settings(
+    //   persistenceEnabled: true,
+    //   cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    //   sslEnabled: true,
+    // );
     ANRMonitor.startMonitoring();
     MemoryMonitor.startMemoryMonitoring();
     NativeLockPrevention.startLockContentionMonitoring();

@@ -72,11 +72,7 @@ class LoginProvider extends ChangeNotifier {
       http.Response response;
       if (method == 'POST') {
         response = await http
-            .post(
-              url,
-              headers: headers,
-              body: json.encode(data),
-            )
+            .post(url, headers: headers, body: json.encode(data))
             .timeout(_authTimeout);
       } else {
         throw Exception('Unsupported HTTP method');
@@ -177,11 +173,12 @@ class LoginProvider extends ChangeNotifier {
           );
         }
         final userData = response['user'] ?? {};
-        final firebaseId = (userData['firebase_id'] ??
-                userData['firebaseId'] ??
-                userData['firebaseID'] ??
-                userData['id'])
-            ?.toString();
+        final firebaseId =
+            (userData['firebase_id'] ??
+                    userData['firebaseId'] ??
+                    userData['firebaseID'] ??
+                    userData['id'])
+                ?.toString();
         if (firebaseId != null && firebaseId.isNotEmpty) {
           await secureStorage.write(key: 'firebase_id', value: firebaseId);
         }
@@ -202,6 +199,7 @@ class LoginProvider extends ChangeNotifier {
             userModel,
             countryCode: countryCode,
           );
+          notifyListeners();
           await splashProvider.refreshFunction(context);
           ShowToastDialog.closeLoader();
           Get.offAll(() => const DashBoardScreen());
@@ -219,6 +217,7 @@ class LoginProvider extends ChangeNotifier {
           response['message'] ?? 'OTP verification failed',
         );
       }
+      notifyListeners();
     } catch (e) {
       print('[DEBUG] verifyOtp() error: ${e.toString()}');
       ShowToastDialog.closeLoader();

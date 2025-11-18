@@ -31,39 +31,54 @@ class CartCheckOutScreen extends StatefulWidget {
 
 class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   late CartControllerProvider controller;
+  bool _hasInitialized = false;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     controller = Provider.of<CartControllerProvider>(context, listen: false);
+    // Only initialize once
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(seconds: 3), () {
+      if (!_hasInitialized) {
+        _hasInitialized = true;
         _refreshCartData(context);
-      });
+      }
     });
-    // });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future.delayed(const Duration(seconds: 3), () {
-        _refreshCartData(context);
-      });
-    });
+    // Remove duplicate initialization - already handled in initState
   }
 
   void _refreshCartData(BuildContext context) {
-    print('DEBUG: Refreshing cart data...');
-    controller.forceRefreshCart();
-    if (controller.selectedAddress == null) {
-      // Trigger address initialization by calling the public method
-      controller.initializeAddress(context);
+    if (_isRefreshing) {
+      return; // Prevent multiple simultaneous refreshes
     }
-    // Ensure payment method is set correctly based on order total
+    
+    _isRefreshing = true;
+    print('DEBUG: Refreshing cart data...');
+    
+    // Use a single delayed call instead of multiple
     Future.delayed(const Duration(milliseconds: 500), () {
-      controller.checkAndUpdatePaymentMethod();
+      try {
+        controller.forceRefreshCart();
+        if (controller.selectedAddress == null) {
+          controller.initializeAddress(context);
+        }
+        // Only call payment method check once, not continuously
+        if (mounted) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              controller.checkAndUpdatePaymentMethod();
+            }
+          });
+        }
+      } finally {
+        _isRefreshing = false;
+      }
     });
   }
 
@@ -107,7 +122,6 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
         return CartTheme.food;
       }
     }
-
     // Auto-detect based on cart content
     bool hasMartItems = cartItem.any(
       (item) =>
@@ -115,14 +129,12 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
           item.vendorID?.startsWith('demo_') == true ||
           item.vendorID?.contains('vendor') == true,
     );
-
     bool hasFoodItems = cartItem.any(
       (item) =>
           !(item.vendorID?.contains('mart') == true ||
               item.vendorID?.startsWith('demo_') == true ||
               item.vendorID?.contains('vendor') == true),
     );
-
     if (hasMartItems && !hasFoodItems) {
       return CartTheme.mart;
     } else if (hasFoodItems && !hasMartItems) {
@@ -138,9 +150,8 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     final themeColors = _getThemeColors(cartTheme);
     return Consumer<CartControllerProvider>(
       builder: (context, controller, _) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          controller.checkAndUpdatePaymentMethod();
-        });
+        // Remove continuous API calls from build method
+        // Payment method check is already handled in _refreshCartData
         return WillPopScope(
           onWillPop: () async {
             if (controller.isGlobalLocked) {

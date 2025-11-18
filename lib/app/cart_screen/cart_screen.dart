@@ -39,22 +39,25 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   late CartControllerProvider controller;
+  bool _hasInitialized = false;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
     super.initState();
     controller = Provider.of<CartControllerProvider>(context, listen: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshCartData();
+      if (!_hasInitialized) {
+        _hasInitialized = true;
+        _refreshCartData();
+      }
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _refreshCartData();
-    });
+    // Removed duplicate _refreshCartData call to prevent multiple initializations
   }
 
   @override
@@ -64,12 +67,18 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   void _refreshCartData() {
+    if (_isRefreshing) {
+      return; // Prevent simultaneous calls
+    }
+    _isRefreshing = true;
+    
     controller.forceRefreshCart();
     if (controller.selectedAddress == null) {
       controller.initializeAddress(context);
     }
     Future.delayed(const Duration(milliseconds: 500), () {
       controller.checkAndUpdatePaymentMethod();
+      _isRefreshing = false;
     });
   }
 
@@ -143,9 +152,8 @@ class _CartScreenState extends State<CartScreen> {
     final themeColors = _getThemeColors(cartTheme);
     return Consumer<CartControllerProvider>(
       builder: (context, controller, _) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          controller.checkAndUpdatePaymentMethod();
-        });
+        // Removed checkAndUpdatePaymentMethod call from build method
+        // It's already called in _refreshCartData() to prevent setState during build
         return WillPopScope(
           onWillPop: () async {
             if (controller.isGlobalLocked) {

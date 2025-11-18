@@ -6,11 +6,24 @@ class TaxModel {
   String? type;
   String? title;
 
-  TaxModel({this.country, this.enable, this.tax, this.id, this.type, this.title});
+  TaxModel({
+    this.country,
+    this.enable,
+    this.tax,
+    this.id,
+    this.type,
+    this.title,
+  });
 
   TaxModel.fromJson(Map<String, dynamic> json) {
     country = json['country'];
-    enable = json['enable'];
+    // Convert int → bool (1 = true, 0 = false)
+    if (json['enable'] is int) {
+      enable = json['enable'] == 1;
+    } else {
+      enable = json['enable'];
+    }
+
     tax = json['tax'];
     id = json['id'];
     type = json['type'];

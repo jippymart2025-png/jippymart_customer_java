@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'package:jippymart_customer/app/edit_profile_screen/provider/edit_profile_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -216,44 +217,23 @@ class LocationService {
     double latitude,
     double longitude,
   ) async {
-    return null;
-
-    // try {
-    //   log('[LOCATION_SERVICE] Starting zone detection for coordinates: $latitude, $longitude');
-    //
-    //   // Get all zones from Firestore
-    //   List<ZoneModel>? zones = await FireStoreUtils.getZone();
-    //
-    //   if (zones == null || zones.isEmpty) {
-    //     log('[LOCATION_SERVICE] No zones available in database');
-    //     return null;
-    //   }
-    //
-    //   log('[LOCATION_SERVICE] Found ${zones.length} zones to check');
-    //
-    //   // Check if coordinates fall within any zone polygon
-    //   for (ZoneModel zone in zones) {
-    //     if (zone.area != null && zone.area!.isNotEmpty) {
-    //       log('[LOCATION_SERVICE] Checking zone: ${zone.name} (${zone.id})');
-    //
-    //       // Use the existing polygon validation logic
-    //       if (Constant.isPointInPolygon(
-    //         LatLng(latitude, longitude),
-    //         zone.area!,
-    //       )) {
-    //         log('[LOCATION_SERVICE] Zone detected: ${zone.name} (${zone.id})');
-    //         return zone.id;
-    //       }
-    //     }
-    //   }
-    //
-    //   log('[LOCATION_SERVICE] Coordinates not within any service zone');
-    //   return null;
-    //
-    // } catch (e) {
-    //   log('[LOCATION_SERVICE] Error detecting zone: $e');
-    //   return null;
-    // }
+    try {
+      log('[LOCATION_SERVICE] Starting zone detection for coordinates: $latitude, $longitude');
+      
+      // Use HomeProvider's detectZoneId method which calls the API
+      final zoneId = await HomeProvider.detectZoneId(latitude, longitude);
+      
+      if (zoneId != null && zoneId.isNotEmpty) {
+        log('[LOCATION_SERVICE] Zone detected: $zoneId');
+        return zoneId;
+      }
+      
+      log('[LOCATION_SERVICE] No zone detected for coordinates');
+      return null;
+    } catch (e) {
+      log('[LOCATION_SERVICE] Error detecting zone: $e');
+      return null;
+    }
   }
 
   /// Validate location coordinates

@@ -241,7 +241,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       if (productsData is List) {
         return productsData.map((productJson) {
           try {
-            // Handle both Map and other types
             if (productJson is Map<String, dynamic>) {
               return ProductModel.fromApiJson(productJson);
             } else {
@@ -676,6 +675,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         _loadCoupons(restaurantId: restaurantId),
         _loadAttributes(),
       ]);
+      notifyListeners();
     } else {
       await _loadAttributes();
     }
@@ -689,6 +689,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       couponList = apiCoupons.where((coupon) {
         return coupon.isEnabled == true && _isCouponValid(coupon);
       }).toList();
+      notifyListeners();
     } catch (e) {
       print('Error loading coupons: $e');
       ShowToastDialog.showToast("Failed to load coupons");

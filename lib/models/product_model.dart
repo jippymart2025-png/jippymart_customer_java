@@ -62,31 +62,93 @@ class ProductModel {
   });
 
   // Factory constructor for API JSON
+  // In ProductModel.fromJson, replace the problematic section:
   factory ProductModel.fromApiJson(Map<String, dynamic> json) {
-    return ProductModel(
-      id: json['id'],
-      name: json['name'],
-      description: json['description'],
-      categoryID: json['category_id'],
-      categoryTitle: json['category_title'],
-      isAvailable: json['is_available'] ?? true,
-      nonveg: json['nonveg'] ?? false,
-      veg: json['veg'] ?? true,
-      photo: json['photo'],
-      photos: json['photos'] != null ? List<String>.from(json['photos']) : [],
-      addOnsTitle: json['add_ons_title'] ?? [],
-      addOnsPrice: json['add_ons_price'] ?? [],
-      itemAttribute: json['item_attribute'] != null
-          ? ItemAttribute.fromJson(json['item_attribute'])
-          : null,
-      productSpecification: json['product_specification'],
-      reviewsCount: json['reviews_count'] ?? 0,
-      reviewsSum: json['reviews_sum'] ?? 0,
-      quantity: json['quantity'] ?? -1,
-      price: json['original_price']?.toString() ?? '0',
-      disPrice: json['discount_price']?.toString() ?? '0',
-      // Add other fields as needed
-    );
+    try {
+      return ProductModel(
+        id: _parseInt(json['id']),
+        name: _parseString(json['name']),
+        description: _parseString(json['description']),
+        categoryID: _parseString(json['category_id']),
+        categoryTitle: _parseString(json['category_title']),
+        isAvailable: json['is_available'] == true || json['is_available'] == 1,
+        nonveg: json['nonveg'] == true || json['nonveg'] == 1,
+        veg: json['veg'] == true || json['veg'] == 1,
+        photo: _parseString(json['photo']),
+        photos: _parseStringList(json['photos']),
+        addOnsTitle: _parseStringList(json['add_ons_title']),
+        addOnsPrice: _parsePriceList(json['add_ons_price']),
+        itemAttribute: _parseItemAttribute(json['item_attribute']),
+        productSpecification: _parseMap(json['product_specification']),
+        reviewsCount: _parseNum(json['reviews_count']),
+        reviewsSum: _parseNum(json['reviews_sum']),
+        quantity: _parseInt(json['quantity']) ?? -1,
+        price: _parsePrice(json['original_price']) ?? '0',
+        disPrice: _parsePrice(json['discount_price']) ?? '0',
+      );
+    } catch (e) {
+      print('❌ Error parsing product JSON: $e');
+      print('❌ Problematic JSON: $json');
+      return ProductModel(); // Return empty product instead of crashing
+    }
+  }
+
+  // Add helper methods:
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value);
+    if (value is num) return value.toInt();
+    return null;
+  }
+
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    return value.toString();
+  }
+
+  static List<String>? _parseStringList(dynamic value) {
+    if (value == null) return null;
+    if (value is List) {
+      return value.map((e) => e.toString()).toList();
+    }
+    return null;
+  }
+
+  static List<dynamic>? _parsePriceList(dynamic value) {
+    if (value == null) return null;
+    if (value is List) return value;
+    return null;
+  }
+
+  static ItemAttribute? _parseItemAttribute(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) {
+      return ItemAttribute.fromJson(value);
+    }
+    return null;
+  }
+
+  static Map<String, dynamic>? _parseMap(dynamic value) {
+    if (value == null) return null;
+    if (value is Map<String, dynamic>) return value;
+    return null;
+  }
+
+  static num? _parseNum(dynamic value) {
+    if (value == null) return null;
+    if (value is num) return value;
+    if (value is String) return num.tryParse(value);
+    return null;
+  }
+
+  static String? _parsePrice(dynamic value) {
+    if (value == null) return null;
+    if (value is String) return value;
+    if (value is int) return value.toString();
+    if (value is double) return value.toString();
+    if (value is num) return value.toString();
+    return null;
   }
 
   ProductModel.fromJson(Map<String, dynamic> json) {
@@ -111,10 +173,8 @@ class ProductModel {
         json['takeawayOption'] == 1 || json['takeawayOption'] == true;
     name = json['name'];
     reviewAttributes = json['reviewAttributes'];
-
     // Parse product_specification - handle both string and map formats
     productSpecification = _parseJsonStringToMap(json['product_specification']);
-
     // Handle item_attribute field - it can be Map or List
     if (json['item_attribute'] != null) {
       if (json['item_attribute'] is Map<String, dynamic>) {
@@ -135,31 +195,17 @@ class ProductModel {
 
     // FIX: Handle both string and int for disPrice
     disPrice = _parsePrice(json['disPrice']) ?? "0";
-
     // Parse photos - handle both string and list formats
     photos = _parseJsonStringToList<String>(json['photos'])?.cast<String>();
-
     nonveg = json['nonveg'] == 1 || json['nonveg'] == true;
     photo = json['photo'];
-
     // FIX: Handle both string and int for price (THIS IS LINE 131)
     price = _parsePrice(json['price']) ?? "0";
-
     categoryID = json['categoryID'];
     description = json['description'];
     createdAt = _parseDate(json['createdAt']);
     // Convert int (0/1) to bool for boolean fields
     isAvailable = json['isAvailable'] == 1 || json['isAvailable'] == true;
-  }
-
-  // Add this helper method to handle price parsing
-  static String? _parsePrice(dynamic value) {
-    if (value == null) return null;
-    if (value is String) return value;
-    if (value is int) return value.toString();
-    if (value is double) return value.toString();
-    if (value is num) return value.toString();
-    return null;
   }
 
   static DateTime? _parseDate(dynamic value) {

@@ -300,20 +300,30 @@ class CartControllerProvider extends ChangeNotifier {
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
         headers: await getHeaders(),
-      );
+      ).timeout(const Duration(seconds: 10));
+      
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
           print("API response data: ${responseData['data']}");
-          return responseData['data'];
+          return responseData['data'] ?? {};
         } else {
-          throw Exception("API returned unsuccessful response");
+          print('[CART_PROVIDER] Surge rules API returned unsuccessful response');
+          return {}; // Return empty map instead of throwing
         }
+      } else if (response.statusCode == 429) {
+        print('[CART_PROVIDER] Rate limited when fetching surge rules');
+        return {}; // Return empty map on rate limit
       } else {
-        throw Exception("Failed to fetch surge rules: ${response.statusCode}");
+        print('[CART_PROVIDER] Failed to fetch surge rules: ${response.statusCode}');
+        return {}; // Return empty map instead of throwing
       }
+    } on TimeoutException {
+      print('[CART_PROVIDER] Timeout fetching surge rules');
+      return {}; // Return empty map on timeout
     } catch (e) {
-      throw Exception("Error fetching surge rules: $e");
+      print('[CART_PROVIDER] Error fetching surge rules: $e');
+      return {}; // Return empty map instead of throwing
     }
   }
 
@@ -449,10 +459,17 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<void> initialLiseSurgeValue(double lat, double lon) async {
-    Map<String, dynamic> weather = await getWeather(lat, lon);
-    Map<String, dynamic> rules = await getSurgeRules();
-    surgePercent = calculateSurgeFee(weather, rules);
-    notifyListeners();
+    try {
+      Map<String, dynamic> weather = await getWeather(lat, lon);
+      Map<String, dynamic> rules = await getSurgeRules();
+      surgePercent = calculateSurgeFee(weather, rules);
+      notifyListeners();
+    } catch (e) {
+      print('[CART_PROVIDER] Error initializing surge value: $e');
+      // Set default surge percent on error
+      surgePercent = 0;
+      notifyListeners();
+    }
   }
 
   Future<void> _initializeAddressWithPriority(BuildContext context) async {
@@ -2633,25 +2650,52 @@ class CartControllerProvider extends ChangeNotifier {
   RazorPayModel razorPayModel = RazorPayModel();
 
   getPaymentSettings() async {
-    await FireStoreUtils.getPaymentSettingsData().then((value) {
-      razorPayModel = RazorPayModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.razorpaySettings)),
-      );
-      cashOnDeliverySettingModel = CodSettingModel.fromJson(
-        jsonDecode(Preferences.getString(Preferences.codSettings)),
-      );
-      if (cashOnDeliverySettingModel.isEnabled == true &&
-          subTotal <= 599 &&
-          !hasMartItemsInCart()) {
-        selectedPaymentMethod = PaymentGateway.cod.name;
-      } else if (razorPayModel.isEnabled == true) {
-        selectedPaymentMethod = PaymentGateway.razorpay.name;
-      }
-      razorPay?.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlePaymentSuccess);
-      razorPay?.on(Razorpay.EVENT_EXTERNAL_WALLET, handleExternalWaller);
-      razorPay?.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
-      checkAndUpdatePaymentMethod();
-    });
+    try {
+      await FireStoreUtils.getPaymentSettingsData().then((value) {
+        try {
+          final razorpaySettingsStr = Preferences.getString(Preferences.razorpaySettings);
+          final codSettingsStr = Preferences.getString(Preferences.codSettings);
+          
+          if (razorpaySettingsStr.isNotEmpty) {
+            razorPayModel = RazorPayModel.fromJson(
+              jsonDecode(razorpaySettingsStr),
+            );
+          }
+          
+          if (codSettingsStr.isNotEmpty) {
+            cashOnDeliverySettingModel = CodSettingModel.fromJson(
+              jsonDecode(codSettingsStr),
+            );
+          }
+          
+          if (cashOnDeliverySettingModel.isEnabled == true &&
+              subTotal <= 599 &&
+              !hasMartItemsInCart()) {
+            selectedPaymentMethod = PaymentGateway.cod.name;
+          } else if (razorPayModel.isEnabled == true) {
+            selectedPaymentMethod = PaymentGateway.razorpay.name;
+          }
+          razorPay?.on(Razorpay.EVENT_PAYMENT_SUCCESS, handlePaymentSuccess);
+          razorPay?.on(Razorpay.EVENT_EXTERNAL_WALLET, handleExternalWaller);
+          razorPay?.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
+          checkAndUpdatePaymentMethod();
+        } catch (e) {
+          print('[CART_PROVIDER] Error parsing payment settings: $e');
+          // Continue with default payment method selection
+          if (razorPayModel.isEnabled == true) {
+            selectedPaymentMethod = PaymentGateway.razorpay.name;
+          }
+        }
+      }).catchError((e) {
+        print('[CART_PROVIDER] Error fetching payment settings: $e');
+        // Set default payment method on error
+        if (razorPayModel.isEnabled == true) {
+          selectedPaymentMethod = PaymentGateway.razorpay.name;
+        }
+      });
+    } catch (e) {
+      print('[CART_PROVIDER] Error in getPaymentSettings: $e');
+    }
     notifyListeners();
   }
 

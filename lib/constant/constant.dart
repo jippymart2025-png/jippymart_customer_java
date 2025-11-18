@@ -202,7 +202,6 @@ class Constant {
       } else {
         commission = price;
       }
-      // Debug output
       print('💰 Commission Calculation:');
       print('   - Base Price: $basePrice');
       print('   - Final Commission: $commission');

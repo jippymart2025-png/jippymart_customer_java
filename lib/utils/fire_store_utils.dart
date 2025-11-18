@@ -369,7 +369,11 @@ class FireStoreUtils {
     String productId, {
     bool forceRefresh = false,
   }) async {
-    if (productId.isEmpty) return null;
+    // Validate product ID before making any API calls
+    if (productId.isEmpty || productId == 'null' || productId.trim().isEmpty) {
+      print('[PRODUCT_API] Invalid product ID provided: "$productId"');
+      return null;
+    }
 
     if (!forceRefresh) {
       final cachedProduct = _getCachedProduct(productId);
@@ -398,26 +402,61 @@ class FireStoreUtils {
   }
 
   static Future<ProductModel?> _fetchProductFromApi(String productId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}products/$productId'),
-        headers: await getHeaders(),
-      );
+    const maxRetries = 3;
+    const retryDelay = Duration(seconds: 2);
+    const timeoutDuration = Duration(seconds: 10);
 
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-          return ProductModel.fromJson(jsonResponse['data']);
+    for (int attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        final response = await http
+            .get(
+              Uri.parse('${AppConst.baseUrl}products/$productId'),
+              headers: await getHeaders(),
+            )
+            .timeout(timeoutDuration);
+
+        if (response.statusCode == 200) {
+          final jsonResponse = json.decode(response.body);
+          if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+            return ProductModel.fromJson(jsonResponse['data']);
+          }
+        } else if (response.statusCode == 429) {
+          // Rate limiting - wait and retry
+          if (attempt < maxRetries) {
+            print(
+              '[PRODUCT_API] Rate limited (429), retrying in ${retryDelay.inSeconds}s (attempt $attempt/$maxRetries)',
+            );
+            await Future.delayed(retryDelay * attempt); // Exponential backoff
+            continue;
+          } else {
+            print(
+              '[PRODUCT_API] Rate limited (429) after $maxRetries attempts, productId=$productId',
+            );
+          }
+        } else {
+          print(
+            '[PRODUCT_API] getProductById failed '
+            'status=${response.statusCode} productId=$productId',
+          );
+          // Don't retry for non-429 errors
+          return null;
         }
-      } else {
+      } on TimeoutException {
         print(
-          '[PRODUCT_API] getProductById failed '
-          'status=${response.statusCode} productId=$productId',
+          '[PRODUCT_API] Timeout fetching product $productId (attempt $attempt/$maxRetries)',
         );
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+          continue;
+        }
+      } catch (e, s) {
+        print('[PRODUCT_API] Error fetching product $productId: $e');
+        if (attempt < maxRetries) {
+          await Future.delayed(retryDelay);
+          continue;
+        }
+        print(s);
       }
-    } catch (e, s) {
-      print('[PRODUCT_API] Error fetching product $productId: $e');
-      print(s);
     }
     return null;
   }

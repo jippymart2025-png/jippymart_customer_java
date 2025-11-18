@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -18,7 +17,6 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 
 class AddressListProvider extends ChangeNotifier {
-  static const Duration _networkTimeout = Duration(seconds: 20);
   UserModel userModel = UserModel();
   List<ShippingAddress> shippingAddressList = <ShippingAddress>[];
   List saveAsList = ['Home', 'Work', 'Hotel', 'other'];
@@ -31,6 +29,7 @@ class AddressListProvider extends ChangeNotifier {
   UserLocation location = UserLocation();
   ShippingAddress shippingModel = ShippingAddress();
   bool isLoading = false;
+  bool _addressesInitialized = false;
   late HomeProvider homeProvider;
 
   void setLoading(bool value) {
@@ -39,8 +38,44 @@ class AddressListProvider extends ChangeNotifier {
   }
 
   Future<void> initFunction({required BuildContext context}) async {
+    if (_addressesInitialized && shippingAddressList.isNotEmpty) {
+      return; // Already initialized
+    }
+    
     homeProvider = Provider.of(context, listen: false);
-    // await getUser();
+    
+    // Load addresses from userModel if available
+    if (Constant.userModel != null &&
+        Constant.userModel!.shippingAddress != null &&
+        Constant.userModel!.shippingAddress!.isNotEmpty) {
+      shippingAddressList = Constant.userModel!.shippingAddress!;
+      _addressesInitialized = true;
+      notifyListeners();
+      return;
+    }
+    
+    // If userModel is not loaded or addresses are empty, try to load it
+    if (shippingAddressList.isEmpty) {
+      try {
+        final userId = await SqlStorageConst.getFirebaseId();
+        if (userId != null && userId.isNotEmpty) {
+          final userModel = await getUserProfile(userId);
+          if (userModel != null) {
+            Constant.userModel = userModel;
+            if (userModel.shippingAddress != null &&
+                userModel.shippingAddress!.isNotEmpty) {
+              shippingAddressList = userModel.shippingAddress!;
+              _addressesInitialized = true;
+              notifyListeners();
+            }
+          }
+        }
+      } catch (e) {
+        print('[ADDRESS_LIST_PROVIDER] Error loading addresses: $e');
+      }
+    }
+    
+    _addressesInitialized = true;
   }
 
   void useMyCurrentLocation() async {
@@ -128,9 +163,6 @@ class AddressListProvider extends ChangeNotifier {
       } else {
         return null;
       }
-    } on TimeoutException catch (e) {
-      print("getUserProfile timeout $e");
-      return null;
     } catch (e) {
       print("getUserProfile $e");
       return null;
@@ -291,7 +323,7 @@ class AddressListProvider extends ChangeNotifier {
             headers: headers,
             body: jsonEncode(shippingAddresses), // ✅ Array directly
           )
-          .timeout(_networkTimeout);
+          .timeout(const Duration(seconds: 30));
       log("🔵 STATUS: ${response.statusCode}");
       log("🔵 BODY: ${response.body}");
       if (response.statusCode == 200) {
@@ -309,9 +341,6 @@ class AddressListProvider extends ChangeNotifier {
         log("❌ Server responded with status: ${response.statusCode}");
         return false;
       }
-    } on TimeoutException catch (e) {
-      log("❌ Timeout during updateUser: $e");
-      return false;
     } catch (e, st) {
       log("❌ Exception during updateUser: $e\n$st");
       return false;
@@ -335,10 +364,6 @@ class AddressListProvider extends ChangeNotifier {
       setLoading(true);
       ShowToastDialog.showLoader("Please wait".tr);
       try {
-        final userId = await SqlStorageConst.getFirebaseId();
-        if (userId == null || userId.isEmpty) {
-          throw Exception('Missing user id. Please re-login.');
-        }
         // Prepare the shipping address model
         final shippingModels = ShippingAddress(
           id: shippingModel.id ?? Constant.getUuid(),
@@ -378,28 +403,18 @@ class AddressListProvider extends ChangeNotifier {
         final success = await addressListProvider.updateUser(userModel);
         if (success) {
           shippingAddressList = updatedAddressList;
-          await homeProvider.ensureUserModelIsLoaded();
-          await homeProvider.getZone();
+          homeProvider.ensureUserModelIsLoaded();
           ShowToastDialog.closeLoader();
           Get.back();
           ShowToastDialog.showToast("Address saved successfully".tr);
         } else {
           ShowToastDialog.closeLoader();
-          ShowToastDialog.showToast(
-            "Failed to save address. Please try again.".tr,
-          );
+          ShowToastDialog.showToast("Failed to save address".tr);
         }
-      } on TimeoutException {
-        ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast("Request timed out. Try again.".tr);
       } catch (e) {
         print(" saveAddressFunction  ${e.toString()} ");
         ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast(
-          e.toString().contains('Unauthorized')
-              ? "Session expired. Please login again.".tr
-              : "Error saving address".tr,
-        );
+        ShowToastDialog.showToast("Error saving address".tr);
       } finally {
         setLoading(false);
       }
