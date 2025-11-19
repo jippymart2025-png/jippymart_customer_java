@@ -3,7 +3,6 @@ import 'package:jippymart_customer/app/restaurant_details_screen/provider/restau
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_product_details_view.dart';
 import 'package:jippymart_customer/constant/constant.dart' show Constant;
-import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -93,13 +92,12 @@ class ProductListView extends StatelessWidget {
         ),
       ),
       children: [
-        Consumer2<RestaurantDetailsProvider, HomeProvider>(
-          builder: (context, controller, homeProvider, _) =>
-              _buildProductsForCategory(
-                vendorCategoryModel,
-                context,
-                controller,
-              ),
+        Consumer<RestaurantDetailsProvider>(
+          builder: (context, controller, _) => _buildProductsForCategory(
+            vendorCategoryModel,
+            context,
+            controller,
+          ),
         ),
       ],
     );
@@ -114,19 +112,24 @@ class ProductListView extends StatelessWidget {
       vendorCategoryModel.id.toString(),
     );
 
-    return ListView.builder(
-      itemCount: products.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemBuilder: (context, productIndex) {
-        ProductModel productModel = products[productIndex];
-        return _buildProductItem(
-          productModel,
-          context,
-          vendorCategoryModel,
-          productIndex,
-          controller,
+    // Listen to HomeProvider changes to rebuild when cart changes
+    return Consumer<HomeProvider>(
+      builder: (context, homeProvider, _) {
+        return ListView.builder(
+          itemCount: products.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemBuilder: (context, productIndex) {
+            ProductModel productModel = products[productIndex];
+            return _buildProductItem(
+              productModel,
+              context,
+              vendorCategoryModel,
+              productIndex,
+              controller,
+            );
+          },
         );
       },
     );
@@ -516,18 +519,21 @@ class ProductListView extends StatelessWidget {
     String disPrice,
   ) {
     final productId = productModel.id?.toString() ?? '';
-
     final hasVariantsOrAddons =
         controller.selectedVariants.isNotEmpty ||
         (productModel.addOnsTitle != null &&
             productModel.addOnsTitle!.isNotEmpty);
-    final isInCart = HomeProvider.cartItem.any((cartItem) {
-      print(
-        "Checking: cartItem.id=${cartItem.id}, productId=$productId   cartItem length ${HomeProvider.cartItem[0].categoryId} ${HomeProvider.cartItem.length}",
-      );
-      return cartItem.id == productId; // IMPORTANT
-    });
-
+    // Fix: Handle variant IDs (format: "productId~variantId" or just "productId")
+    final isInCart = HomeProvider.cartItem.any(
+      (cartItem) {
+        if (cartItem.id == null || cartItem.id!.isEmpty) return false;
+        // Check exact match or if cart item ID starts with productId~
+        // This handles both simple products and products with variants
+        return cartItem.id == productId || 
+               cartItem.id!.startsWith('$productId~');
+      },
+    );
+    print(" isInCart $isInCart for productId: $productId, cartItem IDs: ${HomeProvider.cartItem.map((e) => e.id).toList()}");
     if (hasVariantsOrAddons) {
       return RoundedButtonFill(
         title: "Add".tr,
@@ -719,11 +725,24 @@ class ProductListView extends StatelessWidget {
 
   int _findCartItemQuantity(String productId) {
     if (productId.isEmpty) return 0;
-    final item = HomeProvider.cartItem.firstWhere(
-      (p0) => p0.id == productId,
-      orElse: () => CartProductModel(quantity: 0, id: productId),
+    
+    // Find all matching items (exact match or variant IDs starting with productId~)
+    final matchingItems = HomeProvider.cartItem.where(
+      (cartItem) {
+        if (cartItem.id == null || cartItem.id!.isEmpty) return false;
+        // Check exact match or if cart item ID starts with productId~
+        return cartItem.id == productId || 
+               cartItem.id!.startsWith('$productId~');
+      },
+    ).toList();
+    
+    if (matchingItems.isEmpty) return 0;
+    
+    // Sum up quantities of all matching items (handles multiple variants)
+    return matchingItems.fold<int>(
+      0,
+      (sum, item) => sum + (item.quantity ?? 0),
     );
-    return item.quantity ?? 0;
   }
 }
 

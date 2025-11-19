@@ -694,7 +694,7 @@ class _CartScreenState extends State<CartScreen> {
             //changed here
             bottomNavigationBar: HomeProvider.cartItem.isEmpty
                 ? null
-                : cartNavigationBarWidget(controller, context),
+                : cartNavigationBarWidget(context),
           ),
         );
       },

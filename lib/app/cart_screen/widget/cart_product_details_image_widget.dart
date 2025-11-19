@@ -31,8 +31,6 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
           separatorBuilder: (context, index) => const SizedBox(height: 10),
           itemBuilder: (context, index) {
             CartProductModel cartProductModel = HomeProvider.cartItem[index];
-
-            // Validate product ID before making API call
             String? productId;
             if (cartProductModel.id != null &&
                 cartProductModel.id!.isNotEmpty &&
@@ -44,13 +42,10 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                 productId = parts.first;
               }
             }
-
-            // If no valid product ID, skip API call and show product with cart data
             if (productId == null ||
                 productId.isEmpty ||
                 productId.trim().isEmpty ||
                 productId.toLowerCase() == 'null') {
-              // Only log if it's not already a known invalid value to reduce noise
               if (cartProductModel.id != null &&
                   cartProductModel.id!.toLowerCase() != 'null') {
                 print(

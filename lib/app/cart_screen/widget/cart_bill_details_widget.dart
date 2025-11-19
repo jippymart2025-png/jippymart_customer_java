@@ -414,8 +414,6 @@ Widget _buildDeliveryFeeSection(
       ],
     );
   }
-
-  // Promotional items delivery logic
   if (hasPromotionalItems) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,

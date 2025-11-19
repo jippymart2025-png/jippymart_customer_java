@@ -58,10 +58,8 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     if (_isRefreshing) {
       return; // Prevent multiple simultaneous refreshes
     }
-
     _isRefreshing = true;
     print('DEBUG: Refreshing cart data...');
-
     // Use a single delayed call instead of multiple
     Future.delayed(const Duration(milliseconds: 500), () {
       try {

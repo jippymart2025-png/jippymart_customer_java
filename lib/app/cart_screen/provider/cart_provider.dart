@@ -22,6 +22,8 @@ import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/payment/createRazorPayOrderModel.dart';
+import 'package:jippymart_customer/payment/rozorpayConroller.dart';
 
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/coupon_filter_service.dart';
@@ -48,6 +50,58 @@ import '../../../models/mart_item_model.dart';
 import '../../../services/mart_firestore_service.dart';
 
 class CartControllerProvider extends ChangeNotifier {
+  Future<void> processPayment(
+    CartControllerProvider controller,
+    BuildContext context,
+  ) async {
+    final canProceed = await controller.validateAndPlaceOrderBulletproof(
+      context,
+    );
+    if (!canProceed) {
+      return;
+    }
+    if ((controller.couponAmount >= 1) &&
+        (controller.couponAmount > controller.totalAmount)) {
+      ShowToastDialog.showToast(
+        "The total price must be greater than or equal to the coupon discount value for the code to apply. Please review your cart total."
+            .tr,
+      );
+      return;
+    }
+    if ((controller.specialDiscountAmount >= 1) &&
+        (controller.specialDiscountAmount > controller.totalAmount)) {
+      ShowToastDialog.showToast(
+        "The total price must be greater than or equal to the special discount value for the code to apply. Please review your cart total."
+            .tr,
+      );
+      return;
+    }
+    if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
+      controller.placeOrder(context);
+    } else if (controller.selectedPaymentMethod ==
+        PaymentGateway.razorpay.name) {
+      RazorPayController()
+          .createOrderRazorPay(
+            amount: double.parse(controller.totalAmount.toString()),
+            razorpayModel: controller.razorPayModel,
+          )
+          .then((value) async {
+            if (value == null) {
+              Get.back();
+              ShowToastDialog.showToast(
+                "Something went wrong, please contact admin.".tr,
+              );
+            } else {
+              CreateRazorPayOrderModel result = value;
+              controller.openCheckout(amount: value.amount, orderId: result.id);
+            }
+          });
+    } else {
+      ShowToastDialog.showToast("Please select payment method".tr);
+    }
+    notifyListeners();
+  }
+
   void changeLocationFunctionInCart({required BuildContext context}) {
     Get.to(const AddressListScreen())!.then((value) async {
       if (value != null) {
@@ -105,8 +159,9 @@ class CartControllerProvider extends ChangeNotifier {
           );
         }
         selectedAddress = addressModel;
+        // Ensure vendor details (esp. lat/lng) are available before price calc
+        await _loadFreshVendorForCart();
         notifyListeners();
-        // Await price calculation to ensure delivery charges update
         await calculatePrice();
       }
     });
@@ -124,225 +179,282 @@ class CartControllerProvider extends ChangeNotifier {
   //     notifyListeners();
   //   });
   // }
-
   Future<void> showPaymentMethodDialog(BuildContext context) async {
     final canProceed = await validateAndPlaceOrderBulletproof(context);
     if (!canProceed) {
       return;
     }
+
+    // Store initial selection
+    final String initialSelection = selectedPaymentMethod;
+
     await Get.dialog(
       WillPopScope(
         onWillPop: () async {
-          selectedPaymentMethod = '';
+          // Restore original selection if user cancels
+          selectedPaymentMethod = initialSelection;
+          notifyListeners();
           return true;
         },
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.payment, color: Colors.orange, size: 24),
-              SizedBox(width: 10),
-              Text(
-                "Select Payment Method",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        child: StatefulBuilder(
+          // Add StatefulBuilder for real-time updates
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Choose how you want to pay for your order:",
-                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-              ),
-              SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: RadioListTile<String>(
-                  contentPadding: EdgeInsets.all(4),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Image.asset(
-                        "assets/images/ic_cash.png",
-                        width: 30,
-                        height: 30,
-                      ),
-                      SizedBox(
-                        width: 150,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Cash on Delivery",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              "Pay when you receive your order",
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey[600],
-                              ),
-                              maxLines: 2,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+              title: Row(
+                children: [
+                  Icon(Icons.payment, color: Colors.orange, size: 24),
+                  SizedBox(width: 10),
+                  Text(
+                    "Select Payment Method",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  value: PaymentGateway.cod.name,
-                  groupValue: selectedPaymentMethod,
-                  onChanged: (value) {
-                    selectedPaymentMethod = value!;
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Choose how you want to pay for your order:",
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  ),
+                  SizedBox(height: 20),
+
+                  // COD Option
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: RadioListTile<String>(
+                      contentPadding: EdgeInsets.all(4),
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Image.asset(
+                            "assets/images/ic_cash.png",
+                            width: 30,
+                            height: 30,
+                          ),
+                          SizedBox(
+                            width: 150,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Cash on Delivery",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  "Pay when you receive your order",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                  ),
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      value: PaymentGateway.cod.name,
+                      groupValue: selectedPaymentMethod,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedPaymentMethod = value;
+                          });
+                          notifyListeners(); // 🔑 CRITICAL: Update provider state
+                        }
+                      },
+                      activeColor: Colors.orange,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+
+                  // Razorpay Option
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: RadioListTile<String>(
+                      contentPadding: EdgeInsets.all(4),
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Image.asset(
+                            "assets/images/razorpay.png",
+                            width: 30,
+                            height: 30,
+                          ),
+                          SizedBox(
+                            width: 150,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Online Payment",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  "Pay securely with Razorpay",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      value: PaymentGateway.razorpay.name,
+                      groupValue: selectedPaymentMethod,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedPaymentMethod = value;
+                          });
+                          notifyListeners(); // 🔑 CRITICAL: Update provider state
+                        }
+                      },
+                      activeColor: Colors.orange,
+                    ),
+                  ),
+
+                  SizedBox(height: 10),
+
+                  // Validation messages
+                  if (subTotal > 599 &&
+                      selectedPaymentMethod == PaymentGateway.cod.name)
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info, color: Colors.orange, size: 16),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "COD not available for orders above ₹599",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (hasPromotionalItems() &&
+                      selectedPaymentMethod == PaymentGateway.cod.name)
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info, color: Colors.orange, size: 16),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "COD not available for promotional items",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+
+              actions: [
+                // Cancel Button
+                TextButton(
+                  onPressed: () {
+                    // Restore original selection
+                    selectedPaymentMethod = initialSelection;
                     notifyListeners();
+                    Get.back();
                   },
-                  activeColor: Colors.orange,
-                ),
-              ),
-              SizedBox(height: 10),
-              // Razorpay Option
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: RadioListTile<String>(
-                  contentPadding: EdgeInsets.all(4),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Image.asset(
-                        "assets/images/razorpay.png",
-                        width: 30,
-                        height: 30,
-                      ),
-                      SizedBox(
-                        width: 150,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Online Payment",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              "Pay securely with Razorpay",
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey[600],
                   ),
-                  value: PaymentGateway.razorpay.name,
-                  groupValue: selectedPaymentMethod,
-                  onChanged: (value) {
-                    selectedPaymentMethod = value!;
+                  child: Text("Cancel"),
+                ),
+                // OK/Proceed Button
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedPaymentMethod.isEmpty) {
+                      ShowToastDialog.showToast(
+                        "Please select a payment method".tr,
+                      );
+                      return;
+                    }
+
+                    // Validate selection
+                    if (selectedPaymentMethod == PaymentGateway.cod.name) {
+                      if (subTotal > 599) {
+                        ShowToastDialog.showToast(
+                          "COD not available for orders above ₹599. Please select online payment."
+                              .tr,
+                        );
+                        return;
+                      }
+                      if (hasPromotionalItems()) {
+                        ShowToastDialog.showToast(
+                          "COD not available for promotional items. Please select online payment."
+                              .tr,
+                        );
+                        return;
+                      }
+                    }
+
+                    Get.back(); // Close dialog with valid selection
                   },
-                  activeColor: Colors.orange,
-                ),
-              ),
-
-              SizedBox(height: 10),
-              // Validation messages
-              if (subTotal > 599)
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange[200]!),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info, color: Colors.orange, size: 16),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "COD not available for orders above ₹599",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange[800],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: Text("Confirm Payment"),
                 ),
-              if (hasPromotionalItems())
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info, color: Colors.orange, size: 16),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "COD not available for promotional items",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange[800],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-
-          actions: [
-            // Cancel Button
-            TextButton(
-              onPressed: () {
-                selectedPaymentMethod = '';
-                Get.back();
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
-              child: Text("Cancel"),
-            ),
-            // OK/Proceed Button
-            ElevatedButton(
-              onPressed: () {
-                Get.back();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text("Proceed to Pay"),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
       barrierDismissible: false,
     );
+
+    // After dialog closes, ensure UI reflects the current selection
+    notifyListeners();
   }
 
   Future<Map<String, dynamic>> getWeather(double lat, double lon) async {
@@ -1123,6 +1235,8 @@ class CartControllerProvider extends ChangeNotifier {
   /// Force refresh cart data and recalculate prices
   Future<void> forceRefreshCart() async {
     await cartProvider.refreshCart();
+    // Refresh vendor details so delivery distance can be recalculated
+    await _loadFreshVendorForCart();
     await calculatePrice();
     checkAndUpdatePaymentMethod();
     updateCartReadiness();
@@ -1169,6 +1283,7 @@ class CartControllerProvider extends ChangeNotifier {
       final restaurantItems = HomeProvider.cartItem
           .where((item) => !_isMartItem(item))
           .toList();
+      notifyListeners();
       if (martItems.isNotEmpty) {
         await _loadFreshMartVendor(martItems);
       } else if (restaurantItems.isNotEmpty) {
@@ -1460,9 +1575,11 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         // Try fallback method only for non-rate-limit errors
         await _loadCouponsWithoutFiltering(restaurantId: restaurantId);
+        notifyListeners();
       }
     } finally {
       _isLoadingCoupons = false;
+      notifyListeners();
     }
   }
 
@@ -2210,8 +2327,6 @@ class CartControllerProvider extends ChangeNotifier {
       calculateRegularDeliveryCharge();
       return;
     }
-
-    // Get the first promotional item's delivery settings from cache - INSTANT
     final firstPromoItem = promotionalItems.first;
     final freeDeliveryKm = _getCachedFreeDeliveryKm(
       firstPromoItem.id ?? '',
@@ -2222,7 +2337,7 @@ class CartControllerProvider extends ChangeNotifier {
       firstPromoItem.vendorID ?? '',
     );
     final baseCharge = 23.0; // Base delivery charge for promotional items
-
+    //finded
     _calculateDeliveryCharge(
       orderType: 'promotional',
       freeDeliveryKm: freeDeliveryKm,
@@ -2245,7 +2360,6 @@ class CartControllerProvider extends ChangeNotifier {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (totalDistance <= freeDeliveryKm) {
-      // Free delivery within distance - show original fee with strikethrough
       deliveryCharges = 0.0;
       originalDeliveryFee = baseCharge;
     } else {
@@ -2278,10 +2392,8 @@ class CartControllerProvider extends ChangeNotifier {
     final freeKm = 5.0; // Free delivery distance for mart
     final perKm = 7.0; // Per km charge above free distance
     final threshold = 199.0; // Free delivery threshold for mart
-
     final subtotal = subTotal;
     final distance = totalDistance;
-
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
@@ -2333,6 +2445,8 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Calculate delivery charge for regular (non-promotional) items
+  ///
+  //finded here
   void calculateRegularDeliveryCharge() {
     final dc = deliveryChargeModel;
     final subtotal = subTotal;
@@ -2364,7 +2478,7 @@ class CartControllerProvider extends ChangeNotifier {
         deliveryCharges = (extraKm * perKm).toDouble();
       }
     }
-
+    print("calculateRegularDeliveryCharge ${deliveryCharges} ");
     notifyListeners();
   }
 
@@ -2409,6 +2523,7 @@ class CartControllerProvider extends ChangeNotifier {
       cartProvider.removeFromCart(cartProductModel, quantity);
       notifyListeners();
     }
+    await forceRefreshCart();
     notifyListeners();
     return true;
   }
