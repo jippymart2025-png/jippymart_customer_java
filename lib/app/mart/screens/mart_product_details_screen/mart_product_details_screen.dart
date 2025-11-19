@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_brand_products_screen/mart_brand_products_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -112,10 +113,10 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
       print(
         '[CART STATUS] Checking cart status for product: ${widget.product.id}',
       );
-      print('[CART STATUS] Total cart items: ${cartItem.length}');
+      print('[CART STATUS] Total cart items: ${HomeProvider.cartItem.length}');
 
       // Find the product in the global cart list
-      final foundCartItem = cartItem.firstWhere(
+      final foundCartItem = HomeProvider.cartItem.firstWhere(
         (item) => item.id == widget.product.id,
         orElse: () => CartProductModel(),
       );
@@ -896,7 +897,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
   Widget _buildCartActions() {
     // Get total cart items count from the global cart list
-    final totalCartItems = cartItem.fold(
+    final totalCartItems = HomeProvider.cartItem.fold(
       0,
       (sum, item) => sum + (item.quantity ?? 0),
     );

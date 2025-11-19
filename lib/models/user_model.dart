@@ -268,86 +268,121 @@ class ShippingAddress {
   String? locality;
   UserLocation? location;
   bool? isDefault;
-  String? zoneId; // 🔑 Add zoneId field for delivery zone validation
+  String? zoneId;
+  double? latitude;
+  double? longitude;
 
   ShippingAddress({
+    this.id,
     this.address,
+    this.addressAs,
     this.landmark,
     this.locality,
     this.location,
     this.isDefault,
-    this.addressAs,
-    this.id,
     this.zoneId,
+    this.latitude,
+    this.longitude,
   });
 
-  ShippingAddress.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    address = json['address'];
-    landmark = json['landmark'];
-    locality = json['locality'];
-    isDefault = json['isDefault'];
-    addressAs = json['addressAs'];
-    zoneId = json['zoneId']; // 🔑 Parse zoneId
-    location = json['location'] == null
-        ? null
-        : UserLocation.fromJson(json['location']);
+  // IMPROVED PARSING WITH BETTER NULL SAFETY
+  factory ShippingAddress.fromJson(Map<String, dynamic> json) {
+    double? lat;
+    double? lng;
+    if (json['location'] != null && json['location'] is Map) {
+      final locationData = json['location'] as Map<String, dynamic>;
+      lat = _parseDouble(locationData['latitude']);
+      lng = _parseDouble(locationData['longitude']);
+    }
+    if (lat == null) lat = _parseDouble(json['latitude']);
+    if (lng == null) lng = _parseDouble(json['longitude']);
+    UserLocation? location;
+    if (lat != null && lng != null) {
+      location = UserLocation(latitude: lat, longitude: lng);
+    }
+
+    return ShippingAddress(
+      id: json['id']?.toString(),
+      address: json['address']?.toString(),
+      addressAs: json['addressAs']?.toString(),
+      landmark: json['landmark']?.toString(),
+      locality: json['locality']?.toString(),
+      isDefault: json['isDefault'] as bool? ?? false,
+      zoneId: json['zoneId']?.toString(),
+      latitude: lat,
+      longitude: lng,
+      location: location,
+    );
+  }
+
+  static double? _parseDouble(dynamic value) {
+    if (value == null) return null;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) return double.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
+
     data['id'] = id;
     data['address'] = address;
+    data['addressAs'] = addressAs;
     data['landmark'] = landmark;
     data['locality'] = locality;
     data['isDefault'] = isDefault;
-    data['addressAs'] = addressAs;
-    data['zoneId'] = zoneId; // 🔑 Include zoneId
+    data['zoneId'] = zoneId;
+    data['latitude'] = latitude;
+    data['longitude'] = longitude;
+
+    // Always include location object for consistency
     if (location != null) {
       data['location'] = location!.toJson();
+    } else if (latitude != null && longitude != null) {
+      data['location'] = {'latitude': latitude, 'longitude': longitude};
     }
+
     return data;
   }
 
+  // GETTERS WITH FALLBACK LOGIC
+  double? get effectiveLatitude => location?.latitude ?? latitude;
+
+  double? get effectiveLongitude => location?.longitude ?? longitude;
+
+  bool get hasCoordinates =>
+      effectiveLatitude != null && effectiveLongitude != null;
+
+  /// Build formatted full address
   String getFullAddress() {
     List<String> addressParts = [];
 
-    // Add address if available
-    if (address != null && address!.isNotEmpty) {
-      addressParts.add(address!);
+    if (address != null && address!.trim().isNotEmpty) {
+      addressParts.add(address!.trim());
     }
-
-    // Add locality if available and different from address
-    if (locality != null && locality!.isNotEmpty && locality != address) {
-      addressParts.add(locality!);
+    if (locality != null &&
+        locality!.trim().isNotEmpty &&
+        locality != address) {
+      addressParts.add(locality!.trim());
     }
-
-    // Add landmark if available and different from address and locality
     if (landmark != null &&
-        landmark!.isNotEmpty &&
+        landmark!.trim().isNotEmpty &&
         landmark != address &&
         landmark != locality) {
-      addressParts.add(landmark!);
+      addressParts.add(landmark!.trim());
     }
 
-    // **FIXED: Remove duplicates and clean up the address**
+    // Remove duplicates
     List<String> uniqueParts = [];
     for (String part in addressParts) {
-      String cleanPart = part.trim();
-      if (cleanPart.isNotEmpty && !uniqueParts.contains(cleanPart)) {
-        uniqueParts.add(cleanPart);
+      if (!uniqueParts.contains(part)) {
+        uniqueParts.add(part);
       }
     }
 
-    // Join with commas and clean up
-    String fullAddress = uniqueParts.join(', ');
-
-    // If no address parts, return a default message
-    if (fullAddress.isEmpty) {
-      return 'Current Location';
-    }
-
-    return fullAddress;
+    final full = uniqueParts.join(", ");
+    return full.isEmpty ? "Current Location" : full;
   }
 
   ShippingAddress copyWith({
@@ -359,6 +394,8 @@ class ShippingAddress {
     UserLocation? location,
     bool? isDefault,
     String? zoneId,
+    double? latitude,
+    double? longitude,
   }) {
     return ShippingAddress(
       id: id ?? this.id,
@@ -369,6 +406,8 @@ class ShippingAddress {
       location: location ?? this.location,
       isDefault: isDefault ?? this.isDefault,
       zoneId: zoneId ?? this.zoneId,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }

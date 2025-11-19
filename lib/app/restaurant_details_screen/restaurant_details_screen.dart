@@ -1,4 +1,5 @@
 // restaurant_details_screen.dart
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restauant_product_list_view.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_detail_shimmer_widget.dart';
@@ -1018,7 +1019,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
             ),
           ),
 
-          bottomNavigationBar: cartItem.isEmpty
+          bottomNavigationBar: HomeProvider.cartItem.isEmpty
               ? null
               : InkWell(
                   onTap: () {
@@ -1043,7 +1044,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            '${cartItem.length} items',
+                            '${HomeProvider.cartItem.length} items',
                             style: TextStyle(
                               fontFamily: AppThemeData.medium,
                               color: AppThemeData.grey50,

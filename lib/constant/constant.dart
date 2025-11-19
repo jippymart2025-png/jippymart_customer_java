@@ -35,8 +35,6 @@ import 'package:mailer/smtp_server.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
 
-List<CartProductModel> cartItem = <CartProductModel>[];
-
 class Constant {
   static String userRoleCustomer = 'customer';
   static ShippingAddress selectedLocation = ShippingAddress();

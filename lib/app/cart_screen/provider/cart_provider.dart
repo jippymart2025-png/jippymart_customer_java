@@ -30,6 +30,7 @@ import 'package:jippymart_customer/services/mart_vendor_service.dart';
 import 'package:jippymart_customer/services/promotional_cache_service.dart';
 import 'package:jippymart_customer/utils/anr_prevention.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
+import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/razorpay_crash_prevention.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
@@ -47,6 +48,70 @@ import '../../../models/mart_item_model.dart';
 import '../../../services/mart_firestore_service.dart';
 
 class CartControllerProvider extends ChangeNotifier {
+  void changeLocationFunctionInCart({required BuildContext context}) {
+    Get.to(const AddressListScreen())!.then((value) async {
+      if (value != null) {
+        ShippingAddress addressModel = value;
+        print(" changeLocationFunctionInCart  13 ${addressModel.locality}");
+        print(
+          " changeLocationFunctionInCart  12 ${addressModel.location?.latitude}   ${addressModel.location?.latitude}",
+        );
+        print(" changeLocationFunctionInCart  1 ${addressModel.latitude}");
+        if (addressModel.location?.latitude != null &&
+            addressModel.location?.longitude != null) {
+          try {
+            if (addressModel.zoneId != null &&
+                addressModel.zoneId!.isNotEmpty) {
+              print(
+                '✅ [CART_ADDRESS_CHANGE] Using zoneId from addressModel: ${addressModel.zoneId}',
+              );
+            } else if (Constant.selectedLocation.zoneId != null &&
+                Constant.selectedLocation.zoneId!.isNotEmpty) {
+              addressModel.zoneId = Constant.selectedLocation.zoneId;
+              notifyListeners();
+              print(
+                '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedLocation: ${addressModel.zoneId}',
+              );
+            } else if (Constant.selectedZone != null) {
+              addressModel.zoneId = Constant.selectedZone!.id;
+              print(
+                '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedZone: ${addressModel.zoneId}',
+              );
+              notifyListeners();
+            } else {
+              final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
+                addressModel.location!.latitude!,
+                addressModel.location!.longitude!,
+                context,
+              );
+              if (zoneId.isNotEmpty) {
+                addressModel.zoneId = zoneId;
+                print(
+                  '✅ [CART_ADDRESS_CHANGE] Detected zone from coordinates: $zoneId',
+                );
+              } else {
+                print(
+                  '⚠️ [CART_ADDRESS_CHANGE] No zone detected for coordinates - leaving zoneId as null',
+                );
+              }
+            }
+          } catch (e) {
+            print('❌ [CART_ADDRESS_CHANGE] Error detecting zone: $e');
+            // Continue without zone ID if detection fails
+          }
+        } else {
+          print(
+            '⚠️ [CART_ADDRESS_CHANGE] No coordinates available for zone detection',
+          );
+        }
+        selectedAddress = addressModel;
+        notifyListeners();
+        // Await price calculation to ensure delivery charges update
+        await calculatePrice();
+      }
+    });
+  }
+
   // ProductModel? productModelImageDetails;
   //
   // void cartProductDetailsImageProductListFunction() {
@@ -677,10 +742,7 @@ class CartControllerProvider extends ChangeNotifier {
     );
   }
 
-  /// 🔑 DETECT ZONE ID FOR COORDINATES
   ///
-  /// This method detects the zone ID for given coordinates by checking
-  /// if the coordinates fall within any zone polygon
   Future<String?> _detectZoneIdForCoordinates(
     double latitude,
     double longitude,
@@ -886,7 +948,7 @@ class CartControllerProvider extends ChangeNotifier {
         _cachedTaxList = await FireStoreUtils.getTaxList();
       }
       final futures = <Future>[];
-      for (var item in cartItem) {
+      for (var item in HomeProvider.cartItem) {
         if (item.promoId != null && item.promoId!.isNotEmpty) {
           final cacheKey = '${item.id}-${item.vendorID}';
           if (!_promotionalCalculationCache.containsKey(cacheKey)) {
@@ -947,7 +1009,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Method to check if cart has promotional items
   bool hasPromotionalItems() {
-    return cartItem.any(
+    return HomeProvider.cartItem.any(
       (item) => item.promoId != null && item.promoId!.isNotEmpty,
     );
   }
@@ -1028,7 +1090,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Check if cart is ready for payment
   bool isCartReadyForPayment() {
-    final cartNotEmpty = cartItem.isNotEmpty;
+    final cartNotEmpty = HomeProvider.cartItem.isNotEmpty;
     final subTotalValid = subTotal > 0;
     final totalValid = totalAmount > 0;
     final paymentMethodSelected = selectedPaymentMethod.isNotEmpty;
@@ -1052,7 +1114,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Update cart readiness state
   void updateCartReadiness() {
-    isCartReady = cartItem.isNotEmpty && subTotal > 0;
+    isCartReady = HomeProvider.cartItem.isNotEmpty && subTotal > 0;
     isPaymentReady = isCartReadyForPayment();
     isAddressValid = selectedAddress?.id != null;
     notifyListeners();
@@ -1071,7 +1133,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> clearCart() async {
     try {
       // Clear cart items from memory
-      cartItem.clear();
+      HomeProvider.cartItem.clear();
       // Clear cart from database
       await DatabaseHelper.instance.deleteAllCartProducts();
       subTotal = 0.0;
@@ -1084,7 +1146,6 @@ class CartControllerProvider extends ChangeNotifier {
       selectedPaymentMethod = '';
       // Verify cart is actually empty
       final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
-
       if (remainingItems.isNotEmpty) {}
       notifyListeners();
     } catch (e) {}
@@ -1102,8 +1163,10 @@ class CartControllerProvider extends ChangeNotifier {
   /// 🔑 LOAD FRESH VENDOR DATA - NO CACHING
   Future<void> _loadFreshVendorForCart() async {
     try {
-      final martItems = cartItem.where((item) => _isMartItem(item)).toList();
-      final restaurantItems = cartItem
+      final martItems = HomeProvider.cartItem
+          .where((item) => _isMartItem(item))
+          .toList();
+      final restaurantItems = HomeProvider.cartItem
           .where((item) => !_isMartItem(item))
           .toList();
       if (martItems.isNotEmpty) {
@@ -1121,7 +1184,6 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       final firstMartItem = martItems.first;
       final vendorId = firstMartItem.vendorID;
-
       MartVendorModel? martVendor;
       if (vendorId != null && vendorId.isNotEmpty) {
         martVendor = await MartVendorService.getMartVendorById(vendorId);
@@ -1129,7 +1191,6 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         martVendor = await MartVendorService.getDefaultMartVendor();
       }
-
       if (martVendor != null) {
         vendorModel = VendorModel(
           id: martVendor.id,
@@ -1152,7 +1213,6 @@ class CartControllerProvider extends ChangeNotifier {
       if (vendorId == null) {
         return;
       }
-
       final freshVendor = await FireStoreUtils.getVendorById(vendorId);
       if (freshVendor != null) {
         vendorModel = freshVendor;
@@ -1163,27 +1223,27 @@ class CartControllerProvider extends ChangeNotifier {
 
   getCartData() async {
     cartProvider.cartStream.listen((event) async {
-      cartItem.clear();
-      cartItem.addAll(event);
-      if (cartItem.isNotEmpty) {
-        final firstItemVendor = cartItem.first.vendorID;
+      HomeProvider.cartItem.clear();
+      HomeProvider.cartItem.addAll(event);
+      if (HomeProvider.cartItem.isNotEmpty) {
+        final firstItemVendor = HomeProvider.cartItem.first.vendorID;
         if (_cachedVendorModel?.id != firstItemVendor) {
           _clearVendorCache();
         }
       }
-      if (cartItem.isNotEmpty) {
+      if (HomeProvider.cartItem.isNotEmpty) {
         await _loadFreshVendorForCart();
       }
-      if (cartItem.isNotEmpty) {
-        final martItems = cartItem.where((item) => _isMartItem(item)).toList();
+      if (HomeProvider.cartItem.isNotEmpty) {
+        final martItems = HomeProvider.cartItem
+            .where((item) => _isMartItem(item))
+            .toList();
         if (martItems.isNotEmpty) {
           try {
             final firstMartItem = martItems.first;
             final vendorId = firstMartItem.vendorID;
             MartVendorModel? martVendor;
-
             if (vendorId != null && vendorId.isNotEmpty) {
-              // Try to get the specific mart vendor by ID first
               martVendor = await MartVendorService.getMartVendorById(vendorId);
               if (martVendor != null) {
               } else {
@@ -1191,12 +1251,9 @@ class CartControllerProvider extends ChangeNotifier {
                 martVendor = await MartVendorService.getDefaultMartVendor();
               }
             } else {
-              // Fallback to default mart vendor
               martVendor = await MartVendorService.getDefaultMartVendor();
             }
-
             if (martVendor != null) {
-              // Convert MartVendorModel to VendorModel for compatibility
               vendorModel = VendorModel(
                 id: martVendor.id,
                 title: martVendor.title,
@@ -1224,7 +1281,7 @@ class CartControllerProvider extends ChangeNotifier {
             vendorModel = _cachedVendorModel!;
           } else {
             await FireStoreUtils.getVendorById(
-              cartItem.first.vendorID.toString(),
+              HomeProvider.cartItem.first.vendorID.toString(),
             ).then((value) async {
               if (value != null) {
                 vendorModel = value;
@@ -1236,12 +1293,8 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
-
-      // Load ultra-fast calculation cache before calculating price
       await _loadCalculationCache();
-      // Force price calculation
       await calculatePrice();
-      // Check payment method after cart data is loaded
       checkAndUpdatePaymentMethod();
       updateCartReadiness();
     });
@@ -1554,7 +1607,7 @@ class CartControllerProvider extends ChangeNotifier {
       bool hasMartItems = false;
       bool hasRestaurantItems = false;
 
-      for (final item in cartItem) {
+      for (final item in HomeProvider.cartItem) {
         // Check if item is from mart (you may need to adjust this logic based on your item structure)
         if (_isMartItem(item)) {
           hasMartItems = true;
@@ -1629,7 +1682,7 @@ class CartControllerProvider extends ChangeNotifier {
   // It may be called during widget build, so it must not trigger state changes
   bool hasMartItemsInCart() {
     try {
-      return cartItem.any((item) => _isMartItem(item));
+      return HomeProvider.cartItem.any((item) => _isMartItem(item));
     } catch (e) {
       return false;
     }
@@ -1855,11 +1908,14 @@ class CartControllerProvider extends ChangeNotifier {
       specialDiscountAmount = 0.0;
       taxAmount = 0.0;
       totalAmount = 0.0;
-      if (cartItem.isEmpty) {
+      notifyListeners();
+      if (HomeProvider.cartItem.isEmpty) {
         return;
       }
       if (vendorModel.id == null) {
-        final martItems = cartItem.where((item) => _isMartItem(item)).toList();
+        final martItems = HomeProvider.cartItem
+            .where((item) => _isMartItem(item))
+            .toList();
         if (martItems.isNotEmpty) {
           print(
             '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor in calculatePrice...',
@@ -1891,10 +1947,8 @@ class CartControllerProvider extends ChangeNotifier {
               print(
                 '[VENDOR_LOAD] ⚠️ Fallback: No vendorID in mart item, trying default mart vendor...',
               );
-              // Fallback to default mart vendor
               martVendor = await MartVendorService.getDefaultMartVendor();
             }
-
             if (martVendor != null) {
               vendorModel = VendorModel(
                 id: martVendor.id,
@@ -1919,7 +1973,8 @@ class CartControllerProvider extends ChangeNotifier {
 
       // 1. Calculate subtotal first - Use promotional price if available
       subTotal = 0.0;
-      for (var element in cartItem) {
+      notifyListeners();
+      for (var element in HomeProvider.cartItem) {
         // Check if this item has a promotional price
         final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
 
@@ -1939,9 +1994,10 @@ class CartControllerProvider extends ChangeNotifier {
         final extrasPrice = double.parse(element.extrasPrice.toString());
 
         subTotal += (itemPrice * quantity) + (extrasPrice * quantity);
+        notifyListeners();
       }
 
-      if (cartItem.isNotEmpty) {
+      if (HomeProvider.cartItem.isNotEmpty) {
         if (selectedFoodType == "Delivery") {
           if (selectedAddress?.location?.latitude != null &&
               selectedAddress?.location?.longitude != null &&
@@ -1961,8 +2017,7 @@ class CartControllerProvider extends ChangeNotifier {
           } else {
             totalDistance = 0.0;
           }
-
-          final hasPromotionalItems = cartItem.any(
+          final hasPromotionalItems = HomeProvider.cartItem.any(
             (item) => item.promoId != null && item.promoId!.isNotEmpty,
           );
           final hasMartItems = hasMartItemsInCart();
@@ -1985,8 +2040,9 @@ class CartControllerProvider extends ChangeNotifier {
         activeCoupon = couponList
             .where((element) => element.code == couponCodeController.text)
             .firstOrNull;
+        notifyListeners();
       }
-      final hasPromotionalItems = cartItem.any((item) {
+      final hasPromotionalItems = HomeProvider.cartItem.any((item) {
         final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
         final discountPriceValue =
             double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -2005,6 +2061,7 @@ class CartControllerProvider extends ChangeNotifier {
         couponCodeController.text = "";
         selectedCouponModel = CouponModel();
         couponAmount = 0.0;
+        notifyListeners();
         print('DEBUG: Coupon removed - cart contains promotional items');
       } else if (activeCoupon != null) {
         // Check minimum order value first
@@ -2042,7 +2099,7 @@ class CartControllerProvider extends ChangeNotifier {
       double gst = 0.0;
 
       // Check if cart has promotional items or mart items
-      final hasPromotionalItemsForTax = cartItem.any(
+      final hasPromotionalItemsForTax = HomeProvider.cartItem.any(
         (item) => item.promoId != null && item.promoId!.isNotEmpty,
       );
       final hasMartItems = hasMartItemsInCart();
@@ -2069,18 +2126,19 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
       taxAmount = sgst + gst;
+      notifyListeners();
       if (hasPromotionalItemsForTax) {
       } else if (hasMartItems) {
       } else {}
       bool isFreeDelivery = false;
-      if (cartItem.isNotEmpty && selectedFoodType == "Delivery") {
+      if (HomeProvider.cartItem.isNotEmpty && selectedFoodType == "Delivery") {
         // Check if cart has promotional items or mart items
-        final hasPromotionalItems = cartItem.any(
+        final hasPromotionalItems = HomeProvider.cartItem.any(
           (item) => item.promoId != null && item.promoId!.isNotEmpty,
         );
         final hasMartItems = hasMartItemsInCart();
         if (hasPromotionalItems) {
-          final promotionalItems = cartItem
+          final promotionalItems = HomeProvider.cartItem
               .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
               .toList();
           final firstPromoItem = promotionalItems.first;
@@ -2094,10 +2152,11 @@ class CartControllerProvider extends ChangeNotifier {
           if (totalDistance <= freeDeliveryKm) {
             isFreeDelivery = true;
           }
+
+          notifyListeners();
         } else if (hasMartItems) {
           double itemThreshold = 199.0; // Default
           double freeDeliveryKm = 5.0; // Default
-
           if (_martDeliverySettings != null) {
             itemThreshold =
                 (_martDeliverySettings!['item_total_threshold'] as num?)
@@ -2108,12 +2167,12 @@ class CartControllerProvider extends ChangeNotifier {
                     ?.toDouble() ??
                 5.0;
           }
-
           if (subTotal >= itemThreshold && totalDistance <= freeDeliveryKm) {
             isFreeDelivery = true;
           } else {
             isFreeDelivery = false;
           }
+          notifyListeners();
         } else {
           // For regular items, use regular delivery settings
           final dc = deliveryChargeModel;
@@ -2122,8 +2181,11 @@ class CartControllerProvider extends ChangeNotifier {
           final freeKm = dc.freeDeliveryDistanceKm ?? 7;
           if (subtotal >= threshold && totalDistance <= freeKm) {
             isFreeDelivery = true;
+            notifyListeners();
           }
+          notifyListeners();
         }
+        notifyListeners();
       }
       totalAmount =
           (subTotal - couponAmount - specialDiscountAmount) +
@@ -2138,7 +2200,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   void calculatePromotionalDeliveryChargeFast() {
-    final promotionalItems = cartItem
+    final promotionalItems = HomeProvider.cartItem
         .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
         .toList();
 
@@ -2197,7 +2259,9 @@ class CartControllerProvider extends ChangeNotifier {
   /// Calculate delivery charge for mart items using static values (like restaurant)
   void calculateMartDeliveryCharge() {
     // Get mart items from cart
-    final martItems = cartItem.where((item) => _isMartItem(item)).toList();
+    final martItems = HomeProvider.cartItem
+        .where((item) => _isMartItem(item))
+        .toList();
     notifyListeners();
 
     if (martItems.isEmpty) {
@@ -2447,7 +2511,7 @@ class CartControllerProvider extends ChangeNotifier {
   // Validate order before payment to prevent payment without order
   Future<bool> validateOrderBeforePayment(BuildContext context) async {
     try {
-      if (cartItem.isEmpty) {
+      if (HomeProvider.cartItem.isEmpty) {
         ShowToastDialog.showToast(
           "Your cart is empty. Please add items before placing order.".tr,
         );
@@ -2491,7 +2555,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       // First, validate all items in cart for availability
-      for (var item in cartItem) {
+      for (var item in HomeProvider.cartItem) {
         bool isMartItem = item.vendorID?.startsWith('mart_') == true;
 
         if (isMartItem) {
@@ -2758,7 +2822,7 @@ class CartControllerProvider extends ChangeNotifier {
           return;
         }
       }
-      for (CartProductModel cartProduct in cartItem) {
+      for (CartProductModel cartProduct in HomeProvider.cartItem) {
         CartProductModel tempCart = cartProduct;
         if (cartProduct.extrasPrice == '0') {
           tempCart.extras = [];
@@ -3619,7 +3683,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> validateMinimumOrderValue() async {
     try {
       // Check if cart contains any mart items
-      bool hasMartItems = cartItem.any(
+      bool hasMartItems = HomeProvider.cartItem.any(
         (item) => item.vendorID?.startsWith('mart_') == true,
       );
       if (!hasMartItems) {

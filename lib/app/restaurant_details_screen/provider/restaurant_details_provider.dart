@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/AttributesModel.dart';
@@ -406,8 +407,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       isLoading = true;
       notifyListeners();
       cartProvider.cartStream.listen((event) {
-        cartItem.clear();
-        cartItem.addAll(event);
+        HomeProvider.cartItem.clear();
+        HomeProvider.cartItem.addAll(event);
       });
       animateSlider();
       await _loadCriticalDataInParallel(
@@ -472,7 +473,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
       categoryProductsMap[categoryId]!.add(product);
     }
-
     // Create keys for categories
     for (int i = 0; i < vendorCategoryList.length; i++) {
       final categoryKey = getCategoryKey(i);

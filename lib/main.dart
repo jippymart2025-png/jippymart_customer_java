@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provider/signup_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
@@ -54,6 +53,7 @@ import 'app/home_screen/screen/story_view_screen/provider/story_provider.dart';
 import 'app/home_screen/screen/view_all_category_screen/provider/view_all_categroy_provider.dart';
 import 'app/location_permission_screen/provider/location_permission_provider.dart';
 import 'app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'app/mart/screens/mart_categories_screen/provider/mart_category_controller.dart';
 import 'app/mart/provider/category_details_provider.dart';
 import 'app/mart/provider/mart_search_provider.dart';
 import 'app/mart/screens/mart_edit_profile_screen/provider/mart_edit_profile_provider.dart';
@@ -248,6 +248,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => FavouriteProvider()),
         ChangeNotifierProvider(create: (_) => LocationPermissionProvider()),
         ChangeNotifierProvider(create: (_) => MartProvider()),
+        ChangeNotifierProvider(create: (_) => MartCategoryProvider()),
         ChangeNotifierProvider(create: (_) => MartEditProfileProvider()),
         ChangeNotifierProvider(create: (_) => MartNavigationProvider()),
         ChangeNotifierProvider(create: (_) => LiveTrackingProvider()),

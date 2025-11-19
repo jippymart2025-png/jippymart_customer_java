@@ -39,6 +39,7 @@ class AddressListProvider extends ChangeNotifier {
 
   Future<void> initFunction({required BuildContext context}) async {
     if (_addressesInitialized && shippingAddressList.isNotEmpty) {
+      print(" initFunction return ");
       return;
     }
     homeProvider = Provider.of<HomeProvider>(context, listen: false);
@@ -144,7 +145,7 @@ class AddressListProvider extends ChangeNotifier {
             headers: headers,
           )
           .timeout(timeout);
-      print("getUserProfile ${response.body}");
+      log("getUserProfile ${response.body}");
       print("getUserProfile '${AppConst.baseUrl}users/profile/$userId'");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);

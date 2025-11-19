@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:provider/provider.dart';
 import '../app/restaurant_details_screen/restaurant_details_screen.dart';
@@ -13,12 +14,12 @@ class MiniCartBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int itemCount = cartItem.length;
+    final int itemCount = HomeProvider.cartItem.length;
     if (itemCount == 0) return const SizedBox.shrink();
-    final String vendorName = cartItem.first.vendorName ?? 'Restaurant';
-    final vendorId = cartItem.first.vendorID;
-    final String productImage = cartItem.first.photo ?? '';
-
+    final String vendorName =
+        HomeProvider.cartItem.first.vendorName ?? 'Restaurant';
+    final vendorId = HomeProvider.cartItem.first.vendorID;
+    final String productImage = HomeProvider.cartItem.first.photo ?? '';
     return SafeArea(
       minimum: const EdgeInsets.only(bottom: 8),
       child: Container(
@@ -40,7 +41,6 @@ class MiniCartBar extends StatelessWidget {
         ),
         child: Row(
           children: [
-            // Product image (left, small, rounded)
             if (productImage.isNotEmpty)
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),

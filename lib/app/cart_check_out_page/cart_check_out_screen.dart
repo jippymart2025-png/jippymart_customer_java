@@ -2,6 +2,7 @@ import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_product_details_image_widget.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -57,10 +58,10 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     if (_isRefreshing) {
       return; // Prevent multiple simultaneous refreshes
     }
-    
+
     _isRefreshing = true;
     print('DEBUG: Refreshing cart data...');
-    
+
     // Use a single delayed call instead of multiple
     Future.delayed(const Duration(milliseconds: 500), () {
       try {
@@ -123,13 +124,13 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
       }
     }
     // Auto-detect based on cart content
-    bool hasMartItems = cartItem.any(
+    bool hasMartItems = HomeProvider.cartItem.any(
       (item) =>
           item.vendorID?.contains('mart') == true ||
           item.vendorID?.startsWith('demo_') == true ||
           item.vendorID?.contains('vendor') == true,
     );
-    bool hasFoodItems = cartItem.any(
+    bool hasFoodItems = HomeProvider.cartItem.any(
       (item) =>
           !(item.vendorID?.contains('mart') == true ||
               item.vendorID?.startsWith('demo_') == true ||
@@ -180,7 +181,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
                 // Debug buttons removed - methods not available in current version
               ],
             ),
-            body: cartItem.isEmpty
+            body: HomeProvider.cartItem.isEmpty
                 ? Center(
                     child: Text(
                       "No Available Items",
@@ -203,7 +204,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
                       children: [cartProductDetailsImageWidget(controller)],
                     ),
                   ),
-            bottomNavigationBar: cartItem.isEmpty
+            bottomNavigationBar: HomeProvider.cartItem.isEmpty
                 ? null
                 : SafeArea(
                     child: Container(

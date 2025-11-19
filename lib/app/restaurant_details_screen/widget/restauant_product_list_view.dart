@@ -1,3 +1,4 @@
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_product_details_view.dart';
@@ -518,7 +519,9 @@ class ProductListView extends StatelessWidget {
         (productModel.addOnsTitle != null &&
             productModel.addOnsTitle!.isNotEmpty);
 
-    final isInCart = cartItem.any((p0) => p0.id == productModel.id);
+    final isInCart = HomeProvider.cartItem.any(
+      (p0) => p0.id == productModel.id,
+    );
 
     if (hasVariantsOrAddons) {
       return RoundedButtonFill(
@@ -577,7 +580,7 @@ class ProductListView extends StatelessWidget {
                   discountPrice: finalDiscountPrice,
                   isIncrement: false,
                   quantity:
-                      cartItem
+                      HomeProvider.cartItem
                           .firstWhere((p0) => p0.id == productModel.id)
                           .quantity! -
                       1,
@@ -588,7 +591,7 @@ class ProductListView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Text(
-                cartItem
+                HomeProvider.cartItem
                     .firstWhere((p0) => p0.id == productModel.id)
                     .quantity
                     .toString(),
@@ -602,7 +605,7 @@ class ProductListView extends StatelessWidget {
             ),
             InkWell(
               onTap: () async {
-                if ((cartItem
+                if ((HomeProvider.cartItem
                                 .firstWhere((p0) => p0.id == productModel.id)
                                 .quantity ??
                             0) <=
@@ -621,7 +624,7 @@ class ProductListView extends StatelessWidget {
                         .isPromotionalItemQuantityAllowed(
                           productModel.id.toString() ?? '',
                           productModel.vendorID ?? '',
-                          cartItem
+                          HomeProvider.cartItem
                                   .firstWhere((p0) => p0.id == productModel.id)
                                   .quantity! +
                               1,
@@ -658,7 +661,7 @@ class ProductListView extends StatelessWidget {
                     discountPrice: finalDiscountPrice,
                     isIncrement: true,
                     quantity:
-                        cartItem
+                        HomeProvider.cartItem
                             .firstWhere((p0) => p0.id == productModel.id)
                             .quantity! +
                         1,

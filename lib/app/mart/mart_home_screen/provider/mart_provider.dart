@@ -49,15 +49,24 @@ class MartProvider extends ChangeNotifier {
       // 🐾 Move "Pet Care" to the top if it exists
       if (uniqueCategoryTitles.contains('Pet Care')) {
         uniqueCategoryTitles.remove('Pet Care');
-        uniqueCategoryTitles.insert(7, 'Pet Care');
+        uniqueCategoryTitles.insert(
+          _safeInsertIndex(uniqueCategoryTitles.length, 7),
+          'Pet Care',
+        );
       }
       if (uniqueCategoryTitles.contains('Fruits & Vegetables')) {
         uniqueCategoryTitles.remove('Fruits & Vegetables');
-        uniqueCategoryTitles.insert(0, 'Fruits & Vegetables');
+        uniqueCategoryTitles.insert(
+          _safeInsertIndex(uniqueCategoryTitles.length, 0),
+          'Fruits & Vegetables',
+        );
       }
       if (uniqueCategoryTitles.contains('Cooking Essentials')) {
         uniqueCategoryTitles.remove('Cooking Essentials');
-        uniqueCategoryTitles.insert(1, 'Cooking Essentials');
+        uniqueCategoryTitles.insert(
+          _safeInsertIndex(uniqueCategoryTitles.length, 1),
+          'Cooking Essentials',
+        );
       }
       print(
         '[MART CONTROLLER] ✅ Loaded ${uniqueCategoryTitles.length} unique categories:',
@@ -72,6 +81,16 @@ class MartProvider extends ChangeNotifier {
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error loading products by category: $e');
     }
+  }
+
+  int _safeInsertIndex(int currentLength, int desiredIndex) {
+    if (desiredIndex <= 0) {
+      return 0;
+    }
+    if (desiredIndex >= currentLength) {
+      return currentLength;
+    }
+    return desiredIndex;
   }
 
   // Service injection
@@ -172,7 +191,6 @@ class MartProvider extends ChangeNotifier {
       print('[MART CONTROLLER] ==========================================');
       print('[MART CONTROLLER] 🔄 refreshData() called');
       print('[MART CONTROLLER] ==========================================');
-
       isLoading = true;
       errorMessage = "";
       // Reset homepage categories flag to allow reloading
