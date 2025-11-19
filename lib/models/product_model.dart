@@ -65,8 +65,9 @@ class ProductModel {
   // In ProductModel.fromJson, replace the problematic section:
   factory ProductModel.fromApiJson(Map<String, dynamic> json) {
     try {
+      final parsedId = _parseInt(json['id'] ?? json['product_id']);
       return ProductModel(
-        id: _parseInt(json['id']),
+        id: parsedId,
         name: _parseString(json['name']),
         description: _parseString(json['description']),
         categoryID: _parseString(json['category_id']),
@@ -197,7 +198,7 @@ class ProductModel {
         itemAttribute = null;
       }
       // FIX: Use helper method to parse int fields that might come as String
-      id = _parseInt(json['id']);
+      id = _parseInt(json['id'] ?? json['product_id']);
       quantity = _parseInt(json['quantity']);
       grams = _parseInt(json['grams']);
       reviewsCount = _parseNum(json['reviewsCount']) ?? 0.0;

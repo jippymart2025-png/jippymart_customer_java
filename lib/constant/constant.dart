@@ -10,7 +10,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
-import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/currency_model.dart';
 import 'package:jippymart_customer/models/email_template_model.dart';
@@ -205,9 +204,11 @@ class Constant {
       } else {
         commission = price;
       }
-      print('💰 Commission Calculation:');
-      print('   - Base Price: $basePrice');
-      print('   - Final Commission: $commission');
+      if (kDebugMode) {
+        print('💰 Commission Calculation:');
+        print('   - Base Price: $basePrice');
+        print('   - Final Commission: $commission');
+      }
       return commission;
     } catch (e) {
       print('❌ Error in productCommissionPrice: $e');

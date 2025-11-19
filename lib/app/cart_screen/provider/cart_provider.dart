@@ -1293,6 +1293,7 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
+      notifyListeners();
       await _loadCalculationCache();
       await calculatePrice();
       checkAndUpdatePaymentMethod();

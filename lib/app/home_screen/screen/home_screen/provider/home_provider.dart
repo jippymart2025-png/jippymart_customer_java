@@ -39,7 +39,6 @@ import 'package:url_launcher/url_launcher.dart';
 
 class HomeProvider extends ChangeNotifier {
   static List<CartProductModel> cartItem = <CartProductModel>[];
-
   static const Duration _networkTimeout = Duration(seconds: 15);
 
   void changeLocationAddressFunction({

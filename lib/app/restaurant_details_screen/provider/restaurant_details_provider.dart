@@ -29,6 +29,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   RestaurantDetailsProvider({this.scrollToProductId});
 
+  StreamSubscription<List<CartProductModel>>? _cartSubscription;
+  Timer? _sliderTimer;
+
   static Future<List<CouponModel>> getRestaurantCoupons({
     required String restaurantId,
   }) async {
@@ -232,7 +235,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   List<ProductModel> parseProducts(dynamic productsData) {
     try {
       print('🔍 Parsing products data type: ${productsData.runtimeType}');
-
       if (productsData is List) {
         return productsData.map((productJson) {
           try {
@@ -406,10 +408,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       vendorModel = vendorModels;
       isLoading = true;
       notifyListeners();
-      cartProvider.cartStream.listen((event) {
-        HomeProvider.cartItem.clear();
-        HomeProvider.cartItem.addAll(event);
-      });
+      _initializeCartStreamListener();
       animateSlider();
       await _loadCriticalDataInParallel(
         restaurantId: vendorModel.id.toString(),
@@ -421,6 +420,16 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       ShowToastDialog.showToast("Failed to load restaurant data");
       notifyListeners();
     }
+  }
+
+  void _initializeCartStreamListener() {
+    if (_cartSubscription != null) return;
+    _cartSubscription = cartProvider.cartStream.listen((event) {
+      HomeProvider.cartItem
+        ..clear()
+        ..addAll(event);
+      notifyListeners();
+    });
   }
 
   /// LOAD PRODUCTS VIA API - COMPLETELY REPLACES FIREBASE
@@ -542,7 +551,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     if (name.isEmpty) {
       searchEditingController.clear();
     }
-
     await loadProductsViaAPI();
   }
 
@@ -715,10 +723,14 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   void animateSlider() {
+    _sliderTimer?.cancel();
     if (vendorModel.photos != null && vendorModel.photos!.isNotEmpty) {
-      Timer.periodic(const Duration(seconds: 2), (Timer timer) {
+      _sliderTimer = Timer.periodic(const Duration(seconds: 2), (Timer timer) {
         if (!pageController.hasClients) {
           timer.cancel();
+          if (identical(_sliderTimer, timer)) {
+            _sliderTimer = null;
+          }
           return;
         }
 
@@ -738,6 +750,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           }
         } catch (e) {
           timer.cancel();
+          if (identical(_sliderTimer, timer)) {
+            _sliderTimer = null;
+          }
         }
       });
     }
@@ -860,6 +875,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
                     double.parse(quantity.toString())) +
                 double.parse(adOnsPrice.toString()))
             .toString();
+    notifyListeners();
     return mainPrice;
   }
 
@@ -872,24 +888,21 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required int quantity,
     VariantInfo? variantInfo,
   }) async {
+    final productId = productModel.id?.toString() ?? '';
+    final vendorId = vendorModel.id?.toString() ?? '';
+
     if (isIncrement) {
-      final promo = _getCachedPromotionalData(
-        productModel.id.toString(),
-        vendorModel.id.toString(),
-      );
+      final promo = _getCachedPromotionalData(productId, vendorId);
 
       if (promo != null) {
         final isAllowed = isPromotionalItemQuantityAllowed(
-          productModel.id.toString() ?? '',
-          vendorModel.id.toString() ?? '',
+          productId,
+          vendorId,
           quantity,
         );
 
         if (!isAllowed) {
-          final limit = getPromotionalItemLimit(
-            productModel.id.toString() ?? '',
-            vendorModel.id.toString() ?? '',
-          );
+          final limit = getPromotionalItemLimit(productId, vendorId);
           ShowToastDialog.showToast(
             "Maximum $limit items allowed for this promotional offer".tr,
           );
@@ -930,10 +943,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       cartProductModel.extrasPrice = adOnsPrice;
       cartProductModel.extras = selectedAddOns.isEmpty ? [] : selectedAddOns;
       if (isIncrement) {
-        final promo = _getCachedPromotionalData(
-          productModel.id.toString() ?? '',
-          vendorModel.id ?? '',
-        );
+        final promo = _getCachedPromotionalData(productId, vendorId);
         if (promo != null) {
           cartProductModel.promoId = promo['product_id'] ?? '';
         }
@@ -953,8 +963,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       cartProductModel.extras = selectedAddOns.isEmpty ? [] : selectedAddOns;
       if (isIncrement) {
         final promo = await FireStoreUtils.getActivePromotionForProduct(
-          productId: productModel.id.toString() ?? '',
-          restaurantId: vendorModel.id ?? '',
+          productId: productId,
+          restaurantId: vendorId,
         );
         if (promo != null) {
           cartProductModel.promoId = promo['product_id'] ?? '';
@@ -975,24 +985,24 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required String price,
     required String disPrice,
   }) {
+    final productId = productModel.id?.toString() ?? '';
+    final vendorId = productModel.vendorID ?? '';
+
     if (1 <= (productModel.quantity ?? 0) ||
         (productModel.quantity ?? 0) == -1) {
       final promo = getActivePromotionForProduct(
-        productId: productModel.id.toString() ?? '',
-        restaurantId: productModel.vendorID ?? '',
+        productId: productId,
+        restaurantId: vendorId,
       );
       // Check promotional item limit
       if (promo != null) {
         final isAllowed = isPromotionalItemQuantityAllowed(
-          productModel.id.toString() ?? '',
-          productModel.vendorID ?? '',
+          productId,
+          vendorId,
           1,
         );
         if (!isAllowed) {
-          final limit = getPromotionalItemLimit(
-            productModel.id.toString() ?? '',
-            productModel.vendorID ?? '',
-          );
+          final limit = getPromotionalItemLimit(productId, vendorId);
           ShowToastDialog.showToast(
             "Maximum $limit items allowed for this promotional offer".tr,
           );
@@ -1019,5 +1029,16 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     } else {
       ShowToastDialog.showToast("Out of stock".tr);
     }
+  }
+
+  @override
+  void dispose() {
+    _cartSubscription?.cancel();
+    _sliderTimer?.cancel();
+    searchEditingController.dispose();
+    scrollController.dispose();
+    scrollControllerProduct.dispose();
+    pageController.dispose();
+    super.dispose();
   }
 }
