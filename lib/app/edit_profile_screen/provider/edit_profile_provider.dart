@@ -37,7 +37,6 @@ class EditProfileProvider extends ChangeNotifier {
 
   getData() async {
     try {
-      // First try to use the global user model if available
       if (Constant.userModel != null) {
         print(
           '[EDIT_PROFILE] Using global user model: ${Constant.userModel?.toJson()}',
@@ -53,8 +52,8 @@ class EditProfileProvider extends ChangeNotifier {
         );
         if (value != null) {
           userModel = value;
-          // Also update the global user model
           Constant.userModel = value;
+          notifyListeners();
           print(
             '[EDIT_PROFILE] Loaded user model from Firestore: ${value.toJson()}',
           );

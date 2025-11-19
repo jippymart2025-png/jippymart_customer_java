@@ -130,7 +130,7 @@ class FireStoreUtils {
   }
 
   StreamController<List<VendorModel>>? getNearestVendorController;
-  
+
   Stream<List<VendorModel>> getAllNearestRestaurant({bool? isDining}) async* {
     try {
       getNearestVendorController =
@@ -357,7 +357,8 @@ class FireStoreUtils {
     if (cachedEntry == null) return null;
 
     final isExpired =
-        DateTime.now().difference(cachedEntry.fetchedAt) > _productCacheDuration;
+        DateTime.now().difference(cachedEntry.fetchedAt) >
+        _productCacheDuration;
     if (isExpired) {
       _productCache.remove(productId);
       return null;
@@ -369,27 +370,22 @@ class FireStoreUtils {
     String productId, {
     bool forceRefresh = false,
   }) async {
-    // Validate product ID before making any API calls
     if (productId.isEmpty || productId == 'null' || productId.trim().isEmpty) {
       print('[PRODUCT_API] Invalid product ID provided: "$productId"');
       return null;
     }
-
     if (!forceRefresh) {
       final cachedProduct = _getCachedProduct(productId);
       if (cachedProduct != null) {
         return cachedProduct;
       }
-
       final pendingRequest = _pendingProductRequests[productId];
       if (pendingRequest != null) {
         return pendingRequest;
       }
     }
-
     final request = _fetchProductFromApi(productId);
     _pendingProductRequests[productId] = request;
-
     try {
       final productModel = await request;
       if (productModel != null) {
@@ -405,7 +401,6 @@ class FireStoreUtils {
     const maxRetries = 3;
     const retryDelay = Duration(seconds: 2);
     const timeoutDuration = Duration(seconds: 10);
-
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         final response = await http
@@ -414,14 +409,12 @@ class FireStoreUtils {
               headers: await getHeaders(),
             )
             .timeout(timeoutDuration);
-
         if (response.statusCode == 200) {
           final jsonResponse = json.decode(response.body);
           if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
             return ProductModel.fromJson(jsonResponse['data']);
           }
         } else if (response.statusCode == 429) {
-          // Rate limiting - wait and retry
           if (attempt < maxRetries) {
             print(
               '[PRODUCT_API] Rate limited (429), retrying in ${retryDelay.inSeconds}s (attempt $attempt/$maxRetries)',

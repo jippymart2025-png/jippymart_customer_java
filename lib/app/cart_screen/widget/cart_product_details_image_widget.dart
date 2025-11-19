@@ -52,27 +52,28 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                   '[CART_PRODUCT] Invalid or null product ID: ${cartProductModel.id}',
                 );
               }
-              return _buildProductItem(cartProductModel, null);
+              return _buildProductItem(cartProductModel, null, controller);
             }
 
-            return FutureBuilder<ProductModel?>(
-              future: FireStoreUtils.getProductById(productId).timeout(
-                const Duration(seconds: 15),
-                onTimeout: () {
-                  print('[CART_PRODUCT] Timeout loading product: $productId');
-                  return null;
-                },
-              ),
-              builder: (context, snapshot) {
-                // Show shimmer while loading
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildProductShimmer(cartProductModel);
-                }
+            // Use cached product from controller - no FutureBuilder needed!
+            final cachedProduct = controller.getCachedProduct(productId);
 
-                // Show product even if API fails (use cartProductModel data)
-                // This ensures the cart is still usable even if product details can't be fetched
-                return _buildProductItem(cartProductModel, snapshot.data);
-              },
+            // If product is not cached yet and products haven't finished loading
+            if (cachedProduct == null && !controller.productsLoaded) {
+              // Trigger load if not already loading (loads in background)
+              if (!controller.isLoadingProducts) {
+                controller.preloadCartProducts();
+              }
+              // Show shimmer only while actively loading
+              if (controller.isLoadingProducts) {
+                return _buildProductShimmer(cartProductModel);
+              }
+            }
+            // Show product item with cached data (or null if product doesn't exist)
+            return _buildProductItem(
+              cartProductModel,
+              cachedProduct,
+              controller,
             );
           },
         ),
@@ -84,10 +85,10 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
 Widget _buildProductItem(
   CartProductModel cartProductModel,
   ProductModel? productModel,
+  CartControllerProvider controller,
 ) {
   return Consumer2<RestaurantDetailsProvider, CartControllerProvider>(
     builder: (context, restaurantDetailsProvider, cartController, _) {
-      // Use productModel photo if available, otherwise use cartProductModel photo
       final productPhoto = productModel?.photo?.isNotEmpty == true
           ? productModel!.photo
           : (cartProductModel.photo?.isNotEmpty == true

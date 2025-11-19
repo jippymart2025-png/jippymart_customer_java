@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
+import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/provider/order_placing_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -44,12 +46,16 @@ import 'package:jippymart_customer/widgets/delivery_zone_alert_dialog.dart'
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart';
+import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../models/mart_item_model.dart';
 import '../../../services/mart_firestore_service.dart';
 
 class CartControllerProvider extends ChangeNotifier {
+  late OrderPlacingProvider orderPlacingProvider;
+
   Future<void> processPayment(
     CartControllerProvider controller,
     BuildContext context,
@@ -604,6 +610,16 @@ class CartControllerProvider extends ChangeNotifier {
   List<TaxModel>? _cachedTaxList;
   bool _calculationCacheLoaded = false;
 
+  // **PRODUCT CACHE FOR CART - LOAD ONCE, USE MANY TIMES**
+  final Map<String, ProductModel?> _productCache = {};
+  bool _isLoadingProducts = false;
+  bool _productsLoaded = false;
+
+  // Getters for product cache state
+  bool get isLoadingProducts => _isLoadingProducts;
+
+  bool get productsLoaded => _productsLoaded;
+
   ShippingAddress? selectedAddress = ShippingAddress();
   VendorModel vendorModel = VendorModel();
   DeliveryCharge deliveryChargeModel = DeliveryCharge();
@@ -907,6 +923,10 @@ class CartControllerProvider extends ChangeNotifier {
         }
       });
     });
+    orderPlacingProvider = Provider.of<OrderPlacingProvider>(
+      context,
+      listen: false,
+    );
     notifyListeners();
   }
 
@@ -1236,9 +1256,96 @@ class CartControllerProvider extends ChangeNotifier {
     await cartProvider.refreshCart();
     // Refresh vendor details so delivery distance can be recalculated
     await _loadFreshVendorForCart();
+    // Preload all products for cart display (load once, use many times)
+    await preloadCartProducts(forceRefresh: true);
     await calculatePrice();
     checkAndUpdatePaymentMethod();
     updateCartReadiness();
+    notifyListeners();
+  }
+
+  /// Preload all products in cart - called once when cart screen opens
+  /// If forceRefresh is true, clears cache and reloads all products
+  Future<void> preloadCartProducts({bool forceRefresh = false}) async {
+    if (_isLoadingProducts && !forceRefresh) {
+      return; // Already loading
+    }
+
+    if (forceRefresh) {
+      _productCache.clear();
+      _productsLoaded = false;
+    }
+
+    _isLoadingProducts = true;
+
+    try {
+      // Get all unique product IDs from cart
+      final Set<String> productIds = {};
+
+      for (final cartItem in HomeProvider.cartItem) {
+        if (cartItem.id != null &&
+            cartItem.id!.isNotEmpty &&
+            cartItem.id!.toLowerCase() != 'null') {
+          final parts = cartItem.id!.split('~');
+          if (parts.isNotEmpty &&
+              parts.first.isNotEmpty &&
+              parts.first.toLowerCase() != 'null') {
+            productIds.add(parts.first);
+          }
+        }
+      }
+
+      // Only load products that aren't already cached (unless force refresh)
+      final Set<String> productsToLoad = forceRefresh
+          ? productIds
+          : productIds.where((id) => !_productCache.containsKey(id)).toSet();
+
+      if (productsToLoad.isEmpty) {
+        _productsLoaded = true;
+        notifyListeners();
+        return;
+      }
+
+      // Load all products in parallel
+      final List<Future<void>> loadFutures = productsToLoad.map((
+        productId,
+      ) async {
+        try {
+          final product = await FireStoreUtils.getProductById(productId);
+          _productCache[productId] = product;
+        } catch (e) {
+          print('[CART_PRODUCT] Error loading product $productId: $e');
+          _productCache[productId] = null;
+        }
+      }).toList();
+
+      await Future.wait(loadFutures);
+      _productsLoaded = true;
+      notifyListeners();
+      print(
+        '[CART_PRODUCT] Preloaded ${_productCache.length} products (${productsToLoad.length} new)',
+      );
+    } catch (e) {
+      print('[CART_PRODUCT] Error preloading products: $e');
+    } finally {
+      _isLoadingProducts = false;
+    }
+  }
+
+  /// Get cached product by ID - returns null if not cached
+  ProductModel? getCachedProduct(String? productId) {
+    if (productId == null ||
+        productId.isEmpty ||
+        productId.toLowerCase() == 'null') {
+      return null;
+    }
+    return _productCache[productId];
+  }
+
+  /// Clear product cache (call when cart changes significantly)
+  void clearProductCache() {
+    _productCache.clear();
+    _productsLoaded = false;
     notifyListeners();
   }
 
@@ -2885,7 +2992,9 @@ class CartControllerProvider extends ChangeNotifier {
   setOrder() async {
     await FireStoreUtils.getVendorById(vendorModel.id!);
     if (vendorModel.id != null) {
-      final latestVendor = await FireStoreUtils.getVendorById(vendorModel.id!);
+      final latestVendor = await FireStoreUtils.getVendorById(
+        vendorModel.id.toString(),
+      );
       if (latestVendor != null) {
         if (latestVendor.vType == 'mart') {
           if (latestVendor.isOpen == false) {
@@ -2922,7 +3031,9 @@ class CartControllerProvider extends ChangeNotifier {
               Constant.adminCommission?.isEnabled == true) &&
           vendorModel.subscriptionPlan != null &&
           vendorModel.id != null) {
-        final vender = await FireStoreUtils.getVendorById(vendorModel.id!);
+        final vender = await FireStoreUtils.getVendorById(
+          vendorModel.id.toString(),
+        );
         if (vender?.subscriptionTotalOrders == '0' ||
             vender?.subscriptionTotalOrders == null) {
           ShowToastDialog.closeLoader();
@@ -2941,6 +3052,7 @@ class CartControllerProvider extends ChangeNotifier {
         }
         tempProduc.add(tempCart);
         orderedProducts.add(tempCart);
+        notifyListeners();
       }
       Map<String, dynamic> specialDiscountMap = {
         'special_discount': specialDiscountAmount,
@@ -2952,7 +3064,6 @@ class CartControllerProvider extends ChangeNotifier {
 
       // **REPLACED: Firebase query with API call**
       int maxNumber = 5;
-
       try {
         final response = await http.get(
           Uri.parse('${AppConst.baseUrl}firestore/getLatestOrderInRange'),
@@ -2964,13 +3075,13 @@ class CartControllerProvider extends ChangeNotifier {
               responseData['order'] != null) {
             final orderData = responseData['order'];
             final String orderIdFromApi = orderData['id'].toString();
-            // Extract numeric part from order ID (assuming format like "Jippy3000001")
             final match = RegExp(r'Jippy3(\d+)').firstMatch(orderIdFromApi);
             if (match != null) {
               final num = int.tryParse(match.group(1)!);
               if (num != null && num > maxNumber) {
                 maxNumber = num;
               }
+              notifyListeners();
             }
           }
         } else {
@@ -3005,7 +3116,7 @@ class CartControllerProvider extends ChangeNotifier {
       orderModel.tipAmount = deliveryTips.toString();
       orderModel.toPayAmount = totalAmount;
       orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime);
-
+      notifyListeners();
       // Prepare API request payload
       Map<String, dynamic> orderPayload = {
         "order_id": generatedOrderId,
@@ -3034,6 +3145,12 @@ class CartControllerProvider extends ChangeNotifier {
         "status": Constant.orderPlaced,
         "created_at": DateTime.now().toIso8601String(),
       };
+      notifyListeners();
+      log(
+        const JsonEncoder.withIndent('  ').convert(orderPayload),
+        name: "ORDER_PAYLOAD",
+      );
+
       // **API CALL: Store the order**
       print('🌐 Creating order via API...');
       final response = await http.post(
@@ -3041,30 +3158,27 @@ class CartControllerProvider extends ChangeNotifier {
         headers: await getHeaders(),
         body: json.encode(orderPayload),
       );
-
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('API returned status code: ${response.statusCode}');
       }
-
       final responseData = json.decode(response.body);
       if (responseData['success'] != true) {
         throw Exception('API returned error: ${responseData['message']}');
       }
       print('✅ Order created successfully via API');
       notifyListeners();
-      // Execute additional tasks
       final additionalTasks = <Future>[];
       if (selectedCouponModel.id != null &&
           selectedCouponModel.id!.isNotEmpty) {
         additionalTasks.add(markCouponAsUsed(selectedCouponModel.id!));
+        notifyListeners();
       }
-
       // Create order billing record via API if needed
       String adminFee = "0";
       if (surgePercent > 0) {
         adminFee = await getAdminSurgeFee();
+        notifyListeners();
       }
-
       additionalTasks.add(
         _createOrderBilling(
           generatedOrderId,
@@ -3073,7 +3187,7 @@ class CartControllerProvider extends ChangeNotifier {
           adminFee,
         ),
       );
-
+      notifyListeners();
       if (vendorModel.id != null && vendorModel.author != null) {
         additionalTasks.add(
           AddressListProvider.getUserProfile(
@@ -3097,27 +3211,20 @@ class CartControllerProvider extends ChangeNotifier {
           }),
         );
       }
-
       additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
-
       await Future.wait(additionalTasks);
-
       isPaymentInProgress = false;
       isPaymentCompleted = false;
       _lastPaymentId = null;
       _lastPaymentTime = null;
-
       await _clearPersistentPaymentState();
-
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       notifyListeners();
-
       // Navigate to order success screen
-      Get.off(
-        const OrderPlacingScreen(),
-        arguments: {"orderModel": orderModel},
-      );
+
+      orderPlacingProvider.initFunction(orderModels: orderModel);
+      Get.off(const OrderPlacingScreen());
       notifyListeners();
     } catch (e) {
       ShowToastDialog.closeLoader();

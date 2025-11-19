@@ -60,6 +60,7 @@ class MyProfileProvider extends ChangeNotifier {
       log('[PROFILE_SCREEN] Error loading user data: $e');
     } finally {
       isLoading.value = false;
+      notifyListeners();
       log('[PROFILE_SCREEN] Loading completed, isLoading set to false');
     }
   }

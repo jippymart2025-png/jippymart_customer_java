@@ -89,19 +89,27 @@ class ProfileScreen extends StatelessWidget {
                                 horizontal: 10,
                                 vertical: 8,
                               ),
-                              child: Column(
-                                children: [
-                                  Constant.userModel == null
-                                      ? const SizedBox()
-                                      : cardDecoration(
-                                          controller,
-                                          "assets/images/ic_profile.svg",
-                                          "Profile Information".tr,
-                                          () {
-                                            Get.to(const EditProfileScreen());
-                                          },
-                                        ),
-                                ],
+                              child: Consumer<EditProfileProvider>(
+                                builder: (context, editProfileProvider, _) {
+                                  return Column(
+                                    children: [
+                                      Constant.userModel == null
+                                          ? const SizedBox()
+                                          : cardDecoration(
+                                              controller,
+                                              "assets/images/ic_profile.svg",
+                                              "Profile Information".tr,
+                                              () {
+                                                editProfileProvider
+                                                    .initFunction();
+                                                Get.to(
+                                                  const EditProfileScreen(),
+                                                );
+                                              },
+                                            ),
+                                    ],
+                                  );
+                                },
                               ),
                             ),
                           ),

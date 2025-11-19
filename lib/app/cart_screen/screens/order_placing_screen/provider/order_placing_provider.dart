@@ -11,8 +11,8 @@ class OrderPlacingProvider extends ChangeNotifier {
   int counter = 0;
   Timer? timer;
 
-  void initFunction() {
-    getArgument();
+  void initFunction({required OrderModel orderModels}) {
+    getArgument(orderModels: orderModels);
     startTimer();
   }
 
@@ -22,17 +22,11 @@ class OrderPlacingProvider extends ChangeNotifier {
 
   OrderModel orderModel = OrderModel();
 
-  getArgument() async {
+  getArgument({required OrderModel orderModels}) async {
     try {
-      // Clear cart immediately to free up memory
       await DatabaseHelper.instance.deleteAllCartProducts();
-
-      dynamic argumentData = Get.arguments;
-      if (argumentData != null) {
-        orderModel = argumentData['orderModel'];
-        print('DEBUG: Order received: ${orderModel.id}');
-      }
-
+      orderModel = orderModels;
+      print('DEBUG: Order received: ${orderModel.id}');
       isLoading = false;
       notifyListeners();
     } catch (e) {
@@ -53,5 +47,6 @@ class OrderPlacingProvider extends ChangeNotifier {
       }
       counter++;
     });
+    notifyListeners();
   }
 }

@@ -12,6 +12,7 @@ import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/profile_screen/profile_screen.dart';
+import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -27,11 +28,16 @@ Widget homeProfileAddressWidget({
 }) {
   return Row(
     children: [
-      InkWell(
-        onTap: () {
-          Get.to(const ProfileScreen());
+      Consumer<MyProfileProvider>(
+        builder: (context, myProfileProvider, _) {
+          return InkWell(
+            onTap: () {
+              myProfileProvider.initFunction();
+              Get.to(const ProfileScreen());
+            },
+            child: buildProfileAvatar(),
+          );
         },
-        child: buildProfileAvatar(),
       ),
       const SizedBox(width: 10),
       Expanded(
