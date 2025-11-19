@@ -955,12 +955,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
           child: InkWell(
             onTap: !RestaurantStatusUtils.canAcceptOrders(restaurant)
                 ? () {
-                    final status = RestaurantStatusUtils.getRestaurantStatus(
-                      restaurant,
-                    );
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(status['reason']),
+                        content: Text("Restaurant Closed"),
                         backgroundColor: Colors.red,
                         duration: const Duration(seconds: 3),
                       ),

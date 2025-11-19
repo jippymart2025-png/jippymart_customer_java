@@ -36,18 +36,15 @@ class BestRestaurantProvider extends ChangeNotifier {
   Future<void> loadRestaurantsAndRelatedData({String? filter}) async {
     print('[DEBUG] Loading restaurants from API with filter: $filter');
     await Future.delayed(Duration(milliseconds: 100));
-
     final String? zoneId = Constant.selectedZone?.id;
     final double latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
     final double longitude =
         Constant.selectedLocation.location?.longitude ?? 0.0;
-
     if (zoneId == null || zoneId.isEmpty) {
       print('[DEBUG] No zone ID available, skipping restaurant fetch');
       return;
     }
     try {
-      // Fetch restaurants from API with optional filter
       final restaurants = await getNearestRestaurants(
         zoneId: zoneId,
         latitude: latitude,
@@ -55,20 +52,16 @@ class BestRestaurantProvider extends ChangeNotifier {
         radius: double.parse(Constant.radius),
         filter: filter,
         onFiltersReceived: (availableFilters, currentFilter) {
-          // Update the provider state with filters from API
           this.availableFilters = availableFilters;
           this.currentFilter = currentFilter;
-          notifyListeners(); // Notify listeners to update UI
+          notifyListeners();
         },
       );
-
-      // Clear lists efficiently
       popularRestaurantList.clear();
       newArrivalRestaurantList.clear();
       allNearestRestaurant.clear();
       advertisementList.clear();
       storyList.clear(); // Clear stories list
-      // Add all restaurants at once
       allNearestRestaurant.addAll(restaurants);
       newArrivalRestaurantList.addAll(restaurants);
       popularRestaurantList.addAll(restaurants);
@@ -82,10 +75,10 @@ class BestRestaurantProvider extends ChangeNotifier {
         print('[DEBUG] Error in background story load: $e');
       });
 
-      _relatedDataLoadingTask =
-          _loadRelatedDataInParallel(allNearestRestaurant).then((_) {
-        notifyListeners();
-      });
+      _relatedDataLoadingTask = _loadRelatedDataInParallel(allNearestRestaurant)
+          .then((_) {
+            notifyListeners();
+          });
       _relatedDataLoadingTask?.catchError((e) {
         print('[DEBUG] Error in background related-data load: $e');
       });
@@ -95,6 +88,7 @@ class BestRestaurantProvider extends ChangeNotifier {
       notifyListeners();
       // **DEBUG: Log restaurant diagnostics**
       logRestaurantDiagnostics();
+      notifyListeners();
     } catch (e) {
       print('[DEBUG] Error fetching restaurants from API: $e');
     }
@@ -105,7 +99,6 @@ class BestRestaurantProvider extends ChangeNotifier {
   Future<void> _loadStoriesFromAPI(String zoneId) async {
     try {
       print('[DEBUG] Loading stories from API for zone: $zoneId');
-
       final stories = await getStoriesFromAPI(zoneId: zoneId);
       storyList.clear();
       storyList.addAll(stories);
@@ -217,7 +210,6 @@ class BestRestaurantProvider extends ChangeNotifier {
   }) async {
     try {
       final headers = await getHeaders();
-
       // Build URL with optional filter
       String url =
           '${AppConst.baseUrl}restaurants/nearest?'
@@ -225,18 +217,15 @@ class BestRestaurantProvider extends ChangeNotifier {
           'latitude=$latitude&'
           'longitude=$longitude&'
           'radius=$radius';
-
       if (filter != null && filter.isNotEmpty) {
         url += '&filter=$filter';
       }
-
       final uri = Uri.parse(url);
       print('[RESTAURANT_API] Fetching restaurants from: $uri');
 
       final response = await http
           .get(uri, headers: headers)
           .timeout(_networkTimeout);
-
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         print('getNearestRestaurants ${response.body}');

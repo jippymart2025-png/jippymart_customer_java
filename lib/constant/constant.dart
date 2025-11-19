@@ -121,14 +121,14 @@ class Constant {
     final symbol = currencyModel?.symbol ?? '₹';
     final decimalDigits = currencyModel?.decimalDigits ?? 2;
     final symbolAtRight = currencyModel?.symbolAtRight ?? false;
-    
+
     // Parse amount safely
-    final amountValue = amount == null || amount.isEmpty 
-        ? 0.0 
+    final amountValue = amount == null || amount.isEmpty
+        ? 0.0
         : (double.tryParse(amount.toString()) ?? 0.0);
-    
+
     final formattedAmount = amountValue.toStringAsFixed(decimalDigits);
-    
+
     if (symbolAtRight == true) {
       return "$formattedAmount $symbol";
     } else {
@@ -167,23 +167,17 @@ class Constant {
         print('⚠️ productCommissionPrice: Price is null or empty');
         return "0";
       }
-
-      // Parse the base price safely
       final double basePrice = double.tryParse(price) ?? 0.0;
       if (basePrice == 0.0) {
         print('⚠️ productCommissionPrice: Unable to parse price: $price');
         return "0";
       }
-
       String commission = "0";
-
       if (adminCommission!.isEnabled == true) {
         if (vendorModel.adminCommission == null) {
-          // Use global admin commission
           final globalCommissionAmount =
               double.tryParse(adminCommission!.amount?.toString() ?? '0') ??
               0.0;
-
           if (adminCommission!.commissionType?.toLowerCase() == "percent" ||
               adminCommission!.commissionType?.toLowerCase() == "percentage") {
             commission =
@@ -193,7 +187,6 @@ class Constant {
             commission = (basePrice + globalCommissionAmount).toString();
           }
         } else {
-          // Use vendor-specific commission
           final vendorCommissionAmount =
               double.tryParse(
                 vendorModel.adminCommission!.amount?.toString() ?? '0',

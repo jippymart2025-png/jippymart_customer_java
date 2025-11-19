@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
 
 /// **Restaurant Open/Close Failproof System**
 ///
@@ -37,57 +38,56 @@ class RestaurantStatusManager {
   /// @param workingHours - Array of working hours configuration
   /// @param isOpen - Manual toggle status (true/false/null)
   /// @return true if restaurant is open, false otherwise
-  bool isRestaurantOpenNow(List<WorkingHours>? workingHours, bool? isOpen) {
-    print('DEBUG: RestaurantStatusManager - Checking status');
-    print('DEBUG: Manual toggle (isOpen): $isOpen');
-    // Step 1: Get current day and time
-    final days = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-    ];
-    final now = DateTime.now();
-    final currentDay = days[now.weekday % 7]; // weekday is 1-7, we need 0-6
-    final currentTime = _formatTime(now.hour, now.minute);
-    print('DEBUG: Current day: $currentDay, Current time: $currentTime');
-    // Step 2: Check if within working hours
-    bool withinWorkingHours = false;
-    if (workingHours != null && workingHours.isNotEmpty) {
-      for (var workingHour in workingHours) {
-        if (workingHour.day == currentDay) {
-          final slots = workingHour.timeslot ?? [];
-          for (var slot in slots) {
-            final from = slot.from ?? '';
-            final to = slot.to ?? '';
-            if (from.isNotEmpty && to.isNotEmpty) {
-              print('DEBUG: Checking slot: $from - $to');
-              if (_isTimeInRange(currentTime, from, to)) {
-                withinWorkingHours = true;
-                print('DEBUG: Current time is within working hours');
-                break;
-              }
-            }
-          }
-          if (withinWorkingHours) break;
-        }
-      }
-    }
-    print('DEBUG: Within working hours: $withinWorkingHours');
-    // Step 3: Apply failproof logic
-    // Restaurant is ONLY OPEN if BOTH conditions are met:
-    // 1. Manual toggle is explicitly true AND
-    // 2. Within working hours
-    if (isOpen == true && withinWorkingHours) {
-      print('DEBUG: Restaurant is OPEN - Both conditions met');
-      return true;
-    }
-    print('DEBUG: Restaurant is CLOSED - Failproof conditions not met');
-    return false;
-  }
+  // bool isRestaurantOpenNow(List<WorkingHours>? workingHours, bool? isOpen) {
+  //   print('DEBUG: RestaurantStatusManager - Checking status');
+  //   print('DEBUG: Manual toggle (isOpen): $isOpen');
+  //   // Step 1: Get current day and time
+  //   final days = [
+  //     'Sunday',
+  //     'Monday',
+  //     'Tuesday',
+  //     'Wednesday',
+  //     'Thursday',
+  //     'Friday',
+  //     'Saturday',
+  //   ];
+  //   final now = DateTime.now();
+  //   final currentDay = days[now.weekday % 7]; // weekday is 1-7, we need 0-6
+  //   final currentTime = _formatTime(now.hour, now.minute);
+  //   print('DEBUG: Current day: $currentDay, Current time: $currentTime');
+  //   bool withinWorkingHours = false;
+  //   if (workingHours != null && workingHours.isNotEmpty) {
+  //     for (var workingHour in workingHours) {
+  //       if (workingHour.day == currentDay) {
+  //         final slots = workingHour.timeslot ?? [];
+  //         for (var slot in slots) {
+  //           final from = slot.from ?? '';
+  //           final to = slot.to ?? '';
+  //           if (from.isNotEmpty && to.isNotEmpty) {
+  //             print('DEBUG: Checking slot: $from - $to');
+  //             if (_isTimeInRange(currentTime, from, to)) {
+  //               withinWorkingHours = true;
+  //               print('DEBUG: Current time is within working hours');
+  //               break;
+  //             }
+  //           }
+  //         }
+  //         if (withinWorkingHours) break;
+  //       }
+  //     }
+  //   }
+  //   print('DEBUG: Within working hours: $withinWorkingHours');
+  //   // Step 3: Apply failproof logic
+  //   // Restaurant is ONLY OPEN if BOTH conditions are met:
+  //   // 1. Manual toggle is explicitly true AND
+  //   // 2. Within working hours
+  //   if (isOpen == true && withinWorkingHours) {
+  //     print('DEBUG: Restaurant is OPEN - Both conditions met');
+  //     return true;
+  //   }
+  //   print('DEBUG: Restaurant is CLOSED - Failproof conditions not met');
+  //   return false;
+  // }
 
   /// **GET DETAILED STATUS INFORMATION**
   ///
@@ -96,59 +96,52 @@ class RestaurantStatusManager {
     List<WorkingHours>? workingHours,
     bool? isOpen,
   ) {
-    final now = DateTime.now();
-    final days = [
-      'Sunday',
-      'Monday',
-      'Tuesday',
-      'Wednesday',
-      'Thursday',
-      'Friday',
-      'Saturday',
-    ];
-    final currentDay = days[now.weekday % 7]; // weekday is 1-7, we need 0-6
-    final currentTime = _formatTime(now.hour, now.minute);
+    // final now = DateTime.now();
+    // final days = [
+    //   'Sunday',
+    //   'Monday',
+    //   'Tuesday',
+    //   'Wednesday',
+    //   'Thursday',
+    //   'Friday',
+    //   'Saturday',
+    // ];
+    // final currentDay = days[now.weekday % 7]; // weekday is 1-7, we need 0-6
+    // final currentTime = _formatTime(now.hour, now.minute);
+    // // Check if within working hours
+    // bool withinWorkingHours = false;
+    // String? nextOpeningTime;
+    // if (workingHours != null && workingHours.isNotEmpty) {
+    //   for (var workingHour in workingHours) {
+    //     if (workingHour.day == currentDay) {
+    //       final slots = workingHour.timeslot ?? [];
+    //       for (var slot in slots) {
+    //         final from = slot.from ?? '';
+    //         final to = slot.to ?? '';
+    //
+    //         if (from.isNotEmpty && to.isNotEmpty) {
+    //           if (_isTimeInRange(currentTime, from, to)) {
+    //             withinWorkingHours = true;
+    //             break;
+    //           }
+    //         }
+    //       }
+    //       if (withinWorkingHours) break;
+    //     }
+    //   }
+    //   // Get next opening time
+    //   nextOpeningTime = _getNextOpeningTime(
+    //     workingHours,
+    //     currentDay,
+    //     currentTime,
+    //   );
+    // }
 
-    // Check if within working hours
-    bool withinWorkingHours = false;
-    String? nextOpeningTime;
-
-    if (workingHours != null && workingHours.isNotEmpty) {
-      for (var workingHour in workingHours) {
-        if (workingHour.day == currentDay) {
-          final slots = workingHour.timeslot ?? [];
-          for (var slot in slots) {
-            final from = slot.from ?? '';
-            final to = slot.to ?? '';
-
-            if (from.isNotEmpty && to.isNotEmpty) {
-              if (_isTimeInRange(currentTime, from, to)) {
-                withinWorkingHours = true;
-                break;
-              }
-            }
-          }
-          if (withinWorkingHours) break;
-        }
-      }
-
-      // Get next opening time
-      nextOpeningTime = _getNextOpeningTime(
-        workingHours,
-        currentDay,
-        currentTime,
-      );
-    }
-
-    // Determine final status
-    final isOpenNow = isOpen == true && withinWorkingHours;
-
-    // Determine reason and UI information
+    final isOpenNow = isOpen == true;
     String reason;
     Color statusColor;
     IconData statusIcon;
     String statusText;
-
     if (isOpen == false) {
       reason = 'Restaurant is manually closed';
       statusColor = Colors.red;
@@ -159,12 +152,14 @@ class RestaurantStatusManager {
       statusColor = Colors.orange;
       statusIcon = Icons.schedule;
       statusText = 'Closed';
-    } else if (!withinWorkingHours) {
-      reason = 'Outside working hours';
-      statusColor = Colors.red;
-      statusIcon = Icons.lock;
-      statusText = 'Closed';
-    } else {
+    }
+    // else if (!withinWorkingHours) {
+    //   reason = 'Outside working hours';
+    //   statusColor = Colors.red;
+    //   statusIcon = Icons.lock;
+    //   statusText = 'Closed';
+    // }
+    else {
       reason = 'Open now';
       statusColor = Colors.green;
       statusIcon = Icons.check_circle;
@@ -175,14 +170,14 @@ class RestaurantStatusManager {
       'isManuallyClosed': isOpen == false,
       'isManuallyOpen': isOpen == true,
       'noManualToggle': isOpen == null,
-      'withinWorkingHours': withinWorkingHours,
+      // 'withinWorkingHours': withinWorkingHours,
       'reason': reason,
       'statusColor': statusColor,
       'statusIcon': statusIcon,
       'statusText': statusText,
-      'nextOpeningTime': nextOpeningTime,
-      'currentDay': currentDay,
-      'currentTime': currentTime,
+      // 'nextOpeningTime': nextOpeningTime,
+      // 'currentDay': currentDay,
+      // 'currentTime': currentTime,
       'hasWorkingHours': workingHours != null && workingHours.isNotEmpty,
     };
   }
@@ -316,38 +311,35 @@ class RestaurantStatusManager {
   /// **START STATUS MONITORING**
   ///
   /// Checks status every specified interval (default: 5 minutes)
-  void startStatusMonitoring({
-    required List<WorkingHours>? workingHours,
-    required bool? isOpen,
-    required Function(Map<String, dynamic>) onStatusUpdate,
-    int intervalMinutes = 5,
-  }) {
-    // Check status immediately
-    final status = getRestaurantStatus(workingHours, isOpen);
-    onStatusUpdate(status);
-
-    // Set up periodic checks
-    Future.delayed(Duration(minutes: intervalMinutes), () {
-      startStatusMonitoring(
-        workingHours: workingHours,
-        isOpen: isOpen,
-        onStatusUpdate: onStatusUpdate,
-        intervalMinutes: intervalMinutes,
-      );
-    });
-  }
+  // void startStatusMonitoring({
+  //   required List<WorkingHours>? workingHours,
+  //   required bool? isOpen,
+  //   required Function(Map<String, dynamic>) onStatusUpdate,
+  //   int intervalMinutes = 5,
+  // }) {
+  //   final status = getRestaurantStatus(workingHours, isOpen);
+  //   onStatusUpdate(status);
+  //   Future.delayed(Duration(minutes: intervalMinutes), () {
+  //     startStatusMonitoring(
+  //       workingHours: workingHours,
+  //       isOpen: isOpen,
+  //       onStatusUpdate: onStatusUpdate,
+  //       intervalMinutes: intervalMinutes,
+  //     );
+  //   });
+  // }
 
   /// **GET STATUS SUMMARY FOR DEBUGGING**
-  String getStatusSummary(List<WorkingHours>? workingHours, bool? isOpen) {
-    final status = getRestaurantStatus(workingHours, isOpen);
-
-    return '''
-Restaurant Status Summary:
-- Manual Toggle (isOpen): $isOpen
-- Within Working Hours: ${status['withinWorkingHours']}
-- Final Status: ${status['isOpen'] ? 'OPEN' : 'CLOSED'}
-- Reason: ${status['reason']}
-- Next Opening: ${status['nextOpeningTime'] ?? 'Unknown'}
-''';
-  }
+  //   String getStatusSummary(List<WorkingHours>? workingHours, bool? isOpen) {
+  //     final status = getRestaurantStatus(workingHours, isOpen);
+  //
+  //     return '''
+  // Restaurant Status Summary:
+  // - Manual Toggle (isOpen): $isOpen
+  // - Within Working Hours: ${status['withinWorkingHours']}
+  // - Final Status: ${status['isOpen'] ? 'OPEN' : 'CLOSED'}
+  // - Reason: ${status['reason']}
+  // - Next Opening: ${status['nextOpeningTime'] ?? 'Unknown'}
+  // ''';
+  //   }
 }

@@ -461,20 +461,16 @@ class ProductListView extends StatelessWidget {
                     ),
                   ),
                 ),
-              // UPDATED: API-based favorite button
-              // In widgets/product_list_view.dart - Update the favorite button
               Positioned(
                 right: 10,
                 top: 10,
                 child: InkWell(
                   onTap: () async {
-                    // Validate product before toggling favorite
                     if (productModel.id == null ||
                         productModel.id.toString().isEmpty) {
                       ShowToastDialog.showToast("Invalid product data");
                       return;
                     }
-
                     try {
                       await controller.toggleProductFavorite(
                         productModel.id!.toString(),
@@ -537,8 +533,6 @@ class ProductListView extends StatelessWidget {
           controller.selectedIndexArray.clear();
           controller.selectedAddOns.clear();
           controller.quantity = 1;
-
-          // Calculate initial price
           controller.calculatePrice(productModel);
           productDetailsBottomSheet(Get.context!, productModel);
         },

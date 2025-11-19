@@ -807,7 +807,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     String mainPrice = "0";
     String variantPrice = "0";
     String adOnsPrice = "0";
-
     if (productModel.itemAttribute != null) {
       if (productModel.itemAttribute!.variants!
           .where((element) => element.variantSku == selectedVariants.join('-'))
