@@ -60,17 +60,13 @@ class HomeProvider extends ChangeNotifier {
         finalLocality == 'Current Location') {
       finalLocality = finalAddress;
     }
-    // If both are still empty, we should not save this as a valid address
-    // But for now, let's ensure we have something meaningful
     if ((finalAddress == null || finalAddress.isEmpty) &&
         (finalLocality == null || finalLocality.isEmpty)) {
       log(
         '[HOME_PROVIDER] Warning: Address model has no address or locality set',
       );
-      // Don't proceed if there's no valid address information
       return;
     }
-    // Create a new ShippingAddress with properly set address and locality
     final updatedAddressModel = ShippingAddress(
       id: addressModel.id,
       addressAs: addressModel.addressAs ?? 'Home',
@@ -108,7 +104,6 @@ class HomeProvider extends ChangeNotifier {
         print('[HOME_PROVIDER] Error saving location: $e');
       }
     }
-    // Refresh data but skip location setup since we just set it
     await _loadAllDataInParallel(
       context,
       waitForSupplemental: true,
@@ -581,7 +576,6 @@ class HomeProvider extends ChangeNotifier {
   }
 
   late TabController tabController;
-
   List<BannerModel> bannerModel = <BannerModel>[];
   List<BannerModel> bannerBottomModel = <BannerModel>[];
   List<VendorModel> favouriteList = <VendorModel>[];
@@ -832,13 +826,11 @@ class HomeProvider extends ChangeNotifier {
         }
         return;
       }
-
       final userId = await SqlStorageConst.getFirebaseId();
       if (userId == null || userId.isEmpty) {
         print('[DEBUG] No stored user ID while ensuring user model');
         return;
       }
-
       final userModel = await AddressListProvider.getUserProfile(userId);
       print(" ensureUserModelIsLoaded 2");
       if (userModel != null) {
@@ -859,10 +851,8 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<void> _ensureUserLocationIsSet() async {
-    // Check if location is already set with valid coordinates
     if (Constant.selectedLocation.location?.latitude != null &&
         Constant.selectedLocation.location?.longitude != null) {
-      // Also check if address/locality are already set and valid (not empty or "Current Location")
       final currentAddress = Constant.selectedLocation.address ?? '';
       final currentLocality = Constant.selectedLocation.locality ?? '';
       final hasValidAddress =
@@ -873,8 +863,6 @@ class HomeProvider extends ChangeNotifier {
           currentLocality.isNotEmpty &&
           currentLocality != 'Current Location' &&
           !currentLocality.contains('Current Location');
-
-      // If we have valid address information, don't override it
       if (hasValidAddress || hasValidLocality) {
         return;
       }
@@ -902,8 +890,6 @@ class HomeProvider extends ChangeNotifier {
             savedLocation['longitude'] != null) {
           String savedAddress = savedLocation['address'] ?? '';
           String savedLocality = savedLocation['locality'] ?? '';
-
-          // Only try to fill empty address/locality if they're truly empty (not "Current Location")
           final isAddressInvalid =
               savedAddress.isEmpty ||
               savedAddress == 'Current Location' ||
@@ -912,7 +898,6 @@ class HomeProvider extends ChangeNotifier {
               savedLocality.isEmpty ||
               savedLocality == 'Current Location' ||
               savedLocality.contains('Current Location');
-
           if (isAddressInvalid || isLocalityInvalid) {
             try {
               final gpsCacheInfo =
@@ -935,10 +920,7 @@ class HomeProvider extends ChangeNotifier {
                   savedLocality = fullAddress;
                   print('[DEBUG] Got address from coordinates');
                 } else {
-                  // If we still can't get address, don't set "Current Location"
-                  // Just use what we have (might be empty, but better than "Current Location")
                   print('[DEBUG] Could not retrieve address from coordinates');
-                  // Only set "Current Location" as last resort if both are truly empty
                   if (savedAddress.isEmpty && savedLocality.isEmpty) {
                     savedAddress = 'Current Location';
                     savedLocality = 'Current Location';
@@ -1058,6 +1040,7 @@ class HomeProvider extends ChangeNotifier {
       context,
       waitForSupplemental: true,
       forceRefresh: true,
+      skipLocationSetup: true,
     );
   }
 

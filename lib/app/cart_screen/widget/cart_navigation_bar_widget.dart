@@ -65,7 +65,6 @@ Future<void> _processPayment(
   if (!canProceed) {
     return;
   }
-  // Validate coupon and discount amounts
   if ((controller.couponAmount >= 1) &&
       (controller.couponAmount > controller.totalAmount)) {
     ShowToastDialog.showToast(

@@ -2477,11 +2477,11 @@ class CartControllerProvider extends ChangeNotifier {
             }
           } else {
             // For restaurant vendors, use restaurant status system
-            if (!RestaurantStatusUtils.isRestaurantOpen(latestVendor)) {
-              final status = RestaurantStatusUtils.getRestaurantStatus(
-                latestVendor,
-              );
-              ShowToastDialog.showToast(status['reason']);
+            if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
+              // final status = RestaurantStatusUtils.getRestaurantStatus(
+              //   latestVendor,
+              // );
+              ShowToastDialog.showToast("Restaurant Closed");
               return false;
             }
           }
@@ -2721,12 +2721,12 @@ class CartControllerProvider extends ChangeNotifier {
             return;
           }
         } else {
-          if (!RestaurantStatusUtils.isRestaurantOpen(latestVendor)) {
+          if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
             ShowToastDialog.closeLoader();
-            final status = RestaurantStatusUtils.getRestaurantStatus(
-              latestVendor,
-            );
-            ShowToastDialog.showToast(status['reason']);
+            // final status = RestaurantStatusUtils.getRestaurantStatus(
+            //   latestVendor,
+            // );
+            ShowToastDialog.showToast("Restaurant Closed");
             endOrderProcessing();
             return;
           }
@@ -3857,14 +3857,12 @@ class CartControllerProvider extends ChangeNotifier {
           return false;
         }
       }
-
       if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
         ShowToastDialog.showToast(
           "Vendor zone not configured. Please contact support.".tr,
         );
         return false;
       }
-
       if (address.zoneId != vendorModel.zoneId) {
         // Show zone mismatch alert dialog
         DeliveryZoneAlertDialog.showZoneMismatchError();

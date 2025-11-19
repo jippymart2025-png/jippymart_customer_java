@@ -15,12 +15,12 @@ class RestaurantStatusUtils {
   /// Uses the failproof system to determine if a restaurant is open
   /// @param vendor - The restaurant vendor model
   /// @return true if restaurant is open, false otherwise
-  static bool isRestaurantOpen(VendorModel vendor) {
-    return _statusManager.isRestaurantOpenNow(
-      vendor.workingHours,
-      vendor.isOpen,
-    );
-  }
+  // static bool isRestaurantOpen(VendorModel vendor) {
+  //   return _statusManager.isRestaurantOpenNow(
+  //     vendor.workingHours,
+  //     vendor.isOpen,
+  //   );
+  // }
 
   /// **GET RESTAURANT STATUS INFO**
   ///
@@ -60,7 +60,7 @@ class RestaurantStatusUtils {
       // Keep original padding
       decoration: BoxDecoration(
         color: isClosed ? Colors.red[600] : status['statusColor'],
-        borderRadius: BorderRadius.circular(24), // Keep original border radius
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

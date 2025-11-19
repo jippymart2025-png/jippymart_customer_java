@@ -76,7 +76,6 @@ class SplashProvider extends ChangeNotifier {
 
   Future<void> _loadUserDataFromStorage() async {
     try {
-      print(" _loadAllDataInParallel  first ");
       final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
       final userId = await secureStorage.read(key: 'user_id');
       final firebaseId = await secureStorage.read(key: 'firebase_id');
