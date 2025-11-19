@@ -15,7 +15,7 @@ class ProductModel {
   Map<String, dynamic>? reviewAttributes;
   Map<String, dynamic>? productSpecification;
   ItemAttribute? itemAttribute;
-  int? id;
+  String? id;
   int? quantity;
   int? grams;
   num? reviewsCount;
@@ -67,7 +67,7 @@ class ProductModel {
     try {
       final parsedId = _parseInt(json['id'] ?? json['product_id']);
       return ProductModel(
-        id: parsedId,
+        id: _parseString(json['id']),
         name: _parseString(json['name']),
         description: _parseString(json['description']),
         categoryID: _parseString(json['category_id']),
@@ -158,8 +158,16 @@ class ProductModel {
       fats = _parseInt(json['fats']);
       vendorID = _parseString(json['vendorID']);
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
-      veg = json['veg'] == 1 || json['veg'] == true || json['veg'] == "1" || json['veg'] == "true";
-      publish = json['publish'] == 1 || json['publish'] == true || json['publish'] == "1" || json['publish'] == "true";
+      veg =
+          json['veg'] == 1 ||
+          json['veg'] == true ||
+          json['veg'] == "1" ||
+          json['veg'] == "true";
+      publish =
+          json['publish'] == 1 ||
+          json['publish'] == true ||
+          json['publish'] == "1" ||
+          json['publish'] == "true";
 
       // Parse addOnsTitle - handle both string and list formats
       addOnsTitle = _parseJsonStringToList(json['addOnsTitle']);
@@ -174,31 +182,42 @@ class ProductModel {
       reviewsSum = _parseNum(json['reviewsSum']) ?? 0.0;
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
       takeawayOption =
-          json['takeawayOption'] == 1 || json['takeawayOption'] == true || json['takeawayOption'] == "1" || json['takeawayOption'] == "true";
+          json['takeawayOption'] == 1 ||
+          json['takeawayOption'] == true ||
+          json['takeawayOption'] == "1" ||
+          json['takeawayOption'] == "true";
       name = _parseString(json['name']);
-      reviewAttributes = json['reviewAttributes'] is Map<String, dynamic> ? json['reviewAttributes'] : null;
+      reviewAttributes = json['reviewAttributes'] is Map<String, dynamic>
+          ? json['reviewAttributes']
+          : null;
       // Parse product_specification - handle both string and map formats
-      productSpecification = _parseJsonStringToMap(json['product_specification']);
+      productSpecification = _parseJsonStringToMap(
+        json['product_specification'],
+      );
       // Handle item_attribute field - it can be Map or List
       if (json['item_attribute'] != null) {
         try {
           if (json['item_attribute'] is Map<String, dynamic>) {
             itemAttribute = ItemAttribute.fromJson(json['item_attribute']);
           } else if (json['item_attribute'] is List) {
-            print('⚠️ Product ${json['id']}: item_attribute is List, skipping...');
+            print(
+              '⚠️ Product ${json['id']}: item_attribute is List, skipping...',
+            );
             itemAttribute = null;
           } else {
             itemAttribute = null;
           }
         } catch (e) {
-          print('⚠️ Error parsing item_attribute for product ${json['id']}: $e');
+          print(
+            '⚠️ Error parsing item_attribute for product ${json['id']}: $e',
+          );
           itemAttribute = null;
         }
       } else {
         itemAttribute = null;
       }
       // FIX: Use helper method to parse int fields that might come as String
-      id = _parseInt(json['id'] ?? json['product_id']);
+      id = _parseString(json['id'] ?? json['product_id']);
       quantity = _parseInt(json['quantity']);
       grams = _parseInt(json['grams']);
       reviewsCount = _parseNum(json['reviewsCount']) ?? 0.0;
@@ -207,7 +226,11 @@ class ProductModel {
       disPrice = _parsePrice(json['disPrice']) ?? "0";
       // Parse photos - handle both string and list formats
       photos = _parseJsonStringToList<String>(json['photos'])?.cast<String>();
-      nonveg = json['nonveg'] == 1 || json['nonveg'] == true || json['nonveg'] == "1" || json['nonveg'] == "true";
+      nonveg =
+          json['nonveg'] == 1 ||
+          json['nonveg'] == true ||
+          json['nonveg'] == "1" ||
+          json['nonveg'] == "true";
       photo = _parseString(json['photo']);
       // FIX: Handle both string and int for price
       price = _parsePrice(json['price']) ?? "0";
@@ -215,13 +238,16 @@ class ProductModel {
       description = _parseString(json['description']);
       createdAt = _parseDate(json['createdAt']);
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
-      isAvailable = json['isAvailable'] == 1 || json['isAvailable'] == true || json['isAvailable'] == "1" || json['isAvailable'] == "true";
+      isAvailable =
+          json['isAvailable'] == 1 ||
+          json['isAvailable'] == true ||
+          json['isAvailable'] == "1" ||
+          json['isAvailable'] == "true";
     } catch (e, stackTrace) {
       print('❌ Error parsing ProductModel from JSON: $e');
       print('❌ Stack trace: $stackTrace');
       print('❌ Problematic JSON keys: ${json.keys.toList()}');
-      // Set default values to prevent null pointer exceptions
-      id = _parseInt(json['id']);
+      id = _parseString(json['id']);
       name = _parseString(json['name']) ?? 'Unknown Product';
       price = _parsePrice(json['price']) ?? "0";
       disPrice = _parsePrice(json['disPrice']) ?? "0";

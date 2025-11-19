@@ -71,15 +71,14 @@ class MoreStoriesState extends State<MoreStories> {
           children: [
             StoryView(
               key: ValueKey(widget.index),
-              storyItems: List.generate(
-                widget.storyList[widget.index].videoUrl?.length ?? 0,
-                (i) {
-                  return StoryItem.pageVideo(
-                    widget.storyList[widget.index].videoUrl?[i] ?? "",
-                    controller: storyController,
-                  );
-                },
-              ).toList(),
+              storyItems: widget.storyList[widget.index].videoUrls
+                  .map(
+                    (videoUrl) => StoryItem.pageVideo(
+                      videoUrl,
+                      controller: storyController,
+                    ),
+                  )
+                  .toList(),
               onComplete: () {
                 debugPrint("--------->");
                 debugPrint(widget.storyList.length.toString());

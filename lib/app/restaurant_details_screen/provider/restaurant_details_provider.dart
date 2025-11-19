@@ -25,6 +25,15 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 
 class RestaurantDetailsProvider extends ChangeNotifier {
+  String? returnKeyCategories({required int index}) {
+    String categoryKey = getCategoryKey(index);
+    if (!categoryKeys.containsKey(categoryKey)) {
+      categoryKeys[categoryKey] = GlobalKey();
+      notifyListeners();
+    }
+    return categoryKey;
+  }
+
   final String? scrollToProductId;
 
   RestaurantDetailsProvider({this.scrollToProductId});
@@ -107,7 +116,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     try {
       // Add timeout to prevent hanging
       final Map<String, String> queryParams = {};
-
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
@@ -472,7 +480,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   void _buildCategoryProductMapping() {
     categoryProductsMap.clear();
     categoryKeys.clear();
-
     for (var product in productList) {
       if (product.categoryID == null || product.categoryID!.isEmpty) continue;
 
@@ -481,12 +488,14 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         categoryProductsMap[categoryId] = [];
       }
       categoryProductsMap[categoryId]!.add(product);
+      notifyListeners();
     }
     // Create keys for categories
     for (int i = 0; i < vendorCategoryList.length; i++) {
       final categoryKey = getCategoryKey(i);
       categoryKeys[categoryKey] = GlobalKey();
     }
+    notifyListeners();
   }
 
   /// GET PRODUCTS BY CATEGORY

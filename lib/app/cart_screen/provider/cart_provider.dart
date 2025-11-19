@@ -78,6 +78,7 @@ class CartControllerProvider extends ChangeNotifier {
     }
     if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
       controller.placeOrder(context);
+      print(" controller.placeOrder(context); ");
     } else if (controller.selectedPaymentMethod ==
         PaymentGateway.razorpay.name) {
       RazorPayController()
@@ -1056,9 +1057,7 @@ class CartControllerProvider extends ChangeNotifier {
     if (_calculationCacheLoaded) return;
     try {
       // Load tax list once and cache it
-      if (_cachedTaxList == null) {
-        _cachedTaxList = await FireStoreUtils.getTaxList();
-      }
+      _cachedTaxList ??= await FireStoreUtils.getTaxList();
       final futures = <Future>[];
       for (var item in HomeProvider.cartItem) {
         if (item.promoId != null && item.promoId!.isNotEmpty) {
@@ -2552,14 +2551,12 @@ class CartControllerProvider extends ChangeNotifier {
   ///finded
 
   placeOrder(BuildContext context) async {
-    // Check idempotency - prevent duplicate orders
     if (_isOrderInProgress()) {
       ShowToastDialog.showToast(
         "Order is already being processed. Please wait...".tr,
       );
       return;
     }
-    // Check debouncing
     if (lastOrderAttempt != null &&
         DateTime.now().difference(lastOrderAttempt!) < orderDebounceTime) {
       ShowToastDialog.showToast("Please wait before trying again...".tr);
@@ -2617,7 +2614,6 @@ class CartControllerProvider extends ChangeNotifier {
           "An error occurred while placing your order. Please try again.".tr,
         );
       }
-
       endOrderProcessing();
     }
     notifyListeners();
@@ -2717,7 +2713,7 @@ class CartControllerProvider extends ChangeNotifier {
             return false;
           }
         } else {
-          // For restaurant items, use existing Firebase logic
+          // For restaurant ites, use existing Firebase logic
           // Validate product ID before making API call
           final productId = item.id;
           if (productId == null ||

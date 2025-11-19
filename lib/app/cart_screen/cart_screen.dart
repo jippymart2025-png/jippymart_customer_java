@@ -60,17 +60,12 @@ class _CartScreenState extends State<CartScreen> {
       return; // Prevent simultaneous calls
     }
     _isRefreshing = true;
-    // Await cart refresh to ensure prices are calculated
     await controller.forceRefreshCart();
-    // Always check and sync address with Constant.selectedLocation
-    // This ensures address is updated when location changes on home screen
     if (controller.selectedAddress == null ||
         controller.selectedAddress!.location?.latitude == null ||
         controller.selectedAddress!.location?.longitude == null) {
       await controller.initializeAddress(context);
     } else {
-      // Even if address exists, sync with Constant.selectedLocation to ensure consistency
-      // Await to ensure distance and delivery charges are recalculated
       await controller.syncAddressWithHomeLocation(context);
     }
     // Update payment method after all calculations are complete

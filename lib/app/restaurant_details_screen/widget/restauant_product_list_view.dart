@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
@@ -45,11 +47,9 @@ class ProductListView extends StatelessWidget {
                   itemBuilder: (context, index) {
                     VendorCategoryModel vendorCategoryModel =
                         controller.vendorCategoryList[index];
-                    // Get or create the key for this category
-                    final categoryKey = controller.getCategoryKey(index);
-                    if (!controller.categoryKeys.containsKey(categoryKey)) {
-                      controller.categoryKeys[categoryKey] = GlobalKey();
-                    }
+                    String? categoryKey = controller.returnKeyCategories(
+                      index: index,
+                    );
                     return KeyedSubtree(
                       key: controller.categoryKeys[categoryKey],
                       child: _buildCategoryExpansionTile(
@@ -111,7 +111,6 @@ class ProductListView extends StatelessWidget {
     final products = controller.getProductsByCategory(
       vendorCategoryModel.id.toString(),
     );
-
     // Listen to HomeProvider changes to rebuild when cart changes
     return Consumer<HomeProvider>(
       builder: (context, homeProvider, _) {
@@ -122,6 +121,7 @@ class ProductListView extends StatelessWidget {
           padding: EdgeInsets.zero,
           itemBuilder: (context, productIndex) {
             ProductModel productModel = products[productIndex];
+            log(productModel.id.toString(), name: " productsLength");
             return _buildProductItem(
               productModel,
               context,
@@ -524,16 +524,15 @@ class ProductListView extends StatelessWidget {
         (productModel.addOnsTitle != null &&
             productModel.addOnsTitle!.isNotEmpty);
     // Fix: Handle variant IDs (format: "productId~variantId" or just "productId")
-    final isInCart = HomeProvider.cartItem.any(
-      (cartItem) {
-        if (cartItem.id == null || cartItem.id!.isEmpty) return false;
-        // Check exact match or if cart item ID starts with productId~
-        // This handles both simple products and products with variants
-        return cartItem.id == productId || 
-               cartItem.id!.startsWith('$productId~');
-      },
+    final isInCart = HomeProvider.cartItem.any((cartItem) {
+      if (cartItem.id == null || cartItem.id!.isEmpty) return false;
+      // Check exact match or if cart item ID starts with productId~
+      // This handles both simple products and products with variants
+      return cartItem.id == productId || cartItem.id!.startsWith('$productId~');
+    });
+    print(
+      " isInCart $isInCart for productId: $productId, cartItem IDs: ${HomeProvider.cartItem.map((e) => e.id).toList()}",
     );
-    print(" isInCart $isInCart for productId: $productId, cartItem IDs: ${HomeProvider.cartItem.map((e) => e.id).toList()}");
     if (hasVariantsOrAddons) {
       return RoundedButtonFill(
         title: "Add".tr,
@@ -725,19 +724,16 @@ class ProductListView extends StatelessWidget {
 
   int _findCartItemQuantity(String productId) {
     if (productId.isEmpty) return 0;
-    
+
     // Find all matching items (exact match or variant IDs starting with productId~)
-    final matchingItems = HomeProvider.cartItem.where(
-      (cartItem) {
-        if (cartItem.id == null || cartItem.id!.isEmpty) return false;
-        // Check exact match or if cart item ID starts with productId~
-        return cartItem.id == productId || 
-               cartItem.id!.startsWith('$productId~');
-      },
-    ).toList();
-    
+    final matchingItems = HomeProvider.cartItem.where((cartItem) {
+      if (cartItem.id == null || cartItem.id!.isEmpty) return false;
+      // Check exact match or if cart item ID starts with productId~
+      return cartItem.id == productId || cartItem.id!.startsWith('$productId~');
+    }).toList();
+
     if (matchingItems.isEmpty) return 0;
-    
+
     // Sum up quantities of all matching items (handles multiple variants)
     return matchingItems.fold<int>(
       0,
