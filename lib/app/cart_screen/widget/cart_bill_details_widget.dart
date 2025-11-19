@@ -439,24 +439,18 @@ Widget _buildDeliveryFeeSection(
       ],
     );
   }
-
   // Mart items delivery logic
   if (hasMartItems) {
     print('[CART_UI] 🛒 Building mart delivery UI...');
-    // For mart items, use the same logic as restaurant items
-    double itemThreshold = 199.0; // Default mart threshold
-    double freeDeliveryKm = 5.0; // Default mart free distance
-    double baseDeliveryCharge = 23.0; // Static base charge
+    double itemThreshold = 199.0;
+    double freeDeliveryKm = 5.0;
+    double baseDeliveryCharge = 23.0;
     final subtotal = controller.subTotal;
     final distance = controller.totalDistance;
-    // Determine delivery eligibility and charges (same logic as restaurant)
     final isAboveThreshold = subtotal >= itemThreshold;
     final isWithinFreeDistance = distance <= freeDeliveryKm;
-
     Widget martDeliveryWidget;
-
     if (isAboveThreshold) {
-      // Above threshold - eligible for free delivery logic
       if (isWithinFreeDistance) {
         martDeliveryWidget = buildDeliveryFeeUI(
           isFreeDelivery: true,
@@ -464,7 +458,6 @@ Widget _buildDeliveryFeeSection(
           currentFee: 0.0,
         );
       } else {
-        // Free delivery with extra charge: Green "Free Delivery" + strikethrough base charge + extra charge
         martDeliveryWidget = buildDeliveryFeeUI(
           isFreeDelivery: true,
           originalFee: baseDeliveryCharge,
@@ -472,7 +465,6 @@ Widget _buildDeliveryFeeSection(
         );
       }
     } else {
-      // Below threshold - regular paid delivery
       print('[CART_UI]   - Mart regular paid delivery');
       martDeliveryWidget = buildDeliveryFeeUI(
         isFreeDelivery: false,

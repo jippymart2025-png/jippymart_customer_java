@@ -628,9 +628,9 @@ class CartControllerProvider extends ChangeNotifier {
               );
             }
             // Update surge value for new location
-            initialLiseSurgeValue(homeLat, homeLng);
-            // Recalculate prices with new address
-            calculatePrice();
+            await initialLiseSurgeValue(homeLat, homeLng);
+            // Recalculate prices with new address - await to ensure calculation completes
+            await calculatePrice();
             print(
               '[CART_SYNC] ✅ Synced selectedAddress with Constant.selectedLocation (zoneId: ${selectedAddress!.zoneId})',
             );

@@ -48,26 +48,28 @@ class HomeProvider extends ChangeNotifier {
     // Use getFullAddress() to get a proper address string if address/locality are empty
     String? finalAddress = addressModel.address;
     String? finalLocality = addressModel.locality;
-    
-    // If address is empty or null, use locality
-    if (finalAddress == null || finalAddress.isEmpty || finalAddress == 'Current Location') {
+    notifyListeners();
+    if (finalAddress == null ||
+        finalAddress.isEmpty ||
+        finalAddress == 'Current Location') {
       finalAddress = finalLocality;
     }
-    
     // If locality is empty or null, use address
-    if (finalLocality == null || finalLocality.isEmpty || finalLocality == 'Current Location') {
+    if (finalLocality == null ||
+        finalLocality.isEmpty ||
+        finalLocality == 'Current Location') {
       finalLocality = finalAddress;
     }
-    
     // If both are still empty, we should not save this as a valid address
     // But for now, let's ensure we have something meaningful
-    if ((finalAddress == null || finalAddress.isEmpty) && 
+    if ((finalAddress == null || finalAddress.isEmpty) &&
         (finalLocality == null || finalLocality.isEmpty)) {
-      log('[HOME_PROVIDER] Warning: Address model has no address or locality set');
+      log(
+        '[HOME_PROVIDER] Warning: Address model has no address or locality set',
+      );
       // Don't proceed if there's no valid address information
       return;
     }
-    
     // Create a new ShippingAddress with properly set address and locality
     final updatedAddressModel = ShippingAddress(
       id: addressModel.id,
@@ -79,11 +81,11 @@ class HomeProvider extends ChangeNotifier {
       isDefault: addressModel.isDefault,
       zoneId: addressModel.zoneId,
     );
-    
     Constant.selectedLocation = updatedAddressModel;
     notifyListeners();
-    log("changeLocationAddressFunction ${updatedAddressModel.toJson().toString()}");
-    
+    log(
+      "changeLocationAddressFunction ${updatedAddressModel.toJson().toString()}",
+    );
     if (updatedAddressModel.location != null) {
       try {
         final box = GetStorage();
@@ -106,13 +108,13 @@ class HomeProvider extends ChangeNotifier {
         print('[HOME_PROVIDER] Error saving location: $e');
       }
     }
-    
     // Refresh data but skip location setup since we just set it
     await _loadAllDataInParallel(
       context,
       waitForSupplemental: true,
       forceRefresh: true,
-      skipLocationSetup: true, // Skip _ensureUserLocationIsSet since we just set the location
+      skipLocationSetup:
+          true, // Skip _ensureUserLocationIsSet since we just set the location
     );
     notifyListeners();
   }
@@ -281,7 +283,9 @@ class HomeProvider extends ChangeNotifier {
           // Also update Constant.selectedLocation.zoneId for consistency
           if (detectedZone.id != null && detectedZone.id!.isNotEmpty) {
             Constant.selectedLocation.zoneId = detectedZone.id;
-            print('[DEBUG] ✅ Set Constant.selectedLocation.zoneId: ${detectedZone.id}');
+            print(
+              '[DEBUG] ✅ Set Constant.selectedLocation.zoneId: ${detectedZone.id}',
+            );
           }
           print(
             '[DEBUG] User location:  ${Constant.isZoneAvailable} $latitude, $longitude',
@@ -624,15 +628,13 @@ class HomeProvider extends ChangeNotifier {
             Constant.userModel!.shippingAddress!;
         notifyListeners();
       }
-      // Skip location setup if location was just manually changed
       if (!skipLocationSetup) {
         await _ensureUserLocationIsSet();
         await getZone();
       } else {
-        log('[HOME_PROVIDER] Skipping _ensureUserLocationIsSet() - location was just manually set');
-        // Zone is already set in changeLocationAddressFunction, so no need to call again
-        // Only call getZone if it wasn't called in changeLocationAddressFunction
-        // (This shouldn't happen, but adding as safety check)
+        log(
+          '[HOME_PROVIDER] Skipping _ensureUserLocationIsSet() - location was just manually set',
+        );
       }
       final categoryFuture = categoryViewProvider.loadVendorCategories();
       final bannerFuture = _loadBanners();
@@ -683,7 +685,7 @@ class HomeProvider extends ChangeNotifier {
   }
 
   // Load vendor categories in parallel
-
+  // http://192.168.0.105:8000/api/menu-items/banners/top?zone_id=PsKHGNMgkuQaMDONJVOC
   // Get top banners
   static Future<List<BannerModel>> getHomeTopBanner(String type) async {
     try {
@@ -735,7 +737,6 @@ class HomeProvider extends ChangeNotifier {
     print(
       '[BANNER_LOADING] Current customer zone - ID: $currentZoneId, Title: $currentZoneTitle',
     );
-
     try {
       await Future.wait([
         getHomeTopBanner("top").then((value) {
@@ -864,13 +865,15 @@ class HomeProvider extends ChangeNotifier {
       // Also check if address/locality are already set and valid (not empty or "Current Location")
       final currentAddress = Constant.selectedLocation.address ?? '';
       final currentLocality = Constant.selectedLocation.locality ?? '';
-      final hasValidAddress = currentAddress.isNotEmpty && 
-                              currentAddress != 'Current Location' &&
-                              !currentAddress.contains('Current Location');
-      final hasValidLocality = currentLocality.isNotEmpty && 
-                               currentLocality != 'Current Location' &&
-                               !currentLocality.contains('Current Location');
-      
+      final hasValidAddress =
+          currentAddress.isNotEmpty &&
+          currentAddress != 'Current Location' &&
+          !currentAddress.contains('Current Location');
+      final hasValidLocality =
+          currentLocality.isNotEmpty &&
+          currentLocality != 'Current Location' &&
+          !currentLocality.contains('Current Location');
+
       // If we have valid address information, don't override it
       if (hasValidAddress || hasValidLocality) {
         return;
@@ -899,15 +902,17 @@ class HomeProvider extends ChangeNotifier {
             savedLocation['longitude'] != null) {
           String savedAddress = savedLocation['address'] ?? '';
           String savedLocality = savedLocation['locality'] ?? '';
-          
+
           // Only try to fill empty address/locality if they're truly empty (not "Current Location")
-          final isAddressInvalid = savedAddress.isEmpty || 
-                                   savedAddress == 'Current Location' ||
-                                   savedAddress.contains('Current Location');
-          final isLocalityInvalid = savedLocality.isEmpty || 
-                                    savedLocality == 'Current Location' ||
-                                    savedLocality.contains('Current Location');
-          
+          final isAddressInvalid =
+              savedAddress.isEmpty ||
+              savedAddress == 'Current Location' ||
+              savedAddress.contains('Current Location');
+          final isLocalityInvalid =
+              savedLocality.isEmpty ||
+              savedLocality == 'Current Location' ||
+              savedLocality.contains('Current Location');
+
           if (isAddressInvalid || isLocalityInvalid) {
             try {
               final gpsCacheInfo =
@@ -930,7 +935,7 @@ class HomeProvider extends ChangeNotifier {
                   savedLocality = fullAddress;
                   print('[DEBUG] Got address from coordinates');
                 } else {
-                  // If we still can't get address, don't set "Current Location" 
+                  // If we still can't get address, don't set "Current Location"
                   // Just use what we have (might be empty, but better than "Current Location")
                   print('[DEBUG] Could not retrieve address from coordinates');
                   // Only set "Current Location" as last resort if both are truly empty

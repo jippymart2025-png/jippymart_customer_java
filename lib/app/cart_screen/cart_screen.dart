@@ -54,39 +54,27 @@ class _CartScreenState extends State<CartScreen> {
     });
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Removed duplicate _refreshCartData call to prevent multiple initializations
-  }
-
-  @override
-  void dispose() {
-    // Clean up any resources
-    super.dispose();
-  }
-
-  void _refreshCartData() {
+  Future<void> _refreshCartData() async {
     if (_isRefreshing) {
       return; // Prevent simultaneous calls
     }
     _isRefreshing = true;
-    
-    controller.forceRefreshCart();
+    // Await cart refresh to ensure prices are calculated
+    await controller.forceRefreshCart();
     // Always check and sync address with Constant.selectedLocation
     // This ensures address is updated when location changes on home screen
     if (controller.selectedAddress == null ||
         controller.selectedAddress!.location?.latitude == null ||
         controller.selectedAddress!.location?.longitude == null) {
-      controller.initializeAddress(context);
+      await controller.initializeAddress(context);
     } else {
       // Even if address exists, sync with Constant.selectedLocation to ensure consistency
-      controller.syncAddressWithHomeLocation(context);
+      // Await to ensure distance and delivery charges are recalculated
+      await controller.syncAddressWithHomeLocation(context);
     }
-    Future.delayed(const Duration(milliseconds: 500), () {
-      controller.checkAndUpdatePaymentMethod();
-      _isRefreshing = false;
-    });
+    // Update payment method after all calculations are complete
+    controller.checkAndUpdatePaymentMethod();
+    _isRefreshing = false;
   }
 
   // Get theme colors based on cart theme
@@ -236,23 +224,35 @@ class _CartScreenState extends State<CartScreen> {
                                                 null) {
                                           try {
                                             // PRIORITY 1: Use zoneId from addressModel if already set
-                                            if (addressModel.zoneId != null && 
-                                                addressModel.zoneId!.isNotEmpty) {
+                                            if (addressModel.zoneId != null &&
+                                                addressModel
+                                                    .zoneId!
+                                                    .isNotEmpty) {
                                               print(
                                                 '✅ [CART_ADDRESS_CHANGE] Using zoneId from addressModel: ${addressModel.zoneId}',
                                               );
                                             }
                                             // PRIORITY 2: Use zoneId from Constant.selectedLocation
-                                            else if (Constant.selectedLocation.zoneId != null && 
-                                                     Constant.selectedLocation.zoneId!.isNotEmpty) {
-                                              addressModel.zoneId = Constant.selectedLocation.zoneId;
+                                            else if (Constant
+                                                        .selectedLocation
+                                                        .zoneId !=
+                                                    null &&
+                                                Constant
+                                                    .selectedLocation
+                                                    .zoneId!
+                                                    .isNotEmpty) {
+                                              addressModel.zoneId = Constant
+                                                  .selectedLocation
+                                                  .zoneId;
                                               print(
                                                 '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedLocation: ${addressModel.zoneId}',
                                               );
                                             }
                                             // PRIORITY 3: Use zoneId from Constant.selectedZone
-                                            else if (Constant.selectedZone != null) {
-                                              addressModel.zoneId = Constant.selectedZone!.id;
+                                            else if (Constant.selectedZone !=
+                                                null) {
+                                              addressModel.zoneId =
+                                                  Constant.selectedZone!.id;
                                               print(
                                                 '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedZone: ${addressModel.zoneId}',
                                               );
@@ -293,7 +293,9 @@ class _CartScreenState extends State<CartScreen> {
                                         }
                                         controller.selectedAddress =
                                             addressModel;
-                                        controller.calculatePrice();
+                                        // Await price calculation to ensure delivery charges update
+                                        // This will recalculate distance and delivery charges
+                                        await controller.calculatePrice();
                                       }
                                     });
                                   },

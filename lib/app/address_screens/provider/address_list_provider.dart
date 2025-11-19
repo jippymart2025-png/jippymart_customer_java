@@ -39,10 +39,9 @@ class AddressListProvider extends ChangeNotifier {
 
   Future<void> initFunction({required BuildContext context}) async {
     if (_addressesInitialized && shippingAddressList.isNotEmpty) {
-      return; // Already initialized
+      return;
     }
-    homeProvider = Provider.of(context, listen: false);
-    // Load addresses from userModel if available
+    homeProvider = Provider.of<HomeProvider>(context, listen: false);
     if (Constant.userModel != null &&
         Constant.userModel!.shippingAddress != null &&
         Constant.userModel!.shippingAddress!.isNotEmpty) {
@@ -51,8 +50,6 @@ class AddressListProvider extends ChangeNotifier {
       notifyListeners();
       return;
     }
-
-    // If userModel is not loaded or addresses are empty, try to load it
     if (shippingAddressList.isEmpty) {
       try {
         final userId = await SqlStorageConst.getFirebaseId();
@@ -72,8 +69,8 @@ class AddressListProvider extends ChangeNotifier {
         print('[ADDRESS_LIST_PROVIDER] Error loading addresses: $e');
       }
     }
-
     _addressesInitialized = true;
+    notifyListeners();
   }
 
   void useMyCurrentLocation() async {
