@@ -2121,9 +2121,11 @@ class CartControllerProvider extends ChangeNotifier {
     await ANRPrevention.executeWithANRPrevention('CartController_calculatePrice', () async {
       if (_cachedTaxList != null) {
         Constant.taxList = _cachedTaxList;
+        notifyListeners();
       } else if (Constant.taxList == null || Constant.taxList!.isEmpty) {
         Constant.taxList = await FireStoreUtils.getTaxList();
         _cachedTaxList = Constant.taxList;
+        notifyListeners();
       }
       print(
         'DEBUG: Using cached tax list with ${Constant.taxList?.length ?? 0} items',
@@ -2325,12 +2327,10 @@ class CartControllerProvider extends ChangeNotifier {
       double sgst = 0.0;
       double gst = 0.0;
 
-      // Check if cart has promotional items or mart items
       final hasPromotionalItemsForTax = HomeProvider.cartItem.any(
         (item) => item.promoId != null && item.promoId!.isNotEmpty,
       );
       final hasMartItems = hasMartItemsInCart();
-
       if (Constant.taxList != null) {
         for (var element in Constant.taxList!) {
           if ((element.title?.toLowerCase() ?? '').contains('sgst')) {
@@ -2353,6 +2353,12 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
       taxAmount = sgst + gst;
+      // if (taxAmount == 0.0) {
+      //   double sgsts = subTotal * 0.05;
+      //   double gsts = originalDeliveryFee * 0.18;
+      //   taxAmount = sgsts + gsts;
+      // }
+      print("taxAmounttaxAmount  ${taxAmount = sgst + gst}  ");
       notifyListeners();
       if (hasPromotionalItemsForTax) {
       } else if (hasMartItems) {

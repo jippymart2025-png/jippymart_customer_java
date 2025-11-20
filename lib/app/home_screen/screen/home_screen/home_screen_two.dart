@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/advertisement_screens/all_advertisement_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart'
     show BestRestaurantProvider;
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
@@ -331,15 +332,22 @@ class HomeScreenTwo extends StatelessWidget {
               ),
               floatingActionButton: Stack(
                 children: [
-                  Consumer<CartProvider>(
-                    builder: (context, cartProvider, _) {
-                      return const Positioned(
-                        bottom: 0,
-                        left: 16,
-                        right: 0,
-                        child: MiniCartBar(),
-                      );
-                    },
+                  Consumer3<CartProvider, CartControllerProvider, HomeProvider>(
+                    builder:
+                        (
+                          context,
+                          cartProvider,
+                          cartControllerProvider,
+                          homeProvider,
+                          _,
+                        ) {
+                          return const Positioned(
+                            bottom: 0,
+                            left: 16,
+                            right: 0,
+                            child: MiniCartBar(),
+                          );
+                        },
                   ),
                   Positioned(
                     bottom: HomeProvider.cartItem.isNotEmpty ? 100 : 16,

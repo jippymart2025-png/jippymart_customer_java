@@ -502,14 +502,13 @@ class FireStoreUtils {
   }
 
   static Future<List<TaxModel>?> getTaxList() async {
+    print(" getTaxList ");
     List<TaxModel> taxList = [];
-
     if (Constant.selectedLocation.location?.latitude == null ||
         Constant.selectedLocation.location?.longitude == null) {
       print('[API_UTILS] Location not available for tax calculation');
       return taxList;
     }
-
     try {
       List<Placemark> placeMarks = await placemarkFromCoordinates(
         Constant.selectedLocation.location!.latitude!,
@@ -520,8 +519,6 @@ class FireStoreUtils {
         print('[API_UTILS] No placemarks found for coordinates');
         return taxList;
       }
-
-      // Make API call instead of Firebase query
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}settings/tax'),
         headers: await getHeaders(),
@@ -529,14 +526,11 @@ class FireStoreUtils {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-
         if (responseData['success'] == true) {
           final List<dynamic> taxData = responseData['data'];
-
           // Filter taxes by country and enable status
           for (var element in taxData) {
             TaxModel taxModel = TaxModel.fromJson(element);
-
             // Apply filters manually (previously done in Firebase query)
             if (taxModel.country == placeMarks.first.country &&
                 taxModel.enable == true) {
