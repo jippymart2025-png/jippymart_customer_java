@@ -9,7 +9,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
-import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:provider/provider.dart';
 

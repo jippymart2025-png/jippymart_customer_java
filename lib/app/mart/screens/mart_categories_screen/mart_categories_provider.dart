@@ -25,6 +25,7 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
   void initState() {
     super.initState();
     _martController = Provider.of<MartProvider>(context, listen: false);
+    _martController.initFunction();
   }
 
   Future<void> _loadCategories() async {

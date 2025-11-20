@@ -765,34 +765,32 @@ class AddressListScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              bottomNavigationBar: Container(
-                color: AppThemeData.grey100,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 20,
-                ),
-                child: Consumer<AddressListProvider>(
-                  builder: (context, addressListProvider, _) {
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 20),
-                      child: RoundedButtonFill(
-                        isEnabled: !controller.isLoading,
-                        title: "Save Address Details".tr,
-                        height: 5.5,
-                        color: AppThemeData.primary300,
-                        fontSizes: 16,
-                        // With this:
-                        onPress: () async {
-                          final addressIndex = index ?? -1;
-                          controller.saveAddressFunction(
-                            addressIndex,
-                            context,
-                            addressListProvider,
-                          );
-                        },
-                      ),
-                    );
-                  },
+              bottomNavigationBar: SafeArea(
+                child: Container(
+                  padding: EdgeInsets.only(left: 10, right: 10),
+                  child: Consumer<AddressListProvider>(
+                    builder: (context, addressListProvider, _) {
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: RoundedButtonFill(
+                          isEnabled: !controller.isLoading,
+                          title: "Save Address Details".tr,
+                          height: 5.5,
+                          color: AppThemeData.primary300,
+                          fontSizes: 16,
+                          // With this:
+                          onPress: () async {
+                            final addressIndex = index ?? -1;
+                            controller.saveAddressFunction(
+                              addressIndex,
+                              context,
+                              addressListProvider,
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             );

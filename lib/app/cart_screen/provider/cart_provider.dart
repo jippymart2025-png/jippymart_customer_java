@@ -2318,14 +2318,11 @@ class CartControllerProvider extends ChangeNotifier {
         couponAmount = 0.0;
       }
       notifyListeners();
-
       if (specialDiscountAmount > 0) {
         specialDiscountAmount = (subTotal * specialDiscountAmount) / 100;
       }
-
       double sgst = 0.0;
       double gst = 0.0;
-
       final hasPromotionalItemsForTax = HomeProvider.cartItem.any(
         (item) => item.promoId != null && item.promoId!.isNotEmpty,
       );

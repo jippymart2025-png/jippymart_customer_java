@@ -1222,7 +1222,6 @@ class MartProvider extends ChangeNotifier {
       print(
         '[MART CONTROLLER] 📂 Streaming: Loading all categories from Firestore...',
       );
-
       // Try Firestore first (fastest path)
       try {
         final categories = await _firestoreService.getCategories(limit: 100);
@@ -1234,7 +1233,6 @@ class MartProvider extends ChangeNotifier {
           print(
             '[MART CONTROLLER] ✅ Streaming: All categories loaded from Firestore (${categories.length})',
           );
-
           // Load subcategories for categories that have them
           // await _loadSubcategoriesStreaming();
           // await loadAllHomepageSubcategories();

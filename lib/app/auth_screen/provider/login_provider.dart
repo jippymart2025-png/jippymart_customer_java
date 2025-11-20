@@ -94,8 +94,8 @@ class LoginProvider extends ChangeNotifier {
     if (phone.isEmpty) {
       ShowToastDialog.showToast("Please enter mobile number".tr);
       return;
-    } else if (phone.length < 10 || phone.length > 15) {
-      ShowToastDialog.showToast("Phone number must be 10-15 digits".tr);
+    } else if (phone.length != 10) {
+      ShowToastDialog.showToast("Phone number must be 10 digits".tr);
       return;
     }
     this.countryCode = countryCode;

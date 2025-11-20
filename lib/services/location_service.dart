@@ -176,13 +176,11 @@ class LocationService {
       }
       // Update global location
       Constant.selectedLocation = addressModel;
-      // Save to local storage
       await Preferences.setString(
         'user_location',
         addressModel.location!.toJson().toString(),
       );
 
-      // Update user profile if logged in
       if (Constant.userModel != null) {
         try {
           await EditProfileProvider.updateUser(Constant.userModel!);
@@ -190,7 +188,6 @@ class LocationService {
           log('[LOCATION_SERVICE] Error updating user profile: $e');
         }
       }
-
       log('[LOCATION_SERVICE] Location updated successfully');
       return true;
     } catch (e) {

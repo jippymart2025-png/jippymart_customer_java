@@ -595,12 +595,6 @@ class HomeProvider extends ChangeNotifier {
       if (!skipLocationSetup) {
         await _ensureUserLocationIsSet();
         await getZone();
-        print(
-          "_performInitialLoad  userModel  ${Constant.userModel!.shippingAddress?[0].landmark}",
-        );
-        print(
-          "_performInitialLoad  userModel  ${Constant.userModel!.shippingAddress?[0].latitude}",
-        );
       } else {
         log(
           '[HOME_PROVIDER] Skipping _ensureUserLocationIsSet() - location was just manually set',
