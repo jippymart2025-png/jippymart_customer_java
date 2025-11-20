@@ -418,18 +418,10 @@ class ProfileScreen extends StatelessWidget {
                                             positiveString: "Delete".tr,
                                             negativeString: "Cancel".tr,
                                             positiveClick: () async {
-                                              ShowToastDialog.showLoader(
-                                                "Please wait".tr,
-                                              );
-                                              // Clear cart data before account deletion
                                               try {
-                                                CartControllerProvider
-                                                cartControllerProvider =
-                                                    Provider.of<
-                                                      CartControllerProvider
-                                                    >(context, listen: false);
-                                                await cartControllerProvider
-                                                    .clearCart();
+                                                controller.deleteUserAccount(
+                                                  context: context,
+                                                );
                                               } catch (_) {}
                                             },
                                             negativeClick: () {

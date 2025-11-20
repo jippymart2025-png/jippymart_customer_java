@@ -65,7 +65,6 @@ class MartFirestoreService extends GetxService {
           print(
             '[MART API] ✅ Successfully parsed ${items.length} trending items from API',
           );
-
           // Debug: Log the trending items
           for (int i = 0; i < items.length; i++) {
             final item = items[i];
@@ -73,7 +72,6 @@ class MartFirestoreService extends GetxService {
               '[MART API]   ${i + 1}. ${item.name} - isTrending: ${item.isTrending}, price: ₹${item.price}',
             );
           }
-
           return items;
         } else {
           print('[MART API] ❌ API returned error: ${responseData['message']}');

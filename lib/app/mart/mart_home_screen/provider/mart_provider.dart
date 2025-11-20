@@ -1127,7 +1127,6 @@ class MartProvider extends ChangeNotifier {
       print('[MART CONTROLLER] 🔥 Firestore: Fetching trending items...');
       try {
         final items = await _firestoreService.getTrendingItems(limit: 20);
-
         if (items.isNotEmpty) {
           // Stream the data as it becomes available
           trendingItems.clear();

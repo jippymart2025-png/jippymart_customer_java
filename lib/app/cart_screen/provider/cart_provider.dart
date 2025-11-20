@@ -1354,7 +1354,6 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       // Clear cart items from memory
       HomeProvider.cartItem.clear();
-      // Clear cart from database
       await DatabaseHelper.instance.deleteAllCartProducts();
       subTotal = 0.0;
       totalAmount = 0.0;

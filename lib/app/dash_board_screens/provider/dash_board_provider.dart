@@ -5,8 +5,10 @@ import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/favourite_screens/favourite_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/home_screen_two.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/order_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -14,6 +16,8 @@ import 'package:get/get.dart';
 class DashBoardProvider extends ChangeNotifier {
   void changeNavbar(
     int index,
+    HomeProvider homeProvider,
+    SplashProvider splashProvider,
     CartControllerProvider cartControllerProvider,
     OrderProvider orderProvider,
     BuildContext context,
@@ -21,6 +25,11 @@ class DashBoardProvider extends ChangeNotifier {
     if (index >= 0 && index < pageList.length) {
       selectedIndex = index;
       notifyListeners();
+      if (index == 0) {
+        if (homeProvider.bannerModel.isEmpty) {
+          splashProvider.refreshFunction(context);
+        }
+      }
       if (index == 2) {
         cartControllerProvider.initFunction(context);
       }

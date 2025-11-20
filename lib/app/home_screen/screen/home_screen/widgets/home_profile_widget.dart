@@ -32,7 +32,7 @@ Widget homeProfileAddressWidget({
         builder: (context, myProfileProvider, _) {
           return InkWell(
             onTap: () {
-              myProfileProvider.initFunction();
+              myProfileProvider.initFunction(context: context);
               Get.to(const ProfileScreen());
             },
             child: buildProfileAvatar(),
