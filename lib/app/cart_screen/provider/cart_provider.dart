@@ -521,7 +521,7 @@ class CartControllerProvider extends ChangeNotifier {
         Uri.parse('${AppConst.baseUrl}mobile/surge-rules/admin-fee'),
         headers: await getHeaders(),
       );
-
+      print("getAdminSurgeFee ${response.body} ");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
 
@@ -1415,6 +1415,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (martVendor != null) {
         vendorModel = VendorModel(
           id: martVendor.id,
+          author: martVendor.author,
           title: martVendor.title,
           latitude: martVendor.latitude,
           longitude: martVendor.longitude,
@@ -1477,6 +1478,7 @@ class CartControllerProvider extends ChangeNotifier {
             if (martVendor != null) {
               vendorModel = VendorModel(
                 id: martVendor.id,
+                author: martVendor.author,
                 title: martVendor.title,
                 latitude: martVendor.latitude,
                 longitude: martVendor.longitude,
@@ -1508,6 +1510,7 @@ class CartControllerProvider extends ChangeNotifier {
                 vendorModel = value;
                 _cachedVendorModel = value;
                 _updateCacheTime();
+                notifyListeners();
               }
             });
             notifyListeners();
@@ -2967,7 +2970,6 @@ class CartControllerProvider extends ChangeNotifier {
             .map((product) => {"id": product.id, "quantity": product.quantity})
             .toList(),
       };
-      // Make API call to rollback failed order
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}/mobile/orders/rollback-failed'),
         headers: await getHeaders(),
@@ -3020,6 +3022,13 @@ class CartControllerProvider extends ChangeNotifier {
     } else {}
     notifyListeners();
     return await _setOrderInternal();
+  }
+
+  void providerInitializer({required BuildContext context}) {
+    orderPlacingProvider = Provider.of<OrderPlacingProvider>(
+      context,
+      listen: false,
+    );
   }
 
   ///issue finded
@@ -3165,15 +3174,15 @@ class CartControllerProvider extends ChangeNotifier {
       if (responseData['success'] != true) {
         throw Exception('API returned error: ${responseData['message']}');
       }
+
+      ///finded new
       print('✅ Order created successfully via API');
-      notifyListeners();
       final additionalTasks = <Future>[];
       if (selectedCouponModel.id != null &&
           selectedCouponModel.id!.isNotEmpty) {
         additionalTasks.add(markCouponAsUsed(selectedCouponModel.id!));
         notifyListeners();
       }
-      // Create order billing record via API if needed
       String adminFee = "0";
       if (surgePercent > 0) {
         adminFee = await getAdminSurgeFee();
@@ -3187,8 +3196,11 @@ class CartControllerProvider extends ChangeNotifier {
           adminFee,
         ),
       );
-      notifyListeners();
+      print(
+        " additionalTasks author  ${vendorModel.id}   ${vendorModel.author}",
+      );
       if (vendorModel.id != null && vendorModel.author != null) {
+        print(" additionalTasks author ");
         additionalTasks.add(
           AddressListProvider.getUserProfile(
             vendorModel.author.toString(),
@@ -3211,6 +3223,10 @@ class CartControllerProvider extends ChangeNotifier {
           }),
         );
       }
+      print(
+        " additionalTasks author1  ${vendorModel.id}   ${vendorModel.author}",
+      );
+
       additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
       await Future.wait(additionalTasks);
       isPaymentInProgress = false;
@@ -3222,14 +3238,13 @@ class CartControllerProvider extends ChangeNotifier {
       endOrderProcessing();
       notifyListeners();
       // Navigate to order success screen
-
       orderPlacingProvider.initFunction(orderModels: orderModel);
       Get.off(const OrderPlacingScreen());
       notifyListeners();
     } catch (e) {
+      print("OrderPlacingScreen  $e");
       ShowToastDialog.closeLoader();
       endOrderProcessing();
-
       if (isPaymentCompleted && _lastPaymentId != null) {
         // Don't reset payment state here - let user retry
         ShowToastDialog.showToast(
@@ -3242,7 +3257,6 @@ class CartControllerProvider extends ChangeNotifier {
           "Failed to place order. Please try again.".tr,
         );
       }
-
       if (orderId != null) {
         await rollbackFailedOrder(orderId, orderedProducts);
       }
@@ -3264,15 +3278,13 @@ class CartControllerProvider extends ChangeNotifier {
         'created_at': DateTime.now().toIso8601String(),
         'surge_fee': surgePercent,
         'admin_surge_fee': adminFee,
-        'total_surge_fee': "${surgePercent + int.parse(adminFee)}",
       };
-
+      print("billingPayload ${billingPayload} ");
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}order-billing'),
         headers: await getHeaders(),
         body: json.encode(billingPayload),
       );
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('✅ Order billing created successfully');
       } else {
@@ -3284,7 +3296,6 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   CodSettingModel cashOnDeliverySettingModel = CodSettingModel();
-
   RazorPayModel razorPayModel = RazorPayModel();
 
   getPaymentSettings() async {

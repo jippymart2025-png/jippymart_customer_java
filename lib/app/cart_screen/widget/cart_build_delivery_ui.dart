@@ -172,7 +172,7 @@ tipsDialog(CartControllerProvider controller) {
                   vertical: 14,
                 ),
                 child: Text(
-                  "${Constant.currencyModel!.symbol}".tr,
+                  "₹".tr,
                   style: TextStyle(
                     color: AppThemeData.grey900,
                     fontFamily: AppThemeData.semiBold,

@@ -99,15 +99,12 @@ class LoginProvider extends ChangeNotifier {
       return;
     }
     this.countryCode = countryCode;
-
     String cleanCountryCode = countryCode.replaceAll('+', '');
     String fullPhoneNumber = '$cleanCountryCode$phone';
-
     print('[DEBUG] sendOtp() called with full phone: $fullPhoneNumber');
     print(
       '[DEBUG] Country code: $countryCode, Clean country code: $cleanCountryCode',
     );
-
     ShowToastDialog.showLoader("Please wait".tr);
     try {
       phoneNumber = fullPhoneNumber;

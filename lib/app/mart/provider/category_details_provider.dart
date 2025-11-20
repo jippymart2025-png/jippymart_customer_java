@@ -88,10 +88,12 @@ class CategoryDetailsProvider extends ChangeNotifier {
       );
 
       parentCategoryImageUrl = parentCategory.photo ?? '';
+      notifyListeners();
       print(
         '[CATEGORY DETAIL] 📸 Parent category image URL: $parentCategoryImageUrl',
       );
     } catch (e) {
+      notifyListeners();
       print('[CATEGORY DETAIL] ❌ Error loading parent category image: $e');
     }
   }
@@ -189,7 +191,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
             '[CATEGORY DETAIL] ⚠️ No subcategories found, fallback to parent',
           );
         }
-
+        notifyListeners();
         // if (subcategories.isNotEmpty) {
         //   selectedSubCategoryId = subcategories.first.id ?? '';
         //   print(
@@ -205,20 +207,24 @@ class CategoryDetailsProvider extends ChangeNotifier {
         );
         // If no subcategories found, we'll still use the main category
         selectedSubCategoryId = categoryId;
+        notifyListeners();
       }
     } catch (e) {
       print('[CATEGORY DETAIL] ❌ Error loading subcategories: $e');
       errorMessage = 'Unable to load subcategories';
       // Fallback to using main category
       selectedSubCategoryId = categoryId;
+      notifyListeners();
     } finally {
       isLoadingSubcategories = false;
+      notifyListeners();
     }
   }
 
   /// Select a subcategory
   void selectSubCategory(String subcategoryId) {
     selectedSubCategoryId = subcategoryId;
+    notifyListeners();
     print('[CATEGORY DETAIL] 🔄 Selected subcategory: $subcategoryId');
     print('[CATEGORY DETAIL] 🔄 Current category ID: $categoryId');
     print('[CATEGORY DETAIL] 🔄 This will trigger product stream update');
@@ -227,6 +233,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
   /// Select a filter and update the UI
   void selectFilter(String? filterType) {
     selectedFilter = filterType ?? '';
+    notifyListeners();
     print('[CATEGORY DETAIL] 🔄 Selected filter: $filterType');
   }
 
@@ -234,6 +241,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
   void updateSearchQuery(String query) {
     searchQuery = query;
     print('[CATEGORY DETAIL] 🔍 Search query updated: $query');
+    notifyListeners();
   }
 
   /// Refresh data (for RefreshIndicator)
@@ -246,6 +254,7 @@ class CategoryDetailsProvider extends ChangeNotifier {
 
     // The StreamBuilder will automatically refresh the product data
     await Future.delayed(const Duration(milliseconds: 500));
+    notifyListeners();
     print('[CATEGORY DETAIL] ✅ Data refresh completed');
   }
 

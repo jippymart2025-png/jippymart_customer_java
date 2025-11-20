@@ -283,6 +283,7 @@ class MartProvider extends ChangeNotifier {
     final StreamController<List<MartBannerModel>> controller =
         StreamController<List<MartBannerModel>>();
     String? customerZoneId = Constant.selectedZone?.id;
+
     Future<void> fetchBanners() async {
       try {
         final response = await http.get(
@@ -290,17 +291,20 @@ class MartProvider extends ChangeNotifier {
           headers: await getHeaders(),
         );
         print("getMartBottomBannersStream ${response.body}");
+
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseData = json.decode(response.body);
           if (responseData['success'] == true) {
             List<MartBannerModel> bannerList = [];
             List<MartBannerModel> filteredBannerList = [];
+
             for (var bannerData in responseData['data']) {
-              MartBannerModel banner = MartBannerModel.fromJson({
-                ...bannerData,
-                'id': bannerData['id'].toString(),
-              });
+              // Remove the redundant id conversion - just pass bannerData directly
+              MartBannerModel banner = MartBannerModel.fromJson(bannerData);
               bannerList.add(banner);
+              print(
+                "getMartBottomBannersStream ${banner.id} ${banner.categoryId} ${banner.zoneId} ",
+              );
               bool shouldShowBanner = false;
               if (banner.zoneId == null || banner.zoneId!.isEmpty) {
                 shouldShowBanner = true;
@@ -330,6 +334,7 @@ class MartProvider extends ChangeNotifier {
           controller.add(<MartBannerModel>[]);
         }
       } catch (error) {
+        print("Error fetching banners: $error");
         controller.add(<MartBannerModel>[]);
       }
     }
@@ -339,6 +344,71 @@ class MartProvider extends ChangeNotifier {
 
     return controller.stream;
   }
+
+  //finded
+  // static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
+  //   final StreamController<List<MartBannerModel>> controller =
+  //       StreamController<List<MartBannerModel>>();
+  //   String? customerZoneId = Constant.selectedZone?.id;
+  //   Future<void> fetchBanners() async {
+  //     try {
+  //       final response = await http.get(
+  //         Uri.parse('${AppConst.baseUrl}banners/top'),
+  //         headers: await getHeaders(),
+  //       );
+  //       print("getMartBottomBannersStream ${response.body}");
+  //       if (response.statusCode == 200) {
+  //         final Map<String, dynamic> responseData = json.decode(response.body);
+  //         if (responseData['success'] == true) {
+  //           List<MartBannerModel> bannerList = [];
+  //           List<MartBannerModel> filteredBannerList = [];
+  //           for (var bannerData in responseData['data']) {
+  //             MartBannerModel banner = MartBannerModel.fromJson({
+  //               ...bannerData,
+  //               'id': bannerData['id'].toString(),
+  //             });
+  //             bannerList.add(banner);
+  //             print(
+  //               "getMartBottomBannersStream ${banner.id} ${banner.categoryId} ${banner.zoneId} ",
+  //             );
+  //             bool shouldShowBanner = false;
+  //             if (banner.zoneId == null || banner.zoneId!.isEmpty) {
+  //               shouldShowBanner = true;
+  //             } else if (customerZoneId == null || customerZoneId.isEmpty) {
+  //               shouldShowBanner = true;
+  //             } else if (banner.zoneId == customerZoneId) {
+  //               shouldShowBanner = true;
+  //             }
+  //
+  //             if (shouldShowBanner) {
+  //               filteredBannerList.add(banner);
+  //             }
+  //           }
+  //
+  //           // Sort by set_order in memory
+  //           filteredBannerList.sort((a, b) {
+  //             int orderA = a.setOrder ?? 0;
+  //             int orderB = b.setOrder ?? 0;
+  //             return orderA.compareTo(orderB);
+  //           });
+  //
+  //           controller.add(filteredBannerList);
+  //         } else {
+  //           controller.add(<MartBannerModel>[]);
+  //         }
+  //       } else {
+  //         controller.add(<MartBannerModel>[]);
+  //       }
+  //     } catch (error) {
+  //       controller.add(<MartBannerModel>[]);
+  //     }
+  //   }
+  //
+  //   // Initial fetch
+  //   fetchBanners();
+  //
+  //   return controller.stream;
+  // }
 
   /// Initialize banner streams with lazy loading
   void _initializeBannerStreams() {

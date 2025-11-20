@@ -60,7 +60,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
                     Expanded(
                       child: Align(
                         alignment: Alignment.topLeft,
-                        // 🔑 Ensure content starts from top-left
                         child: _buildProductContent(controller),
                       ),
                     ),
@@ -108,9 +107,7 @@ class MartCategoryDetailScreen extends StatelessWidget {
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
               ),
-
               const SizedBox(width: 12),
-
               // Title
               Expanded(
                 child: Text(
@@ -147,7 +144,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            // All items filter
             _buildFilterChip(
               controller,
               'All',
@@ -155,42 +151,31 @@ class MartCategoryDetailScreen extends StatelessWidget {
               null,
               isDefault: true,
             ),
-
             const SizedBox(width: 6), // 🔑 Reduced from 8 to 6
-            // Best sellers filter
             _buildFilterChip(
               controller,
               'Best Sellers',
               Icons.star,
               'best_sellers',
             ),
-
             const SizedBox(width: 6), // 🔑 Reduced from 8 to 6
-            // Featured filter
             _buildFilterChip(
               controller,
               'Featured',
               Icons.featured_play_list,
               'featured',
             ),
-
             const SizedBox(width: 6), // 🔑 Reduced from 8 to 6
-            // New items filter
             _buildFilterChip(controller, 'New', Icons.new_releases, 'new'),
-
             const SizedBox(width: 8),
-
-            // Trending filter
             _buildFilterChip(
               controller,
               'Trending',
               Icons.trending_up,
               'trending',
             ),
-
             const SizedBox(width: 8),
 
-            // Seasonal filter
             _buildFilterChip(
               controller,
               'Seasonal',
@@ -777,7 +762,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
           print(
             '[PRODUCT STREAM] ✅ Successfully fetched ${products.length} products',
           );
-
           // Yield the products as a stream
           yield products;
         } else {

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/chat_screens/ChatVideoContainer.dart';
@@ -114,7 +115,7 @@ class FireStoreUtils {
         Uri.parse('${AppConst.baseUrl}restaurants/$vendorId'),
         headers: await getHeaders(),
       );
-      print("getVendorById ${response.body}  ");
+      dev.log("getVendorById ${response.body}  ");
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
@@ -581,6 +582,8 @@ class FireStoreUtils {
   static Future<List<OrderModel>> getAllOrder() async {
     List<OrderModel> list = [];
     final currentUid = await SqlStorageConst.getFirebaseId();
+
+    print(" userId   $currentUid  ");
     if (kDebugMode) {
       print('Current UID: $currentUid');
     }
@@ -592,7 +595,7 @@ class FireStoreUtils {
     }
     try {
       final Map<String, String> queryParams = {
-        'authorId': currentUid,
+        'author_id': currentUid,
         // 'filter': 'cancelled',
         // 'filter': 'rejected',
         // 'filter': 'pending',
@@ -600,25 +603,20 @@ class FireStoreUtils {
         // 'filter': 'completed',
       };
       final uri = Uri.parse(
-        '${AppConst.baseUrl}orders',
+        '${AppConst.baseUrl}firestore/orders',
       ).replace(queryParameters: queryParams);
-
       if (kDebugMode) {
         print('API URL: $uri');
       }
-
-      // Make API call
       final response = await http.get(uri, headers: await getHeaders());
-
       if (kDebugMode) {
         print('API Response Status: ${response.statusCode}');
         print('API Response Body: ${response.body}');
       }
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          final List<dynamic> ordersData = responseData['data'];
+          final List<dynamic> ordersData = responseData['data']['orders'];
           if (kDebugMode) {
             print('Found ${ordersData.length} orders in API response');
           }
@@ -1189,7 +1187,6 @@ class FireStoreUtils {
                 startTime.compareTo(Timestamp.now()) <= 0 &&
                 endTime.compareTo(Timestamp.now()) >= 0;
           }
-
           print('[DEBUG] Promotion active status: $isActive');
           print('[DEBUG] ===== ULTRA-FAST API FETCH COMPLETE =====');
 

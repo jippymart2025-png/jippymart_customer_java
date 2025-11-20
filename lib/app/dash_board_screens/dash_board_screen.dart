@@ -1,5 +1,6 @@
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:flutter/material.dart';
@@ -39,8 +40,8 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<DashBoardProvider, CartControllerProvider>(
-      builder: (context, controller, cartControllerProvider, _) {
+    return Consumer3<DashBoardProvider, CartControllerProvider, OrderProvider>(
+      builder: (context, controller, cartControllerProvider, orderProvider, _) {
         if (controller.pageList.isEmpty) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
@@ -66,17 +67,20 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                 SystemNavigator.pop();
               }
             } else {
-              controller.changeNavbar(0, cartControllerProvider, context);
+              controller.changeNavbar(
+                0,
+                cartControllerProvider,
+                orderProvider,
+                context,
+              );
             }
           },
           child: Scaffold(
-            body: IndexedStack(
-              index: safeIndex,
-              children: controller.pageList,
-            ),
+            body: IndexedStack(index: safeIndex, children: controller.pageList),
             bottomNavigationBar: _buildBottomNavigationBar(
               controller,
               cartControllerProvider,
+              orderProvider,
               context,
             ),
           ),
@@ -88,6 +92,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
   Widget _buildBottomNavigationBar(
     DashBoardProvider controller,
     CartControllerProvider cartControllerProvider,
+    OrderProvider orderProvider,
     BuildContext context,
   ) {
     final List<BottomNavigationBarItem> items = [
@@ -132,6 +137,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
         controller.changeNavbar(
           index.clamp(0, items.length - 1),
           cartControllerProvider,
+          orderProvider,
           context,
         );
       },
