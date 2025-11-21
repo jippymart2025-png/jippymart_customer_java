@@ -82,15 +82,10 @@ void main() async {
   await PlatformANRPrevention.preventMIUIANR();
   await PlatformANRPrevention.preventCiscoANR();
   try {
-    // Initialize Firebase with timeout
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 3));
-    // FirebaseFirestore.instance.settings = const Settings(
-    //   persistenceEnabled: true,
-    //   cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
-    //   sslEnabled: true,
-    // );
+
     ANRMonitor.startMonitoring();
     MemoryMonitor.startMemoryMonitoring();
     NativeLockPrevention.startLockContentionMonitoring();
