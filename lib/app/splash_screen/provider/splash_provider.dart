@@ -41,7 +41,6 @@ class SplashProvider extends ChangeNotifier {
   //     });
   //   }
   // }
-
   void refreshFunction(BuildContext context) async {
     await _loadUserDataFromStorage();
     homeProvider.initFunction(context: context);

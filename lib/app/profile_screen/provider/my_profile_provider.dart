@@ -109,6 +109,7 @@ class MyProfileProvider extends ChangeNotifier {
         );
         if (userModel != null) {
           Constant.userModel = userModel;
+          notifyListeners();
           log('[PROFILE_SCREEN] Set Constant.userModel: ${userModel.toJson()}');
         } else {
           log('[PROFILE_SCREEN] Failed to load user model');

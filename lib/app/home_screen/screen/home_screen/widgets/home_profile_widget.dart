@@ -41,177 +41,185 @@ Widget homeProfileAddressWidget({
       ),
       const SizedBox(width: 10),
       Expanded(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Constant.userModel == null
-                ? InkWell(
-                    onTap: () {
-                      Get.offAll(const PhoneNumberScreen());
-                    },
-                    child: Text(
-                      "Login".tr,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        fontFamily: AppThemeData.medium,
-                        color: AppThemeData.grey900,
-                        fontSize: 12,
+        child: Consumer<MyProfileProvider>(
+          builder: (context, myProfileProvider, _) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Constant.userModel == null
+                    ? InkWell(
+                        onTap: () {
+                          Get.offAll(const PhoneNumberScreen());
+                        },
+                        child: Text(
+                          "Login".tr,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontFamily: AppThemeData.medium,
+                            color: AppThemeData.grey900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      )
+                    : Text(
+                        Constant.userModel?.fullName().toString() ?? '',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontFamily: AppThemeData.medium,
+                          color: AppThemeData.grey900,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  )
-                : Text(
-                    Constant.userModel!.fullName().toString(),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontFamily: AppThemeData.medium,
-                      color: AppThemeData.grey900,
-                      fontSize: 12,
-                    ),
-                  ),
-            Consumer2<AddressListProvider, HomeProvider>(
-              builder: (context, addressListProvider, homeProviderConsumer, _) {
-                return InkWell(
-                  onTap: () async {
-                    if (Constant.userModel != null) {
-                      addressListProvider.initFunction(context: context);
-                      Get.to(const AddressListScreen())?.then((value) {
-                        if (value != null) {
-                          homeProvider.changeLocationAddressFunction(
-                            addressModel: value,
-                            context: context,
-                          );
-                        }
-                      });
-                    } else {
-                      Constant.checkPermission(
-                        onTap: () async {
-                          ShowToastDialog.showLoader("Please wait".tr);
-                          ShippingAddress addressModel = ShippingAddress();
-                          try {
-                            await Geolocator.requestPermission();
-                            await Geolocator.getCurrentPosition();
-                            ShowToastDialog.closeLoader();
-                            if (Constant.selectedMapType == 'osm') {
-                              final result = await Get.to(
-                                () => MapPickerPage(),
+                Consumer2<AddressListProvider, HomeProvider>(
+                  builder: (context, addressListProvider, homeProviderConsumer, _) {
+                    return InkWell(
+                      onTap: () async {
+                        if (Constant.userModel != null) {
+                          addressListProvider.initFunction(context: context);
+                          Get.to(const AddressListScreen())?.then((value) {
+                            if (value != null) {
+                              homeProvider.changeLocationAddressFunction(
+                                addressModel: value,
+                                context: context,
                               );
-                              if (result != null) {
-                                final firstPlace = result;
-                                final lat = firstPlace.coordinates.latitude;
-                                final lng = firstPlace.coordinates.longitude;
-                                final address = firstPlace.address;
-                                addressModel.addressAs = "Home";
-                                addressModel.locality = address.toString();
-                                addressModel.address = address
-                                    .toString(); // Set address field too
-                                addressModel.location = UserLocation(
-                                  latitude: lat,
-                                  longitude: lng,
-                                );
+                            }
+                          });
+                        } else {
+                          Constant.checkPermission(
+                            onTap: () async {
+                              ShowToastDialog.showLoader("Please wait".tr);
+                              ShippingAddress addressModel = ShippingAddress();
+                              try {
+                                await Geolocator.requestPermission();
+                                await Geolocator.getCurrentPosition();
+                                ShowToastDialog.closeLoader();
+                                if (Constant.selectedMapType == 'osm') {
+                                  final result = await Get.to(
+                                    () => MapPickerPage(),
+                                  );
+                                  if (result != null) {
+                                    final firstPlace = result;
+                                    final lat = firstPlace.coordinates.latitude;
+                                    final lng =
+                                        firstPlace.coordinates.longitude;
+                                    final address = firstPlace.address;
+                                    addressModel.addressAs = "Home";
+                                    addressModel.locality = address.toString();
+                                    addressModel.address = address
+                                        .toString(); // Set address field too
+                                    addressModel.location = UserLocation(
+                                      latitude: lat,
+                                      longitude: lng,
+                                    );
+                                    homeProvider.changeLocationAddressFunction(
+                                      addressModel: addressModel,
+                                      context: context,
+                                    );
+                                    Get.back();
+                                  }
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PlacePicker(
+                                        apiKey: Constant.mapAPIKey,
+                                        onPlacePicked: (result) async {
+                                          ShippingAddress addressModel =
+                                              ShippingAddress();
+                                          addressModel.addressAs = "Home";
+                                          addressModel.locality = result
+                                              .formattedAddress!
+                                              .toString();
+                                          addressModel.address = result
+                                              .formattedAddress!
+                                              .toString(); // Set address field too
+                                          addressModel.location = UserLocation(
+                                            latitude:
+                                                result.geometry!.location.lat,
+                                            longitude:
+                                                result.geometry!.location.lng,
+                                          );
+                                          homeProvider
+                                              .changeLocationAddressFunction(
+                                                addressModel: addressModel,
+                                                context: context,
+                                              );
+                                          Get.back();
+                                        },
+                                        initialPosition: const LatLng(
+                                          -33.8567844,
+                                          151.213108,
+                                        ),
+                                        useCurrentLocation: true,
+                                        selectInitialPosition: true,
+                                        usePinPointingSearch: true,
+                                        usePlaceDetailSearch: true,
+                                        zoomGesturesEnabled: true,
+                                        zoomControlsEnabled: true,
+                                        resizeToAvoidBottomInset:
+                                            false, // only works in page mode, less flickery, remove if wrong offsets
+                                      ),
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                print("placemarkFromCoordinates $e");
+                                await placemarkFromCoordinates(
+                                  19.228825,
+                                  72.854118,
+                                ).then((valuePlaceMaker) {
+                                  Placemark placeMark = valuePlaceMaker[0];
+                                  addressModel.addressAs = "Home";
+                                  addressModel.location = UserLocation(
+                                    latitude: 19.228825,
+                                    longitude: 72.854118,
+                                  );
+                                  String currentLocation =
+                                      "${placeMark.name}, ${placeMark.subLocality}, ${placeMark.locality}, ${placeMark.administrativeArea}, ${placeMark.postalCode}, ${placeMark.country}";
+                                  addressModel.locality = currentLocation;
+                                  addressModel.address =
+                                      currentLocation; // Set address field too
+                                });
+                                ShowToastDialog.closeLoader();
                                 homeProvider.changeLocationAddressFunction(
                                   addressModel: addressModel,
                                   context: context,
                                 );
-                                Get.back();
                               }
-                            } else {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => PlacePicker(
-                                    apiKey: Constant.mapAPIKey,
-                                    onPlacePicked: (result) async {
-                                      ShippingAddress addressModel =
-                                          ShippingAddress();
-                                      addressModel.addressAs = "Home";
-                                      addressModel.locality = result
-                                          .formattedAddress!
-                                          .toString();
-                                      addressModel.address = result
-                                          .formattedAddress!
-                                          .toString(); // Set address field too
-                                      addressModel.location = UserLocation(
-                                        latitude: result.geometry!.location.lat,
-                                        longitude:
-                                            result.geometry!.location.lng,
-                                      );
-                                      homeProvider
-                                          .changeLocationAddressFunction(
-                                            addressModel: addressModel,
-                                            context: context,
-                                          );
-                                      Get.back();
-                                    },
-                                    initialPosition: const LatLng(
-                                      -33.8567844,
-                                      151.213108,
-                                    ),
-                                    useCurrentLocation: true,
-                                    selectInitialPosition: true,
-                                    usePinPointingSearch: true,
-                                    usePlaceDetailSearch: true,
-                                    zoomGesturesEnabled: true,
-                                    zoomControlsEnabled: true,
-                                    resizeToAvoidBottomInset:
-                                        false, // only works in page mode, less flickery, remove if wrong offsets
-                                  ),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            print("placemarkFromCoordinates $e");
-                            await placemarkFromCoordinates(
-                              19.228825,
-                              72.854118,
-                            ).then((valuePlaceMaker) {
-                              Placemark placeMark = valuePlaceMaker[0];
-                              addressModel.addressAs = "Home";
-                              addressModel.location = UserLocation(
-                                latitude: 19.228825,
-                                longitude: 72.854118,
-                              );
-                              String currentLocation =
-                                  "${placeMark.name}, ${placeMark.subLocality}, ${placeMark.locality}, ${placeMark.administrativeArea}, ${placeMark.postalCode}, ${placeMark.country}";
-                              addressModel.locality = currentLocation;
-                              addressModel.address =
-                                  currentLocation; // Set address field too
-                            });
-                            ShowToastDialog.closeLoader();
-                            homeProvider.changeLocationAddressFunction(
-                              addressModel: addressModel,
-                              context: context,
-                            );
-                          }
-                        },
-                        context: context,
-                      );
-                    }
-                  },
-                  child: Text.rich(
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    TextSpan(
-                      children: [
+                            },
+                            context: context,
+                          );
+                        }
+                      },
+                      child: Text.rich(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         TextSpan(
-                          text: Constant.selectedLocation.getFullAddress(),
-                          style: TextStyle(
-                            fontFamily: AppThemeData.medium,
-                            overflow: TextOverflow.ellipsis,
-                            color: AppThemeData.grey900,
-                            fontSize: 14,
-                          ),
+                          children: [
+                            TextSpan(
+                              text: Constant.selectedLocation.getFullAddress(),
+                              style: TextStyle(
+                                fontFamily: AppThemeData.medium,
+                                overflow: TextOverflow.ellipsis,
+                                color: AppThemeData.grey900,
+                                fontSize: 14,
+                              ),
+                            ),
+                            WidgetSpan(
+                              child: SvgPicture.asset(
+                                "assets/icons/ic_down.svg",
+                              ),
+                            ),
+                          ],
                         ),
-                        WidgetSpan(
-                          child: SvgPicture.asset("assets/icons/ic_down.svg"),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
         ),
       ),
       const SizedBox(width: 5),

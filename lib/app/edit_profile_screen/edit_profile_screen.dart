@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:jippymart_customer/app/edit_profile_screen/provider/edit_profile_provider.dart';
+import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -19,8 +21,8 @@ class EditProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<EditProfileProvider>(
-      builder: (context, controller, _) {
+    return Consumer3<EditProfileProvider, SplashProvider, MyProfileProvider>(
+      builder: (context, controller, splashProvider, myProfileProvider, _) {
         return Scaffold(
           appBar: AppBar(
             centerTitle: false,
@@ -200,6 +202,7 @@ class EditProfileScreen extends StatelessWidget {
                 fontSizes: 16,
                 onPress: () async {
                   await controller.saveData(context);
+                  myProfileProvider.initFunction(context: context);
                 },
               ),
             ),
