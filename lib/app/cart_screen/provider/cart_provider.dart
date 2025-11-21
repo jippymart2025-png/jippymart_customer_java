@@ -2902,7 +2902,6 @@ class CartControllerProvider extends ChangeNotifier {
           // If you have an API endpoint to update quantities, you would call it here:
           // await updateMartItemQuantity(tempProduc[i].id!.split('~').first, tempProduc[i].quantity!);
         } else {
-          // Existing Firebase logic for restaurant items
           await FireStoreUtils.getProductById(
             tempProduc[i].id!.split('~').first,
           ).then((value) async {
@@ -3056,6 +3055,7 @@ class CartControllerProvider extends ChangeNotifier {
     String? orderId;
     List<CartProductModel> orderedProducts = [];
     try {
+      tempProduc.clear();
       if ((Constant.isSubscriptionModelApplied == true ||
               Constant.adminCommission?.isEnabled == true) &&
           vendorModel.subscriptionPlan != null &&
@@ -3088,10 +3088,7 @@ class CartControllerProvider extends ChangeNotifier {
         'special_discount_label': specialDiscount,
         'specialType': specialType,
       };
-      // Create OrderModel instance for later use
       OrderModel orderModel = OrderModel();
-
-      // **REPLACED: Firebase query with API call**
       int maxNumber = 5;
       try {
         final response = await http.get(
@@ -3122,12 +3119,6 @@ class CartControllerProvider extends ChangeNotifier {
         // Continue with default maxNumber
       }
 
-      final nextNumber = maxNumber + 1;
-      String generatedOrderId =
-          'Jippy3${nextNumber.toString().padLeft(7, '0')}';
-      orderId = generatedOrderId;
-      orderModel.id = generatedOrderId;
-      print('DEBUG: Generated Order ID: $generatedOrderId');
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
@@ -3146,9 +3137,7 @@ class CartControllerProvider extends ChangeNotifier {
       orderModel.toPayAmount = totalAmount;
       orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime);
       notifyListeners();
-      // Prepare API request payload
       Map<String, dynamic> orderPayload = {
-        "order_id": generatedOrderId,
         "author_id": await SqlStorageConst.getFirebaseId(),
         "cart_items": tempProduc.map((item) => item.toJson()).toList(),
         "selected_address": {
@@ -3191,7 +3180,6 @@ class CartControllerProvider extends ChangeNotifier {
         const JsonEncoder.withIndent('  ').convert(orderPayload),
         name: "ORDER_PAYLOAD",
       );
-
       // **API CALL: Store the order**
       print('🌐 Creating order via API...');
       final response = await http.post(
@@ -3203,6 +3191,7 @@ class CartControllerProvider extends ChangeNotifier {
         throw Exception('API returned status code: ${response.statusCode}');
       }
       final responseData = json.decode(response.body);
+      orderModel.id = responseData['data']['order_id'];
       if (responseData['success'] != true) {
         throw Exception('API returned error: ${responseData['message']}');
       }
@@ -3222,7 +3211,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
       additionalTasks.add(
         _createOrderBilling(
-          generatedOrderId,
+          responseData['data']['order_id'],
           totalAmount.toString(),
           surgePercent.toInt(),
           adminFee,

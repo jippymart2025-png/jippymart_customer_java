@@ -8,17 +8,12 @@ import 'package:get/get.dart';
 class OrderDetailsProvider extends ChangeNotifier {
   bool isLoading = true;
 
-  void initFunction() {
-    getArgument();
-  }
-
   OrderModel orderModel = OrderModel();
 
-  getArgument() async {
-    dynamic argumentData = Get.arguments;
-    if (argumentData != null) {
-      orderModel = argumentData['orderModel'];
-    }
+  initFunction({required OrderModel orderModels}) async {
+    orderModel = orderModels;
+    print("orderModel ${orderModel.id} ");
+    notifyListeners();
     calculatePrice();
     notifyListeners();
   }

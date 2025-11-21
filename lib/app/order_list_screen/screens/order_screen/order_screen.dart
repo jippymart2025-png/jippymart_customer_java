@@ -5,6 +5,7 @@ import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_pr
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/order_details_screen.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -574,26 +575,30 @@ class OrderScreen extends StatelessWidget {
                           )
                         : const SizedBox(),
                     Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          double? surgeFee = await fetchOrderSergeFee(
-                            orderModel.id ?? '',
-                          );
-                          Get.to(
-                            OrderDetailsScreen(surgeFee: surgeFee),
-                            arguments: {"orderModel": orderModel},
+                      child: Consumer<OrderDetailsProvider>(
+                        builder: (context, orderDetailsProvider, _) {
+                          return InkWell(
+                            onTap: () async {
+                              double? surgeFee = await fetchOrderSergeFee(
+                                orderModel.id ?? '',
+                              );
+                              orderDetailsProvider.initFunction(
+                                orderModels: orderModel,
+                              );
+                              Get.to(OrderDetailsScreen(surgeFee: surgeFee));
+                            },
+                            child: Text(
+                              "View Details".tr,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppThemeData.grey900,
+                                fontFamily: AppThemeData.semiBold,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
                           );
                         },
-                        child: Text(
-                          "View Details".tr,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppThemeData.grey900,
-                            fontFamily: AppThemeData.semiBold,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
                       ),
                     ),
                   ],
