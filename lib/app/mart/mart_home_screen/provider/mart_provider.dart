@@ -49,15 +49,24 @@ class MartProvider extends ChangeNotifier {
       // 🐾 Move "Pet Care" to the top if it exists
       if (uniqueCategoryTitles.contains('Pet Care')) {
         uniqueCategoryTitles.remove('Pet Care');
-        uniqueCategoryTitles.insert(7, 'Pet Care');
+        uniqueCategoryTitles.insert(
+          _safeInsertIndex(uniqueCategoryTitles.length, 7),
+          'Pet Care',
+        );
       }
       if (uniqueCategoryTitles.contains('Fruits & Vegetables')) {
         uniqueCategoryTitles.remove('Fruits & Vegetables');
-        uniqueCategoryTitles.insert(0, 'Fruits & Vegetables');
+        uniqueCategoryTitles.insert(
+          _safeInsertIndex(uniqueCategoryTitles.length, 0),
+          'Fruits & Vegetables',
+        );
       }
       if (uniqueCategoryTitles.contains('Cooking Essentials')) {
         uniqueCategoryTitles.remove('Cooking Essentials');
-        uniqueCategoryTitles.insert(1, 'Cooking Essentials');
+        uniqueCategoryTitles.insert(
+          _safeInsertIndex(uniqueCategoryTitles.length, 1),
+          'Cooking Essentials',
+        );
       }
       print(
         '[MART CONTROLLER] ✅ Loaded ${uniqueCategoryTitles.length} unique categories:',
@@ -72,6 +81,16 @@ class MartProvider extends ChangeNotifier {
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error loading products by category: $e');
     }
+  }
+
+  int _safeInsertIndex(int currentLength, int desiredIndex) {
+    if (desiredIndex <= 0) {
+      return 0;
+    }
+    if (desiredIndex >= currentLength) {
+      return currentLength;
+    }
+    return desiredIndex;
   }
 
   // Service injection
@@ -172,7 +191,6 @@ class MartProvider extends ChangeNotifier {
       print('[MART CONTROLLER] ==========================================');
       print('[MART CONTROLLER] 🔄 refreshData() called');
       print('[MART CONTROLLER] ==========================================');
-
       isLoading = true;
       errorMessage = "";
       // Reset homepage categories flag to allow reloading
@@ -265,6 +283,7 @@ class MartProvider extends ChangeNotifier {
     final StreamController<List<MartBannerModel>> controller =
         StreamController<List<MartBannerModel>>();
     String? customerZoneId = Constant.selectedZone?.id;
+
     Future<void> fetchBanners() async {
       try {
         final response = await http.get(
@@ -272,17 +291,20 @@ class MartProvider extends ChangeNotifier {
           headers: await getHeaders(),
         );
         print("getMartBottomBannersStream ${response.body}");
+
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseData = json.decode(response.body);
           if (responseData['success'] == true) {
             List<MartBannerModel> bannerList = [];
             List<MartBannerModel> filteredBannerList = [];
+
             for (var bannerData in responseData['data']) {
-              MartBannerModel banner = MartBannerModel.fromJson({
-                ...bannerData,
-                'id': bannerData['id'].toString(),
-              });
+              // Remove the redundant id conversion - just pass bannerData directly
+              MartBannerModel banner = MartBannerModel.fromJson(bannerData);
               bannerList.add(banner);
+              print(
+                "getMartBottomBannersStream ${banner.id} ${banner.categoryId} ${banner.zoneId} ",
+              );
               bool shouldShowBanner = false;
               if (banner.zoneId == null || banner.zoneId!.isEmpty) {
                 shouldShowBanner = true;
@@ -312,6 +334,7 @@ class MartProvider extends ChangeNotifier {
           controller.add(<MartBannerModel>[]);
         }
       } catch (error) {
+        print("Error fetching banners: $error");
         controller.add(<MartBannerModel>[]);
       }
     }
@@ -321,6 +344,71 @@ class MartProvider extends ChangeNotifier {
 
     return controller.stream;
   }
+
+  //finded
+  // static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
+  //   final StreamController<List<MartBannerModel>> controller =
+  //       StreamController<List<MartBannerModel>>();
+  //   String? customerZoneId = Constant.selectedZone?.id;
+  //   Future<void> fetchBanners() async {
+  //     try {
+  //       final response = await http.get(
+  //         Uri.parse('${AppConst.baseUrl}banners/top'),
+  //         headers: await getHeaders(),
+  //       );
+  //       print("getMartBottomBannersStream ${response.body}");
+  //       if (response.statusCode == 200) {
+  //         final Map<String, dynamic> responseData = json.decode(response.body);
+  //         if (responseData['success'] == true) {
+  //           List<MartBannerModel> bannerList = [];
+  //           List<MartBannerModel> filteredBannerList = [];
+  //           for (var bannerData in responseData['data']) {
+  //             MartBannerModel banner = MartBannerModel.fromJson({
+  //               ...bannerData,
+  //               'id': bannerData['id'].toString(),
+  //             });
+  //             bannerList.add(banner);
+  //             print(
+  //               "getMartBottomBannersStream ${banner.id} ${banner.categoryId} ${banner.zoneId} ",
+  //             );
+  //             bool shouldShowBanner = false;
+  //             if (banner.zoneId == null || banner.zoneId!.isEmpty) {
+  //               shouldShowBanner = true;
+  //             } else if (customerZoneId == null || customerZoneId.isEmpty) {
+  //               shouldShowBanner = true;
+  //             } else if (banner.zoneId == customerZoneId) {
+  //               shouldShowBanner = true;
+  //             }
+  //
+  //             if (shouldShowBanner) {
+  //               filteredBannerList.add(banner);
+  //             }
+  //           }
+  //
+  //           // Sort by set_order in memory
+  //           filteredBannerList.sort((a, b) {
+  //             int orderA = a.setOrder ?? 0;
+  //             int orderB = b.setOrder ?? 0;
+  //             return orderA.compareTo(orderB);
+  //           });
+  //
+  //           controller.add(filteredBannerList);
+  //         } else {
+  //           controller.add(<MartBannerModel>[]);
+  //         }
+  //       } else {
+  //         controller.add(<MartBannerModel>[]);
+  //       }
+  //     } catch (error) {
+  //       controller.add(<MartBannerModel>[]);
+  //     }
+  //   }
+  //
+  //   // Initial fetch
+  //   fetchBanners();
+  //
+  //   return controller.stream;
+  // }
 
   /// Initialize banner streams with lazy loading
   void _initializeBannerStreams() {
@@ -453,7 +541,7 @@ class MartProvider extends ChangeNotifier {
     selectedVendorName = vendor?.name ?? "Unknown Vendor";
 
     // Load vendor-specific data
-    loadVendorCategories(vendorId);
+    loadVendorCategories(vendorId: vendorId);
     loadVendorItems(vendorId);
   }
 
@@ -544,7 +632,7 @@ class MartProvider extends ChangeNotifier {
   }
 
   /// Load vendor-specific categories
-  Future<void> loadVendorCategories(String vendorId) async {
+  Future<void> loadVendorCategories({String? vendorId}) async {
     try {
       isCategoryLoading = true;
       errorMessage = "";
@@ -567,6 +655,7 @@ class MartProvider extends ChangeNotifier {
       errorMessage = "Failed to load vendor categories: $e";
     } finally {
       isCategoryLoading = false;
+      notifyListeners();
     }
   }
 
@@ -1039,7 +1128,6 @@ class MartProvider extends ChangeNotifier {
       print('[MART CONTROLLER] 🔥 Firestore: Fetching trending items...');
       try {
         final items = await _firestoreService.getTrendingItems(limit: 20);
-
         if (items.isNotEmpty) {
           // Stream the data as it becomes available
           trendingItems.clear();
@@ -1135,7 +1223,6 @@ class MartProvider extends ChangeNotifier {
       print(
         '[MART CONTROLLER] 📂 Streaming: Loading all categories from Firestore...',
       );
-
       // Try Firestore first (fastest path)
       try {
         final categories = await _firestoreService.getCategories(limit: 100);
@@ -1147,7 +1234,6 @@ class MartProvider extends ChangeNotifier {
           print(
             '[MART CONTROLLER] ✅ Streaming: All categories loaded from Firestore (${categories.length})',
           );
-
           // Load subcategories for categories that have them
           // await _loadSubcategoriesStreaming();
           // await loadAllHomepageSubcategories();

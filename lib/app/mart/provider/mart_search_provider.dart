@@ -4,6 +4,7 @@ import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/utils/utils/common.dart';
 
 class MartSearchProvider extends ChangeNotifier {
   // Search state
@@ -76,13 +77,7 @@ class MartSearchProvider extends ChangeNotifier {
       );
       print('[MART_SEARCH] 📡 API URL: $uri');
       final response = await http
-          .get(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          )
+          .get(uri, headers: await getHeaders())
           .timeout(const Duration(seconds: 10));
       print('[MART_SEARCH] 📡 API Response Status: ${response.statusCode}');
       print('[MART_SEARCH] 📡 API Response Body: ${response.body}');

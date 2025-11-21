@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
@@ -75,10 +77,16 @@ class StoryView extends StatelessWidget {
                     itemBuilder: (context, index) {
                       StoryModel storyModel =
                           bestRestaurantProvider.storyList[index];
+
                       return Padding(
                         padding: const EdgeInsets.only(right: 10),
                         child: InkWell(
                           onTap: () {
+                            log(
+                              bestRestaurantProvider.storyList[index].videoUrls
+                                  .toString(),
+                              name: "storyList ",
+                            );
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => MoreStories(

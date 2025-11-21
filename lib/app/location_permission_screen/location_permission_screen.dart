@@ -3,6 +3,7 @@ import 'package:jippymart_customer/app/address_screens/provider/address_list_pro
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/location_permission_screen/provider/location_permission_provider.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -68,125 +69,147 @@ class LocationPermissionScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  RoundedButtonFill(
-                    title: "Use Current Location".tr,
-                    color: AppThemeData.primary300,
-                    textColor: AppThemeData.grey50,
-                    onPress: () async {
-                      Constant.checkPermission(
-                        context: context,
-                        onTap: () async {
-                          try {
-                            bool success =
-                                await LocationService.updateLocationAndNavigate(
-                                  showLoader: true,
-                                  showError: true,
+                  Consumer<SplashProvider>(
+                    builder: (context, splashProvider, _) {
+                      return RoundedButtonFill(
+                        title: "Use Current Location".tr,
+                        color: AppThemeData.primary300,
+                        textColor: AppThemeData.grey50,
+                        onPress: () async {
+                          Constant.checkPermission(
+                            context: context,
+                            onTap: () async {
+                              try {
+                                bool success =
+                                    await LocationService.updateLocationAndNavigate(
+                                      showLoader: true,
+                                      showError: true,
+                                    );
+                                if (success) {
+                                  splashProvider.refreshFunction(
+                                    Get.context ?? context,
+                                  );
+                                  Get.offAll(const DashBoardScreen());
+                                }
+                              } catch (e) {
+                                print('[LOCATION_PERMISSION] Error: $e');
+                                ShowToastDialog.showToast(
+                                  "Failed to get location. Please try again."
+                                      .tr,
                                 );
-                            if (success) {
-                              Get.offAll(const DashBoardScreen());
-                            }
-                          } catch (e) {
-                            print('[LOCATION_PERMISSION] Error: $e');
-                            ShowToastDialog.showToast(
-                              "Failed to get location. Please try again.".tr,
-                            );
-                          }
+                              }
+                            },
+                          );
                         },
                       );
                     },
                   ),
                   const SizedBox(height: 10),
-                  RoundedButtonFill(
-                    title: "Set From Map".tr,
-                    color: AppThemeData.primary300,
-                    textColor: AppThemeData.grey50,
-                    icon: Padding(
-                      padding: const EdgeInsets.only(right: 10),
-                      child: SvgPicture.asset(
-                        "assets/icons/ic_location_pin.svg",
-                        colorFilter: const ColorFilter.mode(
-                          AppThemeData.grey50,
-                          BlendMode.srcIn,
+                  Consumer<SplashProvider>(
+                    builder: (context, splashProvider, _) {
+                      return RoundedButtonFill(
+                        title: "Set From Map".tr,
+                        color: AppThemeData.primary300,
+                        textColor: AppThemeData.grey50,
+                        icon: Padding(
+                          padding: const EdgeInsets.only(right: 10),
+                          child: SvgPicture.asset(
+                            "assets/icons/ic_location_pin.svg",
+                            colorFilter: const ColorFilter.mode(
+                              AppThemeData.grey50,
+                              BlendMode.srcIn,
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                    isRight: false,
-                    onPress: () async {
-                      Constant.checkPermission(
-                        context: context,
-                        onTap: () async {
-                          try {
-                            if (Constant.selectedMapType == 'osm') {
-                              final result = await Get.to(
-                                () => MapPickerPage(),
-                              );
-                              if (result != null) {
-                                final firstPlace = result;
-                                final lat = firstPlace.coordinates.latitude;
-                                final lng = firstPlace.coordinates.longitude;
-                                final address = firstPlace.address;
-                                ShippingAddress addressModel =
-                                    ShippingAddress();
-                                addressModel.addressAs = "Home";
-                                addressModel.locality = address.toString();
-                                addressModel.location = UserLocation(
-                                  latitude: lat,
-                                  longitude: lng,
-                                );
-                                Constant.selectedLocation = addressModel;
-                                await updateLocationInLocal(
-                                  addressModel.location!,
-                                );
-                                Get.offAll(const DashBoardScreen());
-                              }
-                            } else {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => PlacePicker(
-                                    apiKey: Constant.mapAPIKey,
-                                    onPlacePicked: (result) {
-                                      ShippingAddress addressModel =
-                                          ShippingAddress();
-                                      addressModel.addressAs = "Home";
-                                      addressModel.locality = result
-                                          .formattedAddress!
-                                          .toString();
-                                      addressModel.location = UserLocation(
-                                        latitude: result.geometry!.location.lat,
-                                        longitude:
-                                            result.geometry!.location.lng,
-                                      );
-                                      Constant.selectedLocation = addressModel;
-                                      updateLocationInLocal(
-                                        addressModel.location!,
-                                      ).then((_) {
-                                        Get.offAll(const DashBoardScreen());
-                                      });
-                                    },
-                                    initialPosition: const LatLng(
-                                      -33.8567844,
-                                      151.213108,
+                        isRight: false,
+                        onPress: () async {
+                          Constant.checkPermission(
+                            context: context,
+                            onTap: () async {
+                              try {
+                                if (Constant.selectedMapType == 'osm') {
+                                  final result = await Get.to(
+                                    () => MapPickerPage(),
+                                  );
+                                  if (result != null) {
+                                    final firstPlace = result;
+                                    final lat = firstPlace.coordinates.latitude;
+                                    final lng =
+                                        firstPlace.coordinates.longitude;
+                                    final address = firstPlace.address;
+                                    ShippingAddress addressModel =
+                                        ShippingAddress();
+                                    addressModel.addressAs = "Home";
+                                    addressModel.locality = address.toString();
+                                    addressModel.location = UserLocation(
+                                      latitude: lat,
+                                      longitude: lng,
+                                    );
+                                    Constant.selectedLocation = addressModel;
+                                    await updateLocationInLocal(
+                                      addressModel.location!,
+                                    );
+                                    splashProvider.refreshFunction(
+                                      Get.context ?? context,
+                                    );
+                                    Get.offAll(const DashBoardScreen());
+                                  }
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => PlacePicker(
+                                        apiKey: Constant.mapAPIKey,
+                                        onPlacePicked: (result) {
+                                          ShippingAddress addressModel =
+                                              ShippingAddress();
+                                          addressModel.addressAs = "Home";
+                                          addressModel.locality = result
+                                              .formattedAddress!
+                                              .toString();
+                                          addressModel.location = UserLocation(
+                                            latitude:
+                                                result.geometry!.location.lat,
+                                            longitude:
+                                                result.geometry!.location.lng,
+                                          );
+                                          Constant.selectedLocation =
+                                              addressModel;
+                                          updateLocationInLocal(
+                                            addressModel.location!,
+                                          ).then((_) {
+                                            splashProvider.refreshFunction(
+                                              Get.context ?? context,
+                                            );
+                                            Get.offAll(const DashBoardScreen());
+                                          });
+                                        },
+                                        initialPosition: const LatLng(
+                                          -33.8567844,
+                                          151.213108,
+                                        ),
+                                        useCurrentLocation: true,
+                                        selectInitialPosition: true,
+                                        usePinPointingSearch: true,
+                                        usePlaceDetailSearch: true,
+                                        zoomGesturesEnabled: true,
+                                        zoomControlsEnabled: true,
+                                        resizeToAvoidBottomInset: false,
+                                      ),
                                     ),
-                                    useCurrentLocation: true,
-                                    selectInitialPosition: true,
-                                    usePinPointingSearch: true,
-                                    usePlaceDetailSearch: true,
-                                    zoomGesturesEnabled: true,
-                                    zoomControlsEnabled: true,
-                                    resizeToAvoidBottomInset: false,
-                                  ),
-                                ),
-                              );
-                            }
-                          } catch (e) {
-                            print(
-                              '[LOCATION_PERMISSION] Error in Add Location: $e',
-                            );
-                            ShowToastDialog.showToast(
-                              "Failed to add location. Please try again.".tr,
-                            );
-                          }
+                                  );
+                                }
+                              } catch (e) {
+                                print(
+                                  '[LOCATION_PERMISSION] Error in Add Location: $e',
+                                );
+                                ShowToastDialog.showToast(
+                                  "Failed to add location. Please try again."
+                                      .tr,
+                                );
+                              }
+                            },
+                          );
                         },
                       );
                     },
@@ -211,7 +234,7 @@ class LocationPermissionScreen extends StatelessWidget {
                                   if (value != null) {
                                     homeProvider.changeLocationAddressFunction(
                                       addressModel: value,
-                                      context: context,
+                                      context: Get.context ?? context,
                                     );
                                     Get.offAll(const DashBoardScreen());
                                   }
@@ -233,33 +256,40 @@ class LocationPermissionScreen extends StatelessWidget {
                           },
                         ),
                   const SizedBox(height: 10),
-                  // Add a button for changing location
-                  RoundedButtonFill(
-                    title: "Change Location".tr,
-                    color: AppThemeData.primary300,
-                    textColor: AppThemeData.grey50,
-                    onPress: () async {
-                      Constant.checkPermission(
-                        context: context,
-                        onTap: () async {
-                          try {
-                            bool success =
-                                await LocationService.updateLocationAndNavigate(
-                                  showLoader: true,
-                                  showError: true,
-                                );
+                  Consumer<SplashProvider>(
+                    builder: (contexts, splashProvider, _) {
+                      return RoundedButtonFill(
+                        title: "Change Location".tr,
+                        color: AppThemeData.primary300,
+                        textColor: AppThemeData.grey50,
+                        onPress: () async {
+                          Constant.checkPermission(
+                            context: context,
+                            onTap: () async {
+                              try {
+                                bool success =
+                                    await LocationService.updateLocationAndNavigate(
+                                      showLoader: true,
+                                      showError: true,
+                                    );
 
-                            if (success) {
-                              Get.offAll(const DashBoardScreen());
-                            }
-                          } catch (e) {
-                            print(
-                              '[LOCATION_PERMISSION] Error in Change Location: $e',
-                            );
-                            ShowToastDialog.showToast(
-                              "Failed to change location. Please try again.".tr,
-                            );
-                          }
+                                if (success) {
+                                  splashProvider.refreshFunction(
+                                    Get.context ?? context,
+                                  );
+                                  Get.offAll(const DashBoardScreen());
+                                }
+                              } catch (e) {
+                                print(
+                                  '[LOCATION_PERMISSION] Error in Change Location: $e',
+                                );
+                                ShowToastDialog.showToast(
+                                  "Failed to change location. Please try again."
+                                      .tr,
+                                );
+                              }
+                            },
+                          );
                         },
                       );
                     },

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/AttributesModel.dart';
@@ -24,9 +25,21 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 
 class RestaurantDetailsProvider extends ChangeNotifier {
+  String? returnKeyCategories({required int index}) {
+    String categoryKey = getCategoryKey(index);
+    if (!categoryKeys.containsKey(categoryKey)) {
+      categoryKeys[categoryKey] = GlobalKey();
+      notifyListeners();
+    }
+    return categoryKey;
+  }
+
   final String? scrollToProductId;
 
   RestaurantDetailsProvider({this.scrollToProductId});
+
+  StreamSubscription<List<CartProductModel>>? _cartSubscription;
+  Timer? _sliderTimer;
 
   static Future<List<CouponModel>> getRestaurantCoupons({
     required String restaurantId,
@@ -103,7 +116,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     try {
       // Add timeout to prevent hanging
       final Map<String, String> queryParams = {};
-
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
@@ -231,7 +243,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   List<ProductModel> parseProducts(dynamic productsData) {
     try {
       print('🔍 Parsing products data type: ${productsData.runtimeType}');
-
       if (productsData is List) {
         return productsData.map((productJson) {
           try {
@@ -405,10 +416,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       vendorModel = vendorModels;
       isLoading = true;
       notifyListeners();
-      cartProvider.cartStream.listen((event) {
-        cartItem.clear();
-        cartItem.addAll(event);
-      });
+      _initializeCartStreamListener();
       animateSlider();
       await _loadCriticalDataInParallel(
         restaurantId: vendorModel.id.toString(),
@@ -420,6 +428,16 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       ShowToastDialog.showToast("Failed to load restaurant data");
       notifyListeners();
     }
+  }
+
+  void _initializeCartStreamListener() {
+    if (_cartSubscription != null) return;
+    _cartSubscription = cartProvider.cartStream.listen((event) {
+      HomeProvider.cartItem
+        ..clear()
+        ..addAll(event);
+      notifyListeners();
+    });
   }
 
   /// LOAD PRODUCTS VIA API - COMPLETELY REPLACES FIREBASE
@@ -462,7 +480,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   void _buildCategoryProductMapping() {
     categoryProductsMap.clear();
     categoryKeys.clear();
-
     for (var product in productList) {
       if (product.categoryID == null || product.categoryID!.isEmpty) continue;
 
@@ -471,13 +488,14 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         categoryProductsMap[categoryId] = [];
       }
       categoryProductsMap[categoryId]!.add(product);
+      notifyListeners();
     }
-
     // Create keys for categories
     for (int i = 0; i < vendorCategoryList.length; i++) {
       final categoryKey = getCategoryKey(i);
       categoryKeys[categoryKey] = GlobalKey();
     }
+    notifyListeners();
   }
 
   /// GET PRODUCTS BY CATEGORY
@@ -542,7 +560,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     if (name.isEmpty) {
       searchEditingController.clear();
     }
-
     await loadProductsViaAPI();
   }
 
@@ -715,10 +732,14 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   void animateSlider() {
+    _sliderTimer?.cancel();
     if (vendorModel.photos != null && vendorModel.photos!.isNotEmpty) {
-      Timer.periodic(const Duration(seconds: 2), (Timer timer) {
+      _sliderTimer = Timer.periodic(const Duration(seconds: 2), (Timer timer) {
         if (!pageController.hasClients) {
           timer.cancel();
+          if (identical(_sliderTimer, timer)) {
+            _sliderTimer = null;
+          }
           return;
         }
 
@@ -738,6 +759,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           }
         } catch (e) {
           timer.cancel();
+          if (identical(_sliderTimer, timer)) {
+            _sliderTimer = null;
+          }
         }
       });
     }
@@ -860,6 +884,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
                     double.parse(quantity.toString())) +
                 double.parse(adOnsPrice.toString()))
             .toString();
+    notifyListeners();
     return mainPrice;
   }
 
@@ -872,24 +897,21 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required int quantity,
     VariantInfo? variantInfo,
   }) async {
+    final productId = productModel.id?.toString() ?? '';
+    final vendorId = vendorModel.id?.toString() ?? '';
+
     if (isIncrement) {
-      final promo = _getCachedPromotionalData(
-        productModel.id.toString(),
-        vendorModel.id.toString(),
-      );
+      final promo = _getCachedPromotionalData(productId, vendorId);
 
       if (promo != null) {
         final isAllowed = isPromotionalItemQuantityAllowed(
-          productModel.id.toString() ?? '',
-          vendorModel.id.toString() ?? '',
+          productId,
+          vendorId,
           quantity,
         );
 
         if (!isAllowed) {
-          final limit = getPromotionalItemLimit(
-            productModel.id.toString() ?? '',
-            vendorModel.id.toString() ?? '',
-          );
+          final limit = getPromotionalItemLimit(productId, vendorId);
           ShowToastDialog.showToast(
             "Maximum $limit items allowed for this promotional offer".tr,
           );
@@ -930,10 +952,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       cartProductModel.extrasPrice = adOnsPrice;
       cartProductModel.extras = selectedAddOns.isEmpty ? [] : selectedAddOns;
       if (isIncrement) {
-        final promo = _getCachedPromotionalData(
-          productModel.id.toString() ?? '',
-          vendorModel.id ?? '',
-        );
+        final promo = _getCachedPromotionalData(productId, vendorId);
         if (promo != null) {
           cartProductModel.promoId = promo['product_id'] ?? '';
         }
@@ -953,8 +972,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       cartProductModel.extras = selectedAddOns.isEmpty ? [] : selectedAddOns;
       if (isIncrement) {
         final promo = await FireStoreUtils.getActivePromotionForProduct(
-          productId: productModel.id.toString() ?? '',
-          restaurantId: vendorModel.id ?? '',
+          productId: productId,
+          restaurantId: vendorId,
         );
         if (promo != null) {
           cartProductModel.promoId = promo['product_id'] ?? '';
@@ -975,24 +994,24 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required String price,
     required String disPrice,
   }) {
+    final productId = productModel.id?.toString() ?? '';
+    final vendorId = productModel.vendorID ?? '';
+
     if (1 <= (productModel.quantity ?? 0) ||
         (productModel.quantity ?? 0) == -1) {
       final promo = getActivePromotionForProduct(
-        productId: productModel.id.toString() ?? '',
-        restaurantId: productModel.vendorID ?? '',
+        productId: productId,
+        restaurantId: vendorId,
       );
       // Check promotional item limit
       if (promo != null) {
         final isAllowed = isPromotionalItemQuantityAllowed(
-          productModel.id.toString() ?? '',
-          productModel.vendorID ?? '',
+          productId,
+          vendorId,
           1,
         );
         if (!isAllowed) {
-          final limit = getPromotionalItemLimit(
-            productModel.id.toString() ?? '',
-            productModel.vendorID ?? '',
-          );
+          final limit = getPromotionalItemLimit(productId, vendorId);
           ShowToastDialog.showToast(
             "Maximum $limit items allowed for this promotional offer".tr,
           );
@@ -1019,5 +1038,16 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     } else {
       ShowToastDialog.showToast("Out of stock".tr);
     }
+  }
+
+  @override
+  void dispose() {
+    _cartSubscription?.cancel();
+    _sliderTimer?.cancel();
+    searchEditingController.dispose();
+    scrollController.dispose();
+    scrollControllerProduct.dispose();
+    pageController.dispose();
+    super.dispose();
   }
 }

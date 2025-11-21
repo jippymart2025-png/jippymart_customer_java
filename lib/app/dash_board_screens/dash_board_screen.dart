@@ -1,5 +1,8 @@
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:flutter/material.dart';
@@ -39,56 +42,84 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<DashBoardProvider, CartControllerProvider>(
-      builder: (context, controller, cartControllerProvider, _) {
-        if (controller.pageList.isEmpty) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final safeIndex = controller.selectedIndex.clamp(
-          0,
-          controller.pageList.length - 1,
-        );
-        return PopScope(
-          canPop: controller.canPopNow,
-          onPopInvoked: (didPop) {
-            if (didPop) return;
-            if (controller.selectedIndex == 0) {
-              final now = DateTime.now();
-              if (controller.currentBackPressTime == null ||
-                  now.difference(controller.currentBackPressTime!) >
-                      const Duration(seconds: 2)) {
-                controller.currentBackPressTime = now;
-                controller.canPopNow = false;
-                ShowToastDialog.showToast("Double press to exit".tr);
-              } else {
-                SystemNavigator.pop();
-              }
-            } else {
-              controller.changeNavbar(0, cartControllerProvider, context);
+    return Consumer5<
+      DashBoardProvider,
+      CartControllerProvider,
+      OrderProvider,
+      SplashProvider,
+      HomeProvider
+    >(
+      builder:
+          (
+            context,
+            controller,
+            cartControllerProvider,
+            orderProvider,
+            splashProvider,
+            homeProvider,
+            _,
+          ) {
+            if (controller.pageList.isEmpty) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
             }
+            final safeIndex = controller.selectedIndex.clamp(
+              0,
+              controller.pageList.length - 1,
+            );
+            return PopScope(
+              canPop: controller.canPopNow,
+              onPopInvoked: (didPop) {
+                if (didPop) return;
+                if (controller.selectedIndex == 0) {
+                  final now = DateTime.now();
+                  if (controller.currentBackPressTime == null ||
+                      now.difference(controller.currentBackPressTime!) >
+                          const Duration(seconds: 2)) {
+                    controller.currentBackPressTime = now;
+                    controller.canPopNow = false;
+                    ShowToastDialog.showToast("Double press to exit".tr);
+                  } else {
+                    SystemNavigator.pop();
+                  }
+                } else {
+                  controller.changeNavbar(
+                    0,
+                    homeProvider,
+                    splashProvider,
+                    cartControllerProvider,
+                    orderProvider,
+                    context,
+                  );
+                }
+              },
+              child: Scaffold(
+                body: IndexedStack(
+                  index: safeIndex,
+                  children: controller.pageList,
+                ),
+                bottomNavigationBar: _buildBottomNavigationBar(
+                  controller,
+                  cartControllerProvider,
+                  orderProvider,
+                  context,
+                  splashProvider,
+                  homeProvider,
+                ),
+              ),
+            );
           },
-          child: Scaffold(
-            body: IndexedStack(
-              index: safeIndex,
-              children: controller.pageList,
-            ),
-            bottomNavigationBar: _buildBottomNavigationBar(
-              controller,
-              cartControllerProvider,
-              context,
-            ),
-          ),
-        );
-      },
     );
   }
 
   Widget _buildBottomNavigationBar(
     DashBoardProvider controller,
     CartControllerProvider cartControllerProvider,
+    OrderProvider orderProvider,
     BuildContext context,
+    SplashProvider splashProvider,
+    HomeProvider homeProvider,
   ) {
     final List<BottomNavigationBarItem> items = [
       _buildNavigationBarItem(
@@ -131,7 +162,10 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
       onTap: (int index) {
         controller.changeNavbar(
           index.clamp(0, items.length - 1),
+          homeProvider,
+          splashProvider,
           cartControllerProvider,
+          orderProvider,
           context,
         );
       },

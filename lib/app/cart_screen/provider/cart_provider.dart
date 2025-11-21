@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
+import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/provider/order_placing_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -22,6 +24,8 @@ import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/payment/createRazorPayOrderModel.dart';
+import 'package:jippymart_customer/payment/rozorpayConroller.dart';
 
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/coupon_filter_service.dart';
@@ -30,6 +34,7 @@ import 'package:jippymart_customer/services/mart_vendor_service.dart';
 import 'package:jippymart_customer/services/promotional_cache_service.dart';
 import 'package:jippymart_customer/utils/anr_prevention.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
+import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/razorpay_crash_prevention.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
@@ -41,12 +46,133 @@ import 'package:jippymart_customer/widgets/delivery_zone_alert_dialog.dart'
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 import '../../../models/mart_item_model.dart';
 import '../../../services/mart_firestore_service.dart';
 
 class CartControllerProvider extends ChangeNotifier {
+  late OrderPlacingProvider orderPlacingProvider;
+
+  Future<void> processPayment(
+    CartControllerProvider controller,
+    BuildContext context,
+  ) async {
+    final canProceed = await controller.validateAndPlaceOrderBulletproof(
+      context,
+    );
+    if (!canProceed) {
+      return;
+    }
+    if ((controller.couponAmount >= 1) &&
+        (controller.couponAmount > controller.totalAmount)) {
+      ShowToastDialog.showToast(
+        "The total price must be greater than or equal to the coupon discount value for the code to apply. Please review your cart total."
+            .tr,
+      );
+      return;
+    }
+    if ((controller.specialDiscountAmount >= 1) &&
+        (controller.specialDiscountAmount > controller.totalAmount)) {
+      ShowToastDialog.showToast(
+        "The total price must be greater than or equal to the special discount value for the code to apply. Please review your cart total."
+            .tr,
+      );
+      return;
+    }
+    if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
+      controller.placeOrder(context);
+      print(" controller.placeOrder(context); ");
+    } else if (controller.selectedPaymentMethod ==
+        PaymentGateway.razorpay.name) {
+      RazorPayController()
+          .createOrderRazorPay(
+            amount: double.parse(controller.totalAmount.toString()),
+            razorpayModel: controller.razorPayModel,
+          )
+          .then((value) async {
+            if (value == null) {
+              Get.back();
+              ShowToastDialog.showToast(
+                "Something went wrong, please contact admin.".tr,
+              );
+            } else {
+              CreateRazorPayOrderModel result = value;
+              controller.openCheckout(amount: value.amount, orderId: result.id);
+            }
+          });
+    } else {
+      ShowToastDialog.showToast("Please select payment method".tr);
+    }
+    notifyListeners();
+  }
+
+  void changeLocationFunctionInCart({required BuildContext context}) {
+    Get.to(const AddressListScreen())!.then((value) async {
+      if (value != null) {
+        ShippingAddress addressModel = value;
+        print(" changeLocationFunctionInCart  13 ${addressModel.locality}");
+        print(
+          " changeLocationFunctionInCart  12 ${addressModel.location?.latitude}   ${addressModel.location?.latitude}",
+        );
+        print(" changeLocationFunctionInCart  1 ${addressModel.latitude}");
+        if (addressModel.location?.latitude != null &&
+            addressModel.location?.longitude != null) {
+          try {
+            if (addressModel.zoneId != null &&
+                addressModel.zoneId!.isNotEmpty) {
+              print(
+                '✅ [CART_ADDRESS_CHANGE] Using zoneId from addressModel: ${addressModel.zoneId}',
+              );
+            } else if (Constant.selectedLocation.zoneId != null &&
+                Constant.selectedLocation.zoneId!.isNotEmpty) {
+              addressModel.zoneId = Constant.selectedLocation.zoneId;
+              notifyListeners();
+              print(
+                '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedLocation: ${addressModel.zoneId}',
+              );
+            } else if (Constant.selectedZone != null) {
+              addressModel.zoneId = Constant.selectedZone!.id;
+              print(
+                '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedZone: ${addressModel.zoneId}',
+              );
+              notifyListeners();
+            } else {
+              final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
+                addressModel.location!.latitude!,
+                addressModel.location!.longitude!,
+                context,
+              );
+              if (zoneId.isNotEmpty) {
+                addressModel.zoneId = zoneId;
+                print(
+                  '✅ [CART_ADDRESS_CHANGE] Detected zone from coordinates: $zoneId',
+                );
+              } else {
+                print(
+                  '⚠️ [CART_ADDRESS_CHANGE] No zone detected for coordinates - leaving zoneId as null',
+                );
+              }
+            }
+          } catch (e) {
+            print('❌ [CART_ADDRESS_CHANGE] Error detecting zone: $e');
+            // Continue without zone ID if detection fails
+          }
+        } else {
+          print(
+            '⚠️ [CART_ADDRESS_CHANGE] No coordinates available for zone detection',
+          );
+        }
+        selectedAddress = addressModel;
+        // Ensure vendor details (esp. lat/lng) are available before price calc
+        await _loadFreshVendorForCart();
+        notifyListeners();
+        await calculatePrice();
+      }
+    });
+  }
+
   // ProductModel? productModelImageDetails;
   //
   // void cartProductDetailsImageProductListFunction() {
@@ -59,225 +185,282 @@ class CartControllerProvider extends ChangeNotifier {
   //     notifyListeners();
   //   });
   // }
-
   Future<void> showPaymentMethodDialog(BuildContext context) async {
     final canProceed = await validateAndPlaceOrderBulletproof(context);
     if (!canProceed) {
       return;
     }
+
+    // Store initial selection
+    final String initialSelection = selectedPaymentMethod;
+
     await Get.dialog(
       WillPopScope(
         onWillPop: () async {
-          selectedPaymentMethod = '';
+          // Restore original selection if user cancels
+          selectedPaymentMethod = initialSelection;
+          notifyListeners();
           return true;
         },
-        child: AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.payment, color: Colors.orange, size: 24),
-              SizedBox(width: 10),
-              Text(
-                "Select Payment Method",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        child: StatefulBuilder(
+          // Add StatefulBuilder for real-time updates
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Choose how you want to pay for your order:",
-                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-              ),
-              SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: RadioListTile<String>(
-                  contentPadding: EdgeInsets.all(4),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Image.asset(
-                        "assets/images/ic_cash.png",
-                        width: 30,
-                        height: 30,
-                      ),
-                      SizedBox(
-                        width: 150,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Cash on Delivery",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              "Pay when you receive your order",
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey[600],
-                              ),
-                              maxLines: 2,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+              title: Row(
+                children: [
+                  Icon(Icons.payment, color: Colors.orange, size: 24),
+                  SizedBox(width: 10),
+                  Text(
+                    "Select Payment Method",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  value: PaymentGateway.cod.name,
-                  groupValue: selectedPaymentMethod,
-                  onChanged: (value) {
-                    selectedPaymentMethod = value!;
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Choose how you want to pay for your order:",
+                    style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                  ),
+                  SizedBox(height: 20),
+
+                  // COD Option
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: RadioListTile<String>(
+                      contentPadding: EdgeInsets.all(4),
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Image.asset(
+                            "assets/images/ic_cash.png",
+                            width: 30,
+                            height: 30,
+                          ),
+                          SizedBox(
+                            width: 150,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Cash on Delivery",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  "Pay when you receive your order",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                  ),
+                                  maxLines: 2,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      value: PaymentGateway.cod.name,
+                      groupValue: selectedPaymentMethod,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedPaymentMethod = value;
+                          });
+                          notifyListeners(); // 🔑 CRITICAL: Update provider state
+                        }
+                      },
+                      activeColor: Colors.orange,
+                    ),
+                  ),
+                  SizedBox(height: 10),
+
+                  // Razorpay Option
+                  Container(
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey[300]!),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: RadioListTile<String>(
+                      contentPadding: EdgeInsets.all(4),
+                      title: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Image.asset(
+                            "assets/images/razorpay.png",
+                            width: 30,
+                            height: 30,
+                          ),
+                          SizedBox(
+                            width: 150,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Online Payment",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  "Pay securely with Razorpay",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      value: PaymentGateway.razorpay.name,
+                      groupValue: selectedPaymentMethod,
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedPaymentMethod = value;
+                          });
+                          notifyListeners(); // 🔑 CRITICAL: Update provider state
+                        }
+                      },
+                      activeColor: Colors.orange,
+                    ),
+                  ),
+
+                  SizedBox(height: 10),
+
+                  // Validation messages
+                  if (subTotal > 599 &&
+                      selectedPaymentMethod == PaymentGateway.cod.name)
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info, color: Colors.orange, size: 16),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "COD not available for orders above ₹599",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  if (hasPromotionalItems() &&
+                      selectedPaymentMethod == PaymentGateway.cod.name)
+                    Container(
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.orange[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info, color: Colors.orange, size: 16),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "COD not available for promotional items",
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange[800],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+
+              actions: [
+                // Cancel Button
+                TextButton(
+                  onPressed: () {
+                    // Restore original selection
+                    selectedPaymentMethod = initialSelection;
                     notifyListeners();
+                    Get.back();
                   },
-                  activeColor: Colors.orange,
-                ),
-              ),
-              SizedBox(height: 10),
-              // Razorpay Option
-              Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey[300]!),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: RadioListTile<String>(
-                  contentPadding: EdgeInsets.all(4),
-                  title: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Image.asset(
-                        "assets/images/razorpay.png",
-                        width: 30,
-                        height: 30,
-                      ),
-                      SizedBox(
-                        width: 150,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Online Payment",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
-                            ),
-                            Text(
-                              "Pay securely with Razorpay",
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.grey[600],
                   ),
-                  value: PaymentGateway.razorpay.name,
-                  groupValue: selectedPaymentMethod,
-                  onChanged: (value) {
-                    selectedPaymentMethod = value!;
+                  child: Text("Cancel"),
+                ),
+                // OK/Proceed Button
+                ElevatedButton(
+                  onPressed: () {
+                    if (selectedPaymentMethod.isEmpty) {
+                      ShowToastDialog.showToast(
+                        "Please select a payment method".tr,
+                      );
+                      return;
+                    }
+
+                    // Validate selection
+                    if (selectedPaymentMethod == PaymentGateway.cod.name) {
+                      if (subTotal > 599) {
+                        ShowToastDialog.showToast(
+                          "COD not available for orders above ₹599. Please select online payment."
+                              .tr,
+                        );
+                        return;
+                      }
+                      if (hasPromotionalItems()) {
+                        ShowToastDialog.showToast(
+                          "COD not available for promotional items. Please select online payment."
+                              .tr,
+                        );
+                        return;
+                      }
+                    }
+
+                    Get.back(); // Close dialog with valid selection
                   },
-                  activeColor: Colors.orange,
-                ),
-              ),
-
-              SizedBox(height: 10),
-              // Validation messages
-              if (subTotal > 599)
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange[200]!),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info, color: Colors.orange, size: 16),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "COD not available for orders above ₹599",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange[800],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                  child: Text("Confirm Payment"),
                 ),
-              if (hasPromotionalItems())
-                Container(
-                  padding: EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.orange[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info, color: Colors.orange, size: 16),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          "COD not available for promotional items",
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.orange[800],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-
-          actions: [
-            // Cancel Button
-            TextButton(
-              onPressed: () {
-                selectedPaymentMethod = '';
-                Get.back();
-              },
-              style: TextButton.styleFrom(foregroundColor: Colors.grey[600]),
-              child: Text("Cancel"),
-            ),
-            // OK/Proceed Button
-            ElevatedButton(
-              onPressed: () {
-                Get.back();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text("Proceed to Pay"),
-            ),
-          ],
+              ],
+            );
+          },
         ),
       ),
       barrierDismissible: false,
     );
+
+    // After dialog closes, ensure UI reflects the current selection
+    notifyListeners();
   }
 
   Future<Map<String, dynamic>> getWeather(double lat, double lon) async {
@@ -337,7 +520,7 @@ class CartControllerProvider extends ChangeNotifier {
         Uri.parse('${AppConst.baseUrl}mobile/surge-rules/admin-fee'),
         headers: await getHeaders(),
       );
-
+      print("getAdminSurgeFee ${response.body} ");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
 
@@ -425,6 +608,16 @@ class CartControllerProvider extends ChangeNotifier {
   final Map<String, double> _cachedExtraKmCharge = {};
   List<TaxModel>? _cachedTaxList;
   bool _calculationCacheLoaded = false;
+
+  // **PRODUCT CACHE FOR CART - LOAD ONCE, USE MANY TIMES**
+  final Map<String, ProductModel?> _productCache = {};
+  bool _isLoadingProducts = false;
+  bool _productsLoaded = false;
+
+  // Getters for product cache state
+  bool get isLoadingProducts => _isLoadingProducts;
+
+  bool get productsLoaded => _productsLoaded;
 
   ShippingAddress? selectedAddress = ShippingAddress();
   VendorModel vendorModel = VendorModel();
@@ -677,10 +870,7 @@ class CartControllerProvider extends ChangeNotifier {
     );
   }
 
-  /// 🔑 DETECT ZONE ID FOR COORDINATES
   ///
-  /// This method detects the zone ID for given coordinates by checking
-  /// if the coordinates fall within any zone polygon
   Future<String?> _detectZoneIdForCoordinates(
     double latitude,
     double longitude,
@@ -732,6 +922,10 @@ class CartControllerProvider extends ChangeNotifier {
         }
       });
     });
+    orderPlacingProvider = Provider.of<OrderPlacingProvider>(
+      context,
+      listen: false,
+    );
     notifyListeners();
   }
 
@@ -882,11 +1076,9 @@ class CartControllerProvider extends ChangeNotifier {
     if (_calculationCacheLoaded) return;
     try {
       // Load tax list once and cache it
-      if (_cachedTaxList == null) {
-        _cachedTaxList = await FireStoreUtils.getTaxList();
-      }
+      _cachedTaxList ??= await FireStoreUtils.getTaxList();
       final futures = <Future>[];
-      for (var item in cartItem) {
+      for (var item in HomeProvider.cartItem) {
         if (item.promoId != null && item.promoId!.isNotEmpty) {
           final cacheKey = '${item.id}-${item.vendorID}';
           if (!_promotionalCalculationCache.containsKey(cacheKey)) {
@@ -947,7 +1139,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Method to check if cart has promotional items
   bool hasPromotionalItems() {
-    return cartItem.any(
+    return HomeProvider.cartItem.any(
       (item) => item.promoId != null && item.promoId!.isNotEmpty,
     );
   }
@@ -1028,7 +1220,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Check if cart is ready for payment
   bool isCartReadyForPayment() {
-    final cartNotEmpty = cartItem.isNotEmpty;
+    final cartNotEmpty = HomeProvider.cartItem.isNotEmpty;
     final subTotalValid = subTotal > 0;
     final totalValid = totalAmount > 0;
     final paymentMethodSelected = selectedPaymentMethod.isNotEmpty;
@@ -1052,7 +1244,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Update cart readiness state
   void updateCartReadiness() {
-    isCartReady = cartItem.isNotEmpty && subTotal > 0;
+    isCartReady = HomeProvider.cartItem.isNotEmpty && subTotal > 0;
     isPaymentReady = isCartReadyForPayment();
     isAddressValid = selectedAddress?.id != null;
     notifyListeners();
@@ -1061,9 +1253,98 @@ class CartControllerProvider extends ChangeNotifier {
   /// Force refresh cart data and recalculate prices
   Future<void> forceRefreshCart() async {
     await cartProvider.refreshCart();
+    // Refresh vendor details so delivery distance can be recalculated
+    await _loadFreshVendorForCart();
+    // Preload all products for cart display (load once, use many times)
+    await preloadCartProducts(forceRefresh: true);
     await calculatePrice();
     checkAndUpdatePaymentMethod();
     updateCartReadiness();
+    notifyListeners();
+  }
+
+  /// Preload all products in cart - called once when cart screen opens
+  /// If forceRefresh is true, clears cache and reloads all products
+  Future<void> preloadCartProducts({bool forceRefresh = false}) async {
+    if (_isLoadingProducts && !forceRefresh) {
+      return; // Already loading
+    }
+
+    if (forceRefresh) {
+      _productCache.clear();
+      _productsLoaded = false;
+    }
+
+    _isLoadingProducts = true;
+
+    try {
+      // Get all unique product IDs from cart
+      final Set<String> productIds = {};
+
+      for (final cartItem in HomeProvider.cartItem) {
+        if (cartItem.id != null &&
+            cartItem.id!.isNotEmpty &&
+            cartItem.id!.toLowerCase() != 'null') {
+          final parts = cartItem.id!.split('~');
+          if (parts.isNotEmpty &&
+              parts.first.isNotEmpty &&
+              parts.first.toLowerCase() != 'null') {
+            productIds.add(parts.first);
+          }
+        }
+      }
+
+      // Only load products that aren't already cached (unless force refresh)
+      final Set<String> productsToLoad = forceRefresh
+          ? productIds
+          : productIds.where((id) => !_productCache.containsKey(id)).toSet();
+
+      if (productsToLoad.isEmpty) {
+        _productsLoaded = true;
+        notifyListeners();
+        return;
+      }
+
+      // Load all products in parallel
+      final List<Future<void>> loadFutures = productsToLoad.map((
+        productId,
+      ) async {
+        try {
+          final product = await FireStoreUtils.getProductById(productId);
+          _productCache[productId] = product;
+        } catch (e) {
+          print('[CART_PRODUCT] Error loading product $productId: $e');
+          _productCache[productId] = null;
+        }
+      }).toList();
+
+      await Future.wait(loadFutures);
+      _productsLoaded = true;
+      notifyListeners();
+      print(
+        '[CART_PRODUCT] Preloaded ${_productCache.length} products (${productsToLoad.length} new)',
+      );
+    } catch (e) {
+      print('[CART_PRODUCT] Error preloading products: $e');
+    } finally {
+      _isLoadingProducts = false;
+    }
+  }
+
+  /// Get cached product by ID - returns null if not cached
+  ProductModel? getCachedProduct(String? productId) {
+    if (productId == null ||
+        productId.isEmpty ||
+        productId.toLowerCase() == 'null') {
+      return null;
+    }
+    return _productCache[productId];
+  }
+
+  /// Clear product cache (call when cart changes significantly)
+  void clearProductCache() {
+    _productCache.clear();
+    _productsLoaded = false;
     notifyListeners();
   }
 
@@ -1071,8 +1352,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> clearCart() async {
     try {
       // Clear cart items from memory
-      cartItem.clear();
-      // Clear cart from database
+      HomeProvider.cartItem.clear();
       await DatabaseHelper.instance.deleteAllCartProducts();
       subTotal = 0.0;
       totalAmount = 0.0;
@@ -1084,7 +1364,6 @@ class CartControllerProvider extends ChangeNotifier {
       selectedPaymentMethod = '';
       // Verify cart is actually empty
       final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
-
       if (remainingItems.isNotEmpty) {}
       notifyListeners();
     } catch (e) {}
@@ -1102,10 +1381,13 @@ class CartControllerProvider extends ChangeNotifier {
   /// 🔑 LOAD FRESH VENDOR DATA - NO CACHING
   Future<void> _loadFreshVendorForCart() async {
     try {
-      final martItems = cartItem.where((item) => _isMartItem(item)).toList();
-      final restaurantItems = cartItem
+      final martItems = HomeProvider.cartItem
+          .where((item) => _isMartItem(item))
+          .toList();
+      final restaurantItems = HomeProvider.cartItem
           .where((item) => !_isMartItem(item))
           .toList();
+      notifyListeners();
       if (martItems.isNotEmpty) {
         await _loadFreshMartVendor(martItems);
       } else if (restaurantItems.isNotEmpty) {
@@ -1121,7 +1403,6 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       final firstMartItem = martItems.first;
       final vendorId = firstMartItem.vendorID;
-
       MartVendorModel? martVendor;
       if (vendorId != null && vendorId.isNotEmpty) {
         martVendor = await MartVendorService.getMartVendorById(vendorId);
@@ -1129,10 +1410,10 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         martVendor = await MartVendorService.getDefaultMartVendor();
       }
-
       if (martVendor != null) {
         vendorModel = VendorModel(
           id: martVendor.id,
+          author: martVendor.author,
           title: martVendor.title,
           latitude: martVendor.latitude,
           longitude: martVendor.longitude,
@@ -1152,7 +1433,6 @@ class CartControllerProvider extends ChangeNotifier {
       if (vendorId == null) {
         return;
       }
-
       final freshVendor = await FireStoreUtils.getVendorById(vendorId);
       if (freshVendor != null) {
         vendorModel = freshVendor;
@@ -1163,27 +1443,27 @@ class CartControllerProvider extends ChangeNotifier {
 
   getCartData() async {
     cartProvider.cartStream.listen((event) async {
-      cartItem.clear();
-      cartItem.addAll(event);
-      if (cartItem.isNotEmpty) {
-        final firstItemVendor = cartItem.first.vendorID;
+      HomeProvider.cartItem.clear();
+      HomeProvider.cartItem.addAll(event);
+      if (HomeProvider.cartItem.isNotEmpty) {
+        final firstItemVendor = HomeProvider.cartItem.first.vendorID;
         if (_cachedVendorModel?.id != firstItemVendor) {
           _clearVendorCache();
         }
       }
-      if (cartItem.isNotEmpty) {
+      if (HomeProvider.cartItem.isNotEmpty) {
         await _loadFreshVendorForCart();
       }
-      if (cartItem.isNotEmpty) {
-        final martItems = cartItem.where((item) => _isMartItem(item)).toList();
+      if (HomeProvider.cartItem.isNotEmpty) {
+        final martItems = HomeProvider.cartItem
+            .where((item) => _isMartItem(item))
+            .toList();
         if (martItems.isNotEmpty) {
           try {
             final firstMartItem = martItems.first;
             final vendorId = firstMartItem.vendorID;
             MartVendorModel? martVendor;
-
             if (vendorId != null && vendorId.isNotEmpty) {
-              // Try to get the specific mart vendor by ID first
               martVendor = await MartVendorService.getMartVendorById(vendorId);
               if (martVendor != null) {
               } else {
@@ -1191,14 +1471,12 @@ class CartControllerProvider extends ChangeNotifier {
                 martVendor = await MartVendorService.getDefaultMartVendor();
               }
             } else {
-              // Fallback to default mart vendor
               martVendor = await MartVendorService.getDefaultMartVendor();
             }
-
             if (martVendor != null) {
-              // Convert MartVendorModel to VendorModel for compatibility
               vendorModel = VendorModel(
                 id: martVendor.id,
+                author: martVendor.author,
                 title: martVendor.title,
                 latitude: martVendor.latitude,
                 longitude: martVendor.longitude,
@@ -1224,24 +1502,22 @@ class CartControllerProvider extends ChangeNotifier {
             vendorModel = _cachedVendorModel!;
           } else {
             await FireStoreUtils.getVendorById(
-              cartItem.first.vendorID.toString(),
+              HomeProvider.cartItem.first.vendorID.toString(),
             ).then((value) async {
               if (value != null) {
                 vendorModel = value;
                 _cachedVendorModel = value;
                 _updateCacheTime();
+                notifyListeners();
               }
             });
             notifyListeners();
           }
         }
       }
-
-      // Load ultra-fast calculation cache before calculating price
+      notifyListeners();
       await _loadCalculationCache();
-      // Force price calculation
       await calculatePrice();
-      // Check payment method after cart data is loaded
       checkAndUpdatePaymentMethod();
       updateCartReadiness();
     });
@@ -1406,9 +1682,11 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         // Try fallback method only for non-rate-limit errors
         await _loadCouponsWithoutFiltering(restaurantId: restaurantId);
+        notifyListeners();
       }
     } finally {
       _isLoadingCoupons = false;
+      notifyListeners();
     }
   }
 
@@ -1554,7 +1832,7 @@ class CartControllerProvider extends ChangeNotifier {
       bool hasMartItems = false;
       bool hasRestaurantItems = false;
 
-      for (final item in cartItem) {
+      for (final item in HomeProvider.cartItem) {
         // Check if item is from mart (you may need to adjust this logic based on your item structure)
         if (_isMartItem(item)) {
           hasMartItems = true;
@@ -1629,7 +1907,7 @@ class CartControllerProvider extends ChangeNotifier {
   // It may be called during widget build, so it must not trigger state changes
   bool hasMartItemsInCart() {
     try {
-      return cartItem.any((item) => _isMartItem(item));
+      return HomeProvider.cartItem.any((item) => _isMartItem(item));
     } catch (e) {
       return false;
     }
@@ -1841,9 +2119,11 @@ class CartControllerProvider extends ChangeNotifier {
     await ANRPrevention.executeWithANRPrevention('CartController_calculatePrice', () async {
       if (_cachedTaxList != null) {
         Constant.taxList = _cachedTaxList;
-      } else if (Constant.taxList == null || Constant.taxList!.isEmpty) {
+        notifyListeners();
+      } else if (Constant.taxList == null) {
         Constant.taxList = await FireStoreUtils.getTaxList();
         _cachedTaxList = Constant.taxList;
+        notifyListeners();
       }
       print(
         'DEBUG: Using cached tax list with ${Constant.taxList?.length ?? 0} items',
@@ -1855,11 +2135,14 @@ class CartControllerProvider extends ChangeNotifier {
       specialDiscountAmount = 0.0;
       taxAmount = 0.0;
       totalAmount = 0.0;
-      if (cartItem.isEmpty) {
+      notifyListeners();
+      if (HomeProvider.cartItem.isEmpty) {
         return;
       }
       if (vendorModel.id == null) {
-        final martItems = cartItem.where((item) => _isMartItem(item)).toList();
+        final martItems = HomeProvider.cartItem
+            .where((item) => _isMartItem(item))
+            .toList();
         if (martItems.isNotEmpty) {
           print(
             '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor in calculatePrice...',
@@ -1891,10 +2174,8 @@ class CartControllerProvider extends ChangeNotifier {
               print(
                 '[VENDOR_LOAD] ⚠️ Fallback: No vendorID in mart item, trying default mart vendor...',
               );
-              // Fallback to default mart vendor
               martVendor = await MartVendorService.getDefaultMartVendor();
             }
-
             if (martVendor != null) {
               vendorModel = VendorModel(
                 id: martVendor.id,
@@ -1919,7 +2200,8 @@ class CartControllerProvider extends ChangeNotifier {
 
       // 1. Calculate subtotal first - Use promotional price if available
       subTotal = 0.0;
-      for (var element in cartItem) {
+      notifyListeners();
+      for (var element in HomeProvider.cartItem) {
         // Check if this item has a promotional price
         final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
 
@@ -1939,9 +2221,10 @@ class CartControllerProvider extends ChangeNotifier {
         final extrasPrice = double.parse(element.extrasPrice.toString());
 
         subTotal += (itemPrice * quantity) + (extrasPrice * quantity);
+        notifyListeners();
       }
 
-      if (cartItem.isNotEmpty) {
+      if (HomeProvider.cartItem.isNotEmpty) {
         if (selectedFoodType == "Delivery") {
           if (selectedAddress?.location?.latitude != null &&
               selectedAddress?.location?.longitude != null &&
@@ -1961,8 +2244,7 @@ class CartControllerProvider extends ChangeNotifier {
           } else {
             totalDistance = 0.0;
           }
-
-          final hasPromotionalItems = cartItem.any(
+          final hasPromotionalItems = HomeProvider.cartItem.any(
             (item) => item.promoId != null && item.promoId!.isNotEmpty,
           );
           final hasMartItems = hasMartItemsInCart();
@@ -1985,8 +2267,9 @@ class CartControllerProvider extends ChangeNotifier {
         activeCoupon = couponList
             .where((element) => element.code == couponCodeController.text)
             .firstOrNull;
+        notifyListeners();
       }
-      final hasPromotionalItems = cartItem.any((item) {
+      final hasPromotionalItems = HomeProvider.cartItem.any((item) {
         final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
         final discountPriceValue =
             double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -2005,6 +2288,7 @@ class CartControllerProvider extends ChangeNotifier {
         couponCodeController.text = "";
         selectedCouponModel = CouponModel();
         couponAmount = 0.0;
+        notifyListeners();
         print('DEBUG: Coupon removed - cart contains promotional items');
       } else if (activeCoupon != null) {
         // Check minimum order value first
@@ -2033,20 +2317,15 @@ class CartControllerProvider extends ChangeNotifier {
         couponAmount = 0.0;
       }
       notifyListeners();
-
       if (specialDiscountAmount > 0) {
         specialDiscountAmount = (subTotal * specialDiscountAmount) / 100;
       }
-
       double sgst = 0.0;
       double gst = 0.0;
-
-      // Check if cart has promotional items or mart items
-      final hasPromotionalItemsForTax = cartItem.any(
+      final hasPromotionalItemsForTax = HomeProvider.cartItem.any(
         (item) => item.promoId != null && item.promoId!.isNotEmpty,
       );
       final hasMartItems = hasMartItemsInCart();
-
       if (Constant.taxList != null) {
         for (var element in Constant.taxList!) {
           if ((element.title?.toLowerCase() ?? '').contains('sgst')) {
@@ -2068,19 +2347,46 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
+      sgst = sgst.isNaN ? 0.0 : sgst;
+      gst = gst.isNaN ? 0.0 : gst;
       taxAmount = sgst + gst;
+      print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
+      if (taxAmount == 0.0) {
+        double sgstFallback = subTotal * 0.05; // 5%
+        double gstFallback = originalDeliveryFee * 0.18; // 18%
+        taxAmount = sgstFallback + gstFallback;
+        print(
+          "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
+        );
+      }
+      if (taxAmount.isNaN) taxAmount = 0.0;
+      print("Fallback tax applied → SGST:: $taxAmount");
+      // sgst = (sgst.isNaN) ? 0.0 : sgst;
+      // gst = (gst.isNaN) ? 0.0 : gst;
+      // taxAmount = sgst + gst;
+      // print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
+      //
+      // if (taxAmount.isNaN) taxAmount = 0.0;
+
+      // if (taxAmount == 0.0) {
+      //   double sgsts = subTotal * 0.05;
+      //   double gsts = originalDeliveryFee * 0.18;
+      //   taxAmount = sgsts + gsts;
+      // }
+      print("taxAmounttaxAmount  $taxAmount");
+      notifyListeners();
       if (hasPromotionalItemsForTax) {
       } else if (hasMartItems) {
       } else {}
       bool isFreeDelivery = false;
-      if (cartItem.isNotEmpty && selectedFoodType == "Delivery") {
+      if (HomeProvider.cartItem.isNotEmpty && selectedFoodType == "Delivery") {
         // Check if cart has promotional items or mart items
-        final hasPromotionalItems = cartItem.any(
+        final hasPromotionalItems = HomeProvider.cartItem.any(
           (item) => item.promoId != null && item.promoId!.isNotEmpty,
         );
         final hasMartItems = hasMartItemsInCart();
         if (hasPromotionalItems) {
-          final promotionalItems = cartItem
+          final promotionalItems = HomeProvider.cartItem
               .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
               .toList();
           final firstPromoItem = promotionalItems.first;
@@ -2094,10 +2400,11 @@ class CartControllerProvider extends ChangeNotifier {
           if (totalDistance <= freeDeliveryKm) {
             isFreeDelivery = true;
           }
+
+          notifyListeners();
         } else if (hasMartItems) {
           double itemThreshold = 199.0; // Default
           double freeDeliveryKm = 5.0; // Default
-
           if (_martDeliverySettings != null) {
             itemThreshold =
                 (_martDeliverySettings!['item_total_threshold'] as num?)
@@ -2108,12 +2415,12 @@ class CartControllerProvider extends ChangeNotifier {
                     ?.toDouble() ??
                 5.0;
           }
-
           if (subTotal >= itemThreshold && totalDistance <= freeDeliveryKm) {
             isFreeDelivery = true;
           } else {
             isFreeDelivery = false;
           }
+          notifyListeners();
         } else {
           // For regular items, use regular delivery settings
           final dc = deliveryChargeModel;
@@ -2122,8 +2429,11 @@ class CartControllerProvider extends ChangeNotifier {
           final freeKm = dc.freeDeliveryDistanceKm ?? 7;
           if (subtotal >= threshold && totalDistance <= freeKm) {
             isFreeDelivery = true;
+            notifyListeners();
           }
+          notifyListeners();
         }
+        notifyListeners();
       }
       totalAmount =
           (subTotal - couponAmount - specialDiscountAmount) +
@@ -2138,7 +2448,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   void calculatePromotionalDeliveryChargeFast() {
-    final promotionalItems = cartItem
+    final promotionalItems = HomeProvider.cartItem
         .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
         .toList();
 
@@ -2147,8 +2457,6 @@ class CartControllerProvider extends ChangeNotifier {
       calculateRegularDeliveryCharge();
       return;
     }
-
-    // Get the first promotional item's delivery settings from cache - INSTANT
     final firstPromoItem = promotionalItems.first;
     final freeDeliveryKm = _getCachedFreeDeliveryKm(
       firstPromoItem.id ?? '',
@@ -2159,7 +2467,7 @@ class CartControllerProvider extends ChangeNotifier {
       firstPromoItem.vendorID ?? '',
     );
     final baseCharge = 23.0; // Base delivery charge for promotional items
-
+    //finded
     _calculateDeliveryCharge(
       orderType: 'promotional',
       freeDeliveryKm: freeDeliveryKm,
@@ -2182,7 +2490,6 @@ class CartControllerProvider extends ChangeNotifier {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (totalDistance <= freeDeliveryKm) {
-      // Free delivery within distance - show original fee with strikethrough
       deliveryCharges = 0.0;
       originalDeliveryFee = baseCharge;
     } else {
@@ -2197,7 +2504,9 @@ class CartControllerProvider extends ChangeNotifier {
   /// Calculate delivery charge for mart items using static values (like restaurant)
   void calculateMartDeliveryCharge() {
     // Get mart items from cart
-    final martItems = cartItem.where((item) => _isMartItem(item)).toList();
+    final martItems = HomeProvider.cartItem
+        .where((item) => _isMartItem(item))
+        .toList();
     notifyListeners();
 
     if (martItems.isEmpty) {
@@ -2213,10 +2522,8 @@ class CartControllerProvider extends ChangeNotifier {
     final freeKm = 5.0; // Free delivery distance for mart
     final perKm = 7.0; // Per km charge above free distance
     final threshold = 199.0; // Free delivery threshold for mart
-
     final subtotal = subTotal;
     final distance = totalDistance;
-
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
@@ -2268,6 +2575,8 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Calculate delivery charge for regular (non-promotional) items
+  ///
+  //finded here
   void calculateRegularDeliveryCharge() {
     final dc = deliveryChargeModel;
     final subtotal = subTotal;
@@ -2299,7 +2608,7 @@ class CartControllerProvider extends ChangeNotifier {
         deliveryCharges = (extraKm * perKm).toDouble();
       }
     }
-
+    print("calculateRegularDeliveryCharge ${deliveryCharges} ");
     notifyListeners();
   }
 
@@ -2318,7 +2627,6 @@ class CartControllerProvider extends ChangeNotifier {
         );
 
         if (!isAllowed) {
-          // final limit = await getPromotionalItemLimit(
           final limit = getPromotionalItemLimit(
             cartProductModel.id ?? '',
             cartProductModel.vendorID ?? '',
@@ -2344,6 +2652,7 @@ class CartControllerProvider extends ChangeNotifier {
       cartProvider.removeFromCart(cartProductModel, quantity);
       notifyListeners();
     }
+    await forceRefreshCart();
     notifyListeners();
     return true;
   }
@@ -2372,14 +2681,12 @@ class CartControllerProvider extends ChangeNotifier {
   ///finded
 
   placeOrder(BuildContext context) async {
-    // Check idempotency - prevent duplicate orders
     if (_isOrderInProgress()) {
       ShowToastDialog.showToast(
         "Order is already being processed. Please wait...".tr,
       );
       return;
     }
-    // Check debouncing
     if (lastOrderAttempt != null &&
         DateTime.now().difference(lastOrderAttempt!) < orderDebounceTime) {
       ShowToastDialog.showToast("Please wait before trying again...".tr);
@@ -2437,7 +2744,6 @@ class CartControllerProvider extends ChangeNotifier {
           "An error occurred while placing your order. Please try again.".tr,
         );
       }
-
       endOrderProcessing();
     }
     notifyListeners();
@@ -2447,7 +2753,7 @@ class CartControllerProvider extends ChangeNotifier {
   // Validate order before payment to prevent payment without order
   Future<bool> validateOrderBeforePayment(BuildContext context) async {
     try {
-      if (cartItem.isEmpty) {
+      if (HomeProvider.cartItem.isEmpty) {
         ShowToastDialog.showToast(
           "Your cart is empty. Please add items before placing order.".tr,
         );
@@ -2491,7 +2797,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       // First, validate all items in cart for availability
-      for (var item in cartItem) {
+      for (var item in HomeProvider.cartItem) {
         bool isMartItem = item.vendorID?.startsWith('mart_') == true;
 
         if (isMartItem) {
@@ -2537,7 +2843,7 @@ class CartControllerProvider extends ChangeNotifier {
             return false;
           }
         } else {
-          // For restaurant items, use existing Firebase logic
+          // For restaurant ites, use existing Firebase logic
           // Validate product ID before making API call
           final productId = item.id;
           if (productId == null ||
@@ -2684,7 +2990,6 @@ class CartControllerProvider extends ChangeNotifier {
             .map((product) => {"id": product.id, "quantity": product.quantity})
             .toList(),
       };
-      // Make API call to rollback failed order
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}/mobile/orders/rollback-failed'),
         headers: await getHeaders(),
@@ -2709,7 +3014,9 @@ class CartControllerProvider extends ChangeNotifier {
   setOrder() async {
     await FireStoreUtils.getVendorById(vendorModel.id!);
     if (vendorModel.id != null) {
-      final latestVendor = await FireStoreUtils.getVendorById(vendorModel.id!);
+      final latestVendor = await FireStoreUtils.getVendorById(
+        vendorModel.id.toString(),
+      );
       if (latestVendor != null) {
         if (latestVendor.vType == 'mart') {
           if (latestVendor.isOpen == false) {
@@ -2737,6 +3044,13 @@ class CartControllerProvider extends ChangeNotifier {
     return await _setOrderInternal();
   }
 
+  void providerInitializer({required BuildContext context}) {
+    orderPlacingProvider = Provider.of<OrderPlacingProvider>(
+      context,
+      listen: false,
+    );
+  }
+
   ///issue finded
   Future<void> _setOrderInternal() async {
     String? orderId;
@@ -2746,7 +3060,9 @@ class CartControllerProvider extends ChangeNotifier {
               Constant.adminCommission?.isEnabled == true) &&
           vendorModel.subscriptionPlan != null &&
           vendorModel.id != null) {
-        final vender = await FireStoreUtils.getVendorById(vendorModel.id!);
+        final vender = await FireStoreUtils.getVendorById(
+          vendorModel.id.toString(),
+        );
         if (vender?.subscriptionTotalOrders == '0' ||
             vender?.subscriptionTotalOrders == null) {
           ShowToastDialog.closeLoader();
@@ -2758,13 +3074,14 @@ class CartControllerProvider extends ChangeNotifier {
           return;
         }
       }
-      for (CartProductModel cartProduct in cartItem) {
+      for (CartProductModel cartProduct in HomeProvider.cartItem) {
         CartProductModel tempCart = cartProduct;
         if (cartProduct.extrasPrice == '0') {
           tempCart.extras = [];
         }
         tempProduc.add(tempCart);
         orderedProducts.add(tempCart);
+        notifyListeners();
       }
       Map<String, dynamic> specialDiscountMap = {
         'special_discount': specialDiscountAmount,
@@ -2776,7 +3093,6 @@ class CartControllerProvider extends ChangeNotifier {
 
       // **REPLACED: Firebase query with API call**
       int maxNumber = 5;
-
       try {
         final response = await http.get(
           Uri.parse('${AppConst.baseUrl}firestore/getLatestOrderInRange'),
@@ -2788,13 +3104,13 @@ class CartControllerProvider extends ChangeNotifier {
               responseData['order'] != null) {
             final orderData = responseData['order'];
             final String orderIdFromApi = orderData['id'].toString();
-            // Extract numeric part from order ID (assuming format like "Jippy3000001")
             final match = RegExp(r'Jippy3(\d+)').firstMatch(orderIdFromApi);
             if (match != null) {
               final num = int.tryParse(match.group(1)!);
               if (num != null && num > maxNumber) {
                 maxNumber = num;
               }
+              notifyListeners();
             }
           }
         } else {
@@ -2829,7 +3145,7 @@ class CartControllerProvider extends ChangeNotifier {
       orderModel.tipAmount = deliveryTips.toString();
       orderModel.toPayAmount = totalAmount;
       orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime);
-
+      notifyListeners();
       // Prepare API request payload
       Map<String, dynamic> orderPayload = {
         "order_id": generatedOrderId,
@@ -2858,6 +3174,12 @@ class CartControllerProvider extends ChangeNotifier {
         "status": Constant.orderPlaced,
         "created_at": DateTime.now().toIso8601String(),
       };
+      notifyListeners();
+      log(
+        const JsonEncoder.withIndent('  ').convert(orderPayload),
+        name: "ORDER_PAYLOAD",
+      );
+
       // **API CALL: Store the order**
       print('🌐 Creating order via API...');
       final response = await http.post(
@@ -2865,30 +3187,27 @@ class CartControllerProvider extends ChangeNotifier {
         headers: await getHeaders(),
         body: json.encode(orderPayload),
       );
-
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('API returned status code: ${response.statusCode}');
       }
-
       final responseData = json.decode(response.body);
       if (responseData['success'] != true) {
         throw Exception('API returned error: ${responseData['message']}');
       }
+
+      ///finded new
       print('✅ Order created successfully via API');
-      notifyListeners();
-      // Execute additional tasks
       final additionalTasks = <Future>[];
       if (selectedCouponModel.id != null &&
           selectedCouponModel.id!.isNotEmpty) {
         additionalTasks.add(markCouponAsUsed(selectedCouponModel.id!));
+        notifyListeners();
       }
-
-      // Create order billing record via API if needed
       String adminFee = "0";
       if (surgePercent > 0) {
         adminFee = await getAdminSurgeFee();
+        notifyListeners();
       }
-
       additionalTasks.add(
         _createOrderBilling(
           generatedOrderId,
@@ -2897,8 +3216,11 @@ class CartControllerProvider extends ChangeNotifier {
           adminFee,
         ),
       );
-
+      print(
+        " additionalTasks author  ${vendorModel.id}   ${vendorModel.author}",
+      );
       if (vendorModel.id != null && vendorModel.author != null) {
+        print(" additionalTasks author ");
         additionalTasks.add(
           AddressListProvider.getUserProfile(
             vendorModel.author.toString(),
@@ -2921,32 +3243,28 @@ class CartControllerProvider extends ChangeNotifier {
           }),
         );
       }
+      print(
+        " additionalTasks author1  ${vendorModel.id}   ${vendorModel.author}",
+      );
 
       additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
-
       await Future.wait(additionalTasks);
-
       isPaymentInProgress = false;
       isPaymentCompleted = false;
       _lastPaymentId = null;
       _lastPaymentTime = null;
-
       await _clearPersistentPaymentState();
-
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       notifyListeners();
-
       // Navigate to order success screen
-      Get.off(
-        const OrderPlacingScreen(),
-        arguments: {"orderModel": orderModel},
-      );
+      orderPlacingProvider.initFunction(orderModels: orderModel);
+      Get.off(const OrderPlacingScreen());
       notifyListeners();
     } catch (e) {
+      print("OrderPlacingScreen  $e");
       ShowToastDialog.closeLoader();
       endOrderProcessing();
-
       if (isPaymentCompleted && _lastPaymentId != null) {
         // Don't reset payment state here - let user retry
         ShowToastDialog.showToast(
@@ -2959,7 +3277,6 @@ class CartControllerProvider extends ChangeNotifier {
           "Failed to place order. Please try again.".tr,
         );
       }
-
       if (orderId != null) {
         await rollbackFailedOrder(orderId, orderedProducts);
       }
@@ -2981,15 +3298,13 @@ class CartControllerProvider extends ChangeNotifier {
         'created_at': DateTime.now().toIso8601String(),
         'surge_fee': surgePercent,
         'admin_surge_fee': adminFee,
-        'total_surge_fee': "${surgePercent + int.parse(adminFee)}",
       };
-
+      print("billingPayload ${billingPayload} ");
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}order-billing'),
         headers: await getHeaders(),
         body: json.encode(billingPayload),
       );
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('✅ Order billing created successfully');
       } else {
@@ -3001,7 +3316,6 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   CodSettingModel cashOnDeliverySettingModel = CodSettingModel();
-
   RazorPayModel razorPayModel = RazorPayModel();
 
   getPaymentSettings() async {
@@ -3619,7 +3933,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> validateMinimumOrderValue() async {
     try {
       // Check if cart contains any mart items
-      bool hasMartItems = cartItem.any(
+      bool hasMartItems = HomeProvider.cartItem.any(
         (item) => item.vendorID?.startsWith('mart_') == true,
       );
       if (!hasMartItems) {

@@ -1,8 +1,10 @@
+import 'dart:developer';
+
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_product_details_view.dart';
-import 'package:jippymart_customer/constant/constant.dart'
-    show Constant, cartItem;
+import 'package:jippymart_customer/constant/constant.dart' show Constant;
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -45,11 +47,9 @@ class ProductListView extends StatelessWidget {
                   itemBuilder: (context, index) {
                     VendorCategoryModel vendorCategoryModel =
                         controller.vendorCategoryList[index];
-                    // Get or create the key for this category
-                    final categoryKey = controller.getCategoryKey(index);
-                    if (!controller.categoryKeys.containsKey(categoryKey)) {
-                      controller.categoryKeys[categoryKey] = GlobalKey();
-                    }
+                    String? categoryKey = controller.returnKeyCategories(
+                      index: index,
+                    );
                     return KeyedSubtree(
                       key: controller.categoryKeys[categoryKey],
                       child: _buildCategoryExpansionTile(
@@ -111,20 +111,25 @@ class ProductListView extends StatelessWidget {
     final products = controller.getProductsByCategory(
       vendorCategoryModel.id.toString(),
     );
-
-    return ListView.builder(
-      itemCount: products.length,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: EdgeInsets.zero,
-      itemBuilder: (context, productIndex) {
-        ProductModel productModel = products[productIndex];
-        return _buildProductItem(
-          productModel,
-          context,
-          vendorCategoryModel,
-          productIndex,
-          controller,
+    // Listen to HomeProvider changes to rebuild when cart changes
+    return Consumer<HomeProvider>(
+      builder: (context, homeProvider, _) {
+        return ListView.builder(
+          itemCount: products.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.zero,
+          itemBuilder: (context, productIndex) {
+            ProductModel productModel = products[productIndex];
+            log(productModel.id.toString(), name: " productsLength");
+            return _buildProductItem(
+              productModel,
+              context,
+              vendorCategoryModel,
+              productIndex,
+              controller,
+            );
+          },
         );
       },
     );
@@ -226,7 +231,7 @@ class ProductListView extends StatelessWidget {
                     Builder(
                       builder: (context) {
                         final promo = controller.getActivePromotionForProduct(
-                          productId: productModel.id.toString() ?? '',
+                          productId: productModel.id?.toString() ?? '',
                           restaurantId: productModel.vendorID ?? '',
                         );
                         if (promo != null) {
@@ -261,7 +266,7 @@ class ProductListView extends StatelessWidget {
                     Builder(
                       builder: (context) {
                         final promo = controller.getActivePromotionForProduct(
-                          productId: productModel.id.toString() ?? '',
+                          productId: productModel.id?.toString() ?? '',
                           restaurantId: productModel.vendorID ?? '',
                         );
                         final hasPromo = promo != null;
@@ -433,7 +438,7 @@ class ProductListView extends StatelessWidget {
               Builder(
                 builder: (context) {
                   final promo = controller.getActivePromotionForProduct(
-                    productId: productModel.id.toString() ?? '',
+                    productId: productModel.id?.toString() ?? '',
                     restaurantId: productModel.vendorID ?? '',
                   );
 
@@ -513,13 +518,21 @@ class ProductListView extends StatelessWidget {
     String price,
     String disPrice,
   ) {
+    final productId = productModel.id?.toString() ?? '';
     final hasVariantsOrAddons =
         controller.selectedVariants.isNotEmpty ||
         (productModel.addOnsTitle != null &&
             productModel.addOnsTitle!.isNotEmpty);
-
-    final isInCart = cartItem.any((p0) => p0.id == productModel.id);
-
+    // Fix: Handle variant IDs (format: "productId~variantId" or just "productId")
+    final isInCart = HomeProvider.cartItem.any((cartItem) {
+      if (cartItem.id == null || cartItem.id!.isEmpty) return false;
+      // Check exact match or if cart item ID starts with productId~
+      // This handles both simple products and products with variants
+      return cartItem.id == productId || cartItem.id!.startsWith('$productId~');
+    });
+    print(
+      " isInCart $isInCart for productId: $productId, cartItem IDs: ${HomeProvider.cartItem.map((e) => e.id).toList()}",
+    );
     if (hasVariantsOrAddons) {
       return RoundedButtonFill(
         title: "Add".tr,
@@ -553,12 +566,10 @@ class ProductListView extends StatelessWidget {
           children: [
             InkWell(
               onTap: () async {
-                // Check for promotional price
                 final promo = await FireStoreUtils.getActivePromotionForProduct(
-                  productId: productModel.id.toString() ?? '',
+                  productId: productId,
                   restaurantId: productModel.vendorID ?? '',
                 );
-
                 String finalPrice = price;
                 String finalDiscountPrice = disPrice;
 
@@ -570,17 +581,12 @@ class ProductListView extends StatelessWidget {
                     productModel.price.toString(),
                   );
                 }
-
                 controller.addToCart(
                   productModel: productModel,
                   price: finalPrice,
                   discountPrice: finalDiscountPrice,
                   isIncrement: false,
-                  quantity:
-                      cartItem
-                          .firstWhere((p0) => p0.id == productModel.id)
-                          .quantity! -
-                      1,
+                  quantity: _findCartItemQuantity(productId) - 1,
                 );
               },
               child: const Icon(Icons.remove),
@@ -588,10 +594,7 @@ class ProductListView extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14),
               child: Text(
-                cartItem
-                    .firstWhere((p0) => p0.id == productModel.id)
-                    .quantity
-                    .toString(),
+                _findCartItemQuantity(productId).toString(),
                 style: TextStyle(
                   fontSize: 16,
                   fontFamily: AppThemeData.medium,
@@ -602,34 +605,26 @@ class ProductListView extends StatelessWidget {
             ),
             InkWell(
               onTap: () async {
-                if ((cartItem
-                                .firstWhere((p0) => p0.id == productModel.id)
-                                .quantity ??
-                            0) <=
-                        (productModel.quantity ?? 0) ||
+                final currentQty = _findCartItemQuantity(productId);
+                if ((currentQty) <= (productModel.quantity ?? 0) ||
                     (productModel.quantity ?? 0) == -1) {
-                  // Check for promotional price and limit
                   final promo =
                       await FireStoreUtils.getActivePromotionForProduct(
-                        productId: productModel.id.toString() ?? '',
+                        productId: productId,
                         restaurantId: productModel.vendorID ?? '',
                       );
-
                   // Check promotional item limit
                   if (promo != null) {
                     final isAllowed = controller
                         .isPromotionalItemQuantityAllowed(
-                          productModel.id.toString() ?? '',
+                          productId,
                           productModel.vendorID ?? '',
-                          cartItem
-                                  .firstWhere((p0) => p0.id == productModel.id)
-                                  .quantity! +
-                              1,
+                          currentQty + 1,
                         );
 
                     if (!isAllowed) {
                       final limit = controller.getPromotionalItemLimit(
-                        productModel.id.toString() ?? '',
+                        productId,
                         productModel.vendorID ?? '',
                       );
                       ShowToastDialog.showToast(
@@ -642,26 +637,19 @@ class ProductListView extends StatelessWidget {
 
                   String finalPrice = price;
                   String finalDiscountPrice = disPrice;
-
                   if (promo != null) {
-                    // Use promotional price
                     finalPrice = (promo['special_price'] as num).toString();
                     finalDiscountPrice = Constant.productCommissionPrice(
                       controller.vendorModel,
                       productModel.price.toString(),
                     );
                   }
-
                   controller.addToCart(
                     productModel: productModel,
                     price: finalPrice,
                     discountPrice: finalDiscountPrice,
                     isIncrement: true,
-                    quantity:
-                        cartItem
-                            .firstWhere((p0) => p0.id == productModel.id)
-                            .quantity! +
-                        1,
+                    quantity: currentQty + 1,
                   );
                 } else {
                   ShowToastDialog.showToast("Out of stock".tr);
@@ -732,6 +720,25 @@ class ProductListView extends StatelessWidget {
         },
       );
     }
+  }
+
+  int _findCartItemQuantity(String productId) {
+    if (productId.isEmpty) return 0;
+
+    // Find all matching items (exact match or variant IDs starting with productId~)
+    final matchingItems = HomeProvider.cartItem.where((cartItem) {
+      if (cartItem.id == null || cartItem.id!.isEmpty) return false;
+      // Check exact match or if cart item ID starts with productId~
+      return cartItem.id == productId || cartItem.id!.startsWith('$productId~');
+    }).toList();
+
+    if (matchingItems.isEmpty) return 0;
+
+    // Sum up quantities of all matching items (handles multiple variants)
+    return matchingItems.fold<int>(
+      0,
+      (sum, item) => sum + (item.quantity ?? 0),
+    );
   }
 }
 

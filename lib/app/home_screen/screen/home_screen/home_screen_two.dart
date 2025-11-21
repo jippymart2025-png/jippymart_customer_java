@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/advertisement_screens/all_advertisement_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart'
     show BestRestaurantProvider;
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
@@ -17,6 +18,7 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -330,14 +332,25 @@ class HomeScreenTwo extends StatelessWidget {
               ),
               floatingActionButton: Stack(
                 children: [
-                  const Positioned(
-                    bottom: 0,
-                    left: 16,
-                    right: 0,
-                    child: MiniCartBar(),
+                  Consumer3<CartProvider, CartControllerProvider, HomeProvider>(
+                    builder:
+                        (
+                          context,
+                          cartProvider,
+                          cartControllerProvider,
+                          homeProvider,
+                          _,
+                        ) {
+                          return const Positioned(
+                            bottom: 0,
+                            left: 16,
+                            right: 0,
+                            child: MiniCartBar(),
+                          );
+                        },
                   ),
                   Positioned(
-                    bottom: cartItem.isNotEmpty ? 100 : 16,
+                    bottom: HomeProvider.cartItem.isNotEmpty ? 100 : 16,
                     // Position above mini cart if active, otherwise at bottom
                     right: 0,
                     // Consistent right margin

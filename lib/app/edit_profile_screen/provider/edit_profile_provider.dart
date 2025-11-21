@@ -37,7 +37,6 @@ class EditProfileProvider extends ChangeNotifier {
 
   getData() async {
     try {
-      // First try to use the global user model if available
       if (Constant.userModel != null) {
         print(
           '[EDIT_PROFILE] Using global user model: ${Constant.userModel?.toJson()}',
@@ -53,8 +52,8 @@ class EditProfileProvider extends ChangeNotifier {
         );
         if (value != null) {
           userModel = value;
-          // Also update the global user model
           Constant.userModel = value;
+          notifyListeners();
           print(
             '[EDIT_PROFILE] Loaded user model from Firestore: ${value.toJson()}',
           );
@@ -124,12 +123,14 @@ class EditProfileProvider extends ChangeNotifier {
       userModel.email = emailController.text;
       await updateUser(userModel).then((value) {
         Constant.userModel = userModel;
+        notifyListeners();
         print(
           '[EDIT_PROFILE] Updated global user model: ${Constant.userModel?.toJson()}',
         );
         ShowToastDialog.closeLoader();
         Get.back(result: true);
       });
+      notifyListeners();
       Get.back(result: "profile_updated");
     }
   }
@@ -137,10 +138,11 @@ class EditProfileProvider extends ChangeNotifier {
   static Future<bool> updateUser(UserModel userModel) async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
-      String? uid = userModel.id ?? userId ?? '';
+      String? uid = userModel.firebaseId ?? userId ?? '';
       if (uid.isEmpty) {
         return false;
       }
+      print("userdata ${userModel.toJson()}");
       userModel.id = uid;
       var request = http.MultipartRequest(
         'POST',
@@ -196,12 +198,10 @@ class EditProfileProvider extends ChangeNotifier {
           print('Error adding profile picture: $e');
         }
       }
-      // Send request
       var streamedResponse = await request.send();
       var response = await http.Response.fromStream(streamedResponse);
       print("userdata ${response.body}");
       if (response.statusCode == 200) {
-        // Parse response and update local user model
         var responseData = jsonDecode(response.body);
         if (responseData['success'] == true) {
           Constant.userModel = userModel;
@@ -213,6 +213,7 @@ class EditProfileProvider extends ChangeNotifier {
         return false;
       }
     } catch (error) {
+      print(" updateUser $error");
       return false;
     }
   }

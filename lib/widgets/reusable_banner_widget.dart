@@ -259,12 +259,10 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
     print(
       '[BANNER NAVIGATION] 🎯 Banner tapped - Type: $redirectType, ID: $redirectId',
     );
-
     if (redirectType == null || redirectId == null) {
       print('[BANNER NAVIGATION] ❌ Missing redirect type or ID');
       return;
     }
-
     try {
       switch (redirectType) {
         case 'store':

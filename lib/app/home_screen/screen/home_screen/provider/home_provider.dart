@@ -12,6 +12,7 @@ import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
@@ -38,14 +39,13 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class HomeProvider extends ChangeNotifier {
+  static List<CartProductModel> cartItem = <CartProductModel>[];
   static const Duration _networkTimeout = Duration(seconds: 15);
 
   void changeLocationAddressFunction({
     required BuildContext context,
     required ShippingAddress addressModel,
   }) async {
-    // Ensure address and locality are properly set
-    // Use getFullAddress() to get a proper address string if address/locality are empty
     String? finalAddress = addressModel.address;
     String? finalLocality = addressModel.locality;
     notifyListeners();
@@ -76,6 +76,8 @@ class HomeProvider extends ChangeNotifier {
       location: addressModel.location,
       isDefault: addressModel.isDefault,
       zoneId: addressModel.zoneId,
+      latitude: addressModel.latitude,
+      longitude: addressModel.longitude,
     );
     Constant.selectedLocation = updatedAddressModel;
     notifyListeners();
@@ -450,8 +452,6 @@ class HomeProvider extends ChangeNotifier {
   bool _martInitialized = false;
   bool _favouriteProviderInitialized = false;
   Future<void>? _ongoingLoad;
-  final ScrollController scrollController = ScrollController();
-  bool _isScrollListenerAttached = false;
   bool isNavBarVisible = true;
 
   void getCartData() {
@@ -465,7 +465,7 @@ class HomeProvider extends ChangeNotifier {
     });
   }
 
-  bool isLoading = true;
+  bool isLoading = false;
 
   void isLoadingFunction(bool value) {
     isLoading = value;
@@ -478,9 +478,7 @@ class HomeProvider extends ChangeNotifier {
   PageController pageBottomController = PageController(viewportFraction: 1.0);
   int currentPage = 0;
   int currentBottomPage = 0;
-
   Timer? _bannerTimer;
-
   var selectedIndex = 0;
   late CategoryViewProvider categoryViewProvider;
   late BestRestaurantProvider bestRestaurantProvider;
@@ -509,34 +507,9 @@ class HomeProvider extends ChangeNotifier {
     orderProvider = Provider.of<OrderProvider>(context, listen: false);
     martProvider = Provider.of<MartProvider>(context, listen: false);
     splashProvider = Provider.of<SplashProvider>(context, listen: false);
-    if (!_isScrollListenerAttached) {
-      scrollController.addListener(() {
-        if (scrollController.position.userScrollDirection.toString() ==
-            'ScrollDirection.reverse') {
-          if (isNavBarVisible) isNavBarVisible = false;
-        } else if (scrollController.position.userScrollDirection.toString() ==
-            'ScrollDirection.forward') {
-          if (!isNavBarVisible) isNavBarVisible = true;
-        }
-      });
-      _isScrollListenerAttached = true;
-    }
     notifyListeners();
     startBannerTimer();
     await _loadAllDataInParallel(context, waitForSupplemental: false);
-  }
-
-  void onClose() {
-    _bannerTimer?.cancel();
-    _cartSubscription?.cancel();
-
-    if (pageController.hasClients) {
-      pageController.dispose();
-    }
-    if (pageBottomController.hasClients) {
-      pageBottomController.dispose();
-    }
-    notifyListeners();
   }
 
   void startBannerTimer() {
@@ -546,13 +519,9 @@ class HomeProvider extends ChangeNotifier {
         timer.cancel();
         return;
       }
-
       if (bannerModel.isEmpty) return;
-
       int nextPage = currentPage + 1;
-
       if (nextPage >= bannerModel.length) {
-        // Instead of animating back to 0, jump instantly without animation
         pageController.jumpToPage(0);
         currentPage = 0;
       } else {
@@ -587,22 +556,23 @@ class HomeProvider extends ChangeNotifier {
     bool forceRefresh = false,
     bool skipLocationSetup = false,
   }) async {
-    if (_ongoingLoad != null && !forceRefresh) {
-      return _ongoingLoad!;
-    }
-    final loadFuture = _performInitialLoad(
+    // if (_ongoingLoad != null && !forceRefresh) {
+    //   return _ongoingLoad!;
+    // }
+    // final loadFuture =
+    _performInitialLoad(
       context,
       waitForSupplemental: waitForSupplemental,
       skipLocationSetup: skipLocationSetup,
     );
-    _ongoingLoad = loadFuture;
-    try {
-      await loadFuture;
-    } finally {
-      if (_ongoingLoad == loadFuture) {
-        _ongoingLoad = null;
-      }
-    }
+    // _ongoingLoad = loadFuture;
+    // try {
+    //   await loadFuture;
+    // } finally {
+    //   if (_ongoingLoad == loadFuture) {
+    //     _ongoingLoad = null;
+    //   }
+    // }
   }
 
   Future<void> _performInitialLoad(
@@ -620,6 +590,7 @@ class HomeProvider extends ChangeNotifier {
           addressListProvider.shippingAddressList.isEmpty) {
         addressListProvider.shippingAddressList =
             Constant.userModel!.shippingAddress!;
+        print("_performInitialLoad ");
         notifyListeners();
       }
       if (!skipLocationSetup) {
@@ -944,7 +915,6 @@ class HomeProvider extends ChangeNotifier {
               }
             }
           }
-
           Constant.selectedLocation = ShippingAddress(
             addressAs: 'Home',
             address: savedAddress,

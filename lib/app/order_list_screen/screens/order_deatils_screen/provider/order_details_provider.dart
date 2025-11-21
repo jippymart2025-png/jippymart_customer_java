@@ -33,7 +33,6 @@ class OrderDetailsProvider extends ChangeNotifier {
     specialDiscountAmount = 0.0;
     taxAmount = 0.0;
     totalAmount = 0.0;
-
     // Calculate subtotal using promotional prices if available
     for (var element in orderModel.products!) {
       final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
@@ -46,10 +45,8 @@ class OrderDetailsProvider extends ChangeNotifier {
         // Regular discount (non-promo) - use discount price
         itemPrice = double.parse(element.discountPrice.toString());
       }
-
       final quantity = double.parse(element.quantity.toString());
       final extrasPrice = double.parse(element.extrasPrice.toString());
-
       final itemTotal = (itemPrice * quantity) + (extrasPrice * quantity);
       subTotal += itemTotal;
     }
@@ -88,7 +85,6 @@ class OrderDetailsProvider extends ChangeNotifier {
       }
     }
     taxAmount = sgst + gst;
-
     totalAmount =
         (subTotal -
             double.parse(orderModel.discount.toString()) -

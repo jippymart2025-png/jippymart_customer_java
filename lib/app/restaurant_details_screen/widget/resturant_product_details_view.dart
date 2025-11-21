@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
@@ -351,7 +352,8 @@ class ProductDetailsView extends StatelessWidget {
                                                       }
 
                                                       final bool
-                                                      productIsInList = cartItem
+                                                      productIsInList = HomeProvider
+                                                          .cartItem
                                                           .any(
                                                             (product) =>
                                                                 product.id ==
@@ -359,7 +361,8 @@ class ProductDetailsView extends StatelessWidget {
                                                           );
                                                       if (productIsInList) {
                                                         CartProductModel
-                                                        element = cartItem
+                                                        element = HomeProvider
+                                                            .cartItem
                                                             .firstWhere(
                                                               (product) =>
                                                                   product.id ==

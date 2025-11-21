@@ -5,6 +5,7 @@ import 'package:jippymart_customer/app/cart_screen/widget/cart_bill_details_widg
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_navigation_bar_widget.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_product_details_image_widget.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -59,17 +60,12 @@ class _CartScreenState extends State<CartScreen> {
       return; // Prevent simultaneous calls
     }
     _isRefreshing = true;
-    // Await cart refresh to ensure prices are calculated
     await controller.forceRefreshCart();
-    // Always check and sync address with Constant.selectedLocation
-    // This ensures address is updated when location changes on home screen
     if (controller.selectedAddress == null ||
         controller.selectedAddress!.location?.latitude == null ||
         controller.selectedAddress!.location?.longitude == null) {
       await controller.initializeAddress(context);
     } else {
-      // Even if address exists, sync with Constant.selectedLocation to ensure consistency
-      // Await to ensure distance and delivery charges are recalculated
       await controller.syncAddressWithHomeLocation(context);
     }
     // Update payment method after all calculations are complete
@@ -118,14 +114,14 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     // Auto-detect based on cart content
-    bool hasMartItems = cartItem.any(
+    bool hasMartItems = HomeProvider.cartItem.any(
       (item) =>
           item.vendorID?.contains('mart') == true ||
           item.vendorID?.startsWith('demo_') == true ||
           item.vendorID?.contains('vendor') == true,
     );
 
-    bool hasFoodItems = cartItem.any(
+    bool hasFoodItems = HomeProvider.cartItem.any(
       (item) =>
           !(item.vendorID?.contains('mart') == true ||
               item.vendorID?.startsWith('demo_') == true ||
@@ -199,7 +195,7 @@ class _CartScreenState extends State<CartScreen> {
               ),
               actions: [],
             ),
-            body: cartItem.isEmpty
+            body: HomeProvider.cartItem.isEmpty
                 ? Constant.showEmptyView(message: "No Available Items")
                 : SingleChildScrollView(
                     child: Column(
@@ -213,91 +209,9 @@ class _CartScreenState extends State<CartScreen> {
                                 ),
                                 child: InkWell(
                                   onTap: () {
-                                    Get.to(const AddressListScreen())!.then((
-                                      value,
-                                    ) async {
-                                      if (value != null) {
-                                        ShippingAddress addressModel = value;
-                                        if (addressModel.location?.latitude !=
-                                                null &&
-                                            addressModel.location?.longitude !=
-                                                null) {
-                                          try {
-                                            // PRIORITY 1: Use zoneId from addressModel if already set
-                                            if (addressModel.zoneId != null &&
-                                                addressModel
-                                                    .zoneId!
-                                                    .isNotEmpty) {
-                                              print(
-                                                '✅ [CART_ADDRESS_CHANGE] Using zoneId from addressModel: ${addressModel.zoneId}',
-                                              );
-                                            }
-                                            // PRIORITY 2: Use zoneId from Constant.selectedLocation
-                                            else if (Constant
-                                                        .selectedLocation
-                                                        .zoneId !=
-                                                    null &&
-                                                Constant
-                                                    .selectedLocation
-                                                    .zoneId!
-                                                    .isNotEmpty) {
-                                              addressModel.zoneId = Constant
-                                                  .selectedLocation
-                                                  .zoneId;
-                                              print(
-                                                '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedLocation: ${addressModel.zoneId}',
-                                              );
-                                            }
-                                            // PRIORITY 3: Use zoneId from Constant.selectedZone
-                                            else if (Constant.selectedZone !=
-                                                null) {
-                                              addressModel.zoneId =
-                                                  Constant.selectedZone!.id;
-                                              print(
-                                                '✅ [CART_ADDRESS_CHANGE] Using zoneId from Constant.selectedZone: ${addressModel.zoneId}',
-                                              );
-                                            }
-                                            // PRIORITY 4: Try to detect zone ID from coordinates
-                                            else {
-                                              final zoneId =
-                                                  await MartZoneUtils.getZoneIdForCoordinates(
-                                                    addressModel
-                                                        .location!
-                                                        .latitude!,
-                                                    addressModel
-                                                        .location!
-                                                        .longitude!,
-                                                    context,
-                                                  );
-                                              if (zoneId.isNotEmpty) {
-                                                addressModel.zoneId = zoneId;
-                                                print(
-                                                  '✅ [CART_ADDRESS_CHANGE] Detected zone from coordinates: $zoneId',
-                                                );
-                                              } else {
-                                                print(
-                                                  '⚠️ [CART_ADDRESS_CHANGE] No zone detected for coordinates - leaving zoneId as null',
-                                                );
-                                              }
-                                            }
-                                          } catch (e) {
-                                            print(
-                                              '❌ [CART_ADDRESS_CHANGE] Error detecting zone: $e',
-                                            );
-                                            // Continue without zone ID if detection fails
-                                          }
-                                        } else {
-                                          print(
-                                            '⚠️ [CART_ADDRESS_CHANGE] No coordinates available for zone detection',
-                                          );
-                                        }
-                                        controller.selectedAddress =
-                                            addressModel;
-                                        // Await price calculation to ensure delivery charges update
-                                        // This will recalculate distance and delivery charges
-                                        await controller.calculatePrice();
-                                      }
-                                    });
+                                    controller.changeLocationFunctionInCart(
+                                      context: context,
+                                    );
                                   },
                                   child: Column(
                                     children: [
@@ -773,9 +687,9 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
             //changed here
-            bottomNavigationBar: cartItem.isEmpty
+            bottomNavigationBar: HomeProvider.cartItem.isEmpty
                 ? null
-                : cartNavigationBarWidget(controller, context),
+                : cartNavigationBarWidget(context),
           ),
         );
       },

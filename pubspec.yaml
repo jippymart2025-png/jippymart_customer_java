@@ -109,6 +109,7 @@ dependencies:
   flutter_spinkit: ^5.2.2
   shimmer: ^3.0.0
   pull_to_refresh: ^2.0.0
+  chewie: ^1.13.0
 
 dependency_overrides:
   webview_flutter: ^4.7.0

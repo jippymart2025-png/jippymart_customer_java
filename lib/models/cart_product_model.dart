@@ -47,14 +47,14 @@ class CartProductModel {
     extras = json['extras'] == "null" || json['extras'] == null
         ? null
         : "String" == json['extras'].runtimeType.toString()
-            ? List<dynamic>.from(jsonDecode(json['extras']))
-            : List<dynamic>.from(json['extras']);
+        ? List<dynamic>.from(jsonDecode(json['extras']))
+        : List<dynamic>.from(json['extras']);
 
     variantInfo = json['variant_info'] == "null" || json['variant_info'] == null
         ? null
         : "String" == json['variant_info'].runtimeType.toString()
-            ? VariantInfo.fromJson(jsonDecode(json['variant_info']))
-            : VariantInfo.fromJson(json['variant_info']);
+        ? VariantInfo.fromJson(jsonDecode(json['variant_info']))
+        : VariantInfo.fromJson(json['variant_info']);
   }
 
   Map<String, dynamic> toJson() {
@@ -70,7 +70,8 @@ class CartProductModel {
     data['quantity'] = quantity;
     data['extras_price'] = extrasPrice;
     data['extras'] = extras;
-    data['promo_id'] = promoId ?? ''; // Add promo_id to JSON with default empty string
+    data['promo_id'] =
+        promoId ?? ''; // Add promo_id to JSON with default empty string
     if (variantInfo != null) {
       data['variant_info'] = variantInfo?.toJson(); // Handle null value
     }
@@ -83,16 +84,60 @@ class VariantInfo {
   String? variantPrice;
   String? variantSku;
   String? variantImage;
-  Map<String, dynamic>? variantOptions;
+  dynamic variantOptions; // Changed to dynamic to handle both Map and List
 
-  VariantInfo({this.variantId, this.variantPrice, this.variantSku, this.variantImage, this.variantOptions});
+  VariantInfo({
+    this.variantId,
+    this.variantPrice,
+    this.variantSku,
+    this.variantImage,
+    this.variantOptions,
+  });
 
   VariantInfo.fromJson(Map<String, dynamic> json) {
-    variantId = json['variant_id'] ?? '';
-    variantPrice = json['variant_price'] ?? '';
-    variantSku = json['variant_sku'] ?? '';
-    variantImage = json['variant_image'] ?? '';
-    variantOptions = json['variant_options'] ?? {};
+    try {
+      variantId = json['variant_id']?.toString() ?? '';
+      variantPrice = json['variant_price']?.toString() ?? '';
+      variantSku = json['variant_sku']?.toString() ?? '';
+      variantImage = json['variant_image']?.toString() ?? '';
+
+      // Handle variant_options - it could be Map, List, or null
+      final optionsData = json['variant_options'];
+      if (optionsData != null) {
+        if (optionsData is Map) {
+          variantOptions = Map<String, dynamic>.from(optionsData);
+        } else if (optionsData is List) {
+          variantOptions = List<dynamic>.from(optionsData);
+        } else if (optionsData is String) {
+          // Try to parse if it's a JSON string
+          try {
+            final decoded = jsonDecode(optionsData);
+            if (decoded is Map) {
+              variantOptions = Map<String, dynamic>.from(decoded);
+            } else if (decoded is List) {
+              variantOptions = List<dynamic>.from(decoded);
+            } else {
+              variantOptions = optionsData;
+            }
+          } catch (e) {
+            variantOptions = optionsData;
+          }
+        } else {
+          variantOptions = optionsData;
+        }
+      } else {
+        variantOptions = {};
+      }
+    } catch (e) {
+      print('Error parsing VariantInfo: $e');
+      print('Problematic variant data: $json');
+      // Set default values on error
+      variantId = '';
+      variantPrice = '';
+      variantSku = '';
+      variantImage = '';
+      variantOptions = {};
+    }
   }
 
   Map<String, dynamic> toJson() {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -29,7 +30,7 @@ class CartProvider with ChangeNotifier {
   }
 
   bool _initialized = false;
-  bool _isSyncing = false;
+  Completer<void>? _activeCartSync;
 
   final _cartStreamController =
       StreamController<List<CartProductModel>>.broadcast();
@@ -38,8 +39,13 @@ class CartProvider with ChangeNotifier {
   Stream<List<CartProductModel>> get cartStream => _cartStreamController.stream;
 
   Future<void> initCart() async {
-    if (_isSyncing) return;
-    _isSyncing = true;
+    while (_activeCartSync != null) {
+      await _activeCartSync!.future;
+    }
+
+    final currentSync = Completer<void>();
+    _activeCartSync = currentSync;
+
     try {
       if (kDebugMode) {
         print('DEBUG: CartProvider _initCart() called');
@@ -50,11 +56,11 @@ class CartProvider with ChangeNotifier {
           'DEBUG: CartProvider - Fetched ${_cartItems.length} items from database',
         );
       }
-      cartItem.clear();
-      cartItem.addAll(_cartItems);
+      HomeProvider.cartItem.clear();
+      HomeProvider.cartItem.addAll(_cartItems);
       if (kDebugMode) {
         print(
-          'DEBUG: CartProvider - Synced ${cartItem.length} items to global cartItem',
+          'DEBUG: CartProvider - Synced ${HomeProvider.cartItem.length} items to global cartItem',
         );
       }
       _cartStreamController.sink.add(_cartItems);
@@ -62,8 +68,18 @@ class CartProvider with ChangeNotifier {
       print(
         'DEBUG: CartProvider - Stream updated with ${_cartItems.length} items',
       );
+      if (!currentSync.isCompleted) {
+        currentSync.complete();
+      }
+    } catch (e, stackTrace) {
+      if (!currentSync.isCompleted) {
+        currentSync.completeError(e, stackTrace);
+      }
+      rethrow;
     } finally {
-      _isSyncing = false;
+      if (identical(_activeCartSync, currentSync)) {
+        _activeCartSync = null;
+      }
     }
   }
 
@@ -148,7 +164,6 @@ class CartProvider with ChangeNotifier {
       }
     }
     notifyListeners();
-    // Force refresh cart data and notify listeners
     await initCart();
     print(
       'DEBUG: CartProvider - Cart updated, total items: ${_cartItems.length}',
@@ -269,7 +284,7 @@ class CartProvider with ChangeNotifier {
 
   Future<void> clearDatabase() async {
     _cartItems.clear();
-    cartItem.clear();
+    HomeProvider.cartItem.clear();
     await DatabaseHelper.instance.deleteAllCartProducts();
     _cartStreamController.sink.add(_cartItems);
     notifyListeners();
@@ -293,7 +308,9 @@ class CartProvider with ChangeNotifier {
     final dbItems = await DatabaseHelper.instance.fetchCartProducts();
     print('DEBUG: CartProvider - Database has ${dbItems.length} items');
     print('DEBUG: CartProvider - Memory has ${_cartItems.length} items');
-    print('DEBUG: CartProvider - Global cartItem has ${cartItem.length} items');
+    print(
+      'DEBUG: CartProvider - Global cartItem has ${HomeProvider.cartItem.length} items',
+    );
 
     if (dbItems.length != _cartItems.length) {
       print('DEBUG: CartProvider - Syncing cart with database...');

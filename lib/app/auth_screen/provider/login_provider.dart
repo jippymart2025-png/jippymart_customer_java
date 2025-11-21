@@ -94,20 +94,17 @@ class LoginProvider extends ChangeNotifier {
     if (phone.isEmpty) {
       ShowToastDialog.showToast("Please enter mobile number".tr);
       return;
-    } else if (phone.length < 10 || phone.length > 15) {
-      ShowToastDialog.showToast("Phone number must be 10-15 digits".tr);
+    } else if (phone.length != 10) {
+      ShowToastDialog.showToast("Phone number must be 10 digits".tr);
       return;
     }
     this.countryCode = countryCode;
-
     String cleanCountryCode = countryCode.replaceAll('+', '');
     String fullPhoneNumber = '$cleanCountryCode$phone';
-
     print('[DEBUG] sendOtp() called with full phone: $fullPhoneNumber');
     print(
       '[DEBUG] Country code: $countryCode, Clean country code: $cleanCountryCode',
     );
-
     ShowToastDialog.showLoader("Please wait".tr);
     try {
       phoneNumber = fullPhoneNumber;

@@ -214,81 +214,82 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
                             const SizedBox(height: 32),
 
                             // OTP sent success message
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 300),
-                              height: controller.isOtpSent ? 60 : 0,
-                              child: controller.isOtpSent
-                                  ? Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 16,
-                                        vertical: 12,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.green.withOpacity(0.1),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: Colors.green.withOpacity(0.3),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.check_circle_rounded,
-                                            color: Colors.green,
-                                            size: 24,
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              'OTP sent successfully!'.tr,
-                                              style: TextStyle(
-                                                color: Colors.green,
-                                                fontSize: 14,
-                                                fontFamily: AppThemeData.medium,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(),
-                            ),
+                            // AnimatedContainer(
+                            //   duration: const Duration(milliseconds: 300),
+                            //   height: controller.isOtpSent ? 60 : 0,
+                            //   child: controller.isOtpSent
+                            //       ? Container(
+                            //           padding: const EdgeInsets.symmetric(
+                            //             horizontal: 16,
+                            //             vertical: 12,
+                            //           ),
+                            //           decoration: BoxDecoration(
+                            //             color: Colors.green.withOpacity(0.1),
+                            //             borderRadius: BorderRadius.circular(12),
+                            //             border: Border.all(
+                            //               color: Colors.green.withOpacity(0.3),
+                            //               width: 1,
+                            //             ),
+                            //           ),
+                            //           child: Row(
+                            //             children: [
+                            //               Icon(
+                            //                 Icons.check_circle_rounded,
+                            //                 color: Colors.green,
+                            //                 size: 24,
+                            //               ),
+                            //               const SizedBox(width: 12),
+                            //               Expanded(
+                            //                 child: Text(
+                            //                   'OTP sent successfully!'.tr,
+                            //                   style: TextStyle(
+                            //                     color: Colors.green,
+                            //                     fontSize: 14,
+                            //                     fontFamily: AppThemeData.medium,
+                            //                   ),
+                            //                 ),
+                            //               ),
+                            //             ],
+                            //           ),
+                            //         )
+                            //       : const SizedBox.shrink(),
+                            // ),
                             SizedBox(height: controller.isOtpSent ? 24 : 0),
                             // Send OTP button
                             AnimatedContainer(
                               duration: const Duration(milliseconds: 300),
-                              child: !controller.isOtpSent
-                                  ? Container(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(16),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: AppThemeData.primary300
-                                                .withOpacity(0.3),
-                                            blurRadius: 20,
-                                            offset: const Offset(0, 10),
-                                          ),
-                                        ],
-                                      ),
-                                      child: RoundedButtonFill(
-                                        title: controller.isVerifying
-                                            ? "Sending...".tr
-                                            : "Send OTP".tr,
-                                        color: AppThemeData.primary300,
-                                        textColor: AppThemeData.grey50,
-                                        onPress: controller.isVerifying
-                                            ? null
-                                            : () async {
-                                                // Pass the country code to the sendOtp method
-                                                await controller.sendOtp(
-                                                  countryCode:
-                                                      selectedCountryCode,
-                                                );
-                                              },
-                                      ),
-                                    )
-                                  : const SizedBox.shrink(),
+                              child:
+                                  // !controller.isOtpSent
+                                  //     ?
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(16),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: AppThemeData.primary300
+                                              .withOpacity(0.3),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 10),
+                                        ),
+                                      ],
+                                    ),
+                                    child: RoundedButtonFill(
+                                      title: controller.isVerifying
+                                          ? "Sending...".tr
+                                          : "Send OTP".tr,
+                                      color: AppThemeData.primary300,
+                                      textColor: AppThemeData.grey50,
+                                      onPress: controller.isVerifying
+                                          ? null
+                                          : () async {
+                                              await controller.sendOtp(
+                                                countryCode:
+                                                    selectedCountryCode,
+                                              );
+                                            },
+                                    ),
+                                  ),
+                              // : const SizedBox.shrink(),
                             ),
                             const SizedBox(height: 32),
                             Container(

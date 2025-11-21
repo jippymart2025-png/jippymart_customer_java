@@ -138,7 +138,6 @@ class MartZoneUtils {
         return '';
       }
 
-      // Check if API returned success
       if (zoneModel.success != true) {
         print('❌ [MART_ZONE_UTILS] API returned false: ${zoneModel.message}');
         print(

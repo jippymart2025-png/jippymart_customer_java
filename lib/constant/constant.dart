@@ -10,7 +10,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
-import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/currency_model.dart';
 import 'package:jippymart_customer/models/email_template_model.dart';
@@ -34,8 +33,6 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:uuid/uuid.dart';
-
-List<CartProductModel> cartItem = <CartProductModel>[];
 
 class Constant {
   static String userRoleCustomer = 'customer';
@@ -121,14 +118,11 @@ class Constant {
     final symbol = currencyModel?.symbol ?? '₹';
     final decimalDigits = currencyModel?.decimalDigits ?? 2;
     final symbolAtRight = currencyModel?.symbolAtRight ?? false;
-
     // Parse amount safely
     final amountValue = amount == null || amount.isEmpty
         ? 0.0
         : (double.tryParse(amount.toString()) ?? 0.0);
-
     final formattedAmount = amountValue.toStringAsFixed(decimalDigits);
-
     if (symbolAtRight == true) {
       return "$formattedAmount $symbol";
     } else {
@@ -207,9 +201,11 @@ class Constant {
       } else {
         commission = price;
       }
-      print('💰 Commission Calculation:');
-      print('   - Base Price: $basePrice');
-      print('   - Final Commission: $commission');
+      if (kDebugMode) {
+        print('💰 Commission Calculation:');
+        print('   - Base Price: $basePrice');
+        print('   - Final Commission: $commission');
+      }
       return commission;
     } catch (e) {
       print('❌ Error in productCommissionPrice: $e');
@@ -276,7 +272,7 @@ class Constant {
       } else {
         taxAmount =
             (double.parse(amount.toString()) *
-                double.parse(taxModel.tax!.toString())) /
+                double.parse(taxModel.tax.toString())) /
             100;
       }
     }

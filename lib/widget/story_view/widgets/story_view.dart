@@ -35,11 +35,7 @@ class StoryItem {
   /// The page content
   final Widget view;
 
-  StoryItem(
-    this.view, {
-    required this.duration,
-    this.shown = false,
-  });
+  StoryItem(this.view, {required this.duration, this.shown = false});
 
   /// Short hand to create text-only page.
   ///
@@ -60,15 +56,11 @@ class StoryItem {
     EdgeInsetsGeometry? textOuterPadding,
     Duration? duration,
   }) {
-    double contrast = ContrastHelper.contrast([
-      backgroundColor.red,
-      backgroundColor.green,
-      backgroundColor.blue,
-    ], [
-      255,
-      255,
-      255
-    ] /** white text */);
+    double contrast = ContrastHelper.contrast(
+      [backgroundColor.red, backgroundColor.green, backgroundColor.blue],
+      [255, 255, 255],
+      /** white text */
+    );
 
     return StoryItem(
       Container(
@@ -80,15 +72,14 @@ class StoryItem {
             bottom: Radius.circular(roundedBottom ? 8 : 0),
           ),
         ),
-        padding: textOuterPadding ??
-            const EdgeInsets.symmetric(
-              horizontal: 24,
-              vertical: 16,
-            ),
+        padding:
+            textOuterPadding ??
+            const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Center(
           child: Text(
             title,
-            style: textStyle?.copyWith(
+            style:
+                textStyle?.copyWith(
                   color: contrast > 1.8 ? Colors.white : Colors.black,
                 ) ??
                 TextStyle(
@@ -139,19 +130,15 @@ class StoryItem {
                 alignment: Alignment.bottomCenter,
                 child: Container(
                   width: double.infinity,
-                  margin: const EdgeInsets.only(
-                    bottom: 24,
-                  ),
-                  padding: captionOuterPadding ??
-                      const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 8,
-                      ),
+                  margin: const EdgeInsets.only(bottom: 24),
+                  padding:
+                      captionOuterPadding ??
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   color: caption != null ? Colors.black54 : Colors.transparent,
                   child: caption ?? const SizedBox.shrink(),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -200,7 +187,9 @@ class StoryItem {
                 ),
                 Container(
                   margin: const EdgeInsets.only(bottom: 16),
-                  padding: captionOuterPadding ?? const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding:
+                      captionOuterPadding ??
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   child: Align(
                     alignment: Alignment.bottomLeft,
                     child: SizedBox(
@@ -234,35 +223,39 @@ class StoryItem {
     Widget? errorWidget,
   }) {
     return StoryItem(
-        Container(
-          key: key,
-          color: Colors.black,
-          child: Stack(
-            children: <Widget>[
-              StoryVideo.url(
-                url,
-                controller: controller,
-                requestHeaders: requestHeaders,
-                loadingWidget: loadingWidget,
-                errorWidget: errorWidget,
-              ),
-              SafeArea(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(bottom: 24),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    color: caption != null ? Colors.black54 : Colors.transparent,
-                    child: caption ?? const SizedBox.shrink(),
+      Container(
+        key: key,
+        color: Colors.black,
+        child: Stack(
+          children: <Widget>[
+            StoryVideo.url(
+              url,
+              // controller: controller,
+              // requestHeaders: requestHeaders,
+              // loadingWidget: loadingWidget,
+              // errorWidget: errorWidget,
+            ),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
                   ),
+                  color: caption != null ? Colors.black54 : Colors.transparent,
+                  child: caption ?? const SizedBox.shrink(),
                 ),
-              )
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
-        shown: shown,
-        duration: duration ?? const Duration(seconds: 10));
+      ),
+      shown: shown,
+      duration: duration ?? const Duration(seconds: 10),
+    );
   }
 
   /// Shorthand for creating a story item from an image provider such as `AssetImage`
@@ -277,50 +270,49 @@ class StoryItem {
     Duration? duration,
   }) {
     return StoryItem(
-        Container(
-          key: key,
-          color: Colors.black,
-          child: Stack(
-            children: <Widget>[
-              Center(
-                child: Image(
-                  image: image,
-                  height: double.infinity,
+      Container(
+        key: key,
+        color: Colors.black,
+        child: Stack(
+          children: <Widget>[
+            Center(
+              child: Image(
+                image: image,
+                height: double.infinity,
+                width: double.infinity,
+                fit: imageFit,
+              ),
+            ),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Container(
                   width: double.infinity,
-                  fit: imageFit,
+                  margin: const EdgeInsets.only(bottom: 24),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 8,
+                  ),
+                  color: caption != null ? Colors.black54 : Colors.transparent,
+                  child: caption != null
+                      ? Text(
+                          caption,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
+                          textAlign: TextAlign.center,
+                        )
+                      : const SizedBox(),
                 ),
               ),
-              SafeArea(
-                child: Align(
-                  alignment: Alignment.bottomCenter,
-                  child: Container(
-                    width: double.infinity,
-                    margin: const EdgeInsets.only(
-                      bottom: 24,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 8,
-                    ),
-                    color: caption != null ? Colors.black54 : Colors.transparent,
-                    child: caption != null
-                        ? Text(
-                            caption,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.white,
-                            ),
-                            textAlign: TextAlign.center,
-                          )
-                        : const SizedBox(),
-                  ),
-                ),
-              )
-            ],
-          ),
+            ),
+          ],
         ),
-        shown: shown,
-        duration: duration ?? const Duration(seconds: 3));
+      ),
+      shown: shown,
+      duration: duration ?? const Duration(seconds: 3),
+    );
   }
 
   /// Shorthand for creating an inline story item from an image provider such as `AssetImage`
@@ -339,23 +331,16 @@ class StoryItem {
       Container(
         key: key,
         decoration: BoxDecoration(
-            color: Colors.grey[100],
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(roundedTop ? 8 : 0),
-              bottom: Radius.circular(roundedBottom ? 8 : 0),
-            ),
-            image: DecorationImage(
-              image: image,
-              fit: BoxFit.cover,
-            )),
+          color: Colors.grey[100],
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(roundedTop ? 8 : 0),
+            bottom: Radius.circular(roundedBottom ? 8 : 0),
+          ),
+          image: DecorationImage(image: image, fit: BoxFit.cover),
+        ),
         child: Container(
-          margin: const EdgeInsets.only(
-            bottom: 16,
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 8,
-          ),
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           child: Align(
             alignment: Alignment.bottomLeft,
             child: SizedBox(
@@ -479,7 +464,9 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       });
     }
 
-    _playbackSubscription = widget.controller.playbackNotifier.listen((playbackStatus) {
+    _playbackSubscription = widget.controller.playbackNotifier.listen((
+      playbackStatus,
+    ) {
       switch (playbackStatus) {
         case PlaybackState.play:
           _removeNextHold();
@@ -536,7 +523,10 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       widget.onStoryShow!(storyItem, storyItemIndex);
     }
 
-    _animationController = AnimationController(duration: storyItem.duration, vsync: this);
+    _animationController = AnimationController(
+      duration: storyItem.duration,
+      vsync: this,
+    );
 
     _animationController!.addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -550,7 +540,10 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       }
     });
 
-    _currentAnimation = Tween(begin: 0.0, end: 1.0).animate(_animationController!);
+    _currentAnimation = Tween(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_animationController!);
 
     widget.controller.play();
   }
@@ -610,7 +603,10 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
       }
     } else {
       // this is the last page, progress animation should skip to end
-      _animationController!.animateTo(1.0, duration: const Duration(milliseconds: 10));
+      _animationController!.animateTo(
+        1.0,
+        duration: const Duration(milliseconds: 10),
+      );
     }
   }
 
@@ -639,14 +635,18 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
           Visibility(
             visible: widget.progressPosition != ProgressPosition.none,
             child: Align(
-              alignment: widget.progressPosition == ProgressPosition.top ? Alignment.topCenter : Alignment.bottomCenter,
+              alignment: widget.progressPosition == ProgressPosition.top
+                  ? Alignment.topCenter
+                  : Alignment.bottomCenter,
               child: SafeArea(
                 bottom: widget.inline ? false : true,
                 // we use SafeArea here for notched and bezeles phones
                 child: Container(
                   padding: widget.indicatorOuterPadding,
                   child: PageBar(
-                    widget.storyItems.map((it) => PageData(it!.duration, it.shown)).toList(),
+                    widget.storyItems
+                        .map((it) => PageData(it!.duration, it.shown))
+                        .toList(),
                     _currentAnimation,
                     key: UniqueKey(),
                     indicatorHeight: widget.indicatorHeight,
@@ -658,62 +658,69 @@ class StoryViewState extends State<StoryView> with TickerProviderStateMixin {
             ),
           ),
           Align(
-              alignment: Alignment.centerRight,
-              heightFactor: 1,
-              child: GestureDetector(
-                onTapDown: (details) {
-                  widget.controller.pause();
-                },
-                onTapCancel: () {
+            alignment: Alignment.centerRight,
+            heightFactor: 1,
+            child: GestureDetector(
+              onTapDown: (details) {
+                widget.controller.pause();
+              },
+              onTapCancel: () {
+                widget.controller.play();
+              },
+              onTapUp: (details) {
+                // if debounce timed out (not active) then continue anim
+                if (_nextDebouncer?.isActive == false) {
                   widget.controller.play();
-                },
-                onTapUp: (details) {
-                  // if debounce timed out (not active) then continue anim
-                  if (_nextDebouncer?.isActive == false) {
-                    widget.controller.play();
-                  } else {
-                    widget.controller.next();
-                  }
-                },
-                onVerticalDragStart: widget.onVerticalSwipeComplete == null
-                    ? null
-                    : (details) {
-                        widget.controller.pause();
-                      },
-                onVerticalDragCancel: widget.onVerticalSwipeComplete == null
-                    ? null
-                    : () {
-                        widget.controller.play();
-                      },
-                onVerticalDragUpdate: widget.onVerticalSwipeComplete == null
-                    ? null
-                    : (details) {
-                        verticalDragInfo ??= VerticalDragInfo();
+                } else {
+                  widget.controller.next();
+                }
+              },
+              onVerticalDragStart: widget.onVerticalSwipeComplete == null
+                  ? null
+                  : (details) {
+                      widget.controller.pause();
+                    },
+              onVerticalDragCancel: widget.onVerticalSwipeComplete == null
+                  ? null
+                  : () {
+                      widget.controller.play();
+                    },
+              onVerticalDragUpdate: widget.onVerticalSwipeComplete == null
+                  ? null
+                  : (details) {
+                      verticalDragInfo ??= VerticalDragInfo();
 
-                        verticalDragInfo!.update(details.primaryDelta!);
+                      verticalDragInfo!.update(details.primaryDelta!);
 
-                        // TODO: provide callback interface for animation purposes
-                      },
-                onVerticalDragEnd: widget.onVerticalSwipeComplete == null
-                    ? null
-                    : (details) {
-                        widget.controller.play();
-                        // finish up drag cycle
-                        if (!verticalDragInfo!.cancel && widget.onVerticalSwipeComplete != null) {
-                          widget.onVerticalSwipeComplete!(verticalDragInfo!.direction);
-                        }
+                      // TODO: provide callback interface for animation purposes
+                    },
+              onVerticalDragEnd: widget.onVerticalSwipeComplete == null
+                  ? null
+                  : (details) {
+                      widget.controller.play();
+                      // finish up drag cycle
+                      if (!verticalDragInfo!.cancel &&
+                          widget.onVerticalSwipeComplete != null) {
+                        widget.onVerticalSwipeComplete!(
+                          verticalDragInfo!.direction,
+                        );
+                      }
 
-                        verticalDragInfo = null;
-                      },
-              )),
+                      verticalDragInfo = null;
+                    },
+            ),
+          ),
           Align(
             alignment: Alignment.centerLeft,
             heightFactor: 1,
             child: SizedBox(
-                width: 70,
-                child: GestureDetector(onTap: () {
+              width: 70,
+              child: GestureDetector(
+                onTap: () {
                   widget.controller.previous();
-                })),
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -786,14 +793,16 @@ class PageBarState extends State<PageBar> {
       children: widget.pages.map((it) {
         return Expanded(
           child: Container(
-            padding: EdgeInsets.only(right: widget.pages.last == it ? 0 : spacing),
+            padding: EdgeInsets.only(
+              right: widget.pages.last == it ? 0 : spacing,
+            ),
             child: StoryProgressIndicator(
               isPlaying(it) ? widget.animation!.value : (it.shown ? 1 : 0),
               indicatorHeight: widget.indicatorHeight == IndicatorHeight.large
                   ? 5
                   : widget.indicatorHeight == IndicatorHeight.medium
-                      ? 3
-                      : 2,
+                  ? 3
+                  : 2,
               indicatorColor: widget.indicatorColor,
               indicatorForegroundColor: widget.indicatorForegroundColor,
             ),
@@ -824,9 +833,7 @@ class StoryProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      size: Size.fromHeight(
-        indicatorHeight,
-      ),
+      size: Size.fromHeight(indicatorHeight),
       foregroundPainter: IndicatorOval(
         indicatorForegroundColor ?? Colors.white.withOpacity(0.8),
         value,
@@ -848,7 +855,13 @@ class IndicatorOval extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()..color = color;
-    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width * widthFactor, size.height), const Radius.circular(3)), paint);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(0, 0, size.width * widthFactor, size.height),
+        const Radius.circular(3),
+      ),
+      paint,
+    );
   }
 
   @override
@@ -862,13 +875,16 @@ class ContrastHelper {
   static double luminance(int? r, int? g, int? b) {
     final a = [r, g, b].map((it) {
       double value = it!.toDouble() / 255.0;
-      return value <= 0.03928 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4);
+      return value <= 0.03928
+          ? value / 12.92
+          : pow((value + 0.055) / 1.055, 2.4);
     }).toList();
 
     return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
   }
 
   static double contrast(rgb1, rgb2) {
-    return luminance(rgb2[0], rgb2[1], rgb2[2]) / luminance(rgb1[0], rgb1[1], rgb1[2]);
+    return luminance(rgb2[0], rgb2[1], rgb2[2]) /
+        luminance(rgb1[0], rgb1[1], rgb1[2]);
   }
 }

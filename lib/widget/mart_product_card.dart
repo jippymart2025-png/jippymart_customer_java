@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
@@ -83,7 +84,7 @@ class _MartProductCardState extends State<MartProductCard>
   }
 
   void _checkCurrentQuantity() {
-    final cartItems = cartItem
+    final cartItems = HomeProvider.cartItem
         .where((item) => item.id == widget.product.id)
         .toList();
     if (cartItems.isNotEmpty) {

@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart'
     show Constant, cartItem;
@@ -498,20 +499,21 @@ Widget buildProductsWithoutCategories(
                                               }
                                             }
                                           }
-                                          final bool
-                                          productIsInList = cartItem.any(
-                                            (product) =>
-                                                product.id ==
-                                                "${productModel.id}~${productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).isNotEmpty ? productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).first.variantId.toString() : ""}",
-                                          );
+                                          final bool productIsInList =
+                                              HomeProvider.cartItem.any(
+                                                (product) =>
+                                                    product.id ==
+                                                    "${productModel.id}~${productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).isNotEmpty ? productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).first.variantId.toString() : ""}",
+                                              );
 
                                           if (productIsInList) {
                                             CartProductModel
-                                            element = cartItem.firstWhere(
-                                              (product) =>
-                                                  product.id ==
-                                                  "${productModel.id}~${productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).isNotEmpty ? productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).first.variantId.toString() : ""}",
-                                            );
+                                            element = HomeProvider.cartItem
+                                                .firstWhere(
+                                                  (product) =>
+                                                      product.id ==
+                                                      "${productModel.id}~${productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).isNotEmpty ? productModel.itemAttribute!.variants!.where((element) => element.variantSku == controller.selectedVariants.join('-')).first.variantId.toString() : ""}",
+                                                );
                                             controller.quantity =
                                                 element.quantity!;
                                           } else {
@@ -527,7 +529,7 @@ Widget buildProductsWithoutCategories(
                                         //     productModel);
                                       },
                                     )
-                                  : cartItem
+                                  : HomeProvider.cartItem
                                         .where((p0) => p0.id == productModel.id)
                                         .isNotEmpty
                                   ? Container(
@@ -589,7 +591,7 @@ Widget buildProductsWithoutCategories(
                                                       finalDiscountPrice,
                                                   isIncrement: false,
                                                   quantity:
-                                                      cartItem
+                                                      HomeProvider.cartItem
                                                           .where(
                                                             (p0) =>
                                                                 p0.id ==
@@ -610,7 +612,7 @@ Widget buildProductsWithoutCategories(
                                                     horizontal: 8,
                                                   ),
                                               child: Text(
-                                                cartItem
+                                                HomeProvider.cartItem
                                                     .where(
                                                       (p0) =>
                                                           p0.id ==
@@ -623,7 +625,7 @@ Widget buildProductsWithoutCategories(
                                                 maxLines: 1,
                                                 style: TextStyle(
                                                   fontSize:
-                                                      cartItem
+                                                      HomeProvider.cartItem
                                                               .where(
                                                                 (p0) =>
                                                                     p0.id ==
@@ -650,7 +652,7 @@ Widget buildProductsWithoutCategories(
                                           Flexible(
                                             child: InkWell(
                                               onTap: () async {
-                                                if ((cartItem
+                                                if ((HomeProvider.cartItem
                                                                 .where(
                                                                   (p0) =>
                                                                       p0.id ==
@@ -689,7 +691,7 @@ Widget buildProductsWithoutCategories(
                                                           productModel
                                                                   .vendorID ??
                                                               '',
-                                                          cartItem
+                                                          HomeProvider.cartItem
                                                                   .where(
                                                                     (p0) =>
                                                                         p0.id ==
@@ -745,7 +747,7 @@ Widget buildProductsWithoutCategories(
                                                         finalDiscountPrice,
                                                     isIncrement: true,
                                                     quantity:
-                                                        cartItem
+                                                        HomeProvider.cartItem
                                                             .where(
                                                               (p0) =>
                                                                   p0.id ==

@@ -89,19 +89,27 @@ class ProfileScreen extends StatelessWidget {
                                 horizontal: 10,
                                 vertical: 8,
                               ),
-                              child: Column(
-                                children: [
-                                  Constant.userModel == null
-                                      ? const SizedBox()
-                                      : cardDecoration(
-                                          controller,
-                                          "assets/images/ic_profile.svg",
-                                          "Profile Information".tr,
-                                          () {
-                                            Get.to(const EditProfileScreen());
-                                          },
-                                        ),
-                                ],
+                              child: Consumer<EditProfileProvider>(
+                                builder: (context, editProfileProvider, _) {
+                                  return Column(
+                                    children: [
+                                      Constant.userModel == null
+                                          ? const SizedBox()
+                                          : cardDecoration(
+                                              controller,
+                                              "assets/images/ic_profile.svg",
+                                              "Profile Information".tr,
+                                              () {
+                                                editProfileProvider
+                                                    .initFunction();
+                                                Get.to(
+                                                  const EditProfileScreen(),
+                                                );
+                                              },
+                                            ),
+                                    ],
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -410,18 +418,10 @@ class ProfileScreen extends StatelessWidget {
                                             positiveString: "Delete".tr,
                                             negativeString: "Cancel".tr,
                                             positiveClick: () async {
-                                              ShowToastDialog.showLoader(
-                                                "Please wait".tr,
-                                              );
-                                              // Clear cart data before account deletion
                                               try {
-                                                CartControllerProvider
-                                                cartControllerProvider =
-                                                    Provider.of<
-                                                      CartControllerProvider
-                                                    >(context, listen: false);
-                                                await cartControllerProvider
-                                                    .clearCart();
+                                                controller.deleteUserAccount(
+                                                  context: context,
+                                                );
                                               } catch (_) {}
                                             },
                                             negativeClick: () {

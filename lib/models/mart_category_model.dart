@@ -1,4 +1,4 @@
-
+import 'dart:convert' as js;
 
 class MartCategoryModel {
   String? id;
@@ -8,7 +8,7 @@ class MartCategoryModel {
   bool? publish;
   bool? showInHomepage;
   String? martId;
-  List<String>? reviewAttributes;
+  List<dynamic>? reviewAttributes;
   String? migratedBy;
   String? createdAt;
   String? updatedAt;
@@ -20,7 +20,7 @@ class MartCategoryModel {
   int? sectionOrder;
   int? categoryOrder;
   int? sortOrder;
-  
+
   // Sub-categories relationship
   bool? hasSubcategories;
   int? subcategoriesCount;
@@ -50,63 +50,73 @@ class MartCategoryModel {
   });
 
   MartCategoryModel.fromJson(Map<String, dynamic> json) {
-    try {
-      print('[MART CATEGORY MODEL] Parsing JSON: ${json.keys.toList()}');
-      
-      id = json['id'];
-      title = json['title'];
-      description = json['description'];
-      photo = json['photo'];
-      publish = json['publish'];
-      showInHomepage = json['show_in_homepage'];
-      martId = json['mart_id'];
-      
-      // Safe parsing for review_attributes
-      if (json['review_attributes'] != null) {
-        print('[MART CATEGORY MODEL] review_attributes type: ${json['review_attributes'].runtimeType}');
-        if (json['review_attributes'] is List) {
-          try {
-            // Handle empty list case
-            if (json['review_attributes'].isEmpty) {
-              reviewAttributes = [];
-            } else {
-              reviewAttributes = List<String>.from(json['review_attributes']);
-            }
-          } catch (e) {
-            print('[MART CATEGORY MODEL] Error converting review_attributes to List<String>: $e');
+    print('[MART CATEGORY MODEL] Parsing JSON: ${json.keys.toList()}');
+    id = json['id'];
+    title = json['title'];
+    description = json['description'];
+
+    if (json['photo'] is List) {
+      List list = json['photo'];
+      photo = list
+          .firstWhere(
+            (e) => e != null && e.toString().trim().isNotEmpty,
+            orElse: () => "",
+          )
+          .toString();
+    } else {
+      photo = json['photo']?.toString();
+    }
+
+    publish = json['publish'];
+    showInHomepage = json['show_in_homepage'];
+    martId = json['mart_id'];
+
+    // FIXED: Handle review_attributes parsing properly
+    if (json['review_attributes'] != null) {
+      // print(
+      //   '[MART CATEGORY MODEL] review_attributes type: ${json['review_attributes'].runtimeType}',
+      // );
+      if (json['review_attributes'] is List) {
+        // Already a list - use as is
+        reviewAttributes = List<dynamic>.from(json['review_attributes']);
+      } else if (json['review_attributes'] is String) {
+        // It's a JSON string - parse it
+        try {
+          final parsed = js.json.decode(json['review_attributes']);
+          if (parsed is List) {
+            reviewAttributes = List<dynamic>.from(parsed);
+          } else {
             reviewAttributes = [];
           }
-        } else {
-          print('[MART CATEGORY MODEL] review_attributes is not a List, setting to empty list');
+        } catch (e) {
+          print(
+            '[MART CATEGORY MODEL] Error parsing review_attributes string: $e',
+          );
           reviewAttributes = [];
         }
       } else {
+        // Other types - set to empty
         reviewAttributes = [];
       }
-      
-      migratedBy = json['migratedBy'];
-      createdAt = json['createdAt'];
-      updatedAt = json['updated_at'];
-      itemCount = json['itemCount'] ?? json['item_count'];
-      icon = json['icon'];
-      color = json['color'];
-      backgroundColor = json['background_color'];
-      section = json['section'];
-      sectionOrder = json['section_order'];
-      categoryOrder = json['category_order'];
-      sortOrder = json['sortOrder'] ?? json['sort_order'];
-      
-      // Sub-categories relationship
-      hasSubcategories = json['has_subcategories'];
-      subcategoriesCount = json['subcategories_count'];
-      
-      print('[MART CATEGORY MODEL] Successfully parsed category: $title');
-    } catch (e, stackTrace) {
-      print('[MART CATEGORY MODEL] Error parsing JSON: $e');
-      print('[MART CATEGORY MODEL] Stack trace: $stackTrace');
-      print('[MART CATEGORY MODEL] JSON data: $json');
-      rethrow;
+    } else {
+      reviewAttributes = [];
     }
+
+    migratedBy = json['migratedBy'];
+    createdAt = json['created_at']?.toString();
+    updatedAt = json['updated_at']?.toString();
+    itemCount = json['item_count'] ?? 0;
+    icon = json['icon']?.toString();
+    color = json['color']?.toString();
+    backgroundColor = json['background_color']?.toString();
+    section = json['section'];
+    sectionOrder = json['section_order'];
+    categoryOrder = json['category_order'];
+    sortOrder = json['sort_order'] ?? 0;
+    // Sub-categories relationship
+    hasSubcategories = json['has_subcategories'];
+    subcategoriesCount = json['subcategories_count'];
+    print('[MART CATEGORY MODEL] Successfully parsed category: $title');
   }
 
   Map<String, dynamic> toJson() {
@@ -130,7 +140,7 @@ class MartCategoryModel {
     data['section_order'] = sectionOrder;
     data['category_order'] = categoryOrder;
     data['sortOrder'] = sortOrder;
-    
+
     // Sub-categories relationship
     data['has_subcategories'] = hasSubcategories;
     data['subcategories_count'] = subcategoriesCount;
@@ -138,29 +148,37 @@ class MartCategoryModel {
   }
 
   // Helper methods
-  
+
   // Legacy compatibility getters
   int get productCount => itemCount ?? 0;
+
   String get displayName => title ?? '';
+
   String get displayDescription => description ?? '';
+
   String get mainImage => photo ?? '';
+
   bool get isPublished => publish ?? false;
+
   bool get showInHomepageBool => showInHomepage ?? false;
+
   bool get isFeatured => showInHomepage ?? false;
+
   bool get isGlobal => martId == null || martId!.isEmpty;
-  
+
   String get imageUrl => photo ?? '';
+
   String get iconUrl => icon ?? '';
-  
+
   int get totalItems => itemCount ?? 0;
-  
+
   // For UI display
   String get shortDescription {
     if (description == null || description!.isEmpty) return '';
     if (description!.length <= 50) return description!;
     return '${description!.substring(0, 50)}...';
   }
-  
+
   // Check if category is available for a specific mart
   bool isAvailableForMart(String? vendorId) {
     if (isGlobal) return true;

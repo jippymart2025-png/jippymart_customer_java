@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:developer' as dev;
 import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/app/chat_screens/ChatVideoContainer.dart';
@@ -114,7 +115,7 @@ class FireStoreUtils {
         Uri.parse('${AppConst.baseUrl}restaurants/$vendorId'),
         headers: await getHeaders(),
       );
-      print("getVendorById ${response.body}  ");
+      dev.log("getVendorById ${response.body}  ");
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
@@ -130,7 +131,7 @@ class FireStoreUtils {
   }
 
   StreamController<List<VendorModel>>? getNearestVendorController;
-  
+
   Stream<List<VendorModel>> getAllNearestRestaurant({bool? isDining}) async* {
     try {
       getNearestVendorController =
@@ -357,7 +358,8 @@ class FireStoreUtils {
     if (cachedEntry == null) return null;
 
     final isExpired =
-        DateTime.now().difference(cachedEntry.fetchedAt) > _productCacheDuration;
+        DateTime.now().difference(cachedEntry.fetchedAt) >
+        _productCacheDuration;
     if (isExpired) {
       _productCache.remove(productId);
       return null;
@@ -369,27 +371,22 @@ class FireStoreUtils {
     String productId, {
     bool forceRefresh = false,
   }) async {
-    // Validate product ID before making any API calls
     if (productId.isEmpty || productId == 'null' || productId.trim().isEmpty) {
       print('[PRODUCT_API] Invalid product ID provided: "$productId"');
       return null;
     }
-
     if (!forceRefresh) {
       final cachedProduct = _getCachedProduct(productId);
       if (cachedProduct != null) {
         return cachedProduct;
       }
-
       final pendingRequest = _pendingProductRequests[productId];
       if (pendingRequest != null) {
         return pendingRequest;
       }
     }
-
     final request = _fetchProductFromApi(productId);
     _pendingProductRequests[productId] = request;
-
     try {
       final productModel = await request;
       if (productModel != null) {
@@ -405,7 +402,6 @@ class FireStoreUtils {
     const maxRetries = 3;
     const retryDelay = Duration(seconds: 2);
     const timeoutDuration = Duration(seconds: 10);
-
     for (int attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         final response = await http
@@ -414,14 +410,12 @@ class FireStoreUtils {
               headers: await getHeaders(),
             )
             .timeout(timeoutDuration);
-
         if (response.statusCode == 200) {
           final jsonResponse = json.decode(response.body);
           if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
             return ProductModel.fromJson(jsonResponse['data']);
           }
         } else if (response.statusCode == 429) {
-          // Rate limiting - wait and retry
           if (attempt < maxRetries) {
             print(
               '[PRODUCT_API] Rate limited (429), retrying in ${retryDelay.inSeconds}s (attempt $attempt/$maxRetries)',
@@ -508,14 +502,13 @@ class FireStoreUtils {
   }
 
   static Future<List<TaxModel>?> getTaxList() async {
+    print(" getTaxList ");
     List<TaxModel> taxList = [];
-
     if (Constant.selectedLocation.location?.latitude == null ||
         Constant.selectedLocation.location?.longitude == null) {
       print('[API_UTILS] Location not available for tax calculation');
       return taxList;
     }
-
     try {
       List<Placemark> placeMarks = await placemarkFromCoordinates(
         Constant.selectedLocation.location!.latitude!,
@@ -526,8 +519,6 @@ class FireStoreUtils {
         print('[API_UTILS] No placemarks found for coordinates');
         return taxList;
       }
-
-      // Make API call instead of Firebase query
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}settings/tax'),
         headers: await getHeaders(),
@@ -535,14 +526,11 @@ class FireStoreUtils {
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-
         if (responseData['success'] == true) {
           final List<dynamic> taxData = responseData['data'];
-
           // Filter taxes by country and enable status
           for (var element in taxData) {
             TaxModel taxModel = TaxModel.fromJson(element);
-
             // Apply filters manually (previously done in Firebase query)
             if (taxModel.country == placeMarks.first.country &&
                 taxModel.enable == true) {
@@ -588,6 +576,8 @@ class FireStoreUtils {
   static Future<List<OrderModel>> getAllOrder() async {
     List<OrderModel> list = [];
     final currentUid = await SqlStorageConst.getFirebaseId();
+
+    print(" userId   $currentUid  ");
     if (kDebugMode) {
       print('Current UID: $currentUid');
     }
@@ -599,7 +589,7 @@ class FireStoreUtils {
     }
     try {
       final Map<String, String> queryParams = {
-        'authorId': currentUid,
+        'author_id': currentUid,
         // 'filter': 'cancelled',
         // 'filter': 'rejected',
         // 'filter': 'pending',
@@ -607,25 +597,20 @@ class FireStoreUtils {
         // 'filter': 'completed',
       };
       final uri = Uri.parse(
-        '${AppConst.baseUrl}orders',
+        '${AppConst.baseUrl}firestore/orders',
       ).replace(queryParameters: queryParams);
-
       if (kDebugMode) {
         print('API URL: $uri');
       }
-
-      // Make API call
       final response = await http.get(uri, headers: await getHeaders());
-
       if (kDebugMode) {
         print('API Response Status: ${response.statusCode}');
         print('API Response Body: ${response.body}');
       }
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          final List<dynamic> ordersData = responseData['data'];
+          final List<dynamic> ordersData = responseData['data']['orders'];
           if (kDebugMode) {
             print('Found ${ordersData.length} orders in API response');
           }
@@ -1196,7 +1181,6 @@ class FireStoreUtils {
                 startTime.compareTo(Timestamp.now()) <= 0 &&
                 endTime.compareTo(Timestamp.now()) >= 0;
           }
-
           print('[DEBUG] Promotion active status: $isActive');
           print('[DEBUG] ===== ULTRA-FAST API FETCH COMPLETE =====');
 

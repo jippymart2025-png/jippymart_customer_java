@@ -38,7 +38,6 @@ Widget buildDeliveryFeeUI({
   print('[DELIVERY_UI]   - currentFee: ₹$currentFee');
   bool isFreeDeliveryWithExtraCharge =
       isFreeDelivery && currentFee > 0.0 && originalFee > 0.0;
-
   if (isFreeDelivery) {
     if (isFreeDeliveryWithExtraCharge) {
       // Special case: Free delivery eligible but with extra charge due to distance
@@ -173,7 +172,7 @@ tipsDialog(CartControllerProvider controller) {
                   vertical: 14,
                 ),
                 child: Text(
-                  "${Constant.currencyModel!.symbol}".tr,
+                  "₹".tr,
                   style: TextStyle(
                     color: AppThemeData.grey900,
                     fontFamily: AppThemeData.semiBold,

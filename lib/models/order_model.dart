@@ -35,38 +35,42 @@ class OrderModel {
   double? toPayAmount;
   String? surgeFee;
 
-  OrderModel(
-      {this.address,
-      this.status,
-      this.couponId,
-      this.vendorID,
-      this.driverID,
-      this.discount,
-      this.authorID,
-      this.estimatedTimeToPrepare,
-      this.createdAt,
-      this.triggerDelivery,
-      this.taxSetting,
-      this.paymentMethod,
-      this.products,
-      this.adminCommissionType,
-      this.vendor,
-      this.id,
-      this.adminCommission,
-      this.couponCode,
-      this.specialDiscount,
-      this.deliveryCharge,
-      this.scheduleTime,
-      this.tipAmount,
-      this.notes,
-      this.author,
-      this.driver,
-      this.takeAway,
-      this.rejectedByDrivers,
-      this.toPayAmount,this.surgeFee});
+  OrderModel({
+    this.address,
+    this.status,
+    this.couponId,
+    this.vendorID,
+    this.driverID,
+    this.discount,
+    this.authorID,
+    this.estimatedTimeToPrepare,
+    this.createdAt,
+    this.triggerDelivery,
+    this.taxSetting,
+    this.paymentMethod,
+    this.products,
+    this.adminCommissionType,
+    this.vendor,
+    this.id,
+    this.adminCommission,
+    this.couponCode,
+    this.specialDiscount,
+    this.deliveryCharge,
+    this.scheduleTime,
+    this.tipAmount,
+    this.notes,
+    this.author,
+    this.driver,
+    this.takeAway,
+    this.rejectedByDrivers,
+    this.toPayAmount,
+    this.surgeFee,
+  });
 
   OrderModel.fromJson(Map<String, dynamic> json) {
-    address = json['address'] != null ? ShippingAddress.fromJson(json['address']) : null;
+    address = json['address'] != null
+        ? ShippingAddress.fromJson(json['address'])
+        : null;
     status = json['status'];
     couponId = json['couponId'];
     vendorID = json['vendorID'];
@@ -74,8 +78,15 @@ class OrderModel {
     discount = json['discount'];
     authorID = json['authorID'];
     estimatedTimeToPrepare = json['estimatedTimeToPrepare'];
-    createdAt = json['createdAt'];
-    triggerDelivery = json['triggerDelivery'] ?? json['triggerDelevery'] ?? Timestamp.now();
+
+    // Handle createdAt - could be String or Timestamp
+    createdAt = _parseTimestamp(json['createdAt']);
+
+    // Handle triggerDelivery - could be String or Timestamp
+    triggerDelivery = _parseTimestamp(
+      json['triggerDelivery'] ?? json['triggerDelevery'],
+    );
+
     if (json['taxSetting'] != null) {
       taxSetting = <TaxModel>[];
       json['taxSetting'].forEach((v) {
@@ -90,21 +101,55 @@ class OrderModel {
       });
     }
     adminCommissionType = json['adminCommissionType'];
-    vendor = json['vendor'] != null ? VendorModel.fromJson(json['vendor']) : null;
+    vendor = json['vendor'] != null
+        ? VendorModel.fromJson(json['vendor'])
+        : null;
     id = json['id'];
     adminCommission = json['adminCommission'];
     couponCode = json['couponCode'];
     specialDiscount = json['specialDiscount'];
-    deliveryCharge = json['deliveryCharge'].toString().isEmpty ? "0.0" : json['deliveryCharge'] ?? '0.0';
-    scheduleTime = json['scheduleTime'];
-    tipAmount = json['tip_amount'].toString().isEmpty ? "0.0" : json['tip_amount'] ?? "0.0";
+    deliveryCharge = json['deliveryCharge'].toString().isEmpty
+        ? "0.0"
+        : json['deliveryCharge'].toString() ?? '0.0';
+
+    // Handle scheduleTime - could be String or Timestamp
+    scheduleTime = _parseTimestamp(json['scheduleTime']);
+
+    tipAmount = json['tip_amount'].toString().isEmpty
+        ? "0.0"
+        : json['tip_amount'].toString() ?? "0.0";
     notes = json['notes'];
     author = json['author'] != null ? UserModel.fromJson(json['author']) : null;
     driver = json['driver'] != null ? UserModel.fromJson(json['driver']) : null;
     takeAway = json['takeAway'];
     rejectedByDrivers = json['rejectedByDrivers'] ?? [];
-    toPayAmount = json['toPayAmount'] != null ? (json['toPayAmount'] as num).toDouble() : null;
+    toPayAmount = json['toPay'] != null
+        ? (json['toPay'] as num).toDouble()
+        : null; // Fixed: should be 'toPay' not 'toPayAmount'
     surgeFee = json['surge_fee'];
+  }
+
+  // Helper method to parse timestamp from various formats
+  Timestamp? _parseTimestamp(dynamic timestampData) {
+    if (timestampData == null) return null;
+
+    if (timestampData is Timestamp) {
+      return timestampData;
+    } else if (timestampData is String) {
+      try {
+        // Parse ISO 8601 string
+        final dateTime = DateTime.parse(timestampData);
+        return Timestamp.fromDate(dateTime);
+      } catch (e) {
+        print('Error parsing timestamp string: $timestampData, error: $e');
+        return null;
+      }
+    } else if (timestampData is int) {
+      // Handle milliseconds since epoch
+      return Timestamp.fromMillisecondsSinceEpoch(timestampData);
+    }
+
+    return null;
   }
 
   Map<String, dynamic> toJson() {
@@ -149,7 +194,7 @@ class OrderModel {
     data['takeAway'] = takeAway;
     data['rejectedByDrivers'] = rejectedByDrivers;
     data['toPayAmount'] = toPayAmount;
-    data['surge_fee']= surgeFee ;
+    data['surge_fee'] = surgeFee;
     return data;
   }
 }

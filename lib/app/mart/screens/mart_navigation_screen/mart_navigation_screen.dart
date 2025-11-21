@@ -1,3 +1,5 @@
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart'
+    show HomeProvider;
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
@@ -7,7 +9,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
-import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
 import 'package:provider/provider.dart';
 
@@ -79,7 +80,7 @@ class MartNavigationScreen extends StatelessWidget {
                     stream: cartProvider.cartStream,
                     builder: (context, snapshot) {
                       int cartItemCount =
-                          snapshot.data?.length ?? cartItem.length;
+                          snapshot.data?.length ?? HomeProvider.cartItem.length;
                       return cartItemCount > 0
                           ? _buildCartBadge(cartItemCount)
                           : const SizedBox.shrink();

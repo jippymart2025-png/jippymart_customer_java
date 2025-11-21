@@ -1,164 +1,138 @@
 import 'dart:async';
-import 'dart:io';
-
+import 'dart:convert';
+import 'package:chewie/chewie.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_cache_manager/flutter_cache_manager.dart';
-import 'package:jippymart_customer/app/home_screen/screen/story_view_screen/provider/story_provider.dart';
 import 'package:video_player/video_player.dart';
 
-import '../utils.dart';
-
-class VideoLoader {
-  String url;
-
-  File? videoFile;
-
-  Map<String, dynamic>? requestHeaders;
-
-  LoadState state = LoadState.loading;
-
-  VideoLoader(this.url, {this.requestHeaders});
-
-  void loadVideo(VoidCallback onComplete) {
-    if (videoFile != null) {
-      state = LoadState.success;
-      onComplete();
-    }
-
-    final fileStream = DefaultCacheManager().getFileStream(url, headers: requestHeaders as Map<String, String>?);
-
-    fileStream.listen((fileResponse) {
-      if (fileResponse is FileInfo) {
-        if (videoFile == null) {
-          state = LoadState.success;
-          videoFile = fileResponse.file;
-          onComplete();
-        }
-      }
-    });
-  }
-}
-
 class StoryVideo extends StatefulWidget {
-  final StoryProvider? storyController;
-  final VideoLoader videoLoader;
-  final Widget? loadingWidget;
-  final Widget? errorWidget;
+  final String rawUrl;
+  final bool autoPlay;
+  final bool looping;
 
-  StoryVideo(
-    this.videoLoader, {
+  const StoryVideo.url(
+    this.rawUrl, {
     Key? key,
-    this.storyController,
-    this.loadingWidget,
-    this.errorWidget,
-  }) : super(key: key ?? UniqueKey());
-
-  static StoryVideo url(
-    String url, {
-        StoryProvider? controller,
-    Map<String, dynamic>? requestHeaders,
-    Key? key,
-    Widget? loadingWidget,
-    Widget? errorWidget,
-  }) {
-    return StoryVideo(
-      VideoLoader(url, requestHeaders: requestHeaders),
-      storyController: controller,
-      key: key,
-      loadingWidget: loadingWidget,
-      errorWidget: errorWidget,
-    );
-  }
+    this.autoPlay = true,
+    this.looping = false,
+  }) : super(key: key);
 
   @override
-  State<StatefulWidget> createState() {
-    return StoryVideoState();
-  }
+  State<StoryVideo> createState() => _StoryVideoState();
 }
 
-class StoryVideoState extends State<StoryVideo> {
-  Future<void>? playerLoader;
+class _StoryVideoState extends State<StoryVideo> {
+  VideoPlayerController? _videoController;
+  ChewieController? _chewieController;
 
-  StreamSubscription? _streamSubscription;
-
-  VideoPlayerController? playerController;
+  String? _cleanUrl;
+  String? _errorText;
+  bool _initializing = true;
 
   @override
   void initState() {
     super.initState();
-
-    widget.storyController!.pause();
-
-    widget.videoLoader.loadVideo(() {
-      if (widget.videoLoader.state == LoadState.success) {
-        playerController = VideoPlayerController.file(widget.videoLoader.videoFile!);
-
-        playerController!.initialize().then((v) {
-          setState(() {});
-          widget.storyController!.play();
-        });
-
-        if (widget.storyController != null) {
-          _streamSubscription = widget.storyController!.playbackNotifier.listen((playbackState) {
-            if (playbackState == PlaybackState.pause) {
-              playerController!.pause();
-            } else {
-              playerController!.play();
-            }
-          });
-        }
-      } else {
-        setState(() {});
-      }
-    });
-  }
-
-  Widget getContentView() {
-    if (widget.videoLoader.state == LoadState.success && playerController!.value.isInitialized) {
-      return Center(
-        child: AspectRatio(
-          aspectRatio: playerController!.value.aspectRatio,
-          child: VideoPlayer(playerController!),
-        ),
-      );
-    }
-
-    return widget.videoLoader.state == LoadState.loading
-        ? Center(
-            child: widget.loadingWidget ??
-                const SizedBox(
-                  width: 70,
-                  height: 70,
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    strokeWidth: 3,
-                  ),
-                ),
-          )
-        : Center(
-            child: widget.errorWidget ??
-                const Text(
-                  "Media failed to load.",
-                  style: TextStyle(
-                    color: Colors.white,
-                  ),
-                ));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      color: Colors.black,
-      height: double.infinity,
-      width: double.infinity,
-      child: getContentView(),
-    );
+    _initVideo();
   }
 
   @override
   void dispose() {
-    playerController?.dispose();
-    _streamSubscription?.cancel();
+    _chewieController?.dispose();
+    _videoController?.dispose();
     super.dispose();
+  }
+
+  Future<void> _initVideo() async {
+    setState(() {
+      _initializing = true;
+      _errorText = null;
+    });
+
+    try {
+      final url = _extractUrl(widget.rawUrl);
+      if (url.isEmpty) throw Exception("Invalid URL");
+
+      _cleanUrl = url;
+      _videoController = VideoPlayerController.network(
+        _cleanUrl!,
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      );
+
+      await _videoController!.initialize();
+
+      _chewieController = ChewieController(
+        videoPlayerController: _videoController!,
+        autoPlay: widget.autoPlay,
+        looping: widget.looping,
+        allowFullScreen: true,
+        // ENABLE FULL SCREEN
+        allowedScreenSleep: false,
+        // Prevent screen turning off
+        allowMuting: true,
+        // Optional
+        showControls: true,
+        // Make sure controls are visible
+        fullScreenByDefault: false, // Don't auto fullscreen, user clicks button
+      );
+
+      if (widget.autoPlay) {
+        _videoController!.play();
+      }
+
+      setState(() => _initializing = false);
+    } catch (e) {
+      setState(() {
+        _initializing = false;
+        _errorText = e.toString();
+      });
+    }
+  }
+
+  /// Clean raw Firestore value → extract proper https URL
+  String _extractUrl(String raw) {
+    var s = raw.trim();
+
+    // If stored as ["url"]
+    if (s.startsWith('[') && s.endsWith(']')) {
+      try {
+        final decoded = jsonDecode(s);
+        if (decoded is List && decoded.isNotEmpty) {
+          return decoded.first.toString();
+        }
+      } catch (_) {}
+    }
+
+    // Remove surrounding quotes
+    if (s.startsWith('"') && s.endsWith('"')) {
+      s = s.substring(1, s.length - 1);
+    }
+
+    // UNIVERSAL SAFE REGEX (no quotes, no escape issues)
+    final reg = RegExp(r'(https?:\/\/[^\s]+)');
+    final match = reg.firstMatch(s);
+
+    if (match != null) return match.group(0)!;
+
+    return '';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_initializing) {
+      return Center(child: CircularProgressIndicator());
+    }
+    if (_errorText != null) {
+      return Center(child: Text("Video Error: $_errorText"));
+    }
+    if (_chewieController == null) {
+      return const SizedBox.shrink();
+    }
+    return
+    // AspectRatio(
+    // aspectRatio: _videoController!.value.aspectRatio == 0
+    //     ? 16 / 5
+    //     : _videoController!.value.aspectRatio,
+    // child:
+    Chewie(controller: _chewieController!);
+    // );
   }
 }

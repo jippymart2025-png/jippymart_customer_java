@@ -65,7 +65,6 @@ class MartFirestoreService extends GetxService {
           print(
             '[MART API] ✅ Successfully parsed ${items.length} trending items from API',
           );
-
           // Debug: Log the trending items
           for (int i = 0; i < items.length; i++) {
             final item = items[i];
@@ -73,7 +72,6 @@ class MartFirestoreService extends GetxService {
               '[MART API]   ${i + 1}. ${item.name} - isTrending: ${item.isTrending}, price: ₹${item.price}',
             );
           }
-
           return items;
         } else {
           print('[MART API] ❌ API returned error: ${responseData['message']}');
@@ -435,7 +433,6 @@ class MartFirestoreService extends GetxService {
         print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
-
       final responseData = json.decode(response.body);
 
       if (!responseData['status']) {
@@ -444,7 +441,6 @@ class MartFirestoreService extends GetxService {
         );
         return [];
       }
-
       print(
         '[MART API] 📂 API call completed, found ${responseData['count']} categories',
       );
@@ -453,7 +449,6 @@ class MartFirestoreService extends GetxService {
         print('[MART API] ⚠️ No categories found');
         return [];
       }
-
       // Convert API response to MartCategoryModel
       final categories = (responseData['data'] as List)
           .map((item) {
@@ -464,6 +459,7 @@ class MartFirestoreService extends GetxService {
                   Map<String, dynamic>.from(item);
 
               // Handle array fields that might be strings
+              // In getCategories method - keep this as it's correct
               if (categoryData['review_attributes'] is String) {
                 try {
                   categoryData['review_attributes'] = json.decode(
