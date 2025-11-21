@@ -118,14 +118,11 @@ class Constant {
     final symbol = currencyModel?.symbol ?? '₹';
     final decimalDigits = currencyModel?.decimalDigits ?? 2;
     final symbolAtRight = currencyModel?.symbolAtRight ?? false;
-
     // Parse amount safely
     final amountValue = amount == null || amount.isEmpty
         ? 0.0
         : (double.tryParse(amount.toString()) ?? 0.0);
-
     final formattedAmount = amountValue.toStringAsFixed(decimalDigits);
-
     if (symbolAtRight == true) {
       return "$formattedAmount $symbol";
     } else {
@@ -275,7 +272,7 @@ class Constant {
       } else {
         taxAmount =
             (double.parse(amount.toString()) *
-                double.parse(taxModel.tax!.toString())) /
+                double.parse(taxModel.tax.toString())) /
             100;
       }
     }

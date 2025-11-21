@@ -30,6 +30,18 @@ class SplashProvider extends ChangeNotifier {
     });
   }
 
+  // Future<void> refreshFunction(BuildContext context) async {
+  //   print(" refreshFunction");
+  //   if (context.mounted) {
+  //     await _loadUserDataFromStorage();
+  //     WidgetsBinding.instance.addPostFrameCallback((_) {
+  //       if (context.mounted) {
+  //         homeProvider.initFunction(context: context);
+  //       }
+  //     });
+  //   }
+  // }
+
   void refreshFunction(BuildContext context) async {
     await _loadUserDataFromStorage();
     homeProvider.initFunction(context: context);

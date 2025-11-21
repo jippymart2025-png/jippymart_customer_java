@@ -12,6 +12,7 @@ import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';

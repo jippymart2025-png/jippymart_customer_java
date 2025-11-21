@@ -541,7 +541,7 @@ class MartProvider extends ChangeNotifier {
     selectedVendorName = vendor?.name ?? "Unknown Vendor";
 
     // Load vendor-specific data
-    loadVendorCategories(vendorId);
+    loadVendorCategories(vendorId: vendorId);
     loadVendorItems(vendorId);
   }
 
@@ -632,7 +632,7 @@ class MartProvider extends ChangeNotifier {
   }
 
   /// Load vendor-specific categories
-  Future<void> loadVendorCategories(String vendorId) async {
+  Future<void> loadVendorCategories({String? vendorId}) async {
     try {
       isCategoryLoading = true;
       errorMessage = "";
@@ -655,6 +655,7 @@ class MartProvider extends ChangeNotifier {
       errorMessage = "Failed to load vendor categories: $e";
     } finally {
       isCategoryLoading = false;
+      notifyListeners();
     }
   }
 

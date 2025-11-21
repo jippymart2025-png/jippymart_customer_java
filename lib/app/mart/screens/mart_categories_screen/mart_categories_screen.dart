@@ -2,6 +2,7 @@ import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provi
     show MartProvider;
 import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
+import 'package:jippymart_customer/app/mart/screens/mart_categories_screen/provider/mart_category_controller.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
@@ -67,8 +68,8 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
         actions: [],
       ),
       backgroundColor: Colors.white, // Pure white background for grocery app
-      body: Consumer<MartProvider>(
-        builder: (context, controller, _) {
+      body: Consumer2<MartProvider, MartCategoryProvider>(
+        builder: (context, controller, martCategoryProvider, _) {
           if (controller.isCategoryLoading) {
             return _buildLoadingState();
           }

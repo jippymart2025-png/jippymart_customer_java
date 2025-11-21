@@ -307,8 +307,17 @@ class OrderDetailsScreen extends StatelessWidget {
     // Taxes
     double sgst = subTotal * 0.05;
     double gst = originalDeliveryFee * 0.18;
+    // taxAmount = sgst + gst;
+    sgst = sgst.isNaN ? 0.0 : sgst;
+    gst = gst.isNaN ? 0.0 : gst;
     taxAmount = sgst + gst;
-
+    print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
+    if (taxAmount == 0.0) {
+      double sgstFallback = subTotal * 0.05; // 5%
+      double gstFallback = originalDeliveryFee * 0.18; // 18%
+      taxAmount = sgstFallback + gstFallback;
+    }
+    if (taxAmount.isNaN) taxAmount = 0.0;
     bool isFreeDelivery = false;
     if (hasPromotionalItems) {
       // For promotional items, check if within free delivery distance (dynamic from Firestore)

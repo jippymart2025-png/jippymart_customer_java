@@ -30,7 +30,7 @@ class CartProvider with ChangeNotifier {
   }
 
   bool _initialized = false;
-  bool _isSyncing = false;
+  Completer<void>? _activeCartSync;
 
   final _cartStreamController =
       StreamController<List<CartProductModel>>.broadcast();
@@ -39,8 +39,13 @@ class CartProvider with ChangeNotifier {
   Stream<List<CartProductModel>> get cartStream => _cartStreamController.stream;
 
   Future<void> initCart() async {
-    if (_isSyncing) return;
-    _isSyncing = true;
+    while (_activeCartSync != null) {
+      await _activeCartSync!.future;
+    }
+
+    final currentSync = Completer<void>();
+    _activeCartSync = currentSync;
+
     try {
       if (kDebugMode) {
         print('DEBUG: CartProvider _initCart() called');
@@ -63,8 +68,18 @@ class CartProvider with ChangeNotifier {
       print(
         'DEBUG: CartProvider - Stream updated with ${_cartItems.length} items',
       );
+      if (!currentSync.isCompleted) {
+        currentSync.complete();
+      }
+    } catch (e, stackTrace) {
+      if (!currentSync.isCompleted) {
+        currentSync.completeError(e, stackTrace);
+      }
+      rethrow;
     } finally {
-      _isSyncing = false;
+      if (identical(_activeCartSync, currentSync)) {
+        _activeCartSync = null;
+      }
     }
   }
 
@@ -149,7 +164,6 @@ class CartProvider with ChangeNotifier {
       }
     }
     notifyListeners();
-    // Force refresh cart data and notify listeners
     await initCart();
     print(
       'DEBUG: CartProvider - Cart updated, total items: ${_cartItems.length}',

@@ -86,7 +86,9 @@ class LocationPermissionScreen extends StatelessWidget {
                                       showError: true,
                                     );
                                 if (success) {
-                                  splashProvider.refreshFunction(context);
+                                  splashProvider.refreshFunction(
+                                    Get.context ?? context,
+                                  );
                                   Get.offAll(const DashBoardScreen());
                                 }
                               } catch (e) {
@@ -147,7 +149,9 @@ class LocationPermissionScreen extends StatelessWidget {
                                     await updateLocationInLocal(
                                       addressModel.location!,
                                     );
-                                    splashProvider.refreshFunction(context);
+                                    splashProvider.refreshFunction(
+                                      Get.context ?? context,
+                                    );
                                     Get.offAll(const DashBoardScreen());
                                   }
                                 } else {
@@ -175,7 +179,7 @@ class LocationPermissionScreen extends StatelessWidget {
                                             addressModel.location!,
                                           ).then((_) {
                                             splashProvider.refreshFunction(
-                                              context,
+                                              Get.context ?? context,
                                             );
                                             Get.offAll(const DashBoardScreen());
                                           });
@@ -230,7 +234,7 @@ class LocationPermissionScreen extends StatelessWidget {
                                   if (value != null) {
                                     homeProvider.changeLocationAddressFunction(
                                       addressModel: value,
-                                      context: context,
+                                      context: Get.context ?? context,
                                     );
                                     Get.offAll(const DashBoardScreen());
                                   }
@@ -252,9 +256,8 @@ class LocationPermissionScreen extends StatelessWidget {
                           },
                         ),
                   const SizedBox(height: 10),
-                  // Add a button for changing location
                   Consumer<SplashProvider>(
-                    builder: (context, splashProvider, _) {
+                    builder: (contexts, splashProvider, _) {
                       return RoundedButtonFill(
                         title: "Change Location".tr,
                         color: AppThemeData.primary300,
@@ -271,7 +274,9 @@ class LocationPermissionScreen extends StatelessWidget {
                                     );
 
                                 if (success) {
-                                  splashProvider.initFunction(context);
+                                  splashProvider.refreshFunction(
+                                    Get.context ?? context,
+                                  );
                                   Get.offAll(const DashBoardScreen());
                                 }
                               } catch (e) {

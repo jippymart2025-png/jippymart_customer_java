@@ -46,7 +46,6 @@ import 'package:jippymart_customer/widgets/delivery_zone_alert_dialog.dart'
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
@@ -2121,7 +2120,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (_cachedTaxList != null) {
         Constant.taxList = _cachedTaxList;
         notifyListeners();
-      } else if (Constant.taxList == null || Constant.taxList!.isEmpty) {
+      } else if (Constant.taxList == null) {
         Constant.taxList = await FireStoreUtils.getTaxList();
         _cachedTaxList = Constant.taxList;
         notifyListeners();
@@ -2348,13 +2347,33 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
+      sgst = sgst.isNaN ? 0.0 : sgst;
+      gst = gst.isNaN ? 0.0 : gst;
       taxAmount = sgst + gst;
+      print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
+      if (taxAmount == 0.0) {
+        double sgstFallback = subTotal * 0.05; // 5%
+        double gstFallback = originalDeliveryFee * 0.18; // 18%
+        taxAmount = sgstFallback + gstFallback;
+        print(
+          "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
+        );
+      }
+      if (taxAmount.isNaN) taxAmount = 0.0;
+      print("Fallback tax applied → SGST:: $taxAmount");
+      // sgst = (sgst.isNaN) ? 0.0 : sgst;
+      // gst = (gst.isNaN) ? 0.0 : gst;
+      // taxAmount = sgst + gst;
+      // print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
+      //
+      // if (taxAmount.isNaN) taxAmount = 0.0;
+
       // if (taxAmount == 0.0) {
       //   double sgsts = subTotal * 0.05;
       //   double gsts = originalDeliveryFee * 0.18;
       //   taxAmount = sgsts + gsts;
       // }
-      print("taxAmounttaxAmount  ${taxAmount = sgst + gst}  ");
+      print("taxAmounttaxAmount  $taxAmount");
       notifyListeners();
       if (hasPromotionalItemsForTax) {
       } else if (hasMartItems) {
@@ -2608,7 +2627,6 @@ class CartControllerProvider extends ChangeNotifier {
         );
 
         if (!isAllowed) {
-          // final limit = await getPromotionalItemLimit(
           final limit = getPromotionalItemLimit(
             cartProductModel.id ?? '',
             cartProductModel.vendorID ?? '',

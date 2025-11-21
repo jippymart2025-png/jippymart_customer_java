@@ -159,6 +159,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
               );
               return false; // prevent back navigation
             }
+            controller.forceRefreshCart();
             return true;
           },
           child: Scaffold(
