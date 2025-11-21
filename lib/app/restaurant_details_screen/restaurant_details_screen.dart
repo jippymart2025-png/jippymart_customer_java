@@ -420,9 +420,9 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                       InkWell(
                                         onTap: () {
                                           if (controller
-                                              .vendorModel
-                                              .workingHours!
-                                              .isEmpty) {
+                                                  .vendorModel
+                                                  .workingHours ==
+                                              null) {
                                             ShowToastDialog.showToast(
                                               "Timing is not added by restaurant"
                                                   .tr,

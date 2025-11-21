@@ -328,12 +328,10 @@ class EditProfileScreen extends StatelessWidget {
           ],
         );
       } else {
-        // Multiple addresses - show count and default address
         final defaultAddress = addresses.firstWhere(
           (a) => a.isDefault == true,
           orElse: () => addresses.first,
         );
-
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

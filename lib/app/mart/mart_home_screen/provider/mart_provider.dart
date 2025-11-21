@@ -424,7 +424,6 @@ class MartProvider extends ChangeNotifier {
         martTopBanners.clear();
       },
     );
-    notifyListeners();
   }
 
   void _initializeBannerControllers() {

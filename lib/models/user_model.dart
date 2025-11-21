@@ -254,6 +254,7 @@ class ShippingAddress {
   factory ShippingAddress.fromJson(Map<String, dynamic> json) {
     double? lat;
     double? lng;
+
     if (json['location'] != null && json['location'] is Map) {
       final locationData = json['location'] as Map<String, dynamic>;
       lat = _parseDouble(locationData['latitude']);
@@ -265,6 +266,19 @@ class ShippingAddress {
     if (lat != null && lng != null) {
       location = UserLocation(latitude: lat, longitude: lng);
     }
+    // FIX: Handle int/string to bool conversion for isDefault
+    bool? isDefaultValue;
+    if (json['isDefault'] != null) {
+      if (json['isDefault'] is bool) {
+        isDefaultValue = json['isDefault'] as bool;
+      } else if (json['isDefault'] is int) {
+        isDefaultValue = (json['isDefault'] as int) == 1;
+      } else if (json['isDefault'] is String) {
+        isDefaultValue =
+            json['isDefault'] == '1' ||
+            json['isDefault'].toLowerCase() == 'true';
+      }
+    }
 
     return ShippingAddress(
       id: json['id']?.toString(),
@@ -272,7 +286,8 @@ class ShippingAddress {
       addressAs: json['addressAs']?.toString(),
       landmark: json['landmark']?.toString(),
       locality: json['locality']?.toString(),
-      isDefault: json['isDefault'] as bool? ?? false,
+      isDefault: isDefaultValue ?? false,
+      // Default to false if null
       zoneId: json['zoneId']?.toString(),
       latitude: lat,
       longitude: lng,

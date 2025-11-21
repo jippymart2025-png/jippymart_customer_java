@@ -129,7 +129,6 @@ class VendorModel {
     id = json['id'];
     categoryPhoto = json['categoryPhoto'];
     restaurantMenuPhotos = json['restaurantMenuPhotos'] ?? [];
-
     // Handle workingHours
     if (json['workingHours'] != null) {
       workingHours = <WorkingHours>[];
