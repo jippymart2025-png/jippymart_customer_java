@@ -363,181 +363,144 @@ class OrderScreen extends StatelessWidget {
     OrderModel orderModel,
     OrderProvider controller,
   ) {
-    return GestureDetector(
-      onTap: () async {
-        double? surgeFee = await fetchOrderSergeFee(orderModel.id ?? '');
-        Get.to(
-          OrderDetailsScreen(surgeFee: surgeFee),
-          arguments: {"orderModel": orderModel},
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Card(
-          elevation: 4, // 👈 Add shadow
-          color: ColorConst.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+    return Consumer<OrderDetailsProvider>(
+      builder: (context, orderDetailsProvider, _) {
+        return GestureDetector(
+          onTap: () async {
+            double? surgeFee = await fetchOrderSergeFee(orderModel.id ?? '');
+            orderDetailsProvider.initFunction(orderModels: orderModel);
+            Get.to(OrderDetailsScreen(surgeFee: surgeFee));
+          },
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                Row(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Card(
+              elevation: 4, // 👈 Add shadow
+              color: ColorConst.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
                   children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.all(Radius.circular(16)),
-                      child: Stack(
-                        children: [
-                          orderModel.vendor?.photo != null &&
-                                  orderModel.vendor!.photo!.isNotEmpty
-                              ? NetworkImageWidget(
-                                  imageUrl: orderModel.vendor!.photo!,
-                                  fit: BoxFit.cover,
-                                  height: Responsive.height(10, context),
-                                  width: Responsive.width(20, context),
-                                )
-                              : Container(
-                                  height: Responsive.height(10, context),
-                                  width: Responsive.width(20, context),
-                                  decoration: BoxDecoration(
-                                    color: AppThemeData.grey200,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Icon(
-                                    Icons.store,
-                                    color: AppThemeData.grey500,
-                                    size: Responsive.width(5, context),
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(16),
+                          ),
+                          child: Stack(
+                            children: [
+                              orderModel.vendor?.photo != null &&
+                                      orderModel.vendor!.photo!.isNotEmpty
+                                  ? NetworkImageWidget(
+                                      imageUrl: orderModel.vendor!.photo!,
+                                      fit: BoxFit.cover,
+                                      height: Responsive.height(10, context),
+                                      width: Responsive.width(20, context),
+                                    )
+                                  : Container(
+                                      height: Responsive.height(10, context),
+                                      width: Responsive.width(20, context),
+                                      decoration: BoxDecoration(
+                                        color: AppThemeData.grey200,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Icon(
+                                        Icons.store,
+                                        color: AppThemeData.grey500,
+                                        size: Responsive.width(5, context),
+                                      ),
+                                    ),
+                              Container(
+                                height: Responsive.height(10, context),
+                                width: Responsive.width(20, context),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: const Alignment(0.00, 1.00),
+                                    end: const Alignment(0, -1),
+                                    colors: [
+                                      Colors.black.withOpacity(0),
+                                      AppThemeData.grey900,
+                                    ],
                                   ),
                                 ),
-                          Container(
-                            height: Responsive.height(10, context),
-                            width: Responsive.width(20, context),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: const Alignment(0.00, 1.00),
-                                end: const Alignment(0, -1),
-                                colors: [
-                                  Colors.black.withOpacity(0),
-                                  AppThemeData.grey900,
-                                ],
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                orderModel.status.toString(),
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  color: Constant.statusColor(
+                                    status: orderModel.status.toString(),
+                                  ),
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                orderModel.vendor?.title?.toString() ??
+                                    "Jippy Mart",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: AppThemeData.grey900,
+                                  fontFamily: AppThemeData.medium,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                orderModel.createdAt != null
+                                    ? Constant.timestampToDateTime(
+                                        orderModel.createdAt!,
+                                      )
+                                    : "Order placed",
+                                style: TextStyle(
+                                  color: AppThemeData.grey600,
+                                  fontFamily: AppThemeData.medium,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            orderModel.status.toString(),
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              color: Constant.statusColor(
-                                status: orderModel.status.toString(),
-                              ),
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            orderModel.vendor?.title?.toString() ??
-                                "Jippy Mart",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: AppThemeData.grey900,
-                              fontFamily: AppThemeData.medium,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            orderModel.createdAt != null
-                                ? Constant.timestampToDateTime(
-                                    orderModel.createdAt!,
-                                  )
-                                : "Order placed",
-                            style: TextStyle(
-                              color: AppThemeData.grey600,
-                              fontFamily: AppThemeData.medium,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
+                    const SizedBox(height: 10),
 
-                FutureBuilder<double?>(
-                  future: fetchOrderToPay(orderModel.id ?? ''),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return CircularProgressIndicator(); // or shimmer
-                    } else if (snapshot.hasData) {
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Total to Pay",
-                              style: TextStyle(
-                                color: AppThemeData.grey900,
-                                fontFamily: AppThemeData.semiBold,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                    FutureBuilder<double?>(
+                      future: fetchOrderToPay(orderModel.id ?? ''),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return CircularProgressIndicator(); // or shimmer
+                        } else if (snapshot.hasData) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Total to Pay",
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          Text(
-                            Constant.amountShow(
-                              amount: snapshot.data!.toString(),
-                            ),
-                            style: TextStyle(
-                              color: AppThemeData.primary300,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      );
-                    } else {
-                      return Text("No billing info");
-                    }
-                  },
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: MySeparator(color: AppThemeData.grey200),
-                ),
-
-                ///////////
-                Row(
-                  children: [
-                    orderModel.status == Constant.orderCompleted
-                        ? Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                if (orderModel.products != null) {
-                                  for (var element in orderModel.products!) {
-                                    controller.addToCart(
-                                      cartProductModel: element,
-                                    );
-                                    ShowToastDialog.showToast(
-                                      "Item Added In a cart".tr,
-                                    );
-                                  }
-                                }
-                              },
-                              child: Text(
-                                "Reorder".tr,
-                                textAlign: TextAlign.center,
+                              Text(
+                                Constant.amountShow(
+                                  amount: snapshot.data!.toString(),
+                                ),
                                 style: TextStyle(
                                   color: AppThemeData.primary300,
                                   fontFamily: AppThemeData.semiBold,
@@ -545,22 +508,39 @@ class OrderScreen extends StatelessWidget {
                                   fontSize: 16,
                                 ),
                               ),
-                            ),
-                          )
-                        : orderModel.status == Constant.orderShipped ||
-                              orderModel.status == Constant.orderInTransit
-                        ? Consumer<LiveTrackingProvider>(
-                            builder: (context, liveTrackingProvider, _) {
-                              return Expanded(
+                            ],
+                          );
+                        } else {
+                          return Text("No billing info");
+                        }
+                      },
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: MySeparator(color: AppThemeData.grey200),
+                    ),
+
+                    ///////////
+                    Row(
+                      children: [
+                        orderModel.status == Constant.orderCompleted
+                            ? Expanded(
                                 child: InkWell(
                                   onTap: () {
-                                    liveTrackingProvider.initFunction(
-                                      orderModel: orderModel,
-                                    );
-                                    Get.to(const LiveTrackingScreen());
+                                    if (orderModel.products != null) {
+                                      for (var element
+                                          in orderModel.products!) {
+                                        controller.addToCart(
+                                          cartProductModel: element,
+                                        );
+                                        ShowToastDialog.showToast(
+                                          "Item Added In a cart".tr,
+                                        );
+                                      }
+                                    }
                                   },
                                   child: Text(
-                                    "Track Order".tr,
+                                    "Reorder".tr,
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: AppThemeData.primary300,
@@ -570,45 +550,73 @@ class OrderScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                              )
+                            : orderModel.status == Constant.orderShipped ||
+                                  orderModel.status == Constant.orderInTransit
+                            ? Consumer<LiveTrackingProvider>(
+                                builder: (context, liveTrackingProvider, _) {
+                                  return Expanded(
+                                    child: InkWell(
+                                      onTap: () {
+                                        liveTrackingProvider.initFunction(
+                                          orderModel: orderModel,
+                                        );
+                                        Get.to(const LiveTrackingScreen());
+                                      },
+                                      child: Text(
+                                        "Track Order".tr,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: AppThemeData.primary300,
+                                          fontFamily: AppThemeData.semiBold,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : const SizedBox(),
+                        Expanded(
+                          child: Consumer<OrderDetailsProvider>(
+                            builder: (context, orderDetailsProvider, _) {
+                              return InkWell(
+                                onTap: () async {
+                                  double? surgeFee = await fetchOrderSergeFee(
+                                    orderModel.id ?? '',
+                                  );
+                                  orderDetailsProvider.initFunction(
+                                    orderModels: orderModel,
+                                  );
+                                  Get.to(
+                                    OrderDetailsScreen(surgeFee: surgeFee),
+                                  );
+                                },
+                                child: Text(
+                                  "View Details".tr,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               );
                             },
-                          )
-                        : const SizedBox(),
-                    Expanded(
-                      child: Consumer<OrderDetailsProvider>(
-                        builder: (context, orderDetailsProvider, _) {
-                          return InkWell(
-                            onTap: () async {
-                              double? surgeFee = await fetchOrderSergeFee(
-                                orderModel.id ?? '',
-                              );
-                              orderDetailsProvider.initFunction(
-                                orderModels: orderModel,
-                              );
-                              Get.to(OrderDetailsScreen(surgeFee: surgeFee));
-                            },
-                            child: Text(
-                              "View Details".tr,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppThemeData.grey900,
-                                fontFamily: AppThemeData.semiBold,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 10),
                   ],
                 ),
-                const SizedBox(height: 10),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

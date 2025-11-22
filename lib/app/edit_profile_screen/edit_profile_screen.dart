@@ -160,8 +160,16 @@ class EditProfileScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         InkWell(
+                          // onTap: () async {
+                          //   final selectedAddress = await Get.to(
+                          //         () => const AddressListScreen(),
+                          //   );
+                          //   if (selectedAddress != null &&
+                          //       selectedAddress is ShippingAddress) {
+                          //     controller.updateSelectedAddress(selectedAddress);
+                          //   }
+                          // },
                           onTap: () {
-                            // Navigate to address list screen to view all addresses
                             Get.to(() => const AddressListScreen());
                           },
                           borderRadius: BorderRadius.circular(8),
@@ -301,7 +309,6 @@ class EditProfileScreen extends StatelessWidget {
         userModel.shippingAddress!.isNotEmpty) {
       final addresses = userModel.shippingAddress!;
       if (addresses.length == 1) {
-        // Single address - show directly
         final address = addresses.first;
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

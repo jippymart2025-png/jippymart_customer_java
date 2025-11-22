@@ -1147,7 +1147,6 @@ class FireStoreUtils {
           '${AppConst.baseUrl}firestore/promotions/by-product?'
           'product_id=$productId&'
           'restaurant_id=$restaurantId';
-
       print('[DEBUG] API Endpoint: $apiUrl');
       // Make API call
       final response = await http.get(
@@ -1167,7 +1166,6 @@ class FireStoreUtils {
             'start_time': _parseTimestamp(promotionData['start_time']),
             'end_time': _parseTimestamp(promotionData['end_time']),
           };
-
           // Check if promotion is currently active based on time
           final startTime = processedPromotion['start_time'] as Timestamp?;
           final endTime = processedPromotion['end_time'] as Timestamp?;

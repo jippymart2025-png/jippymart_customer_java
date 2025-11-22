@@ -82,12 +82,10 @@ class GlobalSettingsProvider extends ChangeNotifier {
     Constant.senderId = documents['notification_setting']?['projectId'] ?? '';
     Constant.jsonNotificationFileURL =
         documents['notification_setting']?['serviceJson'] ?? '';
-
     // Driver nearby settings
     Constant.selectedMapType =
         documents['DriverNearBy']?['selectedMapType'] ?? 'google';
     Constant.mapType = documents['DriverNearBy']?['mapType'];
-
     // Privacy policy and terms
     Constant.privacyPolicy =
         documents['privacyPolicy']?['privacy_policy'] ?? '';

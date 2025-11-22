@@ -1265,7 +1265,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                         shrinkWrap: true,
                         physics: const BouncingScrollPhysics(),
                         itemCount:
-                            productModel.vendorModel.workingHours!.length,
+                            productModel.vendorModel.workingHours?.length,
                         itemBuilder: (context, dayIndex) {
                           WorkingHours workingHours =
                               productModel.vendorModel.workingHours![dayIndex];

@@ -40,12 +40,14 @@ class TermsAndConditionScreen extends StatelessWidget {
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: SingleChildScrollView(
-          child: Html(
-            shrinkWrap: true,
-            data: type == "privacy"
-                ? Constant.privacyPolicy
-                : Constant.termsAndConditions,
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Html(
+              shrinkWrap: true,
+              data: type == "privacy"
+                  ? Constant.privacyPolicy
+                  : Constant.termsAndConditions,
+            ),
           ),
         ),
       ),
