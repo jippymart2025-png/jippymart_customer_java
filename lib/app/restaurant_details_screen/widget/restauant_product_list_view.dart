@@ -10,7 +10,6 @@ import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/widget/special_price_badge.dart';
 import 'package:flutter/material.dart';
@@ -565,8 +564,9 @@ class ProductListView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             InkWell(
-              onTap: () async {
-                final promo = await FireStoreUtils.getActivePromotionForProduct(
+              onTap: () {
+                // Use cached promotional data for instant response
+                final promo = controller.getActivePromotionForProduct(
                   productId: productId,
                   restaurantId: productModel.vendorID ?? '',
                 );
@@ -604,16 +604,16 @@ class ProductListView extends StatelessWidget {
               ),
             ),
             InkWell(
-              onTap: () async {
+              onTap: () {
                 final currentQty = _findCartItemQuantity(productId);
                 if ((currentQty) <= (productModel.quantity ?? 0) ||
                     (productModel.quantity ?? 0) == -1) {
-                  final promo =
-                      await FireStoreUtils.getActivePromotionForProduct(
-                        productId: productId,
-                        restaurantId: productModel.vendorID ?? '',
-                      );
-                  // Check promotional item limit
+                  // Use cached promotional data for instant response
+                  final promo = controller.getActivePromotionForProduct(
+                    productId: productId,
+                    restaurantId: productModel.vendorID ?? '',
+                  );
+                  // Check promotional item limit (cached)
                   if (promo != null) {
                     final isAllowed = controller
                         .isPromotionalItemQuantityAllowed(
@@ -661,62 +661,20 @@ class ProductListView extends StatelessWidget {
         ),
       );
     } else {
-      //finded
+      // Optimized: Direct call without async overhead
       return RoundedButtonFill(
         title: "Add".tr,
         width: 10,
         height: 4,
         color: AppThemeData.grey50,
         textColor: AppThemeData.primary300,
-        onPress: () async {
+        onPress: () {
+          // Non-blocking call - UI updates immediately
           controller.addProductAndRemoveProductFunction(
             productModel: productModel,
             price: price,
             disPrice: disPrice,
           );
-          // if (1 <= (productModel.quantity ?? 0) ||
-          //     (productModel.quantity ?? 0) == -1) {
-          //   final promo = controller.getActivePromotionForProduct(
-          //     productId: productModel.id ?? '',
-          //     restaurantId: productModel.vendorID ?? '',
-          //   );
-          //   // Check promotional item limit
-          //   if (promo != null) {
-          //     final isAllowed = controller.isPromotionalItemQuantityAllowed(
-          //       productModel.id ?? '',
-          //       productModel.vendorID ?? '',
-          //       1,
-          //     );
-          //     if (!isAllowed) {
-          //       final limit = controller.getPromotionalItemLimit(
-          //         productModel.id ?? '',
-          //         productModel.vendorID ?? '',
-          //       );
-          //       ShowToastDialog.showToast(
-          //         "Maximum $limit items allowed for this promotional offer".tr,
-          //       );
-          //       return;
-          //     }
-          //   }
-          //   String finalPrice = price;
-          //   String finalDiscountPrice = disPrice;
-          //   if (promo != null) {
-          //     finalPrice = (promo['special_price'] as num).toString();
-          //     finalDiscountPrice = Constant.productCommissionPrice(
-          //       controller.vendorModel,
-          //       productModel.price.toString(),
-          //     );
-          //   }
-          //   controller.addToCart(
-          //     productModel: productModel,
-          //     price: finalPrice,
-          //     discountPrice: finalDiscountPrice,
-          //     isIncrement: true,
-          //     quantity: 1,
-          //   );
-          // } else {
-          //   ShowToastDialog.showToast("Out of stock".tr);
-          // }
         },
       );
     }

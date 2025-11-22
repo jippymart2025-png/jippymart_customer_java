@@ -55,7 +55,7 @@ class ViewAllCategoryScreen extends StatelessWidget {
                                   crossAxisCount: 3,
                                   mainAxisSpacing: 16,
                                   crossAxisSpacing: 16,
-                                  childAspectRatio: 0.8,
+                                  childAspectRatio: 0.75,
                                 ),
                             itemCount: controller.vendorCategoryModel.length,
                             itemBuilder: (context, index) {
@@ -145,7 +145,7 @@ class ViewAllCategoryScreen extends StatelessWidget {
                     child: Text(
                       category.title ?? '',
                       textAlign: TextAlign.center,
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: AppThemeData.grey900,

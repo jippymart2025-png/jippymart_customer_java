@@ -311,6 +311,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   // Promotional cache
   bool _promotionalCacheLoaded = false;
 
+  // Cache promotional data per product to avoid repeated lookups
+  final Map<String, Map<String, dynamic>?> _promotionalDataCache = {};
+  final Map<String, int> _promotionalLimitCache = {};
+
   // Favorites management
   List<String> favoriteProductIds = [];
   bool isRestaurantFavorite = false;
@@ -480,6 +484,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           _hasInitialData = true;
           notifyListeners();
           _buildCategoryProductMapping();
+          
+          // Pre-load promotional cache in background for faster add-to-cart
+          if (allProductList.isNotEmpty && vendorModel.id != null) {
+            _preloadPromotionalCache();
+          }
         } catch (e) {
           log("loadProductsViaAPI ${e.toString()}");
           allProductList = [];
@@ -492,6 +501,24 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         }
       },
     );
+  }
+  
+  /// Pre-load promotional cache for all products in background
+  void _preloadPromotionalCache() {
+    if (_promotionalCacheLoaded) return;
+    
+    // Load cache in background without blocking
+    Future.microtask(() async {
+      try {
+        await PromotionalCacheService.loadRestaurantPromotions(
+          restaurantId: vendorModel.id ?? '',
+          productId: '', // Load all promotions for restaurant
+        );
+        _promotionalCacheLoaded = true;
+      } catch (e) {
+        print('DEBUG: Error preloading promotional cache: $e');
+      }
+    });
   }
 
   /// BUILD CATEGORY-PRODUCT MAPPING
@@ -843,10 +870,19 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   // **ADD THE MISSING METHODS THAT ARE CAUSING ERRORS**
   int? getPromotionalItemLimit(String productId, String restaurantId) {
+    // Check in-memory cache first
+    final cacheKey = '$productId-$restaurantId';
+    if (_promotionalLimitCache.containsKey(cacheKey)) {
+      final cachedLimit = _promotionalLimitCache[cacheKey]!;
+      return cachedLimit > 0 ? cachedLimit : null;
+    }
+
     if (!_isPromotionalAvailable(productId, restaurantId)) {
+      _promotionalLimitCache[cacheKey] = 0;
       return null;
     }
     final limit = _getPromotionalLimit(productId, restaurantId);
+    _promotionalLimitCache[cacheKey] = limit;
     return limit > 0 ? limit : null;
   }
 
@@ -871,6 +907,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required String productId,
     required String restaurantId,
   }) {
+    // Check in-memory cache first for instant response
+    final cacheKey = '$productId-$restaurantId';
+    if (_promotionalDataCache.containsKey(cacheKey)) {
+      return _promotionalDataCache[cacheKey];
+    }
+
     if (!_promotionalCacheLoaded) {
       _loadPromotionalCache(
         productId: productId,
@@ -878,7 +920,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       ); // **BACKGROUND LOADING: Non-blocking**
     }
     // Use cached data instead of Firebase query - INSTANT RESPONSE
-    return _getCachedPromotionalData(productId, restaurantId);
+    final data = _getCachedPromotionalData(productId, restaurantId);
+    // Cache the result for future lookups
+    _promotionalDataCache[cacheKey] = data;
+    return data;
   }
 
   /// PARALLEL DATA LOADING
@@ -1104,10 +1149,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }) async {
     final productId = productModel.id?.toString() ?? '';
     final vendorId = vendorModel.id?.toString() ?? '';
-
     if (isIncrement) {
-      final promo = _getCachedPromotionalData(productId, vendorId);
-
+      final cacheKey = '$productId-$vendorId';
+      final promo =
+          _promotionalDataCache[cacheKey] ??
+          _getCachedPromotionalData(productId, vendorId);
       if (promo != null) {
         final isAllowed = isPromotionalItemQuantityAllowed(
           productId,
@@ -1123,25 +1169,33 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           return;
         }
       }
-      notifyListeners();
     }
+
+    // Build cart product model (optimized)
     CartProductModel cartProductModel = CartProductModel();
     String adOnsPrice = "0";
-    for (int i = 0; i < productModel.addOnsPrice!.length; i++) {
-      if (selectedAddOns.contains(productModel.addOnsTitle![i]) == true &&
-          productModel.addOnsPrice![i] != '0') {
-        adOnsPrice =
-            (double.parse(adOnsPrice.toString()) +
-                    double.parse(
-                      Constant.productCommissionPrice(
-                        vendorModel,
-                        productModel.addOnsPrice![i].toString(),
-                      ),
-                    ))
-                .toString();
+
+    // Calculate add-ons price only if there are add-ons
+    if (productModel.addOnsPrice != null &&
+        productModel.addOnsPrice!.isNotEmpty &&
+        selectedAddOns.isNotEmpty) {
+      for (int i = 0; i < productModel.addOnsPrice!.length; i++) {
+        if (selectedAddOns.contains(productModel.addOnsTitle![i]) == true &&
+            productModel.addOnsPrice![i] != '0') {
+          adOnsPrice =
+              (double.parse(adOnsPrice.toString()) +
+                      double.parse(
+                        Constant.productCommissionPrice(
+                          vendorModel,
+                          productModel.addOnsPrice![i].toString(),
+                        ),
+                      ))
+                  .toString();
+        }
       }
     }
-    notifyListeners();
+
+    // Build cart product model
     if (variantInfo != null) {
       cartProductModel.id =
           "${productModel.id!}~${variantInfo.variantId.toString()}";
@@ -1157,7 +1211,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       cartProductModel.extrasPrice = adOnsPrice;
       cartProductModel.extras = selectedAddOns.isEmpty ? [] : selectedAddOns;
       if (isIncrement) {
-        final promo = _getCachedPromotionalData(productId, vendorId);
+        final cacheKey = '$productId-$vendorId';
+        final promo =
+            _promotionalDataCache[cacheKey] ??
+            _getCachedPromotionalData(productId, vendorId);
         if (promo != null) {
           cartProductModel.promoId = promo['product_id'] ?? '';
         }
@@ -1176,21 +1233,25 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       cartProductModel.extrasPrice = adOnsPrice;
       cartProductModel.extras = selectedAddOns.isEmpty ? [] : selectedAddOns;
       if (isIncrement) {
-        final promo = await FireStoreUtils.getActivePromotionForProduct(
-          productId: productId,
-          restaurantId: vendorId,
-        );
+        // Use cached promotional data instead of async call
+        final cacheKey = '$productId-$vendorId';
+        final promo =
+            _promotionalDataCache[cacheKey] ??
+            _getCachedPromotionalData(productId, vendorId);
         if (promo != null) {
           cartProductModel.promoId = promo['product_id'] ?? '';
         }
       }
     }
+
+    // Perform cart operation (single async call)
     if (isIncrement) {
       await cartProvider.addToCart(Get.context!, cartProductModel, quantity);
     } else {
       await cartProvider.removeFromCart(cartProductModel, quantity);
     }
-    notifyListeners();
+
+    // Single notifyListeners call at the end
     notifyListeners();
   }
 
@@ -1202,47 +1263,54 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     final productId = productModel.id?.toString() ?? '';
     final vendorId = productModel.vendorID ?? '';
 
-    if (1 <= (productModel.quantity ?? 0) ||
-        (productModel.quantity ?? 0) == -1) {
-      final promo = getActivePromotionForProduct(
-        productId: productId,
-        restaurantId: vendorId,
-      );
-      // Check promotional item limit
-      if (promo != null) {
-        final isAllowed = isPromotionalItemQuantityAllowed(
-          productId,
-          vendorId,
-          1,
-        );
-        if (!isAllowed) {
-          final limit = getPromotionalItemLimit(productId, vendorId);
-          ShowToastDialog.showToast(
-            "Maximum $limit items allowed for this promotional offer".tr,
-          );
-          return;
-        }
-      }
-      String finalPrice = price;
-      String finalDiscountPrice = disPrice;
-      notifyListeners();
-      if (promo != null) {
-        finalPrice = (promo['special_price'] as num).toString();
-        finalDiscountPrice = Constant.productCommissionPrice(
-          vendorModel,
-          productModel.price.toString(),
-        );
-      }
-      addToCart(
-        productModel: productModel,
-        price: finalPrice,
-        discountPrice: finalDiscountPrice,
-        isIncrement: true,
-        quantity: 1,
-      );
-    } else {
+    // Quick stock check first
+    if ((productModel.quantity ?? 0) != -1 &&
+        (productModel.quantity ?? 0) < 1) {
       ShowToastDialog.showToast("Out of stock".tr);
+      return;
     }
+
+    // Get promotional data (cached, instant response)
+    final promo = getActivePromotionForProduct(
+      productId: productId,
+      restaurantId: vendorId,
+    );
+
+    // Check promotional item limit (cached)
+    if (promo != null) {
+      final isAllowed = isPromotionalItemQuantityAllowed(
+        productId,
+        vendorId,
+        1,
+      );
+      if (!isAllowed) {
+        final limit = getPromotionalItemLimit(productId, vendorId);
+        ShowToastDialog.showToast(
+          "Maximum $limit items allowed for this promotional offer".tr,
+        );
+        return;
+      }
+    }
+
+    // Calculate final prices
+    String finalPrice = price;
+    String finalDiscountPrice = disPrice;
+    if (promo != null) {
+      finalPrice = (promo['special_price'] as num).toString();
+      finalDiscountPrice = Constant.productCommissionPrice(
+        vendorModel,
+        productModel.price.toString(),
+      );
+    }
+
+    // Add to cart (optimized, single notifyListeners call)
+    addToCart(
+      productModel: productModel,
+      price: finalPrice,
+      discountPrice: finalDiscountPrice,
+      isIncrement: true,
+      quantity: 1,
+    );
   }
 
   @override

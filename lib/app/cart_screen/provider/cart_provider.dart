@@ -914,7 +914,6 @@ class CartControllerProvider extends ChangeNotifier {
       getCartData();
       getPaymentSettings();
       validateUserProfile();
-
       Timer.periodic(const Duration(seconds: 1), (timer) {
         if (subTotal > 599 &&
             selectedPaymentMethod == PaymentGateway.cod.name) {

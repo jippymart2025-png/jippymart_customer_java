@@ -5,22 +5,24 @@ import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/h
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:provider/provider.dart';
 import '../app/restaurant_details_screen/restaurant_details_screen.dart';
-import '../constant/constant.dart';
 import '../utils/fire_store_utils.dart';
 import '../constant/show_toast_dialog.dart';
+import '../services/cart_provider.dart';
 
 class MiniCartBar extends StatelessWidget {
   const MiniCartBar({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final int itemCount = HomeProvider.cartItem.length;
-    if (itemCount == 0) return const SizedBox.shrink();
-    final String vendorName =
-        HomeProvider.cartItem.first.vendorName ?? 'Restaurant';
-    final vendorId = HomeProvider.cartItem.first.vendorID;
-    final String productImage = HomeProvider.cartItem.first.photo ?? '';
-    return SafeArea(
+    return Consumer2<HomeProvider, CartProvider>(
+      builder: (context, homeProvider, cartProvider, _) {
+        final int itemCount = HomeProvider.cartItem.length;
+        if (itemCount == 0) return const SizedBox.shrink();
+        final String vendorName =
+            HomeProvider.cartItem.first.vendorName ?? 'Restaurant';
+        final vendorId = HomeProvider.cartItem.first.vendorID;
+        final String productImage = HomeProvider.cartItem.first.photo ?? '';
+        return SafeArea(
       minimum: const EdgeInsets.only(bottom: 8),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -146,6 +148,8 @@ class MiniCartBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+      },
     );
   }
 }
