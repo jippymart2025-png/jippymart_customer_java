@@ -40,9 +40,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   List<Map<String, dynamic>> _trendingSearches = <Map<String, dynamic>>[];
   bool _isLoadingTrending = false;
 
-  // Utility function to remove emojis from text
   String _removeEmojis(String text) {
-    // Comprehensive emoji removal regex pattern
     final emojiRegex = RegExp(
       r'[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]',
       unicode: true,
@@ -540,7 +538,6 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: ColorConst.martPrimary,
-              // gradient: MartTheme.brandGradient,
               borderRadius: BorderRadius.circular(MartTheme.cardRadius),
             ),
             child: const Icon(Icons.search, color: Colors.white),

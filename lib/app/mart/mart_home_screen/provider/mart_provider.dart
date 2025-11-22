@@ -175,6 +175,7 @@ class MartProvider extends ChangeNotifier {
     loadMartBannersStream();
     loadFeaturedCategories();
     loadCategoryProductsForSections();
+    loadVendorCategories();
 
     ///
     // _preloadSections();
@@ -640,14 +641,19 @@ class MartProvider extends ChangeNotifier {
       );
       martCategories.clear();
       martCategories.addAll(categories);
+      notifyListeners();
       if (categories.isNotEmpty) {
         final firstCategory = categories.first;
+        notifyListeners();
         if (firstCategory.id != null) {
-          selectCategory(firstCategory.id!);
+          selectCategory(firstCategory.id ?? "");
+          notifyListeners();
         }
+        notifyListeners();
       } else {
         selectedCategoryId = "";
         currentCategory = null;
+        notifyListeners();
       }
     } catch (e) {
       print('[MART] Error loading vendor categories: $e');
@@ -1052,7 +1058,6 @@ class MartProvider extends ChangeNotifier {
         '[MART CONTROLLER] 🏠 Streaming: Loading homepage categories from Firestore...',
       );
       isCategoryLoading = true;
-      // Try Firestore first (fastest path)
       try {
         print(
           '[MART CONTROLLER] 🔥 Calling Firestore service for homepage categories...',

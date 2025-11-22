@@ -309,7 +309,6 @@ class _MartSearchScreenState extends State<MartSearchScreen>
                 Expanded(
                   child: Container(
                     margin: const EdgeInsets.all(16),
-                    // 🔑 Removed white background and shadow for transparent look
                     child: const MartSearchWidget(
                       showHistory: true,
                       showCategories: false,

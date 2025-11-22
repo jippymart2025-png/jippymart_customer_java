@@ -4,6 +4,7 @@ import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
 class MartSearchProvider extends ChangeNotifier {
@@ -25,9 +26,9 @@ class MartSearchProvider extends ChangeNotifier {
   List<String> searchHistory = <String>[];
 
   // API Configuration
-  static const String baseUrl = 'https://jippymart.in/api';
-  static const String itemsEndpoint = '/search/items';
-  static const String categoriesEndpoint = '/search/categories';
+  // static const String baseUrl = 'https://jippymart.in/api';
+  static const String itemsEndpoint = 'search/items';
+  static const String categoriesEndpoint = 'search/categories';
 
   // Search items using API
   Future<void> searchItems(
@@ -48,7 +49,6 @@ class MartSearchProvider extends ChangeNotifier {
         currentPage = page;
         searchResults.clear();
       }
-      // Use API search
       await _searchItemsViaAPI(query, page: page, append: append);
     } catch (e) {
       errorMessage = 'Error searching items: $e';
@@ -67,8 +67,7 @@ class MartSearchProvider extends ChangeNotifier {
   }) async {
     try {
       print('[MART_SEARCH] 🔍 Searching via API for: "$query" (page: $page)');
-      // Removed isAvailable to avoid 422 validation errors
-      final uri = Uri.parse('$baseUrl$itemsEndpoint').replace(
+      final uri = Uri.parse('${AppConst.baseUrl}$itemsEndpoint').replace(
         queryParameters: {
           'search': query,
           'page': page.toString(),
@@ -161,7 +160,7 @@ class MartSearchProvider extends ChangeNotifier {
       print('[MART_SEARCH] 🔍 Searching categories via API for: "$query"');
       // Build API URL with query parameters
       final uri = Uri.parse(
-        '$baseUrl$categoriesEndpoint',
+        '${AppConst.baseUrl}$categoriesEndpoint',
       ).replace(queryParameters: {'q': query, 'limit': '20'});
 
       print('[MART_SEARCH] 📡 API URL: $uri');
@@ -226,7 +225,6 @@ class MartSearchProvider extends ChangeNotifier {
     searchQuery = query.trim();
     isSearching = true;
 
-    // Search only items (no categories)
     await searchItems(query);
 
     isSearching = false;
@@ -298,7 +296,7 @@ class MartSearchProvider extends ChangeNotifier {
       print('[MART_SEARCH] 🔍 Getting featured items via API (type: $type)');
       // Build API URL with query parameters
       final uri = Uri.parse(
-        '$baseUrl/search/items/featured',
+        '${AppConst.baseUrl}search/items/featured',
       ).replace(queryParameters: {'type': type, 'limit': '20'});
 
       print('[MART_SEARCH] 📡 API URL: $uri');
@@ -357,7 +355,7 @@ class MartSearchProvider extends ChangeNotifier {
     try {
       print('[MART_SEARCH] 🔥 Fetching trending searches from API...');
       final response = await http.get(
-        Uri.parse('$baseUrl/trending-searches'),
+        Uri.parse('${AppConst.baseUrl}trending-searches'),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',

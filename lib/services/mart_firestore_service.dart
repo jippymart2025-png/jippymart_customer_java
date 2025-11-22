@@ -663,11 +663,10 @@ class MartFirestoreService extends GetxService {
       print(
         '[MART API] 📋 Fetching subcategories for parent category: $parentCategoryId',
       );
-
       // Build the API URL
       final url =
           '${AppConst.baseUrl}mart-items/sub_category?parent_category_id=$parentCategoryId';
-
+      print('getSubcategoriesByParent $url');
       final response = await http.get(
         Uri.parse(url),
         headers: await getHeaders(),
@@ -1464,7 +1463,6 @@ class MartFirestoreService extends GetxService {
               if (categoryData['has_subcategories'] == null) {
                 categoryData['has_subcategories'] = false;
               }
-
               // Handle subcategories_count
               if (categoryData['subcategories_count'] == null) {
                 categoryData['subcategories_count'] = 0;
