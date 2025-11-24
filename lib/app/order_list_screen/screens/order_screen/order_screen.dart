@@ -10,6 +10,7 @@ import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/pr
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/order_model.dart';
+import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -477,73 +478,119 @@ class OrderScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            "Total to Pay",
-                            style: TextStyle(
-                              color: AppThemeData.grey900,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        Text(
-                          //finded
-                          Constant.amountShow(
-                            amount: orderModel.toPayAmount.toString(),
-                          ),
-                          style: TextStyle(
-                            color: AppThemeData.primary300,
-                            fontFamily: AppThemeData.semiBold,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+
+                    // In the OrderScreen's itemView method, replace the current "Total to Pay" section:
+                    FutureBuilder<double>(
+                      future: calculateOrderTotalInList(orderModel),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Total to Pay",
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                width: 60,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: AppThemeData.grey200,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ],
+                          );
+                        } else if (snapshot.hasData) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Total to Pay",
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                Constant.amountShow(
+                                  amount: snapshot.data!.toString(),
+                                ),
+                                style: TextStyle(
+                                  color: AppThemeData.primary300,
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          );
+                        } else {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Total to Pay",
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                Constant.amountShow(
+                                  amount: orderModel.toPayAmount.toString(),
+                                ),
+                                style: TextStyle(
+                                  color: AppThemeData.primary300,
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                      },
                     ),
-                    // FutureBuilder<double?>(
-                    //   future: fetchOrderToPay(orderModel.id ?? ''),
-                    //   builder: (context, snapshot) {
-                    //     if (snapshot.connectionState ==
-                    //         ConnectionState.waiting) {
-                    //       return CircularProgressIndicator(); // or shimmer
-                    //     } else if (snapshot.hasData) {
-                    //       return Row(
-                    //         children: [
-                    //           Expanded(
-                    //             child: Text(
-                    //               "Total to Pay",
-                    //               style: TextStyle(
-                    //                 color: AppThemeData.grey900,
-                    //                 fontFamily: AppThemeData.semiBold,
-                    //                 fontWeight: FontWeight.w600,
-                    //                 fontSize: 16,
-                    //               ),
-                    //             ),
-                    //           ),
-                    //           Text(
-                    //             // Constant.amountShow(
-                    //             //   amount: snapshot.data!.toString(),
-                    //             // ),
-                    //             Constant.amountShow(
-                    //               amount: orderModel.toPayAmount!.toString(),
-                    //             ),
-                    //             style: TextStyle(
-                    //               color: AppThemeData.primary300,
-                    //               fontFamily: AppThemeData.semiBold,
-                    //               fontWeight: FontWeight.w600,
-                    //               fontSize: 16,
-                    //             ),
-                    //           ),
-                    //         ],
-                    //       );
-                    //     } else {
-                    //       return Text("No billing info");
-                    //     }
-                    //   },
+                    // Row(
+                    //   children: [
+                    //     Expanded(
+                    //       child: Text(
+                    //         "Total to Pay",
+                    //         style: TextStyle(
+                    //           color: AppThemeData.grey900,
+                    //           fontFamily: AppThemeData.semiBold,
+                    //           fontWeight: FontWeight.w600,
+                    //           fontSize: 16,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //     Text(
+                    //       //finded
+                    //       Constant.amountShow(
+                    //         amount: orderModel.toPayAmount.toString(),
+                    //       ),
+                    //       style: TextStyle(
+                    //         color: AppThemeData.primary300,
+                    //         fontFamily: AppThemeData.semiBold,
+                    //         fontWeight: FontWeight.w600,
+                    //         fontSize: 16,
+                    //       ),
+                    //     ),
+                    //   ],
                     // ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 14),
@@ -648,6 +695,178 @@ class OrderScreen extends StatelessWidget {
         );
       },
     );
+  }
+
+  Future<double> calculateOrderTotalInList(OrderModel order) async {
+    final vendor =
+        order.vendor ??
+        VendorModel(
+          title: "Jippy Mart",
+          location: "Jippy Mart Store",
+          phonenumber: "Contact Support",
+          isSelfDelivery: false,
+          deliveryCharge: DeliveryCharge(
+            baseDeliveryCharge: 23.0,
+            itemTotalThreshold: 299.0,
+            freeDeliveryDistanceKm: 7.0,
+            perKmChargeAboveFreeDistance: 8.0,
+          ),
+          latitude: 0.0,
+          longitude: 0.0,
+          vType: 'mart',
+        );
+    final deliveryCharge = vendor.deliveryCharge ?? DeliveryCharge();
+    final totalDistance = order.vendor != null
+        ? Constant.calculateDistance(
+            vendor.latitude ?? 0.0,
+            vendor.longitude ?? 0.0,
+            order.address?.location?.latitude ?? 0.0,
+            order.address?.location?.longitude ?? 0.0,
+          )
+        : 0.0;
+    // Reuse the same calculation logic from OrderDetailsScreen
+    double subTotal = 0.0;
+    double deliveryCharges = 0.0;
+    double originalDeliveryFee = 0.0;
+    double couponAmount = 0.0;
+    double specialDiscountAmount = 0.0;
+    double taxAmount = 0.0;
+    double deliveryTips = double.tryParse(order.tipAmount ?? '0') ?? 0.0;
+    double totalAmount = 0.0;
+    // Subtotal calculation (same as OrderDetailsScreen)
+    if (order.products != null) {
+      for (var element in order.products!) {
+        final priceValue = double.tryParse(element.price.toString()) ?? 0.0;
+        final discountPriceValue =
+            double.tryParse(element.discountPrice.toString()) ?? 0.0;
+        final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
+        final isPricePromotional =
+            priceValue > 0 &&
+            discountPriceValue > 0 &&
+            priceValue < discountPriceValue;
+        final isPromotional = hasPromo || isPricePromotional;
+        double itemPrice;
+        if (isPromotional) {
+          itemPrice = priceValue < discountPriceValue
+              ? priceValue
+              : discountPriceValue;
+        } else if (discountPriceValue <= 0) {
+          itemPrice = priceValue;
+        } else {
+          itemPrice = discountPriceValue;
+        }
+        final quantity = double.parse(element.quantity.toString());
+        final extrasPrice = double.parse(element.extrasPrice.toString());
+        final itemTotal = (itemPrice * quantity) + (extrasPrice * quantity);
+        subTotal += itemTotal;
+      }
+    }
+    // Delivery charges calculation (same as OrderDetailsScreen)
+    final threshold = deliveryCharge.itemTotalThreshold ?? 299;
+    final baseCharge = deliveryCharge.baseDeliveryCharge ?? 23;
+    final freeKm = deliveryCharge.freeDeliveryDistanceKm ?? 7;
+    final perKm = deliveryCharge.perKmChargeAboveFreeDistance ?? 8;
+    final hasPromotionalItems = order.products!.any((item) {
+      final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
+      final discountPriceValue =
+          double.tryParse(item.discountPrice.toString()) ?? 0.0;
+      final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
+      final isPricePromotional =
+          priceValue > 0 &&
+          discountPriceValue > 0 &&
+          priceValue < discountPriceValue;
+      return hasPromo || isPricePromotional;
+    });
+    if (vendor.isSelfDelivery == true &&
+        Constant.isSelfDeliveryFeature == true) {
+      deliveryCharges = 0.0;
+      originalDeliveryFee = 0.0;
+    } else if (hasPromotionalItems) {
+      // Simplified promotional delivery logic for list view
+      if (totalDistance <= 3.0) {
+        deliveryCharges = 0.0;
+        originalDeliveryFee = 23.0;
+      } else {
+        double extraKm = (totalDistance - 3.0).ceilToDouble();
+        deliveryCharges = extraKm * 7.0;
+        originalDeliveryFee = deliveryCharges;
+      }
+    } else {
+      if (subTotal < threshold) {
+        if (totalDistance <= freeKm) {
+          deliveryCharges = baseCharge.toDouble();
+          originalDeliveryFee = baseCharge.toDouble();
+        } else {
+          double extraKm = (totalDistance - freeKm).ceilToDouble();
+          deliveryCharges = (baseCharge + (extraKm * perKm)).toDouble();
+          originalDeliveryFee = deliveryCharges;
+        }
+      } else {
+        if (totalDistance <= freeKm) {
+          deliveryCharges = 0.0;
+          originalDeliveryFee = baseCharge.toDouble();
+        } else {
+          double extraKm = (totalDistance - freeKm).ceilToDouble();
+          deliveryCharges = (extraKm * perKm).toDouble();
+          originalDeliveryFee = (baseCharge + (extraKm * perKm)).toDouble();
+        }
+      }
+    }
+
+    // Coupon discount
+    if (hasPromotionalItems) {
+      couponAmount = 0.0;
+    } else if (order.couponId != null &&
+        order.couponId!.isNotEmpty &&
+        order.discount != null) {
+      couponAmount = double.tryParse(order.discount.toString()) ?? 0.0;
+    } else {
+      couponAmount = 0.0;
+    }
+
+    // Special discount
+    if (order.specialDiscount != null &&
+        order.specialDiscount!['special_discount'] != null) {
+      specialDiscountAmount =
+          double.tryParse(
+            order.specialDiscount!['special_discount'].toString(),
+          ) ??
+          0.0;
+    }
+
+    // Taxes
+    double sgst = subTotal * 0.05;
+    double gst = originalDeliveryFee * 0.18;
+    sgst = sgst.isNaN ? 0.0 : sgst;
+    gst = gst.isNaN ? 0.0 : gst;
+    taxAmount = sgst + gst;
+
+    if (taxAmount == 0.0) {
+      double sgstFallback = subTotal * 0.05;
+      double gstFallback = originalDeliveryFee * 0.18;
+      taxAmount = sgstFallback + gstFallback;
+    }
+    if (taxAmount.isNaN) taxAmount = 0.0;
+
+    // Check free delivery
+    bool isFreeDelivery = false;
+    if (hasPromotionalItems) {
+      if (totalDistance <= 3.0) {
+        isFreeDelivery = true;
+      }
+    } else {
+      if (subTotal >= threshold && totalDistance <= freeKm) {
+        isFreeDelivery = true;
+      }
+    }
+
+    totalAmount =
+        (subTotal - couponAmount - specialDiscountAmount) +
+        taxAmount +
+        (isFreeDelivery ? 0.0 : deliveryCharges) +
+        deliveryTips;
+
+    return totalAmount;
   }
 
   // Helper function to calculate the 'To Pay' value for an order
