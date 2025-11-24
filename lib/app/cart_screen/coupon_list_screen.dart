@@ -29,7 +29,6 @@ class _CouponListScreenState extends State<CouponListScreen> {
   @override
   void initState() {
     super.initState();
-    // Load coupons only once when screen is first opened
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_hasInitialized) {
         _hasInitialized = true;

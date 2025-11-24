@@ -41,6 +41,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     controller = Provider.of<CartControllerProvider>(context, listen: false);
     // Only initialize once
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      controller.initFunction(context);
       if (!_hasInitialized) {
         _hasInitialized = true;
         _refreshCartData(context);

@@ -1566,15 +1566,12 @@ class CartControllerProvider extends ChangeNotifier {
     // Validate restaurant ID before making API call
     if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
       print('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
-      // Try to load global coupons instead
       await _loadGlobalCouponsOnly();
       return;
     }
     _isLoadingCoupons = true;
-
     try {
       _detectCurrentContext();
-
       // Make only ONE API call instead of three identical calls
       final allCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons(
@@ -1587,7 +1584,6 @@ class CartControllerProvider extends ChangeNotifier {
             },
           );
 
-      // Filter global coupons (those without restaurant ID or with 'ALL')
       final filteredGlobalCoupons = allCoupons
           .where(
             (c) =>
@@ -1945,26 +1941,20 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Ensure coupons are loaded when cart screen opens
   void ensureCouponsLoaded() {
-    // Prevent multiple simultaneous calls
     if (_isLoadingCoupons) {
       print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
       return;
     }
-
-    // If we have cached coupons, use them immediately
     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
       if (couponList.isEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
         notifyListeners();
       }
-      // Only refresh if cache is expired
       if (_isCacheValid()) {
         return; // Cache is still valid, no need to reload
       }
     }
-
-    // Load coupons if cache is empty or expired
     if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
       _loadCoupons(restaurantId: vendorModel.id.toString());
     } else {
@@ -1987,7 +1977,6 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       _detectCurrentContext();
 
-      // Load global coupons with timeout and error handling
       final globalCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons(
             restaurantId: '',
@@ -2738,7 +2727,6 @@ class CartControllerProvider extends ChangeNotifier {
       if (e.toString().contains('Delivery zone validation failed') ||
           e.toString().contains('Delivery distance validation failed')) {
       } else {
-        // Generic order error
         ShowToastDialog.showToast(
           "An error occurred while placing your order. Please try again.".tr,
         );
@@ -3028,9 +3016,7 @@ class CartControllerProvider extends ChangeNotifier {
         } else {
           if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
             ShowToastDialog.closeLoader();
-            // final status = RestaurantStatusUtils.getRestaurantStatus(
-            //   latestVendor,
-            // );
+
             ShowToastDialog.showToast("Restaurant Closed");
             endOrderProcessing();
             return;
@@ -3329,7 +3315,6 @@ class CartControllerProvider extends ChangeNotifier {
               final codSettingsStr = Preferences.getString(
                 Preferences.codSettings,
               );
-
               if (razorpaySettingsStr.isNotEmpty) {
                 razorPayModel = RazorPayModel.fromJson(
                   jsonDecode(razorpaySettingsStr),
@@ -3898,15 +3883,14 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       final headers = await getHeaders();
       final response = await http.post(
-        Uri.parse('${AppConst.baseUrl}/mobile/coupons/$couponId/used'),
+        Uri.parse('${AppConst.baseUrl}mobile/coupons/$couponId/used'),
         headers: headers,
       );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         print('Coupon marked as used successfully');
-        // After marking as used, re-fetch coupon lists to update their status
         await getCartData();
       } else {
-        // Handle error response
         throw Exception(
           'Failed to mark coupon as used: ${response.statusCode}',
         );

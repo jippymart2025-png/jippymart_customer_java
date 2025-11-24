@@ -43,7 +43,6 @@ Widget cartNavigationBarWidget(BuildContext context) {
                     }
                     await controller.showPaymentMethodDialog(context);
                     if (controller.selectedPaymentMethod.isNotEmpty) {
-                      // await controller.forceRefreshCart();
                       controller.providerInitializer(context: context);
                       await controller.processPayment(controller, context);
                     }

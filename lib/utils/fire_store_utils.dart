@@ -74,6 +74,7 @@ class FireStoreUtils {
         headers: await getHeaders(),
       );
 
+      print("getPaymentSettingsData ${razorpayResponse.body} ");
       if (razorpayResponse.statusCode == 200) {
         final responseData = jsonDecode(razorpayResponse.body);
         if (responseData['success'] == true) {
@@ -576,7 +577,6 @@ class FireStoreUtils {
   static Future<List<OrderModel>> getAllOrder() async {
     List<OrderModel> list = [];
     final currentUid = await SqlStorageConst.getFirebaseId();
-
     print(" userId   $currentUid  ");
     if (kDebugMode) {
       print('Current UID: $currentUid');
@@ -605,7 +605,7 @@ class FireStoreUtils {
     final response = await http.get(uri, headers: await getHeaders());
     if (kDebugMode) {
       print('API Response Status: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
+      dev.log('getAllOrder ${response.body}');
     }
     if (response.statusCode == 200) {
       final Map<String, dynamic> responseData = json.decode(response.body);
@@ -614,9 +614,7 @@ class FireStoreUtils {
         if (kDebugMode) {
           print('Found ${ordersData.length} orders in API response');
         }
-        // Process each order
         for (var orderData in ordersData) {
-          // try {
           OrderModel orderModel = OrderModel.fromJson(orderData);
           list.add(orderModel);
           if (kDebugMode) {

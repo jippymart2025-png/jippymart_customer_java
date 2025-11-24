@@ -303,7 +303,6 @@ class _CartScreenState extends State<CartScreen> {
                               const SizedBox(height: 10),
                               InkWell(
                                 onTap: () async {
-                                  // Show loading indicator while fetching coupons
                                   ShowToastDialog.showLoader(
                                     "Loading coupons...",
                                   );

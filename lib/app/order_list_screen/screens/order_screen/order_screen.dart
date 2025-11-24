@@ -18,6 +18,7 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
 import 'package:flutter/material.dart';
@@ -476,45 +477,73 @@ class OrderScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-
-                    FutureBuilder<double?>(
-                      future: fetchOrderToPay(orderModel.id ?? ''),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return CircularProgressIndicator(); // or shimmer
-                        } else if (snapshot.hasData) {
-                          return Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  "Total to Pay",
-                                  style: TextStyle(
-                                    color: AppThemeData.grey900,
-                                    fontFamily: AppThemeData.semiBold,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                Constant.amountShow(
-                                  amount: snapshot.data!.toString(),
-                                ),
-                                style: TextStyle(
-                                  color: AppThemeData.primary300,
-                                  fontFamily: AppThemeData.semiBold,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ],
-                          );
-                        } else {
-                          return Text("No billing info");
-                        }
-                      },
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Total to Pay",
+                            style: TextStyle(
+                              color: AppThemeData.grey900,
+                              fontFamily: AppThemeData.semiBold,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          Constant.amountShow(
+                            amount: orderModel.toPayAmount!.toString(),
+                          ),
+                          style: TextStyle(
+                            color: AppThemeData.primary300,
+                            fontFamily: AppThemeData.semiBold,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
                     ),
+                    // FutureBuilder<double?>(
+                    //   future: fetchOrderToPay(orderModel.id ?? ''),
+                    //   builder: (context, snapshot) {
+                    //     if (snapshot.connectionState ==
+                    //         ConnectionState.waiting) {
+                    //       return CircularProgressIndicator(); // or shimmer
+                    //     } else if (snapshot.hasData) {
+                    //       return Row(
+                    //         children: [
+                    //           Expanded(
+                    //             child: Text(
+                    //               "Total to Pay",
+                    //               style: TextStyle(
+                    //                 color: AppThemeData.grey900,
+                    //                 fontFamily: AppThemeData.semiBold,
+                    //                 fontWeight: FontWeight.w600,
+                    //                 fontSize: 16,
+                    //               ),
+                    //             ),
+                    //           ),
+                    //           Text(
+                    //             // Constant.amountShow(
+                    //             //   amount: snapshot.data!.toString(),
+                    //             // ),
+                    //             Constant.amountShow(
+                    //               amount: orderModel.toPayAmount!.toString(),
+                    //             ),
+                    //             style: TextStyle(
+                    //               color: AppThemeData.primary300,
+                    //               fontFamily: AppThemeData.semiBold,
+                    //               fontWeight: FontWeight.w600,
+                    //               fontSize: 16,
+                    //             ),
+                    //           ),
+                    //         ],
+                    //       );
+                    //     } else {
+                    //       return Text("No billing info");
+                    //     }
+                    //   },
+                    // ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       child: MySeparator(color: AppThemeData.grey200),
@@ -797,15 +826,13 @@ class OrderScreen extends StatelessWidget {
 // Fetch the 'ToPay' value from the 'order_Billing' collection for a given order ID
 Future<double?> fetchOrderToPay(String orderId) async {
   try {
+    final userId = await SqlStorageConst.getFirebaseId();
+    print("fetchOrderToPay $userId");
     print("💰 Fetching order to pay for order: $orderId");
-
-    // **API CALL: Fetch billing information**
     final Uri uri = Uri.parse(
       '${AppConst.baseUrl}mobile/orders/$orderId/billing/to-pay',
     );
-
     print("🌐 Making API request to: ${uri.toString()}");
-
     final response = await http.get(uri, headers: await getHeaders());
 
     if (response.statusCode == 200) {
