@@ -1153,7 +1153,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
     print(
       '[SIMILAR PRODUCTS] Current product subcategoryID: ${widget.product.subcategoryID}',
     );
-
     // Check if we have the required categoryID
     if (widget.product.categoryID == null ||
         widget.product.categoryID!.isEmpty) {
@@ -1175,7 +1174,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         ),
       );
     }
-
     // Use stream for real-time similar products loading with timeout
     return StreamBuilder<List<MartItemModel>>(
       stream: controller.streamAllProducts(

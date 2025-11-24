@@ -35,7 +35,7 @@ class CartProvider with ChangeNotifier {
   final _cartStreamController =
       StreamController<List<CartProductModel>>.broadcast();
   List<CartProductModel> _cartItems = [];
-  
+
   // Cache location data to avoid repeated Preferences calls
   bool _locationSaved = false;
   DateTime? _lastLocationSaveTime;
@@ -97,26 +97,24 @@ class CartProvider with ChangeNotifier {
     print('DEBUG: Cart Provider - Price: ${product.price}');
     print('DEBUG: Cart Provider - DiscountPrice: ${product.discountPrice}');
     print('DEBUG: Cart Provider - PromoId: ${product.promoId}');
-    
     // Optimize location saving - only save if not recently saved (within last 5 minutes)
     final now = DateTime.now();
-    if (!_locationSaved || 
-        _lastLocationSaveTime == null || 
+    if (!_locationSaved ||
+        _lastLocationSaveTime == null ||
         now.difference(_lastLocationSaveTime!).inMinutes > 5) {
       await _saveLocationForTaxCalculation();
       _locationSaved = true;
       _lastLocationSaveTime = now;
     }
-    
     // Fetch cart items once
     _cartItems = await DatabaseHelper.instance.fetchCartProducts();
     print(
       'DEBUG: CartProvider - Fetched ${_cartItems.length} items from database',
     );
-    
     // Check if item already exists in cart
-    final existingItemIndex = _cartItems.indexWhere((item) => item.id == product.id);
-    
+    final existingItemIndex = _cartItems.indexWhere(
+      (item) => item.id == product.id,
+    );
     if (existingItemIndex >= 0) {
       // Update existing item
       _cartItems[existingItemIndex].quantity = quantity;
@@ -130,7 +128,9 @@ class CartProvider with ChangeNotifier {
         _cartItems[existingItemIndex].extras = [];
         _cartItems[existingItemIndex].extrasPrice = "0";
       }
-      await DatabaseHelper.instance.updateCartProduct(_cartItems[existingItemIndex]);
+      await DatabaseHelper.instance.updateCartProduct(
+        _cartItems[existingItemIndex],
+      );
     } else {
       // Check if this is a mart item
       bool isMartItem =
@@ -145,7 +145,7 @@ class CartProvider with ChangeNotifier {
                 item.vendorID?.contains("mart") == true ||
                 item.vendorID?.contains("vendor") == true),
       );
-      
+
       // Validate cart compatibility
       if (_cartItems.isEmpty ||
           (isMartItem && !cartHasFoodItems) ||
@@ -173,16 +173,16 @@ class CartProvider with ChangeNotifier {
         return false;
       }
     }
-    
+
     // Update global cart and stream in one go
     HomeProvider.cartItem.clear();
     HomeProvider.cartItem.addAll(_cartItems);
     _cartStreamController.sink.add(_cartItems);
-    
+
     print(
       'DEBUG: CartProvider - Cart updated, total items: ${_cartItems.length}',
     );
-    
+
     // Single notifyListeners call
     notifyListeners();
     return true;

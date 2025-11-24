@@ -733,7 +733,6 @@ class OrderScreen extends StatelessWidget {
     double taxAmount = 0.0;
     double deliveryTips = double.tryParse(order.tipAmount ?? '0') ?? 0.0;
     double totalAmount = 0.0;
-    // Subtotal calculation (same as OrderDetailsScreen)
     if (order.products != null) {
       for (var element in order.products!) {
         final priceValue = double.tryParse(element.price.toString()) ?? 0.0;

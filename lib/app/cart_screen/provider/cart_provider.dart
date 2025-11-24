@@ -2605,7 +2605,6 @@ class CartControllerProvider extends ChangeNotifier {
           cartProductModel.vendorID ?? '',
           quantity,
         );
-
         if (!isAllowed) {
           final limit = getPromotionalItemLimit(
             cartProductModel.id ?? '',
@@ -2624,7 +2623,6 @@ class CartControllerProvider extends ChangeNotifier {
       );
       notifyListeners();
       if (!success) {
-        // Don't update the UI if adding to cart failed
         return false;
       }
     } else {
