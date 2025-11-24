@@ -19,10 +19,6 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 class RateProductProvider extends ChangeNotifier {
   bool isLoading = true;
 
-  void initFunction() {
-    getArgument();
-  }
-
   TextEditingController commentController = TextEditingController();
 
   OrderModel orderModel = OrderModel();
@@ -43,86 +39,88 @@ class RateProductProvider extends ChangeNotifier {
   double productReviewSum = 0.0;
   double productReviewCount = 0.0;
 
-  getArgument() async {
-    dynamic argumentData = Get.arguments;
-    if (argumentData != null) {
-      orderModel = argumentData['orderModel'];
-      productId = argumentData['productId'];
-      await FireStoreUtils.getOrderReviewsByID(
-        orderModel.id.toString(),
-        productId,
-      ).then((value) {
-        if (value != null) {
-          ratingModel = value;
-          ratings = value.rating ?? 0.0;
-          commentController.text = value.comment.toString();
-          reviewAttribute = value.reviewAttributes!;
-          images.addAll(value.photos ?? []);
-        }
-      });
+  initFunction({
+    required OrderModel orderModel,
+    required String productId,
+  }) async {
+    orderModel = orderModel;
+    productId = productId;
+    await FireStoreUtils.getOrderReviewsByID(
+      orderModel.id.toString(),
+      productId,
+    ).then((value) {
+      if (value != null) {
+        ratingModel = value;
+        ratings = value.rating ?? 0.0;
+        commentController.text = value.comment.toString();
+        reviewAttribute = value.reviewAttributes!;
+        images.addAll(value.photos ?? []);
+        notifyListeners();
+      }
+    });
 
-      await FireStoreUtils.getProductById(productId.split('~').first).then((
-        value,
-      ) {
-        if (value != null) {
-          productModel = value;
-          if (ratingModel.id != null) {
-            productReviewCount = value.reviewsCount! - 1;
-            productReviewSum = value.reviewsSum! - ratings;
+    await FireStoreUtils.getProductById(productId.split('~').first).then((
+      value,
+    ) {
+      if (value != null) {
+        productModel = value;
+        if (ratingModel.id != null) {
+          productReviewCount = value.reviewsCount! - 1;
+          productReviewSum = value.reviewsSum! - ratings;
 
-            if (value.reviewAttributes != null) {
-              value.reviewAttributes!.forEach((key, value) {
-                ReviewsAttribute reviewsAttributeModel =
-                    ReviewsAttribute.fromJson(value);
-                reviewsAttributeModel.reviewsCount =
-                    reviewsAttributeModel.reviewsCount! - 1;
-                reviewsAttributeModel.reviewsSum =
-                    reviewsAttributeModel.reviewsSum! - reviewAttribute[key];
-                reviewProductAttributes.addEntries([
-                  MapEntry(key, reviewsAttributeModel.toJson()),
-                ]);
-              });
-            }
-          } else {
-            productReviewCount = double.parse(value.reviewsCount.toString());
-            productReviewSum = double.parse(value.reviewsSum.toString());
-            if (value.reviewAttributes != null) {
-              reviewProductAttributes = value.reviewAttributes!;
-            }
-          }
-        }
-      });
-
-      await FireStoreUtils.getVendorById(productModel.vendorID.toString()).then(
-        (value) {
-          if (value != null) {
-            vendorModel = value;
-            if (ratingModel.id != null) {
-              vendorReviewCount = value.reviewsCount! - 1;
-              vendorReviewSum = value.reviewsSum! - ratings;
-            } else {
-              vendorReviewCount = double.parse(value.reviewsCount.toString());
-              vendorReviewSum = double.parse(value.reviewsSum.toString());
-            }
-          }
-        },
-      );
-
-      await FireStoreUtils.getVendorCategoryByCategoryId(
-        productModel.categoryID.toString(),
-      ).then((value) async {
-        if (value != null) {
-          vendorCategoryModel = value;
-          for (var element in vendorCategoryModel.reviewAttributes!) {
-            await FireStoreUtils.getVendorReviewAttribute(element).then((
-              value,
-            ) {
-              reviewAttributeList.add(value!);
+          if (value.reviewAttributes != null) {
+            value.reviewAttributes!.forEach((key, value) {
+              ReviewsAttribute reviewsAttributeModel =
+                  ReviewsAttribute.fromJson(value);
+              reviewsAttributeModel.reviewsCount =
+                  reviewsAttributeModel.reviewsCount! - 1;
+              reviewsAttributeModel.reviewsSum =
+                  reviewsAttributeModel.reviewsSum! - reviewAttribute[key];
+              reviewProductAttributes.addEntries([
+                MapEntry(key, reviewsAttributeModel.toJson()),
+              ]);
             });
           }
+        } else {
+          productReviewCount = double.parse(value.reviewsCount.toString());
+          productReviewSum = double.parse(value.reviewsSum.toString());
+          if (value.reviewAttributes != null) {
+            reviewProductAttributes = value.reviewAttributes!;
+          }
         }
-      });
-    }
+      }
+      notifyListeners();
+    });
+
+    await FireStoreUtils.getVendorById(productModel.vendorID.toString()).then((
+      value,
+    ) {
+      if (value != null) {
+        vendorModel = value;
+        if (ratingModel.id != null) {
+          vendorReviewCount = value.reviewsCount! - 1;
+          vendorReviewSum = value.reviewsSum! - ratings;
+        } else {
+          vendorReviewCount = double.parse(value.reviewsCount.toString());
+          vendorReviewSum = double.parse(value.reviewsSum.toString());
+        }
+      }
+      notifyListeners();
+    });
+
+    await FireStoreUtils.getVendorCategoryByCategoryId(
+      productModel.categoryID.toString(),
+    ).then((value) async {
+      if (value != null) {
+        vendorCategoryModel = value;
+        for (var element in vendorCategoryModel.reviewAttributes!) {
+          await FireStoreUtils.getVendorReviewAttribute(element).then((value) {
+            reviewAttributeList.add(value!);
+          });
+        }
+      }
+      notifyListeners();
+    });
     isLoading = false;
     notifyListeners();
   }
@@ -195,6 +193,7 @@ class RateProductProvider extends ChangeNotifier {
     } else {
       ShowToastDialog.showToast("Please add rate for food item.".tr);
     }
+    notifyListeners();
   }
 
   final ImagePicker _imagePicker = ImagePicker();
@@ -205,6 +204,7 @@ class RateProductProvider extends ChangeNotifier {
       XFile? image = await _imagePicker.pickImage(source: source);
       if (image == null) return;
       images.add(image);
+      notifyListeners();
       Get.back();
     } on PlatformException catch (e) {
       ShowToastDialog.showToast("Failed to Pick : \n $e");

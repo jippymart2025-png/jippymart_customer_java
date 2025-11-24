@@ -300,7 +300,6 @@ class OrderPlacingScreen extends StatelessWidget {
                             context,
                             listen: false,
                           );
-                          // Get.find<DashBoardProvider>();
                           controller.selectedIndex =
                               Constant.walletSetting == false ? 3 : 3;
                           Get.offAll(const DashBoardScreen());

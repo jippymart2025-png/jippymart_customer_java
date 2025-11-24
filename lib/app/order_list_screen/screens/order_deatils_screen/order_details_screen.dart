@@ -3,6 +3,7 @@ import 'package:jippymart_customer/app/chat_screens/chat_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
+import 'package:jippymart_customer/app/rate_us_screen/provider/rate_product_provider.dart';
 import 'package:jippymart_customer/app/rate_us_screen/rate_product_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -1672,31 +1673,43 @@ class OrderDetailsScreen extends StatelessWidget {
                                                       );
                                                     }
                                                   })(),
-                                                  Align(
-                                                    alignment:
-                                                        Alignment.centerRight,
-                                                    child: RoundedButtonFill(
-                                                      title: "Rate us".tr,
-                                                      height: 3.8,
-                                                      width: 20,
-                                                      color: AppThemeData
-                                                          .warning300,
-                                                      textColor:
-                                                          AppThemeData.grey800,
-                                                      onPress: () async {
-                                                        Get.to(
-                                                          const RateProductScreen(),
-                                                          arguments: {
-                                                            "orderModel":
-                                                                controller
-                                                                    .orderModel,
-                                                            "productId":
-                                                                cartProductModel
-                                                                    .id,
-                                                          },
-                                                        );
-                                                      },
-                                                    ),
+                                                  Consumer<RateProductProvider>(
+                                                    builder:
+                                                        (
+                                                          context,
+                                                          rateProductProvider,
+                                                          _,
+                                                        ) {
+                                                          return Align(
+                                                            alignment: Alignment
+                                                                .centerRight,
+                                                            child: RoundedButtonFill(
+                                                              title:
+                                                                  "Rate us".tr,
+                                                              height: 3.8,
+                                                              width: 20,
+                                                              color: AppThemeData
+                                                                  .warning300,
+                                                              textColor:
+                                                                  AppThemeData
+                                                                      .grey800,
+                                                              onPress: () async {
+                                                                rateProductProvider.initFunction(
+                                                                  orderModel:
+                                                                      controller
+                                                                          .orderModel,
+                                                                  productId:
+                                                                      cartProductModel
+                                                                          .id
+                                                                          .toString(),
+                                                                );
+                                                                Get.to(
+                                                                  const RateProductScreen(),
+                                                                );
+                                                              },
+                                                            ),
+                                                          );
+                                                        },
                                                   ),
                                                 ],
                                               ),

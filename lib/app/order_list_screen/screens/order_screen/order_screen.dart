@@ -491,8 +491,9 @@ class OrderScreen extends StatelessWidget {
                           ),
                         ),
                         Text(
+                          //finded
                           Constant.amountShow(
-                            amount: orderModel.toPayAmount!.toString(),
+                            amount: orderModel.toPayAmount.toString(),
                           ),
                           style: TextStyle(
                             color: AppThemeData.primary300,

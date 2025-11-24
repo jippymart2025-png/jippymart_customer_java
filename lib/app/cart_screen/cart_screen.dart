@@ -68,7 +68,6 @@ class _CartScreenState extends State<CartScreen> {
     } else {
       await controller.syncAddressWithHomeLocation(context);
     }
-    // Update payment method after all calculations are complete
     controller.checkAndUpdatePaymentMethod();
     _isRefreshing = false;
   }

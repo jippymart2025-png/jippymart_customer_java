@@ -191,13 +191,10 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
 
-    // Store initial selection
     final String initialSelection = selectedPaymentMethod;
-
     await Get.dialog(
       WillPopScope(
         onWillPop: () async {
-          // Restore original selection if user cancels
           selectedPaymentMethod = initialSelection;
           notifyListeners();
           return true;
@@ -343,7 +340,6 @@ class CartControllerProvider extends ChangeNotifier {
                   ),
 
                   SizedBox(height: 10),
-
                   // Validation messages
                   if (subTotal > 599 &&
                       selectedPaymentMethod == PaymentGateway.cod.name)
@@ -399,11 +395,9 @@ class CartControllerProvider extends ChangeNotifier {
               ),
 
               actions: [
-                // Cancel Button
                 TextButton(
                   onPressed: () {
-                    // Restore original selection
-                    selectedPaymentMethod = initialSelection;
+                    selectedPaymentMethod = "";
                     notifyListeners();
                     Get.back();
                   },
@@ -412,7 +406,6 @@ class CartControllerProvider extends ChangeNotifier {
                   ),
                   child: Text("Cancel"),
                 ),
-                // OK/Proceed Button
                 ElevatedButton(
                   onPressed: () {
                     if (selectedPaymentMethod.isEmpty) {
@@ -421,7 +414,6 @@ class CartControllerProvider extends ChangeNotifier {
                       );
                       return;
                     }
-
                     // Validate selection
                     if (selectedPaymentMethod == PaymentGateway.cod.name) {
                       if (subTotal > 599) {
@@ -3232,13 +3224,16 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         " additionalTasks author1  ${vendorModel.id}   ${vendorModel.author}",
       );
-
       additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
       await Future.wait(additionalTasks);
       isPaymentInProgress = false;
       isPaymentCompleted = false;
       _lastPaymentId = null;
       _lastPaymentTime = null;
+      selectedCouponModel = CouponModel();
+      couponCodeController.text = '';
+      couponAmount = 0.0;
+      calculatePrice();
       await _clearPersistentPaymentState();
       ShowToastDialog.closeLoader();
       endOrderProcessing();
@@ -3878,28 +3873,60 @@ class CartControllerProvider extends ChangeNotifier {
   static String orderId = '';
   static String amount = '';
 
-  // Add this method to mark a coupon as used for the current user
+  // In CartControllerProvider class
   Future<void> markCouponAsUsed(String couponId) async {
     try {
-      final headers = await getHeaders();
+      final userId = await SqlStorageConst.getFirebaseId();
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}mobile/coupons/$couponId/used'),
-        headers: headers,
+        headers: await getHeaders(),
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('Coupon marked as used successfully');
-        await getCartData();
+        print('✅ Coupon marked as used: $couponId');
+
+        // Update local state to mark coupon as used
+        for (var coupon in couponList) {
+          if (coupon.id == couponId) {
+            coupon.isEnabled = false;
+          }
+        }
+        for (var coupon in allCouponList) {
+          if (coupon.id == couponId) {
+            coupon.isEnabled = false;
+          }
+        }
+        notifyListeners();
       } else {
-        throw Exception(
-          'Failed to mark coupon as used: ${response.statusCode}',
-        );
+        print('❌ Failed to mark coupon as used: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error marking coupon as used: $e');
-      throw Exception('Failed to mark coupon as used: $e');
+      print('❌ Error marking coupon as used: $e');
     }
   }
+
+  // Add this method to mark a coupon as used for the current user
+  // Future<void> markCouponAsUsed(String couponId) async {
+  //   try {
+  //     final headers = await getHeaders();
+  //     final response = await http.post(
+  //       Uri.parse('${AppConst.baseUrl}mobile/coupons/$couponId/used'),
+  //       headers: headers,
+  //     );
+  //
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       print('Coupon marked as used successfully');
+  //       await getCartData();
+  //     } else {
+  //       throw Exception(
+  //         'Failed to mark coupon as used: ${response.statusCode}',
+  //       );
+  //     }
+  //   } catch (e) {
+  //     print('Error marking coupon as used: $e');
+  //     throw Exception('Failed to mark coupon as used: $e');
+  //   }
+  // }
 
   bool isCurrentDateInRange(DateTime startDate, DateTime endDate) {
     final currentDate = DateTime.now();
