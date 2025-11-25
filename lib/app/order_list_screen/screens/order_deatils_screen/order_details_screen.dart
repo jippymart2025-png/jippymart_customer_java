@@ -121,13 +121,23 @@ class OrderDetailsScreen extends StatelessWidget {
     }
 
     // Delivery Charges - Enhanced for promotional items
-    final threshold = deliveryCharge.itemTotalThreshold ?? 299;
-    final baseCharge = deliveryCharge.baseDeliveryCharge ?? 23;
-    final freeKm = deliveryCharge.freeDeliveryDistanceKm ?? 7;
-    final perKm = deliveryCharge.perKmChargeAboveFreeDistance ?? 8;
+    const double fallbackThreshold = 299.0;
+    const double fallbackBaseCharge = 23.0;
+    const double fallbackFreeKm = 5.0;
+    const double fallbackPerKm = 7.0;
+
+    final double threshold =
+        (deliveryCharge.itemTotalThreshold ?? fallbackThreshold).toDouble();
+    final double baseCharge =
+        (deliveryCharge.baseDeliveryCharge ?? fallbackBaseCharge).toDouble();
+    final double freeKm =
+        (deliveryCharge.freeDeliveryDistanceKm ?? fallbackFreeKm).toDouble();
+    final double perKm =
+        (deliveryCharge.perKmChargeAboveFreeDistance ?? fallbackPerKm)
+            .toDouble();
 
     // Check if cart has promotional items
-    final hasPromotionalItems = order.products!.any((item) {
+    final hasPromotionalItems = (order.products ?? []).any((item) {
       final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
       final discountPriceValue =
           double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -150,7 +160,7 @@ class OrderDetailsScreen extends StatelessWidget {
       print('DEBUG: Order Details - Self delivery - no charge');
     } else if (hasPromotionalItems) {
       // Promotional items delivery logic - Get dynamic settings from Firestore
-      final promotionalItems = order.products!.where((item) {
+      final promotionalItems = (order.products ?? []).where((item) {
         final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
         final discountPriceValue =
             double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -177,9 +187,9 @@ class OrderDetailsScreen extends StatelessWidget {
             final freeDeliveryKm =
                 (promoDetails['free_delivery_km'] as num?)?.toDouble() ?? 3.0;
             final extraKmCharge =
-                (promoDetails['extra_km_charge'] as num?)?.toDouble() ?? 7.0;
-            final promoBaseCharge =
-                23.0; // Base delivery charge for promotional items
+                (promoDetails['extra_km_charge'] as num?)?.toDouble() ??
+                    fallbackPerKm;
+            final promoBaseCharge = baseCharge;
 
             print(
               'DEBUG: Order Details - Promotional delivery settings from Firestore:',
@@ -322,7 +332,7 @@ class OrderDetailsScreen extends StatelessWidget {
     bool isFreeDelivery = false;
     if (hasPromotionalItems) {
       // For promotional items, check if within free delivery distance (dynamic from Firestore)
-      final promotionalItems = order.products!.where((item) {
+      final promotionalItems = (order.products ?? []).where((item) {
         final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
         final discountPriceValue =
             double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -455,6 +465,12 @@ class OrderDetailsScreen extends StatelessWidget {
             );
 
         final deliveryCharge = vendor.deliveryCharge ?? DeliveryCharge();
+        final double displayThreshold =
+            (deliveryCharge.itemTotalThreshold ?? 299).toDouble();
+        final double displayFreeDistance =
+            (deliveryCharge.freeDeliveryDistanceKm ?? 5).toDouble();
+        final double displayBaseCharge =
+            (deliveryCharge.baseDeliveryCharge ?? 23).toDouble();
         final totalDistance = order.vendor != null
             ? Constant.calculateDistance(
                 vendor.latitude ?? 0.0,
@@ -2112,13 +2128,9 @@ class OrderDetailsScreen extends StatelessWidget {
                                           }
 
                                           if (bill.subTotal >=
-                                                  (deliveryCharge
-                                                          .itemTotalThreshold ??
-                                                      299) &&
+                                                  displayThreshold &&
                                               totalDistance >
-                                                  (deliveryCharge
-                                                          .freeDeliveryDistanceKm ??
-                                                      7)) {
+                                                  displayFreeDistance) {
                                             return Row(
                                               children: [
                                                 Text(
@@ -2169,13 +2181,9 @@ class OrderDetailsScreen extends StatelessWidget {
                                           }
 
                                           if (bill.subTotal >=
-                                                  (deliveryCharge
-                                                          .itemTotalThreshold ??
-                                                      299) &&
+                                                  displayThreshold &&
                                               totalDistance <=
-                                                  (deliveryCharge
-                                                          .freeDeliveryDistanceKm ??
-                                                      7)) {
+                                                  displayFreeDistance) {
                                             return Row(
                                               children: [
                                                 Text(
@@ -2192,11 +2200,8 @@ class OrderDetailsScreen extends StatelessWidget {
                                                 const SizedBox(width: 8),
                                                 Text(
                                                   Constant.amountShow(
-                                                    amount:
-                                                        (deliveryCharge
-                                                                    .baseDeliveryCharge ??
-                                                                23)
-                                                            .toString(),
+                                                    amount: displayBaseCharge
+                                                        .toString(),
                                                   ),
                                                   style: TextStyle(
                                                     fontFamily:

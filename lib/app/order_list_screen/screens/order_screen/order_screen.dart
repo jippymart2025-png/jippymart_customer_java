@@ -22,6 +22,7 @@ import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
+import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -761,11 +762,22 @@ class OrderScreen extends StatelessWidget {
       }
     }
     // Delivery charges calculation (same as OrderDetailsScreen)
-    final threshold = deliveryCharge.itemTotalThreshold ?? 299;
-    final baseCharge = deliveryCharge.baseDeliveryCharge ?? 23;
-    final freeKm = deliveryCharge.freeDeliveryDistanceKm ?? 7;
-    final perKm = deliveryCharge.perKmChargeAboveFreeDistance ?? 8;
-    final hasPromotionalItems = order.products!.any((item) {
+    const double fallbackThreshold = 299.0;
+    const double fallbackBaseCharge = 23.0;
+    const double fallbackFreeKm = 5.0;
+    const double fallbackPerKm = 7.0;
+
+    final double threshold =
+        (deliveryCharge.itemTotalThreshold ?? fallbackThreshold).toDouble();
+    final double baseCharge =
+        (deliveryCharge.baseDeliveryCharge ?? fallbackBaseCharge).toDouble();
+    final double freeKm =
+        (deliveryCharge.freeDeliveryDistanceKm ?? fallbackFreeKm).toDouble();
+    final double perKm =
+        (deliveryCharge.perKmChargeAboveFreeDistance ?? fallbackPerKm)
+            .toDouble();
+
+    final hasPromotionalItems = (order.products ?? []).any((item) {
       final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
       final discountPriceValue =
           double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -776,38 +788,77 @@ class OrderScreen extends StatelessWidget {
           priceValue < discountPriceValue;
       return hasPromo || isPricePromotional;
     });
+
     if (vendor.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (hasPromotionalItems) {
-      // Simplified promotional delivery logic for list view
-      if (totalDistance <= 3.0) {
-        deliveryCharges = 0.0;
-        originalDeliveryFee = 23.0;
-      } else {
-        double extraKm = (totalDistance - 3.0).ceilToDouble();
-        deliveryCharges = extraKm * 7.0;
-        originalDeliveryFee = deliveryCharges;
+      final promotionalItems = (order.products ?? [])
+          .where((item) {
+            final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
+            final discountPriceValue =
+                double.tryParse(item.discountPrice.toString()) ?? 0.0;
+            final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
+            final isPricePromotional =
+                priceValue > 0 &&
+                discountPriceValue > 0 &&
+                priceValue < discountPriceValue;
+            return hasPromo || isPricePromotional;
+          })
+          .toList();
+
+      if (promotionalItems.isNotEmpty) {
+        final firstPromoItem = promotionalItems.first;
+        double promoFreeKm = 3.0;
+        double promoExtraKmCharge = fallbackPerKm;
+        const double promoBaseCharge = fallbackBaseCharge;
+
+        try {
+          final promoDetails = await FireStoreUtils.getActivePromotionForProduct(
+            productId: firstPromoItem.id ?? '',
+            restaurantId: firstPromoItem.vendorID ?? '',
+          );
+
+          if (promoDetails != null) {
+            promoFreeKm =
+                (promoDetails['free_delivery_km'] as num?)?.toDouble() ??
+                    promoFreeKm;
+            promoExtraKmCharge =
+                (promoDetails['extra_km_charge'] as num?)?.toDouble() ??
+                    promoExtraKmCharge;
+          }
+        } catch (_) {}
+
+        if (totalDistance <= promoFreeKm) {
+          deliveryCharges = 0.0;
+          originalDeliveryFee = promoBaseCharge;
+        } else {
+          double extraKm = (totalDistance - promoFreeKm).ceilToDouble();
+          deliveryCharges = extraKm * promoExtraKmCharge;
+          originalDeliveryFee = deliveryCharges;
+        }
       }
-    } else {
+    }
+
+    if (deliveryCharges == 0.0 && originalDeliveryFee == 0.0) {
       if (subTotal < threshold) {
         if (totalDistance <= freeKm) {
-          deliveryCharges = baseCharge.toDouble();
-          originalDeliveryFee = baseCharge.toDouble();
+          deliveryCharges = baseCharge;
+          originalDeliveryFee = baseCharge;
         } else {
           double extraKm = (totalDistance - freeKm).ceilToDouble();
-          deliveryCharges = (baseCharge + (extraKm * perKm)).toDouble();
+          deliveryCharges = baseCharge + (extraKm * perKm);
           originalDeliveryFee = deliveryCharges;
         }
       } else {
         if (totalDistance <= freeKm) {
           deliveryCharges = 0.0;
-          originalDeliveryFee = baseCharge.toDouble();
+          originalDeliveryFee = baseCharge;
         } else {
           double extraKm = (totalDistance - freeKm).ceilToDouble();
-          deliveryCharges = (extraKm * perKm).toDouble();
-          originalDeliveryFee = (baseCharge + (extraKm * perKm)).toDouble();
+          deliveryCharges = extraKm * perKm;
+          originalDeliveryFee = baseCharge + deliveryCharges;
         }
       }
     }
@@ -850,7 +901,8 @@ class OrderScreen extends StatelessWidget {
     // Check free delivery
     bool isFreeDelivery = false;
     if (hasPromotionalItems) {
-      if (totalDistance <= 3.0) {
+      // Free promo delivery already captured above via deliveryCharges/originalDeliveryFee
+      if (deliveryCharges == 0.0 && originalDeliveryFee > 0.0) {
         isFreeDelivery = true;
       }
     } else {
