@@ -2317,10 +2317,16 @@ class CartControllerProvider extends ChangeNotifier {
             } else if (hasMartItems) {
             } else {}
           } else if ((element.title?.toLowerCase() ?? '').contains('gst')) {
-            gst = Constant.calculateTax(
-              amount: originalDeliveryFee.toString(),
-              taxModel: element,
-            );
+            // Only calculate GST on delivery charges if deliveryCharges > 0
+            // Use deliveryCharges instead of originalDeliveryFee to ensure tax is only on actual charges
+            if (deliveryCharges > 0) {
+              gst = Constant.calculateTax(
+                amount: deliveryCharges.toString(),
+                taxModel: element,
+              );
+            } else {
+              gst = 0.0; // No GST when delivery is free
+            }
             if (hasPromotionalItemsForTax) {
             } else if (hasMartItems) {
             } else {}
@@ -2333,7 +2339,8 @@ class CartControllerProvider extends ChangeNotifier {
       print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
       if (taxAmount == 0.0) {
         double sgstFallback = subTotal * 0.05; // 5%
-        double gstFallback = originalDeliveryFee * 0.18; // 18%
+        // Only calculate GST fallback if delivery charges > 0
+        double gstFallback = deliveryCharges > 0 ? deliveryCharges * 0.18 : 0.0; // 18% on delivery charges only
         taxAmount = sgstFallback + gstFallback;
         print(
           "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
