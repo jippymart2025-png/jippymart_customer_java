@@ -2340,7 +2340,9 @@ class CartControllerProvider extends ChangeNotifier {
       if (taxAmount == 0.0) {
         double sgstFallback = subTotal * 0.05; // 5%
         // Only calculate GST fallback if delivery charges > 0
-        double gstFallback = deliveryCharges > 0 ? deliveryCharges * 0.18 : 0.0; // 18% on delivery charges only
+        double gstFallback = deliveryCharges > 0
+            ? deliveryCharges * 0.18
+            : 0.0; // 18% on delivery charges only
         taxAmount = sgstFallback + gstFallback;
         print(
           "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
@@ -2410,10 +2412,11 @@ class CartControllerProvider extends ChangeNotifier {
           notifyListeners();
         } else {
           // For regular items, use regular delivery settings
-          final dc = deliveryChargeModel;
           final subtotal = subTotal;
-          final threshold = dc.itemTotalThreshold ?? 299;
-          final freeKm = dc.freeDeliveryDistanceKm ?? 7;
+          final double threshold =
+              (deliveryChargeModel.itemTotalThreshold ?? 299).toDouble();
+          final double freeKm =
+              (deliveryChargeModel.freeDeliveryDistanceKm ?? 5).toDouble();
           if (subtotal >= threshold && totalDistance <= freeKm) {
             isFreeDelivery = true;
             notifyListeners();
@@ -2565,37 +2568,56 @@ class CartControllerProvider extends ChangeNotifier {
   ///
   //finded here
   void calculateRegularDeliveryCharge() {
-    final dc = deliveryChargeModel;
-    final subtotal = subTotal;
-    final threshold = dc.itemTotalThreshold ?? 299;
-    final baseCharge = dc.baseDeliveryCharge ?? 23;
-    final freeKm = dc.freeDeliveryDistanceKm ?? 7;
-    final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
+    const double fallbackThreshold = 299.0;
+    const double fallbackBaseCharge = 23.0;
+    const double fallbackFreeKm = 5.0;
+    const double fallbackPerKm = 7.0;
+    final double threshold =
+        (deliveryChargeModel.itemTotalThreshold ?? fallbackThreshold)
+            .toDouble();
+    final double baseCharge =
+        (deliveryChargeModel.baseDeliveryCharge ?? fallbackBaseCharge)
+            .toDouble();
+    final double freeKm =
+        (deliveryChargeModel.freeDeliveryDistanceKm ?? fallbackFreeKm)
+            .toDouble();
+    final double perKm =
+        (deliveryChargeModel.perKmChargeAboveFreeDistance ?? fallbackPerKm)
+            .toDouble();
+
+    final double subtotal = subTotal;
+    final double distance = totalDistance;
+
+    double extraKm = 0.0;
+    if (distance > freeKm) {
+      extraKm = (distance - freeKm).ceilToDouble();
+    }
+
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (subtotal < threshold) {
-      if (totalDistance <= freeKm) {
-        deliveryCharges = baseCharge.toDouble();
-        originalDeliveryFee = baseCharge.toDouble();
+      if (extraKm == 0) {
+        deliveryCharges = baseCharge;
+        originalDeliveryFee = baseCharge;
       } else {
-        double extraKm = (totalDistance - freeKm).ceilToDouble();
-        deliveryCharges = (baseCharge + (extraKm * perKm)).toDouble();
+        deliveryCharges = baseCharge + (extraKm * perKm);
         originalDeliveryFee = deliveryCharges;
       }
     } else {
-      // Above threshold - free delivery within distance
-      if (totalDistance <= freeKm) {
+      if (extraKm == 0) {
         deliveryCharges = 0.0;
-        originalDeliveryFee = baseCharge.toDouble();
+        originalDeliveryFee = baseCharge;
       } else {
-        double extraKm = (totalDistance - freeKm).ceilToDouble();
-        originalDeliveryFee = (baseCharge + (extraKm * perKm)).toDouble();
-        deliveryCharges = (extraKm * perKm).toDouble();
+        deliveryCharges = extraKm * perKm;
+        originalDeliveryFee = baseCharge + deliveryCharges;
       }
     }
-    print("calculateRegularDeliveryCharge ${deliveryCharges} ");
+    print(
+      "calculateRegularDeliveryCharge   extraKm   $extraKm = distance $distance freeKm $freeKm ",
+    );
+    print("calculateRegularDeliveryCharges $deliveryCharges ");
     notifyListeners();
   }
 
@@ -3173,7 +3195,8 @@ class CartControllerProvider extends ChangeNotifier {
         throw Exception('API returned status code: ${response.statusCode}');
       }
       final responseData = json.decode(response.body);
-      orderModel.id = responseData['data']['order_id'];
+      orderId = responseData['data']['order_id'];
+      orderModel.id = orderId;
       if (responseData['success'] != true) {
         throw Exception('API returned error: ${responseData['message']}');
       }
@@ -3881,7 +3904,6 @@ class CartControllerProvider extends ChangeNotifier {
   // In CartControllerProvider class
   Future<void> markCouponAsUsed(String couponId) async {
     try {
-      final userId = await SqlStorageConst.getFirebaseId();
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}mobile/coupons/$couponId/used'),
         headers: await getHeaders(),

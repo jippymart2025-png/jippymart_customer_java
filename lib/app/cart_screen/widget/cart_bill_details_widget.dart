@@ -342,7 +342,6 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // TO PAY SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -491,8 +490,10 @@ Widget _buildDeliveryFeeSection(
   }
 
   // Regular items delivery logic
-  final threshold = controller.deliveryChargeModel.itemTotalThreshold ?? 299;
-  final freeKm = controller.deliveryChargeModel.freeDeliveryDistanceKm ?? 7;
+  final double threshold =
+      (controller.deliveryChargeModel.itemTotalThreshold ?? 299).toDouble();
+  final double freeKm =
+      (controller.deliveryChargeModel.freeDeliveryDistanceKm ?? 5).toDouble();
   final subtotal = controller.subTotal;
   final distance = controller.totalDistance;
 
@@ -500,8 +501,8 @@ Widget _buildDeliveryFeeSection(
   final isWithinFreeDistance = distance <= freeKm;
 
   // Get the base delivery charge for restaurant items (should be ₹23)
-  double baseDeliveryCharge =
-      (controller.deliveryChargeModel.baseDeliveryCharge ?? 23.0).toDouble();
+  final double baseDeliveryCharge =
+      (controller.deliveryChargeModel.baseDeliveryCharge ?? 23).toDouble();
   print('[CART_UI]   - Base delivery charge: ₹$baseDeliveryCharge');
 
   Widget regularDeliveryWidget;

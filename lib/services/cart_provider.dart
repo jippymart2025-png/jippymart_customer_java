@@ -116,7 +116,6 @@ class CartProvider with ChangeNotifier {
       (item) => item.id == product.id,
     );
     if (existingItemIndex >= 0) {
-      // Update existing item
       _cartItems[existingItemIndex].quantity = quantity;
       _cartItems[existingItemIndex].price = product.price;
       _cartItems[existingItemIndex].discountPrice = product.discountPrice;

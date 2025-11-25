@@ -430,14 +430,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       vendorModel = vendorModels;
       isLoading = true;
       notifyListeners();
-
       _initializeCartStreamListener();
       animateSlider();
-
       await _loadCriticalDataInParallel(
         restaurantId: vendorModel.id.toString(),
       );
-
       _hasInitialData = true;
       isLoading = false;
       notifyListeners();
@@ -484,7 +481,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           _hasInitialData = true;
           notifyListeners();
           _buildCategoryProductMapping();
-          
+
           // Pre-load promotional cache in background for faster add-to-cart
           if (allProductList.isNotEmpty && vendorModel.id != null) {
             _preloadPromotionalCache();
@@ -502,11 +499,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       },
     );
   }
-  
+
   /// Pre-load promotional cache for all products in background
   void _preloadPromotionalCache() {
     if (_promotionalCacheLoaded) return;
-    
+
     // Load cache in background without blocking
     Future.microtask(() async {
       try {
