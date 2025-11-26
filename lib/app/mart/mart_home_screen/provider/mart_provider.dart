@@ -1222,8 +1222,12 @@ class MartProvider extends ChangeNotifier {
   }
 
   /// Load categories with streaming updates using Firestore
-  Future<void> loadCategoriesStreaming() async {
+  Future<void> loadCategoriesStreaming({bool skipSubcategories = false}) async {
     try {
+      isCategoryLoading = true;
+      errorMessage = '';
+      notifyListeners();
+      
       print(
         '[MART CONTROLLER] 📂 Streaming: Loading all categories from Firestore...',
       );
@@ -1238,10 +1242,17 @@ class MartProvider extends ChangeNotifier {
           print(
             '[MART CONTROLLER] ✅ Streaming: All categories loaded from Firestore (${categories.length})',
           );
-          // Load subcategories for categories that have them
-          // await _loadSubcategoriesStreaming();
-          // await loadAllHomepageSubcategories();
-          await loadFirstPageHomepageSubcategories();
+          
+          // Only load subcategories if not skipped (for faster category screen loading)
+          if (!skipSubcategories) {
+            // Load subcategories for categories that have them
+            // await _loadSubcategoriesStreaming();
+            // await loadAllHomepageSubcategories();
+            await loadFirstPageHomepageSubcategories();
+          }
+          
+          isCategoryLoading = false;
+          notifyListeners();
           return;
         } else {
           print(
@@ -1258,8 +1269,13 @@ class MartProvider extends ChangeNotifier {
       print('[MART CONTROLLER] ❌ Firestore failed, no API fallback available');
       errorMessage =
           'Unable to load categories from Firestore. Please check your connection.';
+      isCategoryLoading = false;
+      notifyListeners();
     } catch (e) {
       print('[MART CONTROLLER] ❌ Streaming: Error loading categories: $e');
+      errorMessage = 'Unable to load categories. Please try again later.';
+      isCategoryLoading = false;
+      notifyListeners();
     }
   }
 

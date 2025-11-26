@@ -287,6 +287,8 @@ class LoginProvider extends ChangeNotifier {
     await secureStorage.delete(key: 'user_email');
     await secureStorage.delete(key: 'user_phone');
     await secureStorage.delete(key: 'user_countryCode');
+    otpEditingController = TextEditingController();
+    phoneEditingController = TextEditingController();
     Get.offAll(() => PhoneNumberScreen());
   }
 }

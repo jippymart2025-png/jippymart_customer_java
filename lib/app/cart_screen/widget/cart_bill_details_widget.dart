@@ -436,25 +436,36 @@ Widget _buildDeliveryFeeSection(
       ],
     );
   }
-  // Mart items delivery logic
+  // Mart items delivery logic - Use same dynamic deliveryChargeModel as restaurant
   if (hasMartItems) {
     print('[CART_UI] 🛒 Building mart delivery UI...');
-    double itemThreshold = 199.0;
-    double freeDeliveryKm = 5.0;
-    double baseDeliveryCharge = 23.0;
+    // Use same dynamic delivery charge model as restaurant products (299 threshold)
+    const double fallbackThreshold = 299.0;
+    const double fallbackFreeKm = 5.0;
+    const double fallbackBaseCharge = 23.0;
+    
+    final double itemThreshold = (controller.deliveryChargeModel.itemTotalThreshold ?? fallbackThreshold).toDouble();
+    final double freeDeliveryKm = (controller.deliveryChargeModel.freeDeliveryDistanceKm ?? fallbackFreeKm).toDouble();
+    final double baseDeliveryCharge = (controller.deliveryChargeModel.baseDeliveryCharge ?? fallbackBaseCharge).toDouble();
+    
     final subtotal = controller.subTotal;
     final distance = controller.totalDistance;
     final isAboveThreshold = subtotal >= itemThreshold;
     final isWithinFreeDistance = distance <= freeDeliveryKm;
+    
+    print('[CART_UI]   - Mart threshold: ₹$itemThreshold, subtotal: ₹$subtotal, distance: ${distance}km');
+    
     Widget martDeliveryWidget;
     if (isAboveThreshold) {
       if (isWithinFreeDistance) {
+        print('[CART_UI]   - Mart free delivery (above threshold + within free distance)');
         martDeliveryWidget = buildDeliveryFeeUI(
           isFreeDelivery: true,
           originalFee: baseDeliveryCharge,
           currentFee: 0.0,
         );
       } else {
+        print('[CART_UI]   - Mart free delivery with extra charge (above threshold but beyond free distance)');
         martDeliveryWidget = buildDeliveryFeeUI(
           isFreeDelivery: true,
           originalFee: baseDeliveryCharge,
@@ -462,7 +473,7 @@ Widget _buildDeliveryFeeSection(
         );
       }
     } else {
-      print('[CART_UI]   - Mart regular paid delivery');
+      print('[CART_UI]   - Mart regular paid delivery (below threshold)');
       martDeliveryWidget = buildDeliveryFeeUI(
         isFreeDelivery: false,
         originalFee: 0.0,

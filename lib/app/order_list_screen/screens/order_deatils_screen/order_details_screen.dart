@@ -188,7 +188,7 @@ class OrderDetailsScreen extends StatelessWidget {
                 (promoDetails['free_delivery_km'] as num?)?.toDouble() ?? 3.0;
             final extraKmCharge =
                 (promoDetails['extra_km_charge'] as num?)?.toDouble() ??
-                    fallbackPerKm;
+                fallbackPerKm;
             final promoBaseCharge = baseCharge;
 
             print(
@@ -316,8 +316,10 @@ class OrderDetailsScreen extends StatelessWidget {
     }
 
     // Taxes
+    // GST should be calculated on actual deliveryCharges, not originalDeliveryFee
+    // originalDeliveryFee is only for display purposes (strikethrough price)
     double sgst = subTotal * 0.05;
-    double gst = originalDeliveryFee * 0.18;
+    double gst = deliveryCharges * 0.18;
     // taxAmount = sgst + gst;
     sgst = sgst.isNaN ? 0.0 : sgst;
     gst = gst.isNaN ? 0.0 : gst;
@@ -325,7 +327,7 @@ class OrderDetailsScreen extends StatelessWidget {
     print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
     if (taxAmount == 0.0) {
       double sgstFallback = subTotal * 0.05; // 5%
-      double gstFallback = originalDeliveryFee * 0.18; // 18%
+      double gstFallback = deliveryCharges * 0.18; // 18%
       taxAmount = sgstFallback + gstFallback;
     }
     if (taxAmount.isNaN) taxAmount = 0.0;

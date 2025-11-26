@@ -885,15 +885,17 @@ class OrderScreen extends StatelessWidget {
     }
 
     // Taxes
+    // GST should be calculated on actual deliveryCharges, not originalDeliveryFee
+    // originalDeliveryFee is only for display purposes (strikethrough price)
     double sgst = subTotal * 0.05;
-    double gst = originalDeliveryFee * 0.18;
+    double gst = deliveryCharges * 0.18;
     sgst = sgst.isNaN ? 0.0 : sgst;
     gst = gst.isNaN ? 0.0 : gst;
     taxAmount = sgst + gst;
 
     if (taxAmount == 0.0) {
       double sgstFallback = subTotal * 0.05;
-      double gstFallback = originalDeliveryFee * 0.18;
+      double gstFallback = deliveryCharges * 0.18;
       taxAmount = sgstFallback + gstFallback;
     }
     if (taxAmount.isNaN) taxAmount = 0.0;

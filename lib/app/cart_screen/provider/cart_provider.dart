@@ -167,6 +167,8 @@ class CartControllerProvider extends ChangeNotifier {
         selectedAddress = addressModel;
         // Ensure vendor details (esp. lat/lng) are available before price calc
         await _loadFreshVendorForCart();
+        // 🔑 FIX: Ensure vendor zoneId is set for mart vendors
+        await _ensureVendorZoneIdIsSet();
         notifyListeners();
         await calculatePrice();
       }
@@ -476,7 +478,6 @@ class CartControllerProvider extends ChangeNotifier {
             headers: await getHeaders(),
           )
           .timeout(const Duration(seconds: 10));
-
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -515,7 +516,6 @@ class CartControllerProvider extends ChangeNotifier {
       print("getAdminSurgeFee ${response.body} ");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
-
         if (responseData['success'] == true) {
           final adminSurgeFee = responseData['data']['admin_surge_fee']
               .toString();
@@ -603,6 +603,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // **PRODUCT CACHE FOR CART - LOAD ONCE, USE MANY TIMES**
   final Map<String, ProductModel?> _productCache = {};
+  final Map<String, MartItemModel?> _martItemCache = {};
   bool _isLoadingProducts = false;
   bool _productsLoaded = false;
 
@@ -658,8 +659,7 @@ class CartControllerProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print('[CART_PROVIDER] Error initializing surge value: $e');
-      // Set default surge percent on error
-      surgePercent = 0;
+      surgePercent = 0.0;
       notifyListeners();
     }
   }
@@ -1339,6 +1339,30 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Fetch mart item info once and reuse it for validation steps
+  Future<MartItemModel?> _fetchMartItemById(String? rawProductId) async {
+    if (rawProductId == null || rawProductId.isEmpty) {
+      return null;
+    }
+    final baseProductId =
+        rawProductId.contains('~') ? rawProductId.split('~').first : rawProductId;
+    if (_martItemCache.containsKey(baseProductId)) {
+      return _martItemCache[baseProductId];
+    }
+    try {
+      final item =
+          await MartFirestoreService().getItemById(baseProductId);
+      _martItemCache[baseProductId] = item;
+      return item;
+    } catch (e) {
+      print(
+        '[MART_ITEM_CACHE] ❌ Failed to load mart item $baseProductId: $e',
+      );
+      _martItemCache[baseProductId] = null;
+      return null;
+    }
+  }
+
   // Method to clear cart data on logout
   Future<void> clearCart() async {
     try {
@@ -1389,6 +1413,51 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// 🔑 ENSURE VENDOR ZONE ID IS SET (fallback for mart vendors)
+  Future<void> _ensureVendorZoneIdIsSet() async {
+    // Only fix zoneId if it's missing and this is a mart vendor
+    if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
+      if (vendorModel.vType == 'mart' || hasMartItemsInCart()) {
+        String? detectedZoneId;
+
+        // Fallback 1: Use zoneId from selected address
+        if (selectedAddress?.zoneId != null &&
+            selectedAddress!.zoneId!.isNotEmpty) {
+          detectedZoneId = selectedAddress!.zoneId;
+          print(
+            '[ENSURE_VENDOR_ZONE] ✅ Using zoneId from selectedAddress: $detectedZoneId',
+          );
+        }
+        // Fallback 2: Use zoneId from Constant.selectedLocation
+        else if (Constant.selectedLocation.zoneId != null &&
+            Constant.selectedLocation.zoneId!.isNotEmpty) {
+          detectedZoneId = Constant.selectedLocation.zoneId;
+          print(
+            '[ENSURE_VENDOR_ZONE] ✅ Using zoneId from Constant.selectedLocation: $detectedZoneId',
+          );
+        }
+        // Fallback 3: Use zoneId from Constant.selectedZone
+        else if (Constant.selectedZone?.id != null &&
+            Constant.selectedZone!.id!.isNotEmpty) {
+          detectedZoneId = Constant.selectedZone!.id;
+          print(
+            '[ENSURE_VENDOR_ZONE] ✅ Using zoneId from Constant.selectedZone: $detectedZoneId',
+          );
+        }
+
+        if (detectedZoneId != null && detectedZoneId.isNotEmpty) {
+          vendorModel.zoneId = detectedZoneId;
+          print('[ENSURE_VENDOR_ZONE] ✅ Set vendor zoneId: $detectedZoneId');
+          notifyListeners();
+        } else {
+          print(
+            '[ENSURE_VENDOR_ZONE] ⚠️ Could not set vendor zoneId - all fallbacks failed',
+          );
+        }
+      }
+    }
+  }
+
   /// 🔑 LOAD FRESH MART VENDOR
   Future<void> _loadFreshMartVendor(List<CartProductModel> martItems) async {
     try {
@@ -1402,6 +1471,42 @@ class CartControllerProvider extends ChangeNotifier {
         martVendor = await MartVendorService.getDefaultMartVendor();
       }
       if (martVendor != null) {
+        // 🔑 FIX: Ensure zoneId is set - use fallback if missing
+        String? vendorZoneId = martVendor.zoneId;
+
+        // Fallback 1: Use zoneId from selected address if vendor zoneId is missing
+        if ((vendorZoneId == null || vendorZoneId.isEmpty) &&
+            selectedAddress?.zoneId != null &&
+            selectedAddress!.zoneId!.isNotEmpty) {
+          vendorZoneId = selectedAddress!.zoneId;
+          print(
+            '[MART_VENDOR_LOAD] ✅ Using zoneId from selectedAddress: $vendorZoneId',
+          );
+        }
+
+        // Fallback 2: Use zoneId from Constant.selectedLocation
+        if ((vendorZoneId == null || vendorZoneId.isEmpty) &&
+            Constant.selectedLocation.zoneId != null &&
+            Constant.selectedLocation.zoneId!.isNotEmpty) {
+          vendorZoneId = Constant.selectedLocation.zoneId;
+          print(
+            '[MART_VENDOR_LOAD] ✅ Using zoneId from Constant.selectedLocation: $vendorZoneId',
+          );
+        }
+
+        // Fallback 3: Use zoneId from Constant.selectedZone
+        if ((vendorZoneId == null || vendorZoneId.isEmpty) &&
+            Constant.selectedZone?.id != null &&
+            Constant.selectedZone!.id!.isNotEmpty) {
+          vendorZoneId = Constant.selectedZone!.id;
+          print(
+            '[MART_VENDOR_LOAD] ✅ Using zoneId from Constant.selectedZone: $vendorZoneId',
+          );
+        }
+
+        // Fallback 4: Detect zone from vendor coordinates if available
+        // Note: This requires BuildContext, so we skip it here and rely on validation fallback
+
         vendorModel = VendorModel(
           id: martVendor.id,
           author: martVendor.author,
@@ -1410,12 +1515,22 @@ class CartControllerProvider extends ChangeNotifier {
           longitude: martVendor.longitude,
           isSelfDelivery: false,
           vType: martVendor.vType,
-          zoneId: martVendor.zoneId,
+          zoneId: vendorZoneId,
           isOpen: martVendor.isOpen,
         );
+
+        if (vendorZoneId == null || vendorZoneId.isEmpty) {
+          print(
+            '[MART_VENDOR_LOAD] ⚠️ Warning: Vendor zoneId still null after all fallbacks',
+          );
+        } else {
+          print('[MART_VENDOR_LOAD] ✅ Final vendor zoneId: $vendorZoneId');
+        }
       }
       notifyListeners();
-    } catch (e) {}
+    } catch (e) {
+      print('[MART_VENDOR_LOAD] ❌ Error loading mart vendor: $e');
+    }
   }
 
   /// 🔑 LOAD FRESH RESTAURANT VENDOR
@@ -1432,85 +1547,66 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (e) {}
   }
 
+  // Flag to prevent multiple simultaneous cart data loads
+  bool _isLoadingCartData = false;
+  StreamSubscription<List<CartProductModel>>? _cartStreamSubscription;
+
   getCartData() async {
-    cartProvider.cartStream.listen((event) async {
-      HomeProvider.cartItem.clear();
-      HomeProvider.cartItem.addAll(event);
-      if (HomeProvider.cartItem.isNotEmpty) {
-        final firstItemVendor = HomeProvider.cartItem.first.vendorID;
-        if (_cachedVendorModel?.id != firstItemVendor) {
-          _clearVendorCache();
-        }
+    // Prevent multiple stream subscriptions
+    if (_cartStreamSubscription != null) {
+      return; // Already subscribed
+    }
+
+    _cartStreamSubscription = cartProvider.cartStream.listen((event) async {
+      // Prevent multiple simultaneous loads
+      if (_isLoadingCartData) {
+        return;
       }
-      if (HomeProvider.cartItem.isNotEmpty) {
-        await _loadFreshVendorForCart();
-      }
-      if (HomeProvider.cartItem.isNotEmpty) {
-        final martItems = HomeProvider.cartItem
-            .where((item) => _isMartItem(item))
-            .toList();
-        if (martItems.isNotEmpty) {
-          try {
-            final firstMartItem = martItems.first;
-            final vendorId = firstMartItem.vendorID;
-            MartVendorModel? martVendor;
-            if (vendorId != null && vendorId.isNotEmpty) {
-              martVendor = await MartVendorService.getMartVendorById(vendorId);
-              if (martVendor != null) {
-              } else {
-                // Fallback to default mart vendor
-                martVendor = await MartVendorService.getDefaultMartVendor();
-              }
-            } else {
-              martVendor = await MartVendorService.getDefaultMartVendor();
-            }
-            if (martVendor != null) {
-              vendorModel = VendorModel(
-                id: martVendor.id,
-                author: martVendor.author,
-                title: martVendor.title,
-                latitude: martVendor.latitude,
-                longitude: martVendor.longitude,
-                isSelfDelivery: false,
-                vType: martVendor.vType,
-                zoneId: martVendor.zoneId,
-                isOpen: martVendor.isOpen,
-                // Add other necessary fields as needed
-              );
-              _cachedVendorModel = vendorModel;
-              _updateCacheTime();
-            } else {
-              // Don't set hardcoded values - let the system handle this gracefully
-              vendorModel = VendorModel();
-            }
-            notifyListeners();
-          } catch (e) {
-            vendorModel = VendorModel();
-          }
+      _isLoadingCartData = true;
+
+      try {
+        HomeProvider.cartItem.clear();
+        HomeProvider.cartItem.addAll(event);
+
+        if (HomeProvider.cartItem.isEmpty) {
+          _isLoadingCartData = false;
           notifyListeners();
+          return;
+        }
+
+        // Check if vendor changed - only reload if necessary
+        final firstItemVendor = HomeProvider.cartItem.first.vendorID;
+        final needsVendorReload =
+            _cachedVendorModel?.id != firstItemVendor ||
+            !_isCacheValid() ||
+            vendorModel.id == null;
+
+        if (needsVendorReload) {
+          // Clear cache only if vendor actually changed
+          if (_cachedVendorModel?.id != firstItemVendor) {
+            _clearVendorCache();
+          }
+          // Load vendor once - _loadFreshVendorForCart handles both mart and restaurant
+          await _loadFreshVendorForCart();
+          // 🔑 FIX: Ensure vendor zoneId is set for mart vendors
+          await _ensureVendorZoneIdIsSet();
         } else {
-          if (_cachedVendorModel != null && _isCacheValid()) {
+          // Use cached vendor if valid
+          if (_cachedVendorModel != null) {
             vendorModel = _cachedVendorModel!;
-          } else {
-            await FireStoreUtils.getVendorById(
-              HomeProvider.cartItem.first.vendorID.toString(),
-            ).then((value) async {
-              if (value != null) {
-                vendorModel = value;
-                _cachedVendorModel = value;
-                _updateCacheTime();
-                notifyListeners();
-              }
-            });
-            notifyListeners();
           }
         }
+
+        notifyListeners();
+        await _loadCalculationCache();
+        await calculatePrice();
+        checkAndUpdatePaymentMethod();
+        updateCartReadiness();
+      } catch (e) {
+        print('[CART_DATA] Error loading cart data: $e');
+      } finally {
+        _isLoadingCartData = false;
       }
-      notifyListeners();
-      await _loadCalculationCache();
-      await calculatePrice();
-      checkAndUpdatePaymentMethod();
-      updateCartReadiness();
     });
     selectedFoodType = Preferences.getString(
       Preferences.foodDeliveryType,
@@ -1906,19 +2002,17 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
 
-      double itemThreshold = 199.0; // Default
-      double freeDeliveryKm = 5.0; // Default
+      // Use same dynamic delivery charge model as restaurant (299 threshold)
+      const double fallbackThreshold = 299.0;
+      const double fallbackFreeKm = 5.0;
 
-      if (_martDeliverySettings != null) {
-        itemThreshold =
-            (_martDeliverySettings!['item_total_threshold'] as num?)
-                ?.toDouble() ??
-            199.0;
-        freeDeliveryKm =
-            (_martDeliverySettings!['free_delivery_distance_km'] as num?)
-                ?.toDouble() ??
-            5.0;
-      }
+      final double itemThreshold =
+          (deliveryChargeModel.itemTotalThreshold ?? fallbackThreshold)
+              .toDouble();
+      final double freeDeliveryKm =
+          (deliveryChargeModel.freeDeliveryDistanceKm ?? fallbackFreeKm)
+              .toDouble();
+
       final isEligible =
           subTotal >= itemThreshold && totalDistance <= freeDeliveryKm;
 
@@ -2119,62 +2213,20 @@ class CartControllerProvider extends ChangeNotifier {
       if (HomeProvider.cartItem.isEmpty) {
         return;
       }
-      if (vendorModel.id == null) {
-        final martItems = HomeProvider.cartItem
-            .where((item) => _isMartItem(item))
-            .toList();
-        if (martItems.isNotEmpty) {
+      // Vendor should already be loaded by getCartData() or _loadFreshVendorForCart()
+      // Only load here if absolutely necessary (shouldn't happen in normal flow)
+      if (vendorModel.id == null && HomeProvider.cartItem.isNotEmpty) {
+        print(
+          '[VENDOR_LOAD] ⚠️ Warning: Vendor not loaded, attempting fallback load...',
+        );
+        await _loadFreshVendorForCart();
+        // If still null after fallback, skip price calculation
+        if (vendorModel.id == null) {
           print(
-            '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor in calculatePrice...',
+            '[VENDOR_LOAD] ❌ Vendor still null after fallback, skipping price calculation',
           );
-          try {
-            final firstMartItem = martItems.first;
-            final vendorId = firstMartItem.vendorID;
-            print(
-              '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor for vendorID: $vendorId',
-            );
-
-            MartVendorModel? martVendor;
-
-            if (vendorId != null && vendorId.isNotEmpty) {
-              // Try to get the specific mart vendor by ID first
-              martVendor = await MartVendorService.getMartVendorById(vendorId);
-              if (martVendor != null) {
-                print(
-                  '[VENDOR_LOAD] ✅ Fallback: Found specific mart vendor: ${martVendor.title} (${martVendor.id})',
-                );
-              } else {
-                print(
-                  '[VENDOR_LOAD] ⚠️ Fallback: Specific mart vendor not found, trying default mart vendor...',
-                );
-                // Fallback to default mart vendor
-                martVendor = await MartVendorService.getDefaultMartVendor();
-              }
-            } else {
-              print(
-                '[VENDOR_LOAD] ⚠️ Fallback: No vendorID in mart item, trying default mart vendor...',
-              );
-              martVendor = await MartVendorService.getDefaultMartVendor();
-            }
-            if (martVendor != null) {
-              vendorModel = VendorModel(
-                id: martVendor.id,
-                title: martVendor.title,
-                latitude: martVendor.latitude,
-                longitude: martVendor.longitude,
-                isSelfDelivery: false,
-                // Mart vendors don't have self delivery, use false
-                vType: martVendor.vType,
-                zoneId: martVendor.zoneId,
-                isOpen: martVendor.isOpen,
-              );
-              print(
-                '[VENDOR_LOAD] ✅ Fallback: Mart vendor loaded: ${martVendor.title} (${martVendor.id})',
-              );
-            }
-          } catch (e) {
-            print('[VENDOR_LOAD] ❌ Fallback: Error loading mart vendor: $e');
-          }
+          notifyListeners();
+          return;
         }
       }
 
@@ -2392,19 +2444,18 @@ class CartControllerProvider extends ChangeNotifier {
 
           notifyListeners();
         } else if (hasMartItems) {
-          double itemThreshold = 199.0; // Default
-          double freeDeliveryKm = 5.0; // Default
-          if (_martDeliverySettings != null) {
-            itemThreshold =
-                (_martDeliverySettings!['item_total_threshold'] as num?)
-                    ?.toDouble() ??
-                199.0;
-            freeDeliveryKm =
-                (_martDeliverySettings!['free_delivery_distance_km'] as num?)
-                    ?.toDouble() ??
-                5.0;
-          }
-          if (subTotal >= itemThreshold && totalDistance <= freeDeliveryKm) {
+          // Use same dynamic delivery charge model as restaurant (299 threshold)
+          const double fallbackThreshold = 299.0;
+          const double fallbackFreeKm = 5.0;
+
+          final double threshold =
+              (deliveryChargeModel.itemTotalThreshold ?? fallbackThreshold)
+                  .toDouble();
+          final double freeDeliveryKm =
+              (deliveryChargeModel.freeDeliveryDistanceKm ?? fallbackFreeKm)
+                  .toDouble();
+          print("fallbackThreshold  ${threshold} ");
+          if (subTotal >= threshold && totalDistance <= freeDeliveryKm) {
             isFreeDelivery = true;
           } else {
             isFreeDelivery = false;
@@ -2508,12 +2559,29 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   void _calculateMartDeliveryWithStaticValues() {
-    final baseCharge = 23.0; // Base delivery charge
-    final freeKm = 5.0; // Free delivery distance for mart
-    final perKm = 7.0; // Per km charge above free distance
-    final threshold = 199.0; // Free delivery threshold for mart
+    // Use same dynamic delivery charge model as restaurant products
+    const double fallbackThreshold = 299.0;
+    const double fallbackBaseCharge = 23.0;
+    const double fallbackFreeKm = 5.0;
+    const double fallbackPerKm = 7.0;
+
+    // Use deliveryChargeModel (same as restaurant) for dynamic values
+    final double threshold =
+        (deliveryChargeModel.itemTotalThreshold ?? fallbackThreshold)
+            .toDouble();
+    final double baseCharge =
+        (deliveryChargeModel.baseDeliveryCharge ?? fallbackBaseCharge)
+            .toDouble();
+    final double freeKm =
+        (deliveryChargeModel.freeDeliveryDistanceKm ?? fallbackFreeKm)
+            .toDouble();
+    final double perKm =
+        (deliveryChargeModel.perKmChargeAboveFreeDistance ?? fallbackPerKm)
+            .toDouble();
+
     final subtotal = subTotal;
     final distance = totalDistance;
+
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
@@ -2584,15 +2652,12 @@ class CartControllerProvider extends ChangeNotifier {
     final double perKm =
         (deliveryChargeModel.perKmChargeAboveFreeDistance ?? fallbackPerKm)
             .toDouble();
-
     final double subtotal = subTotal;
     final double distance = totalDistance;
-
     double extraKm = 0.0;
     if (distance > freeKm) {
       extraKm = (distance - freeKm).ceilToDouble();
     }
-
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
@@ -2615,7 +2680,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
     }
     print(
-      "calculateRegularDeliveryCharge   extraKm   $extraKm = distance $distance freeKm $freeKm ",
+      "calculateRegularDeliveryCharge   extraKm   $extraKm = distance $distance freeKm $freeKm  ${extraKm = (distance - freeKm).ceilToDouble()} ",
     );
     print("calculateRegularDeliveryCharges $deliveryCharges ");
     notifyListeners();
@@ -2807,29 +2872,21 @@ class CartControllerProvider extends ChangeNotifier {
         bool isMartItem = item.vendorID?.startsWith('mart_') == true;
 
         if (isMartItem) {
-          // For mart items, fetch from API instead of Firebase
           try {
-            // final martItems = await getMartItems();
-            // final martItem = martItems.firstWhere(
-            //       (mart) => mart.id == item.id!,
-            //   orElse: () => MartItemModel(),
-            // );
-            final martItems = await MartFirestoreService().getMartItems();
-            final martItem = martItems.firstWhere(
-              (mart) => mart.id == item.id!,
-              orElse: () => MartItemModel(
-                id: '',
-                name: '',
-                description: '',
-                price: 0,
-                photo: '',
-                isAvailable: false,
-                publish: false,
-                veg: false,
-                nonveg: false,
-                quantity: 0,
-              ),
-            );
+            final martItem = await _fetchMartItemById(item.id);
+            if (martItem == null || martItem.id.isEmpty) {
+              ShowToastDialog.showToast(
+                "Some mart items are no longer available. Please refresh your cart.",
+              );
+              return false;
+            }
+
+            if (!martItem.publish || !martItem.isAvailable) {
+              ShowToastDialog.showToast(
+                "${martItem.displayName} is currently unavailable.",
+              );
+              return false;
+            }
 
             final availableQuantity = martItem.quantity;
             final orderedQuantity = item.quantity ?? 0;
@@ -4209,11 +4266,66 @@ class CartControllerProvider extends ChangeNotifier {
           return false;
         }
       }
+      // 🔑 FIX: For mart vendors, use fallback zoneId if missing
       if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
-        ShowToastDialog.showToast(
-          "Vendor zone not configured. Please contact support.".tr,
-        );
-        return false;
+        // Try to detect/set zoneId for mart vendors using fallback methods
+        String? detectedZoneId;
+
+        // Fallback 1: Use zoneId from selected address
+        if (address.zoneId != null && address.zoneId!.isNotEmpty) {
+          detectedZoneId = address.zoneId;
+          print(
+            '[CART_VALIDATION] ✅ Using zoneId from address: $detectedZoneId',
+          );
+        }
+        // Fallback 2: Use zoneId from Constant.selectedLocation
+        else if (Constant.selectedLocation.zoneId != null &&
+            Constant.selectedLocation.zoneId!.isNotEmpty) {
+          detectedZoneId = Constant.selectedLocation.zoneId;
+          print(
+            '[CART_VALIDATION] ✅ Using zoneId from Constant.selectedLocation: $detectedZoneId',
+          );
+        }
+        // Fallback 3: Use zoneId from Constant.selectedZone
+        else if (Constant.selectedZone?.id != null &&
+            Constant.selectedZone!.id!.isNotEmpty) {
+          detectedZoneId = Constant.selectedZone!.id;
+          print(
+            '[CART_VALIDATION] ✅ Using zoneId from Constant.selectedZone: $detectedZoneId',
+          );
+        }
+        // Fallback 4: Detect zone from vendor coordinates (for mart vendors)
+        else if (vendorModel.latitude != null &&
+            vendorModel.longitude != null) {
+          try {
+            detectedZoneId = await _detectZoneIdForCoordinates(
+              vendorModel.latitude!,
+              vendorModel.longitude!,
+              context,
+            );
+            if (detectedZoneId != null && detectedZoneId.isNotEmpty) {
+              print(
+                '[CART_VALIDATION] ✅ Detected zoneId from vendor coordinates: $detectedZoneId',
+              );
+            }
+          } catch (e) {
+            print(
+              '[CART_VALIDATION] ⚠️ Error detecting zone from vendor coordinates: $e',
+            );
+          }
+        }
+
+        if (detectedZoneId != null && detectedZoneId.isNotEmpty) {
+          vendorModel.zoneId = detectedZoneId;
+          print('[CART_VALIDATION] ✅ Set vendor zoneId: $detectedZoneId');
+          // Continue validation instead of returning false
+        } else {
+          // Only show error if all fallbacks failed
+          ShowToastDialog.showToast(
+            "Vendor zone not configured. Please contact support.".tr,
+          );
+          return false;
+        }
       }
       if (address.zoneId != vendorModel.zoneId) {
         // Show zone mismatch alert dialog
@@ -4249,6 +4361,16 @@ class CartControllerProvider extends ChangeNotifier {
       Get.to(() => const AddressListScreen());
       return false;
     }
+  }
+
+  @override
+  void dispose() {
+    _cartStreamSubscription?.cancel();
+    _cartStreamSubscription = null;
+    reMarkController.dispose();
+    couponCodeController.dispose();
+    tipsController.dispose();
+    super.dispose();
   }
 }
 

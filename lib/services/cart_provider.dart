@@ -97,7 +97,6 @@ class CartProvider with ChangeNotifier {
     print('DEBUG: Cart Provider - Price: ${product.price}');
     print('DEBUG: Cart Provider - DiscountPrice: ${product.discountPrice}');
     print('DEBUG: Cart Provider - PromoId: ${product.promoId}');
-    // Optimize location saving - only save if not recently saved (within last 5 minutes)
     final now = DateTime.now();
     if (!_locationSaved ||
         _lastLocationSaveTime == null ||
@@ -106,12 +105,10 @@ class CartProvider with ChangeNotifier {
       _locationSaved = true;
       _lastLocationSaveTime = now;
     }
-    // Fetch cart items once
     _cartItems = await DatabaseHelper.instance.fetchCartProducts();
     print(
       'DEBUG: CartProvider - Fetched ${_cartItems.length} items from database',
     );
-    // Check if item already exists in cart
     final existingItemIndex = _cartItems.indexWhere(
       (item) => item.id == product.id,
     );
@@ -131,21 +128,16 @@ class CartProvider with ChangeNotifier {
         _cartItems[existingItemIndex],
       );
     } else {
-      // Check if this is a mart item
       bool isMartItem =
           product.vendorID?.startsWith("demo_") == true ||
           product.vendorID?.contains("mart") == true ||
           product.vendorID?.contains("vendor") == true;
-
-      // Check if cart has food items (non-mart items)
       bool cartHasFoodItems = _cartItems.any(
         (item) =>
             !(item.vendorID?.startsWith("demo_") == true ||
                 item.vendorID?.contains("mart") == true ||
                 item.vendorID?.contains("vendor") == true),
       );
-
-      // Validate cart compatibility
       if (_cartItems.isEmpty ||
           (isMartItem && !cartHasFoodItems) ||
           (!isMartItem &&
@@ -160,8 +152,6 @@ class CartProvider with ChangeNotifier {
             "You can't add mart items when you have food items in cart".tr,
           );
         } else if (!isMartItem && cartHasFoodItems) {
-          // Show dialog to ask if user wants to replace cart items
-          // ignore: use_build_context_synchronously
           _showRestaurantConflictDialog(context, product, quantity);
           return false;
         } else {
@@ -172,17 +162,12 @@ class CartProvider with ChangeNotifier {
         return false;
       }
     }
-
-    // Update global cart and stream in one go
     HomeProvider.cartItem.clear();
     HomeProvider.cartItem.addAll(_cartItems);
     _cartStreamController.sink.add(_cartItems);
-
     print(
       'DEBUG: CartProvider - Cart updated, total items: ${_cartItems.length}',
     );
-
-    // Single notifyListeners call
     notifyListeners();
     return true;
   }
