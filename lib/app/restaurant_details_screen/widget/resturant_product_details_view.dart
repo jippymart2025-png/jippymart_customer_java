@@ -26,7 +26,6 @@ class ProductDetailsView extends StatelessWidget {
     return Consumer<RestaurantDetailsProvider>(
       builder: (context, controller, _) {
         bool isItemAvailable = productModel.isAvailable ?? true;
-
         return Scaffold(
           backgroundColor: AppThemeData.surface,
           body: SingleChildScrollView(
@@ -715,10 +714,11 @@ class ProductDetailsView extends StatelessWidget {
                   Expanded(
                     flex: 2,
                     child: isItemAvailable
-                        ? FutureBuilder<String>(
-                            future: controller.calculatePrice(productModel),
-                            builder: (context, snapshot) {
-                              final price = snapshot.data ?? "0";
+                        ? Builder(
+                            builder: (context) {
+                              final price = controller.calculatePrice(
+                                productModel,
+                              );
                               return RoundedButtonFill(
                                 title:
                                     "${'Add item'.tr} ${Constant.amountShow(amount: price)}"
@@ -888,7 +888,6 @@ class ProductDetailsView extends StatelessWidget {
                                               .variantId ??
                                           '0',
                                     );
-
                                     controller.addToCart(
                                       productModel: productModel,
                                       price: variantPrice,
@@ -898,12 +897,200 @@ class ProductDetailsView extends StatelessWidget {
                                       quantity: controller.quantity,
                                     );
                                   }
-
                                   Get.back();
                                 },
                               );
                             },
                           )
+                        // FutureBuilder<String>(
+                        //         future: controller.calculatePrice(productModel),
+                        //         builder: (context, snapshot) {
+                        //           final price = snapshot.data ?? "0";
+                        //           return RoundedButtonFill(
+                        //             title:
+                        //                 "${'Add item'.tr} ${Constant.amountShow(amount: price)}"
+                        //                     .tr,
+                        //             height: 5.5,
+                        //             color: AppThemeData.primary300,
+                        //             textColor: AppThemeData.grey50,
+                        //             fontSizes: 16,
+                        //             onPress: () async {
+                        //               // Check for promotional item limit before adding to cart (ULTRA-FAST - ZERO ASYNC)
+                        //               final promo = controller
+                        //                   .getActivePromotionForProduct(
+                        //                     productId:
+                        //                         productModel.id.toString() ?? '',
+                        //                     restaurantId:
+                        //                         productModel.vendorID ?? '',
+                        //                   );
+                        //
+                        //               if (promo != null) {
+                        //                 final isAllowed = controller
+                        //                     .isPromotionalItemQuantityAllowed(
+                        //                       productModel.id.toString() ?? '',
+                        //                       productModel.vendorID ?? '',
+                        //                       controller.quantity,
+                        //                     );
+                        //
+                        //                 if (!isAllowed) {
+                        //                   final limit = controller
+                        //                       .getPromotionalItemLimit(
+                        //                         productModel.id.toString() ?? '',
+                        //                         productModel.vendorID ?? '',
+                        //                       );
+                        //                   ShowToastDialog.showToast(
+                        //                     "Maximum $limit items allowed for this promotional offer"
+                        //                         .tr,
+                        //                   );
+                        //                   return;
+                        //                 }
+                        //               }
+                        //
+                        //               if (productModel.itemAttribute == null) {
+                        //                 // Check for promotional price
+                        //                 String finalPrice =
+                        //                     Constant.productCommissionPrice(
+                        //                       controller.vendorModel,
+                        //                       productModel.price.toString(),
+                        //                     );
+                        //                 String finalDiscountPrice =
+                        //                     double.parse(
+                        //                           productModel.disPrice.toString(),
+                        //                         ) <=
+                        //                         0
+                        //                     ? "0"
+                        //                     : Constant.productCommissionPrice(
+                        //                         controller.vendorModel,
+                        //                         productModel.disPrice.toString(),
+                        //                       );
+                        //
+                        //                 if (promo != null) {
+                        //                   // Use promotional price
+                        //                   finalPrice =
+                        //                       (promo['special_price'] as num)
+                        //                           .toString();
+                        //                   finalDiscountPrice =
+                        //                       Constant.productCommissionPrice(
+                        //                         controller.vendorModel,
+                        //                         productModel.price.toString(),
+                        //                       ); // original price for strikethrough
+                        //                 }
+                        //
+                        //                 controller.addToCart(
+                        //                   productModel: productModel,
+                        //                   price: finalPrice,
+                        //                   discountPrice: finalDiscountPrice,
+                        //                   isIncrement: true,
+                        //                   quantity: controller.quantity,
+                        //                 );
+                        //               } else {
+                        //                 String variantPrice = "0";
+                        //                 if (productModel.itemAttribute!.variants!
+                        //                     .where(
+                        //                       (element) =>
+                        //                           element.variantSku ==
+                        //                           controller.selectedVariants.join(
+                        //                             '-',
+                        //                           ),
+                        //                     )
+                        //                     .isNotEmpty) {
+                        //                   variantPrice =
+                        //                       Constant.productCommissionPrice(
+                        //                         controller.vendorModel,
+                        //                         productModel
+                        //                                 .itemAttribute!
+                        //                                 .variants!
+                        //                                 .where(
+                        //                                   (element) =>
+                        //                                       element.variantSku ==
+                        //                                       controller
+                        //                                           .selectedVariants
+                        //                                           .join('-'),
+                        //                                 )
+                        //                                 .first
+                        //                                 .variantPrice ??
+                        //                             '0',
+                        //                       );
+                        //                 }
+                        //                 Map<String, String> mapData = {};
+                        //                 for (var element
+                        //                     in productModel
+                        //                         .itemAttribute!
+                        //                         .attributes!) {
+                        //                   mapData.addEntries([
+                        //                     MapEntry(
+                        //                       controller.attributesList
+                        //                           .where(
+                        //                             (element1) =>
+                        //                                 element.attributeId ==
+                        //                                 element1.id,
+                        //                           )
+                        //                           .first
+                        //                           .title
+                        //                           .toString(),
+                        //                       controller
+                        //                           .selectedVariants[productModel
+                        //                           .itemAttribute!
+                        //                           .attributes!
+                        //                           .indexOf(element)],
+                        //                     ),
+                        //                   ]);
+                        //                 }
+                        //
+                        //                 VariantInfo variantInfo = VariantInfo(
+                        //                   variantPrice:
+                        //                       productModel.itemAttribute!.variants!
+                        //                           .where(
+                        //                             (element) =>
+                        //                                 element.variantSku ==
+                        //                                 controller.selectedVariants
+                        //                                     .join('-'),
+                        //                           )
+                        //                           .first
+                        //                           .variantPrice ??
+                        //                       '0',
+                        //                   variantSku: controller.selectedVariants
+                        //                       .join('-'),
+                        //                   variantOptions: mapData,
+                        //                   variantImage:
+                        //                       productModel.itemAttribute!.variants!
+                        //                           .where(
+                        //                             (element) =>
+                        //                                 element.variantSku ==
+                        //                                 controller.selectedVariants
+                        //                                     .join('-'),
+                        //                           )
+                        //                           .first
+                        //                           .variantImage ??
+                        //                       '',
+                        //                   variantId:
+                        //                       productModel.itemAttribute!.variants!
+                        //                           .where(
+                        //                             (element) =>
+                        //                                 element.variantSku ==
+                        //                                 controller.selectedVariants
+                        //                                     .join('-'),
+                        //                           )
+                        //                           .first
+                        //                           .variantId ??
+                        //                       '0',
+                        //                 );
+                        //
+                        //                 controller.addToCart(
+                        //                   productModel: productModel,
+                        //                   price: variantPrice,
+                        //                   discountPrice: "0",
+                        //                   isIncrement: true,
+                        //                   variantInfo: variantInfo,
+                        //                   quantity: controller.quantity,
+                        //                 );
+                        //               }
+                        //
+                        //               Get.back();
+                        //             },
+                        //           );
+                        //         },
+                        //       )
                         : const SizedBox(), // Removed the grey button completely
                   ),
                 ],

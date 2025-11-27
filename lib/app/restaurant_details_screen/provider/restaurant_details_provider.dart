@@ -71,6 +71,36 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     }
   }
 
+  static Future<List<CouponModel>> getMartCoupons({
+    required String restaurantId,
+  }) async {
+    try {
+      String url =
+          "${AppConst.baseUrl}coupons/mart${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
+      print("getMartCoupons ${url}");
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true) {
+          List<dynamic> data = responseData['data'];
+          return data.map((json) => CouponModel.fromJson(json)).toList();
+        } else {
+          throw Exception('Failed to load coupons: ${responseData['message']}');
+        }
+      } else {
+        throw Exception(
+          'Failed to load coupons. Status code: ${response.statusCode}',
+        );
+      }
+    } catch (e) {
+      print('Error fetching mart coupons: $e');
+      rethrow;
+    }
+  }
+
   static Future<List<CouponModel>> getCouponsByVendorId(String vendorId) async {
     try {
       final response = await http.get(
@@ -210,7 +240,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   List<VendorCategoryModel> parseCategories(dynamic categoriesData) {
     try {
       print('🔍 Parsing categories data type: ${categoriesData.runtimeType}');
-
       if (categoriesData is List) {
         return categoriesData.map((categoryJson) {
           try {
@@ -1078,6 +1107,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     String mainPrice = "0";
     String variantPrice = "0";
     String adOnsPrice = "0";
+
     if (productModel.itemAttribute != null) {
       if (productModel.itemAttribute!.variants!
           .where((element) => element.variantSku == selectedVariants.join('-'))
@@ -1131,9 +1161,70 @@ class RestaurantDetailsProvider extends ChangeNotifier {
                     double.parse(quantity.toString())) +
                 double.parse(adOnsPrice.toString()))
             .toString();
-    notifyListeners();
+
     return mainPrice;
   }
+
+  // calculatePrice(ProductModel productModel) {
+  //   String mainPrice = "0";
+  //   String variantPrice = "0";
+  //   String adOnsPrice = "0";
+  //   if (productModel.itemAttribute != null) {
+  //     if (productModel.itemAttribute!.variants!
+  //         .where((element) => element.variantSku == selectedVariants.join('-'))
+  //         .isNotEmpty) {
+  //       variantPrice = Constant.productCommissionPrice(
+  //         vendorModel,
+  //         productModel.itemAttribute!.variants!
+  //                 .where(
+  //                   (element) =>
+  //                       element.variantSku == selectedVariants.join('-'),
+  //                 )
+  //                 .first
+  //                 .variantPrice ??
+  //             '0',
+  //       );
+  //     }
+  //   } else {
+  //     String price = Constant.productCommissionPrice(
+  //       vendorModel,
+  //       productModel.price.toString(),
+  //     );
+  //     String disPrice = double.parse(productModel.disPrice.toString()) <= 0
+  //         ? "0"
+  //         : Constant.productCommissionPrice(
+  //             vendorModel,
+  //             productModel.disPrice.toString(),
+  //           );
+  //     if (double.parse(disPrice) <= 0) {
+  //       variantPrice = price;
+  //     } else {
+  //       variantPrice = disPrice;
+  //     }
+  //   }
+  //
+  //   for (int i = 0; i < productModel.addOnsPrice!.length; i++) {
+  //     if (selectedAddOns.contains(productModel.addOnsTitle![i]) == true) {
+  //       adOnsPrice =
+  //           (double.parse(adOnsPrice.toString()) +
+  //                   double.parse(
+  //                     Constant.productCommissionPrice(
+  //                       vendorModel,
+  //                       productModel.addOnsPrice![i].toString(),
+  //                     ),
+  //                   ))
+  //               .toString();
+  //     }
+  //   }
+  //   adOnsPrice = (quantity * double.parse(adOnsPrice)).toString();
+  //   mainPrice =
+  //       ((double.parse(variantPrice.toString()) *
+  //                   double.parse(quantity.toString())) +
+  //               double.parse(adOnsPrice.toString()))
+  //           .toString();
+  //   notifyListeners();
+  //   return mainPrice;
+  // }
 
   //finded
   addToCart({

@@ -126,6 +126,7 @@ class FireStoreUtils {
         return null;
       }
     } catch (e) {
+      ShowToastDialog.closeLoader();
       return null;
     }
     return vendorModel;
@@ -553,9 +554,7 @@ class FireStoreUtils {
   static Future<bool> setProduct(ProductModel orderModel) async {
     try {
       final url = "${AppConst.baseUrl}firestore/setProduct?id=${orderModel.id}";
-
       final body = jsonEncode(orderModel.toJson());
-
       final response = await http.post(
         Uri.parse(url),
         headers: await getHeaders(),

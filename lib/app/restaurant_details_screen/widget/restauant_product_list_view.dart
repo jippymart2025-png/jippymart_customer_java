@@ -110,7 +110,6 @@ class ProductListView extends StatelessWidget {
     final products = controller.getProductsByCategory(
       vendorCategoryModel.id.toString(),
     );
-    // Listen to HomeProvider changes to rebuild when cart changes
     return Consumer<HomeProvider>(
       builder: (context, homeProvider, _) {
         return ListView.builder(
@@ -144,30 +143,35 @@ class ProductListView extends StatelessWidget {
     bool isItemAvailable = productModel.isAvailable ?? true;
     String price = "0.0";
     String disPrice = "0.0";
-
-    // Calculate prices
-    if (productModel.itemAttribute != null) {
-      if (productModel.itemAttribute!.variants!
-          .where(
-            (element) =>
-                element.variantSku == controller.selectedVariants.join('-'),
-          )
-          .isNotEmpty) {
+    // Calculate prices - FIXED VERSION
+    if (productModel.itemAttribute != null &&
+        productModel.itemAttribute!.variants != null &&
+        productModel.itemAttribute!.variants!.isNotEmpty) {
+      // If no variant is selected yet, use the first variant as default
+      if (controller.selectedVariants.isEmpty) {
+        // Use the first variant's price as default
+        final firstVariant = productModel.itemAttribute!.variants!.first;
         price = Constant.productCommissionPrice(
           controller.vendorModel,
-          productModel.itemAttribute!.variants!
-                  .where(
-                    (element) =>
-                        element.variantSku ==
-                        controller.selectedVariants.join('-'),
-                  )
-                  .first
-                  .variantPrice ??
-              '0',
+          firstVariant.variantPrice ?? '0',
+        );
+        disPrice = "0";
+      } else {
+        // Use the selected variant's price
+        final selectedVariant = productModel.itemAttribute!.variants!
+            .firstWhere(
+              (element) =>
+                  element.variantSku == controller.selectedVariants.join('-'),
+              orElse: () => productModel.itemAttribute!.variants!.first,
+            );
+        price = Constant.productCommissionPrice(
+          controller.vendorModel,
+          selectedVariant.variantPrice ?? '0',
         );
         disPrice = "0";
       }
     } else {
+      // Regular product without variants
       price = Constant.productCommissionPrice(
         controller.vendorModel,
         productModel.price.toString(),
@@ -179,6 +183,39 @@ class ProductListView extends StatelessWidget {
               productModel.disPrice.toString(),
             );
     }
+    // if (productModel.itemAttribute != null) {
+    //   if (productModel.itemAttribute!.variants!
+    //       .where(
+    //         (element) =>
+    //             element.variantSku == controller.selectedVariants.join('-'),
+    //       )
+    //       .isNotEmpty) {
+    //     price = Constant.productCommissionPrice(
+    //       controller.vendorModel,
+    //       productModel.itemAttribute!.variants!
+    //               .where(
+    //                 (element) =>
+    //                     element.variantSku ==
+    //                     controller.selectedVariants.join('-'),
+    //               )
+    //               .first
+    //               .variantPrice ??
+    //           '0',
+    //     );
+    //     disPrice = "0";
+    //   }
+    // } else {
+    //   price = Constant.productCommissionPrice(
+    //     controller.vendorModel,
+    //     productModel.price.toString(),
+    //   );
+    //   disPrice = double.parse(productModel.disPrice.toString()) <= 0
+    //       ? "0"
+    //       : Constant.productCommissionPrice(
+    //           controller.vendorModel,
+    //           productModel.disPrice.toString(),
+    //         );
+    // }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -269,17 +306,17 @@ class ProductListView extends StatelessWidget {
                           restaurantId: productModel.vendorID ?? '',
                         );
                         final hasPromo = promo != null;
-                        final promoPrice = hasPromo
-                            ? (promo['special_price'] as num).toString()
-                            : null;
 
                         if (hasPromo) {
-                          // Special promotional price display
+                          // For promotional items with variants, you might want to handle this differently
+                          final promoPrice = (promo['special_price'] as num)
+                              .toString();
+
                           return Row(
                             children: [
                               Flexible(
                                 child: Text(
-                                  Constant.amountShow(amount: promoPrice!),
+                                  Constant.amountShow(amount: promoPrice),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -291,15 +328,10 @@ class ProductListView extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 5),
-                              // Show original price with strikethrough
                               Flexible(
                                 child: Text(
-                                  Constant.amountShow(
-                                    amount: Constant.productCommissionPrice(
-                                      controller.vendorModel,
-                                      productModel.price.toString(),
-                                    ),
-                                  ),
+                                  // Show the calculated price (which includes variant pricing) as original
+                                  Constant.amountShow(amount: price),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -314,7 +346,58 @@ class ProductListView extends StatelessWidget {
                               ),
                             ],
                           );
-                        } else if (double.parse(disPrice) <= 0) {
+                        }
+                        // final promo = controller.getActivePromotionForProduct(
+                        //   productId: productModel.id?.toString() ?? '',
+                        //   restaurantId: productModel.vendorID ?? '',
+                        // );
+                        // final hasPromo = promo != null;
+                        // final promoPrice = hasPromo
+                        //     ? (promo['special_price'] as num).toString()
+                        //     : null;
+                        // if (hasPromo) {
+                        //   // Special promotional price display
+                        //   return Row(
+                        //     children: [
+                        //       Flexible(
+                        //         child: Text(
+                        //           Constant.amountShow(amount: promoPrice!),
+                        //           maxLines: 1,
+                        //           overflow: TextOverflow.ellipsis,
+                        //           style: TextStyle(
+                        //             fontSize: 16,
+                        //             color: AppThemeData.grey900,
+                        //             fontFamily: AppThemeData.semiBold,
+                        //             fontWeight: FontWeight.w600,
+                        //           ),
+                        //         ),
+                        //       ),
+                        //       const SizedBox(width: 5),
+                        //       // Show original price with strikethrough
+                        //       Flexible(
+                        //         child: Text(
+                        //           Constant.amountShow(
+                        //             amount: Constant.productCommissionPrice(
+                        //               controller.vendorModel,
+                        //               productModel.price.toString(),
+                        //             ),
+                        //           ),
+                        //           maxLines: 1,
+                        //           overflow: TextOverflow.ellipsis,
+                        //           style: TextStyle(
+                        //             fontSize: 14,
+                        //             decoration: TextDecoration.lineThrough,
+                        //             decorationColor: AppThemeData.grey300,
+                        //             color: AppThemeData.grey300,
+                        //             fontFamily: AppThemeData.semiBold,
+                        //             fontWeight: FontWeight.w600,
+                        //           ),
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   );
+                        // }
+                        else if (double.parse(disPrice) <= 0) {
                           // Normal price display
                           return Text(
                             Constant.amountShow(amount: price),

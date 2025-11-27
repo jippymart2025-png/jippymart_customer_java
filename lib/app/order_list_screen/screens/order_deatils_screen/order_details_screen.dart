@@ -912,70 +912,78 @@ class OrderDetailsScreen extends StatelessWidget {
                                                             ),
                                                             InkWell(
                                                               onTap: () async {
-                                                                ShowToastDialog.showLoader(
-                                                                  "Please wait"
-                                                                      .tr,
-                                                                );
-
-                                                                UserModel?
-                                                                customer = await AddressListProvider.getUserProfile(
-                                                                  controller
-                                                                      .orderModel
-                                                                      .authorID
-                                                                      .toString(),
-                                                                );
-                                                                UserModel?
-                                                                restaurantUser =
-                                                                    await AddressListProvider.getUserProfile(
-                                                                      controller
-                                                                          .orderModel
-                                                                          .vendor!
-                                                                          .author
-                                                                          .toString(),
-                                                                    );
-                                                                await FireStoreUtils.getVendorById(
-                                                                  restaurantUser!
-                                                                      .vendorID
-                                                                      .toString(),
-                                                                );
-                                                                ShowToastDialog.closeLoader();
-                                                                final userId =
-                                                                    await SqlStorageConst.getFirebaseId();
-                                                                Get.to(
-                                                                  ChatScreen(
-                                                                    userId:
-                                                                        userId,
-                                                                  ),
-                                                                  arguments: {
-                                                                    "customerName":
-                                                                        customer!
-                                                                            .fullName(),
-                                                                    "restaurantName":
-                                                                        restaurantUser
-                                                                            .fullName(),
-                                                                    "orderId":
-                                                                        controller
-                                                                            .orderModel
-                                                                            .id,
-                                                                    "restaurantId":
-                                                                        restaurantUser
-                                                                            .id,
-                                                                    "customerId":
-                                                                        customer
-                                                                            .id,
-                                                                    "customerProfileImage":
-                                                                        customer
-                                                                            .profilePictureURL,
-                                                                    "restaurantProfileImage":
-                                                                        restaurantUser
-                                                                            .profilePictureURL,
-                                                                    "token":
-                                                                        restaurantUser
-                                                                            .fcmToken,
-                                                                    "chatType":
-                                                                        "restaurant",
-                                                                  },
-                                                                );
+                                                                try {
+                                                                  ShowToastDialog.showLoader(
+                                                                    "Please wait"
+                                                                        .tr,
+                                                                  );
+                                                                  UserModel?
+                                                                  customer = await AddressListProvider.getUserProfile(
+                                                                    controller
+                                                                        .orderModel
+                                                                        .authorID
+                                                                        .toString(),
+                                                                  );
+                                                                  // customer = await AddressListProvider.getUserProfile(
+                                                                  //   controller
+                                                                  //       .orderModel
+                                                                  //       .authorID
+                                                                  //       .toString(),
+                                                                  // );
+                                                                  UserModel?
+                                                                  restaurantUser = await AddressListProvider.getUserProfile(
+                                                                    controller
+                                                                        .orderModel
+                                                                        .vendor!
+                                                                        .author
+                                                                        .toString(),
+                                                                  );
+                                                                  await FireStoreUtils.getVendorById(
+                                                                    restaurantUser!
+                                                                        .vendorID
+                                                                        .toString(),
+                                                                  );
+                                                                  ShowToastDialog.closeLoader();
+                                                                  final userId =
+                                                                      await SqlStorageConst.getFirebaseId();
+                                                                  Get.to(
+                                                                    ChatScreen(
+                                                                      userId:
+                                                                          userId,
+                                                                    ),
+                                                                    arguments: {
+                                                                      "customerName":
+                                                                          customer!
+                                                                              .fullName(),
+                                                                      "restaurantName":
+                                                                          restaurantUser
+                                                                              .fullName(),
+                                                                      "orderId":
+                                                                          controller
+                                                                              .orderModel
+                                                                              .id,
+                                                                      "restaurantId":
+                                                                          restaurantUser
+                                                                              .id,
+                                                                      "customerId":
+                                                                          customer
+                                                                              .id,
+                                                                      "customerProfileImage":
+                                                                          customer
+                                                                              .profilePictureURL,
+                                                                      "restaurantProfileImage":
+                                                                          restaurantUser
+                                                                              .profilePictureURL,
+                                                                      "token":
+                                                                          restaurantUser
+                                                                              .fcmToken,
+                                                                      "chatType":
+                                                                          "restaurant",
+                                                                    },
+                                                                  );
+                                                                } catch (e) {
+                                                                  ShowToastDialog.closeLoader();
+                                                                }
                                                               },
                                                               child: Container(
                                                                 width: 42,

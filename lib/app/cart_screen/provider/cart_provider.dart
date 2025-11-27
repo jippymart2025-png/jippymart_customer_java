@@ -588,6 +588,9 @@ class CartControllerProvider extends ChangeNotifier {
   DateTime? _lastCacheTime;
   static const Duration cacheExpiry = Duration(minutes: 5);
 
+  // Track what type of coupons are cached (mart or restaurant)
+  bool? _cachedCouponTypeIsMart;
+
   // Flag to prevent multiple simultaneous coupon loads
   bool _isLoadingCoupons = false;
 
@@ -1053,8 +1056,29 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Method to check if cache is valid
   bool _isCacheValid() {
-    return _lastCacheTime != null &&
-        DateTime.now().difference(_lastCacheTime!) < cacheExpiry;
+    if (_lastCacheTime == null) {
+      return false;
+    }
+
+    // Check if cache has expired
+    if (DateTime.now().difference(_lastCacheTime!) >= cacheExpiry) {
+      return false;
+    }
+
+    // Check if cart type matches cached coupon type
+    final bool currentIsMart =
+        hasMartItemsInCart() || vendorModel.vType == 'mart';
+    if (_cachedCouponTypeIsMart != null &&
+        _cachedCouponTypeIsMart != currentIsMart) {
+      final cachedType = _cachedCouponTypeIsMart! ? "mart" : "restaurant";
+      final currentType = currentIsMart ? "mart" : "restaurant";
+      print(
+        '[COUPON_CACHE] ⚠️ Cart type changed (was $cachedType, now $currentType), invalidating cache',
+      );
+      return false; // Cart type changed, cache is invalid
+    }
+
+    return true;
   }
 
   // Method to update cache timestamp
@@ -1344,20 +1368,18 @@ class CartControllerProvider extends ChangeNotifier {
     if (rawProductId == null || rawProductId.isEmpty) {
       return null;
     }
-    final baseProductId =
-        rawProductId.contains('~') ? rawProductId.split('~').first : rawProductId;
+    final baseProductId = rawProductId.contains('~')
+        ? rawProductId.split('~').first
+        : rawProductId;
     if (_martItemCache.containsKey(baseProductId)) {
       return _martItemCache[baseProductId];
     }
     try {
-      final item =
-          await MartFirestoreService().getItemById(baseProductId);
+      final item = await MartFirestoreService().getItemById(baseProductId);
       _martItemCache[baseProductId] = item;
       return item;
     } catch (e) {
-      print(
-        '[MART_ITEM_CACHE] ❌ Failed to load mart item $baseProductId: $e',
-      );
+      print('[MART_ITEM_CACHE] ❌ Failed to load mart item $baseProductId: $e');
       _martItemCache[baseProductId] = null;
       return null;
     }
@@ -1567,28 +1589,23 @@ class CartControllerProvider extends ChangeNotifier {
       try {
         HomeProvider.cartItem.clear();
         HomeProvider.cartItem.addAll(event);
-
         if (HomeProvider.cartItem.isEmpty) {
           _isLoadingCartData = false;
           notifyListeners();
           return;
         }
-
         // Check if vendor changed - only reload if necessary
         final firstItemVendor = HomeProvider.cartItem.first.vendorID;
         final needsVendorReload =
             _cachedVendorModel?.id != firstItemVendor ||
             !_isCacheValid() ||
             vendorModel.id == null;
-
         if (needsVendorReload) {
           // Clear cache only if vendor actually changed
           if (_cachedVendorModel?.id != firstItemVendor) {
             _clearVendorCache();
           }
-          // Load vendor once - _loadFreshVendorForCart handles both mart and restaurant
           await _loadFreshVendorForCart();
-          // 🔑 FIX: Ensure vendor zoneId is set for mart vendors
           await _ensureVendorZoneIdIsSet();
         } else {
           // Use cached vendor if valid
@@ -1596,7 +1613,6 @@ class CartControllerProvider extends ChangeNotifier {
             vendorModel = _cachedVendorModel!;
           }
         }
-
         notifyListeners();
         await _loadCalculationCache();
         await calculatePrice();
@@ -1645,12 +1661,11 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<void> _loadCoupons({required String restaurantId}) async {
-    // Prevent multiple simultaneous calls
+    print("_loadCoupons  ${vendorModel.vType}");
     if (_isLoadingCoupons) {
       print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
       return;
     }
-
     // Validate restaurant ID before making API call
     if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
       print('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
@@ -1660,17 +1675,36 @@ class CartControllerProvider extends ChangeNotifier {
     _isLoadingCoupons = true;
     try {
       _detectCurrentContext();
-      // Make only ONE API call instead of three identical calls
-      final allCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('[COUPON_LOAD] ⏱️ Coupon API call timed out');
-              return <CouponModel>[];
-            },
-          );
+      // Determine which API to call based on cart content
+      final bool hasMartItems = hasMartItemsInCart();
+      final bool isMartVendor = vendorModel.vType == 'mart';
+
+      // Use mart coupons API if cart has mart items or vendor is mart type
+      final bool shouldUseMartCoupons = hasMartItems || isMartVendor;
+
+      print(
+        '[COUPON_LOAD] Cart type detection: hasMartItems=$hasMartItems, isMartVendor=$isMartVendor, usingMartCoupons=$shouldUseMartCoupons',
+      );
+
+      final allCoupons = shouldUseMartCoupons
+          ? await RestaurantDetailsProvider.getMartCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
+                return <CouponModel>[];
+              },
+            )
+          : await RestaurantDetailsProvider.getRestaurantCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out');
+                return <CouponModel>[];
+              },
+            );
 
       final filteredGlobalCoupons = allCoupons
           .where(
@@ -1702,7 +1736,6 @@ class CartControllerProvider extends ChangeNotifier {
         contextType: _currentContext,
         fallbackEnabled: true, // Enable fallback for backward compatibility
       );
-
       final contextFilteredAllCoupons =
           CouponFilterService.filterCouponsByContext(
             coupons: combinedAllCoupons.cast<CouponModel>(),
@@ -1711,6 +1744,8 @@ class CartControllerProvider extends ChangeNotifier {
           );
 
       _cachedCouponList = contextFilteredCoupons;
+      // Store the coupon type that was cached
+      _cachedCouponTypeIsMart = shouldUseMartCoupons;
       _updateCacheTime();
 
       couponList = contextFilteredCoupons;
@@ -1804,17 +1839,41 @@ class CartControllerProvider extends ChangeNotifier {
     _isLoadingCoupons = true;
 
     try {
+      // Determine which API to call based on cart content
+      final bool hasMartItems = hasMartItemsInCart();
+      final bool isMartVendor = vendorModel.vType == 'mart';
+
+      // Use mart coupons API if cart has mart items or vendor is mart type
+      final bool shouldUseMartCoupons = hasMartItems || isMartVendor;
+
+      print(
+        '[COUPON_LOAD] Fallback: Cart type detection: hasMartItems=$hasMartItems, isMartVendor=$isMartVendor, usingMartCoupons=$shouldUseMartCoupons',
+      );
+
       // Make only ONE API call
-      final allCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('[COUPON_LOAD] ⏱️ Fallback: Coupon API call timed out');
-              return <CouponModel>[];
-            },
-          );
+      final allCoupons = shouldUseMartCoupons
+          ? await RestaurantDetailsProvider.getMartCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print(
+                  '[COUPON_LOAD] ⏱️ Fallback: Mart coupon API call timed out',
+                );
+                return <CouponModel>[];
+              },
+            )
+          : await RestaurantDetailsProvider.getRestaurantCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print(
+                  '[COUPON_LOAD] ⏱️ Fallback: Restaurant coupon API call timed out',
+                );
+                return <CouponModel>[];
+              },
+            );
 
       final filteredGlobalCoupons = allCoupons
           .where(
@@ -1839,6 +1898,8 @@ class CartControllerProvider extends ChangeNotifier {
       final combinedAllCoupons = [...allCoupons];
 
       _cachedCouponList = combinedCoupons.cast<CouponModel>();
+      // Store the coupon type that was cached
+      _cachedCouponTypeIsMart = shouldUseMartCoupons;
       _updateCacheTime();
 
       // Update observable lists
@@ -2031,16 +2092,40 @@ class CartControllerProvider extends ChangeNotifier {
       print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
       return;
     }
-    if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+
+    // Check if cache is valid (including cart type check)
+    final bool cacheValid = _isCacheValid();
+    final bool currentIsMart =
+        hasMartItemsInCart() || vendorModel.vType == 'mart';
+
+    if (_cachedCouponList != null &&
+        _cachedCouponList!.isNotEmpty &&
+        cacheValid) {
+      // Cache is valid and cart type matches, use cached coupons
       if (couponList.isEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
         notifyListeners();
       }
-      if (_isCacheValid()) {
-        return; // Cache is still valid, no need to reload
-      }
+      print(
+        '[COUPON_LOAD] ✅ Using valid cached coupons (type: ${currentIsMart ? "mart" : "restaurant"})',
+      );
+      return;
     }
+
+    // Cache is invalid or cart type changed, reload coupons
+    if (cacheValid == false && _cachedCouponTypeIsMart != null) {
+      print(
+        '[COUPON_LOAD] 🔄 Cache invalid or cart type changed, reloading coupons...',
+      );
+      // Clear old cache
+      _cachedCouponList = null;
+      _cachedCouponTypeIsMart = null;
+      couponList = [];
+      allCouponList = [];
+      notifyListeners();
+    }
+
     if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
       _loadCoupons(restaurantId: vendorModel.id.toString());
     } else {
@@ -2090,6 +2175,9 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       _cachedCouponList = contextFilteredCoupons;
+      // For global coupons, determine type based on current cart
+      _cachedCouponTypeIsMart =
+          hasMartItemsInCart() || vendorModel.vType == 'mart';
       _updateCacheTime();
 
       // Update observable lists
@@ -3014,7 +3102,6 @@ class CartControllerProvider extends ChangeNotifier {
                 productModel.quantity = newQuantity;
               }
             }
-
             await FireStoreUtils.setProduct(productModel);
           });
         }

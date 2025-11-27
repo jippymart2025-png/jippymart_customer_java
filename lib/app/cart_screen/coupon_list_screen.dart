@@ -38,23 +38,15 @@ class _CouponListScreenState extends State<CouponListScreen> {
           context,
           listen: false,
         );
-        // Use cached coupons instead of forcing reload
         _initializeWithCachedCoupons(controller);
       }
     });
   }
 
   void _initializeWithCachedCoupons(CartControllerProvider controller) {
-    // Use the already loaded coupons from cache
-    if (controller.couponList.isNotEmpty) {
-      // Coupons are already loaded and cached, no need to reload
-      print(
-        '[COUPON_SCREEN] Using cached coupons: ${controller.couponList.length} available',
-      );
-    } else {
-      // If no coupons in cache, trigger a load
-      controller.ensureCouponsLoaded();
-    }
+    // Always call ensureCouponsLoaded to check if cache is valid for current cart type
+    // This will reload if cart type changed (mart <-> restaurant)
+    controller.ensureCouponsLoaded();
   }
 
   void _applyCoupon(CartControllerProvider controller, CouponModel coupon) {
