@@ -167,40 +167,39 @@ class Constant {
         return "0";
       }
       String commission = "0";
-      if (adminCommission!.isEnabled == true) {
-        if (vendorModel.adminCommission == null) {
-          final globalCommissionAmount =
-              double.tryParse(adminCommission!.amount?.toString() ?? '0') ??
-              0.0;
-          if (adminCommission!.commissionType?.toLowerCase() == "percent" ||
-              adminCommission!.commissionType?.toLowerCase() == "percentage") {
-            commission =
-                (basePrice + (basePrice * globalCommissionAmount / 100))
-                    .toString();
-          } else {
-            commission = (basePrice + globalCommissionAmount).toString();
-          }
-        } else {
-          final vendorCommissionAmount =
-              double.tryParse(
-                vendorModel.adminCommission!.amount?.toString() ?? '0',
-              ) ??
-              0.0;
-
-          if (vendorModel.adminCommission!.commissionType?.toLowerCase() ==
-                  "percent" ||
-              vendorModel.adminCommission!.commissionType?.toLowerCase() ==
-                  "percentage") {
-            commission =
-                (basePrice + (basePrice * vendorCommissionAmount / 100))
-                    .toString();
-          } else {
-            commission = (basePrice + vendorCommissionAmount).toString();
-          }
-        }
-      } else {
-        commission = price;
-      }
+      // if (adminCommission!.isEnabled == true) {
+      //   if (vendorModel.adminCommission == null) {
+      //     final globalCommissionAmount =
+      //         double.tryParse(adminCommission!.amount?.toString() ?? '0') ??
+      //         0.0;
+      //     if (adminCommission!.commissionType?.toLowerCase() == "percent" ||
+      //         adminCommission!.commissionType?.toLowerCase() == "percentage") {
+      //       commission =
+      //           (basePrice + (basePrice * globalCommissionAmount / 100))
+      //               .toString();
+      //     } else {
+      //       commission = (basePrice + globalCommissionAmount).toString();
+      //     }
+      //   } else {
+      //     final vendorCommissionAmount =
+      //         double.tryParse(
+      //           vendorModel.adminCommission!.amount?.toString() ?? '0',
+      //         ) ??
+      //         0.0;
+      //     if (vendorModel.adminCommission!.commissionType?.toLowerCase() ==
+      //             "percent" ||
+      //         vendorModel.adminCommission!.commissionType?.toLowerCase() ==
+      //             "percentage") {
+      //       commission =
+      //           (basePrice + (basePrice * vendorCommissionAmount / 100))
+      //               .toString();
+      //     } else {
+      //       commission = (basePrice + vendorCommissionAmount).toString();
+      //     }
+      //   }
+      // } else {
+      commission = price;
+      // }
       if (kDebugMode) {
         print('💰 Commission Calculation:');
         print('   - Base Price: $basePrice');
@@ -214,6 +213,67 @@ class Constant {
       return "0"; // Return safe default
     }
   }
+
+  // static String productCommissionPrice(VendorModel vendorModel, String? price) {
+  //   try {
+  //     // Handle null or empty price
+  //     if (price == null || price.isEmpty) {
+  //       print('⚠️ productCommissionPrice: Price is null or empty');
+  //       return "0";
+  //     }
+  //     final double basePrice = double.tryParse(price) ?? 0.0;
+  //     if (basePrice == 0.0) {
+  //       print('⚠️ productCommissionPrice: Unable to parse price: $price');
+  //       return "0";
+  //     }
+  //     String commission = "0";
+  //     if (adminCommission!.isEnabled == true) {
+  //       if (vendorModel.adminCommission == null) {
+  //         final globalCommissionAmount =
+  //             double.tryParse(adminCommission!.amount?.toString() ?? '0') ??
+  //             0.0;
+  //         if (adminCommission!.commissionType?.toLowerCase() == "percent" ||
+  //             adminCommission!.commissionType?.toLowerCase() == "percentage") {
+  //           commission =
+  //               (basePrice + (basePrice * globalCommissionAmount / 100))
+  //                   .toString();
+  //         } else {
+  //           commission = (basePrice + globalCommissionAmount).toString();
+  //         }
+  //       } else {
+  //         final vendorCommissionAmount =
+  //             double.tryParse(
+  //               vendorModel.adminCommission!.amount?.toString() ?? '0',
+  //             ) ??
+  //             0.0;
+  //
+  //         if (vendorModel.adminCommission!.commissionType?.toLowerCase() ==
+  //                 "percent" ||
+  //             vendorModel.adminCommission!.commissionType?.toLowerCase() ==
+  //                 "percentage") {
+  //           commission =
+  //               (basePrice + (basePrice * vendorCommissionAmount / 100))
+  //                   .toString();
+  //         } else {
+  //           commission = (basePrice + vendorCommissionAmount).toString();
+  //         }
+  //       }
+  //     } else {
+  //       commission = price;
+  //     }
+  //     if (kDebugMode) {
+  //       print('💰 Commission Calculation:');
+  //       print('   - Base Price: $basePrice');
+  //       print('   - Final Commission: $commission');
+  //     }
+  //     return commission;
+  //   } catch (e) {
+  //     print('❌ Error in productCommissionPrice: $e');
+  //     print('   - Vendor: ${vendorModel.title}');
+  //     print('   - Price: $price');
+  //     return "0"; // Return safe default
+  //   }
+  // }
 
   // static String productCommissionPrice(VendorModel vendorModel, String price) {
   //   String commission = "0";
@@ -555,6 +615,7 @@ class Constant {
   }
 
   static String timestampToDateTime(Timestamp timestamp) {
+    print("timestampToDateTime $timestamp ");
     DateTime dateTime = timestamp.toDate();
     return DateFormat('MMM dd,yyyy hh:mm aa').format(dateTime);
   }

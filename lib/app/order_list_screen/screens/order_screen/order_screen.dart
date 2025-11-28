@@ -368,6 +368,7 @@ class OrderScreen extends StatelessWidget {
   ) {
     return Consumer<OrderDetailsProvider>(
       builder: (context, orderDetailsProvider, _) {
+        print("itemView ${orderModel.id.toString()} ");
         return GestureDetector(
           onTap: () async {
             double? surgeFee = await fetchOrderSergeFee(orderModel.id ?? '');
@@ -479,7 +480,6 @@ class OrderScreen extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-
                     // In the OrderScreen's itemView method, replace the current "Total to Pay" section:
                     FutureBuilder<double>(
                       future: calculateOrderTotalInList(orderModel),
@@ -794,19 +794,17 @@ class OrderScreen extends StatelessWidget {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (hasPromotionalItems) {
-      final promotionalItems = (order.products ?? [])
-          .where((item) {
-            final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
-            final discountPriceValue =
-                double.tryParse(item.discountPrice.toString()) ?? 0.0;
-            final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
-            final isPricePromotional =
-                priceValue > 0 &&
-                discountPriceValue > 0 &&
-                priceValue < discountPriceValue;
-            return hasPromo || isPricePromotional;
-          })
-          .toList();
+      final promotionalItems = (order.products ?? []).where((item) {
+        final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
+        final discountPriceValue =
+            double.tryParse(item.discountPrice.toString()) ?? 0.0;
+        final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
+        final isPricePromotional =
+            priceValue > 0 &&
+            discountPriceValue > 0 &&
+            priceValue < discountPriceValue;
+        return hasPromo || isPricePromotional;
+      }).toList();
 
       if (promotionalItems.isNotEmpty) {
         final firstPromoItem = promotionalItems.first;
@@ -815,18 +813,19 @@ class OrderScreen extends StatelessWidget {
         const double promoBaseCharge = fallbackBaseCharge;
 
         try {
-          final promoDetails = await FireStoreUtils.getActivePromotionForProduct(
-            productId: firstPromoItem.id ?? '',
-            restaurantId: firstPromoItem.vendorID ?? '',
-          );
+          final promoDetails =
+              await FireStoreUtils.getActivePromotionForProduct(
+                productId: firstPromoItem.id ?? '',
+                restaurantId: firstPromoItem.vendorID ?? '',
+              );
 
           if (promoDetails != null) {
             promoFreeKm =
                 (promoDetails['free_delivery_km'] as num?)?.toDouble() ??
-                    promoFreeKm;
+                promoFreeKm;
             promoExtraKmCharge =
                 (promoDetails['extra_km_charge'] as num?)?.toDouble() ??
-                    promoExtraKmCharge;
+                promoExtraKmCharge;
           }
         } catch (_) {}
 

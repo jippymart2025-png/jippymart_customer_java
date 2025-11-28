@@ -263,6 +263,7 @@ class ProductListView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
+
                     // Promotional badge
                     Builder(
                       builder: (context) {
@@ -314,6 +315,7 @@ class ProductListView extends StatelessWidget {
 
                           return Row(
                             children: [
+                              //finded
                               Flexible(
                                 child: Text(
                                   Constant.amountShow(amount: promoPrice),
@@ -399,6 +401,7 @@ class ProductListView extends StatelessWidget {
                         // }
                         else if (double.parse(disPrice) <= 0) {
                           // Normal price display
+                          // return SizedBox();
                           return Text(
                             Constant.amountShow(amount: price),
                             style: TextStyle(
