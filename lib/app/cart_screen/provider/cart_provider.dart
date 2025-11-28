@@ -165,14 +165,35 @@ class CartControllerProvider extends ChangeNotifier {
           );
         }
         selectedAddress = addressModel;
-        // Ensure vendor details (esp. lat/lng) are available before price calc
-        await _loadFreshVendorForCart();
-        // 🔑 FIX: Ensure vendor zoneId is set for mart vendors
-        await _ensureVendorZoneIdIsSet();
         notifyListeners();
-        await calculatePrice();
+        await _refreshCartForNewAddress(eventTag: 'changeLocationFunction');
       }
     });
+  }
+
+  Future<void> _refreshCartForNewAddress({String eventTag = ''}) async {
+    if (HomeProvider.cartItem.isEmpty) {
+      _pendingAddressRefresh = true;
+      _pendingAddressEvent = eventTag;
+      print(
+        '[CART_ADDRESS] 💤 Cart empty - pending refresh queued ($eventTag)',
+      );
+      return;
+    }
+    try {
+      _pendingAddressRefresh = false;
+      _pendingAddressEvent = null;
+      await _loadFreshVendorForCart();
+      await _ensureVendorZoneIdIsSet();
+      await calculatePrice();
+      checkAndUpdatePaymentMethod();
+      updateCartReadiness();
+      print('[CART_ADDRESS] ✅ Cart refreshed after address change ($eventTag)');
+    } catch (e) {
+      print(
+        '[CART_ADDRESS] ❌ Failed to refresh cart for address change ($eventTag): $e',
+      );
+    }
   }
 
   // ProductModel? productModelImageDetails;
@@ -625,6 +646,10 @@ class CartControllerProvider extends ChangeNotifier {
 
   String selectedPaymentMethod = '';
 
+  // Track address refresh requests that happen before cart data is ready
+  bool _pendingAddressRefresh = false;
+  String? _pendingAddressEvent;
+
   String deliveryType = "instant";
   DateTime scheduleDateTime = DateTime.now();
   double totalDistance = 0.0;
@@ -678,20 +703,23 @@ class CartControllerProvider extends ChangeNotifier {
           orElse: () => Constant.userModel!.shippingAddress!.first,
         );
         selectedAddress = defaultAddress;
+        notifyListeners();
         initialLiseSurgeValue(
           defaultAddress.location?.latitude ?? 0.0,
           defaultAddress.location?.longitude ?? 0.0,
         );
+        await _refreshCartForNewAddress(eventTag: 'init_default_address');
         return;
       }
       final homeScreenAddress = await _getCurrentLocationAddress(context);
       if (homeScreenAddress != null) {
         selectedAddress = homeScreenAddress;
+        notifyListeners();
         initialLiseSurgeValue(
           homeScreenAddress.location?.latitude ?? 0.0,
           homeScreenAddress.location?.longitude ?? 0.0,
         );
-
+        await _refreshCartForNewAddress(eventTag: 'init_home_address');
         return;
       }
       selectedAddress = null;
@@ -818,7 +846,7 @@ class CartControllerProvider extends ChangeNotifier {
             // Update surge value for new location
             await initialLiseSurgeValue(homeLat, homeLng);
             // Recalculate prices with new address - await to ensure calculation completes
-            await calculatePrice();
+            await _refreshCartForNewAddress(eventTag: 'sync_home_location');
             print(
               '[CART_SYNC] ✅ Synced selectedAddress with Constant.selectedLocation (zoneId: ${selectedAddress!.zoneId})',
             );
@@ -1592,6 +1620,11 @@ class CartControllerProvider extends ChangeNotifier {
         if (HomeProvider.cartItem.isEmpty) {
           _isLoadingCartData = false;
           notifyListeners();
+          if (_pendingAddressRefresh) {
+            print(
+              '[CART_ADDRESS] ⏳ Pending refresh waiting for cart items (stream empty)',
+            );
+          }
           return;
         }
         // Check if vendor changed - only reload if necessary
@@ -1618,6 +1651,13 @@ class CartControllerProvider extends ChangeNotifier {
         await calculatePrice();
         checkAndUpdatePaymentMethod();
         updateCartReadiness();
+        if (_pendingAddressRefresh) {
+          final pendingTag = _pendingAddressEvent ?? 'pending_refresh';
+          print(
+            '[CART_ADDRESS] 🔁 Running pending address refresh ($pendingTag)',
+          );
+          await _refreshCartForNewAddress(eventTag: pendingTag);
+        }
       } catch (e) {
         print('[CART_DATA] Error loading cart data: $e');
       } finally {
