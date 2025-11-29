@@ -1227,7 +1227,7 @@ class MartProvider extends ChangeNotifier {
       isCategoryLoading = true;
       errorMessage = '';
       notifyListeners();
-      
+
       print(
         '[MART CONTROLLER] 📂 Streaming: Loading all categories from Firestore...',
       );
@@ -1242,7 +1242,7 @@ class MartProvider extends ChangeNotifier {
           print(
             '[MART CONTROLLER] ✅ Streaming: All categories loaded from Firestore (${categories.length})',
           );
-          
+
           // Only load subcategories if not skipped (for faster category screen loading)
           if (!skipSubcategories) {
             // Load subcategories for categories that have them
@@ -1250,7 +1250,7 @@ class MartProvider extends ChangeNotifier {
             // await loadAllHomepageSubcategories();
             await loadFirstPageHomepageSubcategories();
           }
-          
+
           isCategoryLoading = false;
           notifyListeners();
           return;
@@ -1412,7 +1412,6 @@ class MartProvider extends ChangeNotifier {
       if (excludeProductId != null) {
         print('[MART CONTROLLER] 📡 Excluding product: $excludeProductId');
       }
-
       // Use the Firestore service stream method for all products
       return _firestoreService.streamAllProducts(
         excludeProductId: excludeProductId,

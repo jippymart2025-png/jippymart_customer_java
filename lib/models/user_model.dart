@@ -111,10 +111,20 @@ class UserModel {
         }
       }
 
+      // FIXED: Proper boolean parsing with int-to-bool conversion
+      bool? parseBool(dynamic value) {
+        if (value == null) return null;
+        if (value is bool) return value;
+        if (value is int) return value == 1;
+        if (value is String) {
+          return value.toLowerCase() == 'true' || value == '1';
+        }
+        return null;
+      }
+
       return UserModel(
         id: json['id']?.toString(),
         firebaseId: json['firebase_id']?.toString(),
-        // Added null safety
         email: json['email']?.toString(),
         firstName: json['firstName']?.toString(),
         lastName: json['lastName']?.toString(),
@@ -126,10 +136,11 @@ class UserModel {
             ? (json['wallet_amount'] as num).toInt()
             : 0,
         createdAt: _parseTimestamp(json['createdAt']),
-        active: json['active'] as bool?,
-        isActive: json['isActive'] as bool?,
+        active: parseBool(json['active']),
+        isActive: parseBool(json['isActive']),
         role: json['role']?.toString(),
-        isDocumentVerify: json['isDocumentVerify'] as bool?,
+        isDocumentVerify: parseBool(json['isDocumentVerify']),
+        // FIXED
         zoneId: json['zoneId']?.toString(),
         appIdentifier: json['appIdentifier']?.toString(),
         provider: json['provider']?.toString(),
@@ -140,6 +151,74 @@ class UserModel {
       rethrow;
     }
   }
+
+  // factory UserModel.fromJson(Map<String, dynamic> json) {
+  //   try {
+  //     List<ShippingAddress>? addresses;
+  //     if (json['shippingAddress'] != null) {
+  //       if (json['shippingAddress'] is List) {
+  //         addresses = (json['shippingAddress'] as List).map((e) {
+  //           if (e is Map<String, dynamic>) {
+  //             return ShippingAddress.fromJson(e);
+  //           } else if (e is String) {
+  //             try {
+  //               return ShippingAddress.fromJson(jsonDecode(e));
+  //             } catch (e) {
+  //               log('Error parsing shipping address string: $e');
+  //               return ShippingAddress();
+  //             }
+  //           }
+  //           return ShippingAddress();
+  //         }).toList();
+  //       } else if (json['shippingAddress'] is Map) {
+  //         addresses = [
+  //           ShippingAddress.fromJson(
+  //             json['shippingAddress'] as Map<String, dynamic>,
+  //           ),
+  //         ];
+  //       } else if (json['shippingAddress'] is String) {
+  //         try {
+  //           addresses = [
+  //             ShippingAddress.fromJson(jsonDecode(json['shippingAddress'])),
+  //           ];
+  //         } catch (e) {
+  //           log('Error parsing shipping address string: $e');
+  //           addresses = [];
+  //         }
+  //       } else {
+  //         addresses = [];
+  //       }
+  //     }
+  //
+  //     return UserModel(
+  //       id: json['id']?.toString(),
+  //       firebaseId: json['firebase_id']?.toString(),
+  //       // Added null safety
+  //       email: json['email']?.toString(),
+  //       firstName: json['firstName']?.toString(),
+  //       lastName: json['lastName']?.toString(),
+  //       profilePictureURL: json['profilePictureURL']?.toString(),
+  //       fcmToken: json['fcmToken']?.toString(),
+  //       countryCode: json['countryCode']?.toString(),
+  //       phoneNumber: json['phoneNumber']?.toString(),
+  //       walletAmount: (json['wallet_amount'] is num)
+  //           ? (json['wallet_amount'] as num).toInt()
+  //           : 0,
+  //       createdAt: _parseTimestamp(json['createdAt']),
+  //       active: json['active'] as bool?,
+  //       isActive: json['isActive'] as bool?,
+  //       role: json['role']?.toString(),
+  //       isDocumentVerify: json['isDocumentVerify'] as bool?,
+  //       zoneId: json['zoneId']?.toString(),
+  //       appIdentifier: json['appIdentifier']?.toString(),
+  //       provider: json['provider']?.toString(),
+  //       shippingAddress: addresses,
+  //     );
+  //   } catch (e) {
+  //     log('Error converting user data: $e');
+  //     rethrow;
+  //   }
+  // }
 
   static Timestamp? _parseTimestamp(dynamic value) {
     if (value == null) return null;

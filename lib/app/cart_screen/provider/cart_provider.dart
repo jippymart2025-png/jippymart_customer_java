@@ -694,7 +694,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _initializeAddressWithPriority(BuildContext context) async {
     try {
-      // PRIORITY 1: Check for saved addresses in user profile
+      deliveryTips = 0.0;
       if (Constant.userModel != null &&
           Constant.userModel!.shippingAddress != null &&
           Constant.userModel!.shippingAddress!.isNotEmpty) {

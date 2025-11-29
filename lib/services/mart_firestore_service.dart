@@ -1977,10 +1977,11 @@ class MartFirestoreService extends GetxService {
               );
             },
           );
-
+      print('getMartItems ');
       print(
         '[MART API] 🛍️ API call completed with status: ${response.statusCode}',
       );
+      print('getMartItems: ${response.body}');
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
 
