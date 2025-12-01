@@ -685,6 +685,8 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
             //changed here
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
             bottomNavigationBar: HomeProvider.cartItem.isEmpty
                 ? null
                 : cartNavigationBarWidget(context),
