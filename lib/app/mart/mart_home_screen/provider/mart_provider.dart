@@ -1478,7 +1478,7 @@ class MartProvider extends ChangeNotifier {
 
   /// Get formatted delivery message
   String get deliveryMessage {
-    final threshold = deliverySettings?.freeDeliveryThreshold ?? 199.0;
+    final threshold = deliverySettings?.freeDeliveryThreshold ?? 299.0;
     return 'Spend ₹${threshold.toInt()} to unlock FREE delivery';
   }
 

@@ -2468,10 +2468,95 @@ class MartFirestoreService extends GetxService {
   }) {
     try {
       print('[MART API] 📡 Starting stream for all products');
-      return Stream.periodic(
+      if (excludeProductId != null) {
+        print('[MART API] 📡 Excluding product: $excludeProductId');
+      }
+      if (isAvailable != null) {
+        print('[MART API] 📡 Filtering by isAvailable: $isAvailable');
+      }
+      print('[MART API] 📡 Limit: $limit');
+
+      // Helper function to fetch and filter products
+      Future<List<MartItemModel>> fetchAndFilter() async {
+        try {
+          print('[MART API] 📡 Fetching products...');
+          final allItems = await getMartItems();
+          
+          // Apply filters
+          List<MartItemModel> filteredItems = allItems;
+
+          // Filter by isAvailable if specified
+          if (isAvailable != null) {
+            filteredItems = filteredItems
+                .where((item) => item.isAvailable == isAvailable)
+                .toList();
+          }
+
+          // Exclude specific product if specified
+          if (excludeProductId != null) {
+            filteredItems = filteredItems
+                .where((item) => item.id != excludeProductId)
+                .toList();
+          }
+
+          // Apply limit
+          if (limit > 0 && filteredItems.length > limit) {
+            filteredItems = filteredItems.take(limit).toList();
+          }
+
+          print(
+            '[MART API] 📡 Filtered to ${filteredItems.length} products (from ${allItems.length} total)',
+          );
+          return filteredItems;
+        } catch (e) {
+          print('[MART API] ❌ Error fetching products in stream: $e');
+          return <MartItemModel>[];
+        }
+      }
+
+      // Create a stream controller
+      final StreamController<List<MartItemModel>> controller =
+          StreamController<List<MartItemModel>>.broadcast();
+
+      // Emit immediately from Future
+      fetchAndFilter().then((items) {
+        if (!controller.isClosed) {
+          print('[MART API] 📡 Emitting ${items.length} products immediately');
+          controller.add(items);
+        }
+      }).catchError((error) {
+        print('[MART API] ❌ Error in immediate fetch: $error');
+        if (!controller.isClosed) {
+          controller.add(<MartItemModel>[]);
+        }
+      });
+
+      // Then emit periodically every 30 seconds
+      Timer? periodicTimer;
+      periodicTimer = Timer.periodic(
         const Duration(seconds: 30),
-        (_) => getMartItems(),
-      ).asyncMap((future) => future);
+        (_) {
+          if (controller.isClosed) {
+            periodicTimer?.cancel();
+            return;
+          }
+          fetchAndFilter().then((items) {
+            if (!controller.isClosed) {
+              print('[MART API] 📡 Periodic update: Emitting ${items.length} products');
+              controller.add(items);
+            }
+          }).catchError((error) {
+            print('[MART API] ❌ Error in periodic fetch: $error');
+          });
+        },
+      );
+
+      // Clean up when stream is cancelled
+      controller.onCancel = () {
+        periodicTimer?.cancel();
+      };
+
+      return controller.stream;
     } catch (e) {
       print('[MART API] ❌ Error creating stream for all products: $e');
       return Stream.value(<MartItemModel>[]);
