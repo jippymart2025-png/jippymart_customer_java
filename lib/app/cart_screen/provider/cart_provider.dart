@@ -2655,7 +2655,6 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   ///finded
-
   placeOrder(BuildContext context) async {
     if (_isOrderInProgress()) {
       ShowToastDialog.showToast(
@@ -2668,16 +2667,17 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.showToast("Please wait before trying again...".tr);
       return;
     }
-    
+
     // 🔑 CRITICAL: Prevent Razorpay orders from being placed without payment completion
     // Razorpay orders MUST go through placeOrderAfterPayment() after successful payment
     if (selectedPaymentMethod == PaymentGateway.razorpay.name) {
       ShowToastDialog.showToast(
-        "Payment is required before placing order. Please complete payment first.".tr,
+        "Payment is required before placing order. Please complete payment first."
+            .tr,
       );
       return;
     }
-    
+
     // 🔑 CRITICAL: Prevent orders if payment is in progress (race condition protection)
     if (isPaymentInProgress) {
       ShowToastDialog.showToast(
@@ -2685,7 +2685,7 @@ class CartControllerProvider extends ChangeNotifier {
       );
       return;
     }
-    
+
     _startOrderProcessing();
     lastOrderAttempt = DateTime.now();
     try {
@@ -2710,7 +2710,7 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-      
+
       // 🔑 Only process COD and Wallet orders here
       // Razorpay orders are blocked at the beginning of this method
       if (selectedPaymentMethod == PaymentGateway.wallet.name) {
@@ -3113,6 +3113,8 @@ class CartControllerProvider extends ChangeNotifier {
         // Continue with default maxNumber
       }
 
+      log("CartUserMode ${userModel.toJson()}");
+
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
@@ -3174,7 +3176,6 @@ class CartControllerProvider extends ChangeNotifier {
         const JsonEncoder.withIndent('  ').convert(orderPayload),
         name: "ORDER_PAYLOAD",
       );
-      // **API CALL: Store the order**
       print('🌐 Creating order via API...');
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}mobile/orders'),
@@ -3184,6 +3185,8 @@ class CartControllerProvider extends ChangeNotifier {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('API returned status code: ${response.statusCode}');
       }
+      log("mobileorders ${orderModel.author?.toJson()} ");
+      log("mobileorders ${response.body} ");
       final responseData = json.decode(response.body);
       orderModel.id = responseData['data']['order_id'];
       if (responseData['success'] != true) {
@@ -3482,21 +3485,23 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       // 🔑 CRITICAL: Prevent duplicate payment success callbacks (race condition protection)
       if (isPaymentCompleted && _lastPaymentId != null) {
-        print('🔑 [PAYMENT] Payment already completed, ignoring duplicate callback');
+        print(
+          '🔑 [PAYMENT] Payment already completed, ignoring duplicate callback',
+        );
         return;
       }
-      
+
       // 🔑 CRITICAL: Prevent order processing if already in progress
       if (_isOrderInProgress()) {
         print('🔑 [PAYMENT] Order already in progress, waiting...');
         return;
       }
-      
+
       isGlobalLocked = true;
       _lastPaymentId = response.paymentId;
       _lastPaymentTime = DateTime.now();
       isPaymentCompleted = true;
-      
+
       // 🔑 CRITICAL: Ensure payment method is set correctly
       if (selectedPaymentMethod != PaymentGateway.razorpay.name) {
         selectedPaymentMethod = PaymentGateway.razorpay.name;
@@ -3829,10 +3834,12 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       // 🔑 CRITICAL: Prevent duplicate order placement
       if (_isOrderInProgress()) {
-        print('🔑 [ORDER_AFTER_PAYMENT] Order already in progress, skipping duplicate call');
+        print(
+          '🔑 [ORDER_AFTER_PAYMENT] Order already in progress, skipping duplicate call',
+        );
         return;
       }
-      
+
       // 🔑 VALIDATE PAYMENT STATE BEFORE PROCEEDING
       if (!isPaymentCompleted || _lastPaymentId == null) {
         ShowToastDialog.showToast(
@@ -3859,7 +3866,7 @@ class CartControllerProvider extends ChangeNotifier {
         // If payment method is empty or COD, but we have a successful payment, set it to razorpay
         selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
-      
+
       // 🔑 Start order processing to prevent duplicates
       _startOrderProcessing();
 

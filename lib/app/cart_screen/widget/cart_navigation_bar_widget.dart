@@ -13,13 +13,6 @@ Widget cartNavigationBarWidget(BuildContext context) {
     child: Consumer<CartControllerProvider>(
       builder: (context, controller, _) {
         return Container(
-          // decoration: BoxDecoration(
-          //   color: AppThemeData.grey50,
-          //   borderRadius: const BorderRadius.only(
-          //     topLeft: Radius.circular(20),
-          //     topRight: Radius.circular(20),
-          //   ),
-          // ),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
           child: Padding(
             padding: const EdgeInsets.only(bottom: 0),
