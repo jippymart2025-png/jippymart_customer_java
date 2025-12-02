@@ -3250,6 +3250,8 @@ class CartControllerProvider extends ChangeNotifier {
       selectedCouponModel = CouponModel();
       couponCodeController.text = '';
       couponAmount = 0.0;
+      deliveryTips = 0.0; // 🔑 Reset delivery tips after successful order
+      reMarkController.clear(); // 🔑 Reset remarks after successful order
       calculatePrice();
       await _clearPersistentPaymentState();
       ShowToastDialog.closeLoader();
