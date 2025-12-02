@@ -21,202 +21,208 @@ class EditProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<EditProfileProvider, SplashProvider, MyProfileProvider>(
-      builder: (context, controller, splashProvider, myProfileProvider, _) {
-        return Scaffold(
-          appBar: AppBar(
-            centerTitle: false,
-            titleSpacing: 0,
-            backgroundColor: AppThemeData.surface,
-          ),
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Profile Information".tr,
-                    style: TextStyle(
-                      fontSize: 24,
-                      color: AppThemeData.grey900,
-                      fontFamily: AppThemeData.semiBold,
-                      fontWeight: FontWeight.w500,
+    return SafeArea(
+      child: Consumer3<EditProfileProvider, SplashProvider, MyProfileProvider>(
+        builder: (context, controller, splashProvider, myProfileProvider, _) {
+          return Scaffold(
+            appBar: AppBar(
+              centerTitle: false,
+              titleSpacing: 0,
+              backgroundColor: AppThemeData.surface,
+            ),
+            body: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Profile Information".tr,
+                      style: TextStyle(
+                        fontSize: 24,
+                        color: AppThemeData.grey900,
+                        fontFamily: AppThemeData.semiBold,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  Text(
-                    "View and update your personal details, contact information, and preferences."
-                        .tr,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: AppThemeData.grey900,
-                      fontFamily: AppThemeData.regular,
-                      fontWeight: FontWeight.w400,
+                    Text(
+                      "View and update your personal details, contact information, and preferences."
+                          .tr,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppThemeData.grey900,
+                        fontFamily: AppThemeData.regular,
+                        fontWeight: FontWeight.w400,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Center(
-                    child: Stack(
-                      children: [
-                        controller.profileImage.isEmpty
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(60),
-                                child: Image.asset(
-                                  Constant.userPlaceHolder,
-                                  height: Responsive.width(24, context),
-                                  width: Responsive.width(24, context),
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : Constant().hasValidUrl(controller.profileImage) ==
-                                  false
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(60),
-                                child: Image.file(
-                                  File(controller.profileImage),
-                                  height: Responsive.width(24, context),
-                                  width: Responsive.width(24, context),
-                                  fit: BoxFit.cover,
-                                ),
-                              )
-                            : ClipRRect(
-                                borderRadius: BorderRadius.circular(60),
-                                child: NetworkImageWidget(
-                                  fit: BoxFit.cover,
-                                  imageUrl: controller.profileImage,
-                                  height: Responsive.width(24, context),
-                                  width: Responsive.width(24, context),
-                                  errorWidget: Image.asset(
+                    const SizedBox(height: 20),
+                    Center(
+                      child: Stack(
+                        children: [
+                          controller.profileImage.isEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(60),
+                                  child: Image.asset(
                                     Constant.userPlaceHolder,
-                                    fit: BoxFit.cover,
                                     height: Responsive.width(24, context),
                                     width: Responsive.width(24, context),
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Constant().hasValidUrl(
+                                      controller.profileImage,
+                                    ) ==
+                                    false
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(60),
+                                  child: Image.file(
+                                    File(controller.profileImage),
+                                    height: Responsive.width(24, context),
+                                    width: Responsive.width(24, context),
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(60),
+                                  child: NetworkImageWidget(
+                                    fit: BoxFit.cover,
+                                    imageUrl: controller.profileImage,
+                                    height: Responsive.width(24, context),
+                                    width: Responsive.width(24, context),
+                                    errorWidget: Image.asset(
+                                      Constant.userPlaceHolder,
+                                      fit: BoxFit.cover,
+                                      height: Responsive.width(24, context),
+                                      width: Responsive.width(24, context),
+                                    ),
                                   ),
                                 ),
+                          Positioned(
+                            bottom: 0,
+                            right: 0,
+                            child: InkWell(
+                              onTap: () {
+                                buildBottomSheet(context, controller);
+                              },
+                              child: SvgPicture.asset(
+                                "assets/icons/ic_edit.svg",
                               ),
-                        Positioned(
-                          bottom: 0,
-                          right: 0,
-                          child: InkWell(
-                            onTap: () {
-                              buildBottomSheet(context, controller);
-                            },
-                            child: SvgPicture.asset("assets/icons/ic_edit.svg"),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextFieldWidget(
-                          title: 'First Name'.tr,
-                          controller: controller.firstNameController,
-                          hintText: 'First Name'.tr,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: TextFieldWidget(
-                          title: 'Last Name'.tr,
-                          controller: controller.lastNameController,
-                          hintText: 'Last Name'.tr,
-                        ),
-                      ),
-                    ],
-                  ),
-                  TextFieldWidget(
-                    title: 'Email'.tr,
-                    textInputType: TextInputType.emailAddress,
-                    controller: controller.emailController,
-                    hintText: 'Email'.tr,
-                    enable: true,
-                  ),
-                  TextFieldWidget(
-                    title: 'Phone Number'.tr,
-                    textInputType: TextInputType.phone,
-                    controller: controller.phoneNumberController,
-                    hintText: 'Phone Number'.tr,
-                    enable: controller.phoneNumberController.text
-                        .trim()
-                        .isEmpty,
-                  ),
-                  // Address field - display only
-                  Container(
-                    margin: const EdgeInsets.only(top: 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    const SizedBox(height: 20),
+                    Row(
                       children: [
-                        Text(
-                          'Address'.tr,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppThemeData.grey900,
-                            fontFamily: AppThemeData.semiBold,
-                            fontWeight: FontWeight.w500,
+                        Expanded(
+                          child: TextFieldWidget(
+                            title: 'First Name'.tr,
+                            controller: controller.firstNameController,
+                            hintText: 'First Name'.tr,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        InkWell(
-                          // onTap: () async {
-                          //   final selectedAddress = await Get.to(
-                          //         () => const AddressListScreen(),
-                          //   );
-                          //   if (selectedAddress != null &&
-                          //       selectedAddress is ShippingAddress) {
-                          //     controller.updateSelectedAddress(selectedAddress);
-                          //   }
-                          // },
-                          onTap: () {
-                            Get.to(() => const AddressListScreen());
-                          },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppThemeData.grey50,
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: AppThemeData.grey200,
-                                width: 1,
-                              ),
-                            ),
-                            child: _buildAddressContent(controller),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: TextFieldWidget(
+                            title: 'Last Name'.tr,
+                            controller: controller.lastNameController,
+                            hintText: 'Last Name'.tr,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
+                    TextFieldWidget(
+                      title: 'Email'.tr,
+                      textInputType: TextInputType.emailAddress,
+                      controller: controller.emailController,
+                      hintText: 'Email'.tr,
+                      enable: true,
+                    ),
+                    TextFieldWidget(
+                      title: 'Phone Number'.tr,
+                      textInputType: TextInputType.phone,
+                      controller: controller.phoneNumberController,
+                      hintText: 'Phone Number'.tr,
+                      enable: controller.phoneNumberController.text
+                          .trim()
+                          .isEmpty,
+                    ),
+                    // Address field - display only
+                    Container(
+                      margin: const EdgeInsets.only(top: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Address'.tr,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: AppThemeData.grey900,
+                              fontFamily: AppThemeData.semiBold,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            // onTap: () async {
+                            //   final selectedAddress = await Get.to(
+                            //         () => const AddressListScreen(),
+                            //   );
+                            //   if (selectedAddress != null &&
+                            //       selectedAddress is ShippingAddress) {
+                            //     controller.updateSelectedAddress(selectedAddress);
+                            //   }
+                            // },
+                            onTap: () {
+                              Get.to(() => const AddressListScreen());
+                            },
+                            borderRadius: BorderRadius.circular(8),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppThemeData.grey50,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppThemeData.grey200,
+                                  width: 1,
+                                ),
+                              ),
+                              child: _buildAddressContent(controller),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          bottomNavigationBar: Container(
-            color: AppThemeData.grey50,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: RoundedButtonFill(
-                title: "Save Details".tr,
-                height: 5.5,
-                color: AppThemeData.primary300,
-                textColor: AppThemeData.grey50,
-                fontSizes: 16,
-                onPress: () async {
-                  await controller.saveData(context);
-                  myProfileProvider.initFunction(context: context);
-                },
+            bottomNavigationBar: Container(
+              color: AppThemeData.grey50,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: RoundedButtonFill(
+                  title: "Save Details".tr,
+                  height: 5.5,
+                  color: AppThemeData.primary300,
+                  textColor: AppThemeData.grey50,
+                  fontSizes: 16,
+                  onPress: () async {
+                    await controller.saveData(context);
+                    myProfileProvider.initFunction(context: context);
+                  },
+                ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 

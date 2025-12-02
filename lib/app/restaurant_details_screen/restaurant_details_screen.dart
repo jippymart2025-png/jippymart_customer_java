@@ -34,7 +34,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     double initialBottomPadding = 10;
     double bottomSafeAreaPadding = MediaQuery.of(context).size.height * 0.033;
-
     bottomSafeAreaPadding = bottomSafeAreaPadding - initialBottomPadding;
     if (bottomSafeAreaPadding < initialBottomPadding) {
       bottomSafeAreaPadding = initialBottomPadding;
