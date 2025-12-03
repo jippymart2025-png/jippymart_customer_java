@@ -35,7 +35,9 @@ class OrderPlacingScreen extends StatelessWidget {
               ),
               body: controller.isLoading
                   ? Constant.loader(message: "Preparing your order...".tr)
-                  : controller.isPlacing
+                  : (controller.isPlacing || 
+                      (controller.orderModel.id != null && 
+                       controller.orderModel.id.toString().isNotEmpty))
                   ? Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
@@ -292,6 +294,11 @@ class OrderPlacingScreen extends StatelessWidget {
                     ),
               bottomNavigationBar: Consumer2<OrderProvider, DashBoardProvider>(
                 builder: (context, orderProvider, dashBoardProvider, _) {
+                  // Show Track Order button when order is placed (has ID)
+                  final isOrderPlaced = controller.isPlacing || 
+                      (controller.orderModel.id != null && 
+                       controller.orderModel.id.toString().isNotEmpty);
+                  
                   return Container(
                     color: AppThemeData.grey50,
                     padding: const EdgeInsets.symmetric(
@@ -300,7 +307,7 @@ class OrderPlacingScreen extends StatelessWidget {
                     ),
                     child: Padding(
                       padding: const EdgeInsets.only(bottom: 20),
-                      child: controller.isPlacing
+                      child: isOrderPlaced
                           ? RoundedButtonFill(
                               title: "Track Order".tr,
                               height: 5.5,

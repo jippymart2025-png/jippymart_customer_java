@@ -339,8 +339,8 @@ class ShippingAddress {
       lat = _parseDouble(locationData['latitude']);
       lng = _parseDouble(locationData['longitude']);
     }
-    if (lat == null) lat = _parseDouble(json['latitude']);
-    if (lng == null) lng = _parseDouble(json['longitude']);
+    lat ??= _parseDouble(json['latitude']);
+    lng ??= _parseDouble(json['longitude']);
     UserLocation? location;
     if (lat != null && lng != null) {
       location = UserLocation(latitude: lat, longitude: lng);

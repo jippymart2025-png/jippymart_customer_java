@@ -29,7 +29,8 @@ class AddressListProvider extends ChangeNotifier {
   UserLocation location = UserLocation();
   ShippingAddress shippingModel = ShippingAddress();
   bool isLoading = false;
-  bool _addressesInitialized = false; // Tracks if addresses have been loaded (for internal tracking)
+  bool _addressesInitialized =
+      false; // Tracks if addresses have been loaded (for internal tracking)
   String? _lastLoadedUserId; // Tracks which user's addresses were last loaded
   late HomeProvider homeProvider;
 
@@ -44,43 +45,50 @@ class AddressListProvider extends ChangeNotifier {
     _lastLoadedUserId = null;
   }
 
-  Future<void> initFunction({required BuildContext context, bool forceRefresh = false}) async {
+  Future<void> initFunction({
+    required BuildContext context,
+    bool forceRefresh = false,
+  }) async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
-      
+
       // Check if user has changed - if so, reset and reload
       if (_lastLoadedUserId != null && _lastLoadedUserId != userId) {
         print('[ADDRESS_LIST_PROVIDER] User changed, resetting addresses');
         resetInitialization();
         shippingAddressList.clear();
       }
-      
+
       // Force refresh if requested or if not initialized
       if (forceRefresh) {
         resetInitialization();
       }
-      
+
       // Always refresh from API to get latest addresses
       homeProvider = Provider.of<HomeProvider>(context, listen: false);
-      
+
       // Fetch fresh user profile from API
       if (userId != null && userId.isNotEmpty) {
         final userModel = await getUserProfile(userId);
         if (userModel != null) {
           Constant.userModel = userModel;
-          
+
           // Update addresses list from fresh data
           if (userModel.shippingAddress != null) {
-            shippingAddressList = List<ShippingAddress>.from(userModel.shippingAddress ?? []);
-            print('[ADDRESS_LIST_PROVIDER] Loaded ${shippingAddressList.length} addresses from API');
-            
+            shippingAddressList = List<ShippingAddress>.from(
+              userModel.shippingAddress ?? [],
+            );
+            print(
+              '[ADDRESS_LIST_PROVIDER] Loaded ${shippingAddressList.length} addresses from API',
+            );
+
             // Also update the local userModel
             this.userModel = userModel;
           } else {
             shippingAddressList.clear();
             print('[ADDRESS_LIST_PROVIDER] No shipping addresses found');
           }
-          
+
           _lastLoadedUserId = userId;
           _addressesInitialized = true;
           notifyListeners();
@@ -331,6 +339,10 @@ class AddressListProvider extends ChangeNotifier {
               'locality': address.locality ?? '',
               'latitude': address.location?.latitude,
               'longitude': address.location?.longitude,
+              "location": {
+                "latitude": address.location?.latitude,
+                "longitude": address.location?.longitude,
+              },
               'isDefault': address.isDefault ?? false,
               'zoneId': address.zoneId, // Optional
             };
