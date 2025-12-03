@@ -580,6 +580,7 @@ class CartControllerProvider extends ChangeNotifier {
   DeliveryCharge? _cachedDeliveryCharge;
   List<CouponModel>? _cachedCouponList;
   DateTime? _lastCacheTime;
+  String? _cachedContext; // Track context used for cached coupons
   static const Duration cacheExpiry = Duration(minutes: 5);
 
   // Flag to prevent multiple simultaneous coupon loads
@@ -1558,17 +1559,26 @@ class CartControllerProvider extends ChangeNotifier {
     _isLoadingCoupons = true;
     try {
       _detectCurrentContext();
-      // Make only ONE API call instead of three identical calls
-      final allCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('[COUPON_LOAD] ⏱️ Coupon API call timed out');
-              return <CouponModel>[];
-            },
-          );
+      // Make only ONE API call - use correct method based on context
+      final allCoupons = _currentContext == "mart"
+          ? await RestaurantDetailsProvider.getMartCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
+                return <CouponModel>[];
+              },
+            )
+          : await RestaurantDetailsProvider.getRestaurantCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out');
+                return <CouponModel>[];
+              },
+            );
 
       final filteredGlobalCoupons = allCoupons
           .where(
@@ -1609,6 +1619,7 @@ class CartControllerProvider extends ChangeNotifier {
           );
 
       _cachedCouponList = contextFilteredCoupons;
+      _cachedContext = _currentContext; // Store context used for cache
       _updateCacheTime();
 
       couponList = contextFilteredCoupons;
@@ -1702,17 +1713,27 @@ class CartControllerProvider extends ChangeNotifier {
     _isLoadingCoupons = true;
 
     try {
-      // Make only ONE API call
-      final allCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('[COUPON_LOAD] ⏱️ Fallback: Coupon API call timed out');
-              return <CouponModel>[];
-            },
-          );
+      _detectCurrentContext();
+      // Make only ONE API call - use correct method based on context
+      final allCoupons = _currentContext == "mart"
+          ? await RestaurantDetailsProvider.getMartCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Fallback: Mart coupon API call timed out');
+                return <CouponModel>[];
+              },
+            )
+          : await RestaurantDetailsProvider.getRestaurantCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Fallback: Restaurant coupon API call timed out');
+                return <CouponModel>[];
+              },
+            );
 
       final filteredGlobalCoupons = allCoupons
           .where(
@@ -1737,6 +1758,7 @@ class CartControllerProvider extends ChangeNotifier {
       final combinedAllCoupons = [...allCoupons];
 
       _cachedCouponList = combinedCoupons.cast<CouponModel>();
+      _cachedContext = _currentContext; // Store context used for cache
       _updateCacheTime();
 
       // Update observable lists
@@ -1931,14 +1953,27 @@ class CartControllerProvider extends ChangeNotifier {
       print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
       return;
     }
+    
+    // Detect current context first
+    _detectCurrentContext();
+    
+    // Check if context has changed - if so, clear cache
+    if (_cachedContext != null && _cachedContext != _currentContext) {
+      print('[COUPON_LOAD] 🔄 Context changed from $_cachedContext to $_currentContext, clearing cache');
+      _cachedCouponList = null;
+      _lastCacheTime = null;
+      couponList = [];
+      allCouponList = [];
+    }
+    
     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
       if (couponList.isEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
         notifyListeners();
       }
-      if (_isCacheValid()) {
-        return; // Cache is still valid, no need to reload
+      if (_isCacheValid() && _cachedContext == _currentContext) {
+        return; // Cache is still valid and context matches, no need to reload
       }
     }
     if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
@@ -1963,16 +1998,26 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       _detectCurrentContext();
 
-      final globalCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: '',
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('[COUPON_LOAD] ⏱️ Global coupon API call timed out');
-              return <CouponModel>[];
-            },
-          );
+      // Load global coupons based on context (mart or restaurant)
+      final globalCoupons = _currentContext == "mart"
+          ? await RestaurantDetailsProvider.getMartCoupons(
+              restaurantId: '',
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Global mart coupon API call timed out');
+                return <CouponModel>[];
+              },
+            )
+          : await RestaurantDetailsProvider.getRestaurantCoupons(
+              restaurantId: '',
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Global restaurant coupon API call timed out');
+                return <CouponModel>[];
+              },
+            );
 
       final filteredGlobalCoupons = globalCoupons
           .where(
@@ -1990,6 +2035,7 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       _cachedCouponList = contextFilteredCoupons;
+      _cachedContext = _currentContext; // Store context used for cache
       _updateCacheTime();
 
       // Update observable lists

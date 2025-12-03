@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/order_model.dart';
@@ -43,8 +42,22 @@ class RateProductProvider extends ChangeNotifier {
     required OrderModel orderModel,
     required String productId,
   }) async {
-    orderModel = orderModel;
-    productId = productId;
+    // Reset all state to ensure clean initialization
+    isLoading = true;
+    this.orderModel = orderModel;
+    this.productId = productId;
+    ratings = 0.0;
+    commentController.clear();
+    reviewAttribute = <String, dynamic>{};
+    images.clear();
+    ratingModel = RatingModel();
+    reviewAttributeList.clear();
+    reviewProductAttributes = <String, dynamic>{};
+    vendorReviewSum = 0.0;
+    vendorReviewCount = 0.0;
+    productReviewSum = 0.0;
+    productReviewCount = 0.0;
+    
     await FireStoreUtils.getOrderReviewsByID(
       orderModel.id.toString(),
       productId,
@@ -53,12 +66,11 @@ class RateProductProvider extends ChangeNotifier {
         ratingModel = value;
         ratings = value.rating ?? 0.0;
         commentController.text = value.comment.toString();
-        reviewAttribute = value.reviewAttributes!;
+        reviewAttribute = value.reviewAttributes ?? <String, dynamic>{};
         images.addAll(value.photos ?? []);
         notifyListeners();
       }
     });
-
     await FireStoreUtils.getProductById(productId.split('~').first).then((
       value,
     ) {
@@ -67,7 +79,6 @@ class RateProductProvider extends ChangeNotifier {
         if (ratingModel.id != null) {
           productReviewCount = value.reviewsCount! - 1;
           productReviewSum = value.reviewsSum! - ratings;
-
           if (value.reviewAttributes != null) {
             value.reviewAttributes!.forEach((key, value) {
               ReviewsAttribute reviewsAttributeModel =
@@ -179,7 +190,7 @@ class RateProductProvider extends ChangeNotifier {
         id: ratingModel.id ?? Constant.getUuid(),
         orderId: orderModel.id,
         vendorId: productModel.vendorID,
-        createdAt: Timestamp.now().toString(),
+        createdAt: DateTime.now().toIso8601String(),
         uname: Constant.userModel!.fullName(),
         profile: Constant.userModel!.profilePictureURL,
         reviewAttributes: reviewAttribute,
