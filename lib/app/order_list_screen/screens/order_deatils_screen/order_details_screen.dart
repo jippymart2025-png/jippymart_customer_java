@@ -397,13 +397,11 @@ class OrderDetailsScreen extends StatelessWidget {
         );
       }
     }
-
     totalAmount =
         (subTotal - couponAmount - specialDiscountAmount) +
         taxAmount +
         (isFreeDelivery ? 0.0 : deliveryCharges) +
         deliveryTips;
-
     return OrderBillDetails(
       subTotal: subTotal,
       deliveryCharges: deliveryCharges,
@@ -2143,17 +2141,17 @@ class OrderDetailsScreen extends StatelessWidget {
                                                   displayFreeDistance) {
                                             return Row(
                                               children: [
-                                                Text(
-                                                  'Free Delivery',
-                                                  textAlign: TextAlign.start,
-                                                  style: TextStyle(
-                                                    fontFamily:
-                                                        AppThemeData.regular,
-                                                    color:
-                                                        AppThemeData.success400,
-                                                    fontSize: 16,
-                                                  ),
-                                                ),
+                                                // Text(
+                                                //   'Free Delivery',
+                                                //   textAlign: TextAlign.start,
+                                                //   style: TextStyle(
+                                                //     fontFamily:
+                                                //         AppThemeData.regular,
+                                                //     color:
+                                                //         AppThemeData.success400,
+                                                //     fontSize: 16,
+                                                //   ),
+                                                // ),
                                                 const SizedBox(width: 8),
                                                 Text(
                                                   Constant.amountShow(
@@ -2240,20 +2238,19 @@ class OrderDetailsScreen extends StatelessWidget {
                                               ],
                                             );
                                           }
-
                                           // Default case - paid delivery
                                           return Row(
                                             children: [
-                                              Text(
-                                                'Delivery Charge',
-                                                textAlign: TextAlign.start,
-                                                style: TextStyle(
-                                                  fontFamily:
-                                                      AppThemeData.regular,
-                                                  color: AppThemeData.grey900,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
+                                              // Text(
+                                              //   'Delivery Charge',
+                                              //   textAlign: TextAlign.start,
+                                              //   style: TextStyle(
+                                              //     fontFamily:
+                                              //         AppThemeData.regular,
+                                              //     color: AppThemeData.grey900,
+                                              //     fontSize: 16,
+                                              //   ),
+                                              // ),
                                               const SizedBox(width: 8),
                                               Text(
                                                 Constant.amountShow(

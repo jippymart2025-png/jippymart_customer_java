@@ -139,6 +139,7 @@ class EditProfileProvider extends ChangeNotifier {
         Get.back(result: true);
       });
       notifyListeners();
+      ShowToastDialog.showToast("Profile Data Updated");
       Get.back(result: "profile_updated");
     }
   }

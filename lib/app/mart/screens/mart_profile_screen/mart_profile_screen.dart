@@ -438,7 +438,7 @@ class MartProfileScreen extends StatelessWidget {
             builder: (context, loginProvider, _) {
               return TextButton(
                 onPressed: () async {
-                  loginProvider.otpEditingController.clear();
+                  // loginProvider.otpEditingController.clear();
                   loginProvider.logout(context);
                 },
                 child: const Text(

@@ -37,10 +37,12 @@ class SignupProvider extends ChangeNotifier {
   }) {
     phoneNUmberEditingController.text = phoneNumber;
     countryCodeEditingController.text = countryCode;
+    firstNameEditingController.clear();
+    lastNameEditingController.clear();
+    emailEditingController.clear();
     notifyListeners();
   }
 
-  // In your _makeApiCall method, make sure it accepts 201 as success
   Future<dynamic> _makeApiCall(
     String endpoint,
     Map<String, dynamic> data,
@@ -91,10 +93,11 @@ class SignupProvider extends ChangeNotifier {
         "firstName": firstNameEditingController.value.text.trim(),
         "lastName": lastNameEditingController.value.text.trim(),
         "email": emailEditingController.value.text.trim().toLowerCase(),
-        "phone":
-            "$countryCode${phoneNUmberEditingController.value.text.trim()}",
+        "phone": phoneNUmberEditingController.value.text.trim(),
+        "countryCode": "+91",
       };
       final endpoint = authToken.isNotEmpty ? 'complete-profile' : 'signup';
+      print("signupData ${signupData} ");
       final response = await _makeApiCall(
         endpoint,
         signupData,

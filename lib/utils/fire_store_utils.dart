@@ -1056,6 +1056,7 @@ class FireStoreUtils {
   static Future<bool?> setRatingModel(RatingModel ratingModel) async {
     bool isAdded = false;
     try {
+      print("setRatingModel ${ratingModel.toJson()} ");
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}firestore/ratings'),
         headers: await getHeaders(),

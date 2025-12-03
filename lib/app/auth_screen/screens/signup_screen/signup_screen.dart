@@ -175,7 +175,8 @@ class SignupScreen extends StatelessWidget {
                                 "Please enter valid email".tr,
                               );
                             } else if (!controller.isValidEmail(
-                              controller.emailEditingController.value.text,
+                              controller.emailEditingController.value.text
+                                  .trim(),
                             )) {
                               ShowToastDialog.showToast(
                                 "Invalid email format".tr,

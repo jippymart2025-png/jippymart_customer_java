@@ -26,7 +26,8 @@ class LoginProvider extends ChangeNotifier {
   TextEditingController passwordEditingController = TextEditingController();
   bool passwordVisible = true;
   TextEditingController phoneEditingController = TextEditingController();
-  TextEditingController otpEditingController = TextEditingController();
+
+  // TextEditingController otpEditingController = TextEditingController();
   bool isOtpSent = false;
   bool isVerifying = false;
   String authToken = '';
@@ -51,10 +52,6 @@ class LoginProvider extends ChangeNotifier {
       }
       return true;
     });
-  }
-
-  void initFunction() {
-    // No Firebase initialization needed
   }
 
   // Helper method for API calls
@@ -100,7 +97,7 @@ class LoginProvider extends ChangeNotifier {
     }
     this.countryCode = countryCode;
     String cleanCountryCode = countryCode.replaceAll('+', '');
-    String fullPhoneNumber = '$cleanCountryCode$phone';
+    String fullPhoneNumber = phone;
     print('[DEBUG] sendOtp() called with full phone: $fullPhoneNumber');
     print(
       '[DEBUG] Country code: $countryCode, Clean country code: $cleanCountryCode',
@@ -108,9 +105,7 @@ class LoginProvider extends ChangeNotifier {
     ShowToastDialog.showLoader("Please wait".tr);
     try {
       phoneNumber = fullPhoneNumber;
-      final response = await _makeApiCall('send-otp', {
-        'phone': fullPhoneNumber,
-      }, 'POST');
+      final response = await _makeApiCall('send-otp', {'phone': phone}, 'POST');
       print('[DEBUG] sendOtp() response: $response');
       if (response['success'] == true) {
         isOtpSent = true;
@@ -132,8 +127,9 @@ class LoginProvider extends ChangeNotifier {
   Future<void> verifyOtp(
     BuildContext context,
     SplashProvider splashProvider,
+    String otps,
   ) async {
-    final otp = otpEditingController.value.text.trim();
+    final otp = otps;
     if (otp.length < 4) {
       ShowToastDialog.showToast("Please enter valid OTP".tr);
       return;
@@ -146,7 +142,7 @@ class LoginProvider extends ChangeNotifier {
       final enteredPhone = phoneEditingController.value.text.trim();
       String fullPhoneNumber = phoneNumber.isNotEmpty
           ? phoneNumber
-          : '$cleanCountryCode$enteredPhone';
+          : enteredPhone;
       if (fullPhoneNumber.isEmpty) {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast("Phone number missing. Please retry.".tr);
@@ -156,10 +152,9 @@ class LoginProvider extends ChangeNotifier {
         context,
         listen: false,
       );
-      final response = await _makeApiCall('verify-otp', {
-        'phone': fullPhoneNumber,
-        'otp': otp,
-      }, 'POST');
+      var bodyOtp = {'phone': fullPhoneNumber, 'otp': otp};
+      print("verifyOtp $bodyOtp");
+      final response = await _makeApiCall('verify-otp', bodyOtp, 'POST');
       if (response['success'] == true) {
         authToken = response['token'] ?? '';
         await secureStorage.write(key: 'api_token', value: authToken);
@@ -227,8 +222,7 @@ class LoginProvider extends ChangeNotifier {
 
   Future<void> resendOtp() async {
     String cleanCountryCode = countryCode.replaceAll('+', '');
-    String fullPhoneNumber =
-        '$cleanCountryCode${phoneEditingController.value.text.trim()}';
+    String fullPhoneNumber = '${phoneEditingController.value.text.trim()}';
     print('[DEBUG] resendOtp() called with full phone: $fullPhoneNumber');
     ShowToastDialog.showLoader("Resending OTP...");
     try {
@@ -287,7 +281,7 @@ class LoginProvider extends ChangeNotifier {
     await secureStorage.delete(key: 'user_email');
     await secureStorage.delete(key: 'user_phone');
     await secureStorage.delete(key: 'user_countryCode');
-    otpEditingController = TextEditingController();
+    phoneEditingController.clear();
     phoneEditingController = TextEditingController();
     Get.offAll(() => PhoneNumberScreen());
   }

@@ -580,7 +580,6 @@ class CartControllerProvider extends ChangeNotifier {
   DeliveryCharge? _cachedDeliveryCharge;
   List<CouponModel>? _cachedCouponList;
   DateTime? _lastCacheTime;
-  String? _cachedContext; // Track context used for cached coupons
   static const Duration cacheExpiry = Duration(minutes: 5);
 
   // Flag to prevent multiple simultaneous coupon loads
@@ -1559,26 +1558,17 @@ class CartControllerProvider extends ChangeNotifier {
     _isLoadingCoupons = true;
     try {
       _detectCurrentContext();
-      // Make only ONE API call - use correct method based on context
-      final allCoupons = _currentContext == "mart"
-          ? await RestaurantDetailsProvider.getMartCoupons(
-              restaurantId: restaurantId,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
-                return <CouponModel>[];
-              },
-            )
-          : await RestaurantDetailsProvider.getRestaurantCoupons(
-              restaurantId: restaurantId,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out');
-                return <CouponModel>[];
-              },
-            );
+      // Make only ONE API call instead of three identical calls
+      final allCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: restaurantId,
+          ).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[COUPON_LOAD] ⏱️ Coupon API call timed out');
+              return <CouponModel>[];
+            },
+          );
 
       final filteredGlobalCoupons = allCoupons
           .where(
@@ -1619,7 +1609,6 @@ class CartControllerProvider extends ChangeNotifier {
           );
 
       _cachedCouponList = contextFilteredCoupons;
-      _cachedContext = _currentContext; // Store context used for cache
       _updateCacheTime();
 
       couponList = contextFilteredCoupons;
@@ -1713,27 +1702,17 @@ class CartControllerProvider extends ChangeNotifier {
     _isLoadingCoupons = true;
 
     try {
-      _detectCurrentContext();
-      // Make only ONE API call - use correct method based on context
-      final allCoupons = _currentContext == "mart"
-          ? await RestaurantDetailsProvider.getMartCoupons(
-              restaurantId: restaurantId,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Fallback: Mart coupon API call timed out');
-                return <CouponModel>[];
-              },
-            )
-          : await RestaurantDetailsProvider.getRestaurantCoupons(
-              restaurantId: restaurantId,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Fallback: Restaurant coupon API call timed out');
-                return <CouponModel>[];
-              },
-            );
+      // Make only ONE API call
+      final allCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: restaurantId,
+          ).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[COUPON_LOAD] ⏱️ Fallback: Coupon API call timed out');
+              return <CouponModel>[];
+            },
+          );
 
       final filteredGlobalCoupons = allCoupons
           .where(
@@ -1758,7 +1737,6 @@ class CartControllerProvider extends ChangeNotifier {
       final combinedAllCoupons = [...allCoupons];
 
       _cachedCouponList = combinedCoupons.cast<CouponModel>();
-      _cachedContext = _currentContext; // Store context used for cache
       _updateCacheTime();
 
       // Update observable lists
@@ -1953,27 +1931,14 @@ class CartControllerProvider extends ChangeNotifier {
       print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
       return;
     }
-    
-    // Detect current context first
-    _detectCurrentContext();
-    
-    // Check if context has changed - if so, clear cache
-    if (_cachedContext != null && _cachedContext != _currentContext) {
-      print('[COUPON_LOAD] 🔄 Context changed from $_cachedContext to $_currentContext, clearing cache');
-      _cachedCouponList = null;
-      _lastCacheTime = null;
-      couponList = [];
-      allCouponList = [];
-    }
-    
     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
       if (couponList.isEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
         notifyListeners();
       }
-      if (_isCacheValid() && _cachedContext == _currentContext) {
-        return; // Cache is still valid and context matches, no need to reload
+      if (_isCacheValid()) {
+        return; // Cache is still valid, no need to reload
       }
     }
     if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
@@ -1998,26 +1963,16 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       _detectCurrentContext();
 
-      // Load global coupons based on context (mart or restaurant)
-      final globalCoupons = _currentContext == "mart"
-          ? await RestaurantDetailsProvider.getMartCoupons(
-              restaurantId: '',
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Global mart coupon API call timed out');
-                return <CouponModel>[];
-              },
-            )
-          : await RestaurantDetailsProvider.getRestaurantCoupons(
-              restaurantId: '',
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Global restaurant coupon API call timed out');
-                return <CouponModel>[];
-              },
-            );
+      final globalCoupons =
+          await RestaurantDetailsProvider.getRestaurantCoupons(
+            restaurantId: '',
+          ).timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[COUPON_LOAD] ⏱️ Global coupon API call timed out');
+              return <CouponModel>[];
+            },
+          );
 
       final filteredGlobalCoupons = globalCoupons
           .where(
@@ -2035,7 +1990,6 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       _cachedCouponList = contextFilteredCoupons;
-      _cachedContext = _currentContext; // Store context used for cache
       _updateCacheTime();
 
       // Update observable lists
@@ -2357,10 +2311,8 @@ class CartControllerProvider extends ChangeNotifier {
             } else if (hasMartItems) {
             } else {}
           } else if ((element.title?.toLowerCase() ?? '').contains('gst')) {
-            // Calculate GST only on actual delivery charges paid, not on original/base fee
-            // When delivery is free (deliveryCharges = 0), no GST should be charged
             gst = Constant.calculateTax(
-              amount: deliveryCharges.toString(),
+              amount: originalDeliveryFee.toString(),
               taxModel: element,
             );
             if (hasPromotionalItemsForTax) {
@@ -2375,9 +2327,7 @@ class CartControllerProvider extends ChangeNotifier {
       print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
       if (taxAmount == 0.0) {
         double sgstFallback = subTotal * 0.05; // 5%
-        // Calculate GST fallback only on actual delivery charges paid, not on original/base fee
-        // When delivery is free (deliveryCharges = 0), no GST should be charged
-        double gstFallback = deliveryCharges * 0.18; // 18%
+        double gstFallback = originalDeliveryFee * 0.18; // 18%
         taxAmount = sgstFallback + gstFallback;
         print(
           "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
@@ -2701,6 +2651,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   ///finded
+
   placeOrder(BuildContext context) async {
     if (_isOrderInProgress()) {
       ShowToastDialog.showToast(
@@ -2713,25 +2664,6 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.showToast("Please wait before trying again...".tr);
       return;
     }
-
-    // 🔑 CRITICAL: Prevent Razorpay orders from being placed without payment completion
-    // Razorpay orders MUST go through placeOrderAfterPayment() after successful payment
-    if (selectedPaymentMethod == PaymentGateway.razorpay.name) {
-      ShowToastDialog.showToast(
-        "Payment is required before placing order. Please complete payment first."
-            .tr,
-      );
-      return;
-    }
-
-    // 🔑 CRITICAL: Prevent orders if payment is in progress (race condition protection)
-    if (isPaymentInProgress) {
-      ShowToastDialog.showToast(
-        "Payment is in progress. Please wait for payment to complete.".tr,
-      );
-      return;
-    }
-
     _startOrderProcessing();
     lastOrderAttempt = DateTime.now();
     try {
@@ -2756,9 +2688,12 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-
-      // 🔑 Only process COD and Wallet orders here
-      // Razorpay orders are blocked at the beginning of this method
+      if (isPaymentCompleted &&
+          _lastPaymentId != null &&
+          (selectedPaymentMethod.isEmpty ||
+              selectedPaymentMethod == PaymentGateway.cod.name)) {
+        selectedPaymentMethod = PaymentGateway.razorpay.name;
+      }
       if (selectedPaymentMethod == PaymentGateway.wallet.name) {
         if (double.parse(userModel.walletAmount.toString()) >= totalAmount) {
           await setOrder();
@@ -2768,14 +2703,8 @@ class CartControllerProvider extends ChangeNotifier {
           );
           endOrderProcessing();
         }
-      } else if (selectedPaymentMethod == PaymentGateway.cod.name) {
-        await setOrder();
       } else {
-        ShowToastDialog.showToast(
-          "Invalid payment method. Please select a valid payment method.".tr,
-        );
-        endOrderProcessing();
-        return;
+        await setOrder();
       }
     } catch (e) {
       print('DEBUG: Error in placeOrder: $e');
@@ -3159,8 +3088,6 @@ class CartControllerProvider extends ChangeNotifier {
         // Continue with default maxNumber
       }
 
-      log("CartUserMode ${userModel.toJson()}");
-
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
@@ -3222,6 +3149,7 @@ class CartControllerProvider extends ChangeNotifier {
         const JsonEncoder.withIndent('  ').convert(orderPayload),
         name: "ORDER_PAYLOAD",
       );
+      // **API CALL: Store the order**
       print('🌐 Creating order via API...');
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}mobile/orders'),
@@ -3231,8 +3159,6 @@ class CartControllerProvider extends ChangeNotifier {
       if (response.statusCode != 200 && response.statusCode != 201) {
         throw Exception('API returned status code: ${response.statusCode}');
       }
-      log("mobileorders ${orderModel.author?.toJson()} ");
-      log("mobileorders ${response.body} ");
       final responseData = json.decode(response.body);
       orderModel.id = responseData['data']['order_id'];
       if (responseData['success'] != true) {
@@ -3299,8 +3225,6 @@ class CartControllerProvider extends ChangeNotifier {
       selectedCouponModel = CouponModel();
       couponCodeController.text = '';
       couponAmount = 0.0;
-      deliveryTips = 0.0; // 🔑 Reset delivery tips after successful order
-      reMarkController.clear(); // 🔑 Reset remarks after successful order
       calculatePrice();
       await _clearPersistentPaymentState();
       ShowToastDialog.closeLoader();
@@ -3529,45 +3453,22 @@ class CartControllerProvider extends ChangeNotifier {
   /// ✅ NEW: Safe payment success handler with crash prevention
   void handlePaymentSuccess(PaymentSuccessResponse response) {
     try {
-      // 🔑 CRITICAL: Prevent duplicate payment success callbacks (race condition protection)
-      if (isPaymentCompleted && _lastPaymentId != null) {
-        print(
-          '🔑 [PAYMENT] Payment already completed, ignoring duplicate callback',
-        );
-        return;
-      }
-
-      // 🔑 CRITICAL: Prevent order processing if already in progress
-      if (_isOrderInProgress()) {
-        print('🔑 [PAYMENT] Order already in progress, waiting...');
-        return;
-      }
-
       isGlobalLocked = true;
       _lastPaymentId = response.paymentId;
       _lastPaymentTime = DateTime.now();
       isPaymentCompleted = true;
 
-      // 🔑 CRITICAL: Ensure payment method is set correctly
-      if (selectedPaymentMethod != PaymentGateway.razorpay.name) {
-        selectedPaymentMethod = PaymentGateway.razorpay.name;
-      }
-
       ShowToastDialog.showLoader("Processing payment and placing order...".tr);
 
       Future.delayed(const Duration(milliseconds: 500), () async {
         print('🔑 RAZORPAY SUCCESS - Starting order placement after delay');
-        // 🔑 CRITICAL: Use placeOrderAfterPayment() which has proper payment validation
-        await placeOrderAfterPayment();
+        placeOrderAfterPayment();
         isGlobalLocked = false;
       });
       notifyListeners();
     } catch (e) {
       isGlobalLocked = false;
       isPaymentInProgress = false;
-      isPaymentCompleted = false;
-      _lastPaymentId = null;
-      _lastPaymentTime = null;
       ShowToastDialog.showToast(
         "Payment processing failed. Please try again.".tr,
       );
@@ -3878,19 +3779,8 @@ class CartControllerProvider extends ChangeNotifier {
   // 🔑 ENHANCED PLACE ORDER AFTER PAYMENT - NEW IMPLEMENTATION
   placeOrderAfterPayment() async {
     try {
-      // 🔑 CRITICAL: Prevent duplicate order placement
-      if (_isOrderInProgress()) {
-        print(
-          '🔑 [ORDER_AFTER_PAYMENT] Order already in progress, skipping duplicate call',
-        );
-        return;
-      }
-
       // 🔑 VALIDATE PAYMENT STATE BEFORE PROCEEDING
       if (!isPaymentCompleted || _lastPaymentId == null) {
-        ShowToastDialog.showToast(
-          "Payment verification failed. Please try again.".tr,
-        );
         throw Exception('Payment validation failed - no valid payment found');
       }
 
@@ -3898,10 +3788,6 @@ class CartControllerProvider extends ChangeNotifier {
       if (_lastPaymentTime != null) {
         final timeSincePayment = DateTime.now().difference(_lastPaymentTime!);
         if (timeSincePayment > paymentTimeout) {
-          ShowToastDialog.showToast(
-            "Payment session expired. Please try again.".tr,
-          );
-          _resetPaymentState();
           throw Exception('Payment session expired');
         }
       }
@@ -3912,9 +3798,6 @@ class CartControllerProvider extends ChangeNotifier {
         // If payment method is empty or COD, but we have a successful payment, set it to razorpay
         selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
-
-      // 🔑 Start order processing to prevent duplicates
-      _startOrderProcessing();
 
       // Prevent order if fallback location is used - apply to ALL payment methods
       if (selectedAddress?.locality == 'Ongole, Andhra Pradesh, India' ||

@@ -21,379 +21,386 @@ class RateProductScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<RateProductProvider>(
-      builder: (context, controller, _) {
-        return Scaffold(
-          backgroundColor: AppThemeData.surface,
-          appBar: AppBar(
+    return SafeArea(
+      child: Consumer<RateProductProvider>(
+        builder: (context, controller, _) {
+          return Scaffold(
             backgroundColor: AppThemeData.surface,
-            centerTitle: false,
-            titleSpacing: 0,
-            title: Text(
-              "Rate the food".tr,
-              textAlign: TextAlign.start,
-              style: TextStyle(
-                fontFamily: AppThemeData.medium,
-                fontSize: 16,
-                color: AppThemeData.grey900,
+            appBar: AppBar(
+              backgroundColor: AppThemeData.surface,
+              centerTitle: false,
+              titleSpacing: 0,
+              title: Text(
+                "Rate the food".tr,
+                textAlign: TextAlign.start,
+                style: TextStyle(
+                  fontFamily: AppThemeData.medium,
+                  fontSize: 16,
+                  color: AppThemeData.grey900,
+                ),
               ),
             ),
-          ),
-          body: controller.isLoading
-              ? Constant.loader()
-              : Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      children: [
-                        Container(
-                          width: Responsive.width(100, context),
-                          decoration: ShapeDecoration(
-                            color: AppThemeData.grey50,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+            body: controller.isLoading
+                ? Constant.loader()
+                : Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          Container(
+                            width: Responsive.width(100, context),
+                            decoration: ShapeDecoration(
+                              color: AppThemeData.grey50,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
                             ),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 20,
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Rate for".tr,
-                                  style: TextStyle(
-                                    color: AppThemeData.grey500,
-                                    fontSize: 16,
-                                    fontFamily: AppThemeData.medium,
-                                  ),
-                                ),
-                                Text(
-                                  "${controller.productModel.name}".tr,
-                                  style: TextStyle(
-                                    color: AppThemeData.grey800,
-                                    fontSize: 18,
-                                    fontFamily: AppThemeData.semiBold,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                RatingBar.builder(
-                                  initialRating: controller.ratings,
-                                  minRating: 1,
-                                  direction: Axis.horizontal,
-                                  itemCount: 5,
-                                  itemSize: 26,
-                                  itemPadding: const EdgeInsets.symmetric(
-                                    horizontal: 6.0,
-                                  ),
-                                  itemBuilder: (context, _) => const Icon(
-                                    Icons.star,
-                                    color: AppThemeData.warning300,
-                                  ),
-                                  onRatingUpdate: (double rate) {
-                                    controller.ratings = rate;
-                                  },
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 20,
-                                  ),
-                                  child: MySeparator(
-                                    color: AppThemeData.grey200,
-                                  ),
-                                ),
-                                ListView.builder(
-                                  itemCount:
-                                      controller.reviewAttributeList.length,
-                                  shrinkWrap: true,
-                                  physics: const NeverScrollableScrollPhysics(),
-                                  padding: EdgeInsets.zero,
-                                  itemBuilder: (context, index) {
-                                    return Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 2,
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              controller
-                                                  .reviewAttributeList[index]
-                                                  .title
-                                                  .toString(),
-                                              style: TextStyle(
-                                                color: AppThemeData.grey900,
-                                                fontSize: 16,
-                                                fontFamily:
-                                                    AppThemeData.semiBold,
-                                              ),
-                                            ),
-                                          ),
-                                          RatingBar.builder(
-                                            initialRating:
-                                                controller.ratingModel.id ==
-                                                    null
-                                                ? 0.0
-                                                : controller
-                                                          .ratingModel
-                                                          .reviewAttributes![controller
-                                                          .reviewAttributeList[index]
-                                                          .id] ??
-                                                      0.0,
-                                            minRating: 1,
-                                            direction: Axis.horizontal,
-                                            itemCount: 5,
-                                            itemSize: 18,
-                                            itemPadding:
-                                                const EdgeInsets.symmetric(
-                                                  horizontal: 2.0,
-                                                ),
-                                            itemBuilder: (context, _) =>
-                                                const Icon(
-                                                  Icons.star,
-                                                  color:
-                                                      AppThemeData.warning300,
-                                                ),
-                                            onRatingUpdate: (double rate) {
-                                              controller.reviewAttribute
-                                                  .addEntries([
-                                                    MapEntry(
-                                                      controller
-                                                          .reviewAttributeList[index]
-                                                          .id
-                                                          .toString(),
-                                                      rate,
-                                                    ),
-                                                  ]);
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: 20),
-                                DottedBorder(
-                                  options: RoundedRectDottedBorderOptions(
-                                    color: AppThemeData.primary300,
-                                    strokeWidth: 1,
-                                    radius: const Radius.circular(12),
-                                    dashPattern: const [6, 6, 6, 6],
-                                  ),
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: AppThemeData.grey50,
-                                      borderRadius: const BorderRadius.all(
-                                        Radius.circular(12),
-                                      ),
-                                    ),
-                                    child: SizedBox(
-                                      height: Responsive.height(20, context),
-                                      width: Responsive.width(90, context),
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          SvgPicture.asset(
-                                            'assets/icons/ic_folder.svg',
-                                          ),
-                                          const SizedBox(height: 10),
-                                          Text(
-                                            "Choose a image and upload here".tr,
-                                            style: TextStyle(
-                                              color: AppThemeData.grey800,
-                                              fontFamily: AppThemeData.medium,
-                                              fontSize: 16,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 5),
-                                          Text(
-                                            "JPEG, PNG".tr,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: AppThemeData.grey700,
-                                              fontFamily: AppThemeData.regular,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 10),
-                                          RoundedButtonFill(
-                                            title: "Brows Image".tr,
-                                            color: AppThemeData.primary50,
-                                            width: 30,
-                                            height: 5,
-                                            textColor: AppThemeData.primary300,
-                                            onPress: () async {
-                                              buildBottomSheet(
-                                                context,
-                                                controller,
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 20,
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Rate for".tr,
+                                    style: TextStyle(
+                                      color: AppThemeData.grey500,
+                                      fontSize: 16,
+                                      fontFamily: AppThemeData.medium,
                                     ),
                                   ),
-                                ),
-                                const SizedBox(height: 10),
-                                controller.images.isEmpty
-                                    ? const SizedBox()
-                                    : SizedBox(
-                                        height: 90,
-                                        child: Column(
+                                  Text(
+                                    "${controller.productModel.name}".tr,
+                                    style: TextStyle(
+                                      color: AppThemeData.grey800,
+                                      fontSize: 18,
+                                      fontFamily: AppThemeData.semiBold,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  RatingBar.builder(
+                                    initialRating: controller.ratings,
+                                    minRating: 1,
+                                    direction: Axis.horizontal,
+                                    itemCount: 5,
+                                    itemSize: 26,
+                                    itemPadding: const EdgeInsets.symmetric(
+                                      horizontal: 6.0,
+                                    ),
+                                    itemBuilder: (context, _) => const Icon(
+                                      Icons.star,
+                                      color: AppThemeData.warning300,
+                                    ),
+                                    onRatingUpdate: (double rate) {
+                                      controller.ratings = rate;
+                                    },
+                                  ),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 20,
+                                    ),
+                                    child: MySeparator(
+                                      color: AppThemeData.grey200,
+                                    ),
+                                  ),
+                                  ListView.builder(
+                                    itemCount:
+                                        controller.reviewAttributeList.length,
+                                    shrinkWrap: true,
+                                    physics:
+                                        const NeverScrollableScrollPhysics(),
+                                    padding: EdgeInsets.zero,
+                                    itemBuilder: (context, index) {
+                                      return Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 2,
+                                        ),
+                                        child: Row(
                                           children: [
                                             Expanded(
-                                              child: ListView.builder(
-                                                itemCount:
-                                                    controller.images.length,
-                                                shrinkWrap: true,
-                                                scrollDirection:
-                                                    Axis.horizontal,
-                                                // physics: const NeverScrollableScrollPhysics(),
-                                                itemBuilder: (context, index) {
-                                                  return Padding(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 5,
-                                                        ),
-                                                    child: Stack(
-                                                      children: [
-                                                        ClipRRect(
-                                                          borderRadius:
-                                                              const BorderRadius.all(
-                                                                Radius.circular(
-                                                                  10,
-                                                                ),
-                                                              ),
-                                                          child:
-                                                              controller
-                                                                      .images[index]
-                                                                      .runtimeType ==
-                                                                  XFile
-                                                              ? Image.file(
-                                                                  File(
-                                                                    controller
-                                                                        .images[index]
-                                                                        .path,
-                                                                  ),
-                                                                  fit: BoxFit
-                                                                      .cover,
-                                                                  width: 80,
-                                                                  height: 80,
-                                                                )
-                                                              : NetworkImageWidget(
-                                                                  imageUrl:
-                                                                      controller
-                                                                          .images[index],
-                                                                  fit: BoxFit
-                                                                      .cover,
-                                                                  width: 80,
-                                                                  height: 80,
-                                                                  fixOrientation:
-                                                                      true,
-                                                                ),
-                                                        ),
-                                                        Positioned(
-                                                          bottom: 0,
-                                                          top: 0,
-                                                          left: 0,
-                                                          right: 0,
-                                                          child: InkWell(
-                                                            onTap: () {
-                                                              controller.images
-                                                                  .removeAt(
-                                                                    index,
-                                                                  );
-                                                            },
-                                                            child: const Icon(
-                                                              Icons
-                                                                  .remove_circle,
-                                                              size: 28,
-                                                              color: AppThemeData
-                                                                  .danger300,
-                                                            ),
-                                                          ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                },
+                                              child: Text(
+                                                controller
+                                                    .reviewAttributeList[index]
+                                                    .title
+                                                    .toString(),
+                                                style: TextStyle(
+                                                  color: AppThemeData.grey900,
+                                                  fontSize: 16,
+                                                  fontFamily:
+                                                      AppThemeData.semiBold,
+                                                ),
+                                              ),
+                                            ),
+                                            RatingBar.builder(
+                                              initialRating:
+                                                  controller.ratingModel.id ==
+                                                      null
+                                                  ? 0.0
+                                                  : controller
+                                                            .ratingModel
+                                                            .reviewAttributes![controller
+                                                            .reviewAttributeList[index]
+                                                            .id] ??
+                                                        0.0,
+                                              minRating: 1,
+                                              direction: Axis.horizontal,
+                                              itemCount: 5,
+                                              itemSize: 18,
+                                              itemPadding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 2.0,
+                                                  ),
+                                              itemBuilder: (context, _) =>
+                                                  const Icon(
+                                                    Icons.star,
+                                                    color:
+                                                        AppThemeData.warning300,
+                                                  ),
+                                              onRatingUpdate: (double rate) {
+                                                controller.reviewAttribute
+                                                    .addEntries([
+                                                      MapEntry(
+                                                        controller
+                                                            .reviewAttributeList[index]
+                                                            .id
+                                                            .toString(),
+                                                        rate,
+                                                      ),
+                                                    ]);
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  const SizedBox(height: 20),
+                                  DottedBorder(
+                                    options: RoundedRectDottedBorderOptions(
+                                      color: AppThemeData.primary300,
+                                      strokeWidth: 1,
+                                      radius: const Radius.circular(12),
+                                      dashPattern: const [6, 6, 6, 6],
+                                    ),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: AppThemeData.grey50,
+                                        borderRadius: const BorderRadius.all(
+                                          Radius.circular(12),
+                                        ),
+                                      ),
+                                      child: SizedBox(
+                                        height: Responsive.height(20, context),
+                                        width: Responsive.width(90, context),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            SvgPicture.asset(
+                                              'assets/icons/ic_folder.svg',
+                                            ),
+                                            const SizedBox(height: 10),
+                                            Text(
+                                              "Choose a image and upload here"
+                                                  .tr,
+                                              style: TextStyle(
+                                                color: AppThemeData.grey800,
+                                                fontFamily: AppThemeData.medium,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 5),
+                                            Text(
+                                              "JPEG, PNG".tr,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppThemeData.grey700,
+                                                fontFamily:
+                                                    AppThemeData.regular,
                                               ),
                                             ),
                                             const SizedBox(height: 10),
+                                            RoundedButtonFill(
+                                              title: "Brows Image".tr,
+                                              color: AppThemeData.primary50,
+                                              width: 30,
+                                              height: 5,
+                                              textColor:
+                                                  AppThemeData.primary300,
+                                              onPress: () async {
+                                                buildBottomSheet(
+                                                  context,
+                                                  controller,
+                                                );
+                                              },
+                                            ),
                                           ],
                                         ),
                                       ),
-                                DottedBorder(
-                                  options: RoundedRectDottedBorderOptions(
-                                    color: AppThemeData.primary300,
-                                    strokeWidth: 1,
-                                    radius: const Radius.circular(12),
-                                    dashPattern: const [6, 6],
-                                  ),
-                                  child: TextFormField(
-                                    keyboardType: TextInputType.text,
-                                    textCapitalization:
-                                        TextCapitalization.sentences,
-                                    controller: controller.commentController,
-                                    maxLines: 4,
-                                    textInputAction: TextInputAction.done,
-                                    style: TextStyle(
-                                      color: AppThemeData.grey900,
-                                      fontFamily: AppThemeData.medium,
-                                    ),
-                                    decoration: InputDecoration(
-                                      errorStyle: const TextStyle(
-                                        color: Colors.red,
-                                      ),
-                                      filled: true,
-                                      fillColor: AppThemeData.grey50,
-                                      disabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      errorBorder: InputBorder.none,
-                                      border: InputBorder.none,
-                                      hintText: "Type comment".tr,
-                                      hintStyle: TextStyle(
-                                        fontSize: 14,
-                                        color: AppThemeData.grey400,
-                                        fontFamily: AppThemeData.regular,
-                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(height: 10),
+                                  controller.images.isEmpty
+                                      ? const SizedBox()
+                                      : SizedBox(
+                                          height: 90,
+                                          child: Column(
+                                            children: [
+                                              Expanded(
+                                                child: ListView.builder(
+                                                  itemCount:
+                                                      controller.images.length,
+                                                  shrinkWrap: true,
+                                                  scrollDirection:
+                                                      Axis.horizontal,
+                                                  // physics: const NeverScrollableScrollPhysics(),
+                                                  itemBuilder: (context, index) {
+                                                    return Padding(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 5,
+                                                          ),
+                                                      child: Stack(
+                                                        children: [
+                                                          ClipRRect(
+                                                            borderRadius:
+                                                                const BorderRadius.all(
+                                                                  Radius.circular(
+                                                                    10,
+                                                                  ),
+                                                                ),
+                                                            child:
+                                                                controller
+                                                                        .images[index]
+                                                                        .runtimeType ==
+                                                                    XFile
+                                                                ? Image.file(
+                                                                    File(
+                                                                      controller
+                                                                          .images[index]
+                                                                          .path,
+                                                                    ),
+                                                                    fit: BoxFit
+                                                                        .cover,
+                                                                    width: 80,
+                                                                    height: 80,
+                                                                  )
+                                                                : NetworkImageWidget(
+                                                                    imageUrl:
+                                                                        controller
+                                                                            .images[index],
+                                                                    fit: BoxFit
+                                                                        .cover,
+                                                                    width: 80,
+                                                                    height: 80,
+                                                                    fixOrientation:
+                                                                        true,
+                                                                  ),
+                                                          ),
+                                                          Positioned(
+                                                            bottom: 0,
+                                                            top: 0,
+                                                            left: 0,
+                                                            right: 0,
+                                                            child: InkWell(
+                                                              onTap: () {
+                                                                controller
+                                                                    .images
+                                                                    .removeAt(
+                                                                      index,
+                                                                    );
+                                                              },
+                                                              child: const Icon(
+                                                                Icons
+                                                                    .remove_circle,
+                                                                size: 28,
+                                                                color: AppThemeData
+                                                                    .danger300,
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                              const SizedBox(height: 10),
+                                            ],
+                                          ),
+                                        ),
+                                  DottedBorder(
+                                    options: RoundedRectDottedBorderOptions(
+                                      color: AppThemeData.primary300,
+                                      strokeWidth: 1,
+                                      radius: const Radius.circular(12),
+                                      dashPattern: const [6, 6],
+                                    ),
+                                    child: TextFormField(
+                                      keyboardType: TextInputType.text,
+                                      textCapitalization:
+                                          TextCapitalization.sentences,
+                                      controller: controller.commentController,
+                                      maxLines: 4,
+                                      textInputAction: TextInputAction.done,
+                                      style: TextStyle(
+                                        color: AppThemeData.grey900,
+                                        fontFamily: AppThemeData.medium,
+                                      ),
+                                      decoration: InputDecoration(
+                                        errorStyle: const TextStyle(
+                                          color: Colors.red,
+                                        ),
+                                        filled: true,
+                                        fillColor: AppThemeData.grey50,
+                                        disabledBorder: InputBorder.none,
+                                        focusedBorder: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        errorBorder: InputBorder.none,
+                                        border: InputBorder.none,
+                                        hintText: "Type comment".tr,
+                                        hintStyle: TextStyle(
+                                          fontSize: 14,
+                                          color: AppThemeData.grey400,
+                                          fontFamily: AppThemeData.regular,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
+            bottomNavigationBar: Container(
+              color: AppThemeData.grey50,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: RoundedButtonFill(
+                  title: "Submit Review".tr,
+                  height: 5.5,
+                  color: AppThemeData.primary300,
+                  textColor: AppThemeData.grey50,
+                  onPress: () async {
+                    controller.saveRating();
+                  },
                 ),
-          bottomNavigationBar: Container(
-            color: AppThemeData.grey50,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 20),
-              child: RoundedButtonFill(
-                title: "Submit Review".tr,
-                height: 5.5,
-                color: AppThemeData.primary300,
-                textColor: AppThemeData.grey50,
-                onPress: () async {
-                  controller.saveRating();
-                },
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
