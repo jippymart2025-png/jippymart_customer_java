@@ -40,8 +40,6 @@ Widget buildDeliveryFeeUI({
       isFreeDelivery && currentFee > 0.0 && originalFee > 0.0;
   if (isFreeDelivery) {
     if (isFreeDeliveryWithExtraCharge) {
-      // Special case: Free delivery eligible but with extra charge due to distance
-      // Show: Green "Free Delivery" + strikethrough original fee + extra charge
       print('[DELIVERY_UI] 🎯 Special case: Free delivery with extra charge');
       return Row(
         children: [

@@ -108,25 +108,54 @@ class RazorpayCrashPrevention {
   /// Opens Razorpay payment with crash prevention
   Future<bool> safeOpenPayment(Map<String, dynamic> options) async {
     try {
+      log('🔑 [RAZORPAY_CRASH_PREVENTION] safeOpenPayment called');
+      log('🔑 [RAZORPAY_CRASH_PREVENTION] _isInitialized: $_isInitialized, _isInitializationSafe: $_isInitializationSafe');
+      
       if (!_isInitialized || !_isInitializationSafe) {
         log(
-          'RAZORPAY_CRASH_PREVENTION: Razorpay not safely initialized, cannot open payment',
+          '❌ [RAZORPAY_CRASH_PREVENTION] Razorpay not safely initialized, cannot open payment',
         );
         return false;
       }
+      
       // ✅ CRITICAL: Validate options before opening payment
+      log('🔑 [RAZORPAY_CRASH_PREVENTION] Validating payment options...');
       if (!_validatePaymentOptions(options)) {
-        log('RAZORPAY_CRASH_PREVENTION: Invalid payment options');
+        log('❌ [RAZORPAY_CRASH_PREVENTION] Invalid payment options');
         return false;
       }
 
-      log('RAZORPAY_CRASH_PREVENTION: Opening payment with validated options');
-      _razorpay!.open(options);
-
-      log('RAZORPAY_CRASH_PREVENTION: ✅ Payment opened successfully');
-      return true;
-    } catch (e) {
-      log('RAZORPAY_CRASH_PREVENTION: ❌ Error opening payment: $e');
+      log('✅ [RAZORPAY_CRASH_PREVENTION] Payment options validated');
+      log('🔑 [RAZORPAY_CRASH_PREVENTION] Opening payment with validated options');
+      log('🔑 [RAZORPAY_CRASH_PREVENTION] Razorpay instance: ${_razorpay != null ? "exists" : "null"}');
+      
+      if (_razorpay == null) {
+        log('❌ [RAZORPAY_CRASH_PREVENTION] Razorpay instance is null');
+        return false;
+      }
+      
+      // 🔑 CRITICAL: Call open synchronously - Razorpay.open() opens a native activity
+      // In Flutter, all Dart code runs on the main thread, so we can call it directly
+      try {
+        log('🔑 [RAZORPAY_CRASH_PREVENTION] Calling Razorpay.open() with options');
+        log('🔑 [RAZORPAY_CRASH_PREVENTION] Options: key=${options['key']?.toString().substring(0, 10)}..., amount=${options['amount']}, order_id=${options['order_id']}');
+        
+        // Call open directly - it's a synchronous call that opens native activity
+        _razorpay!.open(options);
+        
+        // Small delay to ensure the native activity starts
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        log('✅ [RAZORPAY_CRASH_PREVENTION] Payment opened successfully - open() called');
+        return true;
+      } catch (openError, stackTrace) {
+        log('❌ [RAZORPAY_CRASH_PREVENTION] Error calling Razorpay.open(): $openError');
+        log('❌ [RAZORPAY_CRASH_PREVENTION] Stack trace: $stackTrace');
+        rethrow;
+      }
+    } catch (e, stackTrace) {
+      log('❌ [RAZORPAY_CRASH_PREVENTION] Error opening payment: $e');
+      log('❌ [RAZORPAY_CRASH_PREVENTION] Stack trace: $stackTrace');
       return false;
     }
   }

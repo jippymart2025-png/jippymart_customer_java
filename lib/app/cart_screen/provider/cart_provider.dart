@@ -84,37 +84,109 @@ class CartControllerProvider extends ChangeNotifier {
       controller.endOrderProcessing();
       return;
     }
+    
+    // 🔑 CRITICAL: Validate payment method is selected
+    if (controller.selectedPaymentMethod.isEmpty) {
+      ShowToastDialog.showToast("Please select payment method".tr);
+      controller.endOrderProcessing();
+      return;
+    }
+    
     if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
+      // 🔑 CRITICAL: For COD, verify it's allowed
+      if (controller.subTotal > 599) {
+        ShowToastDialog.showToast(
+          "Cash on Delivery is not available for orders above ₹599. Please select online payment."
+              .tr,
+        );
+        controller.endOrderProcessing();
+        return;
+      }
+      if (controller.hasPromotionalItems()) {
+        ShowToastDialog.showToast(
+          "Cash on Delivery is not available for promotional items. Please select online payment."
+              .tr,
+        );
+        controller.endOrderProcessing();
+        return;
+      }
       controller.placeOrder(context);
       print(" controller.placeOrder(context); ");
     } else if (controller.selectedPaymentMethod ==
         PaymentGateway.razorpay.name) {
-      RazorPayController()
-          .createOrderRazorPay(
-            amount: double.parse(controller.totalAmount.toString()),
-            razorpayModel: controller.razorPayModel,
-          )
-          .then((value) async {
-            if (value == null) {
-              Get.back();
-              ShowToastDialog.showToast(
-                "Something went wrong, please contact admin.".tr,
-              );
-              // 🔑 CRITICAL: Reset processing flag on RazorPay order creation failure
-              controller.endOrderProcessing();
-            } else {
-              CreateRazorPayOrderModel result = value;
-              controller.openCheckout(amount: value.amount, orderId: result.id);
-            }
-          })
-          .catchError((error) {
-            // 🔑 CRITICAL: Handle any errors during RazorPay order creation
-            Get.back();
-            ShowToastDialog.showToast(
-              "Failed to create payment order. Please try again.".tr,
+      // 🔑 CRITICAL: Ensure Razorpay is properly configured
+      if (controller.razorPayModel.razorpayKey == null ||
+          controller.razorPayModel.razorpayKey!.isEmpty) {
+        print('❌ [RAZORPAY] Razorpay key is missing or empty');
+        ShowToastDialog.showToast(
+          "Payment configuration error. Please contact support.".tr,
+        );
+        controller.endOrderProcessing();
+        return;
+      }
+      
+      print('✅ [RAZORPAY] Razorpay key found: ${controller.razorPayModel.razorpayKey!.substring(0, 10)}...');
+      
+      // 🔑 CRITICAL: Reset payment state before starting new payment
+      controller.isPaymentInProgress = false;
+      controller.isPaymentCompleted = false;
+      controller._lastPaymentId = null;
+      
+      print('🔑 [RAZORPAY] Starting payment flow for amount: ${controller.totalAmount}');
+      
+      try {
+        final orderResult = await RazorPayController()
+            .createOrderRazorPay(
+              amount: double.parse(controller.totalAmount.toString()),
+              razorpayModel: controller.razorPayModel,
             );
-            controller.endOrderProcessing();
-          });
+        
+        if (orderResult == null) {
+          print('❌ [RAZORPAY] Order creation returned null');
+          Get.back();
+          ShowToastDialog.showToast(
+            "Something went wrong, please contact admin.".tr,
+          );
+          controller.endOrderProcessing();
+          return;
+        }
+        
+        print('✅ [RAZORPAY] Order created successfully: ${orderResult.id}');
+        print('🔑 [RAZORPAY] Order amount (paise): ${orderResult.amount}, Order ID: ${orderResult.id}');
+        
+        // 🔑 CRITICAL: Convert amount from paise to rupees for openCheckout
+        // orderResult.amount is in paise, but openCheckout expects rupees and converts to paise internally
+        final amountInRupees = orderResult.amount / 100.0;
+        print('🔑 [RAZORPAY] Amount in rupees: $amountInRupees');
+        
+        // 🔑 CRITICAL: Check if checkout opens successfully
+        print('🔑 [RAZORPAY] Attempting to open checkout...');
+        final checkoutOpened = await controller.openCheckout(
+          amount: amountInRupees, 
+          orderId: orderResult.id,
+        );
+        
+        if (!checkoutOpened) {
+          print('❌ [RAZORPAY] Checkout failed to open');
+          // 🔑 CRITICAL: If checkout failed to open, prevent order placement
+          ShowToastDialog.showToast(
+            "Failed to open payment gateway. Please try again.".tr,
+          );
+          controller.endOrderProcessing();
+          return;
+        }
+        
+        print('✅ [RAZORPAY] Checkout opened successfully');
+      } catch (error, stackTrace) {
+        // 🔑 CRITICAL: Handle any errors during RazorPay order creation
+        print('❌ [RAZORPAY] Exception in payment flow: $error');
+        print('❌ [RAZORPAY] Stack trace: $stackTrace');
+        Get.back();
+        ShowToastDialog.showToast(
+          "Failed to create payment order. Please try again.".tr,
+        );
+        controller.endOrderProcessing();
+      }
     } else {
       ShowToastDialog.showToast("Please select payment method".tr);
       // 🔑 CRITICAL: Reset processing flag when no payment method is selected
@@ -2520,11 +2592,15 @@ class CartControllerProvider extends ChangeNotifier {
         (item) => item.promoId != null && item.promoId!.isNotEmpty,
       );
       final hasMartItems = hasMartItemsInCart();
-      // Determine how much of the delivery fee is actually taxable.
-      // When delivery is free, we should not charge GST on the waived base fee.
+      // 🔑 FIXED: Calculate tax ONLY on deliveryCharges (what customer actually pays)
+      // When delivery is free (above ₹299), customer only pays extra km charge
+      // Tax should be calculated on the actual amount charged, not on waived base charge
+      // Example: If customer pays ₹7 (extra km), tax should be on ₹7, not on ₹30 (base + extra)
       final double taxableDeliveryFee = deliveryCharges > 0
-          ? originalDeliveryFee
+          ? deliveryCharges
           : 0.0;
+      
+      print('[TAX_CALC] Delivery charges (customer pays): ₹$deliveryCharges, Original fee (waived): ₹$originalDeliveryFee, Taxable fee: ₹$taxableDeliveryFee');
 
       if (Constant.taxList != null) {
         for (var element in Constant.taxList!) {
@@ -2550,15 +2626,15 @@ class CartControllerProvider extends ChangeNotifier {
       sgst = sgst.isNaN ? 0.0 : sgst;
       gst = gst.isNaN ? 0.0 : gst;
       taxAmount = sgst + gst;
-      print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
+      print('[TAX_CALC] Tax from tax list: SGST: ₹$sgst, GST: ₹$gst, Total: ₹$taxAmount');
       if (taxAmount == 0.0) {
-        double sgstFallback = subTotal * 0.05; // 5%
+        double sgstFallback = subTotal * 0.05; // 5% on subtotal
         double gstFallback = taxableDeliveryFee > 0
-            ? taxableDeliveryFee * 0.18
-            : 0.0; // 18%
+            ? taxableDeliveryFee * 0.18  // 18% on delivery charges (what customer pays)
+            : 0.0;
         taxAmount = sgstFallback + gstFallback;
         print(
-          "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
+          '[TAX_CALC] Fallback tax applied → SGST (5% of ₹$subTotal): ₹$sgstFallback, GST (18% of ₹$taxableDeliveryFee): ₹$gstFallback, Total: ₹$taxAmount',
         );
       }
       if (taxAmount.isNaN) taxAmount = 0.0;
@@ -3007,6 +3083,26 @@ class CartControllerProvider extends ChangeNotifier {
         _endOrderProcessing();
         return;
       }
+      
+      // 🔑 CRITICAL: Validate payment method is selected
+      if (selectedPaymentMethod.isEmpty) {
+        ShowToastDialog.showToast("Please select payment method".tr);
+        endOrderProcessing();
+        return;
+      }
+      
+      // 🔑 CRITICAL: For Razorpay, ensure payment was completed
+      if (selectedPaymentMethod == PaymentGateway.razorpay.name) {
+        if (!isPaymentCompleted || _lastPaymentId == null) {
+          ShowToastDialog.showToast(
+            "Payment not completed. Please complete payment before placing order."
+                .tr,
+          );
+          endOrderProcessing();
+          return;
+        }
+      }
+      
       if (selectedPaymentMethod == PaymentGateway.cod.name && subTotal > 599) {
         ShowToastDialog.showToast(
           "Cash on Delivery is not available for orders above ₹599. Please select another payment method."
@@ -3693,23 +3789,27 @@ class CartControllerProvider extends ChangeNotifier {
 
   Razorpay? get razorPay => _razorpayCrashPrevention.razorpayInstance;
 
-  void openCheckout({required amount, required orderId}) async {
+  Future<bool> openCheckout({required amount, required orderId}) async {
+    print('🔑 [RAZORPAY_CHECKOUT] Starting openCheckout - amount: $amount, orderId: $orderId');
+    
     if (isPaymentInProgress) {
+      print('⚠️ [RAZORPAY_CHECKOUT] Payment already in progress');
       ShowToastDialog.showToast(
         "Payment is already in progress. Please wait...".tr,
       );
-      return;
+      return false;
     }
 
     if (isPaymentCompleted) {
+      print('⚠️ [RAZORPAY_CHECKOUT] Payment already completed');
       ShowToastDialog.showToast(
         "Payment already completed. Please refresh the page.".tr,
       );
-      return;
+      return false;
     }
 
     if (!_razorpayCrashPrevention.isInitialized) {
-      print('🔑 Initializing Razorpay with crash prevention...');
+      print('🔑 [RAZORPAY_CHECKOUT] Razorpay not initialized, initializing with crash prevention...');
       final initialized = await _razorpayCrashPrevention.safeInitialize(
         onSuccess: handlePaymentSuccess,
         onFailure: handlePaymentError,
@@ -3717,37 +3817,53 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       if (!initialized) {
+        print('❌ [RAZORPAY_CHECKOUT] Razorpay initialization failed');
         ShowToastDialog.showToast(
           "Payment system is temporarily unavailable. Please try again later."
               .tr,
         );
-        return;
+        return false;
       }
+      print('✅ [RAZORPAY_CHECKOUT] Razorpay initialized successfully');
+    } else {
+      print('✅ [RAZORPAY_CHECKOUT] Razorpay already initialized');
     }
 
     // 🔑 SET PAYMENT IN PROGRESS STATE
     isPaymentInProgress = true;
+    print('🔑 [RAZORPAY_CHECKOUT] Payment in progress flag set');
 
     // 🔑 CRITICAL FIX: Validate Razorpay configuration before creating options
     if (razorPayModel.razorpayKey == null ||
         razorPayModel.razorpayKey!.isEmpty) {
+      print('❌ [RAZORPAY_CHECKOUT] Razorpay key is null or empty');
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
       );
-      return;
+      return false;
     }
 
     if (!razorPayModel.razorpayKey!.startsWith('rzp_')) {
+      print('❌ [RAZORPAY_CHECKOUT] Invalid Razorpay key format: ${razorPayModel.razorpayKey}');
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
       );
-      return;
+      return false;
     }
 
     // 🔑 CRITICAL FIX: Convert amount to int to pass validation
-    final int amountInPaise = (double.parse(amount.toString()) * 100).round();
+    int amountInPaise;
+    if (amount is int) {
+      amountInPaise = amount;
+    } else if (amount is double) {
+      amountInPaise = (amount * 100).round();
+    } else {
+      amountInPaise = (double.parse(amount.toString()) * 100).round();
+    }
+    
+    print('🔑 [RAZORPAY_CHECKOUT] Amount in paise: $amountInPaise');
 
     var options = {
       'key': razorPayModel.razorpayKey,
@@ -3763,24 +3879,34 @@ class CartControllerProvider extends ChangeNotifier {
         'wallets': ['paytm'],
       },
     };
+    
+    print('🔑 [RAZORPAY_CHECKOUT] Payment options prepared: ${options.toString().replaceAll(razorPayModel.razorpayKey!, 'rzp_***')}');
     notifyListeners();
+    
     try {
+      print('🔑 [RAZORPAY_CHECKOUT] Calling safeOpenPayment...');
       final success = await _razorpayCrashPrevention.safeOpenPayment(options);
+      
       if (success) {
+        print('✅ [RAZORPAY_CHECKOUT] Payment gateway opened successfully');
+        return true;
       } else {
+        print('❌ [RAZORPAY_CHECKOUT] safeOpenPayment returned false');
         isPaymentInProgress = false;
         ShowToastDialog.showToast(
           "Failed to open payment gateway. Please try again.".tr,
         );
+        return false;
       }
-      notifyListeners();
-    } catch (e) {
+    } catch (e, stackTrace) {
       // 🔑 RESET PAYMENT STATE ON ERROR
+      print('❌ [RAZORPAY_CHECKOUT] Exception in openCheckout: $e');
+      print('❌ [RAZORPAY_CHECKOUT] Stack trace: $stackTrace');
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Failed to open payment gateway. Please try again.".tr,
       );
-      debugPrint('Error: $e');
+      return false;
     }
   }
 

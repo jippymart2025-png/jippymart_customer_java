@@ -36,6 +36,53 @@
 -keep class proguard.annotation.** { *; }
 -dontwarn proguard.annotation.**
 
+# Razorpay SDK - CRITICAL for release builds
+-keep class com.razorpay.** { *; }
+-dontwarn com.razorpay.**
+-keepclassmembers class com.razorpay.** { *; }
+
+# Keep Razorpay native classes
+-keep class io.flutter.plugins.razorpay_flutter.** { *; }
+-dontwarn io.flutter.plugins.razorpay_flutter.**
+
+# Keep Razorpay payment response classes
+-keep class * extends com.razorpay.PaymentData { *; }
+-keep class * implements com.razorpay.PaymentResultWithDataListener { *; }
+
+# Keep Razorpay JSON classes
+-keepclassmembers class * {
+    @com.razorpay.** <methods>;
+}
+
+# Prevent obfuscation of Razorpay constants
+-keepclassmembers class com.razorpay.Constants {
+    public static final *;
+}
+
+# Keep Razorpay CheckoutActivity and related classes
+-keep class com.razorpay.CheckoutActivity { *; }
+-keep class com.razorpay.CheckoutBridge { *; }
+-keep class com.razorpay.CheckoutBridgeImpl { *; }
+
+# Keep Razorpay WebView classes
+-keep class com.razorpay.**.WebView { *; }
+-keep class com.razorpay.**.RazorpayWebView { *; }
+
+# Keep all Razorpay methods and fields
+-keepclassmembers class com.razorpay.** {
+    *;
+}
+
+# Keep Razorpay enums
+-keepclassmembers enum com.razorpay.** {
+    *;
+}
+
+# Keep Razorpay annotations
+-keepattributes *Annotation*
+-keepattributes Signature
+-keepattributes Exceptions
+
 # Prevent removal of Flutter deferred component handling
 -keep class io.flutter.embedding.engine.deferredcomponents.** { *; }
 

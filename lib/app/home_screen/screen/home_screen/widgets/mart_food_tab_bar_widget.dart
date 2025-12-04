@@ -83,23 +83,31 @@ Widget martFoodTabBarWidgetHome({
       // This prevents unnecessary loading if mart is not available
       ShowToastDialog.showLoader("Loading mart...".tr);
       
-      // Initialize providers (these are synchronous setup calls)
-      martProvider.initFunction();
-      martNavigationProvider.initFunction(context: context);
-      
-      // CRITICAL: Close loader IMMEDIATELY after initialization
-      // Don't wait for navigation - close it right away
-      ShowToastDialog.closeLoader();
-      
-      // Small delay to ensure UI updates and loader dismissal completes
-      await Future.delayed(const Duration(milliseconds: 100));
-      
-      // Navigate to mart screen
-      await Get.to(() => const MartNavigationScreen());
-      
-      // Final safety check: Ensure loader is closed after navigation
-      // This handles edge cases where loader might persist
-      ShowToastDialog.closeLoader();
+      try {
+        // Initialize providers (these are synchronous setup calls)
+        martProvider.initFunction();
+        martNavigationProvider.initFunction(context: context);
+        
+        // Small delay to allow initialization to complete
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        // Navigate to mart screen first
+        Get.to(() => const MartNavigationScreen());
+        
+        // Close loader immediately after navigation starts
+        // Use multiple safety measures to ensure loader is closed
+        ShowToastDialog.closeLoader();
+        
+        // Additional safety: Close loader after a delay to handle any edge cases
+        Future.delayed(const Duration(milliseconds: 300), () {
+          ShowToastDialog.closeLoader();
+        });
+        
+      } catch (e) {
+        // Ensure loader is closed if anything fails
+        ShowToastDialog.closeLoader();
+        rethrow;
+      }
       
     } catch (e) {
       debugPrint("❌ Mart check failed: $e");
