@@ -54,7 +54,6 @@ class RestaurantStatusUtils {
   static Widget getStatusWidget(VendorModel vendor) {
     final status = getRestaurantStatus(vendor);
     final isClosed = !canAcceptOrders(vendor);
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       // Keep original padding

@@ -52,6 +52,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         headers: await getHeaders(),
       );
       print("getRestaurantCoupons ${url}");
+      print("getRestaurantCoupons ${response.body} ");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -1309,8 +1310,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
     } else {
       cartProductModel.id = productModel.id.toString();
-      cartProductModel.name = productModel.name!;
-      cartProductModel.photo = productModel.photo!;
+      cartProductModel.name = productModel.name ?? "";
+      cartProductModel.photo = productModel.photo ?? '';
       cartProductModel.categoryId = productModel.categoryID!;
       cartProductModel.price = price;
       cartProductModel.discountPrice = discountPrice;

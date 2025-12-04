@@ -516,7 +516,6 @@ class FireStoreUtils {
         Constant.selectedLocation.location!.latitude!,
         Constant.selectedLocation.location!.longitude!,
       );
-
       if (placeMarks.isEmpty) {
         print('[API_UTILS] No placemarks found for coordinates');
         return taxList;
@@ -554,13 +553,13 @@ class FireStoreUtils {
   static Future<bool> setProduct(ProductModel orderModel) async {
     try {
       final url = "${AppConst.baseUrl}firestore/setProduct?id=${orderModel.id}";
+      print("setProduct $url");
       final body = jsonEncode(orderModel.toJson());
       final response = await http.post(
         Uri.parse(url),
         headers: await getHeaders(),
         body: body,
       );
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {

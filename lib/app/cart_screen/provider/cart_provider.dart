@@ -1594,7 +1594,6 @@ class CartControllerProvider extends ChangeNotifier {
       final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
       final combinedAllCoupons = [...allCoupons];
 
-      // Apply context filtering
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: combinedCoupons.cast<CouponModel>(),
         contextType: _currentContext,
@@ -2300,6 +2299,11 @@ class CartControllerProvider extends ChangeNotifier {
         (item) => item.promoId != null && item.promoId!.isNotEmpty,
       );
       final hasMartItems = hasMartItemsInCart();
+      // Determine how much of the delivery fee is actually taxable.
+      // When delivery is free, we should not charge GST on the waived base fee.
+      final double taxableDeliveryFee =
+          deliveryCharges > 0 ? originalDeliveryFee : 0.0;
+
       if (Constant.taxList != null) {
         for (var element in Constant.taxList!) {
           if ((element.title?.toLowerCase() ?? '').contains('sgst')) {
@@ -2312,7 +2316,7 @@ class CartControllerProvider extends ChangeNotifier {
             } else {}
           } else if ((element.title?.toLowerCase() ?? '').contains('gst')) {
             gst = Constant.calculateTax(
-              amount: originalDeliveryFee.toString(),
+              amount: taxableDeliveryFee.toString(),
               taxModel: element,
             );
             if (hasPromotionalItemsForTax) {
@@ -2327,7 +2331,8 @@ class CartControllerProvider extends ChangeNotifier {
       print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
       if (taxAmount == 0.0) {
         double sgstFallback = subTotal * 0.05; // 5%
-        double gstFallback = originalDeliveryFee * 0.18; // 18%
+        double gstFallback =
+            taxableDeliveryFee > 0 ? taxableDeliveryFee * 0.18 : 0.0; // 18%
         taxAmount = sgstFallback + gstFallback;
         print(
           "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
