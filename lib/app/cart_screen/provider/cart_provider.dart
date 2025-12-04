@@ -1295,8 +1295,27 @@ class CartControllerProvider extends ChangeNotifier {
         productId,
       ) async {
         try {
-          final product = await FireStoreUtils.getProductById(productId);
-          _productCache[productId] = product;
+          // Check if it's a mart item by finding the cart item
+          final cartItem = HomeProvider.cartItem.firstWhere(
+            (item) {
+              if (item.id == null || item.id!.isEmpty) return false;
+              final parts = item.id!.split('~');
+              return parts.isNotEmpty && parts.first == productId;
+            },
+            orElse: () => CartProductModel(),
+          );
+          
+          final isMartItem = _isMartItem(cartItem);
+          
+          if (isMartItem) {
+            // For mart items, we don't have ProductModel - use cart data
+            // Mart items are displayed using cartProductModel data
+            _productCache[productId] = null; // Mark as loaded (null = use cart data)
+          } else {
+            // For restaurant items, fetch ProductModel
+            final product = await FireStoreUtils.getProductById(productId);
+            _productCache[productId] = product;
+          }
         } catch (e) {
           print('[CART_PRODUCT] Error loading product $productId: $e');
           _productCache[productId] = null;
@@ -1502,6 +1521,12 @@ class CartControllerProvider extends ChangeNotifier {
       }
       notifyListeners();
       await _loadCalculationCache();
+      // 🔑 OPTIMIZED: Preload products when cart data changes (incremental loading)
+      // This ensures products are ready when UI renders
+      // Load in background without blocking price calculation
+      _loadNewProductsIncrementally().catchError((e) {
+        print('[CART_DATA] Error loading products: $e');
+      });
       await calculatePrice();
       checkAndUpdatePaymentMethod();
       updateCartReadiness();
@@ -1899,19 +1924,11 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
 
-      double itemThreshold = 199.0; // Default
-      double freeDeliveryKm = 5.0; // Default
-
-      if (_martDeliverySettings != null) {
-        itemThreshold =
-            (_martDeliverySettings!['item_total_threshold'] as num?)
-                ?.toDouble() ??
-            199.0;
-        freeDeliveryKm =
-            (_martDeliverySettings!['free_delivery_distance_km'] as num?)
-                ?.toDouble() ??
-            5.0;
-      }
+      // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
+      final dc = deliveryChargeModel;
+      final itemThreshold = dc.itemTotalThreshold ?? 299; // Same as restaurant
+      final freeDeliveryKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
+      
       final isEligible =
           subTotal >= itemThreshold && totalDistance <= freeDeliveryKm;
 
@@ -2382,19 +2399,11 @@ class CartControllerProvider extends ChangeNotifier {
 
           notifyListeners();
         } else if (hasMartItems) {
-          double itemThreshold = 199.0; // Default
-          double freeDeliveryKm = 5.0; // Default
-          if (_martDeliverySettings != null) {
-            itemThreshold =
-                (_martDeliverySettings!['item_total_threshold'] as num?)
-                    ?.toDouble() ??
-                199.0;
-            freeDeliveryKm =
-                (_martDeliverySettings!['free_delivery_distance_km'] as num?)
-                    ?.toDouble() ??
-                5.0;
-          }
-          if (subTotal >= itemThreshold && totalDistance <= freeDeliveryKm) {
+          // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
+          final dc = deliveryChargeModel;
+          final threshold = dc.itemTotalThreshold ?? 299; // Same as restaurant
+          final freeKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
+          if (subTotal >= threshold && totalDistance <= freeKm) {
             isFreeDelivery = true;
           } else {
             isFreeDelivery = false;
@@ -2480,7 +2489,7 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Calculate delivery charge for mart items using static values (like restaurant)
+  /// Calculate delivery charge for mart items - Use same backend settings as restaurant
   void calculateMartDeliveryCharge() {
     // Get mart items from cart
     final martItems = HomeProvider.cartItem
@@ -2492,41 +2501,47 @@ class CartControllerProvider extends ChangeNotifier {
       calculateRegularDeliveryCharge();
       return;
     }
-    // Use static values like restaurant delivery (don't fetch from database)
-    _calculateMartDeliveryWithStaticValues();
+    // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
+    _calculateMartDeliveryWithBackendSettings();
   }
 
-  void _calculateMartDeliveryWithStaticValues() {
-    final baseCharge = 23.0; // Base delivery charge
-    final freeKm = 5.0; // Free delivery distance for mart
-    final perKm = 7.0; // Per km charge above free distance
-    final threshold = 199.0; // Free delivery threshold for mart
+  /// 🔑 Calculate mart delivery using same backend settings as restaurant
+  void _calculateMartDeliveryWithBackendSettings() {
+    // Use same deliveryChargeModel as restaurant items
+    final dc = deliveryChargeModel;
     final subtotal = subTotal;
+    final threshold = dc.itemTotalThreshold ?? 299; // Same as restaurant (₹299)
+    final baseCharge = dc.baseDeliveryCharge ?? 23;
+    final freeKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
+    final perKm = dc.perKmChargeAboveFreeDistance ?? 8; // Same as restaurant
     final distance = totalDistance;
+    
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
-    } else if (subtotal >= threshold) {
+    } else if (subtotal < threshold) {
+      // Below threshold - regular paid delivery
       if (distance <= freeKm) {
-        deliveryCharges = 0.0;
-        originalDeliveryFee = baseCharge;
+        deliveryCharges = baseCharge.toDouble();
+        originalDeliveryFee = baseCharge.toDouble();
       } else {
         double extraKm = (distance - freeKm).ceilToDouble();
-        deliveryCharges = extraKm * perKm;
-        originalDeliveryFee = baseCharge + deliveryCharges;
-      }
-      notifyListeners();
-    } else {
-      if (distance <= freeKm) {
-        deliveryCharges = baseCharge;
-        originalDeliveryFee = baseCharge;
-      } else {
-        double extraKm = (distance - freeKm).ceilToDouble();
-        deliveryCharges = baseCharge + (extraKm * perKm);
+        deliveryCharges = (baseCharge + (extraKm * perKm)).toDouble();
         originalDeliveryFee = deliveryCharges;
       }
+    } else {
+      // Above threshold - free delivery within distance
+      if (distance <= freeKm) {
+        deliveryCharges = 0.0;
+        originalDeliveryFee = baseCharge.toDouble();
+      } else {
+        double extraKm = (distance - freeKm).ceilToDouble();
+        originalDeliveryFee = (baseCharge + (extraKm * perKm)).toDouble();
+        deliveryCharges = (extraKm * perKm).toDouble();
+      }
     }
+    print("calculateMartDeliveryCharge ${deliveryCharges} (threshold: ₹$threshold, subtotal: ₹$subtotal)");
     notifyListeners();
   }
 
@@ -2629,9 +2644,109 @@ class CartControllerProvider extends ChangeNotifier {
       cartProvider.removeFromCart(cartProductModel, quantity);
       notifyListeners();
     }
-    await forceRefreshCart();
+    // 🔑 OPTIMIZED: Only refresh prices and load new products incrementally
+    // Don't clear cache or reload everything
+    await _incrementalCartUpdate();
     notifyListeners();
     return true;
+  }
+
+  /// 🔑 OPTIMIZED: Incremental cart update - only loads new products and recalculates prices
+  /// This is much faster than forceRefreshCart() which clears cache
+  Future<void> _incrementalCartUpdate() async {
+    try {
+      // Load any new products that aren't cached yet (incremental loading)
+      await _loadNewProductsIncrementally();
+      
+      // Recalculate prices (this is fast, no network calls)
+      await calculatePrice();
+      
+      // Update payment method if needed
+      checkAndUpdatePaymentMethod();
+      
+      // Update cart readiness
+      updateCartReadiness();
+      
+      notifyListeners();
+    } catch (e) {
+      print('[CART_UPDATE] Error in incremental update: $e');
+      // Fallback to full refresh only on error
+      await forceRefreshCart();
+    }
+  }
+
+  /// 🔑 Load only new products that aren't in cache (incremental loading)
+  Future<void> _loadNewProductsIncrementally() async {
+    try {
+      // Get all product IDs from current cart
+      final Set<String> productIds = {};
+      for (final cartItem in HomeProvider.cartItem) {
+        if (cartItem.id != null &&
+            cartItem.id!.isNotEmpty &&
+            cartItem.id!.toLowerCase() != 'null') {
+          final parts = cartItem.id!.split('~');
+          if (parts.isNotEmpty &&
+              parts.first.isNotEmpty &&
+              parts.first.toLowerCase() != 'null') {
+            productIds.add(parts.first);
+          }
+        }
+      }
+
+      // Find products that need to be loaded (not in cache)
+      final Set<String> productsToLoad = productIds
+          .where((id) => !_productCache.containsKey(id))
+          .toSet();
+
+      if (productsToLoad.isEmpty) {
+        // All products already cached - no loading needed
+        return;
+      }
+
+      // Load new products in parallel (non-blocking)
+      // Don't set _isLoadingProducts to true here to avoid blocking UI
+      final List<Future<void>> loadFutures = productsToLoad.map((
+        productId,
+      ) async {
+        try {
+          // Check if it's a mart item
+          final isMartItem = _isMartItem(
+            HomeProvider.cartItem.firstWhere(
+              (item) => item.id?.split('~').first == productId,
+              orElse: () => CartProductModel(),
+            ),
+          );
+
+          ProductModel? product;
+          if (isMartItem) {
+            // For mart items, we don't have ProductModel - use cart data
+            // Mart items are displayed using cartProductModel data
+            _productCache[productId] = null; // Mark as loaded (null = use cart data)
+          } else {
+            // For restaurant items, fetch ProductModel
+            product = await FireStoreUtils.getProductById(productId);
+            _productCache[productId] = product;
+          }
+          
+          // Notify listeners after each product loads (for progressive rendering)
+          notifyListeners();
+        } catch (e) {
+          print('[CART_PRODUCT] Error loading product $productId: $e');
+          _productCache[productId] = null; // Mark as loaded even on error
+        }
+      }).toList();
+
+      // Wait for all new products to load
+      await Future.wait(loadFutures);
+      
+      _productsLoaded = true;
+      notifyListeners();
+      print(
+        '[CART_PRODUCT] Incrementally loaded ${productsToLoad.length} new products',
+      );
+    } catch (e) {
+      print('[CART_PRODUCT] Error in incremental product loading: $e');
+    }
   }
 
   List<CartProductModel> tempProduc = [];

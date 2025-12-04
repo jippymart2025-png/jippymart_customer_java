@@ -57,19 +57,26 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
 
             // Use cached product from controller - no FutureBuilder needed!
             final cachedProduct = controller.getCachedProduct(productId);
+            
+            // Check if this is a mart item (mart items use cart data, not ProductModel)
+            final isMartItem = cartProductModel.vendorID?.startsWith('mart_') == true ||
+                cartProductModel.vendorID?.toLowerCase().contains('mart') == true;
 
-            // If product is not cached yet and products haven't finished loading
-            if (cachedProduct == null && !controller.productsLoaded) {
+            // If product is not cached yet and it's not a mart item
+            if (cachedProduct == null && !isMartItem && !controller.productsLoaded) {
               // Trigger load if not already loading (loads in background)
               if (!controller.isLoadingProducts) {
                 controller.preloadCartProducts();
               }
-              // Show shimmer only while actively loading
+              // Show shimmer only while actively loading restaurant items
               if (controller.isLoadingProducts) {
                 return _buildProductShimmer(cartProductModel);
               }
             }
-            // Show product item with cached data (or null if product doesn't exist)
+            
+            // Show product item:
+            // - For restaurant items: use cachedProduct (may be null if still loading)
+            // - For mart items: cachedProduct will be null, use cartProductModel data
             return _buildProductItem(
               cartProductModel,
               cachedProduct,
