@@ -25,6 +25,16 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../edit_profile_screen/provider/edit_profile_provider.dart'
     show EditProfileProvider;
 
+final InAppReview inAppReview = InAppReview.instance;
+
+void rateApp() async {
+  if (await inAppReview.isAvailable()) {
+    inAppReview.requestReview();
+  } else {
+    inAppReview.openStoreListing(); // fallback
+  }
+}
+
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
 
@@ -114,7 +124,6 @@ class ProfileScreen extends StatelessWidget {
                             ),
                           ),
                           const SizedBox(height: 20),
-
                           const SizedBox(height: 10),
                           // Text(
                           //   "Preferences".tr,
@@ -199,16 +208,15 @@ class ProfileScreen extends StatelessWidget {
                                     controller,
                                     "assets/icons/ic_rate.svg",
                                     "Rate the app",
-                                    () {
-                                      final InAppReview inAppReview =
-                                          InAppReview.instance;
-                                      inAppReview.requestReview();
+                                    () async {
+                                      final inAppReview = InAppReview.instance;
+                                      if (await inAppReview.isAvailable()) {
+                                        await inAppReview.requestReview();
+                                      } else {
+                                        await inAppReview.openStoreListing();
+                                      }
                                     },
                                   ),
-                                  // Test button for GIF generation (remove in production)
-                                  // cardDecoration(themeChange, controller, "assets/icons/ic_gift.svg", "Test GIF Generator", () {
-                                  //   Get.to(() => const FaceInCloTestScreen());
-                                  // }),
                                 ],
                               ),
                             ),

@@ -4,6 +4,7 @@ import 'package:jippymart_customer/app/address_screens/address_list_screen.dart'
 import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/favourite_screens/favourite_screen.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/home_screen_two.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/order_screen.dart';
@@ -21,6 +22,7 @@ class DashBoardProvider extends ChangeNotifier {
     CartControllerProvider cartControllerProvider,
     OrderProvider orderProvider,
     BuildContext context,
+    FavouriteProvider favouriteProvider,
   ) {
     if (index >= 0 && index < pageList.length) {
       selectedIndex = index;
@@ -29,6 +31,9 @@ class DashBoardProvider extends ChangeNotifier {
         if (homeProvider.bannerModel.isEmpty) {
           splashProvider.refreshFunction(context);
         }
+      }
+      if (index == 1) {
+        favouriteProvider.initFunction();
       }
       if (index == 2) {
         cartControllerProvider.initFunction(context);

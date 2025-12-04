@@ -38,6 +38,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   Timer? _cartStatusTimer;
   Timer? _loadingTimeoutTimer;
   MartBrandModel? brandData;
+  Stream<List<MartItemModel>>? _similarProductsStream;
 
   @override
   void initState() {
@@ -46,11 +47,22 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
     _checkCartStatus();
     _fetchDeliverySettings();
     _fetchBrandData();
+    _initializeSimilarProductsStream();
     _cartStatusTimer = Timer.periodic(Duration(seconds: 2), (timer) {
       if (mounted) {
         _checkCartStatus();
       }
     });
+  }
+
+  /// Initialize the similar products stream
+  void _initializeSimilarProductsStream() {
+    final controller = Provider.of<MartProvider>(context, listen: false);
+    _similarProductsStream = controller.streamAllProducts(
+      excludeProductId: widget.product.id,
+      isAvailable: true,
+      limit: 10,
+    );
   }
 
   /// Fetch delivery settings from Firestore
@@ -1144,7 +1156,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   }
 
   Widget _buildSimilarProducts() {
-    final controller = Provider.of<MartProvider>(context, listen: false);
     // Debug logging
     print('[SIMILAR PRODUCTS] Current product: ${widget.product.name}');
     print(
@@ -1153,7 +1164,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
     print(
       '[SIMILAR PRODUCTS] Current product subcategoryID: ${widget.product.subcategoryID}',
     );
-
     // Check if we have the required categoryID
     if (widget.product.categoryID == null ||
         widget.product.categoryID!.isEmpty) {
@@ -1175,14 +1185,13 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         ),
       );
     }
-
-    // Use stream for real-time similar products loading with timeout
+    // Initialize stream if not already initialized
+    if (_similarProductsStream == null) {
+      _initializeSimilarProductsStream();
+    }
+    // Use cached stream for real-time similar products loading
     return StreamBuilder<List<MartItemModel>>(
-      stream: controller.streamAllProducts(
-        excludeProductId: widget.product.id,
-        isAvailable: true,
-        limit: 10,
-      ),
+      stream: _similarProductsStream,
       builder: (context, snapshot) {
         print(
           '[SIMILAR PRODUCTS] Stream snapshot state: ${snapshot.connectionState}',

@@ -342,7 +342,6 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // TO PAY SECTION
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -437,25 +436,50 @@ Widget _buildDeliveryFeeSection(
       ],
     );
   }
-  // Mart items delivery logic
+  // Mart items delivery logic - Use same dynamic deliveryChargeModel as restaurant
   if (hasMartItems) {
     print('[CART_UI] 🛒 Building mart delivery UI...');
-    double itemThreshold = 199.0;
-    double freeDeliveryKm = 5.0;
-    double baseDeliveryCharge = 23.0;
+    // Use same dynamic delivery charge model as restaurant products (299 threshold)
+    const double fallbackThreshold = 299.0;
+    const double fallbackFreeKm = 5.0;
+    const double fallbackBaseCharge = 23.0;
+
+    final double itemThreshold =
+        (controller.deliveryChargeModel.itemTotalThreshold ?? fallbackThreshold)
+            .toDouble();
+    final double freeDeliveryKm =
+        (controller.deliveryChargeModel.freeDeliveryDistanceKm ??
+                fallbackFreeKm)
+            .toDouble();
+    final double baseDeliveryCharge =
+        (controller.deliveryChargeModel.baseDeliveryCharge ??
+                fallbackBaseCharge)
+            .toDouble();
+
     final subtotal = controller.subTotal;
     final distance = controller.totalDistance;
     final isAboveThreshold = subtotal >= itemThreshold;
     final isWithinFreeDistance = distance <= freeDeliveryKm;
+
+    print(
+      '[CART_UI]   - Mart threshold: ₹$itemThreshold, subtotal: ₹$subtotal, distance: ${distance}km',
+    );
+
     Widget martDeliveryWidget;
     if (isAboveThreshold) {
       if (isWithinFreeDistance) {
+        print(
+          '[CART_UI]   - Mart free delivery (above threshold + within free distance)',
+        );
         martDeliveryWidget = buildDeliveryFeeUI(
           isFreeDelivery: true,
           originalFee: baseDeliveryCharge,
           currentFee: 0.0,
         );
       } else {
+        print(
+          '[CART_UI]   - Mart free delivery with extra charge (above threshold but beyond free distance)',
+        );
         martDeliveryWidget = buildDeliveryFeeUI(
           isFreeDelivery: true,
           originalFee: baseDeliveryCharge,
@@ -463,7 +487,7 @@ Widget _buildDeliveryFeeSection(
         );
       }
     } else {
-      print('[CART_UI]   - Mart regular paid delivery');
+      print('[CART_UI]   - Mart regular paid delivery (below threshold)');
       martDeliveryWidget = buildDeliveryFeeUI(
         isFreeDelivery: false,
         originalFee: 0.0,
@@ -489,23 +513,19 @@ Widget _buildDeliveryFeeSection(
       ],
     );
   }
-
   // Regular items delivery logic
-  final threshold = controller.deliveryChargeModel.itemTotalThreshold ?? 299;
-  final freeKm = controller.deliveryChargeModel.freeDeliveryDistanceKm ?? 7;
+  final double threshold =
+      (controller.deliveryChargeModel.itemTotalThreshold ?? 299).toDouble();
+  final double freeKm =
+      (controller.deliveryChargeModel.freeDeliveryDistanceKm ?? 5).toDouble();
   final subtotal = controller.subTotal;
   final distance = controller.totalDistance;
-
   final isAboveThreshold = subtotal >= threshold;
   final isWithinFreeDistance = distance <= freeKm;
-
-  // Get the base delivery charge for restaurant items (should be ₹23)
-  double baseDeliveryCharge =
-      (controller.deliveryChargeModel.baseDeliveryCharge ?? 23.0).toDouble();
+  final double baseDeliveryCharge =
+      (controller.deliveryChargeModel.baseDeliveryCharge ?? 23).toDouble();
   print('[CART_UI]   - Base delivery charge: ₹$baseDeliveryCharge');
-
   Widget regularDeliveryWidget;
-
   if (isAboveThreshold) {
     if (isWithinFreeDistance) {
       print('[CART_UI]   - Standard free delivery');

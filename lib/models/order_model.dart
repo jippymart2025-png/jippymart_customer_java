@@ -35,6 +35,14 @@ class OrderModel {
   double? toPayAmount;
   String? surgeFee;
 
+  // NEW FIELDS
+  dynamic calculatedCharges;
+  Timestamp? orderAutoCancelAt;
+  List<dynamic>? photos;
+  List<String>? photo;
+  List<dynamic>? restaurantMenuPhotos;
+  List<dynamic>? workingHours;
+
   OrderModel({
     this.address,
     this.status,
@@ -65,6 +73,13 @@ class OrderModel {
     this.rejectedByDrivers,
     this.toPayAmount,
     this.surgeFee,
+    // NEW FIELDS IN CONSTRUCTOR
+    this.calculatedCharges,
+    this.orderAutoCancelAt,
+    this.photos,
+    this.photo,
+    this.restaurantMenuPhotos,
+    this.workingHours,
   });
 
   OrderModel.fromJson(Map<String, dynamic> json) {
@@ -75,7 +90,7 @@ class OrderModel {
     couponId = json['couponId'];
     vendorID = json['vendorID'];
     driverID = json['driverID'];
-    discount = json['discount'];
+    discount = num.parse(json['discount'].toString());
     authorID = json['authorID'];
     estimatedTimeToPrepare = json['estimatedTimeToPrepare'];
 
@@ -121,12 +136,51 @@ class OrderModel {
     notes = json['notes'];
     author = json['author'] != null ? UserModel.fromJson(json['author']) : null;
     driver = json['driver'] != null ? UserModel.fromJson(json['driver']) : null;
-    takeAway = json['takeAway'];
+    takeAway = json['takeAway'] is bool
+        ? json['takeAway']
+        : (json['takeAway']?.toString().toLowerCase() == 'true');
     rejectedByDrivers = json['rejectedByDrivers'] ?? [];
-    toPayAmount = json['toPay'] != null
-        ? (json['toPay'] as num).toDouble()
-        : null; // Fixed: should be 'toPay' not 'toPayAmount'
+
+    // FIXED: Handle both "ToPay" (capital T) and "toPayAmount" variations
+    toPayAmount = _parseToPayAmount(json);
+
     surgeFee = json['surge_fee'];
+
+    // NEW FIELDS PARSING
+    calculatedCharges = json['calculatedCharges'];
+    orderAutoCancelAt = _parseTimestamp(json['orderAutoCancelAt']);
+    photos = json['photos'] ?? [];
+
+    // Parse photo array - handle both List<dynamic> and convert to List<String>
+    if (json['photo'] != null) {
+      photo = List<String>.from(json['photo'].map((x) => x.toString()));
+    } else {
+      photo = [];
+    }
+
+    restaurantMenuPhotos = json['restaurantMenuPhotos'] ?? [];
+    workingHours = json['workingHours'] ?? [];
+  }
+
+  // Helper method to parse toPay amount from multiple possible field names
+  double? _parseToPayAmount(Map<String, dynamic> json) {
+    // Try "ToPay" first (capital T - from your JSON)
+    if (json['ToPay'] != null) {
+      return double.tryParse(json['ToPay'].toString());
+    }
+    // Then try "toPayAmount"
+    if (json['toPayAmount'] != null) {
+      if (json['toPayAmount'] is num) {
+        return (json['toPayAmount'] as num).toDouble();
+      } else {
+        return double.tryParse(json['toPayAmount'].toString());
+      }
+    }
+    // Then try "toPay" (lowercase)
+    if (json['toPay'] != null) {
+      return double.tryParse(json['toPay'].toString());
+    }
+    return null;
   }
 
   // Helper method to parse timestamp from various formats
@@ -193,8 +247,24 @@ class OrderModel {
     }
     data['takeAway'] = takeAway;
     data['rejectedByDrivers'] = rejectedByDrivers;
+
+    // Include toPay amount with the field name that matches your backend
+    data['ToPay'] = toPayAmount?.toString();
     data['toPayAmount'] = toPayAmount;
     data['surge_fee'] = surgeFee;
+    // NEW FIELDS IN TOJSON
+    data['calculatedCharges'] = calculatedCharges;
+    data['orderAutoCancelAt'] = orderAutoCancelAt;
+    data['photos'] = photos;
+    data['photo'] = photo;
+    data['restaurantMenuPhotos'] = restaurantMenuPhotos;
+    data['workingHours'] = workingHours;
+
     return data;
+  }
+
+  @override
+  String toString() {
+    return 'OrderModel(id: $id, status: $status, toPayAmount: $toPayAmount, vendor: ${vendor?.title}, products: ${products?.length})';
   }
 }

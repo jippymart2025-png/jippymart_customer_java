@@ -3,6 +3,7 @@ import 'package:jippymart_customer/app/chat_screens/chat_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
+import 'package:jippymart_customer/app/rate_us_screen/provider/rate_product_provider.dart';
 import 'package:jippymart_customer/app/rate_us_screen/rate_product_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -120,13 +121,23 @@ class OrderDetailsScreen extends StatelessWidget {
     }
 
     // Delivery Charges - Enhanced for promotional items
-    final threshold = deliveryCharge.itemTotalThreshold ?? 299;
-    final baseCharge = deliveryCharge.baseDeliveryCharge ?? 23;
-    final freeKm = deliveryCharge.freeDeliveryDistanceKm ?? 7;
-    final perKm = deliveryCharge.perKmChargeAboveFreeDistance ?? 8;
+    const double fallbackThreshold = 299.0;
+    const double fallbackBaseCharge = 23.0;
+    const double fallbackFreeKm = 5.0;
+    const double fallbackPerKm = 7.0;
+
+    final double threshold =
+        (deliveryCharge.itemTotalThreshold ?? fallbackThreshold).toDouble();
+    final double baseCharge =
+        (deliveryCharge.baseDeliveryCharge ?? fallbackBaseCharge).toDouble();
+    final double freeKm =
+        (deliveryCharge.freeDeliveryDistanceKm ?? fallbackFreeKm).toDouble();
+    final double perKm =
+        (deliveryCharge.perKmChargeAboveFreeDistance ?? fallbackPerKm)
+            .toDouble();
 
     // Check if cart has promotional items
-    final hasPromotionalItems = order.products!.any((item) {
+    final hasPromotionalItems = (order.products ?? []).any((item) {
       final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
       final discountPriceValue =
           double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -149,7 +160,7 @@ class OrderDetailsScreen extends StatelessWidget {
       print('DEBUG: Order Details - Self delivery - no charge');
     } else if (hasPromotionalItems) {
       // Promotional items delivery logic - Get dynamic settings from Firestore
-      final promotionalItems = order.products!.where((item) {
+      final promotionalItems = (order.products ?? []).where((item) {
         final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
         final discountPriceValue =
             double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -176,9 +187,9 @@ class OrderDetailsScreen extends StatelessWidget {
             final freeDeliveryKm =
                 (promoDetails['free_delivery_km'] as num?)?.toDouble() ?? 3.0;
             final extraKmCharge =
-                (promoDetails['extra_km_charge'] as num?)?.toDouble() ?? 7.0;
-            final promoBaseCharge =
-                23.0; // Base delivery charge for promotional items
+                (promoDetails['extra_km_charge'] as num?)?.toDouble() ??
+                fallbackPerKm;
+            final promoBaseCharge = baseCharge;
 
             print(
               'DEBUG: Order Details - Promotional delivery settings from Firestore:',
@@ -305,8 +316,10 @@ class OrderDetailsScreen extends StatelessWidget {
     }
 
     // Taxes
+    // GST should be calculated on actual deliveryCharges, not originalDeliveryFee
+    // originalDeliveryFee is only for display purposes (strikethrough price)
     double sgst = subTotal * 0.05;
-    double gst = originalDeliveryFee * 0.18;
+    double gst = deliveryCharges * 0.18;
     // taxAmount = sgst + gst;
     sgst = sgst.isNaN ? 0.0 : sgst;
     gst = gst.isNaN ? 0.0 : gst;
@@ -314,14 +327,14 @@ class OrderDetailsScreen extends StatelessWidget {
     print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
     if (taxAmount == 0.0) {
       double sgstFallback = subTotal * 0.05; // 5%
-      double gstFallback = originalDeliveryFee * 0.18; // 18%
+      double gstFallback = deliveryCharges * 0.18; // 18%
       taxAmount = sgstFallback + gstFallback;
     }
     if (taxAmount.isNaN) taxAmount = 0.0;
     bool isFreeDelivery = false;
     if (hasPromotionalItems) {
       // For promotional items, check if within free delivery distance (dynamic from Firestore)
-      final promotionalItems = order.products!.where((item) {
+      final promotionalItems = (order.products ?? []).where((item) {
         final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
         final discountPriceValue =
             double.tryParse(item.discountPrice.toString()) ?? 0.0;
@@ -384,13 +397,11 @@ class OrderDetailsScreen extends StatelessWidget {
         );
       }
     }
-
     totalAmount =
         (subTotal - couponAmount - specialDiscountAmount) +
         taxAmount +
         (isFreeDelivery ? 0.0 : deliveryCharges) +
         deliveryTips;
-
     return OrderBillDetails(
       subTotal: subTotal,
       deliveryCharges: deliveryCharges,
@@ -454,6 +465,12 @@ class OrderDetailsScreen extends StatelessWidget {
             );
 
         final deliveryCharge = vendor.deliveryCharge ?? DeliveryCharge();
+        final double displayThreshold =
+            (deliveryCharge.itemTotalThreshold ?? 299).toDouble();
+        final double displayFreeDistance =
+            (deliveryCharge.freeDeliveryDistanceKm ?? 5).toDouble();
+        final double displayBaseCharge =
+            (deliveryCharge.baseDeliveryCharge ?? 23).toDouble();
         final totalDistance = order.vendor != null
             ? Constant.calculateDistance(
                 vendor.latitude ?? 0.0,
@@ -893,70 +910,78 @@ class OrderDetailsScreen extends StatelessWidget {
                                                             ),
                                                             InkWell(
                                                               onTap: () async {
-                                                                ShowToastDialog.showLoader(
-                                                                  "Please wait"
-                                                                      .tr,
-                                                                );
-
-                                                                UserModel?
-                                                                customer = await AddressListProvider.getUserProfile(
-                                                                  controller
-                                                                      .orderModel
-                                                                      .authorID
-                                                                      .toString(),
-                                                                );
-                                                                UserModel?
-                                                                restaurantUser =
-                                                                    await AddressListProvider.getUserProfile(
-                                                                      controller
-                                                                          .orderModel
-                                                                          .vendor!
-                                                                          .author
-                                                                          .toString(),
-                                                                    );
-                                                                await FireStoreUtils.getVendorById(
-                                                                  restaurantUser!
-                                                                      .vendorID
-                                                                      .toString(),
-                                                                );
-                                                                ShowToastDialog.closeLoader();
-                                                                final userId =
-                                                                    await SqlStorageConst.getFirebaseId();
-                                                                Get.to(
-                                                                  ChatScreen(
-                                                                    userId:
-                                                                        userId,
-                                                                  ),
-                                                                  arguments: {
-                                                                    "customerName":
-                                                                        customer!
-                                                                            .fullName(),
-                                                                    "restaurantName":
-                                                                        restaurantUser
-                                                                            .fullName(),
-                                                                    "orderId":
-                                                                        controller
-                                                                            .orderModel
-                                                                            .id,
-                                                                    "restaurantId":
-                                                                        restaurantUser
-                                                                            .id,
-                                                                    "customerId":
-                                                                        customer
-                                                                            .id,
-                                                                    "customerProfileImage":
-                                                                        customer
-                                                                            .profilePictureURL,
-                                                                    "restaurantProfileImage":
-                                                                        restaurantUser
-                                                                            .profilePictureURL,
-                                                                    "token":
-                                                                        restaurantUser
-                                                                            .fcmToken,
-                                                                    "chatType":
-                                                                        "restaurant",
-                                                                  },
-                                                                );
+                                                                try {
+                                                                  ShowToastDialog.showLoader(
+                                                                    "Please wait"
+                                                                        .tr,
+                                                                  );
+                                                                  UserModel?
+                                                                  customer = await AddressListProvider.getUserProfile(
+                                                                    controller
+                                                                        .orderModel
+                                                                        .authorID
+                                                                        .toString(),
+                                                                  );
+                                                                  // customer = await AddressListProvider.getUserProfile(
+                                                                  //   controller
+                                                                  //       .orderModel
+                                                                  //       .authorID
+                                                                  //       .toString(),
+                                                                  // );
+                                                                  UserModel?
+                                                                  restaurantUser = await AddressListProvider.getUserProfile(
+                                                                    controller
+                                                                        .orderModel
+                                                                        .vendor!
+                                                                        .author
+                                                                        .toString(),
+                                                                  );
+                                                                  await FireStoreUtils.getVendorById(
+                                                                    restaurantUser!
+                                                                        .vendorID
+                                                                        .toString(),
+                                                                  );
+                                                                  ShowToastDialog.closeLoader();
+                                                                  final userId =
+                                                                      await SqlStorageConst.getFirebaseId();
+                                                                  Get.to(
+                                                                    ChatScreen(
+                                                                      userId:
+                                                                          userId,
+                                                                    ),
+                                                                    arguments: {
+                                                                      "customerName":
+                                                                          customer!
+                                                                              .fullName(),
+                                                                      "restaurantName":
+                                                                          restaurantUser
+                                                                              .fullName(),
+                                                                      "orderId":
+                                                                          controller
+                                                                              .orderModel
+                                                                              .id,
+                                                                      "restaurantId":
+                                                                          restaurantUser
+                                                                              .id,
+                                                                      "customerId":
+                                                                          customer
+                                                                              .id,
+                                                                      "customerProfileImage":
+                                                                          customer
+                                                                              .profilePictureURL,
+                                                                      "restaurantProfileImage":
+                                                                          restaurantUser
+                                                                              .profilePictureURL,
+                                                                      "token":
+                                                                          restaurantUser
+                                                                              .fcmToken,
+                                                                      "chatType":
+                                                                          "restaurant",
+                                                                    },
+                                                                  );
+                                                                } catch (e) {
+                                                                  ShowToastDialog.closeLoader();
+                                                                }
                                                               },
                                                               child: Container(
                                                                 width: 42,
@@ -1672,31 +1697,43 @@ class OrderDetailsScreen extends StatelessWidget {
                                                       );
                                                     }
                                                   })(),
-                                                  Align(
-                                                    alignment:
-                                                        Alignment.centerRight,
-                                                    child: RoundedButtonFill(
-                                                      title: "Rate us".tr,
-                                                      height: 3.8,
-                                                      width: 20,
-                                                      color: AppThemeData
-                                                          .warning300,
-                                                      textColor:
-                                                          AppThemeData.grey800,
-                                                      onPress: () async {
-                                                        Get.to(
-                                                          const RateProductScreen(),
-                                                          arguments: {
-                                                            "orderModel":
-                                                                controller
-                                                                    .orderModel,
-                                                            "productId":
-                                                                cartProductModel
-                                                                    .id,
-                                                          },
-                                                        );
-                                                      },
-                                                    ),
+                                                  Consumer<RateProductProvider>(
+                                                    builder:
+                                                        (
+                                                          context,
+                                                          rateProductProvider,
+                                                          _,
+                                                        ) {
+                                                          return Align(
+                                                            alignment: Alignment
+                                                                .centerRight,
+                                                            child: RoundedButtonFill(
+                                                              title:
+                                                                  "Rate us".tr,
+                                                              height: 3.8,
+                                                              width: 20,
+                                                              color: AppThemeData
+                                                                  .warning300,
+                                                              textColor:
+                                                                  AppThemeData
+                                                                      .grey800,
+                                                              onPress: () async {
+                                                                rateProductProvider.initFunction(
+                                                                  orderModel:
+                                                                      controller
+                                                                          .orderModel,
+                                                                  productId:
+                                                                      cartProductModel
+                                                                          .id
+                                                                          .toString(),
+                                                                );
+                                                                Get.to(
+                                                                  const RateProductScreen(),
+                                                                );
+                                                              },
+                                                            ),
+                                                          );
+                                                        },
                                                   ),
                                                 ],
                                               ),
@@ -2099,26 +2136,22 @@ class OrderDetailsScreen extends StatelessWidget {
                                           }
 
                                           if (bill.subTotal >=
-                                                  (deliveryCharge
-                                                          .itemTotalThreshold ??
-                                                      299) &&
+                                                  displayThreshold &&
                                               totalDistance >
-                                                  (deliveryCharge
-                                                          .freeDeliveryDistanceKm ??
-                                                      7)) {
+                                                  displayFreeDistance) {
                                             return Row(
                                               children: [
-                                                Text(
-                                                  'Free Delivery',
-                                                  textAlign: TextAlign.start,
-                                                  style: TextStyle(
-                                                    fontFamily:
-                                                        AppThemeData.regular,
-                                                    color:
-                                                        AppThemeData.success400,
-                                                    fontSize: 16,
-                                                  ),
-                                                ),
+                                                // Text(
+                                                //   'Free Delivery',
+                                                //   textAlign: TextAlign.start,
+                                                //   style: TextStyle(
+                                                //     fontFamily:
+                                                //         AppThemeData.regular,
+                                                //     color:
+                                                //         AppThemeData.success400,
+                                                //     fontSize: 16,
+                                                //   ),
+                                                // ),
                                                 const SizedBox(width: 8),
                                                 Text(
                                                   Constant.amountShow(
@@ -2156,13 +2189,9 @@ class OrderDetailsScreen extends StatelessWidget {
                                           }
 
                                           if (bill.subTotal >=
-                                                  (deliveryCharge
-                                                          .itemTotalThreshold ??
-                                                      299) &&
+                                                  displayThreshold &&
                                               totalDistance <=
-                                                  (deliveryCharge
-                                                          .freeDeliveryDistanceKm ??
-                                                      7)) {
+                                                  displayFreeDistance) {
                                             return Row(
                                               children: [
                                                 Text(
@@ -2179,11 +2208,8 @@ class OrderDetailsScreen extends StatelessWidget {
                                                 const SizedBox(width: 8),
                                                 Text(
                                                   Constant.amountShow(
-                                                    amount:
-                                                        (deliveryCharge
-                                                                    .baseDeliveryCharge ??
-                                                                23)
-                                                            .toString(),
+                                                    amount: displayBaseCharge
+                                                        .toString(),
                                                   ),
                                                   style: TextStyle(
                                                     fontFamily:
@@ -2212,20 +2238,19 @@ class OrderDetailsScreen extends StatelessWidget {
                                               ],
                                             );
                                           }
-
                                           // Default case - paid delivery
                                           return Row(
                                             children: [
-                                              Text(
-                                                'Delivery Charge',
-                                                textAlign: TextAlign.start,
-                                                style: TextStyle(
-                                                  fontFamily:
-                                                      AppThemeData.regular,
-                                                  color: AppThemeData.grey900,
-                                                  fontSize: 16,
-                                                ),
-                                              ),
+                                              // Text(
+                                              //   'Delivery Charge',
+                                              //   textAlign: TextAlign.start,
+                                              //   style: TextStyle(
+                                              //     fontFamily:
+                                              //         AppThemeData.regular,
+                                              //     color: AppThemeData.grey900,
+                                              //     fontSize: 16,
+                                              //   ),
+                                              // ),
                                               const SizedBox(width: 8),
                                               Text(
                                                 Constant.amountShow(

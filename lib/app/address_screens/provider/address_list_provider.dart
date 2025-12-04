@@ -29,7 +29,9 @@ class AddressListProvider extends ChangeNotifier {
   UserLocation location = UserLocation();
   ShippingAddress shippingModel = ShippingAddress();
   bool isLoading = false;
-  bool _addressesInitialized = false;
+  bool _addressesInitialized =
+      false; // Tracks if addresses have been loaded (for internal tracking)
+  String? _lastLoadedUserId; // Tracks which user's addresses were last loaded
   late HomeProvider homeProvider;
 
   void setLoading(bool value) {
@@ -37,41 +39,74 @@ class AddressListProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> initFunction({required BuildContext context}) async {
-    if (_addressesInitialized && shippingAddressList.isNotEmpty) {
-      print(" initFunction return ");
-      return;
-    }
-    homeProvider = Provider.of<HomeProvider>(context, listen: false);
-    if (Constant.userModel != null &&
-        Constant.userModel!.shippingAddress != null &&
-        Constant.userModel!.shippingAddress!.isNotEmpty) {
-      shippingAddressList = Constant.userModel!.shippingAddress!;
-      _addressesInitialized = true;
-      notifyListeners();
-      return;
-    }
-    if (shippingAddressList.isEmpty) {
-      try {
-        final userId = await SqlStorageConst.getFirebaseId();
-        if (userId != null && userId.isNotEmpty) {
-          final userModel = await getUserProfile(userId);
-          if (userModel != null) {
-            Constant.userModel = userModel;
-            if (userModel.shippingAddress != null &&
-                userModel.shippingAddress!.isNotEmpty) {
-              shippingAddressList = userModel.shippingAddress!;
-              _addressesInitialized = true;
-              notifyListeners();
-            }
-          }
-        }
-      } catch (e) {
-        print('[ADDRESS_LIST_PROVIDER] Error loading addresses: $e');
+  /// Reset initialization state - call this when page opens to force refresh
+  void resetInitialization() {
+    _addressesInitialized = false;
+    _lastLoadedUserId = null;
+  }
+
+  Future<void> initFunction({
+    required BuildContext context,
+    bool forceRefresh = false,
+  }) async {
+    try {
+      final userId = await SqlStorageConst.getFirebaseId();
+
+      // Check if user has changed - if so, reset and reload
+      if (_lastLoadedUserId != null && _lastLoadedUserId != userId) {
+        print('[ADDRESS_LIST_PROVIDER] User changed, resetting addresses');
+        resetInitialization();
+        shippingAddressList.clear();
       }
+
+      // Force refresh if requested or if not initialized
+      if (forceRefresh) {
+        resetInitialization();
+      }
+
+      // Always refresh from API to get latest addresses
+      homeProvider = Provider.of<HomeProvider>(context, listen: false);
+
+      // Fetch fresh user profile from API
+      if (userId != null && userId.isNotEmpty) {
+        final userModel = await getUserProfile(userId);
+        if (userModel != null) {
+          Constant.userModel = userModel;
+
+          // Update addresses list from fresh data
+          if (userModel.shippingAddress != null) {
+            shippingAddressList = List<ShippingAddress>.from(
+              userModel.shippingAddress ?? [],
+            );
+            print(
+              '[ADDRESS_LIST_PROVIDER] Loaded ${shippingAddressList.length} addresses from API',
+            );
+
+            // Also update the local userModel
+            this.userModel = userModel;
+          } else {
+            shippingAddressList.clear();
+            print('[ADDRESS_LIST_PROVIDER] No shipping addresses found');
+          }
+
+          _lastLoadedUserId = userId;
+          _addressesInitialized = true;
+          notifyListeners();
+        } else {
+          print('[ADDRESS_LIST_PROVIDER] Failed to load user profile');
+          shippingAddressList.clear();
+          notifyListeners();
+        }
+      } else {
+        print('[ADDRESS_LIST_PROVIDER] No user ID available');
+        shippingAddressList.clear();
+        notifyListeners();
+      }
+    } catch (e) {
+      print('[ADDRESS_LIST_PROVIDER] Error loading addresses: $e');
+      shippingAddressList.clear();
+      notifyListeners();
     }
-    _addressesInitialized = true;
-    notifyListeners();
   }
 
   void useMyCurrentLocation() async {
@@ -304,6 +339,10 @@ class AddressListProvider extends ChangeNotifier {
               'locality': address.locality ?? '',
               'latitude': address.location?.latitude,
               'longitude': address.location?.longitude,
+              "location": {
+                "latitude": address.location?.latitude,
+                "longitude": address.location?.longitude,
+              },
               'isDefault': address.isDefault ?? false,
               'zoneId': address.zoneId, // Optional
             };

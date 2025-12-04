@@ -119,16 +119,12 @@ class MartHomeScreen extends StatelessWidget {
         ),
         floatingActionButton: GestureDetector(
           onTap: () async {
-            // WhatsApp number - you can change this to your desired number
-            const String phoneNumber =
-                '+919390579864'; // Your actual WhatsApp number
+            const String phoneNumber = '+919390579864';
             const String message =
-                'Hello! I need help with my JippyMart order.'; // Customize the message
-
+                'Hello! I need help with my JippyMart order.';
             final Uri whatsappUrl = Uri.parse(
               'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}',
             );
-
             try {
               if (await canLaunchUrl(whatsappUrl)) {
                 await launchUrl(

@@ -92,6 +92,7 @@ class HomeScreenTwo extends StatelessWidget {
                                   fontSize: 22,
                                   fontFamily: AppThemeData.semiBold,
                                 ),
+                                textAlign: TextAlign.center,
                               ),
                               const SizedBox(height: 5),
                               Text(

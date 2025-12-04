@@ -34,7 +34,6 @@ class FavouriteProvider extends ChangeNotifier {
   }
 
   // ========== RESTAURANT FAVORITES API METHODS ==========
-
   // Add restaurant to favorites
   static Future<void> addFavouriteRestaurant(String restaurantId) async {
     try {

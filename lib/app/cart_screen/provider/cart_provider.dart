@@ -165,7 +165,6 @@ class CartControllerProvider extends ChangeNotifier {
           );
         }
         selectedAddress = addressModel;
-        // Ensure vendor details (esp. lat/lng) are available before price calc
         await _loadFreshVendorForCart();
         notifyListeners();
         await calculatePrice();
@@ -190,20 +189,15 @@ class CartControllerProvider extends ChangeNotifier {
     if (!canProceed) {
       return;
     }
-
-    // Store initial selection
     final String initialSelection = selectedPaymentMethod;
-
     await Get.dialog(
       WillPopScope(
         onWillPop: () async {
-          // Restore original selection if user cancels
           selectedPaymentMethod = initialSelection;
           notifyListeners();
           return true;
         },
         child: StatefulBuilder(
-          // Add StatefulBuilder for real-time updates
           builder: (context, setState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
@@ -228,8 +222,6 @@ class CartControllerProvider extends ChangeNotifier {
                     style: TextStyle(fontSize: 14, color: Colors.grey[700]),
                   ),
                   SizedBox(height: 20),
-
-                  // COD Option
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
@@ -286,7 +278,6 @@ class CartControllerProvider extends ChangeNotifier {
                     ),
                   ),
                   SizedBox(height: 10),
-
                   // Razorpay Option
                   Container(
                     width: double.infinity,
@@ -343,7 +334,6 @@ class CartControllerProvider extends ChangeNotifier {
                   ),
 
                   SizedBox(height: 10),
-
                   // Validation messages
                   if (subTotal > 599 &&
                       selectedPaymentMethod == PaymentGateway.cod.name)
@@ -399,11 +389,9 @@ class CartControllerProvider extends ChangeNotifier {
               ),
 
               actions: [
-                // Cancel Button
                 TextButton(
                   onPressed: () {
-                    // Restore original selection
-                    selectedPaymentMethod = initialSelection;
+                    selectedPaymentMethod = "";
                     notifyListeners();
                     Get.back();
                   },
@@ -412,7 +400,6 @@ class CartControllerProvider extends ChangeNotifier {
                   ),
                   child: Text("Cancel"),
                 ),
-                // OK/Proceed Button
                 ElevatedButton(
                   onPressed: () {
                     if (selectedPaymentMethod.isEmpty) {
@@ -421,7 +408,6 @@ class CartControllerProvider extends ChangeNotifier {
                       );
                       return;
                     }
-
                     // Validate selection
                     if (selectedPaymentMethod == PaymentGateway.cod.name) {
                       if (subTotal > 599) {
@@ -914,7 +900,6 @@ class CartControllerProvider extends ChangeNotifier {
       getCartData();
       getPaymentSettings();
       validateUserProfile();
-
       Timer.periodic(const Duration(seconds: 1), (timer) {
         if (subTotal > 599 &&
             selectedPaymentMethod == PaymentGateway.cod.name) {
@@ -1310,8 +1295,27 @@ class CartControllerProvider extends ChangeNotifier {
         productId,
       ) async {
         try {
-          final product = await FireStoreUtils.getProductById(productId);
-          _productCache[productId] = product;
+          // Check if it's a mart item by finding the cart item
+          final cartItem = HomeProvider.cartItem.firstWhere(
+            (item) {
+              if (item.id == null || item.id!.isEmpty) return false;
+              final parts = item.id!.split('~');
+              return parts.isNotEmpty && parts.first == productId;
+            },
+            orElse: () => CartProductModel(),
+          );
+          
+          final isMartItem = _isMartItem(cartItem);
+          
+          if (isMartItem) {
+            // For mart items, we don't have ProductModel - use cart data
+            // Mart items are displayed using cartProductModel data
+            _productCache[productId] = null; // Mark as loaded (null = use cart data)
+          } else {
+            // For restaurant items, fetch ProductModel
+            final product = await FireStoreUtils.getProductById(productId);
+            _productCache[productId] = product;
+          }
         } catch (e) {
           print('[CART_PRODUCT] Error loading product $productId: $e');
           _productCache[productId] = null;
@@ -1517,6 +1521,12 @@ class CartControllerProvider extends ChangeNotifier {
       }
       notifyListeners();
       await _loadCalculationCache();
+      // 🔑 OPTIMIZED: Preload products when cart data changes (incremental loading)
+      // This ensures products are ready when UI renders
+      // Load in background without blocking price calculation
+      _loadNewProductsIncrementally().catchError((e) {
+        print('[CART_DATA] Error loading products: $e');
+      });
       await calculatePrice();
       checkAndUpdatePaymentMethod();
       updateCartReadiness();
@@ -1567,15 +1577,12 @@ class CartControllerProvider extends ChangeNotifier {
     // Validate restaurant ID before making API call
     if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
       print('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
-      // Try to load global coupons instead
       await _loadGlobalCouponsOnly();
       return;
     }
     _isLoadingCoupons = true;
-
     try {
       _detectCurrentContext();
-
       // Make only ONE API call instead of three identical calls
       final allCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons(
@@ -1588,7 +1595,6 @@ class CartControllerProvider extends ChangeNotifier {
             },
           );
 
-      // Filter global coupons (those without restaurant ID or with 'ALL')
       final filteredGlobalCoupons = allCoupons
           .where(
             (c) =>
@@ -1613,7 +1619,6 @@ class CartControllerProvider extends ChangeNotifier {
       final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
       final combinedAllCoupons = [...allCoupons];
 
-      // Apply context filtering
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: combinedCoupons.cast<CouponModel>(),
         contextType: _currentContext,
@@ -1919,19 +1924,11 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
 
-      double itemThreshold = 199.0; // Default
-      double freeDeliveryKm = 5.0; // Default
-
-      if (_martDeliverySettings != null) {
-        itemThreshold =
-            (_martDeliverySettings!['item_total_threshold'] as num?)
-                ?.toDouble() ??
-            199.0;
-        freeDeliveryKm =
-            (_martDeliverySettings!['free_delivery_distance_km'] as num?)
-                ?.toDouble() ??
-            5.0;
-      }
+      // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
+      final dc = deliveryChargeModel;
+      final itemThreshold = dc.itemTotalThreshold ?? 299; // Same as restaurant
+      final freeDeliveryKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
+      
       final isEligible =
           subTotal >= itemThreshold && totalDistance <= freeDeliveryKm;
 
@@ -1946,26 +1943,20 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Ensure coupons are loaded when cart screen opens
   void ensureCouponsLoaded() {
-    // Prevent multiple simultaneous calls
     if (_isLoadingCoupons) {
       print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
       return;
     }
-
-    // If we have cached coupons, use them immediately
     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
       if (couponList.isEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
         notifyListeners();
       }
-      // Only refresh if cache is expired
       if (_isCacheValid()) {
         return; // Cache is still valid, no need to reload
       }
     }
-
-    // Load coupons if cache is empty or expired
     if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
       _loadCoupons(restaurantId: vendorModel.id.toString());
     } else {
@@ -1988,7 +1979,6 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       _detectCurrentContext();
 
-      // Load global coupons with timeout and error handling
       final globalCoupons =
           await RestaurantDetailsProvider.getRestaurantCoupons(
             restaurantId: '',
@@ -2326,6 +2316,11 @@ class CartControllerProvider extends ChangeNotifier {
         (item) => item.promoId != null && item.promoId!.isNotEmpty,
       );
       final hasMartItems = hasMartItemsInCart();
+      // Determine how much of the delivery fee is actually taxable.
+      // When delivery is free, we should not charge GST on the waived base fee.
+      final double taxableDeliveryFee =
+          deliveryCharges > 0 ? originalDeliveryFee : 0.0;
+
       if (Constant.taxList != null) {
         for (var element in Constant.taxList!) {
           if ((element.title?.toLowerCase() ?? '').contains('sgst')) {
@@ -2338,7 +2333,7 @@ class CartControllerProvider extends ChangeNotifier {
             } else {}
           } else if ((element.title?.toLowerCase() ?? '').contains('gst')) {
             gst = Constant.calculateTax(
-              amount: originalDeliveryFee.toString(),
+              amount: taxableDeliveryFee.toString(),
               taxModel: element,
             );
             if (hasPromotionalItemsForTax) {
@@ -2353,7 +2348,8 @@ class CartControllerProvider extends ChangeNotifier {
       print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
       if (taxAmount == 0.0) {
         double sgstFallback = subTotal * 0.05; // 5%
-        double gstFallback = originalDeliveryFee * 0.18; // 18%
+        double gstFallback =
+            taxableDeliveryFee > 0 ? taxableDeliveryFee * 0.18 : 0.0; // 18%
         taxAmount = sgstFallback + gstFallback;
         print(
           "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
@@ -2403,19 +2399,11 @@ class CartControllerProvider extends ChangeNotifier {
 
           notifyListeners();
         } else if (hasMartItems) {
-          double itemThreshold = 199.0; // Default
-          double freeDeliveryKm = 5.0; // Default
-          if (_martDeliverySettings != null) {
-            itemThreshold =
-                (_martDeliverySettings!['item_total_threshold'] as num?)
-                    ?.toDouble() ??
-                199.0;
-            freeDeliveryKm =
-                (_martDeliverySettings!['free_delivery_distance_km'] as num?)
-                    ?.toDouble() ??
-                5.0;
-          }
-          if (subTotal >= itemThreshold && totalDistance <= freeDeliveryKm) {
+          // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
+          final dc = deliveryChargeModel;
+          final threshold = dc.itemTotalThreshold ?? 299; // Same as restaurant
+          final freeKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
+          if (subTotal >= threshold && totalDistance <= freeKm) {
             isFreeDelivery = true;
           } else {
             isFreeDelivery = false;
@@ -2501,7 +2489,7 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Calculate delivery charge for mart items using static values (like restaurant)
+  /// Calculate delivery charge for mart items - Use same backend settings as restaurant
   void calculateMartDeliveryCharge() {
     // Get mart items from cart
     final martItems = HomeProvider.cartItem
@@ -2513,41 +2501,47 @@ class CartControllerProvider extends ChangeNotifier {
       calculateRegularDeliveryCharge();
       return;
     }
-    // Use static values like restaurant delivery (don't fetch from database)
-    _calculateMartDeliveryWithStaticValues();
+    // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
+    _calculateMartDeliveryWithBackendSettings();
   }
 
-  void _calculateMartDeliveryWithStaticValues() {
-    final baseCharge = 23.0; // Base delivery charge
-    final freeKm = 5.0; // Free delivery distance for mart
-    final perKm = 7.0; // Per km charge above free distance
-    final threshold = 199.0; // Free delivery threshold for mart
+  /// 🔑 Calculate mart delivery using same backend settings as restaurant
+  void _calculateMartDeliveryWithBackendSettings() {
+    // Use same deliveryChargeModel as restaurant items
+    final dc = deliveryChargeModel;
     final subtotal = subTotal;
+    final threshold = dc.itemTotalThreshold ?? 299; // Same as restaurant (₹299)
+    final baseCharge = dc.baseDeliveryCharge ?? 23;
+    final freeKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
+    final perKm = dc.perKmChargeAboveFreeDistance ?? 8; // Same as restaurant
     final distance = totalDistance;
+    
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
-    } else if (subtotal >= threshold) {
+    } else if (subtotal < threshold) {
+      // Below threshold - regular paid delivery
       if (distance <= freeKm) {
-        deliveryCharges = 0.0;
-        originalDeliveryFee = baseCharge;
+        deliveryCharges = baseCharge.toDouble();
+        originalDeliveryFee = baseCharge.toDouble();
       } else {
         double extraKm = (distance - freeKm).ceilToDouble();
-        deliveryCharges = extraKm * perKm;
-        originalDeliveryFee = baseCharge + deliveryCharges;
-      }
-      notifyListeners();
-    } else {
-      if (distance <= freeKm) {
-        deliveryCharges = baseCharge;
-        originalDeliveryFee = baseCharge;
-      } else {
-        double extraKm = (distance - freeKm).ceilToDouble();
-        deliveryCharges = baseCharge + (extraKm * perKm);
+        deliveryCharges = (baseCharge + (extraKm * perKm)).toDouble();
         originalDeliveryFee = deliveryCharges;
       }
+    } else {
+      // Above threshold - free delivery within distance
+      if (distance <= freeKm) {
+        deliveryCharges = 0.0;
+        originalDeliveryFee = baseCharge.toDouble();
+      } else {
+        double extraKm = (distance - freeKm).ceilToDouble();
+        originalDeliveryFee = (baseCharge + (extraKm * perKm)).toDouble();
+        deliveryCharges = (extraKm * perKm).toDouble();
+      }
     }
+    print("calculateMartDeliveryCharge ${deliveryCharges} (threshold: ₹$threshold, subtotal: ₹$subtotal)");
     notifyListeners();
   }
 
@@ -2625,7 +2619,6 @@ class CartControllerProvider extends ChangeNotifier {
           cartProductModel.vendorID ?? '',
           quantity,
         );
-
         if (!isAllowed) {
           final limit = getPromotionalItemLimit(
             cartProductModel.id ?? '',
@@ -2644,7 +2637,6 @@ class CartControllerProvider extends ChangeNotifier {
       );
       notifyListeners();
       if (!success) {
-        // Don't update the UI if adding to cart failed
         return false;
       }
     } else {
@@ -2652,9 +2644,109 @@ class CartControllerProvider extends ChangeNotifier {
       cartProvider.removeFromCart(cartProductModel, quantity);
       notifyListeners();
     }
-    await forceRefreshCart();
+    // 🔑 OPTIMIZED: Only refresh prices and load new products incrementally
+    // Don't clear cache or reload everything
+    await _incrementalCartUpdate();
     notifyListeners();
     return true;
+  }
+
+  /// 🔑 OPTIMIZED: Incremental cart update - only loads new products and recalculates prices
+  /// This is much faster than forceRefreshCart() which clears cache
+  Future<void> _incrementalCartUpdate() async {
+    try {
+      // Load any new products that aren't cached yet (incremental loading)
+      await _loadNewProductsIncrementally();
+      
+      // Recalculate prices (this is fast, no network calls)
+      await calculatePrice();
+      
+      // Update payment method if needed
+      checkAndUpdatePaymentMethod();
+      
+      // Update cart readiness
+      updateCartReadiness();
+      
+      notifyListeners();
+    } catch (e) {
+      print('[CART_UPDATE] Error in incremental update: $e');
+      // Fallback to full refresh only on error
+      await forceRefreshCart();
+    }
+  }
+
+  /// 🔑 Load only new products that aren't in cache (incremental loading)
+  Future<void> _loadNewProductsIncrementally() async {
+    try {
+      // Get all product IDs from current cart
+      final Set<String> productIds = {};
+      for (final cartItem in HomeProvider.cartItem) {
+        if (cartItem.id != null &&
+            cartItem.id!.isNotEmpty &&
+            cartItem.id!.toLowerCase() != 'null') {
+          final parts = cartItem.id!.split('~');
+          if (parts.isNotEmpty &&
+              parts.first.isNotEmpty &&
+              parts.first.toLowerCase() != 'null') {
+            productIds.add(parts.first);
+          }
+        }
+      }
+
+      // Find products that need to be loaded (not in cache)
+      final Set<String> productsToLoad = productIds
+          .where((id) => !_productCache.containsKey(id))
+          .toSet();
+
+      if (productsToLoad.isEmpty) {
+        // All products already cached - no loading needed
+        return;
+      }
+
+      // Load new products in parallel (non-blocking)
+      // Don't set _isLoadingProducts to true here to avoid blocking UI
+      final List<Future<void>> loadFutures = productsToLoad.map((
+        productId,
+      ) async {
+        try {
+          // Check if it's a mart item
+          final isMartItem = _isMartItem(
+            HomeProvider.cartItem.firstWhere(
+              (item) => item.id?.split('~').first == productId,
+              orElse: () => CartProductModel(),
+            ),
+          );
+
+          ProductModel? product;
+          if (isMartItem) {
+            // For mart items, we don't have ProductModel - use cart data
+            // Mart items are displayed using cartProductModel data
+            _productCache[productId] = null; // Mark as loaded (null = use cart data)
+          } else {
+            // For restaurant items, fetch ProductModel
+            product = await FireStoreUtils.getProductById(productId);
+            _productCache[productId] = product;
+          }
+          
+          // Notify listeners after each product loads (for progressive rendering)
+          notifyListeners();
+        } catch (e) {
+          print('[CART_PRODUCT] Error loading product $productId: $e');
+          _productCache[productId] = null; // Mark as loaded even on error
+        }
+      }).toList();
+
+      // Wait for all new products to load
+      await Future.wait(loadFutures);
+      
+      _productsLoaded = true;
+      notifyListeners();
+      print(
+        '[CART_PRODUCT] Incrementally loaded ${productsToLoad.length} new products',
+      );
+    } catch (e) {
+      print('[CART_PRODUCT] Error in incremental product loading: $e');
+    }
   }
 
   List<CartProductModel> tempProduc = [];
@@ -2739,7 +2831,6 @@ class CartControllerProvider extends ChangeNotifier {
       if (e.toString().contains('Delivery zone validation failed') ||
           e.toString().contains('Delivery distance validation failed')) {
       } else {
-        // Generic order error
         ShowToastDialog.showToast(
           "An error occurred while placing your order. Please try again.".tr,
         );
@@ -2902,7 +2993,6 @@ class CartControllerProvider extends ChangeNotifier {
           // If you have an API endpoint to update quantities, you would call it here:
           // await updateMartItemQuantity(tempProduc[i].id!.split('~').first, tempProduc[i].quantity!);
         } else {
-          // Existing Firebase logic for restaurant items
           await FireStoreUtils.getProductById(
             tempProduc[i].id!.split('~').first,
           ).then((value) async {
@@ -3030,9 +3120,7 @@ class CartControllerProvider extends ChangeNotifier {
         } else {
           if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
             ShowToastDialog.closeLoader();
-            // final status = RestaurantStatusUtils.getRestaurantStatus(
-            //   latestVendor,
-            // );
+
             ShowToastDialog.showToast("Restaurant Closed");
             endOrderProcessing();
             return;
@@ -3056,6 +3144,7 @@ class CartControllerProvider extends ChangeNotifier {
     String? orderId;
     List<CartProductModel> orderedProducts = [];
     try {
+      tempProduc.clear();
       if ((Constant.isSubscriptionModelApplied == true ||
               Constant.adminCommission?.isEnabled == true) &&
           vendorModel.subscriptionPlan != null &&
@@ -3088,10 +3177,7 @@ class CartControllerProvider extends ChangeNotifier {
         'special_discount_label': specialDiscount,
         'specialType': specialType,
       };
-      // Create OrderModel instance for later use
       OrderModel orderModel = OrderModel();
-
-      // **REPLACED: Firebase query with API call**
       int maxNumber = 5;
       try {
         final response = await http.get(
@@ -3122,12 +3208,6 @@ class CartControllerProvider extends ChangeNotifier {
         // Continue with default maxNumber
       }
 
-      final nextNumber = maxNumber + 1;
-      String generatedOrderId =
-          'Jippy3${nextNumber.toString().padLeft(7, '0')}';
-      orderId = generatedOrderId;
-      orderModel.id = generatedOrderId;
-      print('DEBUG: Generated Order ID: $generatedOrderId');
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
@@ -3146,19 +3226,29 @@ class CartControllerProvider extends ChangeNotifier {
       orderModel.toPayAmount = totalAmount;
       orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime);
       notifyListeners();
-      // Prepare API request payload
       Map<String, dynamic> orderPayload = {
-        "order_id": generatedOrderId,
         "author_id": await SqlStorageConst.getFirebaseId(),
         "cart_items": tempProduc.map((item) => item.toJson()).toList(),
         "selected_address": {
-          "address_id": selectedAddress?.id,
-          "label": selectedAddress?.address,
-          "address_line": selectedAddress?.address,
-          "city": selectedAddress?.addressAs,
-          "lat": selectedAddress?.location?.latitude,
-          "lng": selectedAddress?.location?.longitude,
+          "isDefault": selectedAddress?.isDefault,
+          "address": selectedAddress?.address,
+          "addressAs": selectedAddress?.addressAs,
+          "locality": selectedAddress?.locality,
+          "location": {
+            "latitude": selectedAddress?.location?.latitude,
+            "longitude": selectedAddress?.location?.longitude,
+          },
+          "id": selectedAddress?.id,
+          "landmark": selectedAddress?.landmark,
         },
+        // "selected_address": {
+        //   "address_id": selectedAddress?.id,
+        //   "label": selectedAddress?.address,
+        //   "address_line": selectedAddress?.address,
+        //   "city": selectedAddress?.addressAs,
+        //   "lat": selectedAddress?.location?.latitude,
+        //   "lng": selectedAddress?.location?.longitude,
+        // },
         "payment_method": selectedPaymentMethod,
         "total_amount": totalAmount,
         "delivery_charges": deliveryCharges.toString(),
@@ -3179,7 +3269,6 @@ class CartControllerProvider extends ChangeNotifier {
         const JsonEncoder.withIndent('  ').convert(orderPayload),
         name: "ORDER_PAYLOAD",
       );
-
       // **API CALL: Store the order**
       print('🌐 Creating order via API...');
       final response = await http.post(
@@ -3191,6 +3280,7 @@ class CartControllerProvider extends ChangeNotifier {
         throw Exception('API returned status code: ${response.statusCode}');
       }
       final responseData = json.decode(response.body);
+      orderModel.id = responseData['data']['order_id'];
       if (responseData['success'] != true) {
         throw Exception('API returned error: ${responseData['message']}');
       }
@@ -3210,7 +3300,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
       additionalTasks.add(
         _createOrderBilling(
-          generatedOrderId,
+          responseData['data']['order_id'],
           totalAmount.toString(),
           surgePercent.toInt(),
           adminFee,
@@ -3246,13 +3336,16 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         " additionalTasks author1  ${vendorModel.id}   ${vendorModel.author}",
       );
-
       additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
       await Future.wait(additionalTasks);
       isPaymentInProgress = false;
       isPaymentCompleted = false;
       _lastPaymentId = null;
       _lastPaymentTime = null;
+      selectedCouponModel = CouponModel();
+      couponCodeController.text = '';
+      couponAmount = 0.0;
+      calculatePrice();
       await _clearPersistentPaymentState();
       ShowToastDialog.closeLoader();
       endOrderProcessing();
@@ -3329,7 +3422,6 @@ class CartControllerProvider extends ChangeNotifier {
               final codSettingsStr = Preferences.getString(
                 Preferences.codSettings,
               );
-
               if (razorpaySettingsStr.isNotEmpty) {
                 razorPayModel = RazorPayModel.fromJson(
                   jsonDecode(razorpaySettingsStr),
@@ -3893,29 +3985,60 @@ class CartControllerProvider extends ChangeNotifier {
   static String orderId = '';
   static String amount = '';
 
-  // Add this method to mark a coupon as used for the current user
+  // In CartControllerProvider class
   Future<void> markCouponAsUsed(String couponId) async {
     try {
-      final headers = await getHeaders();
+      final userId = await SqlStorageConst.getFirebaseId();
       final response = await http.post(
-        Uri.parse('${AppConst.baseUrl}/mobile/coupons/$couponId/used'),
-        headers: headers,
+        Uri.parse('${AppConst.baseUrl}mobile/coupons/$couponId/used'),
+        headers: await getHeaders(),
       );
+
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('Coupon marked as used successfully');
-        // After marking as used, re-fetch coupon lists to update their status
-        await getCartData();
+        print('✅ Coupon marked as used: $couponId');
+
+        // Update local state to mark coupon as used
+        for (var coupon in couponList) {
+          if (coupon.id == couponId) {
+            coupon.isEnabled = false;
+          }
+        }
+        for (var coupon in allCouponList) {
+          if (coupon.id == couponId) {
+            coupon.isEnabled = false;
+          }
+        }
+        notifyListeners();
       } else {
-        // Handle error response
-        throw Exception(
-          'Failed to mark coupon as used: ${response.statusCode}',
-        );
+        print('❌ Failed to mark coupon as used: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error marking coupon as used: $e');
-      throw Exception('Failed to mark coupon as used: $e');
+      print('❌ Error marking coupon as used: $e');
     }
   }
+
+  // Add this method to mark a coupon as used for the current user
+  // Future<void> markCouponAsUsed(String couponId) async {
+  //   try {
+  //     final headers = await getHeaders();
+  //     final response = await http.post(
+  //       Uri.parse('${AppConst.baseUrl}mobile/coupons/$couponId/used'),
+  //       headers: headers,
+  //     );
+  //
+  //     if (response.statusCode == 200 || response.statusCode == 201) {
+  //       print('Coupon marked as used successfully');
+  //       await getCartData();
+  //     } else {
+  //       throw Exception(
+  //         'Failed to mark coupon as used: ${response.statusCode}',
+  //       );
+  //     }
+  //   } catch (e) {
+  //     print('Error marking coupon as used: $e');
+  //     throw Exception('Failed to mark coupon as used: $e');
+  //   }
+  // }
 
   bool isCurrentDateInRange(DateTime startDate, DateTime endDate) {
     final currentDate = DateTime.now();

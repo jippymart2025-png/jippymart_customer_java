@@ -74,6 +74,7 @@ class FireStoreUtils {
         headers: await getHeaders(),
       );
 
+      print("getPaymentSettingsData ${razorpayResponse.body} ");
       if (razorpayResponse.statusCode == 200) {
         final responseData = jsonDecode(razorpayResponse.body);
         if (responseData['success'] == true) {
@@ -125,6 +126,7 @@ class FireStoreUtils {
         return null;
       }
     } catch (e) {
+      ShowToastDialog.closeLoader();
       return null;
     }
     return vendorModel;
@@ -514,7 +516,6 @@ class FireStoreUtils {
         Constant.selectedLocation.location!.latitude!,
         Constant.selectedLocation.location!.longitude!,
       );
-
       if (placeMarks.isEmpty) {
         print('[API_UTILS] No placemarks found for coordinates');
         return taxList;
@@ -552,15 +553,13 @@ class FireStoreUtils {
   static Future<bool> setProduct(ProductModel orderModel) async {
     try {
       final url = "${AppConst.baseUrl}firestore/setProduct?id=${orderModel.id}";
-
+      print("setProduct $url");
       final body = jsonEncode(orderModel.toJson());
-
       final response = await http.post(
         Uri.parse(url),
         headers: await getHeaders(),
         body: body,
       );
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
@@ -576,7 +575,6 @@ class FireStoreUtils {
   static Future<List<OrderModel>> getAllOrder() async {
     List<OrderModel> list = [];
     final currentUid = await SqlStorageConst.getFirebaseId();
-
     print(" userId   $currentUid  ");
     if (kDebugMode) {
       print('Current UID: $currentUid');
@@ -587,67 +585,64 @@ class FireStoreUtils {
       }
       return list;
     }
-    try {
-      final Map<String, String> queryParams = {
-        'author_id': currentUid,
-        // 'filter': 'cancelled',
-        // 'filter': 'rejected',
-        // 'filter': 'pending',
-        // 'filter': 'preparing',
-        // 'filter': 'completed',
-      };
-      final uri = Uri.parse(
-        '${AppConst.baseUrl}firestore/orders',
-      ).replace(queryParameters: queryParams);
-      if (kDebugMode) {
-        print('API URL: $uri');
-      }
-      final response = await http.get(uri, headers: await getHeaders());
-      if (kDebugMode) {
-        print('API Response Status: ${response.statusCode}');
-        print('API Response Body: ${response.body}');
-      }
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          final List<dynamic> ordersData = responseData['data']['orders'];
-          if (kDebugMode) {
-            print('Found ${ordersData.length} orders in API response');
-          }
-          // Process each order
-          for (var orderData in ordersData) {
-            try {
-              OrderModel orderModel = OrderModel.fromJson(orderData);
-              list.add(orderModel);
-
-              if (kDebugMode) {
-                print('Successfully parsed order: ${orderModel.id}');
-              }
-            } catch (e) {
-              if (kDebugMode) {
-                print('Error parsing order data: $e');
-                print('Problematic order data: $orderData');
-              }
-            }
-          }
-          // Sort by createdAt in descending order (since API might not guarantee order)
-          list = list.where((order) => order.createdAt != null).toList();
-          list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
-        } else {
-          if (kDebugMode) {
-            print('API returned success: false');
-          }
+    // try {
+    final Map<String, String> queryParams = {
+      'author_id': currentUid,
+      // 'filter': 'cancelled',
+      // 'filter': 'rejected',
+      // 'filter': 'pending',
+      // 'filter': 'preparing',
+      // 'filter': 'completed',
+    };
+    final uri = Uri.parse(
+      '${AppConst.baseUrl}firestore/orders',
+    ).replace(queryParameters: queryParams);
+    if (kDebugMode) {
+      print('API URL: $uri');
+    }
+    final response = await http.get(uri, headers: await getHeaders());
+    if (kDebugMode) {
+      print('API Response Status: ${response.statusCode}');
+      dev.log('getAllOrder ${response.body}');
+    }
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = json.decode(response.body);
+      if (responseData['success'] == true) {
+        final List<dynamic> ordersData = responseData['data']['orders'];
+        if (kDebugMode) {
+          print('Found ${ordersData.length} orders in API response');
         }
+        for (var orderData in ordersData) {
+          OrderModel orderModel = OrderModel.fromJson(orderData);
+          list.add(orderModel);
+          if (kDebugMode) {
+            print('Successfully parsed order: ${orderModel.id}');
+          }
+          // } catch (e) {
+          //   if (kDebugMode) {
+          //     print('Error parsing order data: $e');
+          //     print('Problematic order data: $orderData');
+          //   }
+          // }
+        }
+        // Sort by createdAt in descending order (since API might not guarantee order)
+        list = list.where((order) => order.createdAt != null).toList();
+        list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
       } else {
         if (kDebugMode) {
-          print('API call failed with status: ${response.statusCode}');
+          print('API returned success: false');
         }
       }
-    } catch (error) {
+    } else {
       if (kDebugMode) {
-        print('Error in getAllOrder API call: $error');
+        print('API call failed with status: ${response.statusCode}');
       }
     }
+    // } catch (error) {
+    //   if (kDebugMode) {
+    //     print('Error in getAllOrder API call: $error');
+    //   }
+    // }
 
     if (kDebugMode) {
       print('Returning ${list.length} orders');
@@ -1060,6 +1055,7 @@ class FireStoreUtils {
   static Future<bool?> setRatingModel(RatingModel ratingModel) async {
     bool isAdded = false;
     try {
+      print("setRatingModel ${ratingModel.toJson()} ");
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}firestore/ratings'),
         headers: await getHeaders(),
@@ -1148,7 +1144,6 @@ class FireStoreUtils {
           '${AppConst.baseUrl}firestore/promotions/by-product?'
           'product_id=$productId&'
           'restaurant_id=$restaurantId';
-
       print('[DEBUG] API Endpoint: $apiUrl');
       // Make API call
       final response = await http.get(
@@ -1168,7 +1163,6 @@ class FireStoreUtils {
             'start_time': _parseTimestamp(promotionData['start_time']),
             'end_time': _parseTimestamp(promotionData['end_time']),
           };
-
           // Check if promotion is currently active based on time
           final startTime = processedPromotion['start_time'] as Timestamp?;
           final endTime = processedPromotion['end_time'] as Timestamp?;

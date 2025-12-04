@@ -5,10 +5,12 @@ import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_pr
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/order_details_screen.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/order_model.dart';
+import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -17,8 +19,10 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
+import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -362,181 +366,167 @@ class OrderScreen extends StatelessWidget {
     OrderModel orderModel,
     OrderProvider controller,
   ) {
-    return GestureDetector(
-      onTap: () async {
-        double? surgeFee = await fetchOrderSergeFee(orderModel.id ?? '');
-        Get.to(
-          OrderDetailsScreen(surgeFee: surgeFee),
-          arguments: {"orderModel": orderModel},
-        );
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 5),
-        child: Card(
-          elevation: 4, // 👈 Add shadow
-          color: ColorConst.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
+    return Consumer<OrderDetailsProvider>(
+      builder: (context, orderDetailsProvider, _) {
+        print("itemView ${orderModel.id.toString()} ");
+        return GestureDetector(
+          onTap: () async {
+            double? surgeFee = await fetchOrderSergeFee(orderModel.id ?? '');
+            orderDetailsProvider.initFunction(orderModels: orderModel);
+            Get.to(OrderDetailsScreen(surgeFee: surgeFee));
+          },
           child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Column(
-              children: [
-                Row(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Card(
+              elevation: 4, // 👈 Add shadow
+              color: ColorConst.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
                   children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.all(Radius.circular(16)),
-                      child: Stack(
-                        children: [
-                          orderModel.vendor?.photo != null &&
-                                  orderModel.vendor!.photo!.isNotEmpty
-                              ? NetworkImageWidget(
-                                  imageUrl: orderModel.vendor!.photo!,
-                                  fit: BoxFit.cover,
-                                  height: Responsive.height(10, context),
-                                  width: Responsive.width(20, context),
-                                )
-                              : Container(
-                                  height: Responsive.height(10, context),
-                                  width: Responsive.width(20, context),
-                                  decoration: BoxDecoration(
-                                    color: AppThemeData.grey200,
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Icon(
-                                    Icons.store,
-                                    color: AppThemeData.grey500,
-                                    size: Responsive.width(5, context),
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: const BorderRadius.all(
+                            Radius.circular(16),
+                          ),
+                          child: Stack(
+                            children: [
+                              orderModel.vendor?.photo != null &&
+                                      orderModel.vendor!.photo!.isNotEmpty
+                                  ? NetworkImageWidget(
+                                      imageUrl: orderModel.vendor!.photo!,
+                                      fit: BoxFit.cover,
+                                      height: Responsive.height(10, context),
+                                      width: Responsive.width(20, context),
+                                    )
+                                  : Container(
+                                      height: Responsive.height(10, context),
+                                      width: Responsive.width(20, context),
+                                      decoration: BoxDecoration(
+                                        color: AppThemeData.grey200,
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                      child: Icon(
+                                        Icons.store,
+                                        color: AppThemeData.grey500,
+                                        size: Responsive.width(5, context),
+                                      ),
+                                    ),
+                              Container(
+                                height: Responsive.height(10, context),
+                                width: Responsive.width(20, context),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: const Alignment(0.00, 1.00),
+                                    end: const Alignment(0, -1),
+                                    colors: [
+                                      Colors.black.withOpacity(0),
+                                      AppThemeData.grey900,
+                                    ],
                                   ),
                                 ),
-                          Container(
-                            height: Responsive.height(10, context),
-                            width: Responsive.width(20, context),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: const Alignment(0.00, 1.00),
-                                end: const Alignment(0, -1),
-                                colors: [
-                                  Colors.black.withOpacity(0),
-                                  AppThemeData.grey900,
-                                ],
                               ),
-                            ),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                orderModel.status.toString(),
+                                textAlign: TextAlign.right,
+                                style: TextStyle(
+                                  color: Constant.statusColor(
+                                    status: orderModel.status.toString(),
+                                  ),
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                orderModel.vendor?.title?.toString() ??
+                                    "Jippy Mart",
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: AppThemeData.grey900,
+                                  fontFamily: AppThemeData.medium,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(
+                                orderModel.createdAt != null
+                                    ? Constant.timestampToDateTime(
+                                        orderModel.createdAt!,
+                                      )
+                                    : "Order placed",
+                                style: TextStyle(
+                                  color: AppThemeData.grey600,
+                                  fontFamily: AppThemeData.medium,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            orderModel.status.toString(),
-                            textAlign: TextAlign.right,
-                            style: TextStyle(
-                              color: Constant.statusColor(
-                                status: orderModel.status.toString(),
+                    const SizedBox(height: 10),
+                    // In the OrderScreen's itemView method, replace the current "Total to Pay" section:
+                    FutureBuilder<double>(
+                      future: calculateOrderTotalInList(orderModel),
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Total to Pay",
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               ),
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w500,
-                              fontSize: 12,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            orderModel.vendor?.title?.toString() ??
-                                "Jippy Mart",
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: AppThemeData.grey900,
-                              fontFamily: AppThemeData.medium,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          const SizedBox(height: 5),
-                          Text(
-                            orderModel.createdAt != null
-                                ? Constant.timestampToDateTime(
-                                    orderModel.createdAt!,
-                                  )
-                                : "Order placed",
-                            style: TextStyle(
-                              color: AppThemeData.grey600,
-                              fontFamily: AppThemeData.medium,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                FutureBuilder<double?>(
-                  future: fetchOrderToPay(orderModel.id ?? ''),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return CircularProgressIndicator(); // or shimmer
-                    } else if (snapshot.hasData) {
-                      return Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              "Total to Pay",
-                              style: TextStyle(
-                                color: AppThemeData.grey900,
-                                fontFamily: AppThemeData.semiBold,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 16,
+                              Container(
+                                width: 60,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: AppThemeData.grey200,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
                               ),
-                            ),
-                          ),
-                          Text(
-                            Constant.amountShow(
-                              amount: snapshot.data!.toString(),
-                            ),
-                            style: TextStyle(
-                              color: AppThemeData.primary300,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ],
-                      );
-                    } else {
-                      return Text("No billing info");
-                    }
-                  },
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  child: MySeparator(color: AppThemeData.grey200),
-                ),
-
-                ///////////
-                Row(
-                  children: [
-                    orderModel.status == Constant.orderCompleted
-                        ? Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                if (orderModel.products != null) {
-                                  for (var element in orderModel.products!) {
-                                    controller.addToCart(
-                                      cartProductModel: element,
-                                    );
-                                    ShowToastDialog.showToast(
-                                      "Item Added In a cart".tr,
-                                    );
-                                  }
-                                }
-                              },
-                              child: Text(
-                                "Reorder".tr,
-                                textAlign: TextAlign.center,
+                            ],
+                          );
+                        } else if (snapshot.hasData) {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Total to Pay",
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                Constant.amountShow(
+                                  amount: snapshot.data!.toString(),
+                                ),
                                 style: TextStyle(
                                   color: AppThemeData.primary300,
                                   fontFamily: AppThemeData.semiBold,
@@ -544,22 +534,91 @@ class OrderScreen extends StatelessWidget {
                                   fontSize: 16,
                                 ),
                               ),
-                            ),
-                          )
-                        : orderModel.status == Constant.orderShipped ||
-                              orderModel.status == Constant.orderInTransit
-                        ? Consumer<LiveTrackingProvider>(
-                            builder: (context, liveTrackingProvider, _) {
-                              return Expanded(
+                            ],
+                          );
+                        } else {
+                          return Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  "Total to Pay",
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                Constant.amountShow(
+                                  amount: orderModel.toPayAmount.toString(),
+                                ),
+                                style: TextStyle(
+                                  color: AppThemeData.primary300,
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          );
+                        }
+                      },
+                    ),
+                    // Row(
+                    //   children: [
+                    //     Expanded(
+                    //       child: Text(
+                    //         "Total to Pay",
+                    //         style: TextStyle(
+                    //           color: AppThemeData.grey900,
+                    //           fontFamily: AppThemeData.semiBold,
+                    //           fontWeight: FontWeight.w600,
+                    //           fontSize: 16,
+                    //         ),
+                    //       ),
+                    //     ),
+                    //     Text(
+                    //       //finded
+                    //       Constant.amountShow(
+                    //         amount: orderModel.toPayAmount.toString(),
+                    //       ),
+                    //       style: TextStyle(
+                    //         color: AppThemeData.primary300,
+                    //         fontFamily: AppThemeData.semiBold,
+                    //         fontWeight: FontWeight.w600,
+                    //         fontSize: 16,
+                    //       ),
+                    //     ),
+                    //   ],
+                    // ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      child: MySeparator(color: AppThemeData.grey200),
+                    ),
+
+                    ///////////
+                    Row(
+                      children: [
+                        orderModel.status == Constant.orderCompleted
+                            ? Expanded(
                                 child: InkWell(
                                   onTap: () {
-                                    liveTrackingProvider.initFunction(
-                                      orderModel: orderModel,
-                                    );
-                                    Get.to(const LiveTrackingScreen());
+                                    if (orderModel.products != null) {
+                                      for (var element
+                                          in orderModel.products!) {
+                                        controller.addToCart(
+                                          cartProductModel: element,
+                                        );
+                                        ShowToastDialog.showToast(
+                                          "Item Added In a cart".tr,
+                                        );
+                                      }
+                                    }
                                   },
                                   child: Text(
-                                    "Track Order".tr,
+                                    "Reorder".tr,
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       color: AppThemeData.primary300,
@@ -569,42 +628,297 @@ class OrderScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                              )
+                            : orderModel.status == Constant.orderShipped ||
+                                  orderModel.status == Constant.orderInTransit
+                            ? Consumer<LiveTrackingProvider>(
+                                builder: (context, liveTrackingProvider, _) {
+                                  return Expanded(
+                                    child: InkWell(
+                                      onTap: () {
+                                        liveTrackingProvider.initFunction(
+                                          orderModel: orderModel,
+                                        );
+                                        Get.to(const LiveTrackingScreen());
+                                      },
+                                      child: Text(
+                                        "Track Order".tr,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: AppThemeData.primary300,
+                                          fontFamily: AppThemeData.semiBold,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              )
+                            : const SizedBox(),
+                        Expanded(
+                          child: Consumer<OrderDetailsProvider>(
+                            builder: (context, orderDetailsProvider, _) {
+                              return InkWell(
+                                onTap: () async {
+                                  double? surgeFee = await fetchOrderSergeFee(
+                                    orderModel.id ?? '',
+                                  );
+                                  orderDetailsProvider.initFunction(
+                                    orderModels: orderModel,
+                                  );
+                                  Get.to(
+                                    OrderDetailsScreen(surgeFee: surgeFee),
+                                  );
+                                },
+                                child: Text(
+                                  "View Details".tr,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: AppThemeData.grey900,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ),
                               );
                             },
-                          )
-                        : const SizedBox(),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          double? surgeFee = await fetchOrderSergeFee(
-                            orderModel.id ?? '',
-                          );
-                          Get.to(
-                            OrderDetailsScreen(surgeFee: surgeFee),
-                            arguments: {"orderModel": orderModel},
-                          );
-                        },
-                        child: Text(
-                          "View Details".tr,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppThemeData.grey900,
-                            fontFamily: AppThemeData.semiBold,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 16,
                           ),
                         ),
-                      ),
+                      ],
                     ),
+                    const SizedBox(height: 10),
                   ],
                 ),
-                const SizedBox(height: 10),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
+  }
+
+  Future<double> calculateOrderTotalInList(OrderModel order) async {
+    final vendor =
+        order.vendor ??
+        VendorModel(
+          title: "Jippy Mart",
+          location: "Jippy Mart Store",
+          phonenumber: "Contact Support",
+          isSelfDelivery: false,
+          deliveryCharge: DeliveryCharge(
+            baseDeliveryCharge: 23.0,
+            itemTotalThreshold: 299.0,
+            freeDeliveryDistanceKm: 7.0,
+            perKmChargeAboveFreeDistance: 8.0,
+          ),
+          latitude: 0.0,
+          longitude: 0.0,
+          vType: 'mart',
+        );
+    final deliveryCharge = vendor.deliveryCharge ?? DeliveryCharge();
+    final totalDistance = order.vendor != null
+        ? Constant.calculateDistance(
+            vendor.latitude ?? 0.0,
+            vendor.longitude ?? 0.0,
+            order.address?.location?.latitude ?? 0.0,
+            order.address?.location?.longitude ?? 0.0,
+          )
+        : 0.0;
+    // Reuse the same calculation logic from OrderDetailsScreen
+    double subTotal = 0.0;
+    double deliveryCharges = 0.0;
+    double originalDeliveryFee = 0.0;
+    double couponAmount = 0.0;
+    double specialDiscountAmount = 0.0;
+    double taxAmount = 0.0;
+    double deliveryTips = double.tryParse(order.tipAmount ?? '0') ?? 0.0;
+    double totalAmount = 0.0;
+    if (order.products != null) {
+      for (var element in order.products!) {
+        final priceValue = double.tryParse(element.price.toString()) ?? 0.0;
+        final discountPriceValue =
+            double.tryParse(element.discountPrice.toString()) ?? 0.0;
+        final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
+        final isPricePromotional =
+            priceValue > 0 &&
+            discountPriceValue > 0 &&
+            priceValue < discountPriceValue;
+        final isPromotional = hasPromo || isPricePromotional;
+        double itemPrice;
+        if (isPromotional) {
+          itemPrice = priceValue < discountPriceValue
+              ? priceValue
+              : discountPriceValue;
+        } else if (discountPriceValue <= 0) {
+          itemPrice = priceValue;
+        } else {
+          itemPrice = discountPriceValue;
+        }
+        final quantity = double.parse(element.quantity.toString());
+        final extrasPrice = double.parse(element.extrasPrice.toString());
+        final itemTotal = (itemPrice * quantity) + (extrasPrice * quantity);
+        subTotal += itemTotal;
+      }
+    }
+    // Delivery charges calculation (same as OrderDetailsScreen)
+    const double fallbackThreshold = 299.0;
+    const double fallbackBaseCharge = 23.0;
+    const double fallbackFreeKm = 5.0;
+    const double fallbackPerKm = 7.0;
+
+    final double threshold =
+        (deliveryCharge.itemTotalThreshold ?? fallbackThreshold).toDouble();
+    final double baseCharge =
+        (deliveryCharge.baseDeliveryCharge ?? fallbackBaseCharge).toDouble();
+    final double freeKm =
+        (deliveryCharge.freeDeliveryDistanceKm ?? fallbackFreeKm).toDouble();
+    final double perKm =
+        (deliveryCharge.perKmChargeAboveFreeDistance ?? fallbackPerKm)
+            .toDouble();
+
+    final hasPromotionalItems = (order.products ?? []).any((item) {
+      final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
+      final discountPriceValue =
+          double.tryParse(item.discountPrice.toString()) ?? 0.0;
+      final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
+      final isPricePromotional =
+          priceValue > 0 &&
+          discountPriceValue > 0 &&
+          priceValue < discountPriceValue;
+      return hasPromo || isPricePromotional;
+    });
+
+    if (vendor.isSelfDelivery == true &&
+        Constant.isSelfDeliveryFeature == true) {
+      deliveryCharges = 0.0;
+      originalDeliveryFee = 0.0;
+    } else if (hasPromotionalItems) {
+      final promotionalItems = (order.products ?? []).where((item) {
+        final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
+        final discountPriceValue =
+            double.tryParse(item.discountPrice.toString()) ?? 0.0;
+        final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
+        final isPricePromotional =
+            priceValue > 0 &&
+            discountPriceValue > 0 &&
+            priceValue < discountPriceValue;
+        return hasPromo || isPricePromotional;
+      }).toList();
+
+      if (promotionalItems.isNotEmpty) {
+        final firstPromoItem = promotionalItems.first;
+        double promoFreeKm = 3.0;
+        double promoExtraKmCharge = fallbackPerKm;
+        const double promoBaseCharge = fallbackBaseCharge;
+
+        try {
+          final promoDetails =
+              await FireStoreUtils.getActivePromotionForProduct(
+                productId: firstPromoItem.id ?? '',
+                restaurantId: firstPromoItem.vendorID ?? '',
+              );
+
+          if (promoDetails != null) {
+            promoFreeKm =
+                (promoDetails['free_delivery_km'] as num?)?.toDouble() ??
+                promoFreeKm;
+            promoExtraKmCharge =
+                (promoDetails['extra_km_charge'] as num?)?.toDouble() ??
+                promoExtraKmCharge;
+          }
+        } catch (_) {}
+
+        if (totalDistance <= promoFreeKm) {
+          deliveryCharges = 0.0;
+          originalDeliveryFee = promoBaseCharge;
+        } else {
+          double extraKm = (totalDistance - promoFreeKm).ceilToDouble();
+          deliveryCharges = extraKm * promoExtraKmCharge;
+          originalDeliveryFee = deliveryCharges;
+        }
+      }
+    }
+
+    if (deliveryCharges == 0.0 && originalDeliveryFee == 0.0) {
+      if (subTotal < threshold) {
+        if (totalDistance <= freeKm) {
+          deliveryCharges = baseCharge;
+          originalDeliveryFee = baseCharge;
+        } else {
+          double extraKm = (totalDistance - freeKm).ceilToDouble();
+          deliveryCharges = baseCharge + (extraKm * perKm);
+          originalDeliveryFee = deliveryCharges;
+        }
+      } else {
+        if (totalDistance <= freeKm) {
+          deliveryCharges = 0.0;
+          originalDeliveryFee = baseCharge;
+        } else {
+          double extraKm = (totalDistance - freeKm).ceilToDouble();
+          deliveryCharges = extraKm * perKm;
+          originalDeliveryFee = baseCharge + deliveryCharges;
+        }
+      }
+    }
+
+    // Coupon discount
+    if (hasPromotionalItems) {
+      couponAmount = 0.0;
+    } else if (order.couponId != null &&
+        order.couponId!.isNotEmpty &&
+        order.discount != null) {
+      couponAmount = double.tryParse(order.discount.toString()) ?? 0.0;
+    } else {
+      couponAmount = 0.0;
+    }
+
+    // Special discount
+    if (order.specialDiscount != null &&
+        order.specialDiscount!['special_discount'] != null) {
+      specialDiscountAmount =
+          double.tryParse(
+            order.specialDiscount!['special_discount'].toString(),
+          ) ??
+          0.0;
+    }
+
+    // Taxes
+    // GST should be calculated on actual deliveryCharges, not originalDeliveryFee
+    // originalDeliveryFee is only for display purposes (strikethrough price)
+    double sgst = subTotal * 0.05;
+    double gst = deliveryCharges * 0.18;
+    sgst = sgst.isNaN ? 0.0 : sgst;
+    gst = gst.isNaN ? 0.0 : gst;
+    taxAmount = sgst + gst;
+
+    if (taxAmount == 0.0) {
+      double sgstFallback = subTotal * 0.05;
+      double gstFallback = deliveryCharges * 0.18;
+      taxAmount = sgstFallback + gstFallback;
+    }
+    if (taxAmount.isNaN) taxAmount = 0.0;
+
+    // Check free delivery
+    bool isFreeDelivery = false;
+    if (hasPromotionalItems) {
+      // Free promo delivery already captured above via deliveryCharges/originalDeliveryFee
+      if (deliveryCharges == 0.0 && originalDeliveryFee > 0.0) {
+        isFreeDelivery = true;
+      }
+    } else {
+      if (subTotal >= threshold && totalDistance <= freeKm) {
+        isFreeDelivery = true;
+      }
+    }
+
+    totalAmount =
+        (subTotal - couponAmount - specialDiscountAmount) +
+        taxAmount +
+        (isFreeDelivery ? 0.0 : deliveryCharges) +
+        deliveryTips;
+
+    return totalAmount;
   }
 
   // Helper function to calculate the 'To Pay' value for an order
@@ -784,15 +1098,13 @@ class OrderScreen extends StatelessWidget {
 // Fetch the 'ToPay' value from the 'order_Billing' collection for a given order ID
 Future<double?> fetchOrderToPay(String orderId) async {
   try {
+    final userId = await SqlStorageConst.getFirebaseId();
+    print("fetchOrderToPay $userId");
     print("💰 Fetching order to pay for order: $orderId");
-
-    // **API CALL: Fetch billing information**
     final Uri uri = Uri.parse(
       '${AppConst.baseUrl}mobile/orders/$orderId/billing/to-pay',
     );
-
     print("🌐 Making API request to: ${uri.toString()}");
-
     final response = await http.get(uri, headers: await getHeaders());
 
     if (response.statusCode == 200) {

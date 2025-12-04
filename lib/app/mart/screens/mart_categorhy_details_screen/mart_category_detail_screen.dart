@@ -19,7 +19,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
   // Get appropriate icon for the subcategory
   IconData _getCategoryIcon(String categoryTitle) {
     final title = categoryTitle.toLowerCase();
-
     if (title.contains('veggie') || title.contains('vegetable')) {
       return Icons.eco;
     } else if (title.contains('spice')) {
@@ -282,7 +281,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
             )
           : ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              // 🔑 Reduced from 8 to 4
               itemCount: controller.subcategories.length,
               itemBuilder: (context, index) {
                 final category = controller.subcategories[index];
@@ -371,7 +369,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
       controller.parentCategoryImageUrl,
     );
     final hasValidPhoto = validImageUrl.isNotEmpty;
-
     print(
       '[CATEGORY DETAIL UI] 📸 Category: ${category.title}, ValidImageUrl: $validImageUrl, HasValidPhoto: $hasValidPhoto',
     );
@@ -674,9 +671,7 @@ class MartCategoryDetailScreen extends StatelessWidget {
       );
       print('[PRODUCT STREAM]   - Filter: ${controller.selectedFilter}');
       print('[PRODUCT STREAM]   - Search: ${controller.searchQuery}');
-      // Build query parameters based on filters
       final Map<String, String> queryParams = {};
-
       if (controller.categoryId == 'trending') {
         queryParams['isTrending'] = 'true';
         print('[PRODUCT STREAM] 🔥 Special case: Trending items');
@@ -691,7 +686,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
         queryParams['categoryID'] = controller.categoryId;
         print('[PRODUCT STREAM] 📂 Regular category: ${controller.categoryId}');
       }
-
       // Apply subcategory filter - only for regular categories
       if (controller.categoryId != 'trending' &&
           controller.categoryId != 'featured' &&
@@ -703,7 +697,6 @@ class MartCategoryDetailScreen extends StatelessWidget {
           '[PRODUCT STREAM] 🏷️ Subcategory filter: ${controller.selectedSubCategoryId}',
         );
       }
-
       // Apply additional filters based on selectedFilter
       if (controller.selectedFilter.isNotEmpty) {
         switch (controller.selectedFilter) {
@@ -731,16 +724,13 @@ class MartCategoryDetailScreen extends StatelessWidget {
           '[PRODUCT STREAM] 🎯 Additional filter: ${controller.selectedFilter}',
         );
       }
-
       // Apply search filter if available
       if (controller.searchQuery.isNotEmpty) {
         queryParams['search'] = controller.searchQuery;
         print('[PRODUCT STREAM] 🔍 Search query: ${controller.searchQuery}');
       }
-
       // Always filter by publish = true
       queryParams['publish'] = 'true';
-
       // Build the URL with query parameters
       final Uri uri = Uri.parse(
         '${AppConst.baseUrl}mart-items/all',

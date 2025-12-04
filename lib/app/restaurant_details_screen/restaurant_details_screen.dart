@@ -1,4 +1,6 @@
 // restaurant_details_screen.dart
+import 'dart:math';
+
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restauant_product_list_view.dart';
@@ -21,6 +23,8 @@ import 'package:provider/provider.dart';
 import '../cart_check_out_page/cart_check_out_screen.dart';
 import '../review_list_screen/provider/review_list_provider.dart';
 
+bool responseToKeyboard = true;
+
 class RestaurantDetailsScreen extends StatelessWidget {
   final String? scrollToProductId;
 
@@ -28,319 +32,371 @@ class RestaurantDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<RestaurantDetailsProvider>(
-      builder: (context, controller, _) {
-        return Scaffold(
-          body: RefreshIndicator(
-            onRefresh: () async {
-              await controller.getArgument(
-                vendorModels: controller.vendorModel,
-              );
-              await controller.loadFavorites();
-            },
-            child: NestedScrollView(
-              headerSliverBuilder:
-                  (BuildContext context, bool innerBoxIsScrolled) {
-                    return <Widget>[
-                      SliverAppBar(
-                        expandedHeight: Responsive.height(30, context),
-                        floating: true,
-                        pinned: true,
-                        automaticallyImplyLeading: false,
-                        backgroundColor: AppThemeData.primary300,
-                        title: Row(
-                          children: [
-                            InkWell(
-                              onTap: () {
-                                Get.back();
-                              },
-                              child: Icon(
-                                Icons.arrow_back,
-                                color: AppThemeData.grey50,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                controller.vendorModel.title ?? "",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: AppThemeData.grey50,
-                                  fontFamily: AppThemeData.semiBold,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 18,
-                                ),
-                              ),
-                            ),
-                            // Restaurant Favorite Button
-                            if (Constant.userModel != null)
-                              InkWell(
-                                onTap: () async {
-                                  await controller.toggleRestaurantFavorite();
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(8.0),
-                                  child: controller.isRestaurantFavorite
-                                      ? SvgPicture.asset(
-                                          "assets/icons/ic_like_fill.svg",
-                                          colorFilter: ColorFilter.mode(
-                                            AppThemeData.grey50,
-                                            BlendMode.srcIn,
-                                          ),
-                                        )
-                                      : SvgPicture.asset(
-                                          "assets/icons/ic_like.svg",
-                                          colorFilter: ColorFilter.mode(
-                                            AppThemeData.grey50,
-                                            BlendMode.srcIn,
-                                          ),
-                                        ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        flexibleSpace: FlexibleSpaceBar(
-                          background: Stack(
-                            children: [
-                              controller.vendorModel.photos == null ||
-                                      controller.vendorModel.photos!.isEmpty
-                                  ? Stack(
-                                      children: [
-                                        NetworkImageWidget(
-                                          imageUrl: controller.vendorModel.photo
-                                              .toString(),
-                                          fit: BoxFit.cover,
-                                          width: Responsive.width(100, context),
-                                          height: Responsive.height(
-                                            40,
-                                            context,
-                                          ),
-                                        ),
-                                        Container(
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: const Alignment(
-                                                0.00,
-                                                -1.00,
-                                              ),
-                                              end: const Alignment(0, 1),
-                                              colors: [
-                                                Colors.black.withOpacity(0),
-                                                Colors.black,
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    )
-                                  : PageView.builder(
-                                      physics: const BouncingScrollPhysics(),
-                                      controller: controller.pageController,
-                                      scrollDirection: Axis.horizontal,
-                                      itemCount:
-                                          controller.vendorModel.photos!.length,
-                                      padEnds: false,
-                                      pageSnapping: true,
-                                      allowImplicitScrolling: true,
-                                      itemBuilder:
-                                          (BuildContext context, int index) {
-                                            String image = controller
-                                                .vendorModel
-                                                .photos![index];
-                                            return Stack(
-                                              children: [
-                                                NetworkImageWidget(
-                                                  imageUrl: image.toString(),
-                                                  fit: BoxFit.cover,
-                                                  width: Responsive.width(
-                                                    100,
-                                                    context,
-                                                  ),
-                                                  height: Responsive.height(
-                                                    40,
-                                                    context,
-                                                  ),
-                                                ),
-                                                Container(
-                                                  decoration: BoxDecoration(
-                                                    gradient: LinearGradient(
-                                                      begin: const Alignment(
-                                                        0.00,
-                                                        -1.00,
-                                                      ),
-                                                      end: const Alignment(
-                                                        0,
-                                                        1,
-                                                      ),
-                                                      colors: [
-                                                        Colors.black
-                                                            .withOpacity(0),
-                                                        Colors.black,
-                                                      ],
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          },
-                                    ),
-                              Positioned(
-                                bottom: 10,
-                                right: 0,
-                                left: 0,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: List.generate(
-                                    controller.vendorModel.photos?.length ?? 0,
-                                    (index) {
-                                      return Container(
-                                        margin: const EdgeInsets.only(right: 5),
-                                        alignment: Alignment.centerLeft,
-                                        height: 9,
-                                        width: 9,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: controller.currentPage == index
-                                              ? AppThemeData.primary300
-                                              : AppThemeData.grey300,
-                                        ),
-                                      );
-                                    },
+    double initialBottomPadding = 10;
+    double bottomSafeAreaPadding = MediaQuery.of(context).size.height * 0.033;
+    bottomSafeAreaPadding = bottomSafeAreaPadding - initialBottomPadding;
+    if (bottomSafeAreaPadding < initialBottomPadding) {
+      bottomSafeAreaPadding = initialBottomPadding;
+    }
+    return Padding(
+      padding: EdgeInsets.only(
+        // bottom: responseToKeyboard
+        //     ? max(
+        //         MediaQuery.of(context).viewInsets.bottom,
+        //         bottomSafeAreaPadding,
+        //       )
+        //     : bottomSafeAreaPadding,
+      ),
+      child: Consumer<RestaurantDetailsProvider>(
+        builder: (context, controller, _) {
+          return Scaffold(
+            body: Padding(
+              padding: EdgeInsets.only(
+                bottom: responseToKeyboard
+                    ? max(
+                        MediaQuery.of(context).viewInsets.bottom,
+                        bottomSafeAreaPadding,
+                      )
+                    : bottomSafeAreaPadding,
+              ),
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await controller.getArgument(
+                    vendorModels: controller.vendorModel,
+                  );
+                  await controller.loadFavorites();
+                },
+                child: NestedScrollView(
+                  headerSliverBuilder:
+                      (BuildContext context, bool innerBoxIsScrolled) {
+                        return <Widget>[
+                          SliverAppBar(
+                            expandedHeight: Responsive.height(30, context),
+                            floating: true,
+                            pinned: true,
+                            automaticallyImplyLeading: false,
+                            backgroundColor: AppThemeData.primary300,
+                            title: Row(
+                              children: [
+                                InkWell(
+                                  onTap: () {
+                                    Get.back();
+                                  },
+                                  child: Icon(
+                                    Icons.arrow_back,
+                                    color: AppThemeData.grey50,
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ];
-                  },
-              body: controller.isLoading
-                  ? resturantDetailsShimmer()
-                  : Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      child: SingleChildScrollView(
-                        controller: controller.scrollController,
-                        physics: const BouncingScrollPhysics(),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.start,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              controller.vendorModel.title
-                                                  .toString(),
-                                              textAlign: TextAlign.start,
-                                              maxLines: 1,
-                                              style: TextStyle(
-                                                fontSize: 22,
-                                                overflow: TextOverflow.ellipsis,
-                                                fontFamily:
-                                                    AppThemeData.semiBold,
-                                                fontWeight: FontWeight.w600,
-                                                color: AppThemeData.grey900,
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    controller.vendorModel.title ?? "",
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: AppThemeData.grey50,
+                                      fontFamily: AppThemeData.semiBold,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ),
+                                // Restaurant Favorite Button
+                                if (Constant.userModel != null)
+                                  InkWell(
+                                    onTap: () async {
+                                      await controller
+                                          .toggleRestaurantFavorite();
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: controller.isRestaurantFavorite
+                                          ? SvgPicture.asset(
+                                              "assets/icons/ic_like_fill.svg",
+                                              colorFilter: ColorFilter.mode(
+                                                AppThemeData.grey50,
+                                                BlendMode.srcIn,
+                                              ),
+                                            )
+                                          : SvgPicture.asset(
+                                              "assets/icons/ic_like.svg",
+                                              colorFilter: ColorFilter.mode(
+                                                AppThemeData.grey50,
+                                                BlendMode.srcIn,
                                               ),
                                             ),
-                                            SizedBox(
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            flexibleSpace: FlexibleSpaceBar(
+                              background: Stack(
+                                children: [
+                                  controller.vendorModel.photos == null ||
+                                          controller.vendorModel.photos!.isEmpty
+                                      ? Stack(
+                                          children: [
+                                            NetworkImageWidget(
+                                              imageUrl: controller
+                                                  .vendorModel
+                                                  .photo
+                                                  .toString(),
+                                              fit: BoxFit.cover,
                                               width: Responsive.width(
-                                                78,
+                                                100,
                                                 context,
                                               ),
-                                              child: Text(
-                                                controller.vendorModel.location
-                                                    .toString(),
-                                                textAlign: TextAlign.start,
-                                                style: TextStyle(
-                                                  fontFamily:
-                                                      AppThemeData.medium,
-                                                  fontWeight: FontWeight.w500,
-                                                  color: AppThemeData.grey400,
+                                              height: Responsive.height(
+                                                40,
+                                                context,
+                                              ),
+                                            ),
+                                            Container(
+                                              decoration: BoxDecoration(
+                                                gradient: LinearGradient(
+                                                  begin: const Alignment(
+                                                    0.00,
+                                                    -1.00,
+                                                  ),
+                                                  end: const Alignment(0, 1),
+                                                  colors: [
+                                                    Colors.black.withOpacity(0),
+                                                    Colors.black,
+                                                  ],
                                                 ),
                                               ),
                                             ),
                                           ],
-                                        ),
-                                      ),
-                                      Column(
-                                        children: [
-                                          Container(
-                                            decoration: ShapeDecoration(
-                                              color: AppThemeData.primary50,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(120),
-                                              ),
-                                            ),
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 4,
-                                                  ),
-                                              child: Row(
-                                                children: [
-                                                  SvgPicture.asset(
-                                                    "assets/icons/ic_star.svg",
-                                                    colorFilter:
-                                                        ColorFilter.mode(
-                                                          AppThemeData
-                                                              .primary300,
-                                                          BlendMode.srcIn,
-                                                        ),
-                                                  ),
-                                                  const SizedBox(width: 5),
-                                                  Text(
-                                                    Constant.calculateReview(
-                                                      reviewCount: controller
-                                                          .vendorModel
-                                                          .reviewsCount!
-                                                          .toStringAsFixed(0),
-                                                      reviewSum: controller
-                                                          .vendorModel
-                                                          .reviewsSum
+                                        )
+                                      : PageView.builder(
+                                          physics:
+                                              const BouncingScrollPhysics(),
+                                          controller: controller.pageController,
+                                          scrollDirection: Axis.horizontal,
+                                          itemCount: controller
+                                              .vendorModel
+                                              .photos!
+                                              .length,
+                                          padEnds: false,
+                                          pageSnapping: true,
+                                          allowImplicitScrolling: true,
+                                          itemBuilder:
+                                              (
+                                                BuildContext context,
+                                                int index,
+                                              ) {
+                                                String image = controller
+                                                    .vendorModel
+                                                    .photos![index];
+                                                return Stack(
+                                                  children: [
+                                                    NetworkImageWidget(
+                                                      imageUrl: image
                                                           .toString(),
+                                                      fit: BoxFit.cover,
+                                                      width: Responsive.width(
+                                                        100,
+                                                        context,
+                                                      ),
+                                                      height: Responsive.height(
+                                                        40,
+                                                        context,
+                                                      ),
                                                     ),
+                                                    Container(
+                                                      decoration: BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          begin:
+                                                              const Alignment(
+                                                                0.00,
+                                                                -1.00,
+                                                              ),
+                                                          end: const Alignment(
+                                                            0,
+                                                            1,
+                                                          ),
+                                                          colors: [
+                                                            Colors.black
+                                                                .withOpacity(0),
+                                                            Colors.black,
+                                                          ],
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                );
+                                              },
+                                        ),
+                                  Positioned(
+                                    bottom: 10,
+                                    right: 0,
+                                    left: 0,
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      children: List.generate(
+                                        controller.vendorModel.photos?.length ??
+                                            0,
+                                        (index) {
+                                          return Container(
+                                            margin: const EdgeInsets.only(
+                                              right: 5,
+                                            ),
+                                            alignment: Alignment.centerLeft,
+                                            height: 9,
+                                            width: 9,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color:
+                                                  controller.currentPage ==
+                                                      index
+                                                  ? AppThemeData.primary300
+                                                  : AppThemeData.grey300,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ];
+                      },
+                  body: controller.isLoading
+                      ? resturantDetailsShimmer()
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: SingleChildScrollView(
+                            controller: controller.scrollController,
+                            physics: const BouncingScrollPhysics(),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  controller.vendorModel.title
+                                                      .toString(),
+                                                  textAlign: TextAlign.start,
+                                                  maxLines: 1,
+                                                  style: TextStyle(
+                                                    fontSize: 22,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                    fontFamily:
+                                                        AppThemeData.semiBold,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: AppThemeData.grey900,
+                                                  ),
+                                                ),
+                                                SizedBox(
+                                                  width: Responsive.width(
+                                                    78,
+                                                    context,
+                                                  ),
+                                                  child: Text(
+                                                    controller
+                                                        .vendorModel
+                                                        .location
+                                                        .toString(),
+                                                    textAlign: TextAlign.start,
                                                     style: TextStyle(
-                                                      color: AppThemeData
-                                                          .primary300,
                                                       fontFamily:
-                                                          AppThemeData.semiBold,
+                                                          AppThemeData.medium,
                                                       fontWeight:
-                                                          FontWeight.w600,
+                                                          FontWeight.w500,
+                                                      color:
+                                                          AppThemeData.grey400,
                                                     ),
                                                   ),
-                                                ],
-                                              ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                          Consumer<ReviewListProvider>(
-                                            builder:
-                                                (
-                                                  context,
-                                                  reviewListProvider,
-                                                  _,
-                                                ) {
+                                          Column(
+                                            children: [
+                                              Container(
+                                                decoration: ShapeDecoration(
+                                                  color: AppThemeData.primary50,
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          120,
+                                                        ),
+                                                  ),
+                                                ),
+                                                child: Padding(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 12,
+                                                        vertical: 4,
+                                                      ),
+                                                  child: Row(
+                                                    children: [
+                                                      SvgPicture.asset(
+                                                        "assets/icons/ic_star.svg",
+                                                        colorFilter:
+                                                            ColorFilter.mode(
+                                                              AppThemeData
+                                                                  .primary300,
+                                                              BlendMode.srcIn,
+                                                            ),
+                                                      ),
+                                                      const SizedBox(width: 5),
+                                                      Text(
+                                                        Constant.calculateReview(
+                                                          reviewCount: controller
+                                                              .vendorModel
+                                                              .reviewsCount!
+                                                              .toStringAsFixed(
+                                                                0,
+                                                              ),
+                                                          reviewSum: controller
+                                                              .vendorModel
+                                                              .reviewsSum
+                                                              .toString(),
+                                                        ),
+                                                        style: TextStyle(
+                                                          color: AppThemeData
+                                                              .primary300,
+                                                          fontFamily:
+                                                              AppThemeData
+                                                                  .semiBold,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                              Consumer<ReviewListProvider>(
+                                                builder: (context, reviewListProvider, _) {
                                                   return InkWell(
                                                     onTap: () {
                                                       reviewListProvider
@@ -367,337 +423,351 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                     ),
                                                   );
                                                 },
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: 12,
-                                          vertical: 4,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: controller
-                                              .getRestaurantStatusInfo()['statusColor'],
-                                          borderRadius: BorderRadius.circular(
-                                            24,
-                                          ),
-                                        ),
-                                        child: Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Icon(
-                                              controller
-                                                  .getRestaurantStatusInfo()['statusIcon'],
-                                              color: Colors.white,
-                                              size: 16,
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 4,
                                             ),
-                                            SizedBox(width: 6),
-                                            Text(
-                                              controller
-                                                  .getRestaurantStatusInfo()['statusText'],
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                            decoration: BoxDecoration(
+                                              color: controller
+                                                  .getRestaurantStatusInfo()['statusColor'],
+                                              borderRadius:
+                                                  BorderRadius.circular(24),
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                        ),
-                                        child: Icon(
-                                          Icons.circle,
-                                          size: 5,
-                                          color: AppThemeData.grey500,
-                                        ),
-                                      ),
-                                      InkWell(
-                                        onTap: () {
-                                          if (controller
-                                              .vendorModel
-                                              .workingHours!
-                                              .isEmpty) {
-                                            ShowToastDialog.showToast(
-                                              "Timing is not added by restaurant"
-                                                  .tr,
-                                            );
-                                          } else {
-                                            timeShowBottomSheet(
-                                              context,
-                                              controller,
-                                            );
-                                          }
-                                        },
-                                        child: Text(
-                                          "View Timings".tr,
-                                          textAlign: TextAlign.start,
-                                          maxLines: 1,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            decoration:
-                                                TextDecoration.underline,
-                                            decorationColor:
-                                                AppThemeData.secondary300,
-                                            overflow: TextOverflow.ellipsis,
-                                            fontFamily: AppThemeData.semiBold,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppThemeData.secondary300,
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                Icon(
+                                                  controller
+                                                      .getRestaurantStatusInfo()['statusIcon'],
+                                                  color: Colors.white,
+                                                  size: 16,
+                                                ),
+                                                SizedBox(width: 6),
+                                                Text(
+                                                  controller
+                                                      .getRestaurantStatusInfo()['statusText'],
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                           ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  controller.vendorModel.dineInActive == true ||
-                                          (controller
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                            ),
+                                            child: Icon(
+                                              Icons.circle,
+                                              size: 5,
+                                              color: AppThemeData.grey500,
+                                            ),
+                                          ),
+                                          InkWell(
+                                            onTap: () {
+                                              if (controller
                                                       .vendorModel
-                                                      .openDineTime !=
-                                                  null &&
-                                              controller
-                                                  .vendorModel
-                                                  .openDineTime!
-                                                  .isNotEmpty)
-                                      ? const SizedBox() // Permanently hide Table Booking
-                                      : const SizedBox(),
-                                  controller.couponList.isEmpty
-                                      ? const SizedBox()
-                                      : Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            const SizedBox(height: 10),
-                                            Text(
-                                              "Additional Offers".tr,
+                                                      .workingHours ==
+                                                  null) {
+                                                ShowToastDialog.showToast(
+                                                  "Timing is not added by restaurant"
+                                                      .tr,
+                                                );
+                                              } else {
+                                                timeShowBottomSheet(
+                                                  context,
+                                                  controller,
+                                                );
+                                              }
+                                            },
+                                            child: Text(
+                                              "View Timings".tr,
                                               textAlign: TextAlign.start,
                                               maxLines: 1,
                                               style: TextStyle(
-                                                fontSize: 16,
+                                                fontSize: 14,
+                                                decoration:
+                                                    TextDecoration.underline,
+                                                decorationColor:
+                                                    AppThemeData.secondary300,
                                                 overflow: TextOverflow.ellipsis,
                                                 fontFamily:
                                                     AppThemeData.semiBold,
                                                 fontWeight: FontWeight.w600,
-                                                color: AppThemeData.grey900,
+                                                color:
+                                                    AppThemeData.secondary300,
                                               ),
                                             ),
-                                            const SizedBox(height: 10),
-                                            CouponListView(
-                                              controller: controller,
-                                            ),
-                                          ],
-                                        ),
-                                  const SizedBox(height: 10),
-                                  Text(
-                                    "Menu",
-                                    textAlign: TextAlign.start,
-                                    maxLines: 1,
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      overflow: TextOverflow.ellipsis,
-                                      fontFamily: AppThemeData.semiBold,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppThemeData.grey900,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  TextFieldWidget(
-                                    controller:
-                                        controller.searchEditingController,
-                                    hintText:
-                                        'Search the dish, food, meals and more...'
-                                            .tr,
-                                    onchange: (value) {
-                                      controller.searchProduct(value);
-                                    },
-                                    prefix: Padding(
-                                      padding: const EdgeInsets.all(12),
-                                      child: SvgPicture.asset(
-                                        "assets/icons/ic_search.svg",
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        InkWell(
-                                          onTap: () {
-                                            if (!controller.isVag) {
-                                              controller.isVag = true;
-                                              controller.isNonVag = false;
-                                              controller.filterRecord();
-                                            }
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 4,
-                                            ),
-                                            decoration: controller.isVag
-                                                ? ShapeDecoration(
-                                                    color:
-                                                        AppThemeData.primary50,
-                                                    shape: RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        width: 1,
-                                                        color: AppThemeData
-                                                            .primary300,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            120,
-                                                          ),
-                                                    ),
-                                                  )
-                                                : ShapeDecoration(
-                                                    color: AppThemeData.grey100,
-                                                    shape: RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        width: 1,
-                                                        color: AppThemeData
-                                                            .grey200,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            120,
-                                                          ),
-                                                    ),
-                                                  ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
+                                      controller.vendorModel.dineInActive ==
+                                                  true ||
+                                              (controller
+                                                          .vendorModel
+                                                          .openDineTime !=
+                                                      null &&
+                                                  controller
+                                                      .vendorModel
+                                                      .openDineTime!
+                                                      .isNotEmpty)
+                                          ? const SizedBox() // Permanently hide Table Booking
+                                          : const SizedBox(),
+                                      controller.couponList.isEmpty
+                                          ? const SizedBox()
+                                          : Column(
                                               crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                SvgPicture.asset(
-                                                  "assets/icons/ic_veg.svg",
-                                                  height: 16,
-                                                  width: 16,
-                                                ),
-                                                const SizedBox(width: 4),
+                                                const SizedBox(height: 10),
                                                 Text(
-                                                  'Veg'.tr,
+                                                  "Additional Offers".tr,
+                                                  textAlign: TextAlign.start,
+                                                  maxLines: 1,
                                                   style: TextStyle(
-                                                    color: AppThemeData.grey800,
+                                                    fontSize: 16,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     fontFamily:
                                                         AppThemeData.semiBold,
                                                     fontWeight: FontWeight.w600,
-                                                    fontSize: 12,
+                                                    color: AppThemeData.grey900,
                                                   ),
+                                                ),
+                                                const SizedBox(height: 10),
+                                                CouponListView(
+                                                  controller: controller,
                                                 ),
                                               ],
                                             ),
+                                      const SizedBox(height: 10),
+                                      Text(
+                                        "Menu",
+                                        textAlign: TextAlign.start,
+                                        maxLines: 1,
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          overflow: TextOverflow.ellipsis,
+                                          fontFamily: AppThemeData.semiBold,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppThemeData.grey900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 10),
+                                      TextFieldWidget(
+                                        controller:
+                                            controller.searchEditingController,
+                                        hintText:
+                                            'Search the dish, food, meals and more...'
+                                                .tr,
+                                        onchange: (value) {
+                                          controller.searchProduct(value);
+                                        },
+                                        prefix: Padding(
+                                          padding: const EdgeInsets.all(12),
+                                          child: SvgPicture.asset(
+                                            "assets/icons/ic_search.svg",
                                           ),
                                         ),
-                                        const SizedBox(width: 6),
-                                        InkWell(
-                                          onTap: () {
-                                            if (!controller.isNonVag) {
-                                              controller.isNonVag = true;
-                                              controller.isVag = false;
-                                              controller.filterRecord();
-                                            }
-                                          },
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 6,
-                                              vertical: 4,
-                                            ),
-                                            decoration: controller.isNonVag
-                                                ? ShapeDecoration(
-                                                    color:
-                                                        AppThemeData.primary50,
-                                                    shape: RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        width: 1,
-                                                        color: AppThemeData
-                                                            .primary300,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            120,
-                                                          ),
+                                      ),
+                                      const SizedBox(height: 16),
+                                      SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            InkWell(
+                                              onTap: () {
+                                                if (!controller.isVag) {
+                                                  controller.isVag = true;
+                                                  controller.isNonVag = false;
+                                                  controller.filterRecord();
+                                                }
+                                              },
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 4,
                                                     ),
-                                                  )
-                                                : ShapeDecoration(
-                                                    color: AppThemeData.grey100,
-                                                    shape: RoundedRectangleBorder(
-                                                      side: BorderSide(
-                                                        width: 1,
+                                                decoration: controller.isVag
+                                                    ? ShapeDecoration(
                                                         color: AppThemeData
-                                                            .grey200,
-                                                      ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            120,
+                                                            .primary50,
+                                                        shape: RoundedRectangleBorder(
+                                                          side: BorderSide(
+                                                            width: 1,
+                                                            color: AppThemeData
+                                                                .primary300,
                                                           ),
-                                                    ),
-                                                  ),
-                                            child: Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              children: [
-                                                SvgPicture.asset(
-                                                  "assets/icons/ic_nonveg.svg",
-                                                  height: 16,
-                                                  width: 16,
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Text(
-                                                  'Non Veg'.tr,
-                                                  style: TextStyle(
-                                                    color: AppThemeData.grey800,
-                                                    fontFamily:
-                                                        AppThemeData.semiBold,
-                                                    fontWeight: FontWeight.w600,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 6),
-                                        InkWell(
-                                          onTap: () {
-                                            controller.toggleOfferFilter();
-                                          },
-                                          child: TweenAnimationBuilder<double>(
-                                            duration: Duration(seconds: 2),
-                                            tween: Tween(
-                                              begin: 0.95,
-                                              end: 1.05,
-                                            ),
-                                            builder: (context, value, child) {
-                                              return Transform.scale(
-                                                scale: controller.isOfferFilter
-                                                    ? 1.0
-                                                    : value,
-                                                child: AnimatedContainer(
-                                                  duration: Duration(
-                                                    milliseconds: 300,
-                                                  ),
-                                                  curve: Curves.easeInOut,
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 6,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                120,
+                                                              ),
+                                                        ),
+                                                      )
+                                                    : ShapeDecoration(
+                                                        color: AppThemeData
+                                                            .grey100,
+                                                        shape: RoundedRectangleBorder(
+                                                          side: BorderSide(
+                                                            width: 1,
+                                                            color: AppThemeData
+                                                                .grey200,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                120,
+                                                              ),
+                                                        ),
                                                       ),
-                                                  decoration:
-                                                      controller.isOfferFilter
-                                                      ? BoxDecoration(
-                                                          gradient:
-                                                              LinearGradient(
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: [
+                                                    SvgPicture.asset(
+                                                      "assets/icons/ic_veg.svg",
+                                                      height: 16,
+                                                      width: 16,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Veg'.tr,
+                                                      style: TextStyle(
+                                                        color: AppThemeData
+                                                            .grey800,
+                                                        fontFamily: AppThemeData
+                                                            .semiBold,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            InkWell(
+                                              onTap: () {
+                                                if (!controller.isNonVag) {
+                                                  controller.isNonVag = true;
+                                                  controller.isVag = false;
+                                                  controller.filterRecord();
+                                                }
+                                              },
+                                              child: Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 4,
+                                                    ),
+                                                decoration: controller.isNonVag
+                                                    ? ShapeDecoration(
+                                                        color: AppThemeData
+                                                            .primary50,
+                                                        shape: RoundedRectangleBorder(
+                                                          side: BorderSide(
+                                                            width: 1,
+                                                            color: AppThemeData
+                                                                .primary300,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                120,
+                                                              ),
+                                                        ),
+                                                      )
+                                                    : ShapeDecoration(
+                                                        color: AppThemeData
+                                                            .grey100,
+                                                        shape: RoundedRectangleBorder(
+                                                          side: BorderSide(
+                                                            width: 1,
+                                                            color: AppThemeData
+                                                                .grey200,
+                                                          ),
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                120,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                child: Row(
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: [
+                                                    SvgPicture.asset(
+                                                      "assets/icons/ic_nonveg.svg",
+                                                      height: 16,
+                                                      width: 16,
+                                                    ),
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Non Veg'.tr,
+                                                      style: TextStyle(
+                                                        color: AppThemeData
+                                                            .grey800,
+                                                        fontFamily: AppThemeData
+                                                            .semiBold,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        fontSize: 12,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            InkWell(
+                                              onTap: () {
+                                                controller.toggleOfferFilter();
+                                              },
+                                              child: TweenAnimationBuilder<double>(
+                                                duration: Duration(seconds: 2),
+                                                tween: Tween(
+                                                  begin: 0.95,
+                                                  end: 1.05,
+                                                ),
+                                                builder: (context, value, child) {
+                                                  return Transform.scale(
+                                                    scale:
+                                                        controller.isOfferFilter
+                                                        ? 1.0
+                                                        : value,
+                                                    child: AnimatedContainer(
+                                                      duration: Duration(
+                                                        milliseconds: 300,
+                                                      ),
+                                                      curve: Curves.easeInOut,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 6,
+                                                          ),
+                                                      decoration:
+                                                          controller
+                                                              .isOfferFilter
+                                                          ? BoxDecoration(
+                                                              gradient: LinearGradient(
                                                                 colors: [
                                                                   Color(
                                                                     0xFFFF6B6B,
@@ -719,48 +789,45 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                                   1.0,
                                                                 ],
                                                               ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                120,
-                                                              ),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color:
-                                                                  Color(
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    120,
+                                                                  ),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Color(
                                                                     0xFFFF6B6B,
-                                                                  ).withOpacity(
-                                                                    0.4,
-                                                                  ),
-                                                              blurRadius: 12,
-                                                              offset: Offset(
-                                                                0,
-                                                                3,
-                                                              ),
-                                                            ),
-                                                            BoxShadow(
-                                                              color:
-                                                                  Color(
+                                                                  ).withOpacity(0.4),
+                                                                  blurRadius:
+                                                                      12,
+                                                                  offset:
+                                                                      Offset(
+                                                                        0,
+                                                                        3,
+                                                                      ),
+                                                                ),
+                                                                BoxShadow(
+                                                                  color: Color(
                                                                     0xFFFF8E53,
-                                                                  ).withOpacity(
-                                                                    0.2,
-                                                                  ),
-                                                              blurRadius: 20,
-                                                              offset: Offset(
-                                                                0,
-                                                                5,
+                                                                  ).withOpacity(0.2),
+                                                                  blurRadius:
+                                                                      20,
+                                                                  offset:
+                                                                      Offset(
+                                                                        0,
+                                                                        5,
+                                                                      ),
+                                                                ),
+                                                              ],
+                                                              border: Border.all(
+                                                                color: Color(
+                                                                  0xFFFF6B6B,
+                                                                ),
+                                                                width: 1.5,
                                                               ),
-                                                            ),
-                                                          ],
-                                                          border: Border.all(
-                                                            color: Color(
-                                                              0xFFFF6B6B,
-                                                            ),
-                                                            width: 1.5,
-                                                          ),
-                                                        )
-                                                      : BoxDecoration(
-                                                          gradient:
-                                                              LinearGradient(
+                                                            )
+                                                          : BoxDecoration(
+                                                              gradient: LinearGradient(
                                                                 colors: [
                                                                   Color(
                                                                     0xFFFF6B6B,
@@ -778,314 +845,326 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                                 end: Alignment
                                                                     .bottomRight,
                                                               ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                120,
-                                                              ),
-                                                          border: Border.all(
-                                                            color: Color(
-                                                              0xFFFF6B6B,
-                                                            ).withOpacity(0.3),
-                                                            width: 1.5,
-                                                          ),
-                                                          boxShadow: [
-                                                            BoxShadow(
-                                                              color:
-                                                                  Color(
-                                                                    0xFFFF6B6B,
-                                                                  ).withOpacity(
-                                                                    0.1,
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    120,
                                                                   ),
-                                                              blurRadius: 6,
-                                                              offset: Offset(
-                                                                0,
-                                                                2,
-                                                              ),
-                                                            ),
-                                                          ],
-                                                        ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment.start,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.local_offer,
-                                                        size: 16,
-                                                        color:
-                                                            controller
-                                                                .isOfferFilter
-                                                            ? Colors.white
-                                                            : Color(0xFFFF6B6B),
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        'Offers'.tr,
-                                                        style: TextStyle(
-                                                          color:
-                                                              controller
-                                                                  .isOfferFilter
-                                                              ? Colors.white
-                                                              : Color(
+                                                              border: Border.all(
+                                                                color: Color(
                                                                   0xFFFF6B6B,
-                                                                ),
-                                                          fontFamily:
-                                                              AppThemeData
-                                                                  .semiBold,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          fontSize: 12,
-                                                          shadows:
-                                                              controller
-                                                                  .isOfferFilter
-                                                              ? [
-                                                                  Shadow(
-                                                                    color: Colors
-                                                                        .black
-                                                                        .withOpacity(
-                                                                          0.3,
-                                                                        ),
-                                                                    offset:
-                                                                        Offset(
-                                                                          0,
-                                                                          1,
-                                                                        ),
-                                                                    blurRadius:
+                                                                ).withOpacity(0.3),
+                                                                width: 1.5,
+                                                              ),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Color(
+                                                                    0xFFFF6B6B,
+                                                                  ).withOpacity(0.1),
+                                                                  blurRadius: 6,
+                                                                  offset:
+                                                                      Offset(
+                                                                        0,
                                                                         2,
+                                                                      ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                      child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .start,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          Icon(
+                                                            Icons.local_offer,
+                                                            size: 16,
+                                                            color:
+                                                                controller
+                                                                    .isOfferFilter
+                                                                ? Colors.white
+                                                                : Color(
+                                                                    0xFFFF6B6B,
                                                                   ),
-                                                                ]
-                                                              : null,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 4,
+                                                          ),
+                                                          Text(
+                                                            'Offers'.tr,
+                                                            style: TextStyle(
+                                                              color:
+                                                                  controller
+                                                                      .isOfferFilter
+                                                                  ? Colors.white
+                                                                  : Color(
+                                                                      0xFFFF6B6B,
+                                                                    ),
+                                                              fontFamily:
+                                                                  AppThemeData
+                                                                      .semiBold,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              fontSize: 12,
+                                                              shadows:
+                                                                  controller
+                                                                      .isOfferFilter
+                                                                  ? [
+                                                                      Shadow(
+                                                                        color: Colors
+                                                                            .black
+                                                                            .withOpacity(
+                                                                              0.3,
+                                                                            ),
+                                                                        offset:
+                                                                            Offset(
+                                                                              0,
+                                                                              1,
+                                                                            ),
+                                                                        blurRadius:
+                                                                            2,
+                                                                      ),
+                                                                    ]
+                                                                  : null,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Builder(
+                                              builder: (context) {
+                                                try {
+                                                  final hasActiveFilters =
+                                                      (controller.isVag) ||
+                                                      (controller.isNonVag) ||
+                                                      (controller
+                                                          .isOfferFilter) ||
+                                                      (controller
+                                                          .searchEditingController
+                                                          .value
+                                                          .text
+                                                          .isNotEmpty);
+                                                  if (!hasActiveFilters) {
+                                                    return const SizedBox.shrink();
+                                                  }
+                                                  return InkWell(
+                                                    onTap: () {
+                                                      try {
+                                                        controller
+                                                            .clearAllFilters();
+                                                      } catch (e) {
+                                                        print(
+                                                          'Error clearing filters: $e',
+                                                        );
+                                                      }
+                                                    },
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 8,
+                                                            vertical: 6,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: AppThemeData
+                                                            .grey200,
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              120,
+                                                            ),
+                                                        border: Border.all(
+                                                          width: 1,
+                                                          color: AppThemeData
+                                                              .grey300,
                                                         ),
                                                       ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              );
-                                            },
+                                                      child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          Icon(
+                                                            Icons.clear,
+                                                            size: 16,
+                                                            color: AppThemeData
+                                                                .grey800,
+                                                          ),
+                                                          const SizedBox(
+                                                            width: 4,
+                                                          ),
+                                                          Text(
+                                                            'Clear'.tr,
+                                                            style: TextStyle(
+                                                              color:
+                                                                  AppThemeData
+                                                                      .grey800,
+                                                              fontFamily:
+                                                                  AppThemeData
+                                                                      .semiBold,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w600,
+                                                              fontSize: 12,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  );
+                                                } catch (e) {
+                                                  return const SizedBox.shrink();
+                                                }
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                if (!controller.canAcceptOrders()) ...[
+                                  const SizedBox(height: 20),
+                                  Center(
+                                    child: Column(
+                                      children: [
+                                        Icon(
+                                          Icons.lock,
+                                          color: Colors.red,
+                                          size: 48,
+                                        ),
+                                        SizedBox(height: 8),
+                                        Text(
+                                          'This restaurant is currently closed.',
+                                          style: TextStyle(
+                                            fontSize: 18,
+                                            color: Colors.red,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
-                                        const SizedBox(width: 6),
-                                        Builder(
-                                          builder: (context) {
-                                            try {
-                                              final hasActiveFilters =
-                                                  (controller.isVag) ||
-                                                  (controller.isNonVag) ||
-                                                  (controller.isOfferFilter) ||
-                                                  (controller
-                                                      .searchEditingController
-                                                      .value
-                                                      .text
-                                                      .isNotEmpty);
-                                              if (!hasActiveFilters) {
-                                                return const SizedBox.shrink();
-                                              }
-                                              return InkWell(
-                                                onTap: () {
-                                                  try {
-                                                    controller
-                                                        .clearAllFilters();
-                                                  } catch (e) {
-                                                    print(
-                                                      'Error clearing filters: $e',
-                                                    );
-                                                  }
-                                                },
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 6,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: AppThemeData.grey200,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          120,
-                                                        ),
-                                                    border: Border.all(
-                                                      width: 1,
-                                                      color:
-                                                          AppThemeData.grey300,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment
-                                                            .center,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .center,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.clear,
-                                                        size: 16,
-                                                        color: AppThemeData
-                                                            .grey800,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        'Clear'.tr,
-                                                        style: TextStyle(
-                                                          color: AppThemeData
-                                                              .grey800,
-                                                          fontFamily:
-                                                              AppThemeData
-                                                                  .semiBold,
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          fontSize: 12,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
+                                        SizedBox(height: 8),
+                                        Column(
+                                          children: [
+                                            Text(
+                                              controller
+                                                  .getRestaurantStatusInfo()['reason'],
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.grey[600],
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                            if (controller
+                                                    .getRestaurantStatusInfo()['nextOpeningTime'] !=
+                                                null) ...[
+                                              SizedBox(height: 4),
+                                              Text(
+                                                'Next opening: ${controller.getRestaurantStatusInfo()['nextOpeningTime']}',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey[500],
                                                 ),
-                                              );
-                                            } catch (e) {
-                                              return const SizedBox.shrink();
-                                            }
-                                          },
+                                                textAlign: TextAlign.center,
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                       ],
                                     ),
                                   ),
+                                  const SizedBox(height: 20),
+                                ] else ...[
+                                  ProductListView(),
                                 ],
+                              ],
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ),
+
+            bottomNavigationBar: HomeProvider.cartItem.isEmpty
+                ? null
+                : InkWell(
+                    onTap: () {
+                      Get.to(const CartCheckOutScreen());
+                    },
+                    child: SafeArea(
+                      child: Container(
+                        height: 70,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFF48000), Color(0xFFff0404)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(20),
+                            topRight: Radius.circular(20),
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 25),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${HomeProvider.cartItem.length} items',
+                              style: TextStyle(
+                                fontFamily: AppThemeData.medium,
+                                color: AppThemeData.grey50,
+                                fontSize: 20,
                               ),
                             ),
-                            const SizedBox(height: 20),
-                            if (!controller.canAcceptOrders()) ...[
-                              const SizedBox(height: 20),
-                              Center(
-                                child: Column(
-                                  children: [
-                                    Icon(
-                                      Icons.lock,
-                                      color: Colors.red,
-                                      size: 48,
-                                    ),
-                                    SizedBox(height: 8),
-                                    Text(
-                                      'This restaurant is currently closed.',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        color: Colors.red,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    SizedBox(height: 8),
-                                    Column(
-                                      children: [
-                                        Text(
-                                          controller
-                                              .getRestaurantStatusInfo()['reason'],
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            color: Colors.grey[600],
-                                          ),
-                                          textAlign: TextAlign.center,
-                                        ),
-                                        if (controller
-                                                .getRestaurantStatusInfo()['nextOpeningTime'] !=
-                                            null) ...[
-                                          SizedBox(height: 4),
-                                          Text(
-                                            'Next opening: ${controller.getRestaurantStatusInfo()['nextOpeningTime']}',
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[500],
-                                            ),
-                                            textAlign: TextAlign.center,
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ],
-                                ),
+                            Text(
+                              'View Cart',
+                              style: TextStyle(
+                                fontFamily: AppThemeData.semiBold,
+                                color: AppThemeData.grey50,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
                               ),
-                              const SizedBox(height: 20),
-                            ] else ...[
-                              ProductListView(),
-                            ],
+                            ),
                           ],
                         ),
                       ),
                     ),
-            ),
-          ),
-
-          bottomNavigationBar: HomeProvider.cartItem.isEmpty
-              ? null
-              : InkWell(
-                  onTap: () {
-                    Get.to(const CartCheckOutScreen());
-                  },
-                  child: SafeArea(
-                    child: Container(
-                      height: 70,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFFF48000), Color(0xFFff0404)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(20),
-                          topRight: Radius.circular(20),
-                        ),
-                      ),
-                      padding: const EdgeInsets.symmetric(horizontal: 25),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${HomeProvider.cartItem.length} items',
-                            style: TextStyle(
-                              fontFamily: AppThemeData.medium,
-                              color: AppThemeData.grey50,
-                              fontSize: 20,
-                            ),
-                          ),
-                          Text(
-                            'View Cart',
-                            style: TextStyle(
-                              fontFamily: AppThemeData.semiBold,
-                              color: AppThemeData.grey50,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ),
-                ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              _showMenuModal(context);
-            },
-            backgroundColor: Colors.black,
-            child: Padding(
-              padding: const EdgeInsets.all(0.0),
-              child: SvgPicture.asset(
-                'assets/images/menu.svg',
-                width: 44,
-                height: 44,
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
-                  BlendMode.srcIn,
+            floatingActionButton: FloatingActionButton(
+              onPressed: () {
+                _showMenuModal(context);
+              },
+              backgroundColor: Colors.black,
+              child: Padding(
+                padding: const EdgeInsets.all(0.0),
+                child: SvgPicture.asset(
+                  'assets/images/menu.svg',
+                  width: 44,
+                  height: 44,
+                  colorFilter: const ColorFilter.mode(
+                    Colors.white,
+                    BlendMode.srcIn,
+                  ),
                 ),
               ),
             ),
-          ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        );
-      },
+            floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          );
+        },
+      ),
     );
   }
 
@@ -1265,7 +1344,7 @@ class RestaurantDetailsScreen extends StatelessWidget {
                         shrinkWrap: true,
                         physics: const BouncingScrollPhysics(),
                         itemCount:
-                            productModel.vendorModel.workingHours!.length,
+                            productModel.vendorModel.workingHours?.length,
                         itemBuilder: (context, dayIndex) {
                           WorkingHours workingHours =
                               productModel.vendorModel.workingHours![dayIndex];

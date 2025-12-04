@@ -29,7 +29,8 @@ class AddressListScreen extends StatelessWidget {
     return Consumer<AddressListProvider>(
       builder: (context, controller, _) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          controller.initFunction(context: context);
+          // Force refresh addresses every time page opens
+          controller.initFunction(context: context, forceRefresh: true);
         });
         return Scaffold(
           appBar: AppBar(
@@ -121,6 +122,9 @@ class AddressListScreen extends StatelessWidget {
                             return InkWell(
                               onTap: () {
                                 Get.back(result: shippingAddress);
+                                print(
+                                  "ListViewBuilder ${shippingAddress.toJson()} ",
+                                );
                               },
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(

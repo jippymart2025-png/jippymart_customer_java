@@ -68,7 +68,6 @@ class _CartScreenState extends State<CartScreen> {
     } else {
       await controller.syncAddressWithHomeLocation(context);
     }
-    // Update payment method after all calculations are complete
     controller.checkAndUpdatePaymentMethod();
     _isRefreshing = false;
   }
@@ -303,7 +302,6 @@ class _CartScreenState extends State<CartScreen> {
                               const SizedBox(height: 10),
                               InkWell(
                                 onTap: () async {
-                                  // Show loading indicator while fetching coupons
                                   ShowToastDialog.showLoader(
                                     "Loading coupons...",
                                   );
@@ -687,6 +685,8 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                   ),
             //changed here
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
             bottomNavigationBar: HomeProvider.cartItem.isEmpty
                 ? null
                 : cartNavigationBarWidget(context),

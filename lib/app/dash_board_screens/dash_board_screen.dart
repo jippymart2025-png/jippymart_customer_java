@@ -1,5 +1,6 @@
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
@@ -42,12 +43,13 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer5<
+    return Consumer6<
       DashBoardProvider,
       CartControllerProvider,
       OrderProvider,
       SplashProvider,
-      HomeProvider
+      HomeProvider,
+      FavouriteProvider
     >(
       builder:
           (
@@ -57,6 +59,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
             orderProvider,
             splashProvider,
             homeProvider,
+            favouriteProvider,
             _,
           ) {
             if (controller.pageList.isEmpty) {
@@ -91,6 +94,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                     cartControllerProvider,
                     orderProvider,
                     context,
+                    favouriteProvider,
                   );
                 }
               },
@@ -106,6 +110,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                   context,
                   splashProvider,
                   homeProvider,
+                  favouriteProvider,
                 ),
               ),
             );
@@ -120,6 +125,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
     BuildContext context,
     SplashProvider splashProvider,
     HomeProvider homeProvider,
+    FavouriteProvider favouriteProvider,
   ) {
     final List<BottomNavigationBarItem> items = [
       _buildNavigationBarItem(
@@ -167,6 +173,7 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
           cartControllerProvider,
           orderProvider,
           context,
+          favouriteProvider,
         );
       },
       items: items,

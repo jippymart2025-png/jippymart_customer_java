@@ -18,6 +18,14 @@ class EditProfileProvider extends ChangeNotifier {
   bool isLoading = true;
   UserModel userModel = UserModel();
 
+  // ShippingAddress? _selectedAddress;
+  // ShippingAddress? get selectedAddress => _selectedAddress;
+  //
+  // void updateSelectedAddress(ShippingAddress address) {
+  //   _selectedAddress = address;
+  //   notifyListeners();
+  // }
+
   TextEditingController firstNameController = TextEditingController();
   TextEditingController lastNameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
@@ -131,6 +139,7 @@ class EditProfileProvider extends ChangeNotifier {
         Get.back(result: true);
       });
       notifyListeners();
+      ShowToastDialog.showToast("Profile Data Updated");
       Get.back(result: "profile_updated");
     }
   }

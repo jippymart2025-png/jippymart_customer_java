@@ -175,6 +175,7 @@ class MartProvider extends ChangeNotifier {
     loadMartBannersStream();
     loadFeaturedCategories();
     loadCategoryProductsForSections();
+    loadVendorCategories();
 
     ///
     // _preloadSections();
@@ -424,7 +425,6 @@ class MartProvider extends ChangeNotifier {
         martTopBanners.clear();
       },
     );
-    notifyListeners();
   }
 
   void _initializeBannerControllers() {
@@ -641,14 +641,19 @@ class MartProvider extends ChangeNotifier {
       );
       martCategories.clear();
       martCategories.addAll(categories);
+      notifyListeners();
       if (categories.isNotEmpty) {
         final firstCategory = categories.first;
+        notifyListeners();
         if (firstCategory.id != null) {
-          selectCategory(firstCategory.id!);
+          selectCategory(firstCategory.id ?? "");
+          notifyListeners();
         }
+        notifyListeners();
       } else {
         selectedCategoryId = "";
         currentCategory = null;
+        notifyListeners();
       }
     } catch (e) {
       print('[MART] Error loading vendor categories: $e');
@@ -1053,7 +1058,6 @@ class MartProvider extends ChangeNotifier {
         '[MART CONTROLLER] 🏠 Streaming: Loading homepage categories from Firestore...',
       );
       isCategoryLoading = true;
-      // Try Firestore first (fastest path)
       try {
         print(
           '[MART CONTROLLER] 🔥 Calling Firestore service for homepage categories...',
@@ -1218,8 +1222,12 @@ class MartProvider extends ChangeNotifier {
   }
 
   /// Load categories with streaming updates using Firestore
-  Future<void> loadCategoriesStreaming() async {
+  Future<void> loadCategoriesStreaming({bool skipSubcategories = false}) async {
     try {
+      isCategoryLoading = true;
+      errorMessage = '';
+      notifyListeners();
+
       print(
         '[MART CONTROLLER] 📂 Streaming: Loading all categories from Firestore...',
       );
@@ -1234,10 +1242,17 @@ class MartProvider extends ChangeNotifier {
           print(
             '[MART CONTROLLER] ✅ Streaming: All categories loaded from Firestore (${categories.length})',
           );
-          // Load subcategories for categories that have them
-          // await _loadSubcategoriesStreaming();
-          // await loadAllHomepageSubcategories();
-          await loadFirstPageHomepageSubcategories();
+
+          // Only load subcategories if not skipped (for faster category screen loading)
+          if (!skipSubcategories) {
+            // Load subcategories for categories that have them
+            // await _loadSubcategoriesStreaming();
+            // await loadAllHomepageSubcategories();
+            await loadFirstPageHomepageSubcategories();
+          }
+
+          isCategoryLoading = false;
+          notifyListeners();
           return;
         } else {
           print(
@@ -1254,8 +1269,13 @@ class MartProvider extends ChangeNotifier {
       print('[MART CONTROLLER] ❌ Firestore failed, no API fallback available');
       errorMessage =
           'Unable to load categories from Firestore. Please check your connection.';
+      isCategoryLoading = false;
+      notifyListeners();
     } catch (e) {
       print('[MART CONTROLLER] ❌ Streaming: Error loading categories: $e');
+      errorMessage = 'Unable to load categories. Please try again later.';
+      isCategoryLoading = false;
+      notifyListeners();
     }
   }
 
@@ -1392,7 +1412,6 @@ class MartProvider extends ChangeNotifier {
       if (excludeProductId != null) {
         print('[MART CONTROLLER] 📡 Excluding product: $excludeProductId');
       }
-
       // Use the Firestore service stream method for all products
       return _firestoreService.streamAllProducts(
         excludeProductId: excludeProductId,
@@ -1459,7 +1478,7 @@ class MartProvider extends ChangeNotifier {
 
   /// Get formatted delivery message
   String get deliveryMessage {
-    final threshold = deliverySettings?.freeDeliveryThreshold ?? 199.0;
+    final threshold = deliverySettings?.freeDeliveryThreshold ?? 299.0;
     return 'Spend ₹${threshold.toInt()} to unlock FREE delivery';
   }
 

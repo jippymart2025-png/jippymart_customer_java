@@ -39,7 +39,6 @@ class MartNavigationProvider extends ChangeNotifier {
   void changeIndex(int index) {
     selectedIndex = index;
     if (index == 1) {
-      // martCategoryProvider.initFunction();
       if (martProvider.martCategories.isEmpty) {
         martProvider.loadVendorCategories();
       }

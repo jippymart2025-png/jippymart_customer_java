@@ -31,15 +31,18 @@ class MartNavigationScreen extends StatelessWidget {
                 navController.goToHome();
               }
             },
-            child: Scaffold(
-              backgroundColor: const Color(0xFFF6F6FF),
-              body: IndexedStack(
-                index: navController.selectedIndex,
-                children: navController.pageList,
+            child: SafeArea(
+              top: false,
+              child: Scaffold(
+                backgroundColor: const Color(0xFFF6F6FF),
+                body: IndexedStack(
+                  index: navController.selectedIndex,
+                  children: navController.pageList,
+                ),
+                bottomNavigationBar: navController.selectedIndex != 2
+                    ? _buildEnhancedNavigationBar(navController)
+                    : const SizedBox.shrink(),
               ),
-              bottomNavigationBar: navController.selectedIndex != 2
-                  ? _buildEnhancedNavigationBar(navController)
-                  : const SizedBox.shrink(),
             ),
           );
         },

@@ -26,7 +26,7 @@ class OrderProvider extends ChangeNotifier {
 
   getOrder() async {
     if (Constant.userModel != null) {
-      FireStoreUtils.backendUserId = Constant.userModel!.firebaseId;
+      FireStoreUtils.backendUserId = Constant.userModel?.firebaseId;
       if (kDebugMode) {
         log(
           '[OrderController] Set backendUserId to: ${Constant.userModel!.id}',

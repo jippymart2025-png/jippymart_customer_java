@@ -118,15 +118,15 @@ Widget buildDeliveryFeeUI({
     print('[DELIVERY_UI] 🎯 Paid delivery');
     return Row(
       children: [
-        Text(
-          'Delivery Charge',
-          textAlign: TextAlign.start,
-          style: TextStyle(
-            fontFamily: AppThemeData.regular,
-            color: AppThemeData.grey900,
-            fontSize: 16,
-          ),
-        ),
+        // Text(
+        //   'Delivery Charge',
+        //   textAlign: TextAlign.start,
+        //   style: TextStyle(
+        //     fontFamily: AppThemeData.regular,
+        //     color: AppThemeData.grey900,
+        //     fontSize: 16,
+        //   ),
+        // ),
         const SizedBox(width: 8),
         Text(
           Constant.amountShow(amount: currentFee.toString()),

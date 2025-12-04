@@ -26,13 +26,18 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
   void initState() {
     super.initState();
     _martController = Provider.of<MartProvider>(context, listen: false);
-    _martController.initFunction();
+    // Defer category loading so Provider notifications don't fire mid-build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _loadCategories();
+      }
+    });
   }
 
   Future<void> _loadCategories() async {
     try {
-      await Future.delayed(const Duration(milliseconds: 500));
-      await _martController.loadCategoriesStreaming();
+      // Skip subcategories loading for faster category screen loading
+      await _martController.loadCategoriesStreaming(skipSubcategories: true);
     } catch (e) {
       print('Error loading categories: $e');
     }

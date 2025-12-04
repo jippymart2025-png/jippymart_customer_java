@@ -85,7 +85,6 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 3));
-
     ANRMonitor.startMonitoring();
     MemoryMonitor.startMemoryMonitoring();
     NativeLockPrevention.startLockContentionMonitoring();

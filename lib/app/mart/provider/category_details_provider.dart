@@ -79,7 +79,6 @@ class CategoryDetailsProvider extends ChangeNotifier {
             'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop';
         return;
       }
-
       // Use Firestore to get parent category image
       final categories = await _firestoreService.getCategories(limit: 100);
       final parentCategory = categories.firstWhere(
@@ -105,7 +104,6 @@ class CategoryDetailsProvider extends ChangeNotifier {
       print(
         '[CATEGORY DETAIL] 📋 Loading subcategories for category: $categoryId',
       );
-
       // Special case for trending category - create mock subcategories
       if (categoryId == 'trending') {
         print(
@@ -123,7 +121,6 @@ class CategoryDetailsProvider extends ChangeNotifier {
         isLoadingSubcategories = false;
         return;
       }
-
       // Special case for featured category - create mock subcategories
       if (categoryId == 'featured') {
         print(
@@ -141,7 +138,6 @@ class CategoryDetailsProvider extends ChangeNotifier {
         isLoadingSubcategories = false;
         return;
       }
-
       // Special case for section-based navigation
       if (categoryId.startsWith('section_') && sectionName.isNotEmpty) {
         print(

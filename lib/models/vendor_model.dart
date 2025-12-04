@@ -102,7 +102,7 @@ class VendorModel {
 
   VendorModel.fromJson(Map<String, dynamic> json) {
     author = json['author'];
-    dineInActive = json['dine_in_active'];
+    dineInActive = _parseBool(json['dine_in_active']);
     openDineTime = json['openDineTime'];
     if (json['categoryID'] != null) {
       if (json['categoryID'] is List) {
@@ -129,8 +129,6 @@ class VendorModel {
     id = json['id'];
     categoryPhoto = json['categoryPhoto'];
     restaurantMenuPhotos = json['restaurantMenuPhotos'] ?? [];
-
-    // Handle workingHours
     if (json['workingHours'] != null) {
       workingHours = <WorkingHours>[];
       if (json['workingHours'] is List) {
@@ -139,15 +137,14 @@ class VendorModel {
         });
       }
     }
-
     location = json['location'];
     fcmToken = json['fcmToken'];
     g = json['g'] != null ? G.fromJson(json['g']) : null;
-    hidephotos = json['hidephotos'];
-    reststatus = json['reststatus'];
+    hidephotos = _parseBool(json['hidephotos']);
+    reststatus = _parseBool(json['reststatus']);
 
     // FIX: Check both 'isOpen' and 'is_open' fields
-    isOpen = json['isOpen'] ?? json['is_open'] ?? true;
+    isOpen = _parseBool(json['isOpen'] ?? json['is_open'] ?? true);
 
     filters = json['filters'] != null
         ? Filters.fromJson(json['filters'])
@@ -181,7 +178,7 @@ class VendorModel {
         print("⚠️ Invalid coordinates format: $coord");
       }
     }
-    enabledDiveInFuture = json['enabledDiveInFuture'];
+    enabledDiveInFuture = _parseBool(json['enabledDiveInFuture']);
     restaurantCost = json['restaurantCost']?.toString();
     if (json['DeliveryCharge'] != null && json['DeliveryCharge'] is Map) {
       deliveryCharge = DeliveryCharge.fromJson(json['DeliveryCharge']);
@@ -220,7 +217,7 @@ class VendorModel {
       });
     }
 
-    specialDiscountEnable = json['specialDiscountEnable'];
+    specialDiscountEnable = _parseBool(json['specialDiscountEnable']);
     reviewsSum = json['reviewsSum'] ?? 0.0;
     // Handle photos - could be List or String
     if (json['photos'] != null) {
@@ -293,7 +290,7 @@ class VendorModel {
         : null;
 
     subscriptionTotalOrders = json['subscriptionTotalOrders'];
-    isSelfDelivery = json['isSelfDelivery'] ?? false;
+    isSelfDelivery = _parseBool(json['isSelfDelivery']);
     vType = json['vType'];
 
     // Handle distance - could be double or String
@@ -302,9 +299,8 @@ class VendorModel {
           ? json['distance']
           : double.tryParse(json['distance'].toString());
     }
-
     // FIX: Check both 'isActive' and 'is_active' fields
-    isActive = json['isActive'] ?? json['is_active'] ?? true;
+    isActive = _parseBool(json['isActive'] ?? json['is_active'] ?? true);
   }
 
   // In VendorModel.fromJson method, add these lines if needed:
@@ -344,6 +340,16 @@ class VendorModel {
           : null,
       specialDiscountEnable: json['specialDiscountEnable'],
     );
+  }
+
+  bool? _parseBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is int) return value == 1;
+    if (value is String) {
+      return value == '1' || value.toLowerCase() == 'true';
+    }
+    return null;
   }
 
   static Timestamp? _parseTimestamp(dynamic timestamp) {

@@ -10,7 +10,6 @@ import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/widget/special_price_badge.dart';
 import 'package:flutter/material.dart';
@@ -111,7 +110,6 @@ class ProductListView extends StatelessWidget {
     final products = controller.getProductsByCategory(
       vendorCategoryModel.id.toString(),
     );
-    // Listen to HomeProvider changes to rebuild when cart changes
     return Consumer<HomeProvider>(
       builder: (context, homeProvider, _) {
         return ListView.builder(
@@ -145,30 +143,35 @@ class ProductListView extends StatelessWidget {
     bool isItemAvailable = productModel.isAvailable ?? true;
     String price = "0.0";
     String disPrice = "0.0";
-
-    // Calculate prices
-    if (productModel.itemAttribute != null) {
-      if (productModel.itemAttribute!.variants!
-          .where(
-            (element) =>
-                element.variantSku == controller.selectedVariants.join('-'),
-          )
-          .isNotEmpty) {
+    // Calculate prices - FIXED VERSION
+    if (productModel.itemAttribute != null &&
+        productModel.itemAttribute!.variants != null &&
+        productModel.itemAttribute!.variants!.isNotEmpty) {
+      // If no variant is selected yet, use the first variant as default
+      if (controller.selectedVariants.isEmpty) {
+        // Use the first variant's price as default
+        final firstVariant = productModel.itemAttribute!.variants!.first;
         price = Constant.productCommissionPrice(
           controller.vendorModel,
-          productModel.itemAttribute!.variants!
-                  .where(
-                    (element) =>
-                        element.variantSku ==
-                        controller.selectedVariants.join('-'),
-                  )
-                  .first
-                  .variantPrice ??
-              '0',
+          firstVariant.variantPrice ?? '0',
+        );
+        disPrice = "0";
+      } else {
+        // Use the selected variant's price
+        final selectedVariant = productModel.itemAttribute!.variants!
+            .firstWhere(
+              (element) =>
+                  element.variantSku == controller.selectedVariants.join('-'),
+              orElse: () => productModel.itemAttribute!.variants!.first,
+            );
+        price = Constant.productCommissionPrice(
+          controller.vendorModel,
+          selectedVariant.variantPrice ?? '0',
         );
         disPrice = "0";
       }
     } else {
+      // Regular product without variants
       price = Constant.productCommissionPrice(
         controller.vendorModel,
         productModel.price.toString(),
@@ -180,6 +183,39 @@ class ProductListView extends StatelessWidget {
               productModel.disPrice.toString(),
             );
     }
+    // if (productModel.itemAttribute != null) {
+    //   if (productModel.itemAttribute!.variants!
+    //       .where(
+    //         (element) =>
+    //             element.variantSku == controller.selectedVariants.join('-'),
+    //       )
+    //       .isNotEmpty) {
+    //     price = Constant.productCommissionPrice(
+    //       controller.vendorModel,
+    //       productModel.itemAttribute!.variants!
+    //               .where(
+    //                 (element) =>
+    //                     element.variantSku ==
+    //                     controller.selectedVariants.join('-'),
+    //               )
+    //               .first
+    //               .variantPrice ??
+    //           '0',
+    //     );
+    //     disPrice = "0";
+    //   }
+    // } else {
+    //   price = Constant.productCommissionPrice(
+    //     controller.vendorModel,
+    //     productModel.price.toString(),
+    //   );
+    //   disPrice = double.parse(productModel.disPrice.toString()) <= 0
+    //       ? "0"
+    //       : Constant.productCommissionPrice(
+    //           controller.vendorModel,
+    //           productModel.disPrice.toString(),
+    //         );
+    // }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -227,6 +263,7 @@ class ProductListView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
+
                     // Promotional badge
                     Builder(
                       builder: (context) {
@@ -270,17 +307,18 @@ class ProductListView extends StatelessWidget {
                           restaurantId: productModel.vendorID ?? '',
                         );
                         final hasPromo = promo != null;
-                        final promoPrice = hasPromo
-                            ? (promo['special_price'] as num).toString()
-                            : null;
 
                         if (hasPromo) {
-                          // Special promotional price display
+                          // For promotional items with variants, you might want to handle this differently
+                          final promoPrice = (promo['special_price'] as num)
+                              .toString();
+
                           return Row(
                             children: [
+                              //finded
                               Flexible(
                                 child: Text(
-                                  Constant.amountShow(amount: promoPrice!),
+                                  Constant.amountShow(amount: promoPrice),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -292,15 +330,10 @@ class ProductListView extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 5),
-                              // Show original price with strikethrough
                               Flexible(
                                 child: Text(
-                                  Constant.amountShow(
-                                    amount: Constant.productCommissionPrice(
-                                      controller.vendorModel,
-                                      productModel.price.toString(),
-                                    ),
-                                  ),
+                                  // Show the calculated price (which includes variant pricing) as original
+                                  Constant.amountShow(amount: price),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -315,8 +348,60 @@ class ProductListView extends StatelessWidget {
                               ),
                             ],
                           );
-                        } else if (double.parse(disPrice) <= 0) {
+                        }
+                        // final promo = controller.getActivePromotionForProduct(
+                        //   productId: productModel.id?.toString() ?? '',
+                        //   restaurantId: productModel.vendorID ?? '',
+                        // );
+                        // final hasPromo = promo != null;
+                        // final promoPrice = hasPromo
+                        //     ? (promo['special_price'] as num).toString()
+                        //     : null;
+                        // if (hasPromo) {
+                        //   // Special promotional price display
+                        //   return Row(
+                        //     children: [
+                        //       Flexible(
+                        //         child: Text(
+                        //           Constant.amountShow(amount: promoPrice!),
+                        //           maxLines: 1,
+                        //           overflow: TextOverflow.ellipsis,
+                        //           style: TextStyle(
+                        //             fontSize: 16,
+                        //             color: AppThemeData.grey900,
+                        //             fontFamily: AppThemeData.semiBold,
+                        //             fontWeight: FontWeight.w600,
+                        //           ),
+                        //         ),
+                        //       ),
+                        //       const SizedBox(width: 5),
+                        //       // Show original price with strikethrough
+                        //       Flexible(
+                        //         child: Text(
+                        //           Constant.amountShow(
+                        //             amount: Constant.productCommissionPrice(
+                        //               controller.vendorModel,
+                        //               productModel.price.toString(),
+                        //             ),
+                        //           ),
+                        //           maxLines: 1,
+                        //           overflow: TextOverflow.ellipsis,
+                        //           style: TextStyle(
+                        //             fontSize: 14,
+                        //             decoration: TextDecoration.lineThrough,
+                        //             decorationColor: AppThemeData.grey300,
+                        //             color: AppThemeData.grey300,
+                        //             fontFamily: AppThemeData.semiBold,
+                        //             fontWeight: FontWeight.w600,
+                        //           ),
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   );
+                        // }
+                        else if (double.parse(disPrice) <= 0) {
                           // Normal price display
+                          // return SizedBox();
                           return Text(
                             Constant.amountShow(amount: price),
                             style: TextStyle(
@@ -565,8 +650,9 @@ class ProductListView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             InkWell(
-              onTap: () async {
-                final promo = await FireStoreUtils.getActivePromotionForProduct(
+              onTap: () {
+                // Use cached promotional data for instant response
+                final promo = controller.getActivePromotionForProduct(
                   productId: productId,
                   restaurantId: productModel.vendorID ?? '',
                 );
@@ -604,16 +690,16 @@ class ProductListView extends StatelessWidget {
               ),
             ),
             InkWell(
-              onTap: () async {
+              onTap: () {
                 final currentQty = _findCartItemQuantity(productId);
                 if ((currentQty) <= (productModel.quantity ?? 0) ||
                     (productModel.quantity ?? 0) == -1) {
-                  final promo =
-                      await FireStoreUtils.getActivePromotionForProduct(
-                        productId: productId,
-                        restaurantId: productModel.vendorID ?? '',
-                      );
-                  // Check promotional item limit
+                  // Use cached promotional data for instant response
+                  final promo = controller.getActivePromotionForProduct(
+                    productId: productId,
+                    restaurantId: productModel.vendorID ?? '',
+                  );
+                  // Check promotional item limit (cached)
                   if (promo != null) {
                     final isAllowed = controller
                         .isPromotionalItemQuantityAllowed(
@@ -661,62 +747,20 @@ class ProductListView extends StatelessWidget {
         ),
       );
     } else {
-      //finded
+      // Optimized: Direct call without async overhead
       return RoundedButtonFill(
         title: "Add".tr,
         width: 10,
         height: 4,
         color: AppThemeData.grey50,
         textColor: AppThemeData.primary300,
-        onPress: () async {
+        onPress: () {
+          // Non-blocking call - UI updates immediately
           controller.addProductAndRemoveProductFunction(
             productModel: productModel,
             price: price,
             disPrice: disPrice,
           );
-          // if (1 <= (productModel.quantity ?? 0) ||
-          //     (productModel.quantity ?? 0) == -1) {
-          //   final promo = controller.getActivePromotionForProduct(
-          //     productId: productModel.id ?? '',
-          //     restaurantId: productModel.vendorID ?? '',
-          //   );
-          //   // Check promotional item limit
-          //   if (promo != null) {
-          //     final isAllowed = controller.isPromotionalItemQuantityAllowed(
-          //       productModel.id ?? '',
-          //       productModel.vendorID ?? '',
-          //       1,
-          //     );
-          //     if (!isAllowed) {
-          //       final limit = controller.getPromotionalItemLimit(
-          //         productModel.id ?? '',
-          //         productModel.vendorID ?? '',
-          //       );
-          //       ShowToastDialog.showToast(
-          //         "Maximum $limit items allowed for this promotional offer".tr,
-          //       );
-          //       return;
-          //     }
-          //   }
-          //   String finalPrice = price;
-          //   String finalDiscountPrice = disPrice;
-          //   if (promo != null) {
-          //     finalPrice = (promo['special_price'] as num).toString();
-          //     finalDiscountPrice = Constant.productCommissionPrice(
-          //       controller.vendorModel,
-          //       productModel.price.toString(),
-          //     );
-          //   }
-          //   controller.addToCart(
-          //     productModel: productModel,
-          //     price: finalPrice,
-          //     discountPrice: finalDiscountPrice,
-          //     isIncrement: true,
-          //     quantity: 1,
-          //   );
-          // } else {
-          //   ShowToastDialog.showToast("Out of stock".tr);
-          // }
         },
       );
     }

@@ -128,11 +128,35 @@ class MartItemModel {
         return 0.0;
       }
 
-      // Handle API-specific field mappings if needed
-      // For example, if API uses different field names:
-      final isTrending = json['isTrending'] ?? false;
-      final isAvailable = json['isAvailable'] ?? true;
-      final publish = json['publish'] ?? true;
+      // Helper function to parse boolean fields from API
+      bool parseBool(dynamic value) {
+        if (value == null) return false;
+        if (value is bool) return value;
+        if (value is num) return value == 1;
+        if (value is String) {
+          return value.toLowerCase() == 'true' || value == '1';
+        }
+        return false;
+      }
+
+      // Parse ALL boolean fields using the helper function
+      final isAvailable = parseBool(json['isAvailable'] ?? true);
+      final publish = parseBool(json['publish'] ?? true);
+      final veg = parseBool(json['veg']);
+      final nonveg = parseBool(json['nonveg']);
+      final takeawayOption = parseBool(json['takeawayOption']);
+      final isStealOfMoment = parseBool(json['isStealOfMoment']);
+      final isTrending = parseBool(json['isTrending']);
+      final isSeasonal = parseBool(json['isSeasonal']);
+      final isFeatured = parseBool(json['isFeatured']);
+      final isOnSale = parseBool(json['isOnSale']);
+      final isOrganic = parseBool(json['isOrganic']);
+      final isGlutenFree = parseBool(json['isGlutenFree']);
+      final isBestSeller = parseBool(json['isBestSeller']);
+      final isFeature = parseBool(json['isFeature']);
+      final isNew = parseBool(json['isNew']);
+      final isSpotlight = parseBool(json['isSpotlight']);
+      final hasOptions = parseBool(json['has_options']);
 
       return MartItemModel(
         id: json['id']?.toString() ?? '',
@@ -146,9 +170,9 @@ class MartItemModel {
             : null,
         isAvailable: isAvailable,
         publish: publish,
-        veg: json['veg'] ?? false,
-        nonveg: json['nonveg'] ?? false,
-        quantity: json['quantity'] ?? 0,
+        veg: veg,
+        nonveg: nonveg,
+        quantity: (json['quantity'] as num?)?.toInt() ?? 0,
         vendorID: json['vendorID']?.toString(),
         categoryID: json['categoryID']?.toString(),
         categoryTitle: json['categoryTitle']?.toString(),
@@ -179,21 +203,19 @@ class MartItemModel {
             : null,
         reviewCount: json['reviewCount']?.toString(),
         reviewSum: json['reviewSum']?.toString(),
-        takeawayOption: json['takeawayOption'],
+        takeawayOption: takeawayOption,
         migratedBy: json['migratedBy']?.toString(),
         createdAt:
             json['created_at']?.toString() ?? json['createdAt']?.toString(),
-        // Handle both field names
         updatedAt:
             json['updated_at']?.toString() ?? json['updatedAt']?.toString(),
-        // Handle both field names
         brand: json['brand']?.toString(),
         brandID: json['brandID']?.toString(),
         brandTitle: json['brandTitle']?.toString(),
         weight: json['weight']?.toString(),
         expiryDate: json['expiryDate']?.toString(),
-        isFeatured: json['isFeatured'],
-        isOnSale: json['isOnSale'],
+        isFeatured: isFeatured,
+        isOnSale: isOnSale,
         discountPercentage: (json['discountPercentage'] as num?)?.toDouble(),
         barcode: json['barcode']?.toString(),
         tags: json['tags'] is List ? List<String>.from(json['tags']) : null,
@@ -203,19 +225,18 @@ class MartItemModel {
         allergens: json['allergens'] is List
             ? List<String>.from(json['allergens'])
             : null,
-        isOrganic: json['isOrganic'],
-        isGlutenFree: json['isGlutenFree'],
+        isOrganic: isOrganic,
+        isGlutenFree: isGlutenFree,
         subcategoryID: json['subcategoryID'],
-        isBestSeller: json['isBestSeller'],
-        isFeature: json['isFeature'],
-        isNew: json['isNew'],
+        isBestSeller: isBestSeller,
+        isFeature: isFeature,
+        isNew: isNew,
         isTrending: isTrending,
-        // Use the parsed value
-        isSeasonal: json['isSeasonal'],
-        isSpotlight: json['isSpotlight'],
-        isStealOfMoment: json['isStealOfMoment'],
-        has_options: json['has_options'],
-        options_count: json['options_count'],
+        isSeasonal: isSeasonal,
+        isSpotlight: isSpotlight,
+        isStealOfMoment: isStealOfMoment,
+        has_options: hasOptions,
+        options_count: (json['options_count'] as num?)?.toInt(),
       );
     } catch (e, stackTrace) {
       print('[MART ITEM MODEL] Error parsing JSON: $e');
