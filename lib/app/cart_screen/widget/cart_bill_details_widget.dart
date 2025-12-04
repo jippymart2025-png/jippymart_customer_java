@@ -75,7 +75,6 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 10),
-                // DELIVERY FEE SECTION - Fixed logic
                 if (controller.selectedFoodType != 'TakeAway') ...[
                   _buildDeliveryFeeSection(
                     controller,
@@ -439,7 +438,6 @@ Widget _buildDeliveryFeeSection(
   // Mart items delivery logic - Use same dynamic deliveryChargeModel as restaurant
   if (hasMartItems) {
     print('[CART_UI] 🛒 Building mart delivery UI...');
-    // Use same dynamic delivery charge model as restaurant products (299 threshold)
     const double fallbackThreshold = 299.0;
     const double fallbackFreeKm = 5.0;
     const double fallbackBaseCharge = 23.0;
@@ -513,7 +511,6 @@ Widget _buildDeliveryFeeSection(
       ],
     );
   }
-  // Regular items delivery logic
   final double threshold =
       (controller.deliveryChargeModel.itemTotalThreshold ?? 299).toDouble();
   final double freeKm =

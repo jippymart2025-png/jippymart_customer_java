@@ -440,7 +440,7 @@ class _CartScreenState extends State<CartScreen> {
                                                   child: InkWell(
                                                     onTap: () {
                                                       controller.deliveryTips =
-                                                          05;
+                                                          5.0;
                                                       controller
                                                           .calculatePrice();
                                                     },
@@ -452,7 +452,7 @@ class _CartScreenState extends State<CartScreen> {
                                                             color:
                                                                 controller
                                                                         .deliveryTips ==
-                                                                    05
+                                                                    5.0
                                                                 ? AppThemeData
                                                                       .primary300
                                                                 : AppThemeData

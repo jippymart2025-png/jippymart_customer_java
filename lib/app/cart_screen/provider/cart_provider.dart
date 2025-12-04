@@ -653,7 +653,6 @@ class CartControllerProvider extends ChangeNotifier {
   double specialDiscountAmount = 0.0;
   double specialDiscount = 0.0;
   String specialType = "";
-
   double deliveryTips = 0.0;
   double taxAmount = 0.0;
   double totalAmount = 0.0;
@@ -3001,9 +3000,8 @@ class CartControllerProvider extends ChangeNotifier {
     }
     _startOrderProcessing();
     lastOrderAttempt = DateTime.now();
-    // Reset delivery tips for new order (will be set again if user selects tip)
-    // This ensures tips don't carry over from previous orders
-    deliveryTips = 0.0;
+    // 🔑 FIXED: Don't reset deliveryTips here - user has already selected the tip amount
+    // Tips should only be reset when cart screen initializes (for new order sessions)
     try {
       if (!await validateOrderBeforePayment(context)) {
         _endOrderProcessing();
