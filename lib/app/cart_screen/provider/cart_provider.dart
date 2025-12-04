@@ -63,6 +63,7 @@ class CartControllerProvider extends ChangeNotifier {
       context,
     );
     if (!canProceed) {
+      controller.endOrderProcessing();
       return;
     }
     if ((controller.couponAmount >= 1) &&
@@ -71,6 +72,7 @@ class CartControllerProvider extends ChangeNotifier {
         "The total price must be greater than or equal to the coupon discount value for the code to apply. Please review your cart total."
             .tr,
       );
+      controller.endOrderProcessing();
       return;
     }
     if ((controller.specialDiscountAmount >= 1) &&
@@ -79,6 +81,7 @@ class CartControllerProvider extends ChangeNotifier {
         "The total price must be greater than or equal to the special discount value for the code to apply. Please review your cart total."
             .tr,
       );
+      controller.endOrderProcessing();
       return;
     }
     if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
@@ -97,13 +100,25 @@ class CartControllerProvider extends ChangeNotifier {
               ShowToastDialog.showToast(
                 "Something went wrong, please contact admin.".tr,
               );
+              // 🔑 CRITICAL: Reset processing flag on RazorPay order creation failure
+              controller.endOrderProcessing();
             } else {
               CreateRazorPayOrderModel result = value;
               controller.openCheckout(amount: value.amount, orderId: result.id);
             }
+          })
+          .catchError((error) {
+            // 🔑 CRITICAL: Handle any errors during RazorPay order creation
+            Get.back();
+            ShowToastDialog.showToast(
+              "Failed to create payment order. Please try again.".tr,
+            );
+            controller.endOrderProcessing();
           });
     } else {
       ShowToastDialog.showToast("Please select payment method".tr);
+      // 🔑 CRITICAL: Reset processing flag when no payment method is selected
+      controller.endOrderProcessing();
     }
     notifyListeners();
   }
@@ -184,18 +199,23 @@ class CartControllerProvider extends ChangeNotifier {
   //     notifyListeners();
   //   });
   // }
-  Future<void> showPaymentMethodDialog(BuildContext context) async {
+  Future<bool> showPaymentMethodDialog(BuildContext context) async {
+    // Validate before showing dialog - if validation fails, don't show dialog
     final canProceed = await validateAndPlaceOrderBulletproof(context);
     if (!canProceed) {
-      return;
+      // Validation failed - ensure processing flag is reset (in case it was stuck from previous attempt)
+      endOrderProcessing();
+      return false;
     }
     final String initialSelection = selectedPaymentMethod;
-    await Get.dialog(
+    final result = await Get.dialog<bool>(
       WillPopScope(
         onWillPop: () async {
+          // User cancelled via back button - restore initial selection
           selectedPaymentMethod = initialSelection;
           notifyListeners();
-          return true;
+          Get.back(result: false); // Return false to indicate cancellation
+          return false; // Prevent default back behavior since we handled it
         },
         child: StatefulBuilder(
           builder: (context, setState) {
@@ -391,9 +411,12 @@ class CartControllerProvider extends ChangeNotifier {
               actions: [
                 TextButton(
                   onPressed: () {
+                    // User cancelled - clear payment method
                     selectedPaymentMethod = "";
                     notifyListeners();
-                    Get.back();
+                    Get.back(
+                      result: false,
+                    ); // Return false to indicate cancellation
                   },
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.grey[600],
@@ -426,7 +449,9 @@ class CartControllerProvider extends ChangeNotifier {
                       }
                     }
 
-                    Get.back(); // Close dialog with valid selection
+                    Get.back(
+                      result: true,
+                    ); // Return true to indicate confirmation
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange,
@@ -447,6 +472,9 @@ class CartControllerProvider extends ChangeNotifier {
 
     // After dialog closes, ensure UI reflects the current selection
     notifyListeners();
+
+    // Return true if payment was confirmed, false if cancelled
+    return result == true && selectedPaymentMethod.isNotEmpty;
   }
 
   Future<Map<String, dynamic>> getWeather(double lat, double lon) async {
@@ -669,20 +697,39 @@ class CartControllerProvider extends ChangeNotifier {
           orElse: () => Constant.userModel!.shippingAddress!.first,
         );
         selectedAddress = defaultAddress;
-        initialLiseSurgeValue(
+        await initialLiseSurgeValue(
           defaultAddress.location?.latitude ?? 0.0,
           defaultAddress.location?.longitude ?? 0.0,
         );
+        // 🔑 CRITICAL: Load vendor and calculate price after address is set
+        // Only load vendor if cart has items
+        if (HomeProvider.cartItem.isNotEmpty) {
+          await _loadFreshVendorForCart();
+          // Ensure vendor is loaded before calculating price
+          if (vendorModel.id != null) {
+            await calculatePrice();
+          }
+        }
+        notifyListeners();
         return;
       }
       final homeScreenAddress = await _getCurrentLocationAddress(context);
       if (homeScreenAddress != null) {
         selectedAddress = homeScreenAddress;
-        initialLiseSurgeValue(
+        await initialLiseSurgeValue(
           homeScreenAddress.location?.latitude ?? 0.0,
           homeScreenAddress.location?.longitude ?? 0.0,
         );
-
+        // 🔑 CRITICAL: Load vendor and calculate price after address is set
+        // Only load vendor if cart has items
+        if (HomeProvider.cartItem.isNotEmpty) {
+          await _loadFreshVendorForCart();
+          // Ensure vendor is loaded before calculating price
+          if (vendorModel.id != null) {
+            await calculatePrice();
+          }
+        }
+        notifyListeners();
         return;
       }
       selectedAddress = null;
@@ -1242,6 +1289,8 @@ class CartControllerProvider extends ChangeNotifier {
     await _loadFreshVendorForCart();
     // Preload all products for cart display (load once, use many times)
     await preloadCartProducts(forceRefresh: true);
+    // Reset delivery tips when cart refreshes (for new orders)
+    deliveryTips = 0.0;
     await calculatePrice();
     checkAndUpdatePaymentMethod();
     updateCartReadiness();
@@ -1296,21 +1345,19 @@ class CartControllerProvider extends ChangeNotifier {
       ) async {
         try {
           // Check if it's a mart item by finding the cart item
-          final cartItem = HomeProvider.cartItem.firstWhere(
-            (item) {
-              if (item.id == null || item.id!.isEmpty) return false;
-              final parts = item.id!.split('~');
-              return parts.isNotEmpty && parts.first == productId;
-            },
-            orElse: () => CartProductModel(),
-          );
-          
+          final cartItem = HomeProvider.cartItem.firstWhere((item) {
+            if (item.id == null || item.id!.isEmpty) return false;
+            final parts = item.id!.split('~');
+            return parts.isNotEmpty && parts.first == productId;
+          }, orElse: () => CartProductModel());
+
           final isMartItem = _isMartItem(cartItem);
-          
+
           if (isMartItem) {
             // For mart items, we don't have ProductModel - use cart data
             // Mart items are displayed using cartProductModel data
-            _productCache[productId] = null; // Mark as loaded (null = use cart data)
+            _productCache[productId] =
+                null; // Mark as loaded (null = use cart data)
           } else {
             // For restaurant items, fetch ProductModel
             final product = await FireStoreUtils.getProductById(productId);
@@ -1492,6 +1539,11 @@ class CartControllerProvider extends ChangeNotifier {
               );
               _cachedVendorModel = vendorModel;
               _updateCacheTime();
+              // 🔑 Reload coupons after mart vendor is loaded
+              _detectCurrentContext();
+              if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
+                await _loadCoupons(restaurantId: vendorModel.id.toString());
+              }
             } else {
               // Don't set hardcoded values - let the system handle this gracefully
               vendorModel = VendorModel();
@@ -1512,6 +1564,11 @@ class CartControllerProvider extends ChangeNotifier {
                 vendorModel = value;
                 _cachedVendorModel = value;
                 _updateCacheTime();
+                // 🔑 Reload coupons after restaurant vendor is loaded
+                _detectCurrentContext();
+                if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
+                  await _loadCoupons(restaurantId: vendorModel.id.toString());
+                }
                 notifyListeners();
               }
             });
@@ -1556,12 +1613,39 @@ class CartControllerProvider extends ChangeNotifier {
         }
       });
     }
+    // 🔑 Load coupons with proper context detection
+    // Detect context first based on cart items
+    _detectCurrentContext();
+
     if (vendorModel.id != null &&
         (!_isCacheValid() || _cachedCouponList == null)) {
       await _loadCoupons(restaurantId: vendorModel.id.toString());
     } else {
       if (vendorModel.id != null && _cachedCouponList == null) {
         await _loadCoupons(restaurantId: vendorModel.id.toString());
+      } else if (vendorModel.id == null && HomeProvider.cartItem.isNotEmpty) {
+        // 🔑 Vendor not loaded yet, but we have cart items - try to get vendor ID from items
+        final martItems = HomeProvider.cartItem
+            .where((item) => _isMartItem(item))
+            .toList();
+        if (martItems.isNotEmpty) {
+          final vendorId = martItems.first.vendorID;
+          if (vendorId != null && vendorId.isNotEmpty) {
+            await _loadCoupons(restaurantId: vendorId);
+          } else {
+            await _loadGlobalCouponsOnly();
+          }
+        } else {
+          final vendorId = HomeProvider.cartItem.first.vendorID;
+          if (vendorId != null && vendorId.isNotEmpty) {
+            await _loadCoupons(restaurantId: vendorId);
+          } else {
+            await _loadGlobalCouponsOnly();
+          }
+        }
+      } else if (vendorModel.id == null) {
+        // No vendor and no cart items - load global coupons
+        await _loadGlobalCouponsOnly();
       }
     }
     notifyListeners();
@@ -1582,18 +1666,39 @@ class CartControllerProvider extends ChangeNotifier {
     }
     _isLoadingCoupons = true;
     try {
+      // 🔑 CRITICAL: Detect context BEFORE loading coupons
+      // This ensures we call the correct API (mart vs restaurant)
       _detectCurrentContext();
-      // Make only ONE API call instead of three identical calls
-      final allCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('[COUPON_LOAD] ⏱️ Coupon API call timed out');
-              return <CouponModel>[];
-            },
-          );
+      print(
+        '[COUPON_LOAD] 🔍 Loading coupons for vendor: $restaurantId, Context: $_currentContext',
+      );
+
+      // 🔑 CRITICAL: Call the correct API based on context
+      // If mart items in cart → call getMartCoupons API
+      // If restaurant items in cart → call getRestaurantCoupons API
+      final allCoupons = _currentContext == "mart"
+          ? await RestaurantDetailsProvider.getMartCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
+                return <CouponModel>[];
+              },
+            )
+          : await RestaurantDetailsProvider.getRestaurantCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out');
+                return <CouponModel>[];
+              },
+            );
+
+      print(
+        '[COUPON_LOAD] ✅ Received ${allCoupons.length} coupons from ${_currentContext} API',
+      );
 
       final filteredGlobalCoupons = allCoupons
           .where(
@@ -1619,6 +1724,7 @@ class CartControllerProvider extends ChangeNotifier {
       final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
       final combinedAllCoupons = [...allCoupons];
 
+      // 🔑 CRITICAL: Filter coupons by context (mart vs restaurant)
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: combinedCoupons.cast<CouponModel>(),
         contextType: _currentContext,
@@ -1631,6 +1737,10 @@ class CartControllerProvider extends ChangeNotifier {
             contextType: _currentContext,
             fallbackEnabled: true,
           );
+
+      print(
+        '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} coupons for context: $_currentContext (from ${combinedCoupons.length} total)',
+      );
 
       _cachedCouponList = contextFilteredCoupons;
       _updateCacheTime();
@@ -1726,17 +1836,42 @@ class CartControllerProvider extends ChangeNotifier {
     _isLoadingCoupons = true;
 
     try {
-      // Make only ONE API call
-      final allCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: restaurantId,
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('[COUPON_LOAD] ⏱️ Fallback: Coupon API call timed out');
-              return <CouponModel>[];
-            },
-          );
+      // 🔑 CRITICAL: Detect context BEFORE loading coupons
+      _detectCurrentContext();
+      print(
+        '[COUPON_LOAD] 🔍 Fallback: Loading coupons for vendor: $restaurantId, Context: $_currentContext',
+      );
+
+      // 🔑 CRITICAL: Call the correct API based on context
+      // If mart items in cart → call getMartCoupons API
+      // If restaurant items in cart → call getRestaurantCoupons API
+      final allCoupons = _currentContext == "mart"
+          ? await RestaurantDetailsProvider.getMartCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print(
+                  '[COUPON_LOAD] ⏱️ Fallback: Mart coupon API call timed out',
+                );
+                return <CouponModel>[];
+              },
+            )
+          : await RestaurantDetailsProvider.getRestaurantCoupons(
+              restaurantId: restaurantId,
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print(
+                  '[COUPON_LOAD] ⏱️ Fallback: Restaurant coupon API call timed out',
+                );
+                return <CouponModel>[];
+              },
+            );
+
+      print(
+        '[COUPON_LOAD] ✅ Fallback: Received ${allCoupons.length} coupons from ${_currentContext} API',
+      );
 
       final filteredGlobalCoupons = allCoupons
           .where(
@@ -1927,8 +2062,9 @@ class CartControllerProvider extends ChangeNotifier {
       // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
       final dc = deliveryChargeModel;
       final itemThreshold = dc.itemTotalThreshold ?? 299; // Same as restaurant
-      final freeDeliveryKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
-      
+      final freeDeliveryKm =
+          dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
+
       final isEligible =
           subTotal >= itemThreshold && totalDistance <= freeDeliveryKm;
 
@@ -1947,19 +2083,62 @@ class CartControllerProvider extends ChangeNotifier {
       print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
       return;
     }
+
+    // 🔑 CRITICAL: Detect context FIRST based on cart items (not vendor model)
+    // This ensures correct context even if vendor is not loaded yet
+    _detectCurrentContext();
+    print('[COUPON_LOAD] 🔍 Detected context: $_currentContext');
+
     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
       if (couponList.isEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
         notifyListeners();
       }
+      // 🔑 Check if cache is valid AND context matches
       if (_isCacheValid()) {
-        return; // Cache is still valid, no need to reload
+        // Re-filter cached coupons with current context to ensure correct filtering
+        final reFilteredCoupons = CouponFilterService.filterCouponsByContext(
+          coupons: _cachedCouponList!,
+          contextType: _currentContext,
+          fallbackEnabled: true,
+        );
+        if (reFilteredCoupons.length != couponList.length) {
+          // Context changed, need to reload
+          print('[COUPON_LOAD] 🔄 Context changed, reloading coupons...');
+        } else {
+          return; // Cache is still valid and context matches
+        }
       }
     }
+
+    // 🔑 Try to get vendor ID - for mart items, vendor might not be loaded yet
+    String? vendorId;
     if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
-      _loadCoupons(restaurantId: vendorModel.id.toString());
+      vendorId = vendorModel.id.toString();
+    } else if (HomeProvider.cartItem.isNotEmpty) {
+      // 🔑 For mart items, try to get vendor ID from cart items
+      final martItems = HomeProvider.cartItem
+          .where((item) => _isMartItem(item))
+          .toList();
+      if (martItems.isNotEmpty) {
+        final firstMartItem = martItems.first;
+        vendorId = firstMartItem.vendorID;
+        print('[COUPON_LOAD] 🔍 Using vendor ID from mart item: $vendorId');
+      } else {
+        // For restaurant items, try to get vendor ID from first item
+        final firstItem = HomeProvider.cartItem.first;
+        vendorId = firstItem.vendorID;
+        print(
+          '[COUPON_LOAD] 🔍 Using vendor ID from restaurant item: $vendorId',
+        );
+      }
+    }
+
+    if (vendorId != null && vendorId.isNotEmpty) {
+      _loadCoupons(restaurantId: vendorId);
     } else {
+      // No vendor ID available, load global coupons with context filtering
       _loadGlobalCouponsOnly();
     }
   }
@@ -1977,18 +2156,39 @@ class CartControllerProvider extends ChangeNotifier {
     _isLoadingCoupons = true;
 
     try {
+      // 🔑 CRITICAL: Detect context BEFORE loading coupons
+      // This ensures we call the correct API (mart vs restaurant)
       _detectCurrentContext();
+      print('[COUPON_LOAD] 🔍 Global coupon load - Context: $_currentContext');
 
-      final globalCoupons =
-          await RestaurantDetailsProvider.getRestaurantCoupons(
-            restaurantId: '',
-          ).timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              print('[COUPON_LOAD] ⏱️ Global coupon API call timed out');
-              return <CouponModel>[];
-            },
-          );
+      // 🔑 CRITICAL: Call the correct API based on context
+      // If mart items in cart → call getMartCoupons API
+      // If restaurant items in cart → call getRestaurantCoupons API
+      final globalCoupons = _currentContext == "mart"
+          ? await RestaurantDetailsProvider.getMartCoupons(
+              restaurantId: '',
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[COUPON_LOAD] ⏱️ Global mart coupon API call timed out');
+                return <CouponModel>[];
+              },
+            )
+          : await RestaurantDetailsProvider.getRestaurantCoupons(
+              restaurantId: '',
+            ).timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print(
+                  '[COUPON_LOAD] ⏱️ Global restaurant coupon API call timed out',
+                );
+                return <CouponModel>[];
+              },
+            );
+
+      print(
+        '[COUPON_LOAD] ✅ Received ${globalCoupons.length} global coupons from ${_currentContext} API',
+      );
 
       final filteredGlobalCoupons = globalCoupons
           .where(
@@ -1999,10 +2199,15 @@ class CartControllerProvider extends ChangeNotifier {
           )
           .toList();
 
+      // 🔑 CRITICAL: Filter global coupons by context (mart vs restaurant)
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
         coupons: filteredGlobalCoupons.cast<CouponModel>(),
         contextType: _currentContext,
         fallbackEnabled: true,
+      );
+
+      print(
+        '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} global coupons for context: $_currentContext (from ${filteredGlobalCoupons.length} total)',
       );
 
       _cachedCouponList = contextFilteredCoupons;
@@ -2318,8 +2523,9 @@ class CartControllerProvider extends ChangeNotifier {
       final hasMartItems = hasMartItemsInCart();
       // Determine how much of the delivery fee is actually taxable.
       // When delivery is free, we should not charge GST on the waived base fee.
-      final double taxableDeliveryFee =
-          deliveryCharges > 0 ? originalDeliveryFee : 0.0;
+      final double taxableDeliveryFee = deliveryCharges > 0
+          ? originalDeliveryFee
+          : 0.0;
 
       if (Constant.taxList != null) {
         for (var element in Constant.taxList!) {
@@ -2348,8 +2554,9 @@ class CartControllerProvider extends ChangeNotifier {
       print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
       if (taxAmount == 0.0) {
         double sgstFallback = subTotal * 0.05; // 5%
-        double gstFallback =
-            taxableDeliveryFee > 0 ? taxableDeliveryFee * 0.18 : 0.0; // 18%
+        double gstFallback = taxableDeliveryFee > 0
+            ? taxableDeliveryFee * 0.18
+            : 0.0; // 18%
         taxAmount = sgstFallback + gstFallback;
         print(
           "Fallback tax applied → SGST: $sgstFallback, GST: $gstFallback, Total: $taxAmount",
@@ -2515,7 +2722,7 @@ class CartControllerProvider extends ChangeNotifier {
     final freeKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
     final perKm = dc.perKmChargeAboveFreeDistance ?? 8; // Same as restaurant
     final distance = totalDistance;
-    
+
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
@@ -2541,7 +2748,9 @@ class CartControllerProvider extends ChangeNotifier {
         deliveryCharges = (extraKm * perKm).toDouble();
       }
     }
-    print("calculateMartDeliveryCharge ${deliveryCharges} (threshold: ₹$threshold, subtotal: ₹$subtotal)");
+    print(
+      "calculateMartDeliveryCharge ${deliveryCharges} (threshold: ₹$threshold, subtotal: ₹$subtotal)",
+    );
     notifyListeners();
   }
 
@@ -2657,16 +2866,16 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       // Load any new products that aren't cached yet (incremental loading)
       await _loadNewProductsIncrementally();
-      
+
       // Recalculate prices (this is fast, no network calls)
       await calculatePrice();
-      
+
       // Update payment method if needed
       checkAndUpdatePaymentMethod();
-      
+
       // Update cart readiness
       updateCartReadiness();
-      
+
       notifyListeners();
     } catch (e) {
       print('[CART_UPDATE] Error in incremental update: $e');
@@ -2721,13 +2930,14 @@ class CartControllerProvider extends ChangeNotifier {
           if (isMartItem) {
             // For mart items, we don't have ProductModel - use cart data
             // Mart items are displayed using cartProductModel data
-            _productCache[productId] = null; // Mark as loaded (null = use cart data)
+            _productCache[productId] =
+                null; // Mark as loaded (null = use cart data)
           } else {
             // For restaurant items, fetch ProductModel
             product = await FireStoreUtils.getProductById(productId);
             _productCache[productId] = product;
           }
-          
+
           // Notify listeners after each product loads (for progressive rendering)
           notifyListeners();
         } catch (e) {
@@ -2738,7 +2948,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Wait for all new products to load
       await Future.wait(loadFutures);
-      
+
       _productsLoaded = true;
       notifyListeners();
       print(
@@ -2770,15 +2980,20 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Public method to start order processing (for use in widgets)
+  void startOrderProcessing() {
+    _startOrderProcessing();
+  }
+
   ///finded
 
   placeOrder(BuildContext context) async {
-    if (_isOrderInProgress()) {
-      ShowToastDialog.showToast(
-        "Order is already being processed. Please wait...".tr,
-      );
-      return;
-    }
+    // if (_isOrderInProgress()) {
+    //   ShowToastDialog.showToast(
+    //     "Order is already being processed. Please wait...".tr,
+    //   );
+    //   return;
+    // }
     if (lastOrderAttempt != null &&
         DateTime.now().difference(lastOrderAttempt!) < orderDebounceTime) {
       ShowToastDialog.showToast("Please wait before trying again...".tr);
@@ -2786,6 +3001,9 @@ class CartControllerProvider extends ChangeNotifier {
     }
     _startOrderProcessing();
     lastOrderAttempt = DateTime.now();
+    // Reset delivery tips for new order (will be set again if user selects tip)
+    // This ensures tips don't carry over from previous orders
+    deliveryTips = 0.0;
     try {
       if (!await validateOrderBeforePayment(context)) {
         _endOrderProcessing();
@@ -3601,12 +3819,16 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       // Reset payment state
       isPaymentInProgress = false;
+      // 🔑 CRITICAL: Reset order processing flag when payment fails
+      endOrderProcessing();
 
       // Show error message
       ShowToastDialog.showToast("Payment failed: ${response.message}".tr);
       notifyListeners();
     } catch (e) {
       isPaymentInProgress = false;
+      // 🔑 CRITICAL: Reset order processing flag on error
+      endOrderProcessing();
       ShowToastDialog.showToast("Payment failed. Please try again.".tr);
       notifyListeners();
     }

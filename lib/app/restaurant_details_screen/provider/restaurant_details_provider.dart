@@ -78,11 +78,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     try {
       String url =
           "${AppConst.baseUrl}coupons/mart${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
+      print(" getMartCoupons ${url}");
       final response = await http.get(
         Uri.parse(url),
         headers: await getHeaders(),
       );
-      print("getMartCoupons ${url}");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {

@@ -1444,7 +1444,7 @@ class MartProvider extends ChangeNotifier {
           final data = responseData['data'];
           deliverySettings = MartDeliverySettingsModel(
             freeDeliveryThreshold:
-                (data['item_total_threshold'] as num?)?.toDouble() ?? 199.0,
+                (data['item_total_threshold'] as num?)?.toDouble() ?? 299.0,
             deliveryPromotionText: data['delivery_promotion_text'] ?? 'Daily',
             isActive: data['is_active'] ?? true,
             minOrderValue:

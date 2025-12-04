@@ -60,12 +60,17 @@ class _CartScreenState extends State<CartScreen> {
       return; // Prevent simultaneous calls
     }
     _isRefreshing = true;
+    // Reset delivery tips when cart screen initializes (for new order sessions)
+    // This ensures tips don't carry over from previous orders
+    controller.deliveryTips = 0.0;
     await controller.forceRefreshCart();
     if (controller.selectedAddress == null ||
         controller.selectedAddress!.location?.latitude == null ||
         controller.selectedAddress!.location?.longitude == null) {
+      // 🔑 initializeAddress now handles vendor loading and price calculation
       await controller.initializeAddress(context);
     } else {
+      // 🔑 syncAddressWithHomeLocation already handles price calculation
       await controller.syncAddressWithHomeLocation(context);
     }
     controller.checkAndUpdatePaymentMethod();

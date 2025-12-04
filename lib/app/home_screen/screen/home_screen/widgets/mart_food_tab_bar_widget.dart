@@ -4,58 +4,115 @@ import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provi
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
+import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/widgets/coming_soon_dialog.dart';
+
+// Static flag to prevent multiple simultaneous clicks
+bool _isMartChecking = false;
 
 Widget martFoodTabBarWidgetHome({
   required MartProvider martProvider,
   required MartNavigationProvider martNavigationProvider,
   required BuildContext context,
 }) {
+
   Future<void> checkMartAvailability(
     MartProvider martProvider,
     MartNavigationProvider martNavigationProvider,
     BuildContext context,
   ) async {
-    print(" checkMartAvailability 0");
-    martProvider.initFunction();
+    // Prevent multiple simultaneous clicks
+    if (_isMartChecking) {
+      debugPrint("⚠️ Mart check already in progress, ignoring duplicate click");
+      return;
+    }
+
+    _isMartChecking = true;
+    ShowToastDialog.showLoader("Checking mart availability...".tr);
+
     try {
-      if (Constant.selectedZone?.id == null) {
-        print(" checkMartAvailability 1");
+      // First, verify zone is available and fresh
+      final currentZoneId = Constant.selectedZone?.id;
+      
+      if (currentZoneId == null || currentZoneId.isEmpty) {
+        debugPrint("❌ No zone selected");
+        ShowToastDialog.closeLoader();
         ComingSoonDialogHelper.show(
           title: "COMING SOON".tr,
           message:
               "We're working hard to bring Jippy Mart to your area. Stay tuned!",
         );
+        _isMartChecking = false;
         return;
       }
+
+      debugPrint("✅ Zone ID: $currentZoneId");
+
+      // Check mart vendors availability BEFORE initializing provider
       final martVendors = await MartZoneUtils.getCachedMartVendors();
+      
       if (martVendors.isEmpty) {
-        print(" checkMartAvailability 2");
+        debugPrint("❌ No mart vendors found in zone");
+        ShowToastDialog.closeLoader();
         ComingSoonDialogHelper.show(
           title: "COMING SOON".tr,
           message:
               "We're working hard to bring Jippy Mart to your area. Stay tuned!",
         );
+        _isMartChecking = false;
         return;
       }
+
+      // Check if all vendors are closed
       final allClosed = martVendors.every((v) => v.isOpen == false);
       if (allClosed) {
+        debugPrint("❌ All mart vendors are closed");
+        ShowToastDialog.closeLoader();
         ComingSoonDialogHelper.show(
           title: "Mart Available from 7AM to 9PM".tr,
           message: "",
         );
+        _isMartChecking = false;
         return;
       }
+
+      debugPrint("✅ Mart is available, initializing...");
+
+      // Only initialize AFTER confirming mart is available
+      // This prevents unnecessary loading if mart is not available
+      ShowToastDialog.showLoader("Loading mart...".tr);
+      
+      // Initialize providers (these are synchronous setup calls)
+      martProvider.initFunction();
       martNavigationProvider.initFunction(context: context);
-      Get.to(() => const MartNavigationScreen());
+      
+      // CRITICAL: Close loader IMMEDIATELY after initialization
+      // Don't wait for navigation - close it right away
+      ShowToastDialog.closeLoader();
+      
+      // Small delay to ensure UI updates and loader dismissal completes
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      // Navigate to mart screen
+      await Get.to(() => const MartNavigationScreen());
+      
+      // Final safety check: Ensure loader is closed after navigation
+      // This handles edge cases where loader might persist
+      ShowToastDialog.closeLoader();
+      
     } catch (e) {
       debugPrint("❌ Mart check failed: $e");
+      ShowToastDialog.closeLoader();
       ComingSoonDialogHelper.show(
         title: "COMING SOON".tr,
         message:
             "We're working hard to bring Jippy Mart to your area. Stay tuned!",
       );
+    } finally {
+      // Ensure loader is always closed, even if navigation fails
+      ShowToastDialog.closeLoader();
+      _isMartChecking = false;
     }
   }
 

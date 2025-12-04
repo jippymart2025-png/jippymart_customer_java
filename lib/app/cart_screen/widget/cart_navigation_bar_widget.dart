@@ -11,7 +11,7 @@ Widget cartNavigationBarWidget(BuildContext context) {
     builder: (context, controller, _) {
       // Get bottom safe area padding to ensure button is above system UI
       final bottomPadding = MediaQuery.of(context).padding.bottom;
-      
+
       return Container(
         padding: EdgeInsets.only(
           left: 16,
@@ -32,16 +32,51 @@ Widget cartNavigationBarWidget(BuildContext context) {
                 color: AppThemeData.primary300,
                 fontSizes: 16,
                 onPress: () async {
-                  if (controller.isProcessingOrder) {
+                  // 🔑 CRITICAL: Reset stuck processing flag before checking
+                  // This handles cases where flag got stuck from previous failed attempt
+                  // if (controller.isProcessingOrder) {
+                  //   debugPrint(
+                  //     "⚠️ Processing flag was stuck, resetting to allow retry",
+                  //   );
+                  //   controller.endOrderProcessing();
+                  //   // Small delay to ensure state is updated
+                  //   await Future.delayed(const Duration(milliseconds: 100));
+                  // }
+
+                  // Prevent duplicate clicks (check again after potential reset)
+
+                  try {
+                    // Show payment dialog FIRST - don't set processing flag yet
+                    final paymentConfirmed = await controller
+                        .showPaymentMethodDialog(context);
+
+                    // Only set processing flag AFTER user confirms payment selection
+                    if (paymentConfirmed == true &&
+                        controller.selectedPaymentMethod.isNotEmpty) {
+                      if (controller.isProcessingOrder) {
+                        ShowToastDialog.showToast(
+                          "Please wait, order is being processed...".tr,
+                        );
+                        return;
+                      } else {
+                        controller.startOrderProcessing();
+                        controller.providerInitializer(context: context);
+                        await controller.processPayment(controller, context);
+                      }
+                    } else {
+                      // User cancelled payment selection or validation failed
+                      // Ensure flag is reset (should already be reset, but double-check)
+                      controller.endOrderProcessing();
+                      debugPrint(
+                        "Payment selection cancelled or validation failed",
+                      );
+                    }
+                  } catch (e) {
+                    controller.endOrderProcessing();
                     ShowToastDialog.showToast(
-                      "Please wait, order is being processed...".tr,
+                      "An error occurred. Please try again.".tr,
                     );
-                    return;
-                  }
-                  await controller.showPaymentMethodDialog(context);
-                  if (controller.selectedPaymentMethod.isNotEmpty) {
-                    controller.providerInitializer(context: context);
-                    await controller.processPayment(controller, context);
+                    debugPrint("Error in payment process: $e");
                   }
                 },
               ),
