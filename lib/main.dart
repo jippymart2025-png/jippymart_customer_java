@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:country_code_picker/country_code_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provider/signup_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
@@ -14,6 +15,8 @@ import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:jippymart_customer/services/global_deeplink_handler.dart';
+import 'package:jippymart_customer/services/facebook_app_events_service.dart';
+import 'package:jippymart_customer/utils/facebook_app_events_test.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
 import 'package:jippymart_customer/services/mobile_deep_link_service.dart';
 import 'package:jippymart_customer/services/pending_deep_link_handler.dart';
@@ -97,6 +100,23 @@ void main() async {
   Get.put(MartFirestoreService(), permanent: true);
   final cartProvider = CartProvider();
   await cartProvider.checkCartPersistence();
+
+  // Initialize Facebook App Events
+  try {
+    await FacebookAppEventsService().initialize();
+    if (kDebugMode) {
+      print('✅ Facebook App Events initialized successfully');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('⚠️ Facebook App Events initialization failed: $e');
+    }
+  }
+  // Run Facebook App Events tests in debug mode
+  if (kDebugMode) {
+    _runFacebookAppEventsTests();
+  }
+
   runApp(MyApp());
 }
 
@@ -131,6 +151,26 @@ void _initializeDeepLinkServicesInBackground(BuildContext context) {
           .init(GlobalDeeplinkHandler.navigatorKey, context)
           .timeout(const Duration(seconds: 5));
     } catch (e) {}
+  });
+}
+
+/// Run Facebook App Events tests in background (debug mode only)
+void _runFacebookAppEventsTests() {
+  Future.microtask(() async {
+    try {
+      // Wait a bit for app to fully initialize
+      await Future.delayed(const Duration(seconds: 3));
+
+      // Run SDK verification test
+      await FacebookAppEventsTest.verifySDK();
+
+      // Optionally run all tests (uncomment to enable)
+      // await FacebookAppEventsTest.runAllTests();
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [FB TEST] Error running tests: $e');
+      }
+    }
   });
 }
 

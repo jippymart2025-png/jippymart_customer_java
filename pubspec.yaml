@@ -105,6 +105,8 @@ dependencies:
   pull_to_refresh: ^2.0.0
   chewie: ^1.13.0
   http: ^1.6.0
+  # Facebook App Events SDK
+  facebook_app_events: ^0.19.2
 
 dependency_overrides:
   webview_flutter: ^4.7.0

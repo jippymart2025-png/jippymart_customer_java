@@ -1096,7 +1096,6 @@ class RestaurantDetailsScreen extends StatelessWidget {
                 ),
               ),
             ),
-
             bottomNavigationBar: HomeProvider.cartItem.isEmpty
                 ? null
                 : InkWell(

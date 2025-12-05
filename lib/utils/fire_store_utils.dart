@@ -1144,13 +1144,12 @@ class FireStoreUtils {
         print('[DEBUG] Skipping API call - productId or restaurantId is empty');
         return [];
       }
-      
+
       final String apiUrl =
           '${AppConst.baseUrl}firestore/promotions/by-product?'
           'product_id=$productId&'
           'restaurant_id=$restaurantId';
       print('fetchActivePromotions: $apiUrl');
-      
       // Make API call
       final response = await http.get(
         Uri.parse(apiUrl),
@@ -1165,10 +1164,10 @@ class FireStoreUtils {
 
         if (responseData['success'] == true && responseData['data'] != null) {
           final promotionData = responseData['data'];
-          
+
           // Handle both Map and List responses
           List<Map<String, dynamic>> promotions = [];
-          
+
           if (promotionData is Map<String, dynamic>) {
             // Single promotion object
             promotions.add(promotionData);
@@ -1176,19 +1175,20 @@ class FireStoreUtils {
             // List of promotions
             promotions = promotionData.cast<Map<String, dynamic>>();
           }
-          
+
           // Process each promotion
           final List<Map<String, dynamic>> activePromotions = [];
-          
+
           for (final promo in promotions) {
             // Convert API response to match your existing data structure
             final Map<String, dynamic> processedPromotion = {
               ...promo,
-              'isAvailable': promo['isAvailable'] == 1 || promo['isAvailable'] == true,
+              'isAvailable':
+                  promo['isAvailable'] == 1 || promo['isAvailable'] == true,
               'start_time': _parseTimestamp(promo['start_time']),
               'end_time': _parseTimestamp(promo['end_time']),
             };
-            
+
             // Check if promotion is currently active based on time
             final startTime = processedPromotion['start_time'] as Timestamp?;
             final endTime = processedPromotion['end_time'] as Timestamp?;
@@ -1201,20 +1201,24 @@ class FireStoreUtils {
                   startTime.compareTo(Timestamp.now()) <= 0 &&
                   endTime.compareTo(Timestamp.now()) >= 0;
             }
-            
-            print('[DEBUG] Promotion for product ${promo['product_id']}: active=$isActive, available=${processedPromotion['isAvailable']}');
-            
+
+            print(
+              '[DEBUG] Promotion for product ${promo['product_id']}: active=$isActive, available=${processedPromotion['isAvailable']}',
+            );
+
             if (isActive) {
               activePromotions.add(processedPromotion);
             }
           }
-          
+
           print('[DEBUG] Found ${activePromotions.length} active promotions');
           print('[DEBUG] ===== ULTRA-FAST API FETCH COMPLETE =====');
 
           return activePromotions;
         } else {
-          print('[DEBUG] API returned unsuccessful response: ${responseData['message'] ?? 'Unknown error'}');
+          print(
+            '[DEBUG] API returned unsuccessful response: ${responseData['message'] ?? 'Unknown error'}',
+          );
           return [];
         }
       } else if (response.statusCode == 404) {
