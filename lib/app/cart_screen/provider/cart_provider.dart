@@ -134,7 +134,30 @@ class CartControllerProvider extends ChangeNotifier {
       
       print('🔑 [RAZORPAY] Starting payment flow for amount: ${controller.totalAmount}');
       
+      // 🔑 OPTIMIZATION: Show loading immediately and ensure Razorpay is initialized
+      ShowToastDialog.showLoader("Opening payment gateway...".tr);
+      
+      // 🔑 OPTIMIZATION: Ensure Razorpay is initialized (should already be from pre-init, but double-check)
+      if (!controller._razorpayCrashPrevention.isInitialized) {
+        print('🔑 [RAZORPAY] Razorpay not initialized, initializing now...');
+        final initialized = await controller._razorpayCrashPrevention.safeInitialize(
+          onSuccess: controller.handlePaymentSuccess,
+          onFailure: controller.handlePaymentError,
+          onExternalWallet: controller.handleExternalWallet,
+        );
+        if (!initialized) {
+          ShowToastDialog.closeLoader();
+          ShowToastDialog.showToast(
+            "Payment system is temporarily unavailable. Please try again later.".tr,
+          );
+          controller.endOrderProcessing();
+          return;
+        }
+      }
+      
       try {
+        // 🔑 OPTIMIZATION: Create order and open checkout in parallel where possible
+        // Show payment page as soon as order is created
         final orderResult = await RazorPayController()
             .createOrderRazorPay(
               amount: double.parse(controller.totalAmount.toString()),
@@ -143,7 +166,7 @@ class CartControllerProvider extends ChangeNotifier {
         
         if (orderResult == null) {
           print('❌ [RAZORPAY] Order creation returned null');
-          Get.back();
+          ShowToastDialog.closeLoader();
           ShowToastDialog.showToast(
             "Something went wrong, please contact admin.".tr,
           );
@@ -158,6 +181,9 @@ class CartControllerProvider extends ChangeNotifier {
         // orderResult.amount is in paise, but openCheckout expects rupees and converts to paise internally
         final amountInRupees = orderResult.amount / 100.0;
         print('🔑 [RAZORPAY] Amount in rupees: $amountInRupees');
+        
+        // 🔑 OPTIMIZATION: Close loader before opening checkout for instant UI
+        ShowToastDialog.closeLoader();
         
         // 🔑 CRITICAL: Check if checkout opens successfully
         print('🔑 [RAZORPAY] Attempting to open checkout...');
@@ -181,7 +207,7 @@ class CartControllerProvider extends ChangeNotifier {
         // 🔑 CRITICAL: Handle any errors during RazorPay order creation
         print('❌ [RAZORPAY] Exception in payment flow: $error');
         print('❌ [RAZORPAY] Stack trace: $stackTrace');
-        Get.back();
+        ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
           "Failed to create payment order. Please try again.".tr,
         );
@@ -3753,6 +3779,15 @@ class CartControllerProvider extends ChangeNotifier {
               } else if (razorPayModel.isEnabled == true) {
                 selectedPaymentMethod = PaymentGateway.razorpay.name;
               }
+              
+              // 🔑 OPTIMIZATION: Pre-initialize Razorpay when settings are loaded
+              // This eliminates initialization delay when user clicks "Confirm Payment"
+              if (razorPayModel.isEnabled == true &&
+                  razorPayModel.razorpayKey != null &&
+                  razorPayModel.razorpayKey!.isNotEmpty) {
+                _preInitializeRazorpay();
+              }
+              
               razorPay?.on(
                 Razorpay.EVENT_PAYMENT_SUCCESS,
                 handlePaymentSuccess,
@@ -3768,6 +3803,8 @@ class CartControllerProvider extends ChangeNotifier {
               // Continue with default payment method selection
               if (razorPayModel.isEnabled == true) {
                 selectedPaymentMethod = PaymentGateway.razorpay.name;
+                // Try to pre-initialize even on error
+                _preInitializeRazorpay();
               }
             }
           })
@@ -3776,12 +3813,36 @@ class CartControllerProvider extends ChangeNotifier {
             // Set default payment method on error
             if (razorPayModel.isEnabled == true) {
               selectedPaymentMethod = PaymentGateway.razorpay.name;
+              // Try to pre-initialize even on error
+              _preInitializeRazorpay();
             }
           });
     } catch (e) {
       print('[CART_PROVIDER] Error in getPaymentSettings: $e');
     }
     notifyListeners();
+  }
+
+  /// 🔑 OPTIMIZATION: Pre-initialize Razorpay in background
+  /// This eliminates the initialization delay when user clicks "Confirm Payment"
+  Future<void> _preInitializeRazorpay() async {
+    try {
+      // Only pre-initialize if not already initialized
+      if (!_razorpayCrashPrevention.isInitialized) {
+        print('🔑 [RAZORPAY_PREINIT] Pre-initializing Razorpay...');
+        await _razorpayCrashPrevention.safeInitialize(
+          onSuccess: handlePaymentSuccess,
+          onFailure: handlePaymentError,
+          onExternalWallet: handleExternalWallet,
+        );
+        print('✅ [RAZORPAY_PREINIT] Razorpay pre-initialized successfully');
+      } else {
+        print('✅ [RAZORPAY_PREINIT] Razorpay already initialized');
+      }
+    } catch (e) {
+      print('⚠️ [RAZORPAY_PREINIT] Pre-initialization failed (will initialize on demand): $e');
+      // Don't throw - initialization will happen on demand in openCheckout
+    }
   }
 
   final RazorpayCrashPrevention _razorpayCrashPrevention =
@@ -3808,8 +3869,10 @@ class CartControllerProvider extends ChangeNotifier {
       return false;
     }
 
+    // 🔑 OPTIMIZATION: Razorpay should already be initialized from pre-init
+    // Only initialize if absolutely necessary (shouldn't happen in normal flow)
     if (!_razorpayCrashPrevention.isInitialized) {
-      print('🔑 [RAZORPAY_CHECKOUT] Razorpay not initialized, initializing with crash prevention...');
+      print('⚠️ [RAZORPAY_CHECKOUT] Razorpay not initialized (unexpected), initializing now...');
       final initialized = await _razorpayCrashPrevention.safeInitialize(
         onSuccess: handlePaymentSuccess,
         onFailure: handlePaymentError,
@@ -3824,9 +3887,9 @@ class CartControllerProvider extends ChangeNotifier {
         );
         return false;
       }
-      print('✅ [RAZORPAY_CHECKOUT] Razorpay initialized successfully');
+      print('✅ [RAZORPAY_CHECKOUT] Razorpay initialized (fallback)');
     } else {
-      print('✅ [RAZORPAY_CHECKOUT] Razorpay already initialized');
+      print('✅ [RAZORPAY_CHECKOUT] Razorpay already initialized (pre-initialized)');
     }
 
     // 🔑 SET PAYMENT IN PROGRESS STATE
