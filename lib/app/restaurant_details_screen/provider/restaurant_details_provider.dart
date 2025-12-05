@@ -438,7 +438,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           productId,
         ); // FIXED: was using vendorModel.id instead of productId
         favoriteProductIds.add(productId);
-        ShowToastDialog.showToast("Added to favorites");
+        ShowToastDialog.showToast("Added to favourites");
       }
       notifyListeners();
     } catch (e) {
@@ -791,7 +791,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           .where((product) => product.nonveg == true)
           .toList();
     }
-
     // Apply offer filter
     if (isOfferFilter) {
       filteredList = filteredList.where((product) {
@@ -800,7 +799,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         return disPrice > 0 && disPrice < price;
       }).toList();
     }
-
     // Apply search filter if active
     if (_lastSearchQuery.isNotEmpty) {
       filteredList = _performLocalSearch(
@@ -816,7 +814,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   void toggleOfferFilter() {
     isOfferFilter = !isOfferFilter;
 
-    // Reset other filters when offer filter is activated
     if (isOfferFilter) {
       isVag = false;
       isNonVag = false;

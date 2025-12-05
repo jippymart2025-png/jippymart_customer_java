@@ -47,14 +47,16 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SwiggySearchProvider>(
-      builder: (context, controller, _) {
-        return Scaffold(
-          backgroundColor: AppThemeData.grey50,
-          appBar: _buildAppBar(controller),
-          body: _buildBody(controller),
-        );
-      },
+    return SafeArea(
+      child: Consumer<SwiggySearchProvider>(
+        builder: (context, controller, _) {
+          return Scaffold(
+            backgroundColor: AppThemeData.grey50,
+            appBar: _buildAppBar(controller),
+            body: _buildBody(controller),
+          );
+        },
+      ),
     );
   }
 
@@ -1148,455 +1150,462 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   }
 
   Widget _buildSimpleProductDetails(ProductModel product) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppThemeData.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-      ),
-      child: Column(
-        children: [
-          Container(
-            margin: const EdgeInsets.only(top: 12),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: AppThemeData.grey400,
-              borderRadius: BorderRadius.circular(2),
+    return SafeArea(
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppThemeData.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppThemeData.grey400,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    "Product Details",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppThemeData.grey900,
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Product Details",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppThemeData.grey900,
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: Icon(Icons.close, color: AppThemeData.grey900),
-                ),
-              ],
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close, color: AppThemeData.grey900),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: CachedNetworkImage(
-                        imageUrl: product.photo ?? '',
-                        height: 200,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: CachedNetworkImage(
+                          imageUrl: product.photo ?? '',
                           height: 200,
-                          color: AppThemeData.grey200,
-                          child: const Center(
-                            child: CircularProgressIndicator(),
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            height: 200,
+                            color: AppThemeData.grey200,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: 200,
+                            color: AppThemeData.grey200,
+                            child: const Icon(Icons.fastfood, size: 50),
                           ),
                         ),
-                        errorWidget: (context, url, error) => Container(
-                          height: 200,
-                          color: AppThemeData.grey200,
-                          child: const Icon(Icons.fastfood, size: 50),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      product.name ?? 'Unknown Product',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AppThemeData.grey900,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (product.description != null &&
+                        product.description!.isNotEmpty)
+                      Text(
+                        product.description!,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: AppThemeData.grey600,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    product.name ?? 'Unknown Product',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: AppThemeData.grey900,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (product.description != null &&
-                      product.description!.isNotEmpty)
-                    Text(
-                      product.description!,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: AppThemeData.grey600,
-                      ),
-                    ),
-                  const SizedBox(height: 20),
-                  if (product.vendorID != null && product.vendorID!.isNotEmpty)
-                    FutureBuilder<VendorModel?>(
-                      future: _getVendorDetails(product.vendorID!),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppThemeData.grey100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
+                    const SizedBox(height: 20),
+                    if (product.vendorID != null &&
+                        product.vendorID!.isNotEmpty)
+                      FutureBuilder<VendorModel?>(
+                        future: _getVendorDetails(product.vendorID!),
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppThemeData.grey100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  "Loading restaurant details...",
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: AppThemeData.grey600,
+                                  const SizedBox(width: 12),
+                                  Text(
+                                    "Loading restaurant details...",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: AppThemeData.grey600,
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-                        if (snapshot.hasError) {
-                          return const SizedBox.shrink();
-                        }
-                        if (snapshot.hasData && snapshot.data != null) {
-                          final vendor = snapshot.data!;
-                          return Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: AppThemeData.grey100,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  flex: 2,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "From Restaurant",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppThemeData.grey900,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Row(
-                                        children: [
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            child: CachedNetworkImage(
-                                              imageUrl: vendor.photo ?? '',
-                                              height: 50,
-                                              width: 50,
-                                              fit: BoxFit.cover,
-                                              placeholder: (context, url) =>
-                                                  Container(
-                                                    height: 50,
-                                                    width: 50,
-                                                    color: AppThemeData.grey200,
-                                                    child: const Icon(
-                                                      Icons.restaurant,
-                                                      size: 25,
-                                                    ),
-                                                  ),
-                                              errorWidget:
-                                                  (
-                                                    context,
-                                                    url,
-                                                    error,
-                                                  ) => Container(
-                                                    height: 50,
-                                                    width: 50,
-                                                    color: AppThemeData.grey200,
-                                                    child: const Icon(
-                                                      Icons.restaurant,
-                                                      size: 25,
-                                                    ),
-                                                  ),
-                                            ),
+                                ],
+                              ),
+                            );
+                          }
+                          if (snapshot.hasError) {
+                            return const SizedBox.shrink();
+                          }
+                          if (snapshot.hasData && snapshot.data != null) {
+                            final vendor = snapshot.data!;
+                            return Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: AppThemeData.grey100,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    flex: 2,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "From Restaurant",
+                                          style: TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppThemeData.grey900,
                                           ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  vendor.title ??
-                                                      'Unknown Restaurant',
-                                                  style: TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: AppThemeData.grey900,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Row(
-                                                  children: [
-                                                    Icon(
-                                                      Icons.star,
-                                                      size: 16,
-                                                      color: AppThemeData
-                                                          .warning400,
-                                                    ),
-                                                    const SizedBox(width: 4),
-                                                    Text(
-                                                      _calculateRating(
-                                                        product.reviewsSum,
-                                                        product.reviewsCount,
-                                                      ),
-                                                      style: TextStyle(
-                                                        fontSize: 14,
-                                                        color: AppThemeData
-                                                            .grey600,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 20),
-                                Expanded(
-                                  flex: 1,
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        "Price",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppThemeData.grey900,
                                         ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      if (product.disPrice != null &&
-                                          product.disPrice!.isNotEmpty &&
-                                          product.disPrice != "0")
-                                        Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.end,
+                                        const SizedBox(height: 12),
+                                        Row(
                                           children: [
-                                            Text(
-                                              "₹${product.disPrice}",
-                                              style: TextStyle(
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.bold,
-                                                color: AppThemeData.success500,
+                                            ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              child: CachedNetworkImage(
+                                                imageUrl: vendor.photo ?? '',
+                                                height: 50,
+                                                width: 50,
+                                                fit: BoxFit.cover,
+                                                placeholder: (context, url) =>
+                                                    Container(
+                                                      height: 50,
+                                                      width: 50,
+                                                      color:
+                                                          AppThemeData.grey200,
+                                                      child: const Icon(
+                                                        Icons.restaurant,
+                                                        size: 25,
+                                                      ),
+                                                    ),
+                                                errorWidget:
+                                                    (context, url, error) =>
+                                                        Container(
+                                                          height: 50,
+                                                          width: 50,
+                                                          color: AppThemeData
+                                                              .grey200,
+                                                          child: const Icon(
+                                                            Icons.restaurant,
+                                                            size: 25,
+                                                          ),
+                                                        ),
                                               ),
                                             ),
-                                            Text(
-                                              "₹${product.price ?? '0'}",
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                decoration:
-                                                    TextDecoration.lineThrough,
-                                                color: AppThemeData.grey500,
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    vendor.title ??
+                                                        'Unknown Restaurant',
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color:
+                                                          AppThemeData.grey900,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.star,
+                                                        size: 16,
+                                                        color: AppThemeData
+                                                            .warning400,
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        _calculateRating(
+                                                          product.reviewsSum,
+                                                          product.reviewsCount,
+                                                        ),
+                                                        style: TextStyle(
+                                                          fontSize: 14,
+                                                          color: AppThemeData
+                                                              .grey600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
                                               ),
                                             ),
                                           ],
-                                        )
-                                      else
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 20),
+                                  Expanded(
+                                    flex: 1,
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.end,
+                                      children: [
                                         Text(
-                                          "₹${product.price ?? '0'}",
+                                          "Price",
                                           style: TextStyle(
-                                            fontSize: 24,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppThemeData.warning500,
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppThemeData.grey900,
                                           ),
                                         ),
+                                        const SizedBox(height: 8),
+                                        if (product.disPrice != null &&
+                                            product.disPrice!.isNotEmpty &&
+                                            product.disPrice != "0")
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                "₹${product.disPrice}",
+                                                style: TextStyle(
+                                                  fontSize: 24,
+                                                  fontWeight: FontWeight.bold,
+                                                  color:
+                                                      AppThemeData.success500,
+                                                ),
+                                              ),
+                                              Text(
+                                                "₹${product.price ?? '0'}",
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  decoration: TextDecoration
+                                                      .lineThrough,
+                                                  color: AppThemeData.grey500,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        else
+                                          Text(
+                                            "₹${product.price ?? '0'}",
+                                            style: TextStyle(
+                                              fontSize: 24,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppThemeData.warning500,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    const SizedBox(height: 20),
+                    Column(
+                      children: [
+                        if (product.vendorID != null)
+                          Consumer<RestaurantDetailsProvider>(
+                            builder: (context, restaurantDetailsProvider, _) {
+                              return SizedBox(
+                                width: double.infinity,
+                                height: 50,
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    final vendor = await _getVendorDetails(
+                                      product.vendorID!,
+                                    );
+                                    if (vendor != null) {
+                                      Navigator.pop(context);
+                                      restaurantDetailsProvider.initFunction(
+                                        vendorModels: vendor,
+                                      );
+                                      Get.to(
+                                        () => const RestaurantDetailsScreen(),
+                                      );
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppThemeData.grey200,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.restaurant,
+                                        color: AppThemeData.grey900,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "Go to Restaurant",
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppThemeData.grey900,
+                                        ),
+                                      ),
                                     ],
                                   ),
                                 ),
-                              ],
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                  const SizedBox(height: 20),
-                  Column(
-                    children: [
-                      if (product.vendorID != null)
-                        Consumer<RestaurantDetailsProvider>(
-                          builder: (context, restaurantDetailsProvider, _) {
+                              );
+                            },
+                          ),
+                        if (product.vendorID != null)
+                          const SizedBox(height: 12),
+                        FutureBuilder<VendorModel?>(
+                          future: _getVendorDetails(product.vendorID ?? ''),
+                          builder: (context, vendorSnapshot) {
+                            bool isLoadingVendor =
+                                vendorSnapshot.connectionState ==
+                                ConnectionState.waiting;
+                            bool canAcceptOrders = false;
+                            String buttonText = "Loading...".tr;
+                            String statusReason = "";
+                            if (vendorSnapshot.hasData &&
+                                vendorSnapshot.data != null) {
+                              final vendor = vendorSnapshot.data!;
+                              canAcceptOrders =
+                                  RestaurantStatusUtils.canAcceptOrders(vendor);
+                              final status =
+                                  RestaurantStatusUtils.getRestaurantStatus(
+                                    vendor,
+                                  );
+                              statusReason = status['reason'];
+                              if (canAcceptOrders &&
+                                  (product.isAvailable ?? true)) {
+                                buttonText = "Add to Cart".tr;
+                              } else if (!canAcceptOrders) {
+                                buttonText = "Restaurant is closed".tr;
+                              } else if (!(product.isAvailable ?? true)) {
+                                buttonText = "Product unavailable".tr;
+                              }
+                            } else if (!isLoadingVendor) {
+                              buttonText = "Restaurant unavailable".tr;
+                            }
+                            bool isButtonEnabled =
+                                canAcceptOrders &&
+                                (product.isAvailable ?? true) &&
+                                !isLoadingVendor;
                             return SizedBox(
                               width: double.infinity,
                               height: 50,
                               child: ElevatedButton(
-                                onPressed: () async {
-                                  final vendor = await _getVendorDetails(
-                                    product.vendorID!,
-                                  );
-                                  if (vendor != null) {
-                                    Navigator.pop(context);
-                                    restaurantDetailsProvider.initFunction(
-                                      vendorModels: vendor,
-                                    );
-                                    Get.to(
-                                      () => const RestaurantDetailsScreen(),
-                                    );
-                                  }
-                                },
+                                onPressed: isButtonEnabled
+                                    ? () async {
+                                        await _addToCart(product);
+                                      }
+                                    : () {
+                                        if (!isLoadingVendor &&
+                                            vendorSnapshot.hasData &&
+                                            vendorSnapshot.data != null) {
+                                          String message;
+                                          if (!canAcceptOrders) {
+                                            final status =
+                                                RestaurantStatusUtils.getRestaurantStatus(
+                                                  vendorSnapshot.data!,
+                                                );
+                                            message = status['reason'];
+                                          } else if (!(product.isAvailable ??
+                                              true)) {
+                                            message =
+                                                "This product is currently unavailable"
+                                                    .tr;
+                                          } else {
+                                            message =
+                                                "Unable to add to cart".tr;
+                                          }
+
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(message),
+                                              backgroundColor: Colors.red,
+                                              duration: const Duration(
+                                                seconds: 3,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
                                 style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppThemeData.grey200,
+                                  backgroundColor: isButtonEnabled
+                                      ? const Color(0xFFFF5200)
+                                      : AppThemeData.grey400,
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.restaurant,
-                                      color: AppThemeData.grey900,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      "Go to Restaurant",
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: AppThemeData.grey900,
-                                      ),
-                                    ),
-                                  ],
+                                child: Text(
+                                  buttonText,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: isButtonEnabled
+                                        ? AppThemeData.grey50
+                                        : AppThemeData.grey600,
+                                  ),
                                 ),
                               ),
                             );
                           },
                         ),
-                      if (product.vendorID != null) const SizedBox(height: 12),
-                      FutureBuilder<VendorModel?>(
-                        future: _getVendorDetails(product.vendorID ?? ''),
-                        builder: (context, vendorSnapshot) {
-                          bool isLoadingVendor =
-                              vendorSnapshot.connectionState ==
-                              ConnectionState.waiting;
-                          bool canAcceptOrders = false;
-                          String buttonText = "Loading...".tr;
-                          String statusReason = "";
-                          if (vendorSnapshot.hasData &&
-                              vendorSnapshot.data != null) {
-                            final vendor = vendorSnapshot.data!;
-                            canAcceptOrders =
-                                RestaurantStatusUtils.canAcceptOrders(vendor);
-                            final status =
-                                RestaurantStatusUtils.getRestaurantStatus(
-                                  vendor,
-                                );
-                            statusReason = status['reason'];
-                            if (canAcceptOrders &&
-                                (product.isAvailable ?? true)) {
-                              buttonText = "Add to Cart".tr;
-                            } else if (!canAcceptOrders) {
-                              buttonText = "Restaurant is closed".tr;
-                            } else if (!(product.isAvailable ?? true)) {
-                              buttonText = "Product unavailable".tr;
-                            }
-                          } else if (!isLoadingVendor) {
-                            buttonText = "Restaurant unavailable".tr;
-                          }
-                          bool isButtonEnabled =
-                              canAcceptOrders &&
-                              (product.isAvailable ?? true) &&
-                              !isLoadingVendor;
-                          return SizedBox(
-                            width: double.infinity,
-                            height: 50,
-                            child: ElevatedButton(
-                              onPressed: isButtonEnabled
-                                  ? () async {
-                                      await _addToCart(product);
-                                    }
-                                  : () {
-                                      if (!isLoadingVendor &&
-                                          vendorSnapshot.hasData &&
-                                          vendorSnapshot.data != null) {
-                                        String message;
-                                        if (!canAcceptOrders) {
-                                          final status =
-                                              RestaurantStatusUtils.getRestaurantStatus(
-                                                vendorSnapshot.data!,
-                                              );
-                                          message = status['reason'];
-                                        } else if (!(product.isAvailable ??
-                                            true)) {
-                                          message =
-                                              "This product is currently unavailable"
-                                                  .tr;
-                                        } else {
-                                          message = "Unable to add to cart".tr;
-                                        }
-
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Text(message),
-                                            backgroundColor: Colors.red,
-                                            duration: const Duration(
-                                              seconds: 3,
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: isButtonEnabled
-                                    ? const Color(0xFFFF5200)
-                                    : AppThemeData.grey400,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Text(
-                                buttonText,
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: isButtonEnabled
-                                      ? AppThemeData.grey50
-                                      : AppThemeData.grey600,
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

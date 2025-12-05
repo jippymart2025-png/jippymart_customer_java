@@ -145,7 +145,7 @@ class RestaurantListScreen extends StatelessWidget {
                                                                   vendorModel.id
                                                                       .toString(),
                                                                 )
-                                                                ? 'Added to favorites'
+                                                                ? 'Added to favourites'
                                                                 : 'Removed from favorites',
                                                           ),
                                                         ),

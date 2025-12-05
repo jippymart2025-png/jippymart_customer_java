@@ -26,7 +26,6 @@ class CouponListScreen extends StatefulWidget {
 class _CouponListScreenState extends State<CouponListScreen> {
   bool _hasInitialized = false;
   final TextEditingController _couponCodeController = TextEditingController();
-  CouponModel? _selectedCoupon;
 
   @override
   void initState() {
@@ -50,6 +49,12 @@ class _CouponListScreenState extends State<CouponListScreen> {
   }
 
   void _applyCoupon(CartControllerProvider controller, CouponModel coupon) {
+    // Prevent applying coupons while validation is in progress
+    if (controller.isLoadingCoupons) {
+      ShowToastDialog.showToast("Please wait while coupons are being validated".tr);
+      return;
+    }
+
     if (coupon.isEnabled == false) {
       ShowToastDialog.showToast("You have already used this coupon".tr);
       return;
@@ -84,7 +89,6 @@ class _CouponListScreenState extends State<CouponListScreen> {
     }
 
     // Apply the coupon
-    _selectedCoupon = coupon;
     _couponCodeController.text = coupon.code ?? '';
 
     // Update the controller
@@ -97,6 +101,12 @@ class _CouponListScreenState extends State<CouponListScreen> {
   }
 
   void _applyManualCoupon(CartControllerProvider controller) {
+    // Prevent applying coupons while validation is in progress
+    if (controller.isLoadingCoupons) {
+      ShowToastDialog.showToast("Please wait while coupons are being validated".tr);
+      return;
+    }
+
     final enteredCode = _couponCodeController.text.trim();
     if (enteredCode.isEmpty) {
       ShowToastDialog.showToast("Please enter a coupon code".tr);
@@ -123,18 +133,21 @@ class _CouponListScreenState extends State<CouponListScreen> {
     CouponModel coupon,
     int index,
   ) {
+    final isLoadingCoupons = controller.isLoadingCoupons;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       child: Container(
         color: Colors.transparent,
         child: GestureDetector(
-          onTap: coupon.isEnabled == false
-              ? () {
-                  ShowToastDialog.showToast("Coupon already used".tr);
-                }
-              : () {
-                  _applyCoupon(controller, coupon);
-                },
+          onTap: isLoadingCoupons
+              ? null
+              : coupon.isEnabled == false
+                  ? () {
+                      ShowToastDialog.showToast("Coupon already used".tr);
+                    }
+                  : () {
+                      _applyCoupon(controller, coupon);
+                    },
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: Stack(
@@ -314,6 +327,7 @@ class _CouponListScreenState extends State<CouponListScreen> {
     return Consumer<CartControllerProvider>(
       builder: (context, controller, _) {
         final coupons = controller.couponList;
+        final isLoadingCoupons = controller.isLoadingCoupons;
         return Scaffold(
           backgroundColor: AppThemeData.surface,
           appBar: AppBar(
@@ -341,27 +355,32 @@ class _CouponListScreenState extends State<CouponListScreen> {
                     TextFieldWidget(
                       hintText: 'Enter coupon code'.tr,
                       controller: _couponCodeController,
+                      enable: !isLoadingCoupons,
                       suffix: Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
                         ),
                         child: InkWell(
-                          onTap: () => _applyManualCoupon(controller),
+                          onTap: isLoadingCoupons
+                              ? null
+                              : () => _applyManualCoupon(controller),
                           child: Text(
                             "Apply".tr,
                             textAlign: TextAlign.start,
                             style: TextStyle(
                               fontFamily: AppThemeData.semiBold,
                               fontSize: 16,
-                              color: AppThemeData.primary300,
+                              color: isLoadingCoupons
+                                  ? Colors.grey
+                                  : AppThemeData.primary300,
                             ),
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(height: 8),
-                    if (coupons.isNotEmpty)
+                    if (!isLoadingCoupons && coupons.isNotEmpty)
                       Text(
                         "${coupons.length} coupons available",
                         style: TextStyle(
@@ -369,20 +388,77 @@ class _CouponListScreenState extends State<CouponListScreen> {
                           color: Colors.grey.shade600,
                         ),
                       ),
+                    if (isLoadingCoupons)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppThemeData.primary300,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Validating coupons...".tr,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
               ),
             ),
           ),
-          body: coupons.isEmpty
-              ? _buildEmptyState()
-              : ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: coupons.length,
-                  itemBuilder: (context, index) {
-                    return _buildCouponItem(controller, coupons[index], index);
-                  },
-                ),
+          body: isLoadingCoupons
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppThemeData.primary300,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        "Loading and validating coupons...".tr,
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey.shade600,
+                          fontFamily: AppThemeData.medium,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        "Please wait".tr,
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : coupons.isEmpty
+                  ? _buildEmptyState()
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: coupons.length,
+                      itemBuilder: (context, index) {
+                        return _buildCouponItem(controller, coupons[index], index);
+                      },
+                    ),
         );
       },
     );

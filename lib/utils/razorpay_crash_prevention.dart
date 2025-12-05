@@ -20,6 +20,7 @@ class RazorpayCrashPrevention {
   Razorpay? _razorpay;
   bool _isInitialized = false;
   bool _isInitializationSafe = false;
+  bool _areListenersRegistered = false; // 🔑 CRITICAL: Prevent duplicate listener registration
 
   /// **SAFE RAZORPAY INITIALIZATION**
   ///
@@ -32,6 +33,20 @@ class RazorpayCrashPrevention {
     try {
       log('RAZORPAY_CRASH_PREVENTION: Starting safe initialization...');
 
+      // 🔑 CRITICAL: If already initialized, clear old instance first to prevent duplicate listeners
+      if (_isInitialized && _razorpay != null) {
+        log('RAZORPAY_CRASH_PREVENTION: Already initialized, clearing old instance to prevent duplicate listeners');
+        try {
+          _razorpay!.clear();
+        } catch (e) {
+          log('RAZORPAY_CRASH_PREVENTION: Error clearing old instance: $e');
+        }
+        _razorpay = null;
+        _isInitialized = false;
+        _isInitializationSafe = false;
+        _areListenersRegistered = false;
+      }
+
       // ✅ CRITICAL: Check if Razorpay can be safely initialized
       if (!await _canSafelyInitializeRazorpay()) {
         log(
@@ -43,52 +58,62 @@ class RazorpayCrashPrevention {
       // Create Razorpay instance
       _razorpay = Razorpay();
 
-      // Set up event handlers with error protection
-      _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, (
-        PaymentSuccessResponse response,
-      ) {
-        try {
-          log('RAZORPAY_CRASH_PREVENTION: Payment success received');
-          log('RAZORPAY_CRASH_PREVENTION: Payment ID: ${response.paymentId}');
-          log(
-            'RAZORPAY_CRASH_PREVENTION: Payment signature: ${response.signature}',
-          );
-          log('RAZORPAY_CRASH_PREVENTION: Payment data: ${response.data}');
-          onSuccess(response);
-        } catch (e) {
-          log(
-            'RAZORPAY_CRASH_PREVENTION: Error in payment success handler: $e',
-          );
-        }
-      });
+      // 🔑 CRITICAL: Only register event handlers once to prevent duplicate callbacks
+      if (!_areListenersRegistered) {
+        log('RAZORPAY_CRASH_PREVENTION: Registering event listeners (first time)');
+        
+        // Set up event handlers with error protection
+        _razorpay!.on(Razorpay.EVENT_PAYMENT_SUCCESS, (
+          PaymentSuccessResponse response,
+        ) {
+          try {
+            log('RAZORPAY_CRASH_PREVENTION: Payment success received');
+            log('RAZORPAY_CRASH_PREVENTION: Payment ID: ${response.paymentId}');
+            log(
+              'RAZORPAY_CRASH_PREVENTION: Payment signature: ${response.signature}',
+            );
+            log('RAZORPAY_CRASH_PREVENTION: Payment data: ${response.data}');
+            onSuccess(response);
+          } catch (e) {
+            log(
+              'RAZORPAY_CRASH_PREVENTION: Error in payment success handler: $e',
+            );
+          }
+        });
 
-      _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, (
-        PaymentFailureResponse response,
-      ) {
-        try {
-          log(
-            'RAZORPAY_CRASH_PREVENTION: Payment error received: ${response.message}',
-          );
-          onFailure(response);
-        } catch (e) {
-          log(
-            'RAZORPAY_CRASH_PREVENTION: Error in payment failure handler: $e',
-          );
-        }
-      });
+        _razorpay!.on(Razorpay.EVENT_PAYMENT_ERROR, (
+          PaymentFailureResponse response,
+        ) {
+          try {
+            log(
+              'RAZORPAY_CRASH_PREVENTION: Payment error received: ${response.message}',
+            );
+            onFailure(response);
+          } catch (e) {
+            log(
+              'RAZORPAY_CRASH_PREVENTION: Error in payment failure handler: $e',
+            );
+          }
+        });
 
-      _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, (
-        ExternalWalletResponse response,
-      ) {
-        try {
-          log('RAZORPAY_CRASH_PREVENTION: External wallet response received');
-          onExternalWallet(response);
-        } catch (e) {
-          log(
-            'RAZORPAY_CRASH_PREVENTION: Error in external wallet handler: $e',
-          );
-        }
-      });
+        _razorpay!.on(Razorpay.EVENT_EXTERNAL_WALLET, (
+          ExternalWalletResponse response,
+        ) {
+          try {
+            log('RAZORPAY_CRASH_PREVENTION: External wallet response received');
+            onExternalWallet(response);
+          } catch (e) {
+            log(
+              'RAZORPAY_CRASH_PREVENTION: Error in external wallet handler: $e',
+            );
+          }
+        });
+
+        _areListenersRegistered = true;
+        log('RAZORPAY_CRASH_PREVENTION: ✅ Event listeners registered successfully');
+      } else {
+        log('RAZORPAY_CRASH_PREVENTION: ⚠️ Event listeners already registered, skipping duplicate registration');
+      }
 
       _isInitialized = true;
       _isInitializationSafe = true;
@@ -171,6 +196,7 @@ class RazorpayCrashPrevention {
       }
       _isInitialized = false;
       _isInitializationSafe = false;
+      _areListenersRegistered = false; // 🔑 CRITICAL: Reset listener flag on cleanup
       log('RAZORPAY_CRASH_PREVENTION: ✅ Cleanup completed');
     } catch (e) {
       log('RAZORPAY_CRASH_PREVENTION: ❌ Cleanup error: $e');

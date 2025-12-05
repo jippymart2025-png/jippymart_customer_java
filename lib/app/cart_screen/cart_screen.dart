@@ -64,15 +64,20 @@ class _CartScreenState extends State<CartScreen> {
     // This ensures tips don't carry over from previous orders
     controller.deliveryTips = 0.0;
     await controller.forceRefreshCart();
+    
+    // 🔑 CRITICAL: Only initialize address if it's not already set
+    // Don't auto-sync to prevent repeated address changes
     if (controller.selectedAddress == null ||
         controller.selectedAddress!.location?.latitude == null ||
         controller.selectedAddress!.location?.longitude == null) {
       // 🔑 initializeAddress now handles vendor loading and price calculation
+      // It will use default location first, then current location if no default
       await controller.initializeAddress(context);
-    } else {
-      // 🔑 syncAddressWithHomeLocation already handles price calculation
-      await controller.syncAddressWithHomeLocation(context);
     }
+    // 🔑 REMOVED: Don't call syncAddressWithHomeLocation automatically
+    // This prevents the address from changing repeatedly
+    // Address will only change when user explicitly selects a new one
+    
     controller.checkAndUpdatePaymentMethod();
     _isRefreshing = false;
   }

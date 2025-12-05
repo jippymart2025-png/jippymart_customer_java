@@ -84,14 +84,14 @@ class CartControllerProvider extends ChangeNotifier {
       controller.endOrderProcessing();
       return;
     }
-    
+
     // 🔑 CRITICAL: Validate payment method is selected
     if (controller.selectedPaymentMethod.isEmpty) {
       ShowToastDialog.showToast("Please select payment method".tr);
       controller.endOrderProcessing();
       return;
     }
-    
+
     if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
       // 🔑 CRITICAL: For COD, verify it's allowed
       if (controller.subTotal > 599) {
@@ -124,46 +124,51 @@ class CartControllerProvider extends ChangeNotifier {
         controller.endOrderProcessing();
         return;
       }
-      
-      print('✅ [RAZORPAY] Razorpay key found: ${controller.razorPayModel.razorpayKey!.substring(0, 10)}...');
-      
+
+      print(
+        '✅ [RAZORPAY] Razorpay key found: ${controller.razorPayModel.razorpayKey!.substring(0, 10)}...',
+      );
+
       // 🔑 CRITICAL: Reset payment state before starting new payment
       controller.isPaymentInProgress = false;
       controller.isPaymentCompleted = false;
       controller._lastPaymentId = null;
-      
-      print('🔑 [RAZORPAY] Starting payment flow for amount: ${controller.totalAmount}');
-      
+
+      print(
+        '🔑 [RAZORPAY] Starting payment flow for amount: ${controller.totalAmount}',
+      );
+
       // 🔑 OPTIMIZATION: Show loading immediately and ensure Razorpay is initialized
       ShowToastDialog.showLoader("Opening payment gateway...".tr);
-      
+
       // 🔑 OPTIMIZATION: Ensure Razorpay is initialized (should already be from pre-init, but double-check)
       if (!controller._razorpayCrashPrevention.isInitialized) {
         print('🔑 [RAZORPAY] Razorpay not initialized, initializing now...');
-        final initialized = await controller._razorpayCrashPrevention.safeInitialize(
-          onSuccess: controller.handlePaymentSuccess,
-          onFailure: controller.handlePaymentError,
-          onExternalWallet: controller.handleExternalWallet,
-        );
+        final initialized = await controller._razorpayCrashPrevention
+            .safeInitialize(
+              onSuccess: controller.handlePaymentSuccess,
+              onFailure: controller.handlePaymentError,
+              onExternalWallet: controller.handleExternalWallet,
+            );
         if (!initialized) {
           ShowToastDialog.closeLoader();
           ShowToastDialog.showToast(
-            "Payment system is temporarily unavailable. Please try again later.".tr,
+            "Payment system is temporarily unavailable. Please try again later."
+                .tr,
           );
           controller.endOrderProcessing();
           return;
         }
       }
-      
+
       try {
         // 🔑 OPTIMIZATION: Create order and open checkout in parallel where possible
         // Show payment page as soon as order is created
-        final orderResult = await RazorPayController()
-            .createOrderRazorPay(
-              amount: double.parse(controller.totalAmount.toString()),
-              razorpayModel: controller.razorPayModel,
-            );
-        
+        final orderResult = await RazorPayController().createOrderRazorPay(
+          amount: double.parse(controller.totalAmount.toString()),
+          razorpayModel: controller.razorPayModel,
+        );
+
         if (orderResult == null) {
           print('❌ [RAZORPAY] Order creation returned null');
           ShowToastDialog.closeLoader();
@@ -173,25 +178,27 @@ class CartControllerProvider extends ChangeNotifier {
           controller.endOrderProcessing();
           return;
         }
-        
+
         print('✅ [RAZORPAY] Order created successfully: ${orderResult.id}');
-        print('🔑 [RAZORPAY] Order amount (paise): ${orderResult.amount}, Order ID: ${orderResult.id}');
-        
+        print(
+          '🔑 [RAZORPAY] Order amount (paise): ${orderResult.amount}, Order ID: ${orderResult.id}',
+        );
+
         // 🔑 CRITICAL: Convert amount from paise to rupees for openCheckout
         // orderResult.amount is in paise, but openCheckout expects rupees and converts to paise internally
         final amountInRupees = orderResult.amount / 100.0;
         print('🔑 [RAZORPAY] Amount in rupees: $amountInRupees');
-        
+
         // 🔑 OPTIMIZATION: Close loader before opening checkout for instant UI
         ShowToastDialog.closeLoader();
-        
+
         // 🔑 CRITICAL: Check if checkout opens successfully
         print('🔑 [RAZORPAY] Attempting to open checkout...');
         final checkoutOpened = await controller.openCheckout(
-          amount: amountInRupees, 
+          amount: amountInRupees,
           orderId: orderResult.id,
         );
-        
+
         if (!checkoutOpened) {
           print('❌ [RAZORPAY] Checkout failed to open');
           // 🔑 CRITICAL: If checkout failed to open, prevent order placement
@@ -201,7 +208,7 @@ class CartControllerProvider extends ChangeNotifier {
           controller.endOrderProcessing();
           return;
         }
-        
+
         print('✅ [RAZORPAY] Checkout opened successfully');
       } catch (error, stackTrace) {
         // 🔑 CRITICAL: Handle any errors during RazorPay order creation
@@ -278,6 +285,8 @@ class CartControllerProvider extends ChangeNotifier {
           );
         }
         selectedAddress = addressModel;
+        _addressInitialized =
+            true; // 🔑 Mark as initialized when user explicitly changes address
         await _loadFreshVendorForCart();
         notifyListeners();
         await calculatePrice();
@@ -681,12 +690,32 @@ class CartControllerProvider extends ChangeNotifier {
   // Add order idempotency tracking
   bool _orderInProgress = false;
 
+  // 🔑 CRITICAL: Debouncing for price calculation to prevent continuous updates
+  bool _isCalculatingPrice = false;
+  DateTime? _lastPriceCalculationTime;
+  static const Duration _priceCalculationDebounce = Duration(milliseconds: 300);
+
   // 🔑 RAZORPAY PAYMENT STATE MANAGEMENT
   bool isPaymentInProgress = false;
   bool isPaymentCompleted = false;
   String? _lastPaymentId;
   DateTime? _lastPaymentTime;
   static const Duration paymentTimeout = Duration(minutes: 5);
+
+  // 🔑 CRITICAL: Prevent duplicate order creation
+  bool _isOrderBeingCreated = false;
+  Set<String> _processedPaymentIds = {}; // Track processed payment IDs
+  static const int _maxProcessedPaymentIds =
+      100; // Limit to prevent memory issues
+
+  // 🔑 CRITICAL: Static lock to prevent concurrent order creation across all instances
+  static bool _isOrderCreationInProgress = false;
+  static String?
+  _currentOrderPaymentId; // Track payment ID for current order creation
+  static DateTime? _lastOrderCreationTime;
+  static const Duration _orderCreationCooldown = Duration(
+    seconds: 10,
+  ); // Cooldown period
 
   // 🔑 PERSISTENT PAYMENT STATE STORAGE (SURVIVES APP KILLS)
   static const String _paymentStateKey = 'razorpay_payment_state';
@@ -700,6 +729,9 @@ class CartControllerProvider extends ChangeNotifier {
   // Add profile validation state
   bool isProfileValid = false;
   bool isProfileValidating = false;
+
+  // 🔑 CRITICAL: Track if address has been initialized to prevent repeated changes
+  bool _addressInitialized = false;
 
   // Add caching for better performance
   VendorModel? _cachedVendorModel;
@@ -730,6 +762,9 @@ class CartControllerProvider extends ChangeNotifier {
   bool get isLoadingProducts => _isLoadingProducts;
 
   bool get productsLoaded => _productsLoaded;
+
+  // Getter for coupon loading state
+  bool get isLoadingCoupons => _isLoadingCoupons;
 
   ShippingAddress? selectedAddress = ShippingAddress();
   VendorModel vendorModel = VendorModel();
@@ -785,7 +820,18 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _initializeAddressWithPriority(BuildContext context) async {
     try {
-      // PRIORITY 1: Check for saved addresses in user profile
+      // 🔑 CRITICAL: If address is already initialized and valid, don't change it
+      if (_addressInitialized &&
+          selectedAddress != null &&
+          selectedAddress!.location?.latitude != null &&
+          selectedAddress!.location?.longitude != null) {
+        print(
+          '🏠 [ADDRESS_PRIORITY] ✅ Address already initialized, skipping auto-change',
+        );
+        return;
+      }
+
+      // PRIORITY 1: Check for saved addresses in user profile (DEFAULT LOCATION)
       if (Constant.userModel != null &&
           Constant.userModel!.shippingAddress != null &&
           Constant.userModel!.shippingAddress!.isNotEmpty) {
@@ -794,6 +840,7 @@ class CartControllerProvider extends ChangeNotifier {
           orElse: () => Constant.userModel!.shippingAddress!.first,
         );
         selectedAddress = defaultAddress;
+        _addressInitialized = true; // Mark as initialized
         await initialLiseSurgeValue(
           defaultAddress.location?.latitude ?? 0.0,
           defaultAddress.location?.longitude ?? 0.0,
@@ -808,11 +855,15 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
         notifyListeners();
+        print('🏠 [ADDRESS_PRIORITY] ✅ Using default saved address');
         return;
       }
+
+      // PRIORITY 2: Only use current location if no default address exists
       final homeScreenAddress = await _getCurrentLocationAddress(context);
       if (homeScreenAddress != null) {
         selectedAddress = homeScreenAddress;
+        _addressInitialized = true; // Mark as initialized
         await initialLiseSurgeValue(
           homeScreenAddress.location?.latitude ?? 0.0,
           homeScreenAddress.location?.longitude ?? 0.0,
@@ -827,14 +878,19 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
         notifyListeners();
+        print(
+          '🏠 [ADDRESS_PRIORITY] ✅ Using current location (no default address)',
+        );
         return;
       }
       selectedAddress = null;
+      _addressInitialized = false;
       notifyListeners();
       _showAddressRequiredAlert();
     } catch (e) {
       print('🏠 [ADDRESS_PRIORITY] ❌ ERROR in address initialization: $e');
       selectedAddress = null;
+      _addressInitialized = false;
       _showAddressRequiredAlert();
     }
     notifyListeners();
@@ -920,8 +976,33 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Sync selectedAddress with Constant.selectedLocation if needed
   /// This ensures cart address stays in sync when location changes on home screen
+  /// 🔑 CRITICAL: Only syncs if address is not initialized or user explicitly changes location
   Future<void> syncAddressWithHomeLocation(BuildContext context) async {
     try {
+      // 🔑 CRITICAL: Don't auto-sync if address is already initialized with a saved/default address
+      // Only sync if address is null or invalid, or if user explicitly changed location
+      if (_addressInitialized &&
+          selectedAddress != null &&
+          selectedAddress!.id != null &&
+          !selectedAddress!.id!.startsWith('home_screen_address_')) {
+        // Address is a saved address (not temporary), don't auto-change it
+        print(
+          '[CART_SYNC] ⚠️ Address is a saved address, skipping auto-sync to prevent repeated changes',
+        );
+        // Only sync zoneId if missing, don't change the address itself
+        if ((selectedAddress?.zoneId == null ||
+                selectedAddress!.zoneId!.isEmpty) &&
+            Constant.selectedLocation.zoneId != null &&
+            Constant.selectedLocation.zoneId!.isNotEmpty) {
+          selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
+          print(
+            '[CART_SYNC] ✅ Synced zoneId only (address unchanged): ${selectedAddress!.zoneId}',
+          );
+          notifyListeners();
+        }
+        return;
+      }
+
       // Check if Constant.selectedLocation has valid coordinates
       if (Constant.selectedLocation.location?.latitude != null &&
           Constant.selectedLocation.location?.longitude != null) {
@@ -932,32 +1013,39 @@ class CartControllerProvider extends ChangeNotifier {
         final currentLat = selectedAddress?.location?.latitude;
         final currentLng = selectedAddress?.location?.longitude;
 
-        // If coordinates don't match, sync the address
+        // If coordinates don't match AND address is not initialized, sync the address
         if (currentLat == null ||
             currentLng == null ||
             currentLat != homeLat ||
             currentLng != homeLng) {
-          final homeScreenAddress = await _getCurrentLocationAddress(context);
-          if (homeScreenAddress != null) {
-            selectedAddress = homeScreenAddress;
-            // Ensure zoneId is set (it should be set by _getCurrentLocationAddress, but verify)
-            if ((selectedAddress!.zoneId == null ||
-                    selectedAddress!.zoneId!.isEmpty) &&
-                Constant.selectedLocation.zoneId != null &&
-                Constant.selectedLocation.zoneId!.isNotEmpty) {
-              selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
+          // Only sync if address is not initialized (first time) or is a temporary address
+          if (!_addressInitialized ||
+              selectedAddress == null ||
+              selectedAddress!.id == null ||
+              selectedAddress!.id!.startsWith('home_screen_address_')) {
+            final homeScreenAddress = await _getCurrentLocationAddress(context);
+            if (homeScreenAddress != null) {
+              selectedAddress = homeScreenAddress;
+              _addressInitialized = true; // Mark as initialized after sync
+              // Ensure zoneId is set (it should be set by _getCurrentLocationAddress, but verify)
+              if ((selectedAddress!.zoneId == null ||
+                      selectedAddress!.zoneId!.isEmpty) &&
+                  Constant.selectedLocation.zoneId != null &&
+                  Constant.selectedLocation.zoneId!.isNotEmpty) {
+                selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
+                print(
+                  '[CART_SYNC] ✅ Set zoneId from Constant.selectedLocation: ${selectedAddress!.zoneId}',
+                );
+              }
+              // Update surge value for new location
+              await initialLiseSurgeValue(homeLat, homeLng);
+              // Recalculate prices with new address - await to ensure calculation completes
+              await calculatePrice();
               print(
-                '[CART_SYNC] ✅ Set zoneId from Constant.selectedLocation: ${selectedAddress!.zoneId}',
+                '[CART_SYNC] ✅ Synced selectedAddress with Constant.selectedLocation (zoneId: ${selectedAddress!.zoneId})',
               );
+              notifyListeners();
             }
-            // Update surge value for new location
-            await initialLiseSurgeValue(homeLat, homeLng);
-            // Recalculate prices with new address - await to ensure calculation completes
-            await calculatePrice();
-            print(
-              '[CART_SYNC] ✅ Synced selectedAddress with Constant.selectedLocation (zoneId: ${selectedAddress!.zoneId})',
-            );
-            notifyListeners();
           }
         } else {
           // Coordinates match, but check if zoneId needs syncing
@@ -1510,6 +1598,15 @@ class CartControllerProvider extends ChangeNotifier {
       taxAmount = 0.0;
       deliveryTips = 0.0;
       selectedPaymentMethod = '';
+
+      // 🔑 CRITICAL: Reset payment state when clearing cart
+      _resetPaymentState();
+      _processedPaymentIds.clear();
+      _isOrderBeingCreated = false;
+
+      // 🔑 CRITICAL: Reset address initialization flag when clearing cart
+      _addressInitialized = false;
+
       // Verify cart is actually empty
       final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
       if (remainingItems.isNotEmpty) {}
@@ -1535,15 +1632,15 @@ class CartControllerProvider extends ChangeNotifier {
       final restaurantItems = HomeProvider.cartItem
           .where((item) => !_isMartItem(item))
           .toList();
-      notifyListeners();
+      // 🔑 REMOVED: notifyListeners() - will be called by calculatePrice()
       if (martItems.isNotEmpty) {
         await _loadFreshMartVendor(martItems);
       } else if (restaurantItems.isNotEmpty) {
         await _loadFreshRestaurantVendor(restaurantItems.first.vendorID);
       } else {}
-      notifyListeners();
+      // 🔑 REMOVED: notifyListeners() - will be called by calculatePrice()
     } catch (e) {}
-    notifyListeners();
+    // 🔑 REMOVED: notifyListeners() - will be called by calculatePrice()
   }
 
   /// 🔑 LOAD FRESH MART VENDOR
@@ -1844,15 +1941,18 @@ class CartControllerProvider extends ChangeNotifier {
 
       couponList = contextFilteredCoupons;
       allCouponList = contextFilteredAllCoupons;
-      notifyListeners();
-      // Mark used coupons
+      // Mark used coupons BEFORE notifying listeners
+      // This ensures coupons are validated before UI shows them
       await _markUsedCoupons();
+      notifyListeners();
     } on SocketException catch (e) {
       print('[COUPON_LOAD] ❌ Connection error: $e');
       // Use cached coupons if available, otherwise empty list
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
+        // Mark used coupons before showing cached coupons
+        await _markUsedCoupons();
         notifyListeners();
       } else {
         couponList = [];
@@ -1867,6 +1967,8 @@ class CartControllerProvider extends ChangeNotifier {
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
+        // Mark used coupons before showing cached coupons
+        await _markUsedCoupons();
         notifyListeners();
       } else {
         couponList = [];
@@ -1885,6 +1987,8 @@ class CartControllerProvider extends ChangeNotifier {
         if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
           couponList = _cachedCouponList!;
           allCouponList = _cachedCouponList!;
+          // Mark used coupons before showing cached coupons
+          await _markUsedCoupons();
           notifyListeners();
         } else {
           couponList = [];
@@ -1998,15 +2102,18 @@ class CartControllerProvider extends ChangeNotifier {
       // Update observable lists
       couponList = combinedCoupons.cast<CouponModel>();
       allCouponList = combinedAllCoupons.cast<CouponModel>();
-      notifyListeners();
-      // Mark used coupons
+      // Mark used coupons BEFORE notifying listeners
+      // This ensures coupons are validated before UI shows them
       await _markUsedCoupons();
+      notifyListeners();
     } on SocketException catch (e) {
       print('[COUPON_LOAD] ❌ Fallback: Connection error: $e');
       // Use cached coupons if available
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
+        // Mark used coupons before showing cached coupons
+        await _markUsedCoupons();
         notifyListeners();
       } else {
         couponList = [];
@@ -2021,6 +2128,8 @@ class CartControllerProvider extends ChangeNotifier {
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
+        // Mark used coupons before showing cached coupons
+        await _markUsedCoupons();
         notifyListeners();
       } else {
         couponList = [];
@@ -2039,6 +2148,8 @@ class CartControllerProvider extends ChangeNotifier {
         if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
           couponList = _cachedCouponList!;
           allCouponList = _cachedCouponList!;
+          // Mark used coupons before showing cached coupons
+          await _markUsedCoupons();
           notifyListeners();
         } else {
           couponList = [];
@@ -2050,6 +2161,8 @@ class CartControllerProvider extends ChangeNotifier {
         if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
           couponList = _cachedCouponList!;
           allCouponList = _cachedCouponList!;
+          // Mark used coupons before showing cached coupons
+          await _markUsedCoupons();
           notifyListeners();
         } else {
           couponList = [];
@@ -2313,6 +2426,9 @@ class CartControllerProvider extends ChangeNotifier {
       // Update observable lists
       couponList = contextFilteredCoupons;
       allCouponList = filteredGlobalCoupons.cast<CouponModel>();
+      // Mark used coupons BEFORE notifying listeners
+      // This ensures coupons are validated before UI shows them
+      await _markUsedCoupons();
       notifyListeners();
     } on SocketException catch (e) {
       print('[COUPON_LOAD] ❌ Global: Connection error: $e');
@@ -2320,6 +2436,8 @@ class CartControllerProvider extends ChangeNotifier {
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
+        // Mark used coupons before showing cached coupons
+        await _markUsedCoupons();
         notifyListeners();
       } else {
         couponList = [];
@@ -2332,6 +2450,8 @@ class CartControllerProvider extends ChangeNotifier {
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
+        // Mark used coupons before showing cached coupons
+        await _markUsedCoupons();
         notifyListeners();
       } else {
         couponList = [];
@@ -2352,6 +2472,8 @@ class CartControllerProvider extends ChangeNotifier {
         if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
           couponList = _cachedCouponList!;
           allCouponList = _cachedCouponList!;
+          // Mark used coupons before showing cached coupons
+          await _markUsedCoupons();
           notifyListeners();
         } else {
           couponList = [];
@@ -2363,10 +2485,12 @@ class CartControllerProvider extends ChangeNotifier {
         if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
           couponList = _cachedCouponList!;
           allCouponList = _cachedCouponList!;
+          await _markUsedCoupons();
           notifyListeners();
         }
       }
     } finally {
+      await Future.delayed(Duration(seconds: 1));
       _isLoadingCoupons = false;
     }
   }
@@ -2388,7 +2512,6 @@ class CartControllerProvider extends ChangeNotifier {
           final usedCouponIds = usedCoupons
               .map((coupon) => coupon['couponId'] as String)
               .toSet();
-          // Mark used coupons in both lists
           for (var coupon in couponList) {
             coupon.isEnabled = !usedCouponIds.contains(coupon.id);
           }
@@ -2408,339 +2531,381 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<void> calculatePrice() async {
-    await ANRPrevention.executeWithANRPrevention('CartController_calculatePrice', () async {
-      if (_cachedTaxList != null) {
-        Constant.taxList = _cachedTaxList;
-        notifyListeners();
-      } else if (Constant.taxList == null) {
-        Constant.taxList = await FireStoreUtils.getTaxList();
-        _cachedTaxList = Constant.taxList;
-        notifyListeners();
-      }
+    // 🔑 CRITICAL: Debounce price calculation to prevent continuous updates
+    if (_isCalculatingPrice) {
       print(
-        'DEBUG: Using cached tax list with ${Constant.taxList?.length ?? 0} items',
+        '[PRICE_CALC] ⚠️ Price calculation already in progress, skipping duplicate call',
       );
-      // Reset all values
-      deliveryCharges = 0.0;
-      subTotal = 0.0;
-      couponAmount = 0.0;
-      specialDiscountAmount = 0.0;
-      taxAmount = 0.0;
-      totalAmount = 0.0;
-      notifyListeners();
-      if (HomeProvider.cartItem.isEmpty) {
+      return;
+    }
+
+    // Check debounce time
+    if (_lastPriceCalculationTime != null) {
+      final timeSinceLastCalc = DateTime.now().difference(
+        _lastPriceCalculationTime!,
+      );
+      if (timeSinceLastCalc < _priceCalculationDebounce) {
+        print(
+          '[PRICE_CALC] ⚠️ Price calculation debounced (${timeSinceLastCalc.inMilliseconds}ms < ${_priceCalculationDebounce.inMilliseconds}ms)',
+        );
         return;
       }
-      if (vendorModel.id == null) {
-        final martItems = HomeProvider.cartItem
-            .where((item) => _isMartItem(item))
-            .toList();
-        if (martItems.isNotEmpty) {
-          print(
-            '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor in calculatePrice...',
-          );
-          try {
-            final firstMartItem = martItems.first;
-            final vendorId = firstMartItem.vendorID;
+    }
+
+    _isCalculatingPrice = true;
+    _lastPriceCalculationTime = DateTime.now();
+
+    try {
+      await ANRPrevention.executeWithANRPrevention('CartController_calculatePrice', () async {
+        if (_cachedTaxList != null) {
+          Constant.taxList = _cachedTaxList;
+          // 🔑 REMOVED: notifyListeners() - will call at end
+        } else if (Constant.taxList == null) {
+          Constant.taxList = await FireStoreUtils.getTaxList();
+          _cachedTaxList = Constant.taxList;
+          // 🔑 REMOVED: notifyListeners() - will call at end
+        }
+        print(
+          'DEBUG: Using cached tax list with ${Constant.taxList?.length ?? 0} items',
+        );
+        // Reset all values
+        deliveryCharges = 0.0;
+        subTotal = 0.0;
+        couponAmount = 0.0;
+        specialDiscountAmount = 0.0;
+        taxAmount = 0.0;
+        totalAmount = 0.0;
+        // 🔑 REMOVED: notifyListeners() - will call at end
+        if (HomeProvider.cartItem.isEmpty) {
+          _isCalculatingPrice = false;
+          notifyListeners(); // Only notify once when cart is empty
+          return;
+        }
+        if (vendorModel.id == null) {
+          final martItems = HomeProvider.cartItem
+              .where((item) => _isMartItem(item))
+              .toList();
+          if (martItems.isNotEmpty) {
             print(
-              '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor for vendorID: $vendorId',
+              '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor in calculatePrice...',
             );
+            try {
+              final firstMartItem = martItems.first;
+              final vendorId = firstMartItem.vendorID;
+              print(
+                '[VENDOR_LOAD] 🔧 Fallback: Loading mart vendor for vendorID: $vendorId',
+              );
 
-            MartVendorModel? martVendor;
+              MartVendorModel? martVendor;
 
-            if (vendorId != null && vendorId.isNotEmpty) {
-              // Try to get the specific mart vendor by ID first
-              martVendor = await MartVendorService.getMartVendorById(vendorId);
-              if (martVendor != null) {
-                print(
-                  '[VENDOR_LOAD] ✅ Fallback: Found specific mart vendor: ${martVendor.title} (${martVendor.id})',
+              if (vendorId != null && vendorId.isNotEmpty) {
+                // Try to get the specific mart vendor by ID first
+                martVendor = await MartVendorService.getMartVendorById(
+                  vendorId,
                 );
+                if (martVendor != null) {
+                  print(
+                    '[VENDOR_LOAD] ✅ Fallback: Found specific mart vendor: ${martVendor.title} (${martVendor.id})',
+                  );
+                } else {
+                  print(
+                    '[VENDOR_LOAD] ⚠️ Fallback: Specific mart vendor not found, trying default mart vendor...',
+                  );
+                  // Fallback to default mart vendor
+                  martVendor = await MartVendorService.getDefaultMartVendor();
+                }
               } else {
                 print(
-                  '[VENDOR_LOAD] ⚠️ Fallback: Specific mart vendor not found, trying default mart vendor...',
+                  '[VENDOR_LOAD] ⚠️ Fallback: No vendorID in mart item, trying default mart vendor...',
                 );
-                // Fallback to default mart vendor
                 martVendor = await MartVendorService.getDefaultMartVendor();
               }
-            } else {
-              print(
-                '[VENDOR_LOAD] ⚠️ Fallback: No vendorID in mart item, trying default mart vendor...',
-              );
-              martVendor = await MartVendorService.getDefaultMartVendor();
+              if (martVendor != null) {
+                vendorModel = VendorModel(
+                  id: martVendor.id,
+                  title: martVendor.title,
+                  latitude: martVendor.latitude,
+                  longitude: martVendor.longitude,
+                  isSelfDelivery: false,
+                  // Mart vendors don't have self delivery, use false
+                  vType: martVendor.vType,
+                  zoneId: martVendor.zoneId,
+                  isOpen: martVendor.isOpen,
+                );
+                print(
+                  '[VENDOR_LOAD] ✅ Fallback: Mart vendor loaded: ${martVendor.title} (${martVendor.id})',
+                );
+              }
+            } catch (e) {
+              print('[VENDOR_LOAD] ❌ Fallback: Error loading mart vendor: $e');
             }
-            if (martVendor != null) {
-              vendorModel = VendorModel(
-                id: martVendor.id,
-                title: martVendor.title,
-                latitude: martVendor.latitude,
-                longitude: martVendor.longitude,
-                isSelfDelivery: false,
-                // Mart vendors don't have self delivery, use false
-                vType: martVendor.vType,
-                zoneId: martVendor.zoneId,
-                isOpen: martVendor.isOpen,
-              );
-              print(
-                '[VENDOR_LOAD] ✅ Fallback: Mart vendor loaded: ${martVendor.title} (${martVendor.id})',
-              );
-            }
-          } catch (e) {
-            print('[VENDOR_LOAD] ❌ Fallback: Error loading mart vendor: $e');
           }
         }
-      }
 
-      // 1. Calculate subtotal first - Use promotional price if available
-      subTotal = 0.0;
-      notifyListeners();
-      for (var element in HomeProvider.cartItem) {
-        // Check if this item has a promotional price
-        final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
+        // 1. Calculate subtotal first - Use promotional price if available
+        subTotal = 0.0;
+        // 🔑 REMOVED: notifyListeners() - will call at end
+        for (var element in HomeProvider.cartItem) {
+          // Check if this item has a promotional price
+          final hasPromo =
+              element.promoId != null && element.promoId!.isNotEmpty;
 
-        double itemPrice;
-        if (hasPromo) {
-          // Use promotional price for calculations
-          itemPrice = double.parse(element.price.toString());
-        } else if (double.parse(element.discountPrice.toString()) <= 0) {
-          // No promotion, no discount - use regular price
-          itemPrice = double.parse(element.price.toString());
-        } else {
-          // Regular discount (non-promo) - use discount price
-          itemPrice = double.parse(element.discountPrice.toString());
-        }
-
-        final quantity = double.parse(element.quantity.toString());
-        final extrasPrice = double.parse(element.extrasPrice.toString());
-
-        subTotal += (itemPrice * quantity) + (extrasPrice * quantity);
-        notifyListeners();
-      }
-
-      if (HomeProvider.cartItem.isNotEmpty) {
-        if (selectedFoodType == "Delivery") {
-          if (selectedAddress?.location?.latitude != null &&
-              selectedAddress?.location?.longitude != null &&
-              vendorModel.latitude != null &&
-              vendorModel.longitude != null) {
-            final customerLat = selectedAddress?.location!.latitude;
-            final customerLng = selectedAddress?.location!.longitude;
-            final vendorLat = vendorModel.latitude!;
-            final vendorLng = vendorModel.longitude!;
-            final distanceString = Constant.getDistance(
-              lat1: customerLat.toString(),
-              lng1: customerLng.toString(),
-              lat2: vendorLat.toString(),
-              lng2: vendorLng.toString(),
-            );
-            totalDistance = double.parse(distanceString);
+          double itemPrice;
+          if (hasPromo) {
+            // Use promotional price for calculations
+            itemPrice = double.parse(element.price.toString());
+          } else if (double.parse(element.discountPrice.toString()) <= 0) {
+            // No promotion, no discount - use regular price
+            itemPrice = double.parse(element.price.toString());
           } else {
-            totalDistance = 0.0;
+            // Regular discount (non-promo) - use discount price
+            itemPrice = double.parse(element.discountPrice.toString());
           }
+
+          final quantity = double.parse(element.quantity.toString());
+          final extrasPrice = double.parse(element.extrasPrice.toString());
+
+          subTotal += (itemPrice * quantity) + (extrasPrice * quantity);
+          // 🔑 CRITICAL: REMOVED notifyListeners() from inside loop - causes continuous updates!
+        }
+
+        if (HomeProvider.cartItem.isNotEmpty) {
+          if (selectedFoodType == "Delivery") {
+            if (selectedAddress?.location?.latitude != null &&
+                selectedAddress?.location?.longitude != null &&
+                vendorModel.latitude != null &&
+                vendorModel.longitude != null) {
+              final customerLat = selectedAddress?.location!.latitude;
+              final customerLng = selectedAddress?.location!.longitude;
+              final vendorLat = vendorModel.latitude!;
+              final vendorLng = vendorModel.longitude!;
+              final distanceString = Constant.getDistance(
+                lat1: customerLat.toString(),
+                lng1: customerLng.toString(),
+                lat2: vendorLat.toString(),
+                lng2: vendorLng.toString(),
+              );
+              totalDistance = double.parse(distanceString);
+            } else {
+              totalDistance = 0.0;
+            }
+            final hasPromotionalItems = HomeProvider.cartItem.any(
+              (item) => item.promoId != null && item.promoId!.isNotEmpty,
+            );
+            final hasMartItems = hasMartItemsInCart();
+            if (hasPromotionalItems) {
+              calculatePromotionalDeliveryChargeFast();
+            } else if (hasMartItems) {
+              calculateMartDeliveryCharge();
+            } else {
+              calculateRegularDeliveryCharge();
+            }
+          }
+          // 🔑 REMOVED: notifyListeners() - will call at end
+        }
+        // 🔑 REMOVED: notifyListeners() - will call at end
+        CouponModel? activeCoupon;
+        if (selectedCouponModel.id != null &&
+            selectedCouponModel.id!.isNotEmpty) {
+          activeCoupon = selectedCouponModel;
+        } else if (couponCodeController.text.isNotEmpty) {
+          activeCoupon = couponList
+              .where((element) => element.code == couponCodeController.text)
+              .firstOrNull;
+          // 🔑 REMOVED: notifyListeners() - will call at end
+        }
+        final hasPromotionalItems = HomeProvider.cartItem.any((item) {
+          final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
+          final discountPriceValue =
+              double.tryParse(item.discountPrice.toString()) ?? 0.0;
+          final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
+          final isPricePromotional =
+              priceValue > 0 &&
+              discountPriceValue > 0 &&
+              priceValue < discountPriceValue;
+          return hasPromo || isPricePromotional;
+        });
+
+        if (hasPromotionalItems && activeCoupon != null) {
+          ShowToastDialog.showToast(
+            "Coupons cannot be applied to promotional items".tr,
+          );
+          couponCodeController.text = "";
+          selectedCouponModel = CouponModel();
+          couponAmount = 0.0;
+          // 🔑 REMOVED: notifyListeners() - will call at end
+          print('DEBUG: Coupon removed - cart contains promotional items');
+        } else if (activeCoupon != null) {
+          // Check minimum order value first
+          final minimumValue =
+              double.tryParse(activeCoupon.itemValue ?? '0') ?? 0.0;
+          if (subTotal < minimumValue) {
+            ShowToastDialog.showToast(
+              "Minimum order value for this coupon is ${Constant.amountShow(amount: activeCoupon.itemValue ?? '0')}"
+                  .tr,
+            );
+            couponCodeController.text = "";
+            selectedCouponModel = CouponModel();
+            couponAmount = 0.0;
+          } else {
+            // Calculate coupon discount
+            if (activeCoupon.discountType == "percentage") {
+              couponAmount =
+                  (subTotal * double.parse(activeCoupon.discount.toString())) /
+                  100;
+            } else {
+              couponAmount = double.parse(activeCoupon.discount.toString());
+            }
+            print('DEBUG: Coupon applied successfully - ${activeCoupon.code}');
+          }
+        } else {
+          couponAmount = 0.0;
+        }
+        // 🔑 REMOVED: notifyListeners() - will call at end
+        if (specialDiscountAmount > 0) {
+          specialDiscountAmount = (subTotal * specialDiscountAmount) / 100;
+        }
+        double sgst = 0.0;
+        double gst = 0.0;
+        final hasPromotionalItemsForTax = HomeProvider.cartItem.any(
+          (item) => item.promoId != null && item.promoId!.isNotEmpty,
+        );
+        final hasMartItems = hasMartItemsInCart();
+        // 🔑 FIXED: Calculate tax ONLY on deliveryCharges (what customer actually pays)
+        // When delivery is free (above ₹299), customer only pays extra km charge
+        // Tax should be calculated on the actual amount charged, not on waived base charge
+        // Example: If customer pays ₹7 (extra km), tax should be on ₹7, not on ₹30 (base + extra)
+        final double taxableDeliveryFee = deliveryCharges > 0
+            ? deliveryCharges
+            : 0.0;
+
+        print(
+          '[TAX_CALC] Delivery charges (customer pays): ₹$deliveryCharges, Original fee (waived): ₹$originalDeliveryFee, Taxable fee: ₹$taxableDeliveryFee',
+        );
+
+        if (Constant.taxList != null) {
+          for (var element in Constant.taxList!) {
+            if ((element.title?.toLowerCase() ?? '').contains('sgst')) {
+              sgst = Constant.calculateTax(
+                amount: subTotal.toString(),
+                taxModel: element,
+              );
+              if (hasPromotionalItemsForTax) {
+              } else if (hasMartItems) {
+              } else {}
+            } else if ((element.title?.toLowerCase() ?? '').contains('gst')) {
+              gst = Constant.calculateTax(
+                amount: taxableDeliveryFee.toString(),
+                taxModel: element,
+              );
+              if (hasPromotionalItemsForTax) {
+              } else if (hasMartItems) {
+              } else {}
+            }
+          }
+        }
+        sgst = sgst.isNaN ? 0.0 : sgst;
+        gst = gst.isNaN ? 0.0 : gst;
+        taxAmount = sgst + gst;
+        print(
+          '[TAX_CALC] Tax from tax list: SGST: ₹$sgst, GST: ₹$gst, Total: ₹$taxAmount',
+        );
+        if (taxAmount == 0.0) {
+          double sgstFallback = subTotal * 0.05; // 5% on subtotal
+          double gstFallback = taxableDeliveryFee > 0
+              ? taxableDeliveryFee *
+                    0.18 // 18% on delivery charges (what customer pays)
+              : 0.0;
+          taxAmount = sgstFallback + gstFallback;
+          print(
+            '[TAX_CALC] Fallback tax applied → SGST (5% of ₹$subTotal): ₹$sgstFallback, GST (18% of ₹$taxableDeliveryFee): ₹$gstFallback, Total: ₹$taxAmount',
+          );
+        }
+        if (taxAmount.isNaN) taxAmount = 0.0;
+        print("Fallback tax applied → SGST:: $taxAmount");
+        // sgst = (sgst.isNaN) ? 0.0 : sgst;
+        // gst = (gst.isNaN) ? 0.0 : gst;
+        // taxAmount = sgst + gst;
+        // print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
+        //
+        // if (taxAmount.isNaN) taxAmount = 0.0;
+
+        // if (taxAmount == 0.0) {
+        //   double sgsts = subTotal * 0.05;
+        //   double gsts = originalDeliveryFee * 0.18;
+        //   taxAmount = sgsts + gsts;
+        // }
+        print("taxAmounttaxAmount  $taxAmount");
+        // 🔑 REMOVED: notifyListeners() - will call at end
+        if (hasPromotionalItemsForTax) {
+        } else if (hasMartItems) {
+        } else {}
+        bool isFreeDelivery = false;
+        if (HomeProvider.cartItem.isNotEmpty &&
+            selectedFoodType == "Delivery") {
+          // Check if cart has promotional items or mart items
           final hasPromotionalItems = HomeProvider.cartItem.any(
             (item) => item.promoId != null && item.promoId!.isNotEmpty,
           );
           final hasMartItems = hasMartItemsInCart();
           if (hasPromotionalItems) {
-            calculatePromotionalDeliveryChargeFast();
+            final promotionalItems = HomeProvider.cartItem
+                .where(
+                  (item) => item.promoId != null && item.promoId!.isNotEmpty,
+                )
+                .toList();
+            final firstPromoItem = promotionalItems.first;
+
+            // Use cached data instead of Firebase query - INSTANT RESPONSE
+            final freeDeliveryKm = _getCachedFreeDeliveryKm(
+              firstPromoItem.id ?? '',
+              firstPromoItem.vendorID ?? '',
+            );
+
+            if (totalDistance <= freeDeliveryKm) {
+              isFreeDelivery = true;
+            }
+
+            // 🔑 REMOVED: notifyListeners() - will call at end
           } else if (hasMartItems) {
-            calculateMartDeliveryCharge();
+            // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
+            final dc = deliveryChargeModel;
+            final threshold =
+                dc.itemTotalThreshold ?? 299; // Same as restaurant
+            final freeKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
+            if (subTotal >= threshold && totalDistance <= freeKm) {
+              isFreeDelivery = true;
+            } else {
+              isFreeDelivery = false;
+            }
+            // 🔑 REMOVED: notifyListeners() - will call at end
           } else {
-            calculateRegularDeliveryCharge();
+            // For regular items, use regular delivery settings
+            final dc = deliveryChargeModel;
+            final subtotal = subTotal;
+            final threshold = dc.itemTotalThreshold ?? 299;
+            final freeKm = dc.freeDeliveryDistanceKm ?? 7;
+            if (subtotal >= threshold && totalDistance <= freeKm) {
+              isFreeDelivery = true;
+              // 🔑 REMOVED: notifyListeners() - will call at end
+            }
+            // 🔑 REMOVED: notifyListeners() - will call at end
           }
+          // 🔑 REMOVED: notifyListeners() - will call at end
         }
+        totalAmount =
+            (subTotal - couponAmount - specialDiscountAmount) +
+            taxAmount +
+            (isFreeDelivery ? 0.0 : deliveryCharges) +
+            deliveryTips +
+            surgePercent;
+        checkAndUpdatePaymentMethod();
+        // 🔑 CRITICAL: Only ONE notifyListeners() call at the very end
         notifyListeners();
-      }
-      notifyListeners();
-      CouponModel? activeCoupon;
-      if (selectedCouponModel.id != null &&
-          selectedCouponModel.id!.isNotEmpty) {
-        activeCoupon = selectedCouponModel;
-      } else if (couponCodeController.text.isNotEmpty) {
-        activeCoupon = couponList
-            .where((element) => element.code == couponCodeController.text)
-            .firstOrNull;
-        notifyListeners();
-      }
-      final hasPromotionalItems = HomeProvider.cartItem.any((item) {
-        final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
-        final discountPriceValue =
-            double.tryParse(item.discountPrice.toString()) ?? 0.0;
-        final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
-        final isPricePromotional =
-            priceValue > 0 &&
-            discountPriceValue > 0 &&
-            priceValue < discountPriceValue;
-        return hasPromo || isPricePromotional;
-      });
-
-      if (hasPromotionalItems && activeCoupon != null) {
-        ShowToastDialog.showToast(
-          "Coupons cannot be applied to promotional items".tr,
-        );
-        couponCodeController.text = "";
-        selectedCouponModel = CouponModel();
-        couponAmount = 0.0;
-        notifyListeners();
-        print('DEBUG: Coupon removed - cart contains promotional items');
-      } else if (activeCoupon != null) {
-        // Check minimum order value first
-        final minimumValue =
-            double.tryParse(activeCoupon.itemValue ?? '0') ?? 0.0;
-        if (subTotal < minimumValue) {
-          ShowToastDialog.showToast(
-            "Minimum order value for this coupon is ${Constant.amountShow(amount: activeCoupon.itemValue ?? '0')}"
-                .tr,
-          );
-          couponCodeController.text = "";
-          selectedCouponModel = CouponModel();
-          couponAmount = 0.0;
-        } else {
-          // Calculate coupon discount
-          if (activeCoupon.discountType == "percentage") {
-            couponAmount =
-                (subTotal * double.parse(activeCoupon.discount.toString())) /
-                100;
-          } else {
-            couponAmount = double.parse(activeCoupon.discount.toString());
-          }
-          print('DEBUG: Coupon applied successfully - ${activeCoupon.code}');
-        }
-      } else {
-        couponAmount = 0.0;
-      }
-      notifyListeners();
-      if (specialDiscountAmount > 0) {
-        specialDiscountAmount = (subTotal * specialDiscountAmount) / 100;
-      }
-      double sgst = 0.0;
-      double gst = 0.0;
-      final hasPromotionalItemsForTax = HomeProvider.cartItem.any(
-        (item) => item.promoId != null && item.promoId!.isNotEmpty,
-      );
-      final hasMartItems = hasMartItemsInCart();
-      // 🔑 FIXED: Calculate tax ONLY on deliveryCharges (what customer actually pays)
-      // When delivery is free (above ₹299), customer only pays extra km charge
-      // Tax should be calculated on the actual amount charged, not on waived base charge
-      // Example: If customer pays ₹7 (extra km), tax should be on ₹7, not on ₹30 (base + extra)
-      final double taxableDeliveryFee = deliveryCharges > 0
-          ? deliveryCharges
-          : 0.0;
-      
-      print('[TAX_CALC] Delivery charges (customer pays): ₹$deliveryCharges, Original fee (waived): ₹$originalDeliveryFee, Taxable fee: ₹$taxableDeliveryFee');
-
-      if (Constant.taxList != null) {
-        for (var element in Constant.taxList!) {
-          if ((element.title?.toLowerCase() ?? '').contains('sgst')) {
-            sgst = Constant.calculateTax(
-              amount: subTotal.toString(),
-              taxModel: element,
-            );
-            if (hasPromotionalItemsForTax) {
-            } else if (hasMartItems) {
-            } else {}
-          } else if ((element.title?.toLowerCase() ?? '').contains('gst')) {
-            gst = Constant.calculateTax(
-              amount: taxableDeliveryFee.toString(),
-              taxModel: element,
-            );
-            if (hasPromotionalItemsForTax) {
-            } else if (hasMartItems) {
-            } else {}
-          }
-        }
-      }
-      sgst = sgst.isNaN ? 0.0 : sgst;
-      gst = gst.isNaN ? 0.0 : gst;
-      taxAmount = sgst + gst;
-      print('[TAX_CALC] Tax from tax list: SGST: ₹$sgst, GST: ₹$gst, Total: ₹$taxAmount');
-      if (taxAmount == 0.0) {
-        double sgstFallback = subTotal * 0.05; // 5% on subtotal
-        double gstFallback = taxableDeliveryFee > 0
-            ? taxableDeliveryFee * 0.18  // 18% on delivery charges (what customer pays)
-            : 0.0;
-        taxAmount = sgstFallback + gstFallback;
-        print(
-          '[TAX_CALC] Fallback tax applied → SGST (5% of ₹$subTotal): ₹$sgstFallback, GST (18% of ₹$taxableDeliveryFee): ₹$gstFallback, Total: ₹$taxAmount',
-        );
-      }
-      if (taxAmount.isNaN) taxAmount = 0.0;
-      print("Fallback tax applied → SGST:: $taxAmount");
-      // sgst = (sgst.isNaN) ? 0.0 : sgst;
-      // gst = (gst.isNaN) ? 0.0 : gst;
-      // taxAmount = sgst + gst;
-      // print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
-      //
-      // if (taxAmount.isNaN) taxAmount = 0.0;
-
-      // if (taxAmount == 0.0) {
-      //   double sgsts = subTotal * 0.05;
-      //   double gsts = originalDeliveryFee * 0.18;
-      //   taxAmount = sgsts + gsts;
-      // }
-      print("taxAmounttaxAmount  $taxAmount");
-      notifyListeners();
-      if (hasPromotionalItemsForTax) {
-      } else if (hasMartItems) {
-      } else {}
-      bool isFreeDelivery = false;
-      if (HomeProvider.cartItem.isNotEmpty && selectedFoodType == "Delivery") {
-        // Check if cart has promotional items or mart items
-        final hasPromotionalItems = HomeProvider.cartItem.any(
-          (item) => item.promoId != null && item.promoId!.isNotEmpty,
-        );
-        final hasMartItems = hasMartItemsInCart();
-        if (hasPromotionalItems) {
-          final promotionalItems = HomeProvider.cartItem
-              .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
-              .toList();
-          final firstPromoItem = promotionalItems.first;
-
-          // Use cached data instead of Firebase query - INSTANT RESPONSE
-          final freeDeliveryKm = _getCachedFreeDeliveryKm(
-            firstPromoItem.id ?? '',
-            firstPromoItem.vendorID ?? '',
-          );
-
-          if (totalDistance <= freeDeliveryKm) {
-            isFreeDelivery = true;
-          }
-
-          notifyListeners();
-        } else if (hasMartItems) {
-          // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
-          final dc = deliveryChargeModel;
-          final threshold = dc.itemTotalThreshold ?? 299; // Same as restaurant
-          final freeKm = dc.freeDeliveryDistanceKm ?? 7; // Same as restaurant
-          if (subTotal >= threshold && totalDistance <= freeKm) {
-            isFreeDelivery = true;
-          } else {
-            isFreeDelivery = false;
-          }
-          notifyListeners();
-        } else {
-          // For regular items, use regular delivery settings
-          final dc = deliveryChargeModel;
-          final subtotal = subTotal;
-          final threshold = dc.itemTotalThreshold ?? 299;
-          final freeKm = dc.freeDeliveryDistanceKm ?? 7;
-          if (subtotal >= threshold && totalDistance <= freeKm) {
-            isFreeDelivery = true;
-            notifyListeners();
-          }
-          notifyListeners();
-        }
-        notifyListeners();
-      }
-      totalAmount =
-          (subTotal - couponAmount - specialDiscountAmount) +
-          taxAmount +
-          (isFreeDelivery ? 0.0 : deliveryCharges) +
-          deliveryTips +
-          surgePercent;
-      checkAndUpdatePaymentMethod();
-      notifyListeners();
-    }, timeout: const Duration(seconds: 5));
-    notifyListeners();
+      }, timeout: const Duration(seconds: 5));
+    } finally {
+      _isCalculatingPrice = false;
+    }
   }
 
   void calculatePromotionalDeliveryChargeFast() {
@@ -2771,7 +2936,7 @@ class CartControllerProvider extends ChangeNotifier {
       baseCharge: baseCharge,
       logPrefix: '[PROMOTIONAL_DELIVERY]',
     );
-    notifyListeners();
+    // 🔑 REMOVED: notifyListeners() - will be called by calculatePrice() at end
   }
 
   void _calculateDeliveryCharge({
@@ -2794,7 +2959,7 @@ class CartControllerProvider extends ChangeNotifier {
       // Always calculate tax on base charge (₹23) + extra charges for all order types
       originalDeliveryFee = baseCharge + deliveryCharges;
     }
-    notifyListeners();
+    // 🔑 REMOVED: notifyListeners() - will be called by calculatePrice() at end
   }
 
   /// Calculate delivery charge for mart items - Use same backend settings as restaurant
@@ -2852,7 +3017,7 @@ class CartControllerProvider extends ChangeNotifier {
     print(
       "calculateMartDeliveryCharge ${deliveryCharges} (threshold: ₹$threshold, subtotal: ₹$subtotal)",
     );
-    notifyListeners();
+    // 🔑 REMOVED: notifyListeners() - will be called by calculatePrice() at end
   }
 
   /// Fetch mart delivery charge settings from Firestore
@@ -2913,7 +3078,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
     }
     print("calculateRegularDeliveryCharge ${deliveryCharges} ");
-    notifyListeners();
+    // 🔑 REMOVED: notifyListeners() - will be called by calculatePrice() at end
   }
 
   Future<bool> addToCart({
@@ -3109,14 +3274,14 @@ class CartControllerProvider extends ChangeNotifier {
         _endOrderProcessing();
         return;
       }
-      
+
       // 🔑 CRITICAL: Validate payment method is selected
       if (selectedPaymentMethod.isEmpty) {
         ShowToastDialog.showToast("Please select payment method".tr);
         endOrderProcessing();
         return;
       }
-      
+
       // 🔑 CRITICAL: For Razorpay, ensure payment was completed
       if (selectedPaymentMethod == PaymentGateway.razorpay.name) {
         if (!isPaymentCompleted || _lastPaymentId == null) {
@@ -3128,7 +3293,7 @@ class CartControllerProvider extends ChangeNotifier {
           return;
         }
       }
-      
+
       if (selectedPaymentMethod == PaymentGateway.cod.name && subTotal > 599) {
         ShowToastDialog.showToast(
           "Cash on Delivery is not available for orders above ₹599. Please select another payment method."
@@ -3479,6 +3644,40 @@ class CartControllerProvider extends ChangeNotifier {
 
   ///issue finded
   Future<void> _setOrderInternal() async {
+    // 🔑 CRITICAL: Prevent concurrent order creation at the API level
+    // Only block if it's the SAME payment ID - allow different payment IDs to proceed
+    if (_isOrderCreationInProgress &&
+        _currentOrderPaymentId == _lastPaymentId) {
+      print(
+        '⚠️ [ORDER_CREATION] Order creation already in progress for payment ID $_lastPaymentId, preventing duplicate',
+      );
+      return; // Prevent concurrent order creation for same payment
+    }
+
+    // 🔑 CRITICAL: Check cooldown period to prevent rapid duplicate calls
+    // Only apply cooldown if it's the SAME payment ID
+    if (_lastOrderCreationTime != null &&
+        _currentOrderPaymentId == _lastPaymentId) {
+      final timeSinceLastOrder = DateTime.now().difference(
+        _lastOrderCreationTime!,
+      );
+      if (timeSinceLastOrder < _orderCreationCooldown) {
+        print(
+          '⚠️ [ORDER_CREATION] Order creation cooldown active, preventing duplicate for payment ID: $_lastPaymentId',
+        );
+        return; // Prevent duplicate orders within cooldown period
+      }
+    }
+
+    // Set static lock immediately - this prevents other instances from creating orders
+    _isOrderCreationInProgress = true;
+    _currentOrderPaymentId = _lastPaymentId;
+    _lastOrderCreationTime = DateTime.now();
+
+    print(
+      '✅ [ORDER_CREATION] Starting order creation for payment ID: $_lastPaymentId',
+    );
+
     String? orderId;
     List<CartProductModel> orderedProducts = [];
     try {
@@ -3588,6 +3787,10 @@ class CartControllerProvider extends ChangeNotifier {
         //   "lng": selectedAddress?.location?.longitude,
         // },
         "payment_method": selectedPaymentMethod,
+        "payment_id": _lastPaymentId ?? '',
+        // 🔑 CRITICAL: Include payment ID for reconciliation
+        "razorpay_payment_id": _lastPaymentId ?? '',
+        // 🔑 CRITICAL: Include Razorpay payment ID
         "total_amount": totalAmount,
         "delivery_charges": deliveryCharges.toString(),
         "tip_amount": deliveryTips.toString(),
@@ -3608,20 +3811,58 @@ class CartControllerProvider extends ChangeNotifier {
         name: "ORDER_PAYLOAD",
       );
       // **API CALL: Store the order**
-      print('🌐 Creating order via API...');
-      final response = await http.post(
-        Uri.parse('${AppConst.baseUrl}mobile/orders'),
-        headers: await getHeaders(),
-        body: json.encode(orderPayload),
+      print(
+        '🌐 [ORDER_CREATION] Creating order via API for payment ID: $_lastPaymentId',
       );
+      print('🌐 [ORDER_CREATION] API URL: ${AppConst.baseUrl}mobile/orders');
+
+      final response = await http
+          .post(
+            Uri.parse('${AppConst.baseUrl}mobile/orders'),
+            headers: await getHeaders(),
+            body: json.encode(orderPayload),
+          )
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () {
+              throw Exception(
+                'Order creation API call timed out after 30 seconds',
+              );
+            },
+          );
+
+      print('🌐 [ORDER_CREATION] API response status: ${response.statusCode}');
+      print('🌐 [ORDER_CREATION] API response body: ${response.body}');
+
       if (response.statusCode != 200 && response.statusCode != 201) {
-        throw Exception('API returned status code: ${response.statusCode}');
+        print(
+          '❌ [ORDER_CREATION] API returned error status: ${response.statusCode}',
+        );
+        print('❌ [ORDER_CREATION] Response body: ${response.body}');
+        throw Exception(
+          'API returned status code: ${response.statusCode}. Response: ${response.body}',
+        );
       }
+
       final responseData = json.decode(response.body);
-      orderModel.id = responseData['data']['order_id'];
+
       if (responseData['success'] != true) {
+        print(
+          '❌ [ORDER_CREATION] API returned error: ${responseData['message']}',
+        );
         throw Exception('API returned error: ${responseData['message']}');
       }
+
+      if (responseData['data'] == null ||
+          responseData['data']['order_id'] == null) {
+        print('❌ [ORDER_CREATION] API response missing order_id');
+        throw Exception('API response missing order_id');
+      }
+
+      orderModel.id = responseData['data']['order_id'];
+      print(
+        '✅ [ORDER_CREATION] Order created successfully with ID: ${orderModel.id} for payment ID: $_lastPaymentId',
+      );
 
       ///finded new
       print('✅ Order created successfully via API');
@@ -3676,6 +3917,15 @@ class CartControllerProvider extends ChangeNotifier {
       );
       additionalTasks.add(Constant.sendOrderEmail(orderModel: orderModel));
       await Future.wait(additionalTasks);
+
+      // 🔑 CRITICAL: Clear all order creation flags after successful order creation
+      _isOrderBeingCreated = false;
+      _isOrderCreationInProgress = false;
+      _currentOrderPaymentId = null;
+
+      // 🔑 CRITICAL: Keep payment ID in processed set to prevent duplicate orders
+      // Don't clear _processedPaymentIds here - keep it to prevent duplicates
+
       isPaymentInProgress = false;
       isPaymentCompleted = false;
       _lastPaymentId = null;
@@ -3694,9 +3944,17 @@ class CartControllerProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print("OrderPlacingScreen  $e");
+
+      // 🔑 CRITICAL: Reset all order creation flags on error
+      _isOrderBeingCreated = false;
+      _isOrderCreationInProgress = false;
+      _currentOrderPaymentId = null;
+
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       if (isPaymentCompleted && _lastPaymentId != null) {
+        // Remove from processed set to allow retry
+        _processedPaymentIds.remove(_lastPaymentId!);
         // Don't reset payment state here - let user retry
         ShowToastDialog.showToast(
           "Order placement failed. Your payment is safe. Please try again.".tr,
@@ -3779,7 +4037,7 @@ class CartControllerProvider extends ChangeNotifier {
               } else if (razorPayModel.isEnabled == true) {
                 selectedPaymentMethod = PaymentGateway.razorpay.name;
               }
-              
+
               // 🔑 OPTIMIZATION: Pre-initialize Razorpay when settings are loaded
               // This eliminates initialization delay when user clicks "Confirm Payment"
               if (razorPayModel.isEnabled == true &&
@@ -3787,16 +4045,15 @@ class CartControllerProvider extends ChangeNotifier {
                   razorPayModel.razorpayKey!.isNotEmpty) {
                 _preInitializeRazorpay();
               }
-              
-              razorPay?.on(
-                Razorpay.EVENT_PAYMENT_SUCCESS,
-                handlePaymentSuccess,
+
+              // 🔑 CRITICAL FIX: DO NOT register event listeners here
+              // Event listeners are already registered in RazorpayCrashPrevention.safeInitialize()
+              // Registering them again causes duplicate callbacks and multiple orders
+              // The crash prevention utility handles all event listener registration
+              print(
+                '✅ [PAYMENT_SETTINGS] Event listeners are managed by RazorpayCrashPrevention, skipping duplicate registration',
               );
-              razorPay?.on(
-                Razorpay.EVENT_EXTERNAL_WALLET,
-                handleExternalWaller,
-              );
-              razorPay?.on(Razorpay.EVENT_PAYMENT_ERROR, handlePaymentError);
+
               checkAndUpdatePaymentMethod();
             } catch (e) {
               print('[CART_PROVIDER] Error parsing payment settings: $e');
@@ -3840,7 +4097,9 @@ class CartControllerProvider extends ChangeNotifier {
         print('✅ [RAZORPAY_PREINIT] Razorpay already initialized');
       }
     } catch (e) {
-      print('⚠️ [RAZORPAY_PREINIT] Pre-initialization failed (will initialize on demand): $e');
+      print(
+        '⚠️ [RAZORPAY_PREINIT] Pre-initialization failed (will initialize on demand): $e',
+      );
       // Don't throw - initialization will happen on demand in openCheckout
     }
   }
@@ -3851,8 +4110,10 @@ class CartControllerProvider extends ChangeNotifier {
   Razorpay? get razorPay => _razorpayCrashPrevention.razorpayInstance;
 
   Future<bool> openCheckout({required amount, required orderId}) async {
-    print('🔑 [RAZORPAY_CHECKOUT] Starting openCheckout - amount: $amount, orderId: $orderId');
-    
+    print(
+      '🔑 [RAZORPAY_CHECKOUT] Starting openCheckout - amount: $amount, orderId: $orderId',
+    );
+
     if (isPaymentInProgress) {
       print('⚠️ [RAZORPAY_CHECKOUT] Payment already in progress');
       ShowToastDialog.showToast(
@@ -3872,7 +4133,9 @@ class CartControllerProvider extends ChangeNotifier {
     // 🔑 OPTIMIZATION: Razorpay should already be initialized from pre-init
     // Only initialize if absolutely necessary (shouldn't happen in normal flow)
     if (!_razorpayCrashPrevention.isInitialized) {
-      print('⚠️ [RAZORPAY_CHECKOUT] Razorpay not initialized (unexpected), initializing now...');
+      print(
+        '⚠️ [RAZORPAY_CHECKOUT] Razorpay not initialized (unexpected), initializing now...',
+      );
       final initialized = await _razorpayCrashPrevention.safeInitialize(
         onSuccess: handlePaymentSuccess,
         onFailure: handlePaymentError,
@@ -3889,7 +4152,9 @@ class CartControllerProvider extends ChangeNotifier {
       }
       print('✅ [RAZORPAY_CHECKOUT] Razorpay initialized (fallback)');
     } else {
-      print('✅ [RAZORPAY_CHECKOUT] Razorpay already initialized (pre-initialized)');
+      print(
+        '✅ [RAZORPAY_CHECKOUT] Razorpay already initialized (pre-initialized)',
+      );
     }
 
     // 🔑 SET PAYMENT IN PROGRESS STATE
@@ -3908,7 +4173,9 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     if (!razorPayModel.razorpayKey!.startsWith('rzp_')) {
-      print('❌ [RAZORPAY_CHECKOUT] Invalid Razorpay key format: ${razorPayModel.razorpayKey}');
+      print(
+        '❌ [RAZORPAY_CHECKOUT] Invalid Razorpay key format: ${razorPayModel.razorpayKey}',
+      );
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
@@ -3925,13 +4192,13 @@ class CartControllerProvider extends ChangeNotifier {
     } else {
       amountInPaise = (double.parse(amount.toString()) * 100).round();
     }
-    
+
     print('🔑 [RAZORPAY_CHECKOUT] Amount in paise: $amountInPaise');
 
     var options = {
       'key': razorPayModel.razorpayKey,
       'amount': amountInPaise, // ✅ FIXED: Now using int instead of double
-      'name': 'GoRide',
+      'name': 'JIPPY MART',
       'order_id': orderId,
       "currency": "INR",
       'description': 'Order Payment',
@@ -3942,14 +4209,16 @@ class CartControllerProvider extends ChangeNotifier {
         'wallets': ['paytm'],
       },
     };
-    
-    print('🔑 [RAZORPAY_CHECKOUT] Payment options prepared: ${options.toString().replaceAll(razorPayModel.razorpayKey!, 'rzp_***')}');
+
+    print(
+      '🔑 [RAZORPAY_CHECKOUT] Payment options prepared: ${options.toString().replaceAll(razorPayModel.razorpayKey!, 'rzp_***')}',
+    );
     notifyListeners();
-    
+
     try {
       print('🔑 [RAZORPAY_CHECKOUT] Calling safeOpenPayment...');
       final success = await _razorpayCrashPrevention.safeOpenPayment(options);
-      
+
       if (success) {
         print('✅ [RAZORPAY_CHECKOUT] Payment gateway opened successfully');
         return true;
@@ -3976,24 +4245,98 @@ class CartControllerProvider extends ChangeNotifier {
   bool isGlobalLocked = false;
 
   /// ✅ NEW: Safe payment success handler with crash prevention
+  /// 🔑 CRITICAL FIX: Added idempotency check to prevent duplicate orders
   void handlePaymentSuccess(PaymentSuccessResponse response) {
     try {
+      final paymentId = response.paymentId;
+      print("handlePaymentSuccess  ${paymentId}");
+      // 🔑 CRITICAL: Validate payment ID is not null
+      if (paymentId == null || paymentId.isEmpty) {
+        print('❌ [PAYMENT_SUCCESS] Invalid payment ID, ignoring callback');
+        return;
+      }
+
+      // 🔑 CRITICAL: Check if this payment ID has already been processed
+      if (_processedPaymentIds.contains(paymentId)) {
+        print(
+          '⚠️ [DUPLICATE_PREVENTION] Payment ID $paymentId already processed, ignoring duplicate callback',
+        );
+        return; // Ignore duplicate payment success callbacks
+      }
+
+      // 🔑 CRITICAL: Check if order is already being created
+      if (_isOrderBeingCreated) {
+        print(
+          '⚠️ [DUPLICATE_PREVENTION] Order is already being created, ignoring duplicate callback',
+        );
+        return; // Prevent concurrent order creation
+      }
+
+      // 🔑 CRITICAL: Check if payment is already completed
+      if (isPaymentCompleted && _lastPaymentId == paymentId) {
+        print(
+          '⚠️ [DUPLICATE_PREVENTION] Payment already completed for ID $paymentId, ignoring duplicate callback',
+        );
+        return; // Prevent duplicate processing
+      }
+
+      print('✅ [PAYMENT_SUCCESS] Processing payment ID: $paymentId');
+
+      // Mark payment ID as being processed immediately
+      _processedPaymentIds.add(paymentId);
+
+      // 🔑 CRITICAL: Clean up old payment IDs to prevent memory issues
+      if (_processedPaymentIds.length > _maxProcessedPaymentIds) {
+        // Remove oldest entries (keep most recent)
+        final idsToRemove = _processedPaymentIds
+            .take(_processedPaymentIds.length - _maxProcessedPaymentIds)
+            .toList();
+        for (final id in idsToRemove) {
+          _processedPaymentIds.remove(id);
+        }
+      }
+
       isGlobalLocked = true;
-      _lastPaymentId = response.paymentId;
+      _lastPaymentId = paymentId;
       _lastPaymentTime = DateTime.now();
       isPaymentCompleted = true;
+      // 🔑 CRITICAL: DON'T set _isOrderBeingCreated here - set it in placeOrderAfterPayment
+      // Setting it here causes placeOrderAfterPayment to return early and never create order!
 
       ShowToastDialog.showLoader("Processing payment and placing order...".tr);
 
       Future.delayed(const Duration(milliseconds: 500), () async {
-        print('🔑 RAZORPAY SUCCESS - Starting order placement after delay');
-        placeOrderAfterPayment();
-        isGlobalLocked = false;
+        try {
+          print(
+            '🔑 [PAYMENT_SUCCESS] Starting order placement after delay for payment ID: $paymentId',
+          );
+          await placeOrderAfterPayment();
+        } catch (e, stackTrace) {
+          print('❌ [PAYMENT_SUCCESS] Error in placeOrderAfterPayment: $e');
+          print('❌ [PAYMENT_SUCCESS] Stack trace: $stackTrace');
+          // On error, allow retry by removing from processed set (but keep payment completed flag)
+          _processedPaymentIds.remove(paymentId);
+          _isOrderBeingCreated = false;
+          // 🔑 CRITICAL: Reset static lock on error
+          _isOrderCreationInProgress = false;
+          _currentOrderPaymentId = null;
+          ShowToastDialog.showToast(
+            "Order placement failed. Your payment is safe. Please try again."
+                .tr,
+          );
+        } finally {
+          isGlobalLocked = false;
+        }
       });
       notifyListeners();
     } catch (e) {
+      print('❌ [PAYMENT_SUCCESS] Exception in handlePaymentSuccess: $e');
       isGlobalLocked = false;
       isPaymentInProgress = false;
+      _isOrderBeingCreated = false;
+      if (response.paymentId != null) {
+        _processedPaymentIds.remove(response.paymentId);
+      }
       ShowToastDialog.showToast(
         "Payment processing failed. Please try again.".tr,
       );
@@ -4115,6 +4458,13 @@ class CartControllerProvider extends ChangeNotifier {
     isPaymentCompleted = false;
     _lastPaymentId = null;
     _lastPaymentTime = null;
+    _isOrderBeingCreated = false;
+    // 🔑 CRITICAL: Clear static order creation flags
+    _isOrderCreationInProgress = false;
+    _currentOrderPaymentId = null;
+    // 🔑 CRITICAL: Clear processed payment IDs when resetting payment state
+    // This allows retry after a full reset
+    _processedPaymentIds.clear();
     notifyListeners();
   }
 
@@ -4310,8 +4660,35 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       // 🔑 VALIDATE PAYMENT STATE BEFORE PROCEEDING
       if (!isPaymentCompleted || _lastPaymentId == null) {
+        print(
+          '❌ [ORDER_PLACEMENT] Payment validation failed - no valid payment found',
+        );
         throw Exception('Payment validation failed - no valid payment found');
       }
+
+      // 🔑 CRITICAL: Check if order is already being created for THIS payment ID
+      // Only prevent if it's the same payment ID AND order is being created
+      if (_isOrderBeingCreated && _currentOrderPaymentId == _lastPaymentId) {
+        print(
+          '⚠️ [ORDER_PLACEMENT] Order is already being created for payment ID $_lastPaymentId, preventing duplicate',
+        );
+        return; // Prevent concurrent order creation for same payment
+      }
+
+      // 🔑 CRITICAL: Check static lock to prevent concurrent order creation across instances
+      if (_isOrderCreationInProgress &&
+          _currentOrderPaymentId == _lastPaymentId) {
+        print(
+          '⚠️ [ORDER_PLACEMENT] Order creation already in progress for payment ID $_lastPaymentId',
+        );
+        return; // Prevent duplicate order creation
+      }
+
+      // Set flags to prevent concurrent calls
+      _isOrderBeingCreated = true;
+      print(
+        '✅ [ORDER_PLACEMENT] Starting order creation for payment ID: $_lastPaymentId',
+      );
 
       // 🔑 CHECK PAYMENT TIMEOUT
       if (_lastPaymentTime != null) {
@@ -4361,8 +4738,22 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
+      // 🔑 CRITICAL: Ensure we have valid payment before creating order
+      if (_lastPaymentId == null || _lastPaymentId!.isEmpty) {
+        throw Exception('Payment ID is missing - cannot create order');
+      }
+
+      print(
+        '🔑 [ORDER_PLACEMENT] Payment validated, proceeding to create order for payment ID: $_lastPaymentId',
+      );
+      print('🔑 [ORDER_PLACEMENT] Payment method: $selectedPaymentMethod');
+      print('🔑 [ORDER_PLACEMENT] Total amount: $totalAmount');
+
       if (selectedPaymentMethod == PaymentGateway.wallet.name) {
         if (double.parse(userModel.walletAmount.toString()) >= totalAmount) {
+          print(
+            '🔑 [ORDER_PLACEMENT] Using wallet payment, calling _setOrderInternal',
+          );
           await _setOrderInternal();
         } else {
           ShowToastDialog.closeLoader();
@@ -4370,21 +4761,51 @@ class CartControllerProvider extends ChangeNotifier {
             "You don't have sufficient wallet balance to place order".tr,
           );
           endOrderProcessing();
+          _isOrderBeingCreated = false;
+          _isOrderCreationInProgress = false;
+          _currentOrderPaymentId = null;
+          return;
         }
       } else {
+        print(
+          '🔑 [ORDER_PLACEMENT] Using Razorpay payment, calling _setOrderInternal',
+        );
         await _setOrderInternal();
       }
+
+      // 🔑 CRITICAL: Clear order creation flag only after successful order creation
+      _isOrderBeingCreated = false;
+      print(
+        '✅ [ORDER_PLACEMENT] Order creation completed successfully for payment ID: $_lastPaymentId',
+      );
       notifyListeners();
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // 🔑 CRITICAL: Reset all order creation flags on error to allow retry
+      _isOrderBeingCreated = false;
+      _isOrderCreationInProgress = false;
+      _currentOrderPaymentId = null;
+
+      if (_lastPaymentId != null) {
+        // Remove from processed set to allow retry on error
+        _processedPaymentIds.remove(_lastPaymentId);
+      }
+
       ShowToastDialog.closeLoader();
       if (e.toString().contains('Delivery zone validation failed') ||
           e.toString().contains('Delivery distance validation failed')) {
+        // Zone validation errors are handled separately
       } else {
         ShowToastDialog.showToast(
-          "An error occurred while placing your order. Please try again.".tr,
+          "An error occurred while placing your order. Your payment is safe. Please try again."
+              .tr,
         );
       }
       endOrderProcessing();
+      print('❌ [ORDER_PLACEMENT] Error in placeOrderAfterPayment: $e');
+      print('❌ [ORDER_PLACEMENT] Stack trace: $stackTrace');
+
+      // 🔑 CRITICAL: Re-throw error so handlePaymentSuccess can catch it and show proper message
+      rethrow;
     }
     notifyListeners();
   }
