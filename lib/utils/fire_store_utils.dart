@@ -1139,52 +1139,89 @@ class FireStoreUtils {
     required String productId,
   }) async {
     try {
-      // Build the API URL
+      // Only make API call if both IDs are provided and not empty
+      if (productId.isEmpty || restaurantId.isEmpty) {
+        print('[DEBUG] Skipping API call - productId or restaurantId is empty');
+        return [];
+      }
+      
       final String apiUrl =
           '${AppConst.baseUrl}firestore/promotions/by-product?'
           'product_id=$productId&'
           'restaurant_id=$restaurantId';
-      print('[DEBUG] API Endpoint: $apiUrl');
+      print('fetchActivePromotions: $apiUrl');
+      
       // Make API call
       final response = await http.get(
         Uri.parse(apiUrl),
         headers: await getHeaders(),
       );
 
+      print('[DEBUG] API Response Status: ${response.statusCode}');
+      print('[DEBUG] API Response Body: ${response.body}');
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
 
         if (responseData['success'] == true && responseData['data'] != null) {
-          final promotionData = responseData['data'] as Map<String, dynamic>;
-          // Convert API response to match your existing data structure
-          final Map<String, dynamic> processedPromotion = {
-            ...promotionData,
-            'isAvailable': promotionData['isAvailable'] == 1 ? true : false,
-            'start_time': _parseTimestamp(promotionData['start_time']),
-            'end_time': _parseTimestamp(promotionData['end_time']),
-          };
-          // Check if promotion is currently active based on time
-          final startTime = processedPromotion['start_time'] as Timestamp?;
-          final endTime = processedPromotion['end_time'] as Timestamp?;
-
-          bool isActive = processedPromotion['isAvailable'] == true;
-
-          if (startTime != null && endTime != null) {
-            isActive =
-                isActive &&
-                startTime.compareTo(Timestamp.now()) <= 0 &&
-                endTime.compareTo(Timestamp.now()) >= 0;
+          final promotionData = responseData['data'];
+          
+          // Handle both Map and List responses
+          List<Map<String, dynamic>> promotions = [];
+          
+          if (promotionData is Map<String, dynamic>) {
+            // Single promotion object
+            promotions.add(promotionData);
+          } else if (promotionData is List) {
+            // List of promotions
+            promotions = promotionData.cast<Map<String, dynamic>>();
           }
-          print('[DEBUG] Promotion active status: $isActive');
+          
+          // Process each promotion
+          final List<Map<String, dynamic>> activePromotions = [];
+          
+          for (final promo in promotions) {
+            // Convert API response to match your existing data structure
+            final Map<String, dynamic> processedPromotion = {
+              ...promo,
+              'isAvailable': promo['isAvailable'] == 1 || promo['isAvailable'] == true,
+              'start_time': _parseTimestamp(promo['start_time']),
+              'end_time': _parseTimestamp(promo['end_time']),
+            };
+            
+            // Check if promotion is currently active based on time
+            final startTime = processedPromotion['start_time'] as Timestamp?;
+            final endTime = processedPromotion['end_time'] as Timestamp?;
+
+            bool isActive = processedPromotion['isAvailable'] == true;
+
+            if (startTime != null && endTime != null) {
+              isActive =
+                  isActive &&
+                  startTime.compareTo(Timestamp.now()) <= 0 &&
+                  endTime.compareTo(Timestamp.now()) >= 0;
+            }
+            
+            print('[DEBUG] Promotion for product ${promo['product_id']}: active=$isActive, available=${processedPromotion['isAvailable']}');
+            
+            if (isActive) {
+              activePromotions.add(processedPromotion);
+            }
+          }
+          
+          print('[DEBUG] Found ${activePromotions.length} active promotions');
           print('[DEBUG] ===== ULTRA-FAST API FETCH COMPLETE =====');
 
-          return isActive ? [processedPromotion] : [];
+          return activePromotions;
         } else {
-          print('[DEBUG] API returned unsuccessful response');
+          print('[DEBUG] API returned unsuccessful response: ${responseData['message'] ?? 'Unknown error'}');
           return [];
         }
+      } else if (response.statusCode == 404) {
+        print('[DEBUG] No promotion found (404) for product $productId');
+        return [];
       } else {
-        print('[DEBUG] API Error: ${response.statusCode}');
+        print('[DEBUG] API Error: ${response.statusCode} - ${response.body}');
         return [];
       }
     } catch (e) {

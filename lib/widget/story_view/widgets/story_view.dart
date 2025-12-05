@@ -230,10 +230,9 @@ class StoryItem {
           children: <Widget>[
             StoryVideo.url(
               url,
-              // controller: controller,
-              // requestHeaders: requestHeaders,
-              // loadingWidget: loadingWidget,
-              // errorWidget: errorWidget,
+              controller: controller,
+              autoPlay: true,
+              looping: false,
             ),
             SafeArea(
               child: Align(

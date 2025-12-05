@@ -511,7 +511,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           _hasInitialData = true;
           notifyListeners();
           _buildCategoryProductMapping();
-
           // Pre-load promotional cache in background for faster add-to-cart
           if (allProductList.isNotEmpty && vendorModel.id != null) {
             _preloadPromotionalCache();
@@ -533,15 +532,37 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   /// Pre-load promotional cache for all products in background
   void _preloadPromotionalCache() {
     if (_promotionalCacheLoaded) return;
-
     // Load cache in background without blocking
     Future.microtask(() async {
       try {
-        await PromotionalCacheService.loadRestaurantPromotions(
-          restaurantId: vendorModel.id ?? '',
-          productId: '', // Load all promotions for restaurant
-        );
+        // Load promotions for all products in the restaurant
+        final Set<String> productIds = allProductList
+            .where((p) => p.id != null && p.id!.isNotEmpty)
+            .map((p) => p.id!)
+            .toSet();
+
+        print('DEBUG: Preloading promotions for ${productIds.length} products');
+
+        // Load promotions for each product
+        final List<Future<void>> loadFutures = productIds.map((
+          productId,
+        ) async {
+          try {
+            await PromotionalCacheService.loadRestaurantPromotions(
+              restaurantId: vendorModel.id ?? '',
+              productId: productId,
+            );
+          } catch (e) {
+            print('DEBUG: Error loading promotion for product $productId: $e');
+          }
+        }).toList();
+
+        await Future.wait(loadFutures);
         _promotionalCacheLoaded = true;
+        notifyListeners(); // Notify UI to rebuild with promotion data
+        print(
+          'DEBUG: Promotional cache preloaded for ${productIds.length} products',
+        );
       } catch (e) {
         print('DEBUG: Error preloading promotional cache: $e');
       }
@@ -856,18 +877,22 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required String productId,
     required String restaurantId,
   }) async {
-    if (_promotionalCacheLoaded) return;
-
     try {
       await PromotionalCacheService.loadRestaurantPromotions(
-        restaurantId: vendorModel.id ?? '',
+        restaurantId: restaurantId,
         productId: productId,
       );
-      _promotionalCacheLoaded = true;
+
+      // Update in-memory cache after loading
+      final cacheKey = '$productId-$restaurantId';
+      final data = _getCachedPromotionalData(productId, restaurantId);
+      if (data != null) {
+        _promotionalDataCache[cacheKey] = data;
+      }
+
       notifyListeners();
     } catch (e) {
       print('DEBUG: Error loading promotional cache: $e');
-      _promotionalCacheLoaded = false;
     }
   }
 
@@ -931,23 +956,48 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required String productId,
     required String restaurantId,
   }) {
-    // Check in-memory cache first for instant response
-    final cacheKey = '$productId-$restaurantId';
-    if (_promotionalDataCache.containsKey(cacheKey)) {
-      return _promotionalDataCache[cacheKey];
+    if (productId.isEmpty || restaurantId.isEmpty) {
+      return null;
     }
 
+    print("getActivePromotionFor product $productId $restaurantId ");
+    final cacheKey = '$productId-$restaurantId';
+
+    // Check in-memory cache first
+    if (_promotionalDataCache.containsKey(cacheKey)) {
+      final cached = _promotionalDataCache[cacheKey];
+      print("getActivePromotionFor found in memory cache: $cached");
+      return cached;
+    }
+
+    // Check service cache
+    final data = _getCachedPromotionalData(productId, restaurantId);
+    if (data != null) {
+      _promotionalDataCache[cacheKey] = data;
+      print("getActivePromotionFor found in service cache: $data");
+      return data;
+    }
+
+    // If cache not loaded, trigger loading and return null for now
+    // The UI will rebuild when cache is loaded
     if (!_promotionalCacheLoaded) {
+      print(
+        "getActivePromotionFor cache not loaded, triggering load for $productId",
+      );
       _loadPromotionalCache(
         productId: productId,
         restaurantId: restaurantId,
-      ); // **BACKGROUND LOADING: Non-blocking**
+      ).then((_) {
+        // After loading, check again and notify listeners
+        final loadedData = _getCachedPromotionalData(productId, restaurantId);
+        if (loadedData != null) {
+          _promotionalDataCache[cacheKey] = loadedData;
+          notifyListeners(); // Trigger UI rebuild
+        }
+      });
     }
-    // Use cached data instead of Firebase query - INSTANT RESPONSE
-    final data = _getCachedPromotionalData(productId, restaurantId);
-    // Cache the result for future lookups
-    _promotionalDataCache[cacheKey] = data;
-    return data;
+
+    return null;
   }
 
   /// PARALLEL DATA LOADING
@@ -1246,7 +1296,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           vendorId,
           quantity,
         );
-
         if (!isAllowed) {
           final limit = getPromotionalItemLimit(productId, vendorId);
           ShowToastDialog.showToast(

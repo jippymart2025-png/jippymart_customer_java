@@ -57,13 +57,17 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
 
             // Use cached product from controller - no FutureBuilder needed!
             final cachedProduct = controller.getCachedProduct(productId);
-            
+
             // Check if this is a mart item (mart items use cart data, not ProductModel)
-            final isMartItem = cartProductModel.vendorID?.startsWith('mart_') == true ||
-                cartProductModel.vendorID?.toLowerCase().contains('mart') == true;
+            final isMartItem =
+                cartProductModel.vendorID?.startsWith('mart_') == true ||
+                cartProductModel.vendorID?.toLowerCase().contains('mart') ==
+                    true;
 
             // If product is not cached yet and it's not a mart item
-            if (cachedProduct == null && !isMartItem && !controller.productsLoaded) {
+            if (cachedProduct == null &&
+                !isMartItem &&
+                !controller.productsLoaded) {
               // Trigger load if not already loading (loads in background)
               if (!controller.isLoadingProducts) {
                 controller.preloadCartProducts();
@@ -73,7 +77,7 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                 return _buildProductShimmer(cartProductModel);
               }
             }
-            
+
             // Show product item:
             // - For restaurant items: use cachedProduct (may be null if still loading)
             // - For mart items: cachedProduct will be null, use cartProductModel data
@@ -101,22 +105,17 @@ Widget _buildProductItem(
           : (cartProductModel.photo?.isNotEmpty == true
                 ? cartProductModel.photo
                 : null);
-
-      // Use productModel name if available, otherwise use cartProductModel name
       final productName = productModel?.name?.isNotEmpty == true
           ? productModel!.name
           : (cartProductModel.name?.isNotEmpty == true
                 ? cartProductModel.name
                 : 'Product');
-
-      // Calculate price
       final price = double.tryParse(cartProductModel.price ?? '0') ?? 0.0;
       final discountPrice =
           double.tryParse(cartProductModel.discountPrice ?? '0') ?? 0.0;
       final finalPrice = discountPrice > 0 ? discountPrice : price;
       final quantity = cartProductModel.quantity ?? 1;
       final totalPrice = finalPrice * quantity;
-
       return InkWell(
         onTap: () async {
           if (productModel != null) {
@@ -135,7 +134,6 @@ Widget _buildProductItem(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Product Image
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
                 child: productPhoto != null && productPhoto.isNotEmpty

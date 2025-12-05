@@ -23,38 +23,42 @@ class PromotionalCacheService {
     required String restaurantId,
     required String productId,
   }) async {
-    if (_restaurantCacheLoaded[restaurantId] == true) {
+    // Create cache key for this specific product-restaurant combination
+    final cacheKey = '$productId-$restaurantId';
+    
+    // Check if this specific promotion is already cached
+    if (_promotionalCache.containsKey(cacheKey)) {
       print(
-        'DEBUG: Promotional cache already loaded for restaurant: $restaurantId',
+        'DEBUG: Promotional cache already loaded for product: $productId, restaurant: $restaurantId',
       );
       return;
     }
-
+    
     try {
       print(
-        'DEBUG: ULTRA-FAST loading promotional cache for restaurant: $restaurantId',
+        'DEBUG: ULTRA-FAST loading promotional cache for product: $productId, restaurant: $restaurantId',
       );
-
-      // **ULTRA-FAST: Load only essential data first**
+      
+      // **ULTRA-FAST: Load promotion for specific product**
       final promotions = await FireStoreUtils.fetchActivePromotions(
         restaurantId: restaurantId,
         productId: productId,
       );
-
+      
       print(
-        'DEBUG: Found ${promotions.length} promotions instantly for restaurant $restaurantId',
+        'DEBUG: Found ${promotions.length} promotions for product $productId, restaurant $restaurantId',
       );
+      
+      // Process promotions and cache them
+      for (final promo in promotions) {
+        final promoProductId = promo['product_id'] as String?;
+        final promoRestaurantId = promo['restaurant_id'] as String?;
 
-      // **PARALLEL CACHE BUILDING: Process all promotions simultaneously**
-      final cacheFutures = promotions.map((promo) async {
-        final productId = promo['product_id'] as String?;
-        final restaurantIdFromPromo = promo['restaurant_id'] as String?;
-
-        if (productId != null && restaurantIdFromPromo != null) {
-          final cacheKey = '$productId-$restaurantIdFromPromo';
+        if (promoProductId != null && promoRestaurantId != null) {
+          final promoCacheKey = '$promoProductId-$promoRestaurantId';
 
           // **INSTANT CACHE STORAGE**
-          _promotionalCache[cacheKey] = promo;
+          _promotionalCache[promoCacheKey] = promo;
 
           // **PRE-CALCULATE FOR INSTANT ACCESS**
           final itemLimitData = promo['item_limit'];
@@ -70,22 +74,24 @@ class PromotionalCacheService {
               itemLimit = itemLimitData.toInt();
             }
           }
-          _promotionalLimits[cacheKey] = itemLimit ?? 0;
-          _promotionalAvailability[cacheKey] =
+          _promotionalLimits[promoCacheKey] = itemLimit ?? 0;
+          _promotionalAvailability[promoCacheKey] =
               itemLimit != null && itemLimit > 0;
+          
+          print(
+            'DEBUG: Cached promotion for product $promoProductId: limit=$itemLimit, available=${_promotionalAvailability[promoCacheKey]}',
+          );
         }
-      });
+      }
 
-      // **PARALLEL EXECUTION: All cache building happens simultaneously**
-      await Future.wait(cacheFutures);
-
-      _restaurantCacheLoaded[restaurantId] = true;
+      // Mark this restaurant as having some promotions loaded
+      // (but don't mark as fully loaded since we load per-product)
       print(
-        'DEBUG: ULTRA-FAST promotional cache loaded for restaurant $restaurantId with ${_promotionalCache.length} items',
+        'DEBUG: ULTRA-FAST promotional cache loaded for product $productId, restaurant $restaurantId. Total cached: ${_promotionalCache.length} items',
       );
     } catch (e) {
       print(
-        'DEBUG: Error in ultra-fast promotional cache loading for restaurant $restaurantId: $e',
+        'DEBUG: Error in ultra-fast promotional cache loading for product $productId, restaurant $restaurantId: $e',
       );
     }
   }

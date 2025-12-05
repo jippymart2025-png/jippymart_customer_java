@@ -14,6 +14,7 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/widget/gradiant_text.dart';
 import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
+import 'package:jippymart_customer/widget/video_thumbnail_widget.dart';
 import 'package:provider/provider.dart';
 
 class StoryView extends StatelessWidget {
@@ -104,13 +105,22 @@ class StoryView extends StatelessWidget {
                               ),
                               child: Stack(
                                 children: [
-                                  NetworkImageWidget(
-                                    imageUrl: storyModel.videoThumbnail
-                                        .toString(),
-                                    fit: BoxFit.cover,
-                                    height: Responsive.height(100, context),
-                                    width: Responsive.width(100, context),
-                                  ),
+                                  // Use VideoThumbnailWidget to handle both Firebase thumbnails and MP4 video thumbnails
+                                  storyModel.videoUrls.isNotEmpty
+                                      ? VideoThumbnailWidget(
+                                          thumbnailUrl: storyModel.videoThumbnail,
+                                          videoUrl: storyModel.videoUrls.first,
+                                          fit: BoxFit.cover,
+                                          height: Responsive.height(100, context),
+                                          width: Responsive.width(100, context),
+                                        )
+                                      : NetworkImageWidget(
+                                          imageUrl: storyModel.videoThumbnail
+                                              .toString(),
+                                          fit: BoxFit.cover,
+                                          height: Responsive.height(100, context),
+                                          width: Responsive.width(100, context),
+                                        ),
                                   Container(
                                     color: Colors.black.withOpacity(0.30),
                                   ),

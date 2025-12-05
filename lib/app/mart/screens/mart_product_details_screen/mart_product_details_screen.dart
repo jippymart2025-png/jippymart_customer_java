@@ -847,38 +847,38 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               // Refresh cart status to update UI
               _refreshCartStatus();
               // Show success message
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.white, size: 20),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          '${quantity}x ${widget.product.name} added to cart successfully!',
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                  backgroundColor: Colors.green.shade600,
-                  duration: Duration(seconds: 2),
-                  action: SnackBarAction(
-                    label: 'View Cart',
-                    textColor: Colors.white,
-                    onPressed: () {
-                      Get.to(
-                        () => const CartScreen(
-                          hideBackButton: false,
-                          source: 'mart',
-                          isFromMartNavigation: false,
-                        ),
-                        fullscreenDialog: true,
-                      );
-                    },
-                  ),
-                ),
-              );
+              // ScaffoldMessenger.of(context).showSnackBar(
+              //   SnackBar(
+              //     content: Row(
+              //       children: [
+              //         Icon(Icons.check_circle, color: Colors.white, size: 20),
+              //         SizedBox(width: 8),
+              //         Expanded(
+              //           child: Text(
+              //             '${quantity}x ${widget.product.name} added to cart successfully!',
+              //             style: TextStyle(color: Colors.white),
+              //           ),
+              //         ),
+              //       ],
+              //     ),
+              //     backgroundColor: Colors.green.shade600,
+              //     duration: Duration(seconds: 2),
+              //     action: SnackBarAction(
+              //       label: 'View Cart',
+              //       textColor: Colors.white,
+              //       onPressed: () {
+              //         Get.to(
+              //           () => const CartScreen(
+              //             hideBackButton: false,
+              //             source: 'mart',
+              //             isFromMartNavigation: false,
+              //           ),
+              //           fullscreenDialog: true,
+              //         );
+              //       },
+              //     ),
+              //   ),
+              // );
             }
           } catch (e) {
             print('Error adding to cart: $e');

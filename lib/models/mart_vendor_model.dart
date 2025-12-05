@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
+import 'dart:convert' as jsons;
 
 class MartVendorModel {
   String? id;
@@ -165,10 +166,27 @@ class MartVendorModel {
       });
     }
 
-    // Admin Commission
-    adminCommission = json['adminCommission'] != null
-        ? AdminCommission.fromJson(json['adminCommission'])
-        : null;
+    // Admin Commission - Handle both Map and JSON String
+    if (json['adminCommission'] != null) {
+      if (json['adminCommission'] is Map) {
+        // If it's already a Map (from Firebase or parsed JSON)
+        adminCommission = AdminCommission.fromJson(json['adminCommission']);
+      } else if (json['adminCommission'] is String) {
+        // If it's a JSON String (from API)
+        try {
+          final commissionString = json['adminCommission'] as String;
+          final commissionMap = jsons.json.decode(commissionString) as Map<String, dynamic>;
+          adminCommission = AdminCommission.fromJson(commissionMap);
+        } catch (e) {
+          print('⚠️ Error parsing adminCommission string in MartVendorModel: $e');
+          adminCommission = null;
+        }
+      } else {
+        adminCommission = null;
+      }
+    } else {
+      adminCommission = null;
+    }
 
     // Timestamps - handle both String and Timestamp
     if (json['createdAt'] != null) {

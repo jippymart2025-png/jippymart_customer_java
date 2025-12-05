@@ -24,7 +24,6 @@ import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/payment/createRazorPayOrderModel.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
 
 import 'package:jippymart_customer/services/cart_provider.dart';
@@ -693,7 +692,6 @@ class CartControllerProvider extends ChangeNotifier {
   // 🔑 CRITICAL: Debouncing for price calculation to prevent continuous updates
   bool _isCalculatingPrice = false;
   DateTime? _lastPriceCalculationTime;
-  static const Duration _priceCalculationDebounce = Duration(milliseconds: 300);
 
   // 🔑 RAZORPAY PAYMENT STATE MANAGEMENT
   bool isPaymentInProgress = false;
@@ -1656,6 +1654,18 @@ class CartControllerProvider extends ChangeNotifier {
         martVendor = await MartVendorService.getDefaultMartVendor();
       }
       if (martVendor != null) {
+        // 🔑 FIX: Ensure zoneId is set - use vendor zoneId or fallback to address zoneId
+        String? finalZoneId = martVendor.zoneId;
+        if ((finalZoneId == null || finalZoneId.isEmpty) &&
+            selectedAddress?.zoneId != null &&
+            selectedAddress!.zoneId!.isNotEmpty) {
+          finalZoneId = selectedAddress!.zoneId;
+        } else if ((finalZoneId == null || finalZoneId.isEmpty) &&
+            Constant.selectedLocation.zoneId != null &&
+            Constant.selectedLocation.zoneId!.isNotEmpty) {
+          finalZoneId = Constant.selectedLocation.zoneId;
+        }
+
         vendorModel = VendorModel(
           id: martVendor.id,
           author: martVendor.author,
@@ -1664,7 +1674,7 @@ class CartControllerProvider extends ChangeNotifier {
           longitude: martVendor.longitude,
           isSelfDelivery: false,
           vType: martVendor.vType,
-          zoneId: martVendor.zoneId,
+          zoneId: finalZoneId,
           isOpen: martVendor.isOpen,
         );
       }
@@ -1719,6 +1729,18 @@ class CartControllerProvider extends ChangeNotifier {
               martVendor = await MartVendorService.getDefaultMartVendor();
             }
             if (martVendor != null) {
+              // 🔑 FIX: Ensure zoneId is set - use vendor zoneId or fallback to address zoneId
+              String? finalZoneId = martVendor.zoneId;
+              if ((finalZoneId == null || finalZoneId.isEmpty) &&
+                  selectedAddress?.zoneId != null &&
+                  selectedAddress!.zoneId!.isNotEmpty) {
+                finalZoneId = selectedAddress!.zoneId;
+              } else if ((finalZoneId == null || finalZoneId.isEmpty) &&
+                  Constant.selectedLocation.zoneId != null &&
+                  Constant.selectedLocation.zoneId!.isNotEmpty) {
+                finalZoneId = Constant.selectedLocation.zoneId;
+              }
+
               vendorModel = VendorModel(
                 id: martVendor.id,
                 author: martVendor.author,
@@ -1727,7 +1749,7 @@ class CartControllerProvider extends ChangeNotifier {
                 longitude: martVendor.longitude,
                 isSelfDelivery: false,
                 vType: martVendor.vType,
-                zoneId: martVendor.zoneId,
+                zoneId: finalZoneId,
                 isOpen: martVendor.isOpen,
                 // Add other necessary fields as needed
               );
@@ -2539,15 +2561,23 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
 
-    // Check debounce time
+    // 🔑 FIX: Improved debounce - increase debounce time to prevent rapid calls
     if (_lastPriceCalculationTime != null) {
       final timeSinceLastCalc = DateTime.now().difference(
         _lastPriceCalculationTime!,
       );
-      if (timeSinceLastCalc < _priceCalculationDebounce) {
+      // Increased debounce from default to 300ms to prevent UI flickering
+      final debounceTime = Duration(milliseconds: 300);
+      if (timeSinceLastCalc < debounceTime) {
         print(
-          '[PRICE_CALC] ⚠️ Price calculation debounced (${timeSinceLastCalc.inMilliseconds}ms < ${_priceCalculationDebounce.inMilliseconds}ms)',
+          '[PRICE_CALC] ⚠️ Price calculation debounced (${timeSinceLastCalc.inMilliseconds}ms < ${debounceTime.inMilliseconds}ms)',
         );
+        // Schedule calculation after debounce period
+        Future.delayed(debounceTime - timeSinceLastCalc, () {
+          if (!_isCalculatingPrice) {
+            calculatePrice();
+          }
+        });
         return;
       }
     }
@@ -2568,6 +2598,12 @@ class CartControllerProvider extends ChangeNotifier {
         print(
           'DEBUG: Using cached tax list with ${Constant.taxList?.length ?? 0} items',
         );
+        // 🔑 FIX: Store previous values to prevent UI showing 0 during calculation
+        final previousSubTotal = subTotal;
+        final previousTotalAmount = totalAmount;
+        final previousDeliveryCharges = deliveryCharges;
+        final previousTaxAmount = taxAmount;
+
         // Reset all values
         deliveryCharges = 0.0;
         subTotal = 0.0;
@@ -2621,6 +2657,24 @@ class CartControllerProvider extends ChangeNotifier {
                 martVendor = await MartVendorService.getDefaultMartVendor();
               }
               if (martVendor != null) {
+                // 🔑 FIX: Ensure zoneId is set - use vendor zoneId or fallback to address zoneId
+                String? finalZoneId = martVendor.zoneId;
+                if ((finalZoneId == null || finalZoneId.isEmpty) &&
+                    selectedAddress?.zoneId != null &&
+                    selectedAddress!.zoneId!.isNotEmpty) {
+                  finalZoneId = selectedAddress!.zoneId;
+                  print(
+                    '[VENDOR_LOAD] ⚠️ Mart vendor zoneId is missing, using address zoneId: $finalZoneId',
+                  );
+                } else if ((finalZoneId == null || finalZoneId.isEmpty) &&
+                    Constant.selectedLocation.zoneId != null &&
+                    Constant.selectedLocation.zoneId!.isNotEmpty) {
+                  finalZoneId = Constant.selectedLocation.zoneId;
+                  print(
+                    '[VENDOR_LOAD] ⚠️ Mart vendor zoneId is missing, using Constant.selectedLocation.zoneId: $finalZoneId',
+                  );
+                }
+
                 vendorModel = VendorModel(
                   id: martVendor.id,
                   title: martVendor.title,
@@ -2629,11 +2683,11 @@ class CartControllerProvider extends ChangeNotifier {
                   isSelfDelivery: false,
                   // Mart vendors don't have self delivery, use false
                   vType: martVendor.vType,
-                  zoneId: martVendor.zoneId,
+                  zoneId: finalZoneId,
                   isOpen: martVendor.isOpen,
                 );
                 print(
-                  '[VENDOR_LOAD] ✅ Fallback: Mart vendor loaded: ${martVendor.title} (${martVendor.id})',
+                  '[VENDOR_LOAD] ✅ Fallback: Mart vendor loaded: ${martVendor.title} (${martVendor.id}) with zoneId: $finalZoneId',
                 );
               }
             } catch (e) {
@@ -2899,6 +2953,22 @@ class CartControllerProvider extends ChangeNotifier {
             (isFreeDelivery ? 0.0 : deliveryCharges) +
             deliveryTips +
             surgePercent;
+
+        // 🔑 FIX: Ensure values are valid before updating UI
+        // If calculation resulted in invalid values, keep previous values
+        if (subTotal < 0 ||
+            totalAmount < 0 ||
+            subTotal.isNaN ||
+            totalAmount.isNaN) {
+          print(
+            '[PRICE_CALC] ⚠️ Invalid values calculated, restoring previous values',
+          );
+          subTotal = previousSubTotal;
+          totalAmount = previousTotalAmount;
+          deliveryCharges = previousDeliveryCharges;
+          taxAmount = previousTaxAmount;
+        }
+
         checkAndUpdatePaymentMethod();
         // 🔑 CRITICAL: Only ONE notifyListeners() call at the very end
         notifyListeners();
@@ -3228,9 +3298,9 @@ class CartControllerProvider extends ChangeNotifier {
   List<CartProductModel> tempProduc = [];
 
   /// Check if order is already in progress (idempotency)
-  bool _isOrderInProgress() {
-    return _orderInProgress || isProcessingOrder;
-  }
+  // bool _isOrderInProgress() {
+  //   return _orderInProgress || isProcessingOrder;
+  // }
 
   /// Start order processing with idempotency
   void _startOrderProcessing() {
@@ -3274,7 +3344,6 @@ class CartControllerProvider extends ChangeNotifier {
         _endOrderProcessing();
         return;
       }
-
       // 🔑 CRITICAL: Validate payment method is selected
       if (selectedPaymentMethod.isEmpty) {
         ShowToastDialog.showToast("Please select payment method".tr);
@@ -3437,8 +3506,6 @@ class CartControllerProvider extends ChangeNotifier {
             return false;
           }
         } else {
-          // For restaurant ites, use existing Firebase logic
-          // Validate product ID before making API call
           final productId = item.id;
           if (productId == null ||
               productId.isEmpty ||
@@ -3450,7 +3517,6 @@ class CartControllerProvider extends ChangeNotifier {
             );
             return false;
           }
-
           // Extract base product ID if it contains variant separator
           final baseProductId = productId.contains('~')
               ? productId.split('~').first
@@ -3479,8 +3545,6 @@ class CartControllerProvider extends ChangeNotifier {
           }
         }
       }
-
-      // After validation, update quantities (this part might need adjustment based on your API)
       for (int i = 0; i < tempProduc.length; i++) {
         // Check if this is a mart item (has 'mart_' prefix in vendorID)
         bool isMartItem = tempProduc[i].vendorID?.startsWith('mart_') == true;
@@ -3492,7 +3556,6 @@ class CartControllerProvider extends ChangeNotifier {
           print(
             '[ORDER VALIDATION] ⚠️ Mart item quantity update skipped - API update needed',
           );
-
           // If you have an API endpoint to update quantities, you would call it here:
           // await updateMartItemQuantity(tempProduc[i].id!.split('~').first, tempProduc[i].quantity!);
         } else {
@@ -3605,7 +3668,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// finderone
   setOrder() async {
-    await FireStoreUtils.getVendorById(vendorModel.id!);
+    await FireStoreUtils.getVendorById(vendorModel.id ?? '');
     if (vendorModel.id != null) {
       final latestVendor = await FireStoreUtils.getVendorById(
         vendorModel.id.toString(),
@@ -3680,6 +3743,7 @@ class CartControllerProvider extends ChangeNotifier {
 
     String? orderId;
     List<CartProductModel> orderedProducts = [];
+    OrderModel? orderModel;
     try {
       tempProduc.clear();
       if ((Constant.isSubscriptionModelApplied == true ||
@@ -3714,7 +3778,7 @@ class CartControllerProvider extends ChangeNotifier {
         'special_discount_label': specialDiscount,
         'specialType': specialType,
       };
-      OrderModel orderModel = OrderModel();
+      orderModel = OrderModel();
       int maxNumber = 5;
       try {
         final response = await http.get(
@@ -3966,8 +4030,9 @@ class CartControllerProvider extends ChangeNotifier {
           "Failed to place order. Please try again.".tr,
         );
       }
-      if (orderId != null) {
-        await rollbackFailedOrder(orderId, orderedProducts);
+      // Rollback order if it was created before error
+      if (orderModel?.id != null && orderModel!.id!.isNotEmpty) {
+        await rollbackFailedOrder(orderModel.id!, orderedProducts);
       }
       notifyListeners();
     }
@@ -4818,7 +4883,7 @@ class CartControllerProvider extends ChangeNotifier {
   // In CartControllerProvider class
   Future<void> markCouponAsUsed(String couponId) async {
     try {
-      final userId = await SqlStorageConst.getFirebaseId();
+      await SqlStorageConst.getFirebaseId(); // Get user ID for authentication context
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}mobile/coupons/$couponId/used'),
         headers: await getHeaders(),
@@ -5124,11 +5189,86 @@ class CartControllerProvider extends ChangeNotifier {
           return false;
         }
       }
+      // 🔑 FIX: Try to load/reload vendor zoneId if missing (especially for mart vendors)
       if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
-        ShowToastDialog.showToast(
-          "Vendor zone not configured. Please contact support.".tr,
-        );
-        return false;
+        // Try to reload vendor model, especially for mart vendors
+        if (vendorModel.id != null) {
+          final hasMartItems = HomeProvider.cartItem.any(
+            (item) => item.vendorID?.startsWith('mart_') == true,
+          );
+
+          if (hasMartItems) {
+            try {
+              print(
+                '[CART_VALIDATION] ⚠️ Vendor zoneId is missing for mart vendor, attempting to reload...',
+              );
+              final vendorId = vendorModel.id;
+              MartVendorModel? martVendor;
+
+              if (vendorId != null && vendorId.isNotEmpty) {
+                martVendor = await MartVendorService.getMartVendorById(
+                  vendorId,
+                );
+              }
+              martVendor ??= await MartVendorService.getDefaultMartVendor();
+
+              if (martVendor != null &&
+                  martVendor.zoneId != null &&
+                  martVendor.zoneId!.isNotEmpty) {
+                vendorModel.zoneId = martVendor.zoneId;
+                print(
+                  '[CART_VALIDATION] ✅ Reloaded mart vendor zoneId: ${vendorModel.zoneId}',
+                );
+              } else if (address.zoneId != null && address.zoneId!.isNotEmpty) {
+                // Use address zoneId as fallback
+                vendorModel.zoneId = address.zoneId;
+                print(
+                  '[CART_VALIDATION] ⚠️ Using address zoneId as fallback: ${vendorModel.zoneId}',
+                );
+              }
+            } catch (e) {
+              print('[CART_VALIDATION] ❌ Error reloading mart vendor: $e');
+            }
+          }
+        }
+
+        // Final check - if still empty, try using address zoneId
+        if ((vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) &&
+            address.zoneId != null &&
+            address.zoneId!.isNotEmpty) {
+          vendorModel.zoneId = address.zoneId;
+          print(
+            '[CART_VALIDATION] ⚠️ Using address zoneId as fallback: ${vendorModel.zoneId}',
+          );
+        }
+
+        // Additional fallback - try using Constant.selectedLocation.zoneId
+        if ((vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) &&
+            Constant.selectedLocation.zoneId != null &&
+            Constant.selectedLocation.zoneId!.isNotEmpty) {
+          vendorModel.zoneId = Constant.selectedLocation.zoneId;
+          print(
+            '[CART_VALIDATION] ⚠️ Using Constant.selectedLocation.zoneId as fallback: ${vendorModel.zoneId}',
+          );
+        }
+
+        // Last resort fallback - try using Constant.selectedZone?.id
+        if ((vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) &&
+            Constant.selectedZone?.id != null &&
+            Constant.selectedZone!.id!.isNotEmpty) {
+          vendorModel.zoneId = Constant.selectedZone!.id;
+          print(
+            '[CART_VALIDATION] ⚠️ Using Constant.selectedZone.id as final fallback: ${vendorModel.zoneId}',
+          );
+        }
+
+        // Only show error if zoneId is still missing after all attempts
+        if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
+          ShowToastDialog.showToast(
+            "Vendor zone not configured. Please contact support.".tr,
+          );
+          return false;
+        }
       }
       if (address.zoneId != vendorModel.zoneId) {
         // Show zone mismatch alert dialog

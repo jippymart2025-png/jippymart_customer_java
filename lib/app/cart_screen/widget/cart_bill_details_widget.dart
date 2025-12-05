@@ -75,6 +75,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   ],
                 ),
                 const SizedBox(height: 10),
+                // DELIVERY FEE SECTION - Fixed logic
                 if (controller.selectedFoodType != 'TakeAway') ...[
                   _buildDeliveryFeeSection(
                     controller,
@@ -435,33 +436,87 @@ Widget _buildDeliveryFeeSection(
       ],
     );
   }
-  // 🔑 UNIFIED LOGIC: Mart and regular items use EXACT same delivery charge calculation
-  // Both use the same deliveryChargeModel settings, calculation logic, and display
-  // Tax is also calculated the same way (on deliveryCharges - what customer actually pays)
-  final double threshold =
-      (controller.deliveryChargeModel.itemTotalThreshold ?? 299).toDouble();
-  final double freeKm =
-      (controller.deliveryChargeModel.freeDeliveryDistanceKm ?? 7).toDouble();
+  // Mart items delivery logic
+  if (hasMartItems) {
+    print('[CART_UI] 🛒 Building mart delivery UI...');
+    double itemThreshold = 199.0;
+    double freeDeliveryKm = 5.0;
+    double baseDeliveryCharge = 23.0;
+    final subtotal = controller.subTotal;
+    final distance = controller.totalDistance;
+    final isAboveThreshold = subtotal >= itemThreshold;
+    final isWithinFreeDistance = distance <= freeDeliveryKm;
+    Widget martDeliveryWidget;
+    if (isAboveThreshold) {
+      if (isWithinFreeDistance) {
+        martDeliveryWidget = buildDeliveryFeeUI(
+          isFreeDelivery: true,
+          originalFee: baseDeliveryCharge,
+          currentFee: 0.0,
+        );
+      } else {
+        martDeliveryWidget = buildDeliveryFeeUI(
+          isFreeDelivery: true,
+          originalFee: baseDeliveryCharge,
+          currentFee: controller.deliveryCharges,
+        );
+      }
+    } else {
+      print('[CART_UI]   - Mart regular paid delivery');
+      martDeliveryWidget = buildDeliveryFeeUI(
+        isFreeDelivery: false,
+        originalFee: 0.0,
+        currentFee: controller.deliveryCharges,
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Text(
+            "Delivery Fee".tr,
+            textAlign: TextAlign.start,
+            style: TextStyle(
+              fontFamily: AppThemeData.regular,
+              color: AppThemeData.grey600,
+              fontSize: 16,
+            ),
+          ),
+        ),
+        martDeliveryWidget,
+      ],
+    );
+  }
+
+  // Regular items delivery logic
+  final threshold = controller.deliveryChargeModel.itemTotalThreshold ?? 299;
+  final freeKm = controller.deliveryChargeModel.freeDeliveryDistanceKm ?? 7;
   final subtotal = controller.subTotal;
   final distance = controller.totalDistance;
+
   final isAboveThreshold = subtotal >= threshold;
   final isWithinFreeDistance = distance <= freeKm;
-  final double baseDeliveryCharge =
-      (controller.deliveryChargeModel.baseDeliveryCharge ?? 23).toDouble();
-  print('[CART_UI] Unified delivery (mart & regular): threshold: ₹$threshold, subtotal: ₹$subtotal, distance: ${distance}km, base: ₹$baseDeliveryCharge');
-  Widget deliveryWidget;
+
+  // Get the base delivery charge for restaurant items (should be ₹23)
+  double baseDeliveryCharge =
+      (controller.deliveryChargeModel.baseDeliveryCharge ?? 23.0).toDouble();
+  print('[CART_UI]   - Base delivery charge: ₹$baseDeliveryCharge');
+
+  Widget regularDeliveryWidget;
+
   if (isAboveThreshold) {
     if (isWithinFreeDistance) {
-      print('[CART_UI]   - Free delivery (above threshold + within free distance)');
-      deliveryWidget = buildDeliveryFeeUI(
+      print('[CART_UI]   - Standard free delivery');
+      regularDeliveryWidget = buildDeliveryFeeUI(
         isFreeDelivery: true,
         originalFee: baseDeliveryCharge,
         currentFee: 0.0,
       );
     } else {
       // Free delivery with extra charge: Green "Free Delivery" + strikethrough base charge + extra charge
-      print('[CART_UI]   - Free delivery with extra charge (above threshold but beyond free distance)');
-      deliveryWidget = buildDeliveryFeeUI(
+      print('[CART_UI]   - Free delivery with extra charge');
+      regularDeliveryWidget = buildDeliveryFeeUI(
         isFreeDelivery: true,
         originalFee: baseDeliveryCharge,
         // Show base charge, not calculated total
@@ -469,9 +524,9 @@ Widget _buildDeliveryFeeSection(
       );
     }
   } else {
-    // Below threshold - paid delivery
-    print('[CART_UI]   - Paid delivery (below threshold)');
-    deliveryWidget = buildDeliveryFeeUI(
+    // Below threshold - regular paid delivery
+    print('[CART_UI]   - Regular paid delivery');
+    regularDeliveryWidget = buildDeliveryFeeUI(
       isFreeDelivery: false,
       originalFee: 0.0,
       currentFee: controller.deliveryCharges,
@@ -492,7 +547,7 @@ Widget _buildDeliveryFeeSection(
           ),
         ),
       ),
-      deliveryWidget,
+      regularDeliveryWidget,
     ],
   );
 }

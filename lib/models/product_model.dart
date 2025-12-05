@@ -86,6 +86,7 @@ class ProductModel {
         quantity: _parseInt(json['quantity']) ?? -1,
         price: _parsePrice(json['original_price']) ?? '0',
         disPrice: _parsePrice(json['discount_price']) ?? '0',
+        vendorID: _parseString(json['vendorID']),
       );
     } catch (e) {
       print('❌ Error parsing product JSON: $e');

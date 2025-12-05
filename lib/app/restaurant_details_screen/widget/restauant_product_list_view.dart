@@ -263,33 +263,44 @@ class ProductListView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-
-                    // Promotional badge
+                    // Promotional badge - reactive to provider state
                     Builder(
                       builder: (context) {
-                        final promo = controller.getActivePromotionForProduct(
-                          productId: productModel.id?.toString() ?? '',
-                          restaurantId: productModel.vendorID ?? '',
-                        );
-                        if (promo != null) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red,
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'SPECIAL OFFER',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                        final productId = productModel.id?.toString() ?? '';
+                        final restaurantId = productModel.vendorID ?? '';
+                        
+                        // Trigger loading if not already loaded
+                        if (productId.isNotEmpty && restaurantId.isNotEmpty) {
+                          // This will trigger loading if needed and return cached data
+                          final promo = controller.getActivePromotionForProduct(
+                            productId: productId,
+                            restaurantId: restaurantId,
                           );
+                          
+                          print(
+                            "controller.getActivePromotionForProduct for $productId: $promo ",
+                          );
+                          
+                          if (promo != null) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'SPECIAL OFFER',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            );
+                          }
                         }
                         return const SizedBox.shrink();
                       },
@@ -309,10 +320,8 @@ class ProductListView extends StatelessWidget {
                         final hasPromo = promo != null;
 
                         if (hasPromo) {
-                          // For promotional items with variants, you might want to handle this differently
                           final promoPrice = (promo['special_price'] as num)
                               .toString();
-
                           return Row(
                             children: [
                               //finded
