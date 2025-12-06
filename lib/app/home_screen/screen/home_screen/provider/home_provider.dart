@@ -1033,9 +1033,11 @@ class HomeProvider extends ChangeNotifier {
       VendorModel? vendorModel = await FireStoreUtils.getVendorById(
         bannerModel.redirectId.toString(),
       );
-      if (vendorModel!.zoneId == Constant.selectedZone!.id) {
+      if (vendorModel?.zoneId == Constant.selectedZone?.id) {
         ShowToastDialog.closeLoader();
-        restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+        restaurantDetailsProvider.initFunction(
+          vendorModels: vendorModel ?? VendorModel(),
+        );
         Get.to(const RestaurantDetailsScreen());
       } else {
         ShowToastDialog.closeLoader();

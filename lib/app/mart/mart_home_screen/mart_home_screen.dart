@@ -1050,7 +1050,6 @@ class _MartDynamicSectionsEnhancedState
         if (uniqueCategories.isEmpty) {
           return const SizedBox.shrink();
         }
-
         return Column(
           children: uniqueCategories.map((category) {
             return _buildCategorySection(

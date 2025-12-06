@@ -33,20 +33,14 @@ class MartProvider extends ChangeNotifier {
           categoryMap[categoryTitle] = [];
         }
 
-        // Add product to the category list (limit to 10 products per category for horizontal scroll)
         if (categoryMap[categoryTitle]!.length < 10) {
           categoryMap[categoryTitle]!.add(product);
         }
       }
-
-      // Update reactive variables
       categoryProductsMap.clear();
       categoryProductsMap.addAll(categoryMap);
-
       uniqueCategoryTitles.clear();
       uniqueCategoryTitles.addAll(categoryMap.keys.toList());
-
-      // 🐾 Move "Pet Care" to the top if it exists
       if (uniqueCategoryTitles.contains('Pet Care')) {
         uniqueCategoryTitles.remove('Pet Care');
         uniqueCategoryTitles.insert(
