@@ -278,7 +278,6 @@ class MartProvider extends ChangeNotifier {
     final StreamController<List<MartBannerModel>> controller =
         StreamController<List<MartBannerModel>>();
     String? customerZoneId = Constant.selectedZone?.id;
-
     Future<void> fetchBanners() async {
       try {
         final response = await http.get(
@@ -286,15 +285,12 @@ class MartProvider extends ChangeNotifier {
           headers: await getHeaders(),
         );
         print("getMartBottomBannersStream ${response.body}");
-
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseData = json.decode(response.body);
           if (responseData['success'] == true) {
             List<MartBannerModel> bannerList = [];
             List<MartBannerModel> filteredBannerList = [];
-
             for (var bannerData in responseData['data']) {
-              // Remove the redundant id conversion - just pass bannerData directly
               MartBannerModel banner = MartBannerModel.fromJson(bannerData);
               bannerList.add(banner);
               print(

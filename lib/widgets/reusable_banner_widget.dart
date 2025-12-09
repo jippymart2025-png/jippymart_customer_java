@@ -119,7 +119,6 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
     String? description;
     String? redirectType;
     String? redirectId;
-
     // Handle both BannerModel and MartBannerModel
     if (banner is BannerModel) {
       imageUrl = banner.photo;
@@ -259,6 +258,7 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
     print(
       '[BANNER NAVIGATION] 🎯 Banner tapped - Type: $redirectType, ID: $redirectId',
     );
+    print("_handleBannerTap ${redirectType}  ${redirectId}");
     if (redirectType == null || redirectId == null) {
       print('[BANNER NAVIGATION] ❌ Missing redirect type or ID');
       return;
