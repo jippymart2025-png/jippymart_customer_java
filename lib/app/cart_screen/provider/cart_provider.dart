@@ -2674,7 +2674,6 @@ class CartControllerProvider extends ChangeNotifier {
                     '[VENDOR_LOAD] ⚠️ Mart vendor zoneId is missing, using Constant.selectedLocation.zoneId: $finalZoneId',
                   );
                 }
-
                 vendorModel = VendorModel(
                   id: martVendor.id,
                   title: martVendor.title,
@@ -3039,12 +3038,10 @@ class CartControllerProvider extends ChangeNotifier {
         .where((item) => _isMartItem(item))
         .toList();
     notifyListeners();
-
     if (martItems.isEmpty) {
       calculateRegularDeliveryCharge();
       return;
     }
-    // 🔑 Use same deliveryChargeModel as restaurant (₹299 threshold from backend)
     _calculateMartDeliveryWithBackendSettings();
   }
 
@@ -3059,6 +3056,7 @@ class CartControllerProvider extends ChangeNotifier {
     final perKm = dc.perKmChargeAboveFreeDistance ?? 8; // Same as restaurant
     final distance = totalDistance;
 
+    print("_calculateMartDeliveryWithBackendSettings $threshold ");
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
@@ -3074,7 +3072,6 @@ class CartControllerProvider extends ChangeNotifier {
         originalDeliveryFee = deliveryCharges;
       }
     } else {
-      // Above threshold - free delivery within distance
       if (distance <= freeKm) {
         deliveryCharges = 0.0;
         originalDeliveryFee = baseCharge.toDouble();
@@ -3123,6 +3120,7 @@ class CartControllerProvider extends ChangeNotifier {
     final baseCharge = dc.baseDeliveryCharge ?? 23;
     final freeKm = dc.freeDeliveryDistanceKm ?? 7;
     final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
+    print("calculateRegularDeliveryCharge ${threshold} ");
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
@@ -3202,10 +3200,8 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       // Load any new products that aren't cached yet (incremental loading)
       await _loadNewProductsIncrementally();
-
       // Recalculate prices (this is fast, no network calls)
       await calculatePrice();
-
       // Update payment method if needed
       checkAndUpdatePaymentMethod();
 

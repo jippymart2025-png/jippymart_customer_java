@@ -32,7 +32,10 @@ class NetworkImageWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Handle null or empty URLs
-    if (imageUrl.isEmpty || imageUrl == "null" || imageUrl == "Null" || imageUrl == "NULL") {
+    if (imageUrl.isEmpty ||
+        imageUrl == "null" ||
+        imageUrl == "Null" ||
+        imageUrl == "NULL") {
       return errorWidget ??
           Image.network(
             Constant.placeholderImage,
@@ -44,7 +47,7 @@ class NetworkImageWidget extends StatelessWidget {
 
     // Validate URL format to prevent FormatException
     String cleanImageUrl = imageUrl.trim();
-    
+
     // Remove any extra quotes that might be causing issues
     if (cleanImageUrl.startsWith('"') && cleanImageUrl.endsWith('"')) {
       cleanImageUrl = cleanImageUrl.substring(1, cleanImageUrl.length - 1);
@@ -52,7 +55,7 @@ class NetworkImageWidget extends StatelessWidget {
     if (cleanImageUrl.startsWith("'") && cleanImageUrl.endsWith("'")) {
       cleanImageUrl = cleanImageUrl.substring(1, cleanImageUrl.length - 1);
     }
-    
+
     // Check if URL is valid
     try {
       Uri.parse(cleanImageUrl);
@@ -85,7 +88,7 @@ class NetworkImageWidget extends StatelessWidget {
 
     // Check if the image URL is AVIF format
     bool isAvifFormat = _isAvifFormat(cleanImageUrl);
-    
+
     // For AVIF images, use a fallback approach since Flutter doesn't support AVIF natively
     if (isAvifFormat) {
       return AvifFallbackImage(
@@ -104,7 +107,8 @@ class NetworkImageWidget extends StatelessWidget {
       height: height ?? Responsive.height(8, context),
       width: width ?? Responsive.width(15, context),
       color: color,
-      progressIndicatorBuilder: (context, url, downloadProgress) => _buildLoadingWidget(),
+      progressIndicatorBuilder: (context, url, downloadProgress) =>
+          _buildLoadingWidget(),
       errorWidget: (context, url, error) {
         print('[NETWORK_IMAGE] Error loading cached image: $error');
         return errorWidget ??
@@ -121,9 +125,9 @@ class NetworkImageWidget extends StatelessWidget {
   // Enhanced format detection
   bool _isAvifFormat(String url) {
     final lowerUrl = url.toLowerCase();
-    return lowerUrl.contains('.avif') || 
-           lowerUrl.contains('format=avif') ||
-           lowerUrl.contains('&format=avif');
+    return lowerUrl.contains('.avif') ||
+        lowerUrl.contains('format=avif') ||
+        lowerUrl.contains('&format=avif');
   }
 
   // Safe loading widget that handles missing assets gracefully
@@ -140,9 +144,7 @@ class NetworkImageWidget extends StatelessWidget {
             height: height,
             width: width,
             color: Colors.grey[200],
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: const Center(child: CircularProgressIndicator()),
           );
         },
       );
@@ -152,9 +154,7 @@ class NetworkImageWidget extends StatelessWidget {
         height: height,
         width: width,
         color: Colors.grey[200],
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
   }
@@ -196,12 +196,13 @@ class AvifFallbackImage extends StatelessWidget {
             height: height ?? Responsive.height(8, context),
             width: width ?? Responsive.width(15, context),
             color: color,
-            progressIndicatorBuilder: (context, url, downloadProgress) => Image.asset(
-              "assets/images/simmer_gif.gif",
-              height: height,
-              width: width,
-              fit: BoxFit.fill,
-            ),
+            progressIndicatorBuilder: (context, url, downloadProgress) =>
+                Image.asset(
+                  "assets/images/simmer_gif.gif",
+                  height: height,
+                  width: width,
+                  fit: BoxFit.fill,
+                ),
             errorWidget: (context, url, error) {
               print('[AVIF_FALLBACK] Error loading fallback image: $error');
               return _buildErrorWidget(context);
@@ -210,7 +211,9 @@ class AvifFallbackImage extends StatelessWidget {
         }
 
         // If no fallback available, show error widget
-        print('[AVIF_FALLBACK] No fallback URL available for AVIF image: $imageUrl');
+        print(
+          '[AVIF_FALLBACK] No fallback URL available for AVIF image: $imageUrl',
+        );
         return _buildErrorWidget(context);
       },
     );
@@ -240,9 +243,7 @@ class AvifFallbackImage extends StatelessWidget {
             height: height,
             width: width,
             color: Colors.grey[200],
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: const Center(child: CircularProgressIndicator()),
           );
         },
       );
@@ -252,9 +253,7 @@ class AvifFallbackImage extends StatelessWidget {
         height: height,
         width: width,
         color: Colors.grey[200],
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
   }
@@ -263,49 +262,64 @@ class AvifFallbackImage extends StatelessWidget {
     try {
       // Try to get a WebP or JPEG version of the same image
       String fallbackUrl = avifUrl;
-      
       // Replace .avif with .webp
       if (fallbackUrl.toLowerCase().contains('.avif')) {
-        fallbackUrl = fallbackUrl.replaceAll(RegExp(r'\.avif', caseSensitive: false), '.webp');
+        fallbackUrl = fallbackUrl.replaceAll(
+          RegExp(r'\.avif', caseSensitive: false),
+          '.webp',
+        );
       }
-      
+
       // If URL contains format parameter, try to change it
       if (fallbackUrl.contains('format=avif')) {
         fallbackUrl = fallbackUrl.replaceAll('format=avif', 'format=webp');
       }
-      
+
       // Test if the fallback URL exists with timeout
-      final response = await http.head(Uri.parse(fallbackUrl)).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          throw TimeoutException('Request timeout', const Duration(seconds: 5));
-        },
-      );
+      final response = await http
+          .head(Uri.parse(fallbackUrl))
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              throw TimeoutException(
+                'Request timeout',
+                const Duration(seconds: 5),
+              );
+            },
+          );
       if (response.statusCode == 200) {
         print('[AVIF_FALLBACK] Using WebP fallback: $fallbackUrl');
         return fallbackUrl;
       }
-      
+
       // Try JPEG fallback
       fallbackUrl = avifUrl;
       if (fallbackUrl.toLowerCase().contains('.avif')) {
-        fallbackUrl = fallbackUrl.replaceAll(RegExp(r'\.avif', caseSensitive: false), '.jpg');
+        fallbackUrl = fallbackUrl.replaceAll(
+          RegExp(r'\.avif', caseSensitive: false),
+          '.jpg',
+        );
       }
       if (fallbackUrl.contains('format=avif')) {
         fallbackUrl = fallbackUrl.replaceAll('format=avif', 'format=jpeg');
       }
-      
-      final jpegResponse = await http.head(Uri.parse(fallbackUrl)).timeout(
-        const Duration(seconds: 5),
-        onTimeout: () {
-          throw TimeoutException('Request timeout', const Duration(seconds: 5));
-        },
-      );
+
+      final jpegResponse = await http
+          .head(Uri.parse(fallbackUrl))
+          .timeout(
+            const Duration(seconds: 5),
+            onTimeout: () {
+              throw TimeoutException(
+                'Request timeout',
+                const Duration(seconds: 5),
+              );
+            },
+          );
       if (jpegResponse.statusCode == 200) {
         print('[AVIF_FALLBACK] Using JPEG fallback: $fallbackUrl');
         return fallbackUrl;
       }
-      
+
       print('[AVIF_FALLBACK] No fallback URL found for: $avifUrl');
       return null;
     } catch (e) {
@@ -339,7 +353,10 @@ class OrientedNetworkImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Handle null or empty URLs
-    if (imageUrl.isEmpty || imageUrl == "null" || imageUrl == "Null" || imageUrl == "NULL") {
+    if (imageUrl.isEmpty ||
+        imageUrl == "null" ||
+        imageUrl == "Null" ||
+        imageUrl == "NULL") {
       return errorWidget ??
           Image.network(
             Constant.placeholderImage,
@@ -351,7 +368,7 @@ class OrientedNetworkImage extends StatelessWidget {
 
     // Validate URL format to prevent FormatException
     String cleanImageUrl = imageUrl.trim();
-    
+
     // Remove any extra quotes that might be causing issues
     if (cleanImageUrl.startsWith('"') && cleanImageUrl.endsWith('"')) {
       cleanImageUrl = cleanImageUrl.substring(1, cleanImageUrl.length - 1);
@@ -359,7 +376,7 @@ class OrientedNetworkImage extends StatelessWidget {
     if (cleanImageUrl.startsWith("'") && cleanImageUrl.endsWith("'")) {
       cleanImageUrl = cleanImageUrl.substring(1, cleanImageUrl.length - 1);
     }
-    
+
     // Check if URL is valid
     try {
       Uri.parse(cleanImageUrl);
@@ -380,7 +397,7 @@ class OrientedNetworkImage extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _buildLoadingWidget();
         }
-        
+
         if (snapshot.hasError || snapshot.data == null) {
           print('[ORIENTED_IMAGE] Error loading image: ${snapshot.error}');
           return errorWidget ??
@@ -393,7 +410,9 @@ class OrientedNetworkImage extends StatelessWidget {
         }
 
         return ClipRRect(
-          borderRadius: borderRadius != null ? BorderRadius.circular(borderRadius!) : BorderRadius.zero,
+          borderRadius: borderRadius != null
+              ? BorderRadius.circular(borderRadius!)
+              : BorderRadius.zero,
           child: RawImage(
             image: snapshot.data,
             fit: fit ?? BoxFit.fitWidth,
@@ -438,9 +457,7 @@ class OrientedNetworkImage extends StatelessWidget {
             height: height,
             width: width,
             color: Colors.grey[200],
-            child: const Center(
-              child: CircularProgressIndicator(),
-            ),
+            child: const Center(child: CircularProgressIndicator()),
           );
         },
       );
@@ -450,9 +467,7 @@ class OrientedNetworkImage extends StatelessWidget {
         height: height,
         width: width,
         color: Colors.grey[200],
-        child: const Center(
-          child: CircularProgressIndicator(),
-        ),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
   }

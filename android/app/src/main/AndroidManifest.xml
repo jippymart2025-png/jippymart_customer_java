@@ -12,32 +12,40 @@
     <uses-permission android:name="com.google.android.gms.permission.PLAY_INTEGRITY" />
 
     <!-- ✅ Hardware features -->
-    <uses-feature android:glEsVersion="0x00020000" android:required="true" />
-    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
-    <uses-feature android:name="android.hardware.camera" android:required="false" />
-    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature
+        android:glEsVersion="0x00020000"
+        android:required="true" />
+    <uses-feature
+        android:name="android.hardware.location.gps"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.camera.autofocus"
+        android:required="false" />
 
     <!-- ✅ Enhanced screen compatibility for large screen devices (Android 16+) -->
     <supports-screens
-        android:smallScreens="true"
-        android:normalScreens="true"
-        android:largeScreens="true"
-        android:xlargeScreens="true"
         android:anyDensity="true"
-        android:resizeable="true" />
+        android:largeScreens="true"
+        android:normalScreens="true"
+        android:resizeable="true"
+        android:smallScreens="true"
+        android:xlargeScreens="true" />
     <application
-        android:label="JippyMart"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:label="JippyMart"
         android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:exported="true"
+            android:hardwareAccelerated="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
-            android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
             <!-- Theme metadata -->
@@ -50,65 +58,101 @@
 
             <!-- ✅ Main launcher intent -->
             <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-                <category android:name="android.intent.category.LAUNCHER"/>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
             <!-- ✅ Deep links -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="jippymart.in" />
+
+                <data
+                    android:host="jippymart.in"
+                    android:scheme="https" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="jippymart.in" android:pathPrefix="/products" />
+
+                <data
+                    android:host="jippymart.in"
+                    android:pathPrefix="/products"
+                    android:scheme="https" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="jippymart.in" android:pathPrefix="/categories" />
+
+                <data
+                    android:host="jippymart.in"
+                    android:pathPrefix="/categories"
+                    android:scheme="https" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="jippymart.in" android:pathPrefix="/mart" />
+
+                <data
+                    android:host="jippymart.in"
+                    android:pathPrefix="/mart"
+                    android:scheme="https" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="jippymart.in" android:pathPrefix="/restaurants" />
+
+                <data
+                    android:host="jippymart.in"
+                    android:pathPrefix="/restaurants"
+                    android:scheme="https" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="jippymart.in" android:pathPattern="/product/.*" />
+
+                <data
+                    android:host="jippymart.in"
+                    android:pathPattern="/product/.*"
+                    android:scheme="https" />
             </intent-filter>
 
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="jippymart.in" android:pathPattern="/restaurant/.*" />
+
+                <data
+                    android:host="jippymart.in"
+                    android:pathPattern="/restaurant/.*"
+                    android:scheme="https" />
             </intent-filter>
 
             <!-- Custom URL scheme -->
             <intent-filter android:priority="100">
                 <action android:name="android.intent.action.VIEW" />
+
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+
                 <data android:scheme="jippymart" />
             </intent-filter>
         </activity>
@@ -127,7 +171,7 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="AIzaSyBRdk2BoUowc2FgvAwI0oDF_0fhbazoTQs" />
-
+        <!--        AIzaSyBRdk2BoUowc2FgvAwI0oDF_0fhbazoTQs-->
         <!-- ✅ Google Pay configuration -->
         <meta-data
             android:name="com.google.android.gms.wallet.api.enabled"
@@ -157,105 +201,105 @@
             android:name="com.facebook.sdk.AdvertiserIDCollectionEnabled"
             android:value="true" />
         <!--        <activity-->
-<!--            android:name=".MainActivity"-->
-<!--            android:exported="true"-->
-<!--            android:launchMode="singleTop"-->
-<!--            android:taskAffinity=""-->
-<!--            android:theme="@style/LaunchTheme"-->
-<!--            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"-->
-<!--            android:hardwareAccelerated="true"-->
-<!--            android:windowSoftInputMode="adjustResize">-->
-<!--            &lt;!&ndash; Specifies an Android theme to apply to this Activity as soon as-->
-<!--                 the Android process has started. This theme is visible to the user-->
-<!--                 while the Flutter UI initializes. After that, this theme continues-->
-<!--                 to determine the Window background behind the Flutter UI. &ndash;&gt;-->
-<!--            <meta-data-->
-<!--              android:name="io.flutter.embedding.android.NormalTheme"-->
-<!--              android:resource="@style/NormalTheme"-->
-<!--              />-->
-<!--            &lt;!&ndash; Disable Flutter splash screen &ndash;&gt;-->
-<!--            <meta-data-->
-<!--                android:name="io.flutter.embedding.android.SplashScreenDrawable"-->
-<!--                android:resource="@android:color/transparent" />-->
-<!--            <intent-filter>-->
-<!--                <action android:name="android.intent.action.MAIN"/>-->
-<!--                <category android:name="android.intent.category.LAUNCHER"/>-->
-<!--                &lt;!&ndash; Deep Link Intent Filters &ndash;&gt;-->
-<!--                &lt;!&ndash; Root domain &ndash;&gt;-->
-<!--                <intent-filter android:autoVerify="true">-->
-<!--                    <action android:name="android.intent.action.VIEW" />-->
-<!--                    <category android:name="android.intent.category.DEFAULT" />-->
-<!--                    <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                    <data android:scheme="https"-->
-<!--                        android:host="jippymart.in" />-->
-<!--                </intent-filter>-->
+        <!--            android:name=".MainActivity"-->
+        <!--            android:exported="true"-->
+        <!--            android:launchMode="singleTop"-->
+        <!--            android:taskAffinity=""-->
+        <!--            android:theme="@style/LaunchTheme"-->
+        <!--            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"-->
+        <!--            android:hardwareAccelerated="true"-->
+        <!--            android:windowSoftInputMode="adjustResize">-->
+        <!--            &lt;!&ndash; Specifies an Android theme to apply to this Activity as soon as-->
+        <!--                 the Android process has started. This theme is visible to the user-->
+        <!--                 while the Flutter UI initializes. After that, this theme continues-->
+        <!--                 to determine the Window background behind the Flutter UI. &ndash;&gt;-->
+        <!--            <meta-data-->
+        <!--              android:name="io.flutter.embedding.android.NormalTheme"-->
+        <!--              android:resource="@style/NormalTheme"-->
+        <!--              />-->
+        <!--            &lt;!&ndash; Disable Flutter splash screen &ndash;&gt;-->
+        <!--            <meta-data-->
+        <!--                android:name="io.flutter.embedding.android.SplashScreenDrawable"-->
+        <!--                android:resource="@android:color/transparent" />-->
+        <!--            <intent-filter>-->
+        <!--                <action android:name="android.intent.action.MAIN"/>-->
+        <!--                <category android:name="android.intent.category.LAUNCHER"/>-->
+        <!--                &lt;!&ndash; Deep Link Intent Filters &ndash;&gt;-->
+        <!--                &lt;!&ndash; Root domain &ndash;&gt;-->
+        <!--                <intent-filter android:autoVerify="true">-->
+        <!--                    <action android:name="android.intent.action.VIEW" />-->
+        <!--                    <category android:name="android.intent.category.DEFAULT" />-->
+        <!--                    <category android:name="android.intent.category.BROWSABLE" />-->
+        <!--                    <data android:scheme="https"-->
+        <!--                        android:host="jippymart.in" />-->
+        <!--                </intent-filter>-->
 
-<!--                &lt;!&ndash; Products section &ndash;&gt;-->
-<!--                <intent-filter android:autoVerify="true">-->
-<!--                    <action android:name="android.intent.action.VIEW" />-->
-<!--                    <category android:name="android.intent.category.DEFAULT" />-->
-<!--                    <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                    <data android:scheme="https"-->
-<!--                        android:host="jippymart.in"-->
-<!--                        android:pathPrefix="/products" />-->
-<!--                </intent-filter>-->
+        <!--                &lt;!&ndash; Products section &ndash;&gt;-->
+        <!--                <intent-filter android:autoVerify="true">-->
+        <!--                    <action android:name="android.intent.action.VIEW" />-->
+        <!--                    <category android:name="android.intent.category.DEFAULT" />-->
+        <!--                    <category android:name="android.intent.category.BROWSABLE" />-->
+        <!--                    <data android:scheme="https"-->
+        <!--                        android:host="jippymart.in"-->
+        <!--                        android:pathPrefix="/products" />-->
+        <!--                </intent-filter>-->
 
-<!--                <intent-filter android:autoVerify="true">-->
-<!--                    <action android:name="android.intent.action.VIEW" />-->
-<!--                    <category android:name="android.intent.category.DEFAULT" />-->
-<!--                    <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                    <data android:scheme="https"-->
-<!--                        android:host="jippymart.in"-->
-<!--                        android:pathPrefix="/categories" />-->
-<!--                </intent-filter>-->
+        <!--                <intent-filter android:autoVerify="true">-->
+        <!--                    <action android:name="android.intent.action.VIEW" />-->
+        <!--                    <category android:name="android.intent.category.DEFAULT" />-->
+        <!--                    <category android:name="android.intent.category.BROWSABLE" />-->
+        <!--                    <data android:scheme="https"-->
+        <!--                        android:host="jippymart.in"-->
+        <!--                        android:pathPrefix="/categories" />-->
+        <!--                </intent-filter>-->
 
-<!--                <intent-filter android:autoVerify="true">-->
-<!--                    <action android:name="android.intent.action.VIEW" />-->
-<!--                    <category android:name="android.intent.category.DEFAULT" />-->
-<!--                    <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                    <data android:scheme="https"-->
-<!--                        android:host="jippymart.in"-->
-<!--                        android:pathPrefix="/mart" />-->
-<!--                </intent-filter>-->
+        <!--                <intent-filter android:autoVerify="true">-->
+        <!--                    <action android:name="android.intent.action.VIEW" />-->
+        <!--                    <category android:name="android.intent.category.DEFAULT" />-->
+        <!--                    <category android:name="android.intent.category.BROWSABLE" />-->
+        <!--                    <data android:scheme="https"-->
+        <!--                        android:host="jippymart.in"-->
+        <!--                        android:pathPrefix="/mart" />-->
+        <!--                </intent-filter>-->
 
-<!--                <intent-filter android:autoVerify="true">-->
-<!--                    <action android:name="android.intent.action.VIEW" />-->
-<!--                    <category android:name="android.intent.category.DEFAULT" />-->
-<!--                    <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                    <data android:scheme="https"-->
-<!--                        android:host="jippymart.in"-->
-<!--                        android:pathPrefix="/restaurants" />-->
-<!--                </intent-filter>-->
+        <!--                <intent-filter android:autoVerify="true">-->
+        <!--                    <action android:name="android.intent.action.VIEW" />-->
+        <!--                    <category android:name="android.intent.category.DEFAULT" />-->
+        <!--                    <category android:name="android.intent.category.BROWSABLE" />-->
+        <!--                    <data android:scheme="https"-->
+        <!--                        android:host="jippymart.in"-->
+        <!--                        android:pathPrefix="/restaurants" />-->
+        <!--                </intent-filter>-->
 
-<!--                &lt;!&ndash; Individual product pages &ndash;&gt;-->
-<!--                <intent-filter android:autoVerify="true">-->
-<!--                    <action android:name="android.intent.action.VIEW" />-->
-<!--                    <category android:name="android.intent.category.DEFAULT" />-->
-<!--                    <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                    <data android:scheme="https"-->
-<!--                        android:host="jippymart.in"-->
-<!--                        android:pathPattern="/product/.*" />-->
-<!--                </intent-filter>-->
+        <!--                &lt;!&ndash; Individual product pages &ndash;&gt;-->
+        <!--                <intent-filter android:autoVerify="true">-->
+        <!--                    <action android:name="android.intent.action.VIEW" />-->
+        <!--                    <category android:name="android.intent.category.DEFAULT" />-->
+        <!--                    <category android:name="android.intent.category.BROWSABLE" />-->
+        <!--                    <data android:scheme="https"-->
+        <!--                        android:host="jippymart.in"-->
+        <!--                        android:pathPattern="/product/.*" />-->
+        <!--                </intent-filter>-->
 
-<!--                &lt;!&ndash; Individual restaurant pages &ndash;&gt;-->
-<!--                <intent-filter android:autoVerify="true">-->
-<!--                    <action android:name="android.intent.action.VIEW" />-->
-<!--                    <category android:name="android.intent.category.DEFAULT" />-->
-<!--                    <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                    <data android:scheme="https"-->
-<!--                        android:host="jippymart.in"-->
-<!--                        android:pathPattern="/restaurant/.*" />-->
-<!--                </intent-filter>-->
+        <!--                &lt;!&ndash; Individual restaurant pages &ndash;&gt;-->
+        <!--                <intent-filter android:autoVerify="true">-->
+        <!--                    <action android:name="android.intent.action.VIEW" />-->
+        <!--                    <category android:name="android.intent.category.DEFAULT" />-->
+        <!--                    <category android:name="android.intent.category.BROWSABLE" />-->
+        <!--                    <data android:scheme="https"-->
+        <!--                        android:host="jippymart.in"-->
+        <!--                        android:pathPattern="/restaurant/.*" />-->
+        <!--                </intent-filter>-->
 
-<!--                &lt;!&ndash; Custom URL scheme (high priority fallback) &ndash;&gt;-->
-<!--                <intent-filter android:priority="100">-->
-<!--                    <action android:name="android.intent.action.VIEW" />-->
-<!--                    <category android:name="android.intent.category.DEFAULT" />-->
-<!--                    <category android:name="android.intent.category.BROWSABLE" />-->
-<!--                    <data android:scheme="jippymart" />-->
-<!--                </intent-filter>-->
-<!--            </intent-filter>-->
-<!--        </activity>-->
+        <!--                &lt;!&ndash; Custom URL scheme (high priority fallback) &ndash;&gt;-->
+        <!--                <intent-filter android:priority="100">-->
+        <!--                    <action android:name="android.intent.action.VIEW" />-->
+        <!--                    <category android:name="android.intent.category.DEFAULT" />-->
+        <!--                    <category android:name="android.intent.category.BROWSABLE" />-->
+        <!--                    <data android:scheme="jippymart" />-->
+        <!--                </intent-filter>-->
+        <!--            </intent-filter>-->
+        <!--        </activity>-->
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
 
@@ -267,8 +311,8 @@
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
         <intent>
-            <action android:name="android.intent.action.PROCESS_TEXT"/>
-            <data android:mimeType="text/plain"/>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
         </intent>
     </queries>
 </manifest>

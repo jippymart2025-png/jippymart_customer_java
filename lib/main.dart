@@ -21,6 +21,7 @@ import 'package:jippymart_customer/services/mart_firestore_service.dart';
 import 'package:jippymart_customer/services/mobile_deep_link_service.dart';
 import 'package:jippymart_customer/services/pending_deep_link_handler.dart';
 import 'package:jippymart_customer/services/smartlook_service.dart';
+import 'package:jippymart_customer/services/remote_config_service.dart';
 import 'package:jippymart_customer/utils/anr_monitor.dart';
 import 'package:jippymart_customer/utils/app_lifecycle_logger.dart';
 import 'package:jippymart_customer/utils/cache_manager.dart';
@@ -88,6 +89,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 3));
+    await RemoteConfigService.instance.initialize();
     ANRMonitor.startMonitoring();
     MemoryMonitor.startMemoryMonitoring();
     NativeLockPrevention.startLockContentionMonitoring();

@@ -118,6 +118,10 @@ class HomeProvider extends ChangeNotifier {
 
   void changeBannerPage(int value) {
     currentPage = value;
+    // Restart timer after manual page change
+    if (bannerModel.isNotEmpty) {
+      startBannerTimer();
+    }
     notifyListeners();
   }
 
@@ -514,27 +518,33 @@ class HomeProvider extends ChangeNotifier {
 
   void startBannerTimer() {
     _bannerTimer?.cancel();
+    if (bannerModel.isEmpty) return;
+    if (!pageController.hasClients) return;
+    
     _bannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      if (pageController.hasClients) {
+      if (!pageController.hasClients) {
         timer.cancel();
         return;
       }
-      if (bannerModel.isEmpty) return;
+      if (bannerModel.isEmpty) {
+        timer.cancel();
+        return;
+      }
+      
       int nextPage = currentPage + 1;
       if (nextPage >= bannerModel.length) {
-        pageController.jumpToPage(0);
-        currentPage = 0;
-      } else {
-        currentPage = nextPage;
-        try {
-          await pageController.animateToPage(
-            currentPage,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOut,
-          );
-        } catch (e) {
-          timer.cancel();
-        }
+        nextPage = 0;
+      }
+      
+      currentPage = nextPage;
+      try {
+        await pageController.animateToPage(
+          currentPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      } catch (e) {
+        timer.cancel();
       }
     });
     notifyListeners();

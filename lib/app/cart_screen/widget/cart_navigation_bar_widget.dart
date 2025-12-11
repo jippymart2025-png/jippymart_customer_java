@@ -44,12 +44,10 @@ Widget cartNavigationBarWidget(BuildContext context) {
                   // }
 
                   // Prevent duplicate clicks (check again after potential reset)
-
                   try {
                     // Show payment dialog FIRST - don't set processing flag yet
                     final paymentConfirmed = await controller
                         .showPaymentMethodDialog(context);
-
                     // Only set processing flag AFTER user confirms payment selection
                     if (paymentConfirmed == true &&
                         controller.selectedPaymentMethod.isNotEmpty) {

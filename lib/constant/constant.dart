@@ -44,14 +44,11 @@ class Constant {
   static String theme = "theme_1";
   static String mapAPIKey = "";
   static String placeHolderImage = "";
-
   static String senderId = '';
   static String jsonNotificationFileURL = '';
-
   static String radius = "50";
   static String driverRadios = "50";
   static String distanceType = "km";
-
   static String placeholderImage = "assets/images/food_delivery.png";
   static String googlePlayLink = "";
   static String appStoreLink = "";

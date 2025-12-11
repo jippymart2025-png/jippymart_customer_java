@@ -6,8 +6,30 @@ import 'package:provider/provider.dart';
 
 import '../../../../../utils/network_image_widget.dart';
 
-class BannerView extends StatelessWidget {
+class BannerView extends StatefulWidget {
   const BannerView({super.key});
+
+  @override
+  State<BannerView> createState() => _BannerViewState();
+}
+
+class _BannerViewState extends State<BannerView> {
+  bool _timerStarted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_timerStarted && mounted) {
+        final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+        if (homeProvider.bannerModel.isNotEmpty &&
+            homeProvider.pageController.hasClients) {
+          homeProvider.startBannerTimer();
+          _timerStarted = true;
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,6 +37,18 @@ class BannerView extends StatelessWidget {
       height: 160,
       child: Consumer2<RestaurantDetailsProvider, HomeProvider>(
         builder: (context, restaurantDetailsProvider, homeProvider, _) {
+          // Ensure timer starts when banners become available and PageController is ready
+          if (!_timerStarted &&
+              homeProvider.bannerModel.isNotEmpty &&
+              homeProvider.pageController.hasClients) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && !_timerStarted) {
+                homeProvider.startBannerTimer();
+                _timerStarted = true;
+              }
+            });
+          }
+
           return GestureDetector(
             onPanStart: (_) => homeProvider.stopBannerTimer(),
             onPanEnd: (_) => homeProvider.startBannerTimer(),

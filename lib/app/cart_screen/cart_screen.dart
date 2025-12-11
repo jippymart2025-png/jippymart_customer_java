@@ -361,6 +361,7 @@ class _CartScreenState extends State<CartScreen> {
                           ),
                         ),
                         const SizedBox(height: 20),
+                        //finded
                         billCartWidget(controller, context),
                         controller.selectedFoodType == 'TakeAway' ||
                                 (controller.vendorModel.isSelfDelivery ==

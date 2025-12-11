@@ -21,17 +21,18 @@ class RestaurantImageWithStatus extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // **CHECK IF RESTAURANT IS CLOSED**
-    final isRestaurantClosed = !RestaurantStatusUtils.canAcceptOrders(vendorModel);
-    
-    return isRestaurantClosed 
+    final isRestaurantClosed = !RestaurantStatusUtils.canAcceptOrders(
+      vendorModel,
+    );
+    return isRestaurantClosed
         ? Stack(
             children: [
               ColorFiltered(
                 colorFilter: const ColorFilter.matrix([
-                  0.33, 0.33, 0.33, 0, 0,  // Red channel
-                  0.33, 0.33, 0.33, 0, 0,  // Green channel  
-                  0.33, 0.33, 0.33, 0, 0,  // Blue channel
-                  0, 0, 0, 1, 0,           // Alpha channel
+                  0.33, 0.33, 0.33, 0, 0, // Red channel
+                  0.33, 0.33, 0.33, 0, 0, // Green channel
+                  0.33, 0.33, 0.33, 0, 0, // Blue channel
+                  0, 0, 0, 1, 0, // Alpha channel
                 ]),
                 child: NetworkImageWidget(
                   imageUrl: vendorModel.photo.toString(),
@@ -44,9 +45,7 @@ class RestaurantImageWithStatus extends StatelessWidget {
               Container(
                 height: height,
                 width: width,
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2),
-                ),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.2)),
               ),
             ],
           )
