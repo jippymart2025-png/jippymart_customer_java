@@ -36,15 +36,18 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
   }
 
   void animateSlider() {
-    if (widget.vendorModel.photos != null && widget.vendorModel.photos!.isNotEmpty) {
+    if (widget.vendorModel.photos != null &&
+        widget.vendorModel.photos!.isNotEmpty) {
       if (widget.vendorModel.photos!.length > 1) {
-        _animationTimer = Timer.periodic(const Duration(seconds: 2), (Timer timer) {
+        _animationTimer = Timer.periodic(const Duration(seconds: 2), (
+          Timer timer,
+        ) {
           // Check if widget is still mounted
           if (!mounted) {
             timer.cancel();
             return;
           }
-          
+
           if (currentPage < widget.vendorModel.photos!.length - 1) {
             currentPage++;
           } else {
@@ -71,28 +74,30 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
 
   @override
   Widget build(BuildContext context) {
-    // **CHECK IF RESTAURANT IS CLOSED**
-    final isRestaurantClosed = !RestaurantStatusUtils.canAcceptOrders(widget.vendorModel);
-    
+    final isRestaurantClosed = !RestaurantStatusUtils.canAcceptOrders(
+      widget.vendorModel,
+    );
     return SizedBox(
       height: Responsive.height(20, context),
-      child: widget.vendorModel.photos == null || widget.vendorModel.photos!.isEmpty
+      child:
+          widget.vendorModel.photos == null ||
+              widget.vendorModel.photos!.isEmpty
           ? _buildSingleImage(isRestaurantClosed)
           : _buildImageCarousel(isRestaurantClosed),
     );
   }
-  
+
   /// **BUILD SINGLE IMAGE WITH CLOSED RESTAURANT FILTER**
   Widget _buildSingleImage(bool isClosed) {
-    return isClosed 
+    return isClosed
         ? Stack(
             children: [
               ColorFiltered(
                 colorFilter: const ColorFilter.matrix([
-                  0.33, 0.33, 0.33, 0, 0,  // Red channel
-                  0.33, 0.33, 0.33, 0, 0,  // Green channel  
-                  0.33, 0.33, 0.33, 0, 0,  // Blue channel
-                  0, 0, 0, 1, 0,           // Alpha channel
+                  0.33, 0.33, 0.33, 0, 0, // Red channel
+                  0.33, 0.33, 0.33, 0, 0, // Green channel
+                  0.33, 0.33, 0.33, 0, 0, // Blue channel
+                  0, 0, 0, 1, 0, // Alpha channel
                 ]),
                 child: NetworkImageWidget(
                   imageUrl: widget.vendorModel.photo.toString(),
@@ -106,9 +111,7 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
               Container(
                 height: Responsive.height(20, context),
                 width: Responsive.width(100, context),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2),
-                ),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.2)),
               ),
             ],
           )
@@ -120,7 +123,7 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
             fixOrientation: true,
           );
   }
-  
+
   /// **BUILD IMAGE CAROUSEL WITH CLOSED RESTAURANT FILTER**
   Widget _buildImageCarousel(bool isClosed) {
     return isClosed
@@ -128,10 +131,10 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
             children: [
               ColorFiltered(
                 colorFilter: const ColorFilter.matrix([
-                  0.33, 0.33, 0.33, 0, 0,  // Red channel
-                  0.33, 0.33, 0.33, 0, 0,  // Green channel  
-                  0.33, 0.33, 0.33, 0, 0,  // Blue channel
-                  0, 0, 0, 1, 0,           // Alpha channel
+                  0.33, 0.33, 0.33, 0, 0, // Red channel
+                  0.33, 0.33, 0.33, 0, 0, // Green channel
+                  0.33, 0.33, 0.33, 0, 0, // Blue channel
+                  0, 0, 0, 1, 0, // Alpha channel
                 ]),
                 child: PageView.builder(
                   physics: const BouncingScrollPhysics(),
@@ -157,9 +160,7 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
               Container(
                 height: Responsive.height(20, context),
                 width: Responsive.width(100, context),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.2),
-                ),
+                decoration: BoxDecoration(color: Colors.black.withOpacity(0.2)),
               ),
             ],
           )

@@ -3712,7 +3712,6 @@ class CartControllerProvider extends ChangeNotifier {
       );
       return; // Prevent concurrent order creation for same payment
     }
-
     // 🔑 CRITICAL: Check cooldown period to prevent rapid duplicate calls
     // Only apply cooldown if it's the SAME payment ID
     if (_lastOrderCreationTime != null &&
@@ -3804,7 +3803,6 @@ class CartControllerProvider extends ChangeNotifier {
         print('⚠️ Error fetching latest order: $e');
         // Continue with default maxNumber
       }
-
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
@@ -3955,6 +3953,7 @@ class CartControllerProvider extends ChangeNotifier {
             vendorModel.author.toString(),
           ).then((value) {
             if (value != null) {
+              print("additionalTasks author  ${value.toJson()}");
               if (scheduleDateTime.isAfter(DateTime.now())) {
                 SendNotification.sendFcmMessage(
                   Constant.scheduleOrder,

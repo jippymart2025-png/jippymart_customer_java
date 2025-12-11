@@ -102,7 +102,6 @@ void main() async {
   Get.put(MartFirestoreService(), permanent: true);
   final cartProvider = CartProvider();
   await cartProvider.checkCartPersistence();
-
   // Initialize Facebook App Events
   try {
     await FacebookAppEventsService().initialize();
