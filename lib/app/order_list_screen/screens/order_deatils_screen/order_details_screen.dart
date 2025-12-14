@@ -2506,7 +2506,7 @@ class OrderDetailsScreen extends StatelessWidget {
                             ),
                             const SizedBox(height: 14),
                             Text(
-                              "Order Detailss".tr,
+                              "Order Details".tr,
                               textAlign: TextAlign.start,
                               style: TextStyle(
                                 fontFamily: AppThemeData.semiBold,

@@ -479,7 +479,7 @@ class FavouriteScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(width: 5),
                                   Text(
-                                    "${Constant.getDistance(lat1: vendorModel.latitude.toString(), lng1: vendorModel.longitude.toString(), lat2: Constant.selectedLocation.location!.latitude.toString(), lng2: Constant.selectedLocation.location!.longitude.toString())} ${Constant.distanceType}",
+                                    "${Constant.getDistance(lat1: vendorModel.latitude.toString(), lng1: vendorModel.longitude.toString(), lat2: Constant.selectedLocation.location?.latitude.toString() ?? '', lng2: Constant.selectedLocation.location!.longitude.toString())} ${Constant.distanceType}",
                                     style: TextStyle(
                                       fontSize: 14,
                                       color: AppThemeData.secondary300,

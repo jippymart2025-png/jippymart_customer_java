@@ -4003,12 +4003,10 @@ class CartControllerProvider extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       print("OrderPlacingScreen  $e");
-
       // 🔑 CRITICAL: Reset all order creation flags on error
       _isOrderBeingCreated = false;
       _isOrderCreationInProgress = false;
       _currentOrderPaymentId = null;
-
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       if (isPaymentCompleted && _lastPaymentId != null) {

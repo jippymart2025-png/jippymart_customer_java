@@ -42,7 +42,6 @@ Widget cartNavigationBarWidget(BuildContext context) {
                   //   // Small delay to ensure state is updated
                   //   await Future.delayed(const Duration(milliseconds: 100));
                   // }
-
                   // Prevent duplicate clicks (check again after potential reset)
                   try {
                     // Show payment dialog FIRST - don't set processing flag yet

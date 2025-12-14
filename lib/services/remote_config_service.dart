@@ -9,11 +9,11 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 /// await RemoteConfigService.instance.initialize();
 /// final apiBaseUrl = RemoteConfigService.instance.baseUrl;
 /// ```
+
 class RemoteConfigService {
   RemoteConfigService._internal();
 
   static final RemoteConfigService instance = RemoteConfigService._internal();
-
   final FirebaseRemoteConfig _remoteConfig = FirebaseRemoteConfig.instance;
 
   String get baseUrl => AppConst.baseUrl;
@@ -33,9 +33,8 @@ class RemoteConfigService {
       await _remoteConfig.fetchAndActivate();
       final fetchedUrl = _remoteConfig.getString('base_url');
       if (fetchedUrl.isNotEmpty) {
-        AppConst.baseUrl =
-            // "http://192.168.0.126:8002/api/";
-            _normalizeUrl(fetchedUrl);
+        AppConst.baseUrl = "http://192.168.0.103:8000/api/";
+        // _normalizeUrl(fetchedUrl);
         if (kDebugMode) {
           print('[RemoteConfig] base_url fetched: $fetchedUrl');
           print('[RemoteConfig] base_url applied: ${AppConst.baseUrl}');
