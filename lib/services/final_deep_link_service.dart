@@ -1,22 +1,23 @@
 import 'dart:async';
 import 'dart:developer';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
+import 'package:jippymart_customer/models/mart_item_model.dart';
+import 'package:jippymart_customer/models/product_model.dart';
+import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/services/global_deeplink_handler.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
-import 'package:jippymart_customer/utils/mart_zone_utils.dart';
+// import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart' show Provider;
 import '../app/category_service/category__service_screen.dart';
@@ -40,16 +41,11 @@ class FinalDeepLinkService {
   bool _initialized = false;
   String? _pendingDeepLink; // Added to store pending deep link
   bool _hasProcessedDeepLink = false; // Flag to prevent duplicate processing
-  late CategoryDetailsProvider categoryDetailsProvider;
 
   Future<void> init(
     GlobalKey<NavigatorState> navigatorKey,
     BuildContext context,
   ) async {
-    categoryDetailsProvider = Provider.of<CategoryDetailsProvider>(
-      context,
-      listen: false,
-    );
     if (_initialized) {
       return; // Prevent multiple subscriptions
     }
@@ -67,7 +63,7 @@ class FinalDeepLinkService {
           print(
             '🔗 [FLUTTER] PRINT TEST - Received link from Android (event): $url',
           );
-          _handleLink(url, context, categoryDetailsProvider);
+          _handleLink(url, context);
         }
       },
       onError: (error) {
@@ -78,21 +74,20 @@ class FinalDeepLinkService {
 
     // 2) Also query initial link (fallback if stream did not get cold-start link)
     log('🔗 [FLUTTER] Querying initial link...');
-    await _getInitialLink(context, categoryDetailsProvider);
+    await _getInitialLink(context);
 
     log('🔗 [FINAL DEEP LINK SERVICE] ✅ Singleton initialized successfully');
   }
 
   Future<void> _getInitialLink(
     BuildContext context,
-    CategoryDetailsProvider categoryDetailsProvider,
   ) async {
     try {
       final String? initial = await _methodChannel.invokeMethod<String>(
         'getInitialLink',
       );
       if (initial != null) {
-        _handleLink(initial, context, categoryDetailsProvider);
+        _handleLink(initial, context);
       } else {}
     } on PlatformException catch (e) {
       log('❌ [FLUTTER] getInitialLink failed: $e');
@@ -100,10 +95,31 @@ class FinalDeepLinkService {
     }
   }
 
+  /// Safely obtain a [CategoryDetailsProvider] from whatever context is available.
+  /// We prefer the [GlobalDeeplinkHandler.navigatorKey] context (inside the
+  /// provider tree); if that is not ready yet, we fall back to the passed
+  /// [fallbackContext]. If no suitable context is available or the provider
+  /// is not found yet, this returns null instead of throwing.
+  CategoryDetailsProvider? _getCategoryDetailsProvider(
+    BuildContext? fallbackContext,
+  ) {
+    final ctx =
+        GlobalDeeplinkHandler.navigatorKey.currentContext ?? fallbackContext;
+    if (ctx == null) return null;
+    try {
+      return Provider.of<CategoryDetailsProvider>(
+        ctx,
+        listen: false,
+      );
+    } catch (_) {
+      // Provider tree may not be ready yet; we'll gracefully skip in that case.
+      return null;
+    }
+  }
+
   void _handleLink(
     String url,
     BuildContext context,
-    CategoryDetailsProvider categoryDetailsProvider,
   ) async {
     _hasProcessedDeepLink = false;
     if (_hasProcessedDeepLink) {
@@ -116,7 +132,7 @@ class FinalDeepLinkService {
     // Mark as processed immediately to prevent duplicate calls
     _hasProcessedDeepLink = true;
 
-    // Store the deep link for processing when user is logged in
+    // Store the deep link so we can retry once providers / login are ready
     print(
       '🔥🔥🔥 [FLUTTER] Storing deep link for processing after login: $url',
     );
@@ -148,7 +164,15 @@ class FinalDeepLinkService {
         );
       }
 
-      _newSimpleDeepLinkHandler(url, context, categoryDetailsProvider);
+      // Try to obtain CategoryDetailsProvider only when actually needed.
+      final categoryDetailsProvider = _getCategoryDetailsProvider(
+        GlobalDeeplinkHandler.navigatorKey.currentContext ?? context,
+      );
+      _newSimpleDeepLinkHandler(
+        url,
+        context,
+        categoryDetailsProvider,
+      );
     } else {
       print(
         '🔥🔥🔥 [FLUTTER] User not logged in, deep link will be processed after login',
@@ -187,12 +211,15 @@ class FinalDeepLinkService {
         '🔥🔥🔥 [FLUTTER] Processing pending deep link after login: $_pendingDeepLink',
       );
 
-      // **FIXED: Call GlobalDeeplinkHandler.storeDeeplink() to process the pending deep link**
+      // **Process the pending deep link now that the user is logged in**
       print(
         '🔥🔥🔥 [FLUTTER] Calling GlobalDeeplinkHandler.storeDeeplink() with pending URL: $_pendingDeepLink',
       );
       GlobalDeeplinkHandler.instance.storeDeeplink(_pendingDeepLink!, context);
 
+      final categoryDetailsProvider = _getCategoryDetailsProvider(
+        GlobalDeeplinkHandler.navigatorKey.currentContext ?? context,
+      );
       _newSimpleDeepLinkHandler(
         _pendingDeepLink!,
         context,
@@ -305,77 +332,11 @@ class FinalDeepLinkService {
     }
   }
 
-  void _navigateToMartHome({
-    required MartNavigationProvider martNavigationProvider,
-    required BuildContext context,
-  }) async {
-    try {
-      print(
-        '\n🔗 [DEEP_LINK_SERVICE] ===== DEEP LINK MART NAVIGATION STARTED =====',
-      );
-      log('🔍 [FLUTTER] Navigating to mart home via deep link');
-      print('🔍 [FLUTTER] PRINT TEST - Navigating to mart home via deep link');
-      print(
-        '📍 [DEEP_LINK_SERVICE] Current Zone: ${Constant.selectedZone?.id ?? "NULL"} (${Constant.selectedZone?.name ?? "NULL"})',
-      );
-      print(
-        '📍 [DEEP_LINK_SERVICE] User Location: ${Constant.selectedLocation.location?.latitude ?? "NULL"}, ${Constant.selectedLocation.location?.longitude ?? "NULL"}',
-      );
-
-      // Check if mart is available in current zone
-      final isMartAvailable =
-          await MartZoneUtils.isMartAvailableInCurrentZone();
-
-      if (isMartAvailable) {
-        print(
-          '✅ [DEEP_LINK_SERVICE] Mart is available - Navigating to MartNavigationScreen',
-        );
-        print(
-          '🎯 [DEEP_LINK_SERVICE] Navigation: Deep Link -> MartNavigationScreen',
-        );
-        martNavigationProvider.initFunction(context: context);
-        // Navigate to mart navigation screen using GlobalDeeplinkHandler navigator key
-        GlobalDeeplinkHandler.navigatorKey.currentState?.push(
-          MaterialPageRoute(builder: (context) => const MartNavigationScreen()),
-        );
-        log('🎯 [FLUTTER] Successfully navigated to mart home');
-        print('🎯 [FLUTTER] PRINT TEST - Successfully navigated to mart home');
-        print(
-          '✅ [DEEP_LINK_SERVICE] Deep link navigation completed successfully',
-        );
-      } else {
-        print(
-          '❌ [DEEP_LINK_SERVICE] Mart not available - Redirecting to dashboard',
-        );
-        // Show coming soon message for zones without mart
-        log(
-          '⚠️ [FLUTTER] Mart not available in current zone: ${Constant.selectedZone?.id}',
-        );
-        print(
-          '⚠️ [FLUTTER] PRINT TEST - Mart not available in current zone: ${Constant.selectedZone?.id}',
-        );
-        print(
-          '🎯 [DEEP_LINK_SERVICE] Navigation: Deep Link -> Dashboard (fallback)',
-        );
-        _navigateToDashboard();
-      }
-
-      print(
-        '🔗 [DEEP_LINK_SERVICE] ===== DEEP LINK MART NAVIGATION COMPLETED =====\n',
-      );
-    } catch (e) {
-      print('❌ [DEEP_LINK_SERVICE] Error navigating to mart home: $e');
-      log('❌ [FLUTTER] Error navigating to mart home: $e');
-      print('❌ [FLUTTER] PRINT TEST - Error navigating to mart home: $e');
-      print(
-        '🎯 [DEEP_LINK_SERVICE] Navigation: Deep Link -> Dashboard (error fallback)',
-      );
-      _navigateToDashboard();
-      print(
-        '🔗 [DEEP_LINK_SERVICE] ===== DEEP LINK MART NAVIGATION COMPLETED (ERROR) =====\n',
-      );
-    }
-  }
+  // NOTE: _navigateToMartHome was previously used as a fallback when product
+  // lookup failed. Deep link routing for products now prefers:
+  // 1) Mart item details (MartProductDetailsScreen)
+  // 2) Restaurant details (RestaurantDetailsScreen)
+  // and no longer redirects to mart home implicitly.
 
   void _navigateToDashboard() {
     try {
@@ -419,21 +380,23 @@ class FinalDeepLinkService {
   void _newSimpleDeepLinkHandler(
     String url,
     BuildContext context,
-    CategoryDetailsProvider categoryDetailsProvider,
+    CategoryDetailsProvider? categoryDetailsProvider,
   ) async {
-    // Wait for Navigator to be available
+    // Wait briefly for Navigator to be available (fast path, max ~2 seconds)
     int attempts = 0;
     while (GlobalDeeplinkHandler.navigatorKey.currentState == null &&
-        attempts < 100) {
-      await Future.delayed(Duration(milliseconds: 100));
+        attempts < 40) {
+      await Future.delayed(const Duration(milliseconds: 50));
       attempts++;
     }
     if (GlobalDeeplinkHandler.navigatorKey.currentState == null) {
+      print(
+        '❌ [NEW HANDLER] Navigator not ready, skipping deep link handling for $url',
+      );
       return;
     }
-    // Wait additional 10 seconds for app to be fully ready
-
-    await Future.delayed(Duration(seconds: 5));
+    // Small extra delay to let the current frame finish (avoid jank)
+    await Future.delayed(const Duration(milliseconds: 200));
 
     // Extract product ID from URL
     final uri = Uri.parse(url);
@@ -484,12 +447,24 @@ class FinalDeepLinkService {
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'category') {
         final categoryId = pathSegments[1];
         print('🔥 [NEW HANDLER] HTTPS scheme - Category ID: $categoryId');
-        _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
+        if (categoryDetailsProvider != null) {
+          _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
+        } else {
+          print(
+            '❌ [NEW HANDLER] CategoryDetailsProvider not available yet, skipping category navigation',
+          );
+        }
         return;
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'categories') {
         final categoryId = pathSegments[1];
         print('🔥 ¸ $categoryId');
-        _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
+        if (categoryDetailsProvider != null) {
+          _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
+        } else {
+          print(
+            '❌ [NEW HANDLER] CategoryDetailsProvider not available yet, skipping category navigation',
+          );
+        }
         return;
       }
       if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
@@ -501,47 +476,111 @@ class FinalDeepLinkService {
         productId = pathSegments[0];
       }
     }
-    final martNavigationProvider = Provider.of<MartNavigationProvider>(
-      context,
-      listen: false,
-    );
+
     if (productId != null) {
-      try {
-        try {
-          final martController = Provider.of<MartProvider>(
-            context,
-            listen: false,
-          );
-
-          final product = await martController.getProductById(productId);
-
-          if (product != null) {
-            GlobalDeeplinkHandler.navigatorKey.currentState?.push(
-              MaterialPageRoute(
-                builder: (context) =>
-                    MartProductDetailsScreen(product: product),
-              ),
-            );
-          } else {
-            _navigateToMartHome(
-              martNavigationProvider: martNavigationProvider,
-              context: context,
-            );
-          }
-        } catch (e) {
-          _navigateToMartHome(
-            martNavigationProvider: martNavigationProvider,
-            context: context,
-          );
-        }
-      } catch (e) {
-        _navigateToMartHome(
-          martNavigationProvider: martNavigationProvider,
-          context: context,
-        );
-      }
+      print('🔥 [NEW HANDLER] Handling product deep link for ID: $productId');
+      await _handleProductDeepLink(productId, context);
     } else {
       print('❌ [NEW HANDLER] No product ID found in URL');
+    }
+  }
+
+  /// Handle product deep links in a robust way:
+  /// 1) Try mart item (MartItemModel) via MartFirestoreService.
+  /// 2) Fallback to restaurant product (ProductModel) via FireStoreUtils,
+  ///    then navigate to the corresponding restaurant details.
+  Future<void> _handleProductDeepLink(
+    String productId,
+    BuildContext context,
+  ) async {
+    try {
+      // Try mart item first
+      MartItemModel? martItem;
+      try {
+        final martService = Get.find<MartFirestoreService>();
+        martItem = await martService.getItemById(productId);
+      } catch (e) {
+        print(
+          '❌ [DEEP_LINK_PRODUCT] Error fetching mart item, will try restaurant product: $e',
+        );
+      }
+
+      if (martItem != null) {
+        print(
+          '✅ [DEEP_LINK_PRODUCT] Found mart item for ID: $productId, navigating to MartProductDetailsScreen',
+        );
+        GlobalDeeplinkHandler.navigatorKey.currentState?.push(
+          MaterialPageRoute(
+            builder: (ctx) => MartProductDetailsScreen(product: martItem),
+          ),
+        );
+        return;
+      }
+
+      // Fallback to restaurant product
+      print(
+        '🔍 [DEEP_LINK_PRODUCT] Mart item not found, trying restaurant product for ID: $productId',
+      );
+      ProductModel? productModel =
+          await FireStoreUtils.getProductById(productId);
+      if (productModel == null) {
+        print(
+          '❌ [DEEP_LINK_PRODUCT] No product (mart or restaurant) found for ID: $productId',
+        );
+        ShowToastDialog.showToast("Product not found".tr);
+        return;
+      }
+
+      VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+        productModel.vendorID.toString(),
+      );
+      if (vendorModel == null) {
+        print(
+          '❌ [DEEP_LINK_PRODUCT] Vendor not found for product ID: $productId',
+        );
+        ShowToastDialog.showToast("Store not found".tr);
+        return;
+      }
+
+      // Ensure zone matches current selected zone
+      if (vendorModel.zoneId != Constant.selectedZone?.id) {
+        print(
+          '⚠️ [DEEP_LINK_PRODUCT] Vendor zone ${vendorModel.zoneId} != selected zone ${Constant.selectedZone?.id}',
+        );
+        ShowToastDialog.showToast(
+          "Sorry, The Zone is not available in your area. Change the other location first."
+              .tr,
+        );
+        return;
+      }
+
+      print(
+        '✅ [DEEP_LINK_PRODUCT] Navigating to RestaurantDetailsScreen for vendor ${vendorModel.id}',
+      );
+      try {
+        final ctx =
+            GlobalDeeplinkHandler.navigatorKey.currentContext ?? context;
+        final restaurantDetailsProvider =
+            Provider.of<RestaurantDetailsProvider>(
+          ctx,
+          listen: false,
+        );
+        restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+      } catch (e) {
+        print(
+          '⚠️ [DEEP_LINK_PRODUCT] Could not initialize RestaurantDetailsProvider: $e',
+        );
+      }
+
+      Get.to(
+        () => const RestaurantDetailsScreen(),
+        arguments: {"vendorModel": vendorModel},
+      );
+    } catch (e) {
+      print(
+        '❌ [DEEP_LINK_PRODUCT] Error handling product deep link for ID $productId: $e',
+      );
+      ShowToastDialog.showToast("Error loading product details".tr);
     }
   }
 
