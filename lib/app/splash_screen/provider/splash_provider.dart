@@ -55,6 +55,7 @@ class SplashProvider extends ChangeNotifier {
         context,
         listen: false,
       );
+      // If user is not logged in, show login page first
       if (apiToken == null || apiToken.isEmpty || userId == null) {
         Get.offAll(
           () => const PhoneNumberScreen(),
@@ -64,6 +65,7 @@ class SplashProvider extends ChangeNotifier {
         _checkUpdatesInBackground();
         return;
       }
+      // User is logged in, proceed to dashboard
       await _loadUserDataFromStorage();
       await homeProvider.initFunction(context: context);
       await addressListProvider.initFunction(context: context);

@@ -5,6 +5,9 @@ import 'package:jippymart_customer/app/mart/screens/mart_address_screen/mart_add
 import 'package:jippymart_customer/app/mart/screens/mart_edit_profile_screen/mart_edit_profile_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/user_model.dart';
+import 'package:jippymart_customer/themes/custom_dialog_box.dart';
+import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
@@ -16,10 +19,6 @@ class MartProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ensure user data is loaded
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _ensureUserDataLoaded();
-    });
     return Scaffold(
       backgroundColor: const Color(0xFFF6F6FF),
       body: Consumer<MartProvider>(
@@ -100,8 +99,22 @@ class MartProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileHeader() {
-    final userModel = Constant.userModel;
+    return FutureBuilder<bool>(
+      future: SqlStorageConst.isUserLoggedIn(),
+      builder: (context, snapshot) {
+        final isLoggedIn = snapshot.data ?? false;
+        final userModel = Constant.userModel;
+        
+        if (!isLoggedIn) {
+          return _buildLoginRequiredView();
+        }
+        
+        return _buildLoggedInProfileHeader(userModel);
+      },
+    );
+  }
 
+  Widget _buildLoggedInProfileHeader(UserModel? userModel) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -186,7 +199,13 @@ class MartProfileScreen extends StatelessWidget {
 
           // Edit Button
           IconButton(
-            onPressed: () {
+            onPressed: () async {
+              // Check if user is logged in
+              final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+              if (!isLoggedIn) {
+                _showLoginRequiredDialog(Get.context!);
+                return;
+              }
               Get.to(() => const MartEditProfileScreen());
             },
             icon: Icon(Icons.edit, color: ColorConst.orangeLight),
@@ -288,7 +307,13 @@ class MartProfileScreen extends StatelessWidget {
             icon: Icons.shopping_bag_outlined,
             title: 'My Orders',
             subtitle: 'View your order history',
-            onTap: () {
+            onTap: () async {
+              // Check if user is logged in
+              final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+              if (!isLoggedIn) {
+                _showLoginRequiredDialog(Get.context!);
+                return;
+              }
               Get.snackbar(
                 'My Orders',
                 'Order history screen coming soon!',
@@ -301,7 +326,13 @@ class MartProfileScreen extends StatelessWidget {
             icon: Icons.favorite_outline,
             title: 'Favorites',
             subtitle: 'Your saved items',
-            onTap: () {
+            onTap: () async {
+              // Check if user is logged in
+              final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+              if (!isLoggedIn) {
+                _showLoginRequiredDialog(Get.context!);
+                return;
+              }
               Get.snackbar(
                 'Favorites',
                 'Favorites screen coming soon!',
@@ -314,7 +345,13 @@ class MartProfileScreen extends StatelessWidget {
             icon: Icons.location_on_outlined,
             title: 'Delivery Addresses',
             subtitle: 'Manage your addresses',
-            onTap: () {
+            onTap: () async {
+              // Check if user is logged in
+              final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+              if (!isLoggedIn) {
+                _showLoginRequiredDialog(Get.context!);
+                return;
+              }
               Get.to(() => const MartAddressScreen());
             },
           ),
@@ -453,23 +490,76 @@ class MartProfileScreen extends StatelessWidget {
     );
   }
 
-  void _ensureUserDataLoaded() async {
-    if (Constant.userModel == null) {
-      final firebaseUser = await SqlStorageConst.getFirebaseId();
-      if (firebaseUser != null) {
-        Get.snackbar(
-          'Loading Profile',
-          'Please wait while we load your profile data...',
-          snackPosition: SnackPosition.BOTTOM,
+  Widget _buildLoginRequiredView() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Image.asset("assets/images/login.gif", height: 120),
+          const SizedBox(height: 12),
+          Text(
+            "Please Log In to Continue".tr,
+            style: TextStyle(
+              color: AppThemeData.grey800,
+              fontSize: 22,
+              fontFamily: AppThemeData.semiBold,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            "You're not logged in. Please sign in to access your account and explore all features."
+                .tr,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppThemeData.grey500,
+              fontSize: 16,
+              fontFamily: AppThemeData.bold,
+            ),
+          ),
+          const SizedBox(height: 20),
+          RoundedButtonFill(
+            title: "Log in".tr,
+            width: 55,
+            height: 5.5,
+            color: AppThemeData.primary300,
+            textColor: AppThemeData.grey50,
+            onPress: () async {
+              _showLoginRequiredDialog(Get.context!);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CustomDialogBox(
+          title: "Login Required".tr,
+          descriptions:
+              "Please login to access your profile information and manage your account."
+                  .tr,
+          positiveString: "Login".tr,
+          negativeString: "Cancel".tr,
+          positiveClick: () {
+            Get.back(); // Close dialog
+            Get.to(() => const PhoneNumberScreen());
+          },
+          negativeClick: () {
+            Get.back(); // Close dialog
+          },
+          img: Image.asset(
+            'assets/images/ic_launcher.png',
+            height: 50,
+            width: 50,
+          ),
         );
-      } else {
-        Get.offAll(
-          () => const PhoneNumberScreen(),
-          transition: Transition.fadeIn,
-          duration: const Duration(milliseconds: 1200),
-        );
-      }
-    }
+      },
+    );
   }
 
   String _getUserInitials(UserModel? userModel) {

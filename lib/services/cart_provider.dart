@@ -8,6 +8,8 @@ import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
+import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -92,6 +94,13 @@ class CartProvider with ChangeNotifier {
     CartProductModel product,
     int quantity,
   ) async {
+    // Check if user is logged in before adding to cart
+    final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+    if (!isLoggedIn) {
+      _showLoginRequiredDialog(context);
+      return false;
+    }
+
     print('DEBUG: CartProvider addToCart called');
     print('DEBUG: Cart Provider - Product: ${product.name}');
     print('DEBUG: Cart Provider - Price: ${product.price}');
@@ -319,6 +328,34 @@ class CartProvider with ChangeNotifier {
   }
 
   // Show dialog when trying to add items from different restaurants
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CustomDialogBox(
+          title: "Login Required".tr,
+          descriptions:
+              "Please login to add items to your cart and continue shopping."
+                  .tr,
+          positiveString: "Login".tr,
+          negativeString: "Cancel".tr,
+          positiveClick: () {
+            Get.back(); // Close dialog
+            Get.to(() => const PhoneNumberScreen());
+          },
+          negativeClick: () {
+            Get.back(); // Close dialog
+          },
+          img: Image.asset(
+            'assets/images/ic_launcher.png',
+            height: 50,
+            width: 50,
+          ),
+        );
+      },
+    );
+  }
+
   void _showRestaurantConflictDialog(
     BuildContext context,
     CartProductModel product,

@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
+import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/provider/order_placing_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
@@ -42,6 +43,7 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widgets/delivery_zone_alert_dialog.dart'
     show DeliveryZoneAlertDialog;
+import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -884,12 +886,12 @@ class CartControllerProvider extends ChangeNotifier {
       selectedAddress = null;
       _addressInitialized = false;
       notifyListeners();
-      _showAddressRequiredAlert();
+      // _showAddressRequiredAlert();
     } catch (e) {
       print('🏠 [ADDRESS_PRIORITY] ❌ ERROR in address initialization: $e');
       selectedAddress = null;
       _addressInitialized = false;
-      _showAddressRequiredAlert();
+      // _showAddressRequiredAlert();
     }
     notifyListeners();
   }
@@ -1065,26 +1067,26 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Show alert when address is required
-  void _showAddressRequiredAlert() {
-    Get.dialog(
-      AlertDialog(
-        title: Text('Address Required'.tr),
-        content: Text(
-          'Please add a delivery address to continue with your order.'.tr,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Get.back();
-              Get.to(() => const AddressListScreen());
-            },
-            child: Text('Add Address'.tr),
-          ),
-          TextButton(onPressed: () => Get.back(), child: Text('Cancel'.tr)),
-        ],
-      ),
-    );
-  }
+  // void _showAddressRequiredAlert() {
+  //   Get.dialog(
+  //     AlertDialog(
+  //       title: Text('Address Required'.tr),
+  //       content: Text(
+  //         'Please add a delivery address to continue with your order.'.tr,
+  //       ),
+  //       actions: [
+  //         TextButton(
+  //           onPressed: () {
+  //             Get.back();
+  //             Get.to(() => const AddressListScreen());
+  //           },
+  //           child: Text('Add Address'.tr),
+  //         ),
+  //         TextButton(onPressed: () => Get.back(), child: Text('Cancel'.tr)),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   ///
   Future<String?> _detectZoneIdForCoordinates(
@@ -3154,6 +3156,15 @@ class CartControllerProvider extends ChangeNotifier {
     required bool isIncrement,
     required int quantity,
   }) async {
+    // Check if user is logged in before adding to cart (only for increment)
+    if (isIncrement) {
+      final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+      if (!isLoggedIn) {
+        _showLoginRequiredDialog(Get.context!);
+        return false;
+      }
+    }
+
     if (isIncrement) {
       if (cartProductModel.promoId != null &&
           cartProductModel.promoId!.isNotEmpty) {
@@ -3192,6 +3203,34 @@ class CartControllerProvider extends ChangeNotifier {
     await _incrementalCartUpdate();
     notifyListeners();
     return true;
+  }
+
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CustomDialogBox(
+          title: "Login Required".tr,
+          descriptions:
+              "Please login to add items to your cart and continue shopping."
+                  .tr,
+          positiveString: "Login".tr,
+          negativeString: "Cancel".tr,
+          positiveClick: () {
+            Get.back(); // Close dialog
+            Get.to(() => const PhoneNumberScreen());
+          },
+          negativeClick: () {
+            Get.back(); // Close dialog
+          },
+          img: Image.asset(
+            'assets/images/ic_launcher.png',
+            height: 50,
+            width: 50,
+          ),
+        );
+      },
+    );
   }
 
   /// 🔑 OPTIMIZED: Incremental cart update - only loads new products and recalculates prices

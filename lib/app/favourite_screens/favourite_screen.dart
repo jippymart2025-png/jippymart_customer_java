@@ -20,6 +20,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
+import '../auth_screen/phone_number_screen.dart';
+
 class FavouriteScreen extends StatelessWidget {
   const FavouriteScreen({super.key});
 
@@ -134,7 +136,7 @@ class FavouriteScreen extends StatelessWidget {
             color: AppThemeData.primary300,
             textColor: AppThemeData.grey50,
             onPress: () async {
-              Get.offAll(const LoginScreen());
+              Get.offAll(const PhoneNumberScreen());
             },
           ),
         ],

@@ -6,7 +6,7 @@ import 'package:jippymart_customer/app/edit_profile_screen/edit_profile_screen.d
 import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/constant/show_toast_dialog.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
@@ -103,20 +103,22 @@ class ProfileScreen extends StatelessWidget {
                                 builder: (context, editProfileProvider, _) {
                                   return Column(
                                     children: [
-                                      Constant.userModel == null
-                                          ? const SizedBox()
-                                          : cardDecoration(
-                                              controller,
-                                              "assets/images/ic_profile.svg",
-                                              "Profile Information".tr,
-                                              () {
-                                                editProfileProvider
-                                                    .initFunction();
-                                                Get.to(
-                                                  const EditProfileScreen(),
-                                                );
-                                              },
-                                            ),
+                                      cardDecoration(
+                                        controller,
+                                        "assets/images/ic_profile.svg",
+                                        "Profile Information".tr,
+                                        () async {
+                                          // Check if user is logged in
+                                          final isLoggedIn =
+                                              await SqlStorageConst.isUserLoggedIn();
+                                          if (!isLoggedIn) {
+                                            _showLoginRequiredDialog(context);
+                                            return;
+                                          }
+                                          editProfileProvider.initFunction();
+                                          Get.to(const EditProfileScreen());
+                                        },
+                                      ),
                                     ],
                                   );
                                 },
@@ -485,6 +487,34 @@ class ProfileScreen extends StatelessWidget {
                 );
         },
       ),
+    );
+  }
+
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CustomDialogBox(
+          title: "Login Required".tr,
+          descriptions:
+              "Please login to access your profile information and manage your account."
+                  .tr,
+          positiveString: "Login".tr,
+          negativeString: "Cancel".tr,
+          positiveClick: () {
+            Get.back(); // Close dialog
+            Get.to(() => const PhoneNumberScreen());
+          },
+          negativeClick: () {
+            Get.back(); // Close dialog
+          },
+          img: Image.asset(
+            'assets/images/ic_launcher.png',
+            height: 50,
+            width: 50,
+          ),
+        );
+      },
     );
   }
 

@@ -12,6 +12,9 @@ import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/widget/special_price_badge.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
+import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -578,7 +581,7 @@ class ProductListView extends StatelessWidget {
                       : SvgPicture.asset("assets/icons/ic_like.svg"),
                 ),
               ),
-              !controller.canAcceptOrders() || Constant.userModel == null
+              !controller.canAcceptOrders()
                   ? const SizedBox()
                   : Positioned(
                       bottom: 10,
@@ -629,6 +632,12 @@ class ProductListView extends StatelessWidget {
         color: AppThemeData.grey50,
         textColor: AppThemeData.primary300,
         onPress: () async {
+          // Check if user is logged in
+          final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+          if (!isLoggedIn) {
+            _showLoginRequiredDialog(Get.context!);
+            return;
+          }
           controller.selectedVariants.clear();
           controller.selectedIndexVariants.clear();
           controller.selectedIndexArray.clear();
@@ -693,7 +702,13 @@ class ProductListView extends StatelessWidget {
               ),
             ),
             InkWell(
-              onTap: () {
+              onTap: () async {
+                // Check if user is logged in
+                final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+                if (!isLoggedIn) {
+                  _showLoginRequiredDialog(Get.context!);
+                  return;
+                }
                 final currentQty = _findCartItemQuantity(productId);
                 if ((currentQty) <= (productModel.quantity ?? 0) ||
                     (productModel.quantity ?? 0) == -1) {
@@ -757,7 +772,13 @@ class ProductListView extends StatelessWidget {
         height: 4,
         color: AppThemeData.grey50,
         textColor: AppThemeData.primary300,
-        onPress: () {
+        onPress: () async {
+          // Check if user is logged in
+          final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+          if (!isLoggedIn) {
+            _showLoginRequiredDialog(Get.context!);
+            return;
+          }
           // Non-blocking call - UI updates immediately
           controller.addProductAndRemoveProductFunction(
             productModel: productModel,
@@ -767,6 +788,34 @@ class ProductListView extends StatelessWidget {
         },
       );
     }
+  }
+
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CustomDialogBox(
+          title: "Login Required".tr,
+          descriptions:
+              "Please login to add items to your cart and continue shopping."
+                  .tr,
+          positiveString: "Login".tr,
+          negativeString: "Cancel".tr,
+          positiveClick: () {
+            Get.back(); // Close dialog
+            Get.to(() => const PhoneNumberScreen());
+          },
+          negativeClick: () {
+            Get.back(); // Close dialog
+          },
+          img: Image.asset(
+            'assets/images/ic_launcher.png',
+            height: 50,
+            width: 50,
+          ),
+        );
+      },
+    );
   }
 
   int _findCartItemQuantity(String productId) {

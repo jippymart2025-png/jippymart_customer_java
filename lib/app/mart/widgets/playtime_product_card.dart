@@ -4,6 +4,9 @@ import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
+import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -30,7 +33,7 @@ class PlaytimeProductCard extends StatelessWidget {
     this.product, // Optional product model
   });
 
-  void _handleAddToCart(BuildContext context) {
+  void _handleAddToCart(BuildContext context) async {
     if (product == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -38,6 +41,13 @@ class PlaytimeProductCard extends StatelessWidget {
           backgroundColor: Colors.red,
         ),
       );
+      return;
+    }
+
+    // Check if user is logged in before adding to cart
+    final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+    if (!isLoggedIn) {
+      _showLoginRequiredDialog(context);
       return;
     }
 
@@ -105,6 +115,34 @@ class PlaytimeProductCard extends StatelessWidget {
         ),
       );
     }
+  }
+
+  void _showLoginRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CustomDialogBox(
+          title: "Login Required".tr,
+          descriptions:
+              "Please login to add items to your cart and continue shopping."
+                  .tr,
+          positiveString: "Login".tr,
+          negativeString: "Cancel".tr,
+          positiveClick: () {
+            Get.back(); // Close dialog
+            Get.to(() => const PhoneNumberScreen());
+          },
+          negativeClick: () {
+            Get.back(); // Close dialog
+          },
+          img: Image.asset(
+            'assets/images/ic_launcher.png',
+            height: 50,
+            width: 50,
+          ),
+        );
+      },
+    );
   }
 
   @override

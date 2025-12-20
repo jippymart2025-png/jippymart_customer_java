@@ -1,5 +1,6 @@
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:jippymart_customer/app/auth_screen/provider/login_provider.dart';
+import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
@@ -54,7 +55,28 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
         return Scaffold(
           backgroundColor: AppThemeData.surface,
           extendBodyBehindAppBar: true,
-          appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            actions: [
+              InkWell(
+                onTap: () {
+                  Get.offAll(() => const DashBoardScreen());
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    "Skip".tr,
+                    style: TextStyle(
+                      color: AppThemeData.primary300,
+                      fontSize: 18,
+                      fontFamily: AppThemeData.semiBold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           body: Stack(
             children: [
               Positioned(

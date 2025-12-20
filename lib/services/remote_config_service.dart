@@ -33,7 +33,7 @@ class RemoteConfigService {
       await _remoteConfig.fetchAndActivate();
       final fetchedUrl = _remoteConfig.getString('base_url');
       if (fetchedUrl.isNotEmpty) {
-        AppConst.baseUrl = "http://192.168.0.107:8002/api/";
+        AppConst.baseUrl = "http://192.168.0.112:8002/api/";
         // _normalizeUrl(fetchedUrl);
         if (kDebugMode) {
           print('[RemoteConfig] base_url fetched: $fetchedUrl');

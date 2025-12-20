@@ -28,6 +28,8 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../auth_screen/phone_number_screen.dart';
+
 class OrderScreen extends StatelessWidget {
   const OrderScreen({super.key});
 
@@ -92,7 +94,7 @@ class OrderScreen extends StatelessWidget {
                                 color: AppThemeData.primary300,
                                 textColor: AppThemeData.grey50,
                                 onPress: () async {
-                                  Get.offAll(const LoginScreen());
+                                  Get.offAll(const PhoneNumberScreen());
                                 },
                               ),
                             ],
