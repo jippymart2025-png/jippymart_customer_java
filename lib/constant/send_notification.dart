@@ -75,7 +75,6 @@ class SendNotification {
           },
         }),
       );
-
       debugPrint("Notification=======>");
       debugPrint(response.statusCode.toString());
       debugPrint(response.body);

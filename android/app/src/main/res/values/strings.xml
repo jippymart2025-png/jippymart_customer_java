@@ -1,16 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Facebook App ID -->
-    <string name="facebook_app_id">640838582128923</string>
-    <!-- 
-    Facebook Client Token (Optional but recommended for production)
-    To get your Client Token:
-    1. Go to https://developers.facebook.com/apps/
-    2. Select your app (App ID: 640838582128923)
-    3. Go to Settings > Basic
-    4. Find "App Secret" and "Client Token" section
-    5. Copy the Client Token and replace YOUR_CLIENT_TOKEN_HERE below
-    -->
-    <string name="facebook_client_token">640838582128923|qTBqYZbLtSkKFXP5YaVxhxx9fGg</string>
+    <string name="app_name">JippyMart</string>
 </resources>
-

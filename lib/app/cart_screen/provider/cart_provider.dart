@@ -3682,7 +3682,6 @@ class CartControllerProvider extends ChangeNotifier {
         } else {
           if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
             ShowToastDialog.closeLoader();
-
             ShowToastDialog.showToast("Restaurant Closed");
             endOrderProcessing();
             return;

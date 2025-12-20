@@ -13,7 +13,7 @@ class NetworkImageWidget extends StatelessWidget {
   final double? width;
   final Widget? errorWidget;
   final BoxFit? fit;
-  final double? borderRadius;
+  final double? borderRadius;    
   final Color? color;
   final bool fixOrientation;
 

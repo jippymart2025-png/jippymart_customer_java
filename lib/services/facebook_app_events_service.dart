@@ -1,251 +1,303 @@
 import 'package:facebook_app_events/facebook_app_events.dart';
 import 'package:flutter/foundation.dart';
 
-/// Service for managing Facebook App Events
+/// Facebook App Events Service
 /// 
-/// This service provides a centralized way to log Facebook App Events
-/// including standard events (purchases, add to cart, etc.) and custom events.
+/// Provides a wrapper around Facebook App Events SDK for tracking user events
 class FacebookAppEventsService {
-  static final FacebookAppEventsService _instance =
-      FacebookAppEventsService._internal();
-
+  static final FacebookAppEventsService _instance = FacebookAppEventsService._internal();
+  
   factory FacebookAppEventsService() => _instance;
-
+  
   FacebookAppEventsService._internal();
+  
+  final FacebookAppEvents _facebookAppEvents = FacebookAppEvents();
+  bool _isInitialized = false;
 
-  static FacebookAppEvents? _facebookAppEvents;
-
-  /// Initialize Facebook App Events
-  /// 
-  /// This should be called once during app startup, typically in main.dart
+  /// Initialize Facebook App Events SDK
   Future<void> initialize() async {
-    try {
-      _facebookAppEvents = FacebookAppEvents();
+    if (_isInitialized) {
       if (kDebugMode) {
-        print('✅ Facebook App Events initialized successfully');
+        print('📱 [FB EVENTS] Already initialized');
+      }
+      return;
+    }
+
+    try {
+      // Facebook App Events SDK initializes automatically
+      // No explicit initialization needed for version 0.19.2
+      _isInitialized = true;
+      
+      if (kDebugMode) {
+        print('✅ [FB EVENTS] Facebook App Events initialized successfully');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error initializing Facebook App Events: $e');
+        print('❌ [FB EVENTS] Error initializing Facebook App Events: $e');
       }
+      // Don't rethrow - allow app to continue even if FB events fail
     }
   }
 
-  /// Log a standard or custom event
+  /// Log a custom event
   /// 
-  /// [eventName] - The name of the event (e.g., 'Purchase', 'AddToCart', 'ViewContent')
-  /// [parameters] - Optional parameters to include with the event
+  /// [eventName] - Name of the event
+  /// [parameters] - Optional parameters to attach to the event
   Future<void> logEvent(
     String eventName, {
     Map<String, dynamic>? parameters,
-    double? valueToSum,
   }) async {
-    try {
-      if (_facebookAppEvents == null) {
-        await initialize();
+    if (!_isInitialized) {
+      if (kDebugMode) {
+        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
       }
+      return;
+    }
 
-      if (_facebookAppEvents != null) {
-        await _facebookAppEvents!.logEvent(
-          name: eventName,
-          parameters: parameters,
-          valueToSum: valueToSum,
-        );
-
-        if (kDebugMode) {
-          print('📊 Facebook App Event logged: $eventName');
-          if (parameters != null) {
-            print('   Parameters: $parameters');
-          }
-          if (valueToSum != null) {
-            print('   Value: $valueToSum');
-          }
-        }
+    try {
+      await _facebookAppEvents.logEvent(
+        name: eventName,
+        parameters: parameters ?? {},
+      );
+      
+      if (kDebugMode) {
+        print('📊 [FB EVENTS] Logged event: $eventName');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error logging Facebook App Event: $e');
+        print('❌ [FB EVENTS] Error logging event $eventName: $e');
       }
     }
   }
 
   /// Log a purchase event
   /// 
-  /// [amount] - The purchase amount
-  /// [currency] - The currency code (e.g., 'USD', 'INR')
-  /// [parameters] - Additional parameters (e.g., content_id, content_type)
+  /// [amount] - Purchase amount
+  /// [currency] - Currency code (e.g., 'USD', 'INR')
+  /// [parameters] - Optional parameters
   Future<void> logPurchase({
     required double amount,
     required String currency,
     Map<String, dynamic>? parameters,
   }) async {
-    final purchaseParams = {
-      'fb_currency': currency,
-      ...?parameters,
-    };
+    if (!_isInitialized) {
+      if (kDebugMode) {
+        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+      }
+      return;
+    }
 
-    await logEvent(
-      'fb_mobile_purchase',
-      valueToSum: amount,
-      parameters: purchaseParams,
-    );
+    try {
+      await _facebookAppEvents.logPurchase(
+        amount: amount,
+        currency: currency,
+        parameters: parameters ?? {},
+      );
+      
+      if (kDebugMode) {
+        print('💰 [FB EVENTS] Logged purchase: $amount $currency');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [FB EVENTS] Error logging purchase: $e');
+      }
+    }
   }
 
-  /// Log an "Add to Cart" event
+  /// Log an add to cart event
   /// 
-  /// [amount] - The item amount
-  /// [currency] - The currency code
-  /// [contentId] - The product/content ID
-  /// [contentType] - The type of content (e.g., 'product')
+  /// [amount] - Item amount
+  /// [currency] - Currency code
+  /// [contentId] - Content/product ID
+  /// [contentType] - Content type (e.g., 'product')
   Future<void> logAddToCart({
     required double amount,
     required String currency,
     String? contentId,
     String? contentType,
   }) async {
-    final params = <String, dynamic>{
-      'fb_currency': currency,
-    };
-
-    if (contentId != null) {
-      params['fb_content_id'] = contentId;
-    }
-    if (contentType != null) {
-      params['fb_content_type'] = contentType;
+    if (!_isInitialized) {
+      if (kDebugMode) {
+        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+      }
+      return;
     }
 
-    await logEvent(
-      'fb_mobile_add_to_cart',
-      valueToSum: amount,
-      parameters: params,
-    );
+    try {
+      final parameters = <String, dynamic>{
+        'fb_currency': currency,
+      };
+      if (contentId != null) {
+        parameters['fb_content_id'] = contentId;
+      }
+      if (contentType != null) {
+        parameters['fb_content_type'] = contentType;
+      }
+
+      await _facebookAppEvents.logEvent(
+        name: 'fb_mobile_add_to_cart',
+        valueToSum: amount,
+        parameters: parameters,
+      );
+      
+      if (kDebugMode) {
+        print('🛒 [FB EVENTS] Logged add to cart: $amount $currency');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [FB EVENTS] Error logging add to cart: $e');
+      }
+    }
   }
 
-  /// Log a "View Content" event
+  /// Log a view content event
   /// 
-  /// [contentId] - The product/content ID
-  /// [contentType] - The type of content
-  /// [currency] - Optional currency code
-  /// [value] - Optional value of the content
+  /// [contentId] - Content/product ID
+  /// [contentType] - Content type
+  /// [currency] - Currency code
+  /// [value] - Value of the content
   Future<void> logViewContent({
-    String? contentId,
-    String? contentType,
+    required String contentId,
+    required String contentType,
     String? currency,
     double? value,
   }) async {
-    final params = <String, dynamic>{};
-
-    if (contentId != null) {
-      params['fb_content_id'] = contentId;
-    }
-    if (contentType != null) {
-      params['fb_content_type'] = contentType;
-    }
-    if (currency != null) {
-      params['fb_currency'] = currency;
+    if (!_isInitialized) {
+      if (kDebugMode) {
+        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+      }
+      return;
     }
 
-    await logEvent(
-      'fb_mobile_content_view',
-      valueToSum: value,
-      parameters: params.isNotEmpty ? params : null,
-    );
+    try {
+      final parameters = <String, dynamic>{
+        'fb_content_id': contentId,
+        'fb_content_type': contentType,
+      };
+      
+      if (currency != null) {
+        parameters['fb_currency'] = currency;
+      }
+      if (value != null) {
+        parameters['fb_value'] = value;
+      }
+
+      await _facebookAppEvents.logEvent(
+        name: 'fb_mobile_content_view',
+        valueToSum: value,
+        parameters: parameters,
+      );
+      
+      if (kDebugMode) {
+        print('👁️ [FB EVENTS] Logged view content: $contentId');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [FB EVENTS] Error logging view content: $e');
+      }
+    }
   }
 
-  /// Log an "Initiate Checkout" event
+  /// Log a search event
   /// 
-  /// [amount] - The checkout amount
-  /// [currency] - The currency code
-  /// [numItems] - Number of items in the cart
+  /// [searchString] - Search query string
+  /// [contentType] - Content type being searched
+  Future<void> logSearch({
+    required String searchString,
+    String? contentType,
+  }) async {
+    if (!_isInitialized) {
+      if (kDebugMode) {
+        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+      }
+      return;
+    }
+
+    try {
+      final parameters = <String, dynamic>{
+        'fb_search_string': searchString,
+      };
+      
+      if (contentType != null) {
+        parameters['fb_content_type'] = contentType;
+      }
+
+      await _facebookAppEvents.logEvent(
+        name: 'fb_mobile_search',
+        parameters: parameters,
+      );
+      
+      if (kDebugMode) {
+        print('🔍 [FB EVENTS] Logged search: $searchString');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ [FB EVENTS] Error logging search: $e');
+      }
+    }
+  }
+
+  /// Log an initiate checkout event
+  /// 
+  /// [amount] - Checkout amount
+  /// [currency] - Currency code
+  /// [numItems] - Number of items in checkout
   Future<void> logInitiateCheckout({
     required double amount,
     required String currency,
     int? numItems,
   }) async {
-    final params = <String, dynamic>{
-      'fb_currency': currency,
-    };
-
-    if (numItems != null) {
-      params['fb_num_items'] = numItems.toString();
+    if (!_isInitialized) {
+      if (kDebugMode) {
+        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+      }
+      return;
     }
 
-    await logEvent(
-      'fb_mobile_initiated_checkout',
-      valueToSum: amount,
-      parameters: params,
-    );
-  }
-
-  /// Log a "Search" event
-  /// 
-  /// [searchString] - The search query
-  /// [contentType] - Optional content type
-  Future<void> logSearch({
-    required String searchString,
-    String? contentType,
-  }) async {
-    final params = <String, dynamic>{
-      'fb_search_string': searchString,
-    };
-
-    if (contentType != null) {
-      params['fb_content_type'] = contentType;
-    }
-
-    await logEvent(
-      'fb_mobile_search',
-      parameters: params,
-    );
-  }
-
-  /// Set user ID for tracking
-  /// 
-  /// Note: This is done by logging events with user_id parameter
-  /// [userId] - The user identifier
-  Future<void> setUserId(String userId) async {
     try {
-      // Log user ID as a custom event parameter
-      // The Facebook SDK will automatically associate this with subsequent events
-      await logEvent(
-        'fb_mobile_activate_app',
-        parameters: {'user_id': userId},
+      final parameters = <String, dynamic>{
+        'fb_currency': currency,
+      };
+      
+      if (numItems != null) {
+        parameters['fb_num_items'] = numItems;
+      }
+
+      await _facebookAppEvents.logEvent(
+        name: 'fb_mobile_initiated_checkout',
+        valueToSum: amount,
+        parameters: parameters,
       );
+      
       if (kDebugMode) {
-        print('👤 Facebook App Events User ID set: $userId');
+        print('🛍️ [FB EVENTS] Logged initiate checkout: $amount $currency');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error setting Facebook App Events User ID: $e');
+        print('❌ [FB EVENTS] Error logging initiate checkout: $e');
       }
     }
   }
 
-  /// Clear user ID
-  /// 
-  /// Note: User ID tracking is managed through event parameters
-  Future<void> clearUserId() async {
-    if (kDebugMode) {
-      print('👤 Facebook App Events User ID cleared (no longer including in events)');
-    }
-  }
-
-  /// Flush events immediately
-  /// 
-  /// This forces the SDK to send all pending events to Facebook
+  /// Flush pending events to Facebook
   Future<void> flush() async {
+    if (!_isInitialized) {
+      if (kDebugMode) {
+        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+      }
+      return;
+    }
+
     try {
-      if (_facebookAppEvents != null) {
-        await _facebookAppEvents!.flush();
-        if (kDebugMode) {
-          print('📤 Facebook App Events flushed');
-        }
+      await _facebookAppEvents.flush();
+      
+      if (kDebugMode) {
+        print('📤 [FB EVENTS] Flushed pending events');
       }
     } catch (e) {
       if (kDebugMode) {
-        print('❌ Error flushing Facebook App Events: $e');
+        print('❌ [FB EVENTS] Error flushing events: $e');
       }
     }
   }
 }
-
