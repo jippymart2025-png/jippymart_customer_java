@@ -1,4 +1,3 @@
-import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
@@ -591,24 +590,66 @@ class FavouriteScreen extends StatelessWidget {
             String price = map['price'];
             String disPrice = map['disPrice'];
 
-            return Container(
-              margin: const EdgeInsets.symmetric(vertical: 8),
-              decoration: ShapeDecoration(
-                color: AppThemeData.grey50,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                shadows: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+            return InkWell(
+              onTap: () async {
+                try {
+                  ShowToastDialog.showLoader("Please wait".tr);
+                  VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+                    productModel.vendorID.toString(),
+                  );
+                  ShowToastDialog.closeLoader();
+
+                  if (vendorModel != null) {
+                    if (vendorModel.zoneId == Constant.selectedZone!.id) {
+                      RestaurantDetailsProvider restaurantDetailsProvider =
+                          Provider.of<RestaurantDetailsProvider>(
+                            context,
+                            listen: false,
+                          );
+                      restaurantDetailsProvider.initFunction(
+                        vendorModels: vendorModel,
+                      );
+                      Get.to(
+                        RestaurantDetailsScreen(
+                          scrollToProductId: productModel.id.toString(),
+                        ),
+                        arguments: {"vendorModel": vendorModel},
+                      );
+                    } else {
+                      ShowToastDialog.showToast(
+                        "Sorry, The Zone is not available in your area. change the other location first."
+                            .tr,
+                      );
+                    }
+                  } else {
+                    ShowToastDialog.showToast("Store not found".tr);
+                  }
+                } catch (e) {
+                  ShowToastDialog.closeLoader();
+                  ShowToastDialog.showToast(
+                    "Error loading restaurant details".tr,
+                  );
+                }
+              },
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                margin: const EdgeInsets.symmetric(vertical: 8),
+                decoration: ShapeDecoration(
+                  color: AppThemeData.grey50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
+                  shadows: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Food Image
@@ -669,7 +710,7 @@ class FavouriteScreen extends StatelessWidget {
                                 ),
                               ),
                               // Favorite remove button
-                              InkWell(
+                              GestureDetector(
                                 onTap: () async {
                                   try {
                                     await favouriteProvider
@@ -697,11 +738,14 @@ class FavouriteScreen extends StatelessWidget {
                                     );
                                   }
                                 },
-                                child: SvgPicture.asset(
-                                  "assets/icons/ic_like_fill.svg",
-                                  colorFilter: ColorFilter.mode(
-                                    AppThemeData.primary300,
-                                    BlendMode.srcIn,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: SvgPicture.asset(
+                                    "assets/icons/ic_like_fill.svg",
+                                    colorFilter: ColorFilter.mode(
+                                      AppThemeData.primary300,
+                                      BlendMode.srcIn,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -806,6 +850,7 @@ class FavouriteScreen extends StatelessWidget {
                       ),
                     ),
                   ],
+                  ),
                 ),
               ),
             );
