@@ -76,4 +76,56 @@ class Responsive {
       return screenWidth * 0.6;
     }
   }
+  
+  // ✅ Check if device is iPad
+  static bool isIPad(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    // iPad detection: width >= 768 or height >= 1024 (in portrait)
+    return size.shortestSide >= 600;
+  }
+  
+  // ✅ Get optimal column count for grid layouts
+  static int getGridColumnCount(BuildContext context, {int mobileColumns = 2}) {
+    if (isIPad(context)) {
+      return isLandscape(context) ? 4 : 3;
+    } else if (isTablet(context)) {
+      return isLandscape(context) ? 3 : 2;
+    }
+    return mobileColumns;
+  }
+  
+  // ✅ Get optimal card width for iPad
+  static double getCardWidth(BuildContext context, {double? maxWidth}) {
+    if (isIPad(context)) {
+      final contentWidth = getContentWidth(context);
+      final cardWidth = contentWidth / getGridColumnCount(context);
+      return maxWidth != null ? cardWidth.clamp(0, maxWidth) : cardWidth;
+    }
+    return double.infinity;
+  }
+  
+  // ✅ Get optimal spacing for iPad
+  static double getSpacing(BuildContext context, {double baseSpacing = 16.0}) {
+    if (isIPad(context)) {
+      return baseSpacing * 1.5;
+    } else if (isTablet(context)) {
+      return baseSpacing * 1.25;
+    }
+    return baseSpacing;
+  }
+  
+  // ✅ Get optimal horizontal spacing (for padding)
+  static double getHorizontalSpacing(BuildContext context, {double baseSpacing = 16.0}) {
+    return getSpacing(context, baseSpacing: baseSpacing);
+  }
+  
+  // ✅ Get optimal max content width (prevents content from being too wide on iPad)
+  static double getMaxContentWidth(BuildContext context) {
+    if (isIPad(context)) {
+      return 1200.0; // Max width for iPad
+    } else if (isTablet(context)) {
+      return 900.0; // Max width for tablets
+    }
+    return double.infinity; // No limit for mobile
+  }
 }

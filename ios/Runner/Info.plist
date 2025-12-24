@@ -61,32 +61,35 @@
 	</array>
 
 	<!-- ================= PERMISSIONS ================= -->
+	<!-- 
+		All permissions are requested only after user action (e.g., tapping camera button, selecting location).
+		No permissions are requested on app launch.
+	-->
 
-	<!-- Location -->
+	<!-- Location: Required for finding nearby restaurants and calculating delivery distance -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>JippyMart uses your location to show nearby restaurants and calculate delivery distance.</string>
+	<string>JippyMart needs your location to show nearby restaurants and calculate accurate delivery distance and charges.</string>
 
+	<!-- Location Always: Required because code checks for always permission (even though only when-in-use is requested) -->
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>JippyMart uses your location to provide accurate delivery services.</string>
+	<string>JippyMart needs your location to show nearby restaurants and calculate accurate delivery distance and charges.</string>
 
-	<!-- Camera -->
+	<!-- Camera: Required for taking photos (profile picture, order reviews, chat) -->
 	<key>NSCameraUsageDescription</key>
-	<string>JippyMart needs camera access to upload profile photos and documents.</string>
+	<string>JippyMart needs camera access to take photos for your profile picture, order reviews, and chat messages.</string>
 
-	<!-- Photos -->
+	<!-- Photo Library: Required for selecting images from gallery -->
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>JippyMart needs photo access to upload images from your gallery.</string>
+	<string>JippyMart needs access to your photos to select images for your profile picture, order reviews, and chat messages.</string>
 
+	<!-- Photo Library Add: Required if saving images (optional, but kept for future features) -->
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>JippyMart saves images to your photo library when requested.</string>
+	<string>JippyMart needs permission to save images to your photo library when you choose to save them.</string>
 
-	<!-- Microphone -->
-	<key>NSMicrophoneUsageDescription</key>
-	<string>JippyMart uses the microphone for video and voice features.</string>
-
-	<!-- Notifications -->
+	<!-- Notifications: Required for push notifications (order updates, offers) -->
+	<!-- Note: NSUserNotificationUsageDescription is deprecated for iOS 10+ but kept for backward compatibility -->
 	<key>NSUserNotificationUsageDescription</key>
-	<string>JippyMart sends notifications about order status, offers, and updates.</string>
+	<string>JippyMart sends notifications about your order status, delivery updates, and special offers.</string>
 
 	<!-- Network -->
 	<key>NSAppTransportSecurity</key>
@@ -97,6 +100,21 @@
 
 	<!-- Google Maps / Platform Views -->
 	<key>io.flutter.embedded_views_preview</key>
+	<true/>
+
+	<!-- iPad Support -->
+	<key>UIRequiresFullScreen</key>
+	<false/>
+	
+	<!-- iPad Multitasking Support -->
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	
+	<!-- iPad Split View Support -->
+	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
 </dict>

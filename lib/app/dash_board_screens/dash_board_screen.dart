@@ -11,6 +11,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
+import 'package:jippymart_customer/widget/network_status_banner.dart';
+import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:provider/provider.dart';
 
 class DashBoardScreen extends StatefulWidget {
@@ -99,9 +101,23 @@ class _DashBoardScreenState extends State<DashBoardScreen> {
                 }
               },
               child: Scaffold(
-                body: IndexedStack(
-                  index: safeIndex,
-                  children: controller.pageList,
+                body: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: Responsive.getMaxContentWidth(context),
+                    ),
+                    child: Column(
+                      children: [
+                        const NetworkStatusBanner(),
+                        Expanded(
+                          child: IndexedStack(
+                            index: safeIndex,
+                            children: controller.pageList,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 bottomNavigationBar: _buildBottomNavigationBar(
                   controller,

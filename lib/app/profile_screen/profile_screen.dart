@@ -8,6 +8,7 @@ import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_s
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
+import 'package:jippymart_customer/services/app_update_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
@@ -21,6 +22,7 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'dart:io';
 
 import '../edit_profile_screen/provider/edit_profile_provider.dart'
     show EditProfileProvider;
@@ -46,20 +48,27 @@ class ProfileScreen extends StatelessWidget {
         builder: (context, controller, _) {
           return controller.isLoading.value
               ? Constant.loader(message: "Loading profile...".tr)
-              : Padding(
-                  padding: EdgeInsets.only(
-                    top: MediaQuery.of(context).viewPadding.top,
-                  ),
-                  child: SingleChildScrollView(
+              : Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: Responsive.getMaxContentWidth(context),
+                    ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                      padding: EdgeInsets.only(
+                        top: MediaQuery.of(context).viewPadding.top,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: Responsive.getScreenPadding(context).horizontal,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
                           Text(
                             "My Profile".tr,
                             style: TextStyle(
-                              fontSize: 24,
+                              fontSize: Responsive.getFontSize(context, 24),
                               color: AppThemeData.grey900,
                               fontFamily: AppThemeData.semiBold,
                               fontWeight: FontWeight.w500,
@@ -69,17 +78,17 @@ class ProfileScreen extends StatelessWidget {
                             "Manage your personal information, preferences, and settings all in one place."
                                 .tr,
                             style: TextStyle(
-                              fontSize: 16,
+                              fontSize: Responsive.getFontSize(context, 16),
                               color: AppThemeData.grey900,
                               fontFamily: AppThemeData.regular,
                               fontWeight: FontWeight.w400,
                             ),
                           ),
-                          const SizedBox(height: 20),
+                          SizedBox(height: Responsive.getSpacing(context, baseSpacing: 20)),
                           Text(
                             "General Information".tr,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: Responsive.getFontSize(context, 12),
                               color: AppThemeData.grey500,
                               fontFamily: AppThemeData.semiBold,
                               fontWeight: FontWeight.w500,
@@ -164,11 +173,11 @@ class ProfileScreen extends StatelessWidget {
                           //     ),
                           //   ),
                           // ),
-                          const SizedBox(height: 10),
+                          SizedBox(height: Responsive.getSpacing(context, baseSpacing: 10)),
                           Text(
                             "Social".tr,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: Responsive.getFontSize(context, 12),
                               color: AppThemeData.grey500,
                               fontFamily: AppThemeData.semiBold,
                               fontWeight: FontWeight.w500,
@@ -176,7 +185,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           Container(
-                            width: Responsive.width(100, context),
+                            width: double.infinity,
                             decoration: ShapeDecoration(
                               color: AppThemeData.grey50,
                               shape: RoundedRectangleBorder(
@@ -184,8 +193,8 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: Responsive.getHorizontalSpacing(context, baseSpacing: 10),
                                 vertical: 8,
                               ),
                               child: Column(
@@ -227,7 +236,7 @@ class ProfileScreen extends StatelessWidget {
                           Text(
                             "Legal".tr,
                             style: TextStyle(
-                              fontSize: 12,
+                              fontSize: Responsive.getFontSize(context, 12),
                               color: AppThemeData.grey500,
                               fontFamily: AppThemeData.semiBold,
                               fontWeight: FontWeight.w500,
@@ -235,7 +244,7 @@ class ProfileScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 10),
                           Container(
-                            width: Responsive.width(100, context),
+                            width: double.infinity,
                             decoration: ShapeDecoration(
                               color: AppThemeData.grey50,
                               shape: RoundedRectangleBorder(
@@ -243,8 +252,8 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: Responsive.getHorizontalSpacing(context, baseSpacing: 10),
                                 vertical: 8,
                               ),
                               child: Column(
@@ -282,7 +291,7 @@ class ProfileScreen extends StatelessWidget {
                           Consumer<LoginProvider>(
                             builder: (context, loginProvider, _) {
                               return Container(
-                                width: Responsive.width(100, context),
+                                width: double.infinity,
                                 decoration: ShapeDecoration(
                                   color: AppThemeData.grey50,
                                   shape: RoundedRectangleBorder(
@@ -469,19 +478,43 @@ class ProfileScreen extends StatelessWidget {
                                     ),
                                   ),
                                 ),
-                          Center(
-                            child: Text(
-                              "V : ${Constant.appVersion}",
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontFamily: AppThemeData.medium,
-                                fontSize: 14,
-                                color: AppThemeData.grey900,
-                              ),
-                            ),
+                          FutureBuilder<Map<String, dynamic>?>(
+                            future: AppUpdateService.getLatestVersionInfo(),
+                            builder: (context, snapshot) {
+                              String versionText = "V : ${Constant.appVersion}";
+                              
+                              if (snapshot.hasData && snapshot.data != null) {
+                                final versionInfo = snapshot.data!;
+                                if (Platform.isAndroid) {
+                                  final androidVersion = versionInfo['android_version'] ?? '';
+                                  if (androidVersion.isNotEmpty) {
+                                    versionText = "V : $androidVersion";
+                                  }
+                                } else if (Platform.isIOS) {
+                                  final iosVersion = versionInfo['ios_version'] ?? '';
+                                  if (iosVersion.isNotEmpty) {
+                                    versionText = "V : $iosVersion";
+                                  }
+                                }
+                              }
+                              
+                              return Center(
+                                child: Text(
+                                  versionText,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: AppThemeData.medium,
+                                    fontSize: 14,
+                                    color: AppThemeData.grey900,
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
+                    ),
+                  ),
                     ),
                   ),
                 );

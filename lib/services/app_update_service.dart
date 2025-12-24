@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -5,13 +6,13 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:jippymart_customer/utils/safe_http_client.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'dart:io';
-import 'package:http/http.dart' as http;
 
 class AppUpdateService {
   /// Check if a version is older than another version
@@ -210,10 +211,17 @@ class AppUpdateService {
       print('[UPDATE DEBUG] Fetching version info from API...');
       print('[UPDATE DEBUG] Endpoint: {{baseURL}}mobile/app/version');
 
-      final response = await http.get(
+      final response = await SafeHttpClient.safeGet(
         Uri.parse('${AppConst.baseUrl}mobile/app/version'),
         headers: await getHeaders(),
+        timeout: const Duration(seconds: 10),
       );
+
+      if (response == null) {
+        // Network error - return null gracefully
+        print('[UPDATE] Network error - unable to fetch version info');
+        return null;
+      }
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -236,6 +244,12 @@ class AppUpdateService {
         );
         return null;
       }
+    } on SocketException catch (e) {
+      print('[UPDATE] Network error: $e');
+      return null;
+    } on TimeoutException catch (e) {
+      print('[UPDATE] Timeout error: $e');
+      return null;
     } catch (e) {
       print('[UPDATE] Error fetching version info: $e');
       return null;

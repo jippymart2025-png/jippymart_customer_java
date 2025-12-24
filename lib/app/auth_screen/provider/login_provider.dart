@@ -17,8 +17,10 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart'
     show SqlStorageConst;
+import 'package:jippymart_customer/utils/safe_http_client.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
+import 'dart:io';
 
 class LoginProvider extends ChangeNotifier {
   static const Duration _authTimeout = Duration(seconds: 20);
@@ -66,19 +68,29 @@ class LoginProvider extends ChangeNotifier {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       };
-      http.Response response;
+      http.Response? response;
       if (method == 'POST') {
-        response = await http
-            .post(url, headers: headers, body: json.encode(data))
-            .timeout(_authTimeout);
+        response = await SafeHttpClient.safePost(
+          url,
+          headers: headers,
+          body: json.encode(data),
+          timeout: _authTimeout,
+        );
       } else {
         throw Exception('Unsupported HTTP method');
       }
+
+      if (response == null) {
+        throw SocketException('No internet connection');
+      }
+
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
+    } on SocketException {
+      throw Exception('No internet connection. Please check your network and try again.');
     } on TimeoutException {
       throw Exception('Request timed out. Please try again.');
     } catch (e) {

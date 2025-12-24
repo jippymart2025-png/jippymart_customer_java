@@ -32,6 +32,7 @@ import 'package:jippymart_customer/utils/production_logger.dart';
 import 'package:jippymart_customer/utils/smartlook_anr_fix.dart';
 import 'package:jippymart_customer/utils/system_call_optimizer.dart';
 import 'package:jippymart_customer/utils/text_processing_anr_fix.dart';
+import 'package:jippymart_customer/services/network_connectivity_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
@@ -102,6 +103,17 @@ void main() async {
   Get.put(MartFirestoreService(), permanent: true);
   final cartProvider = CartProvider();
   await cartProvider.checkCartPersistence();
+  // Initialize network connectivity service
+  try {
+    await NetworkConnectivityService().initialize();
+    if (kDebugMode) {
+      print('✅ Network connectivity service initialized');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('⚠️ Network connectivity service initialization failed: $e');
+    }
+  }
   // Initialize Facebook App Events
   try {
     await FacebookAppEventsService().initialize();

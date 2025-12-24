@@ -12,7 +12,7 @@ import 'package:jippymart_customer/utils/notification_service.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
-import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/utils/safe_http_client.dart';
 
 class GlobalSettingsProvider extends ChangeNotifier {
   void initFunction(BuildContext context) {
@@ -26,10 +26,17 @@ class GlobalSettingsProvider extends ChangeNotifier {
 
   getSettings(BuildContext context) async {
     try {
-      final response = await http.get(
+      final response = await SafeHttpClient.safeGet(
         Uri.parse('${AppConst.baseUrl}settings/mobile'),
         headers: await getHeaders(),
+        timeout: const Duration(seconds: 15),
       );
+
+      if (response == null) {
+        // Network error handled by SafeHttpClient - app continues without crashing
+        return;
+      }
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> data = json.decode(response.body);
         if (data['success'] == true) {
@@ -40,7 +47,10 @@ class GlobalSettingsProvider extends ChangeNotifier {
       } else {
         throw Exception('Failed to load settings: ${response.statusCode}');
       }
-    } catch (e) {}
+    } catch (e) {
+      // Errors are handled gracefully - app continues without crashing
+      log('Error loading settings: $e');
+    }
   }
 
   _setConstantsFromApi(
