@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
@@ -104,15 +105,10 @@ class MartProductCard extends StatelessWidget {
         return;
       }
 
-      // Wait a bit for the cart to update
-      Future.delayed(Duration(milliseconds: 500));
-
-      // Check if item was actually added to cart (you might need to implement this check)
-      // final cartItems = await getCartItems(); // Implement this method
-      // final itemInCart = cartItems.any((item) => item['id'] == product.id);
-
-      // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
+      // Show success message after product is added
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+      scaffoldMessenger.clearSnackBars();
+      scaffoldMessenger.showSnackBar(
         SnackBar(
           content: Row(
             children: [
@@ -127,20 +123,29 @@ class MartProductCard extends StatelessWidget {
             ],
           ),
           backgroundColor: Colors.green.shade600,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          margin: EdgeInsets.all(16),
+          margin: const EdgeInsets.all(16),
+          dismissDirection: DismissDirection.horizontal,
           action: SnackBarAction(
             label: 'View Cart',
             textColor: Colors.white,
             onPressed: () {
+              scaffoldMessenger.hideCurrentSnackBar();
               // Navigate to cart screen
               Get.to(() => const CartScreen());
             },
           ),
         ),
       );
+      
+      // Ensure snackbar dismisses after 2 seconds
+      Timer(const Duration(seconds: 2), () {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        }
+      });
 
       // Optional: Navigate to cart screen
       // Get.toNamed('/cart');

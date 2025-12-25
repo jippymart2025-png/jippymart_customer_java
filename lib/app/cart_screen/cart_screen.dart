@@ -40,16 +40,28 @@ class CartScreen extends StatefulWidget {
 
 class _CartScreenState extends State<CartScreen> {
   late CartControllerProvider controller;
-  bool _hasInitialized = false;
   bool _isRefreshing = false;
+  DateTime? _lastRefreshTime;
+  static const Duration _minRefreshInterval = Duration(seconds: 2);
 
   @override
   void initState() {
     super.initState();
     controller = Provider.of<CartControllerProvider>(context, listen: false);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_hasInitialized) {
-        _hasInitialized = true;
+      _refreshCartData();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh cart data whenever the screen becomes visible
+    // This ensures prices are synced every time user opens the cart
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final now = DateTime.now();
+      if (_lastRefreshTime == null || 
+          now.difference(_lastRefreshTime!) > _minRefreshInterval) {
         _refreshCartData();
       }
     });
@@ -60,6 +72,10 @@ class _CartScreenState extends State<CartScreen> {
       return; // Prevent simultaneous calls
     }
     _isRefreshing = true;
+    _lastRefreshTime = DateTime.now();
+    
+    print('[CART_SCREEN] 🔄 Refreshing cart data and syncing prices...');
+    
     // Reset delivery tips when cart screen initializes (for new order sessions)
     // This ensures tips don't carry over from previous orders
     controller.deliveryTips = 0.0;
@@ -74,7 +90,18 @@ class _CartScreenState extends State<CartScreen> {
       await controller.syncAddressWithHomeLocation(context);
     }
     controller.checkAndUpdatePaymentMethod();
+    
+    // 🔑 Background price sync - validates and updates cart prices
+    // Runs asynchronously in background without blocking UI
+    // Works for both food and mart items
+    // This syncs prices from backend database every time cart is opened
+    print('[CART_SCREEN] 💰 Starting background price sync for food and mart items...');
+    controller.syncCartPricesInBackground().catchError((error) {
+      print('[CART_SCREEN] ❌ Error in background price sync: $error');
+    });
+    
     _isRefreshing = false;
+    print('[CART_SCREEN] ✅ Cart refresh complete');
   }
 
   // Get theme colors based on cart theme
@@ -149,6 +176,8 @@ class _CartScreenState extends State<CartScreen> {
       builder: (context, controller, _) {
         // Removed checkAndUpdatePaymentMethod call from build method
         // It's already called in _refreshCartData() to prevent setState during build
+        // Use priceSyncVersion to force rebuild when prices update
+        final _ = controller.priceSyncVersion;
         return WillPopScope(
           onWillPop: () async {
             if (controller.isGlobalLocked) {

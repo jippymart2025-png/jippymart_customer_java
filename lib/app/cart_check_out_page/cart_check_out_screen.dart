@@ -2,8 +2,8 @@ import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_product_details_image_widget.dart';
+import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
-import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/mart_theme.dart';
@@ -32,54 +32,75 @@ class CartCheckOutScreen extends StatefulWidget {
 
 class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   late CartControllerProvider controller;
-  bool _hasInitialized = false;
   bool _isRefreshing = false;
+  DateTime? _lastRefreshTime;
+  int? _lastSelectedIndex;
+  static const Duration _minRefreshInterval = Duration(seconds: 2);
 
   @override
   void initState() {
     super.initState();
     controller = Provider.of<CartControllerProvider>(context, listen: false);
-    // Only initialize once
     WidgetsBinding.instance.addPostFrameCallback((_) {
       controller.initFunction(context);
-      if (!_hasInitialized) {
-        _hasInitialized = true;
-        _refreshCartData(context);
-      }
+      _refreshCartData(context);
     });
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Remove duplicate initialization - already handled in initState
+    // Refresh cart data whenever the screen becomes visible
+    // This ensures prices are synced every time user opens the cart from bottom navigation
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final now = DateTime.now();
+      if (_lastRefreshTime == null || 
+          now.difference(_lastRefreshTime!) > _minRefreshInterval) {
+        _refreshCartData(context);
+      }
+    });
   }
 
-  void _refreshCartData(BuildContext context) {
+  Future<void> _refreshCartData(BuildContext context) async {
     if (_isRefreshing) {
       return; // Prevent multiple simultaneous refreshes
     }
     _isRefreshing = true;
-    print('DEBUG: Refreshing cart data...');
-    // Use a single delayed call instead of multiple
-    Future.delayed(const Duration(milliseconds: 500), () {
-      try {
-        controller.forceRefreshCart();
-        if (controller.selectedAddress == null) {
-          controller.initializeAddress(context);
-        }
-        // Only call payment method check once, not continuously
-        if (mounted) {
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) {
-              controller.checkAndUpdatePaymentMethod();
-            }
-          });
-        }
-      } finally {
-        _isRefreshing = false;
+    _lastRefreshTime = DateTime.now();
+    
+    print('[CART_CHECKOUT] 🔄 Refreshing cart data and syncing prices...');
+    
+    try {
+      await controller.forceRefreshCart();
+      if (controller.selectedAddress == null ||
+          controller.selectedAddress!.location?.latitude == null ||
+          controller.selectedAddress!.location?.longitude == null) {
+        // 🔑 initializeAddress now handles vendor loading and price calculation
+        await controller.initializeAddress(context);
+      } else {
+        // 🔑 syncAddressWithHomeLocation already handles price calculation
+        await controller.syncAddressWithHomeLocation(context);
       }
-    });
+      
+      // Only call payment method check once, not continuously
+      if (mounted) {
+        controller.checkAndUpdatePaymentMethod();
+      }
+      
+      // 🔑 Background price sync - validates and updates cart prices
+      // Runs asynchronously in background without blocking UI
+      // Works for both food and mart items
+      // This syncs prices from backend database every time cart is opened
+      print('[CART_CHECKOUT] 💰 Starting background price sync for food and mart items...');
+      controller.syncCartPricesInBackground().catchError((error) {
+        print('[CART_CHECKOUT] ❌ Error in background price sync: $error');
+      });
+    } catch (e) {
+      print('[CART_CHECKOUT] ❌ Error refreshing cart: $e');
+    } finally {
+      _isRefreshing = false;
+      print('[CART_CHECKOUT] ✅ Cart refresh complete');
+    }
   }
 
   // Get theme colors based on cart theme
@@ -148,8 +169,27 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   Widget build(BuildContext context) {
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
-    return Consumer<CartControllerProvider>(
-      builder: (context, controller, _) {
+    
+    // Listen to dashboard provider to detect when cart tab is selected
+    // This ensures price sync happens when navigating from food section via bottom navigation
+    return Consumer2<CartControllerProvider, DashBoardProvider>(
+      builder: (context, controller, dashboardProvider, _) {
+        // Trigger refresh when cart tab (index 2) is selected in dashboard
+        // Only trigger if index actually changed to 2 (not already 2)
+        if (dashboardProvider.selectedIndex == 2 && _lastSelectedIndex != 2) {
+          _lastSelectedIndex = 2;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            final now = DateTime.now();
+            if (_lastRefreshTime == null || 
+                now.difference(_lastRefreshTime!) > _minRefreshInterval) {
+              _refreshCartData(context);
+            }
+          });
+        } else if (dashboardProvider.selectedIndex != 2) {
+          // Reset when navigating away from cart
+          _lastSelectedIndex = dashboardProvider.selectedIndex;
+        }
+        
         // Remove continuous API calls from build method
         // Payment method check is already handled in _refreshCartData
         return WillPopScope(

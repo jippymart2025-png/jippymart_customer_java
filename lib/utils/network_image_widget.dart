@@ -29,6 +29,61 @@ class NetworkImageWidget extends StatelessWidget {
     this.fixOrientation = false,
   });
 
+  /// Static helper method to get placeholder image widget
+  /// Handles both asset paths and network URLs for Constant.placeholderImage
+  static Widget getPlaceholderImage({
+    required BuildContext context,
+    double? height,
+    double? width,
+    BoxFit? fit,
+  }) {
+    final placeholder = Constant.placeholderImage;
+    
+    // Check if placeholder is empty or null
+    if (placeholder.isEmpty || placeholder == "null" || placeholder == "Null" || placeholder == "NULL") {
+      // Use default asset if placeholder is invalid
+      return Image.asset(
+        "assets/images/food_delivery.png",
+        fit: fit ?? BoxFit.fitWidth,
+        height: height ?? Responsive.height(8, context),
+        width: width ?? Responsive.width(15, context),
+      );
+    }
+    
+    // Check if placeholder is a network URL
+    final isNetworkUrl = placeholder.startsWith('http://') || 
+                        placeholder.startsWith('https://') ||
+                        placeholder.contains('firebasestorage') ||
+                        placeholder.contains('://');
+    
+    if (isNetworkUrl) {
+      // Use Image.network for URLs
+      return Image.network(
+        placeholder,
+        fit: fit ?? BoxFit.fitWidth,
+        height: height ?? Responsive.height(8, context),
+        width: width ?? Responsive.width(15, context),
+        errorBuilder: (ctx, error, stackTrace) {
+          // Fallback to default asset if network image fails
+          return Image.asset(
+            "assets/images/food_delivery.png",
+            fit: fit ?? BoxFit.fitWidth,
+            height: height ?? Responsive.height(8, ctx),
+            width: width ?? Responsive.width(15, ctx),
+          );
+        },
+      );
+    } else {
+      // Use Image.asset for asset paths
+      return Image.asset(
+        placeholder,
+        fit: fit ?? BoxFit.fitWidth,
+        height: height ?? Responsive.height(8, context),
+        width: width ?? Responsive.width(15, context),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Handle null or empty URLs
@@ -61,13 +116,12 @@ class NetworkImageWidget extends StatelessWidget {
       Uri.parse(cleanImageUrl);
     } catch (e) {
       print('[NETWORK_IMAGE] Invalid URL format: $imageUrl');
-      return errorWidget ??
-          Image.asset(
-            Constant.placeholderImage,
-            fit: fit ?? BoxFit.fitWidth,
-            height: height ?? Responsive.height(8, context),
-            width: width ?? Responsive.width(15, context),
-          );
+      return errorWidget ?? NetworkImageWidget.getPlaceholderImage(
+        context: context,
+        height: height,
+        width: width,
+        fit: fit,
+      );
     }
 
     // Add to performance tracking for optimization
@@ -111,13 +165,12 @@ class NetworkImageWidget extends StatelessWidget {
           _buildLoadingWidget(),
       errorWidget: (context, url, error) {
         print('[NETWORK_IMAGE] Error loading cached image: $error');
-        return errorWidget ??
-            Image.asset(
-              Constant.placeholderImage,
-              fit: fit ?? BoxFit.fitWidth,
-              height: height ?? Responsive.height(8, context),
-              width: width ?? Responsive.width(15, context),
-            );
+        return errorWidget ?? NetworkImageWidget.getPlaceholderImage(
+        context: context,
+        height: height,
+        width: width,
+        fit: fit,
+      );
       },
     );
   }
@@ -358,11 +411,11 @@ class OrientedNetworkImage extends StatelessWidget {
         imageUrl == "Null" ||
         imageUrl == "NULL") {
       return errorWidget ??
-          Image.network(
-            Constant.placeholderImage,
-            fit: fit ?? BoxFit.fitWidth,
-            height: height ?? Responsive.height(8, context),
-            width: width ?? Responsive.width(15, context),
+          NetworkImageWidget.getPlaceholderImage(
+            context: context,
+            height: height,
+            width: width,
+            fit: fit,
           );
     }
 
@@ -383,11 +436,11 @@ class OrientedNetworkImage extends StatelessWidget {
     } catch (e) {
       print('[ORIENTED_IMAGE] Invalid URL format: $imageUrl');
       return errorWidget ??
-          Image.network(
-            Constant.placeholderImage,
-            fit: fit ?? BoxFit.fitWidth,
-            height: height ?? Responsive.height(8, context),
-            width: width ?? Responsive.width(15, context),
+          NetworkImageWidget.getPlaceholderImage(
+            context: context,
+            height: height,
+            width: width,
+            fit: fit,
           );
     }
 
@@ -401,11 +454,11 @@ class OrientedNetworkImage extends StatelessWidget {
         if (snapshot.hasError || snapshot.data == null) {
           print('[ORIENTED_IMAGE] Error loading image: ${snapshot.error}');
           return errorWidget ??
-              Image.network(
-                Constant.placeholderImage,
-                fit: fit ?? BoxFit.fitWidth,
-                height: height ?? Responsive.height(8, context),
-                width: width ?? Responsive.width(15, context),
+              NetworkImageWidget.getPlaceholderImage(
+                context: context,
+                height: height,
+                width: width,
+                fit: fit,
               );
         }
 

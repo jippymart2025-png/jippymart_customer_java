@@ -100,6 +100,8 @@ Widget _buildProductItem(
 ) {
   return Consumer2<RestaurantDetailsProvider, CartControllerProvider>(
     builder: (context, restaurantDetailsProvider, cartController, _) {
+      // Use priceSyncVersion to force rebuild when prices update
+      final _ = cartController.priceSyncVersion;
       final productPhoto = productModel?.photo?.isNotEmpty == true
           ? productModel!.photo
           : (cartProductModel.photo?.isNotEmpty == true

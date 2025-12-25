@@ -113,16 +113,60 @@ class PerformanceOptimizer {
       if (!_preloadedImages.contains(url)) {
         try {
           // Check if it's an asset path or network URL
-          if (url.startsWith('assets/')) {
-            // For assets, use precacheImage instead of DefaultCacheManager
-            await precacheImage(AssetImage(url), Get.context!);
-            _preloadedImages.add(url);
-            log('🖼️ PerformanceOptimizer - Preloaded asset: $url');
+          final trimmedUrl = url.trim();
+          
+          // More robust check for network URLs - check for common network indicators
+          final isNetworkUrl = trimmedUrl.startsWith('http://') || 
+                              trimmedUrl.startsWith('https://') ||
+                              trimmedUrl.contains('firebasestorage') ||
+                              trimmedUrl.contains('firebase') ||
+                              trimmedUrl.contains('://') ||
+                              (trimmedUrl.contains('.com') || 
+                               trimmedUrl.contains('.net') || 
+                               trimmedUrl.contains('.org') ||
+                               trimmedUrl.contains('.io')) &&
+                              !trimmedUrl.startsWith('assets/');
+          
+          // Check if it's an asset path - must start with assets/ and NOT be a network URL
+          final isAssetPath = trimmedUrl.startsWith('assets/') && !isNetworkUrl;
+          
+          // Double-check: Never use AssetImage for network URLs
+          if (isNetworkUrl) {
+            // For network URLs, use DefaultCacheManager or precacheImage with NetworkImage
+            try {
+              // Use precacheImage with NetworkImage for better integration
+              if (Get.context != null) {
+                await precacheImage(NetworkImage(trimmedUrl), Get.context!);
+                _preloadedImages.add(url);
+                log('🖼️ PerformanceOptimizer - Preloaded network image: $url');
+              } else {
+                // Fallback to DefaultCacheManager if context is null
+                await DefaultCacheManager().getSingleFile(trimmedUrl);
+                _preloadedImages.add(url);
+                log('🖼️ PerformanceOptimizer - Preloaded network image (no context): $url');
+              }
+            } catch (e) {
+              // Fallback to DefaultCacheManager if precacheImage fails
+              try {
+                await DefaultCacheManager().getSingleFile(trimmedUrl);
+                _preloadedImages.add(url);
+                log('🖼️ PerformanceOptimizer - Preloaded network image (fallback): $url');
+              } catch (fallbackError) {
+                log('❌ PerformanceOptimizer - Failed to preload network image: $url - $fallbackError');
+              }
+            }
+          } else if (isAssetPath) {
+            // For assets, use precacheImage with AssetImage - but only if context is available
+            if (Get.context != null) {
+              await precacheImage(AssetImage(trimmedUrl), Get.context!);
+              _preloadedImages.add(url);
+              log('🖼️ PerformanceOptimizer - Preloaded asset: $url');
+            } else {
+              log('⚠️ PerformanceOptimizer - Cannot preload asset (no context): $url');
+            }
           } else {
-            // For network URLs, use DefaultCacheManager
-            await DefaultCacheManager().getSingleFile(url);
-            _preloadedImages.add(url);
-            log('🖼️ PerformanceOptimizer - Preloaded network image: $url');
+            // Invalid URL format - skip it
+            log('⚠️ PerformanceOptimizer - Invalid image URL format (skipping): $url');
           }
         } catch (e) {
           log('❌ PerformanceOptimizer - Failed to preload image: $url - $e');
