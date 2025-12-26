@@ -7,6 +7,8 @@ import 'package:jippymart_customer/app/mart/screens/mart_profile_screen/mart_pro
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../profile_screen/profile_screen.dart';
+
 class MartNavigationProvider extends ChangeNotifier {
   int selectedIndex = 0;
   List<Widget> pageList = <Widget>[];
@@ -31,7 +33,7 @@ class MartNavigationProvider extends ChangeNotifier {
         source: 'mart',
         isFromMartNavigation: true,
       ),
-      const MartProfileScreen(),
+      const ProfileScreen(),
     ];
     notifyListeners();
   }

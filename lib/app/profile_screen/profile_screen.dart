@@ -37,8 +37,28 @@ void rateApp() async {
   }
 }
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize the provider after the first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final controller = Provider.of<MyProfileProvider>(context, listen: false);
+        // Only initialize if still loading (not already initialized)
+        if (controller.isLoading.value) {
+          controller.initFunction(context: context);
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

@@ -16,6 +16,7 @@ import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_scree
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
+import 'dart:async'; // Add this for Timer
 
 /// Reusable banner widget that works with both BannerModel and MartBannerModel
 class ReusableBannerWidget extends StatefulWidget {
@@ -50,6 +51,44 @@ class ReusableBannerWidget extends StatefulWidget {
 }
 
 class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
+  Timer? _autoScrollTimer; // Add this line
+
+  @override
+  void initState() {
+    super.initState();
+    _startAutoScroll(); // Add this line
+  }
+
+  @override
+  void dispose() {
+    _stopAutoScroll(); // Add this line
+    super.dispose();
+  }
+
+  void _startAutoScroll() {
+    if (widget.banners.length <= 1 || !widget.enableAutoScroll) return;
+
+    _autoScrollTimer = Timer.periodic(widget.autoScrollDuration, (timer) {
+      if (mounted && widget.pageController.hasClients) {
+        try {
+          final currentPage = widget.pageController.page?.round() ?? 0;
+          widget.pageController.animateToPage(
+            currentPage + 1,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOut,
+          );
+        } catch (e) {
+          // Ignore errors
+        }
+      }
+    });
+  }
+
+  void _stopAutoScroll() {
+    _autoScrollTimer?.cancel();
+    _autoScrollTimer = null;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (widget.banners.isEmpty) {
@@ -62,8 +101,17 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
         height: widget.height,
         width: widget.width,
         child: GestureDetector(
-          onPanStart: (_) => widget.onPanStart?.call(),
-          onPanEnd: (_) => widget.onPanEnd?.call(),
+          onPanStart: (_) {
+            _stopAutoScroll(); // Add this
+            widget.onPanStart?.call();
+          },
+          onPanEnd: (_) {
+            // Restart auto-scroll after delay
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) _startAutoScroll();
+            });
+            widget.onPanEnd?.call();
+          },
           child: PageView.builder(
             physics: const BouncingScrollPhysics(),
             controller: widget.pageController,
