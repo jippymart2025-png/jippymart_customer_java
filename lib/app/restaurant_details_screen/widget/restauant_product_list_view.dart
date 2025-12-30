@@ -1,5 +1,4 @@
 import 'dart:developer';
-
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
@@ -11,7 +10,6 @@ import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
-import 'package:jippymart_customer/widget/special_price_badge.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
@@ -21,6 +19,8 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 import '../../../constant/show_toast_dialog.dart';
+import '../provider/PromotionBadge.dart';
+import '../provider/PromotionIndicator.dart';
 
 class ProductListView extends StatelessWidget {
   const ProductListView({super.key});
@@ -29,6 +29,9 @@ class ProductListView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<RestaurantDetailsProvider>(
       builder: (context, controller, _) {
+        // NO LOADING INDICATOR - Show UI immediately
+        // Promotions will update as they load
+
         return Container(
           color: AppThemeData.grey50,
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -144,9 +147,11 @@ class ProductListView extends StatelessWidget {
     RestaurantDetailsProvider controller,
   ) {
     bool isItemAvailable = productModel.isAvailable ?? true;
-    String price = "0.0";
-    String disPrice = "0.0";
-    // Calculate prices - FIXED VERSION
+
+    // Calculate base prices first
+    String basePrice = "0.0";
+    String baseDisPrice = "0.0";
+
     if (productModel.itemAttribute != null &&
         productModel.itemAttribute!.variants != null &&
         productModel.itemAttribute!.variants!.isNotEmpty) {
@@ -154,11 +159,11 @@ class ProductListView extends StatelessWidget {
       if (controller.selectedVariants.isEmpty) {
         // Use the first variant's price as default
         final firstVariant = productModel.itemAttribute!.variants!.first;
-        price = Constant.productCommissionPrice(
+        basePrice = Constant.productCommissionPrice(
           controller.vendorModel,
           firstVariant.variantPrice ?? '0',
         );
-        disPrice = "0";
+        baseDisPrice = "0";
       } else {
         // Use the selected variant's price
         final selectedVariant = productModel.itemAttribute!.variants!
@@ -167,58 +172,25 @@ class ProductListView extends StatelessWidget {
                   element.variantSku == controller.selectedVariants.join('-'),
               orElse: () => productModel.itemAttribute!.variants!.first,
             );
-        price = Constant.productCommissionPrice(
+        basePrice = Constant.productCommissionPrice(
           controller.vendorModel,
           selectedVariant.variantPrice ?? '0',
         );
-        disPrice = "0";
+        baseDisPrice = "0";
       }
     } else {
       // Regular product without variants
-      price = Constant.productCommissionPrice(
+      basePrice = Constant.productCommissionPrice(
         controller.vendorModel,
         productModel.price.toString(),
       );
-      disPrice = double.parse(productModel.disPrice.toString()) <= 0
+      baseDisPrice = double.parse(productModel.disPrice.toString()) <= 0
           ? "0"
           : Constant.productCommissionPrice(
               controller.vendorModel,
               productModel.disPrice.toString(),
             );
     }
-    // if (productModel.itemAttribute != null) {
-    //   if (productModel.itemAttribute!.variants!
-    //       .where(
-    //         (element) =>
-    //             element.variantSku == controller.selectedVariants.join('-'),
-    //       )
-    //       .isNotEmpty) {
-    //     price = Constant.productCommissionPrice(
-    //       controller.vendorModel,
-    //       productModel.itemAttribute!.variants!
-    //               .where(
-    //                 (element) =>
-    //                     element.variantSku ==
-    //                     controller.selectedVariants.join('-'),
-    //               )
-    //               .first
-    //               .variantPrice ??
-    //           '0',
-    //     );
-    //     disPrice = "0";
-    //   }
-    // } else {
-    //   price = Constant.productCommissionPrice(
-    //     controller.vendorModel,
-    //     productModel.price.toString(),
-    //   );
-    //   disPrice = double.parse(productModel.disPrice.toString()) <= 0
-    //       ? "0"
-    //       : Constant.productCommissionPrice(
-    //           controller.vendorModel,
-    //           productModel.disPrice.toString(),
-    //         );
-    // }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -266,150 +238,27 @@ class ProductListView extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Builder(
-                      builder: (context) {
-                        final productId = productModel.id?.toString() ?? '';
-                        final restaurantId = productModel.vendorID ?? '';
-                        if (productId.isNotEmpty && restaurantId.isNotEmpty) {
-                          final promo = controller.getActivePromotionForProduct(
-                            productId: productId,
-                            restaurantId: restaurantId,
-                          );
-                          print(
-                            "controller.getActivePromotionForProduct for $productId: $promo ",
-                          );
-                          if (promo != null) {
-                            return Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.red,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'SPECIAL OFFER',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            );
-                          }
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    ),
+                    // Use the PromotionBadge widget
+                    if (productModel.id != null &&
+                        productModel.vendorID != null)
+                      PromotionBadge(
+                        productId: productModel.id!.toString(),
+                        restaurantId: productModel.vendorID!,
+                      ),
                   ],
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Price display
-                    Builder(
-                      builder: (context) {
-                        final promo = controller.getActivePromotionForProduct(
-                          productId: productModel.id?.toString() ?? '',
-                          restaurantId: productModel.vendorID ?? '',
-                        );
-                        final hasPromo = promo != null;
+                    // Price display with promotion handling
+                    Consumer<RestaurantDetailsProvider>(
+                      builder: (context, controller, _) {
+                        final productId = productModel.id?.toString() ?? '';
+                        final restaurantId = productModel.vendorID ?? '';
 
-                        if (hasPromo) {
-                          final promoPrice = (promo['special_price'] as num)
-                              .toString();
-                          return Row(
-                            children: [
-                              //finded
-                              Flexible(
-                                child: Text(
-                                  Constant.amountShow(amount: promoPrice),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: AppThemeData.grey900,
-                                    fontFamily: AppThemeData.semiBold,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(
-                                  // Show the calculated price (which includes variant pricing) as original
-                                  Constant.amountShow(amount: price),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    decoration: TextDecoration.lineThrough,
-                                    decorationColor: AppThemeData.grey300,
-                                    color: AppThemeData.grey300,
-                                    fontFamily: AppThemeData.semiBold,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        }
-                        // final promo = controller.getActivePromotionForProduct(
-                        //   productId: productModel.id?.toString() ?? '',
-                        //   restaurantId: productModel.vendorID ?? '',
-                        // );
-                        // final hasPromo = promo != null;
-                        // final promoPrice = hasPromo
-                        //     ? (promo['special_price'] as num).toString()
-                        //     : null;
-                        // if (hasPromo) {
-                        //   // Special promotional price display
-                        //   return Row(
-                        //     children: [
-                        //       Flexible(
-                        //         child: Text(
-                        //           Constant.amountShow(amount: promoPrice!),
-                        //           maxLines: 1,
-                        //           overflow: TextOverflow.ellipsis,
-                        //           style: TextStyle(
-                        //             fontSize: 16,
-                        //             color: AppThemeData.grey900,
-                        //             fontFamily: AppThemeData.semiBold,
-                        //             fontWeight: FontWeight.w600,
-                        //           ),
-                        //         ),
-                        //       ),
-                        //       const SizedBox(width: 5),
-                        //       // Show original price with strikethrough
-                        //       Flexible(
-                        //         child: Text(
-                        //           Constant.amountShow(
-                        //             amount: Constant.productCommissionPrice(
-                        //               controller.vendorModel,
-                        //               productModel.price.toString(),
-                        //             ),
-                        //           ),
-                        //           maxLines: 1,
-                        //           overflow: TextOverflow.ellipsis,
-                        //           style: TextStyle(
-                        //             fontSize: 14,
-                        //             decoration: TextDecoration.lineThrough,
-                        //             decorationColor: AppThemeData.grey300,
-                        //             color: AppThemeData.grey300,
-                        //             fontFamily: AppThemeData.semiBold,
-                        //             fontWeight: FontWeight.w600,
-                        //           ),
-                        //         ),
-                        //       ),
-                        //     ],
-                        //   );
-                        // }
-                        else if (double.parse(disPrice) <= 0) {
-                          // Normal price display
-                          // return SizedBox();
+                        if (productId.isEmpty || restaurantId.isEmpty) {
                           return Text(
-                            Constant.amountShow(amount: price),
+                            Constant.amountShow(amount: basePrice),
                             style: TextStyle(
                               fontSize: 16,
                               color: AppThemeData.grey900,
@@ -417,14 +266,96 @@ class ProductListView extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                             ),
                           );
-                        } else {
-                          // Regular discount price display
+                        }
+
+                        // Check if promotion exists
+                        final hasPromotion = controller.hasActivePromotion(
+                          productId,
+                          restaurantId,
+                        );
+
+                        // Get promotion data if exists
+                        final currentPromo = hasPromotion
+                            ? controller.getActivePromotionForProduct(
+                                productId: productId,
+                                restaurantId: restaurantId,
+                              )
+                            : null;
+
+                        // Handle promotional price
+                        if (currentPromo != null) {
+                          final promoPrice =
+                              (currentPromo['special_price'] as num).toString();
+                          final promoPriceNum =
+                              double.tryParse(promoPrice) ?? 0;
+                          final originalPriceNum =
+                              double.tryParse(basePrice) ?? 0;
+
+                          return Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  Constant.amountShow(amount: promoPrice),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.red,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(
+                                  Constant.amountShow(amount: basePrice),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: AppThemeData.grey300,
+                                    color: AppThemeData.grey300,
+                                    fontFamily: AppThemeData.semiBold,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              // Add discount percentage
+                              const SizedBox(width: 5),
+                              if (originalPriceNum > 0 &&
+                                  promoPriceNum < originalPriceNum)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                  child: Text(
+                                    '${((originalPriceNum - promoPriceNum) / originalPriceNum * 100).round()}% OFF',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.red,
+                                      fontFamily: AppThemeData.semiBold,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        }
+                        // Handle regular discount
+                        else if (double.parse(baseDisPrice) > 0) {
                           return Row(
                             children: [
                               Flexible(
                                 child: Text(
                                   Constant.amountShow(
-                                    amount: disPrice.toString(),
+                                    amount: baseDisPrice.toString(),
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -439,7 +370,7 @@ class ProductListView extends StatelessWidget {
                               const SizedBox(width: 5),
                               Flexible(
                                 child: Text(
-                                  Constant.amountShow(amount: price),
+                                  Constant.amountShow(amount: basePrice),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -453,6 +384,18 @@ class ProductListView extends StatelessWidget {
                                 ),
                               ),
                             ],
+                          );
+                        }
+                        // Normal price (no discount)
+                        else {
+                          return Text(
+                            Constant.amountShow(amount: basePrice),
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: AppThemeData.grey900,
+                              fontFamily: AppThemeData.semiBold,
+                              fontWeight: FontWeight.w600,
+                            ),
                           );
                         }
                       },
@@ -525,29 +468,14 @@ class ProductListView extends StatelessWidget {
                   ),
                 ),
               ),
-              // Special promotional price badge
-              Builder(
-                builder: (context) {
-                  final promo = controller.getActivePromotionForProduct(
-                    productId: productModel.id?.toString() ?? '',
-                    restaurantId: productModel.vendorID ?? '',
-                  );
-
-                  if (promo != null) {
-                    return Positioned(
-                      top: 0,
-                      left: 0,
-                      child: const SpecialPriceBadge(
-                        showShimmer: true,
-                        width: 60,
-                        height: 60,
-                        margin: EdgeInsets.zero,
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
+              // Use PromotionIndicator for image badge
+              if (productModel.id != null && productModel.vendorID != null)
+                PromotionIndicator(
+                  productId: productModel.id!.toString(),
+                  restaurantId: productModel.vendorID!,
+                  child:
+                      Container(), // Empty child since we're positioning manually
+                ),
               if (!isItemAvailable)
                 Positioned.fill(
                   child: Container(
@@ -591,8 +519,8 @@ class ProductListView extends StatelessWidget {
                           ? _buildAddToCartButton(
                               controller,
                               productModel,
-                              price,
-                              disPrice,
+                              basePrice,
+                              baseDisPrice,
                             )
                           : const SizedBox(),
                     ),
@@ -606,24 +534,40 @@ class ProductListView extends StatelessWidget {
   Widget _buildAddToCartButton(
     RestaurantDetailsProvider controller,
     ProductModel productModel,
-    String price,
-    String disPrice,
+    String basePrice,
+    String baseDisPrice,
   ) {
     final productId = productModel.id?.toString() ?? '';
     final hasVariantsOrAddons =
         controller.selectedVariants.isNotEmpty ||
         (productModel.addOnsTitle != null &&
             productModel.addOnsTitle!.isNotEmpty);
-    // Fix: Handle variant IDs (format: "productId~variantId" or just "productId")
+
+    // Check for promotion
+    final promo = controller.getActivePromotionForProduct(
+      productId: productId,
+      restaurantId: productModel.vendorID ?? '',
+    );
+    final hasPromo = promo != null;
+
+    // Fix: Handle variant IDs
     final isInCart = HomeProvider.cartItem.any((cartItem) {
       if (cartItem.id == null || cartItem.id!.isEmpty) return false;
-      // Check exact match or if cart item ID starts with productId~
-      // This handles both simple products and products with variants
       return cartItem.id == productId || cartItem.id!.startsWith('$productId~');
     });
-    print(
-      " isInCart $isInCart for productId: $productId, cartItem IDs: ${HomeProvider.cartItem.map((e) => e.id).toList()}",
-    );
+
+    // Determine which prices to pass to addToCart
+    String priceToPass = basePrice;
+    String disPriceToPass = baseDisPrice;
+
+    if (hasPromo) {
+      priceToPass = (promo['special_price'] as num).toString();
+      disPriceToPass = basePrice;
+    } else if (double.parse(baseDisPrice) > 0) {
+      priceToPass = baseDisPrice;
+      disPriceToPass = basePrice;
+    }
+
     if (hasVariantsOrAddons) {
       return RoundedButtonFill(
         title: "Add".tr,
@@ -632,7 +576,6 @@ class ProductListView extends StatelessWidget {
         color: AppThemeData.grey50,
         textColor: AppThemeData.primary300,
         onPress: () async {
-          // Check if user is logged in
           final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
           if (!isLoggedIn) {
             _showLoginRequiredDialog(Get.context!);
@@ -663,21 +606,17 @@ class ProductListView extends StatelessWidget {
           children: [
             InkWell(
               onTap: () {
-                // Use cached promotional data for instant response
-                final promo = controller.getActivePromotionForProduct(
+                final currentPromo = controller.getActivePromotionForProduct(
                   productId: productId,
                   restaurantId: productModel.vendorID ?? '',
                 );
-                String finalPrice = price;
-                String finalDiscountPrice = disPrice;
+                String finalPrice = priceToPass;
+                String finalDiscountPrice = disPriceToPass;
 
-                if (promo != null) {
-                  // Use promotional price
-                  finalPrice = (promo['special_price'] as num).toString();
-                  finalDiscountPrice = Constant.productCommissionPrice(
-                    controller.vendorModel,
-                    productModel.price.toString(),
-                  );
+                if (currentPromo != null) {
+                  finalPrice = (currentPromo['special_price'] as num)
+                      .toString();
+                  finalDiscountPrice = basePrice;
                 }
                 controller.addToCart(
                   productModel: productModel,
@@ -703,7 +642,6 @@ class ProductListView extends StatelessWidget {
             ),
             InkWell(
               onTap: () async {
-                // Check if user is logged in
                 final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
                 if (!isLoggedIn) {
                   _showLoginRequiredDialog(Get.context!);
@@ -712,13 +650,12 @@ class ProductListView extends StatelessWidget {
                 final currentQty = _findCartItemQuantity(productId);
                 if ((currentQty) <= (productModel.quantity ?? 0) ||
                     (productModel.quantity ?? 0) == -1) {
-                  // Use cached promotional data for instant response
-                  final promo = controller.getActivePromotionForProduct(
+                  final currentPromo = controller.getActivePromotionForProduct(
                     productId: productId,
                     restaurantId: productModel.vendorID ?? '',
                   );
-                  // Check promotional item limit (cached)
-                  if (promo != null) {
+
+                  if (currentPromo != null) {
                     final isAllowed = controller
                         .isPromotionalItemQuantityAllowed(
                           productId,
@@ -739,14 +676,12 @@ class ProductListView extends StatelessWidget {
                     }
                   }
 
-                  String finalPrice = price;
-                  String finalDiscountPrice = disPrice;
-                  if (promo != null) {
-                    finalPrice = (promo['special_price'] as num).toString();
-                    finalDiscountPrice = Constant.productCommissionPrice(
-                      controller.vendorModel,
-                      productModel.price.toString(),
-                    );
+                  String finalPrice = priceToPass;
+                  String finalDiscountPrice = disPriceToPass;
+                  if (currentPromo != null) {
+                    finalPrice = (currentPromo['special_price'] as num)
+                        .toString();
+                    finalDiscountPrice = basePrice;
                   }
                   controller.addToCart(
                     productModel: productModel,
@@ -765,7 +700,6 @@ class ProductListView extends StatelessWidget {
         ),
       );
     } else {
-      // Optimized: Direct call without async overhead
       return RoundedButtonFill(
         title: "Add".tr,
         width: 10,
@@ -773,17 +707,15 @@ class ProductListView extends StatelessWidget {
         color: AppThemeData.grey50,
         textColor: AppThemeData.primary300,
         onPress: () async {
-          // Check if user is logged in
           final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
           if (!isLoggedIn) {
             _showLoginRequiredDialog(Get.context!);
             return;
           }
-          // Non-blocking call - UI updates immediately
           controller.addProductAndRemoveProductFunction(
             productModel: productModel,
-            price: price,
-            disPrice: disPrice,
+            price: priceToPass,
+            disPrice: disPriceToPass,
           );
         },
       );
@@ -802,11 +734,11 @@ class ProductListView extends StatelessWidget {
           positiveString: "Login".tr,
           negativeString: "Cancel".tr,
           positiveClick: () {
-            Get.back(); // Close dialog
+            Get.back();
             Get.to(() => const PhoneNumberScreen());
           },
           negativeClick: () {
-            Get.back(); // Close dialog
+            Get.back();
           },
           img: Image.asset(
             'assets/images/ic_launcher.png',
@@ -821,16 +753,13 @@ class ProductListView extends StatelessWidget {
   int _findCartItemQuantity(String productId) {
     if (productId.isEmpty) return 0;
 
-    // Find all matching items (exact match or variant IDs starting with productId~)
     final matchingItems = HomeProvider.cartItem.where((cartItem) {
       if (cartItem.id == null || cartItem.id!.isEmpty) return false;
-      // Check exact match or if cart item ID starts with productId~
       return cartItem.id == productId || cartItem.id!.startsWith('$productId~');
     }).toList();
 
     if (matchingItems.isEmpty) return 0;
 
-    // Sum up quantities of all matching items (handles multiple variants)
     return matchingItems.fold<int>(
       0,
       (sum, item) => sum + (item.quantity ?? 0),
@@ -838,7 +767,7 @@ class ProductListView extends StatelessWidget {
   }
 }
 
-// Keep your existing helper methods
+// Keep existing helper methods
 productDetailsBottomSheet(BuildContext context, ProductModel productModel) {
   return showModalBottomSheet(
     context: context,
@@ -896,7 +825,6 @@ infoDialog(RestaurantDetailsProvider controller, ProductModel productModel) {
                   color: AppThemeData.grey900,
                 ),
               ),
-              // ... rest of info dialog content
               const SizedBox(height: 20),
               RoundedButtonFill(
                 title: "Back".tr,

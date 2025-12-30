@@ -13,6 +13,8 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
+import '../../../constant/show_toast_dialog.dart';
+
 Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 0),
@@ -112,12 +114,46 @@ Widget _buildProductItem(
           : (cartProductModel.name?.isNotEmpty == true
                 ? cartProductModel.name
                 : 'Product');
+
+      // Check if this is a promotional item
+      final isPromotional =
+          cartProductModel.promoId != null &&
+          cartProductModel.promoId!.isNotEmpty;
+
+      // Get prices
       final price = double.tryParse(cartProductModel.price ?? '0') ?? 0.0;
       final discountPrice =
           double.tryParse(cartProductModel.discountPrice ?? '0') ?? 0.0;
-      final finalPrice = discountPrice > 0 ? discountPrice : price;
+
+      // For promotional items, the promotional price is in the 'price' field
+      // and the original price is in 'discountPrice'
+      // For regular items with discount, discountPrice is the discounted price
+      // and price is the original price
+
+      double finalPrice;
+      double originalPriceForComparison;
+
+      if (isPromotional) {
+        // Promotional item: price = promotional price, discountPrice = original price
+        finalPrice = price;
+        originalPriceForComparison = discountPrice;
+      } else if (discountPrice > 0 && discountPrice < price) {
+        // Regular item with discount: discountPrice = discounted price, price = original price
+        finalPrice = discountPrice;
+        originalPriceForComparison = price;
+      } else {
+        // Regular item without discount
+        finalPrice = price;
+        originalPriceForComparison = 0.0; // No original price for comparison
+      }
+
       final quantity = cartProductModel.quantity ?? 1;
       final totalPrice = finalPrice * quantity;
+      final showOriginalPrice =
+          isPromotional &&
+          originalPriceForComparison > 0 &&
+          originalPriceForComparison > finalPrice;
+
       return InkWell(
         onTap: () async {
           if (productModel != null) {
@@ -136,79 +172,160 @@ Widget _buildProductItem(
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: productPhoto != null && productPhoto.isNotEmpty
-                    ? Image.network(
-                        productPhoto,
-                        width: 60,
-                        height: 60,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          width: 60,
-                          height: 60,
-                          color: AppThemeData.grey200,
-                          child: Icon(
-                            Icons.image_not_supported,
-                            color: AppThemeData.grey400,
-                            size: 30,
-                          ),
-                        ),
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
-                          return Container(
+              // Product Image with Promotional Badge
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: productPhoto != null && productPhoto.isNotEmpty
+                        ? Image.network(
+                            productPhoto,
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                                  width: 60,
+                                  height: 60,
+                                  color: AppThemeData.grey200,
+                                  child: Icon(
+                                    Icons.image_not_supported,
+                                    color: AppThemeData.grey400,
+                                    size: 30,
+                                  ),
+                                ),
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return Container(
+                                width: 60,
+                                height: 60,
+                                color: AppThemeData.grey200,
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    value:
+                                        loadingProgress.expectedTotalBytes !=
+                                            null
+                                        ? loadingProgress
+                                                  .cumulativeBytesLoaded /
+                                              loadingProgress
+                                                  .expectedTotalBytes!
+                                        : null,
+                                    strokeWidth: 2,
+                                  ),
+                                ),
+                              );
+                            },
+                          )
+                        : Container(
                             width: 60,
                             height: 60,
                             color: AppThemeData.grey200,
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                value:
-                                    loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                          loadingProgress.expectedTotalBytes!
-                                    : null,
-                                strokeWidth: 2,
-                              ),
+                            child: Icon(
+                              Icons.image_not_supported,
+                              color: AppThemeData.grey400,
+                              size: 30,
                             ),
-                          );
-                        },
-                      )
-                    : Container(
-                        width: 60,
-                        height: 60,
-                        color: AppThemeData.grey200,
-                        child: Icon(
-                          Icons.image_not_supported,
-                          color: AppThemeData.grey400,
-                          size: 30,
+                          ),
+                  ),
+
+                  // Promotional Badge
+                  if (isPromotional)
+                    Positioned(
+                      top: -5,
+                      left: -5,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'Special Offer',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
+                    ),
+                ],
               ),
+
               const SizedBox(width: 12),
               // Product Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Product Name
-                    Text(
-                      productName ?? 'Product',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontFamily: AppThemeData.semiBold,
-                        color: AppThemeData.grey900,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    // Price
+                    // Product Name with Promotional Indicator
                     Row(
                       children: [
-                        if (discountPrice > 0 && discountPrice < price) ...[
+                        Expanded(
+                          child: Text(
+                            productName ?? 'Product',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontFamily: AppThemeData.semiBold,
+                              color: AppThemeData.grey900,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+
+                        // Promotional Tag
+                        if (isPromotional)
+                          Container(
+                            margin: const EdgeInsets.only(left: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'OFFER',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.red,
+                                fontFamily: AppThemeData.semiBold,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 4),
+
+                    // Price Display
+                    Row(
+                      children: [
+                        // Final Price (promotional or discounted)
+                        Text(
+                          '${Constant.currencyModel?.symbol ?? '₹'}${finalPrice.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontFamily: AppThemeData.semiBold,
+                            color: isPromotional
+                                ? Colors.red
+                                : AppThemeData.primary300,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+
+                        // Original Price with strikethrough
+                        if (showOriginalPrice) ...[
+                          const SizedBox(width: 6),
                           Text(
-                            '${Constant.currencyModel?.symbol ?? '₹'}${price.toStringAsFixed(2)}',
+                            '${Constant.currencyModel?.symbol ?? '₹'}${originalPriceForComparison.toStringAsFixed(2)}',
                             style: TextStyle(
                               fontSize: 12,
                               fontFamily: AppThemeData.regular,
@@ -216,20 +333,33 @@ Widget _buildProductItem(
                               decoration: TextDecoration.lineThrough,
                             ),
                           ),
+
+                          // Discount percentage for promotional items
                           const SizedBox(width: 6),
-                        ],
-                        Text(
-                          '${Constant.currencyModel?.symbol ?? '₹'}${finalPrice.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontFamily: AppThemeData.semiBold,
-                            color: AppThemeData.primary300,
-                            fontWeight: FontWeight.w600,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              '${((originalPriceForComparison - finalPrice) / originalPriceForComparison * 100).round()}% OFF',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.red,
+                                fontFamily: AppThemeData.semiBold,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
+
                     const SizedBox(height: 8),
+
                     // Quantity Controls
                     Row(
                       children: [
@@ -241,6 +371,7 @@ Widget _buildProductItem(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
+                              // Decrease Button
                               InkWell(
                                 onTap: () {
                                   cartController.addToCart(
@@ -258,6 +389,8 @@ Widget _buildProductItem(
                                   ),
                                 ),
                               ),
+
+                              // Quantity Display
                               Padding(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 12,
@@ -272,8 +405,33 @@ Widget _buildProductItem(
                                   ),
                                 ),
                               ),
+
+                              // Increase Button with promotional quantity check
                               InkWell(
                                 onTap: () {
+                                  // Check promotional quantity limits
+                                  if (isPromotional) {
+                                    final isAllowed = cartController
+                                        .isPromotionalItemQuantityAllowed(
+                                          cartProductModel.id ?? '',
+                                          cartProductModel.vendorID ?? '',
+                                          quantity + 1,
+                                        );
+
+                                    if (!isAllowed) {
+                                      final limit = cartController
+                                          .getPromotionalItemLimit(
+                                            cartProductModel.id ?? '',
+                                            cartProductModel.vendorID ?? '',
+                                          );
+                                      ShowToastDialog.showToast(
+                                        "Maximum $limit items allowed for this promotional offer"
+                                            .tr,
+                                      );
+                                      return;
+                                    }
+                                  }
+
                                   cartController.addToCart(
                                     cartProductModel: cartProductModel,
                                     isIncrement: true,
@@ -305,6 +463,40 @@ Widget _buildProductItem(
                         ),
                       ],
                     ),
+
+                    // Variants and Add-ons if any
+                    // if (cartProductModel.variantInfo != null &&
+                    //     cartProductModel.variantInfo!.variantName != null)
+                    //   Padding(
+                    //     padding: const EdgeInsets.only(top: 4),
+                    //     child: Text(
+                    //       'Variant: ${cartProductModel.variantInfo!.variantName}',
+                    //       style: TextStyle(
+                    //         fontSize: 11,
+                    //         fontFamily: AppThemeData.regular,
+                    //         color: AppThemeData.grey500,
+                    //         fontStyle: FontStyle.italic,
+                    //       ),
+                    //       maxLines: 1,
+                    //       overflow: TextOverflow.ellipsis,
+                    //     ),
+                    //   ),
+                    if (cartProductModel.extras != null &&
+                        cartProductModel.extras!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Add-ons: ${cartProductModel.extras!.map((e) => e.title ?? '').where((title) => title.isNotEmpty).join(', ')}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontFamily: AppThemeData.regular,
+                            color: AppThemeData.grey500,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                   ],
                 ),
               ),

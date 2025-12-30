@@ -68,7 +68,9 @@ class FireStoreUtils {
         throw Exception('Failed to load messages');
       }
     } on SocketException {
-      throw Exception('No internet connection. Please check your network and try again.');
+      throw Exception(
+        'No internet connection. Please check your network and try again.',
+      );
     } catch (e) {
       throw Exception('Failed to load messages: $e');
     }

@@ -54,12 +54,7 @@ import '../../../models/mart_item_model.dart';
 import '../../../services/mart_firestore_service.dart';
 
 /// Price update result for cart price validation
-enum PriceStatus {
-  noChange,
-  priceChanged,
-  productNotFound,
-  error,
-}
+enum PriceStatus { noChange, priceChanged, productNotFound, error }
 
 class PriceUpdateResult {
   final String productId;
@@ -79,7 +74,9 @@ class PriceUpdateResult {
   });
 
   bool get hasPriceChange => status == PriceStatus.priceChanged;
-  bool get isError => status == PriceStatus.error || status == PriceStatus.productNotFound;
+
+  bool get isError =>
+      status == PriceStatus.error || status == PriceStatus.productNotFound;
 }
 
 class CartControllerProvider extends ChangeNotifier {
@@ -830,6 +827,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Price sync state to trigger UI updates
   int _priceSyncVersion = 0;
+
   int get priceSyncVersion => _priceSyncVersion;
 
   /// Public method to initialize address (for external calls)
@@ -1619,10 +1617,17 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Validates and updates cart prices against current backend prices
   /// Works for both food (restaurant) and mart items
+  /// Validates and updates cart prices against current backend prices
+  /// Works for both food (restaurant) and mart items
+  /// SKIPS promotional items - their prices should remain fixed
+  /// Validates and updates cart prices against current backend prices
+  /// Works for both food (restaurant) and mart items
   Future<Map<String, PriceUpdateResult>> validateAndUpdateCartPrices() async {
     final Map<String, PriceUpdateResult> results = {};
 
-    print('[PRICE_SYNC] Validating prices for ${HomeProvider.cartItem.length} cart items');
+    print(
+      '[PRICE_SYNC] Validating prices for ${HomeProvider.cartItem.length} cart items',
+    );
 
     for (var cartItem in HomeProvider.cartItem) {
       try {
@@ -1637,9 +1642,11 @@ class CartControllerProvider extends ChangeNotifier {
           continue;
         }
 
+        final isPromotionalItem =
+            cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
         final isMart = _isMartItem(cartItem);
         final itemType = isMart ? 'MART' : 'FOOD';
-        
+
         // Fetch current product from backend
         dynamic currentProduct;
 
@@ -1649,13 +1656,14 @@ class CartControllerProvider extends ChangeNotifier {
             final martService = Get.find<MartFirestoreService>();
             currentProduct = await martService.getItemById(cartItem.id!);
             if (currentProduct != null && currentProduct is MartItemModel) {
-              print('[PRICE_SYNC] [$itemType] ✅ Fetched mart item: ${cartItem.name}');
-              print('[PRICE_SYNC] [$itemType]   Backend prices: Regular=₹${currentProduct.price}, Discount=₹${currentProduct.disPrice}, FinalPrice=₹${currentProduct.finalPrice}');
-            } else {
-              print('[PRICE_SYNC] [$itemType] ⚠️ Fetched mart item but it is null or wrong type');
+              print(
+                '[PRICE_SYNC] [$itemType] ✅ Fetched mart item: ${cartItem.name}',
+              );
             }
           } catch (e) {
-            print('[PRICE_SYNC] [$itemType] ❌ Error fetching mart item ${cartItem.id}: $e');
+            print(
+              '[PRICE_SYNC] [$itemType] ❌ Error fetching mart item ${cartItem.id}: $e',
+            );
             results[cartItem.id!] = PriceUpdateResult(
               productId: cartItem.id!,
               status: PriceStatus.error,
@@ -1670,13 +1678,14 @@ class CartControllerProvider extends ChangeNotifier {
           try {
             currentProduct = await FireStoreUtils.getProductById(cartItem.id!);
             if (currentProduct != null && currentProduct is ProductModel) {
-              print('[PRICE_SYNC] [$itemType] ✅ Fetched restaurant item: ${cartItem.name}');
-              print('[PRICE_SYNC] [$itemType]   Backend prices: Regular=₹${currentProduct.price}, Discount=₹${currentProduct.disPrice}');
-            } else {
-              print('[PRICE_SYNC] [$itemType] ⚠️ Fetched restaurant item but it is null or wrong type');
+              print(
+                '[PRICE_SYNC] [$itemType] ✅ Fetched restaurant item: ${cartItem.name}',
+              );
             }
           } catch (e) {
-            print('[PRICE_SYNC] [$itemType] Error fetching restaurant item ${cartItem.id}: $e');
+            print(
+              '[PRICE_SYNC] [$itemType] Error fetching restaurant item ${cartItem.id}: $e',
+            );
             results[cartItem.id!] = PriceUpdateResult(
               productId: cartItem.id!,
               status: PriceStatus.error,
@@ -1701,35 +1710,58 @@ class CartControllerProvider extends ChangeNotifier {
 
         // Get current price (considering variants, promotions, etc.)
         final currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
-        
-        // For comparison, use the price that's actually displayed in cart
-        // If discountPrice exists and is > 0, use that, otherwise use regular price
-        final storedDiscountPrice = double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
-        final storedRegularPrice = double.tryParse(cartItem.price ?? "0") ?? 0.0;
-        final storedDisplayPrice = storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice 
-            ? storedDiscountPrice 
-            : storedRegularPrice;
-        
-        // For mart items, also get the actual backend prices for comparison
-        double? backendRegularPrice;
-        double? backendDiscountPrice;
-        if (currentProduct is MartItemModel) {
-          backendRegularPrice = currentProduct.price;
-          backendDiscountPrice = currentProduct.disPrice;
-        } else if (currentProduct is ProductModel) {
-          backendRegularPrice = double.tryParse(currentProduct.price ?? "0");
-          backendDiscountPrice = double.tryParse(currentProduct.disPrice ?? "0");
+
+        // For promotional items, we should compare against the ORIGINAL price, not the promotional price
+        // But we should NOT update the promotional price in cart
+        if (isPromotionalItem) {
+          print(
+            '[PRICE_SYNC] 🎯 [$itemType] Promotional item detected: ${cartItem.name}',
+          );
+          print('[PRICE_SYNC] 🎯   Promo ID: ${cartItem.promoId}');
+          print(
+            '[PRICE_SYNC] 🎯   Promotional price in cart: ₹${cartItem.price} (FIXED - will not change)',
+          );
+          print('[PRICE_SYNC] 🎯   Current backend price: ₹$currentPrice');
+
+          // For promotional items, always return noChange status
+          // The promotional price should remain fixed even if backend price changes
+          results[cartItem.id!] = PriceUpdateResult(
+            productId: cartItem.id!,
+            status: PriceStatus.noChange,
+            // Force no change for promotional items
+            oldPrice: cartItem.price,
+            newPrice: cartItem.price,
+            // Keep same price
+            productName: cartItem.name,
+          );
+          continue; // Skip to next item
         }
-        
-        print('[PRICE_SYNC] 💰 Price comparison for ${cartItem.name}:');
-        print('[PRICE_SYNC]   Stored in cart: Regular=₹$storedRegularPrice, Discount=₹$storedDiscountPrice, Display=₹$storedDisplayPrice');
-        print('[PRICE_SYNC]   Backend prices: Regular=₹$backendRegularPrice, Discount=₹$backendDiscountPrice');
+
+        // For non-promotional items, proceed with normal price comparison
+
+        // For comparison, use the price that's actually displayed in cart
+        final storedDiscountPrice =
+            double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
+        final storedRegularPrice =
+            double.tryParse(cartItem.price ?? "0") ?? 0.0;
+        final storedDisplayPrice =
+            storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
+            ? storedDiscountPrice
+            : storedRegularPrice;
+
+        print(
+          '[PRICE_SYNC] 💰 [$itemType] Price comparison for ${cartItem.name}:',
+        );
+        print(
+          '[PRICE_SYNC]   Stored in cart: Regular=₹$storedRegularPrice, Discount=₹$storedDiscountPrice, Display=₹$storedDisplayPrice',
+        );
         print('[PRICE_SYNC]   Calculated current price: ₹$currentPrice');
-        print('[PRICE_SYNC]   Price difference: ${(currentPrice - storedDisplayPrice).abs()}');
 
         if ((currentPrice - storedDisplayPrice).abs() > 0.01) {
           // Price has changed (using 0.01 tolerance for floating point comparison)
-          print('[PRICE_SYNC]   ✅ PRICE CHANGE DETECTED: ₹$storedDisplayPrice → ₹$currentPrice');
+          print(
+            '[PRICE_SYNC]   ✅ PRICE CHANGE DETECTED: ₹$storedDisplayPrice → ₹$currentPrice',
+          );
           results[cartItem.id!] = PriceUpdateResult(
             productId: cartItem.id!,
             status: PriceStatus.priceChanged,
@@ -1738,7 +1770,9 @@ class CartControllerProvider extends ChangeNotifier {
             productName: cartItem.name,
           );
         } else {
-          print('[PRICE_SYNC]   ℹ️ No price change (difference: ${(currentPrice - storedDisplayPrice).abs()})');
+          print(
+            '[PRICE_SYNC]   ℹ️ No price change (difference: ${(currentPrice - storedDisplayPrice).abs()})',
+          );
           results[cartItem.id!] = PriceUpdateResult(
             productId: cartItem.id!,
             status: PriceStatus.noChange,
@@ -1764,7 +1798,9 @@ class CartControllerProvider extends ChangeNotifier {
   double _getCurrentProductPrice(dynamic product, CartProductModel cartItem) {
     try {
       // Handle variants for restaurant products
-      if (cartItem.variantInfo != null && product is ProductModel && product.itemAttribute != null) {
+      if (cartItem.variantInfo != null &&
+          product is ProductModel &&
+          product.itemAttribute != null) {
         final variantSku = cartItem.variantInfo!.variantSku;
         Variants? variant;
         try {
@@ -1779,10 +1815,12 @@ class CartControllerProvider extends ChangeNotifier {
         if (variant != null && variant.variantPrice != null) {
           // Get vendor for commission calculation
           if (vendorModel.id != null) {
-            return double.parse(Constant.productCommissionPrice(
-              vendorModel,
-              variant.variantPrice ?? product.price ?? "0",
-            ));
+            return double.parse(
+              Constant.productCommissionPrice(
+                vendorModel,
+                variant.variantPrice ?? product.price ?? "0",
+              ),
+            );
           }
           return double.tryParse(variant.variantPrice ?? "0") ?? 0.0;
         }
@@ -1799,10 +1837,12 @@ class CartControllerProvider extends ChangeNotifier {
         // Check for promotional price
         if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) {
           if (vendorModel.id != null) {
-            return double.parse(Constant.productCommissionPrice(
-              vendorModel,
-              product.price ?? "0",
-            ));
+            return double.parse(
+              Constant.productCommissionPrice(
+                vendorModel,
+                product.price ?? "0",
+              ),
+            );
           }
           return double.tryParse(product.price ?? "0") ?? 0.0;
         }
@@ -1815,10 +1855,12 @@ class CartControllerProvider extends ChangeNotifier {
           final regPrice = double.parse(product.price ?? "0");
           if (disPrice > 0 && disPrice < regPrice) {
             if (vendorModel.id != null) {
-              return double.parse(Constant.productCommissionPrice(
-                vendorModel,
-                product.disPrice ?? "0",
-              ));
+              return double.parse(
+                Constant.productCommissionPrice(
+                  vendorModel,
+                  product.disPrice ?? "0",
+                ),
+              );
             }
             return disPrice;
           }
@@ -1826,10 +1868,9 @@ class CartControllerProvider extends ChangeNotifier {
 
         // Regular price
         if (vendorModel.id != null) {
-          return double.parse(Constant.productCommissionPrice(
-            vendorModel,
-            product.price ?? "0",
-          ));
+          return double.parse(
+            Constant.productCommissionPrice(vendorModel, product.price ?? "0"),
+          );
         }
         return double.tryParse(product.price ?? "0") ?? 0.0;
       }
@@ -1842,79 +1883,152 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Syncs cart prices in background (call when cart screen opens)
   /// Works for both food (restaurant) and mart items
+  /// Syncs cart prices in background (call when cart screen opens)
+  /// Works for both food (restaurant) and mart items
+  /// SKIPS promotional items - their prices remain fixed
+  /// Syncs cart prices in background (call when cart screen opens)
+  /// Works for both food (restaurant) and mart items
+  /// Promotional items keep their fixed prices
+  /// Non-promotional items get updated if prices changed
   Future<void> syncCartPricesInBackground() async {
     try {
       print('[PRICE_SYNC] ========== STARTING PRICE SYNC ==========');
-      
+
       // Only sync if cart has items
       if (HomeProvider.cartItem.isEmpty) {
         print('[PRICE_SYNC] ❌ Cart is empty, skipping sync');
         return;
       }
 
-      print('[PRICE_SYNC] 📦 Cart has ${HomeProvider.cartItem.length} items');
-      print('[PRICE_SYNC] 📋 Current cart items:');
-      for (var item in HomeProvider.cartItem) {
-        print('[PRICE_SYNC]   - ${item.name}: Price=₹${item.price}, Discount=₹${item.discountPrice}, ID=${item.id}');
-      }
-      
-      // Check if we have food items that need vendor for commission calculation
-      final hasFoodItems = HomeProvider.cartItem.any((item) => 
-        item.vendorID != null && 
-        item.vendorID!.isNotEmpty && 
-        item.vendorID!.contains('vendor') == true
+      // Count promotional vs non-promotional items
+      final promotionalItems = HomeProvider.cartItem
+          .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
+          .toList();
+
+      final nonPromotionalItems = HomeProvider.cartItem
+          .where((item) => item.promoId == null || item.promoId!.isEmpty)
+          .toList();
+
+      print('[PRICE_SYNC] 📦 Cart summary:');
+      print('[PRICE_SYNC]   Total items: ${HomeProvider.cartItem.length}');
+      print(
+        '[PRICE_SYNC]   Promotional items: ${promotionalItems.length} (prices fixed)',
       );
-      
+      print(
+        '[PRICE_SYNC]   Non-promotional items: ${nonPromotionalItems.length} (prices will sync)',
+      );
+
+      if (promotionalItems.isNotEmpty) {
+        print('[PRICE_SYNC] 🎯 Promotional items (prices will NOT change):');
+        for (var promoItem in promotionalItems) {
+          print(
+            '[PRICE_SYNC]   - ${promoItem.name}: Promo ID: ${promoItem.promoId}, Price: ₹${promoItem.price}',
+          );
+        }
+      }
+
+      if (nonPromotionalItems.isEmpty) {
+        print(
+          '[PRICE_SYNC] ⏭️  All items are promotional - skipping price sync',
+        );
+        return;
+      }
+
+      print('[PRICE_SYNC] 🔍 Validating prices for non-promotional items...');
+
       // For food items, ensure vendor is loaded before price validation
+      final hasFoodItems = nonPromotionalItems.any(
+        (item) =>
+            item.vendorID != null &&
+            item.vendorID!.isNotEmpty &&
+            item.vendorID!.contains('vendor') == true,
+      );
+
       if (hasFoodItems && (vendorModel.id == null || vendorModel.id!.isEmpty)) {
-        print('[PRICE_SYNC] 🏪 Food items detected, loading vendor for commission calculation...');
+        print(
+          '[PRICE_SYNC] 🏪 Food items detected, loading vendor for commission calculation...',
+        );
         try {
-          // Find the first food item's vendor ID
-          final foodItem = HomeProvider.cartItem.firstWhere(
-            (item) => item.vendorID != null && 
-                     item.vendorID!.isNotEmpty && 
-                     item.vendorID!.contains('vendor') == true,
+          // Find the first non-promotional food item's vendor ID
+          final foodItem = nonPromotionalItems.firstWhere(
+            (item) =>
+                item.vendorID != null &&
+                item.vendorID!.isNotEmpty &&
+                item.vendorID!.contains('vendor') == true,
             orElse: () => CartProductModel(),
           );
-          
+
           if (foodItem.vendorID != null && foodItem.vendorID!.isNotEmpty) {
             final vendorId = foodItem.vendorID!.split('~').first;
             final freshVendor = await FireStoreUtils.getVendorById(vendorId);
             if (freshVendor != null) {
               vendorModel = freshVendor;
-              print('[PRICE_SYNC] ✅ Vendor loaded: ${vendorModel.title} (${vendorModel.id})');
-            } else {
-              print('[PRICE_SYNC] ⚠️ Vendor not found: $vendorId');
+              print(
+                '[PRICE_SYNC] ✅ Vendor loaded: ${vendorModel.title} (${vendorModel.id})',
+              );
             }
           }
         } catch (e) {
           print('[PRICE_SYNC] ❌ Error loading vendor: $e');
-          // Continue with price sync even if vendor load fails
         }
       }
-      
-      print('[PRICE_SYNC] 🔍 Validating prices against backend...');
-      print('[PRICE_SYNC]   Vendor loaded: ${vendorModel.id != null ? "Yes (${vendorModel.id})" : "No"}');
-      final priceUpdates = await validateAndUpdateCartPrices();
-      
-      print('[PRICE_SYNC] 📊 Validation results (${priceUpdates.length} items):');
-      for (var entry in priceUpdates.entries) {
-        final result = entry.value;
-        print('[PRICE_SYNC]   - ${result.productId} (${result.productName ?? "Unknown"}): ${result.status.name}');
-        print('[PRICE_SYNC]     Old Price: ₹${result.oldPrice ?? "N/A"}, New Price: ₹${result.newPrice ?? "N/A"}');
-        if (result.error != null) {
-          print('[PRICE_SYNC]     Error: ${result.error}');
-        }
-      }
-      
-      bool hasUpdates = false;
 
-      // Update prices for all changes
-      print('[PRICE_SYNC] 🔄 Processing price updates...');
-      int updateCount = 0;
-      
+      // Validate prices for ALL items (promotional items will return noChange status)
+      final priceUpdates = await validateAndUpdateCartPrices();
+
+      print('[PRICE_SYNC] 📊 Validation results:');
       for (var entry in priceUpdates.entries) {
         final result = entry.value;
+        final cartItem = HomeProvider.cartItem.firstWhere(
+          (item) => item.id == result.productId,
+          orElse: () => CartProductModel(),
+        );
+        final isPromo =
+            cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
+
+        if (isPromo) {
+          print(
+            '[PRICE_SYNC]   🎯 ${result.productName ?? result.productId}: PROMOTIONAL - Price fixed at ₹${result.oldPrice}',
+          );
+        } else {
+          print(
+            '[PRICE_SYNC]   📦 ${result.productName ?? result.productId}: ${result.status.name}',
+          );
+          if (result.hasPriceChange) {
+            print(
+              '[PRICE_SYNC]     Price change: ₹${result.oldPrice ?? "N/A"} → ₹${result.newPrice ?? "N/A"}',
+            );
+          }
+        }
+      }
+
+      bool hasUpdates = false;
+      int updateCount = 0;
+
+      // Update prices ONLY for non-promotional items that have changed
+      print(
+        '[PRICE_SYNC] 🔄 Processing price updates (only non-promotional items)...',
+      );
+
+      for (var entry in priceUpdates.entries) {
+        final result = entry.value;
+
+        // Check if this is a promotional item
+        final cartItem = HomeProvider.cartItem.firstWhere(
+          (item) => item.id == result.productId,
+          orElse: () => CartProductModel(),
+        );
+
+        final isPromo =
+            cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
+        if (isPromo) {
+          print(
+            '[PRICE_SYNC] 🎯 Skipping promotional item: ${result.productName} (price remains fixed)',
+          );
+          continue; // Skip promotional items
+        }
+
+        // Only process non-promotional items with price changes
         if (result.hasPriceChange &&
             result.oldPrice != null &&
             result.newPrice != null) {
@@ -1923,88 +2037,90 @@ class CartControllerProvider extends ChangeNotifier {
             final newPrice = double.tryParse(result.newPrice!) ?? 0.0;
 
             if (oldPrice > 0) {
-              final changePercent = ((newPrice - oldPrice) / oldPrice * 100).abs();
-              
-              print('[PRICE_SYNC] 💰 Updating ${result.productName ?? result.productId}: ₹$oldPrice → ₹$newPrice (${changePercent.toStringAsFixed(1)}%)');
+              final changePercent = ((newPrice - oldPrice) / oldPrice * 100)
+                  .abs();
+
+              print(
+                '[PRICE_SYNC] 💰 Updating ${result.productName ?? result.productId}: ₹$oldPrice → ₹$newPrice (${changePercent.toStringAsFixed(1)}%)',
+              );
 
               // Find and update cart item
               final cartItemIndex = HomeProvider.cartItem.indexWhere(
                 (item) => item.id == result.productId,
               );
-              
+
               if (cartItemIndex < 0) {
-                print('[PRICE_SYNC] ⚠️ Item not found in cart: ${result.productId}');
+                print(
+                  '[PRICE_SYNC] ⚠️ Item not found in cart: ${result.productId}',
+                );
                 continue;
               }
-              
+
               print('[PRICE_SYNC] ✅ Found item at index $cartItemIndex');
 
               if (cartItemIndex >= 0) {
                 final cartItem = HomeProvider.cartItem[cartItemIndex];
-                final isMart = _isMartItem(cartItem);
-                
+
                 try {
-                  // Update price - fetch product to get current discount info
-                  dynamic currentProduct;
-                  if (isMart) {
-                    // Mart items - direct price, no commission
-                    try {
-                      final martService = Get.find<MartFirestoreService>();
-                      currentProduct = await martService.getItemById(cartItem.id!);
-                    } catch (e) {
-                      print('[PRICE_SYNC] Error fetching mart item: $e');
-                      currentProduct = null;
-                    }
-                  } else {
-                    // Restaurant items - may need commission calculation
-                    try {
-                      currentProduct = await FireStoreUtils.getProductById(cartItem.id!);
-                    } catch (e) {
-                      print('[PRICE_SYNC] Error fetching restaurant item: $e');
-                      currentProduct = null;
-                    }
-                  }
-                  
                   // Store old values for logging
                   final oldPriceValue = cartItem.price;
                   final oldDiscountValue = cartItem.discountPrice;
-                  
+
+                  // Fetch current product to get updated prices
+                  dynamic currentProduct;
+                  final isMart = _isMartItem(cartItem);
+
+                  if (isMart) {
+                    // Mart items
+                    try {
+                      final martService = Get.find<MartFirestoreService>();
+                      currentProduct = await martService.getItemById(
+                        cartItem.id!,
+                      );
+                    } catch (e) {
+                      currentProduct = null;
+                    }
+                  } else {
+                    // Restaurant items
+                    try {
+                      currentProduct = await FireStoreUtils.getProductById(
+                        cartItem.id!,
+                      );
+                    } catch (e) {
+                      currentProduct = null;
+                    }
+                  }
+
                   if (currentProduct != null) {
                     // Update prices based on product type
                     if (currentProduct is MartItemModel) {
-                      // Mart items - update both regular and discount prices
                       cartItem.price = currentProduct.price.toStringAsFixed(2);
-                      
-                      // Update discount price if available
-                      if (currentProduct.disPrice != null && 
+                      if (currentProduct.disPrice != null &&
                           currentProduct.disPrice! < currentProduct.price &&
                           currentProduct.disPrice! > 0) {
-                        cartItem.discountPrice = currentProduct.disPrice!.toStringAsFixed(2);
-                        print('[PRICE_SYNC] [MART] Updated: Price=₹${cartItem.price}, Discount=₹${cartItem.discountPrice}');
+                        cartItem.discountPrice = currentProduct.disPrice!
+                            .toStringAsFixed(2);
                       } else {
                         cartItem.discountPrice = "0";
-                        print('[PRICE_SYNC] [MART] Updated: Price=₹${cartItem.price}, No discount');
                       }
                     } else if (currentProduct is ProductModel) {
-                      // Restaurant items - update regular price with calculated price
                       cartItem.price = result.newPrice;
-                      
-                      // Calculate discount with commission if vendor loaded
                       if (currentProduct.disPrice != null &&
                           double.tryParse(currentProduct.disPrice!) != null &&
-                          double.tryParse(currentProduct.price ?? "0") != null) {
+                          double.tryParse(currentProduct.price ?? "0") !=
+                              null) {
                         final disPrice = double.parse(currentProduct.disPrice!);
-                        final regPrice = double.parse(currentProduct.price ?? "0");
+                        final regPrice = double.parse(
+                          currentProduct.price ?? "0",
+                        );
                         if (disPrice > 0 && disPrice < regPrice) {
-                          // Product has discount
                           if (vendorModel.id != null) {
-                            // Apply commission to discount price
-                            cartItem.discountPrice = Constant.productCommissionPrice(
-                              vendorModel,
-                              currentProduct.disPrice ?? "0",
-                            );
+                            cartItem.discountPrice =
+                                Constant.productCommissionPrice(
+                                  vendorModel,
+                                  currentProduct.disPrice ?? "0",
+                                );
                           } else {
-                            // No vendor loaded yet - use raw discount price
                             cartItem.discountPrice = currentProduct.disPrice;
                           }
                         } else {
@@ -2015,55 +2131,32 @@ class CartControllerProvider extends ChangeNotifier {
                       }
                     }
                   } else {
-                    // Product not found - just update price (fallback)
-                    // For mart items, try to preserve discount logic
-                    if (_isMartItem(cartItem)) {
-                      cartItem.price = result.newPrice ?? "0";
-                      // If new price is less than old regular price, might be a discount
-                      final oldRegPrice = double.tryParse(oldPriceValue ?? "0") ?? 0.0;
-                      final newPriceValue = double.tryParse(result.newPrice ?? "0") ?? 0.0;
-                      if (newPriceValue < oldRegPrice && oldRegPrice > 0) {
-                        cartItem.discountPrice = result.newPrice;
-                        print('[PRICE_SYNC] [MART] Fallback: Set as discount price');
-                      } else {
-                        cartItem.discountPrice = "0";
-                      }
-                    } else {
-                      cartItem.price = result.newPrice;
-                    }
-                    print('[PRICE_SYNC] Product not found, updated price only (fallback)');
+                    // Fallback - just update price
+                    cartItem.price = result.newPrice;
                   }
-                  
+
                   // Save to database
                   await DatabaseHelper.instance.updateCartProduct(cartItem);
-                  
+
                   // CRITICAL: Update the item in HomeProvider.cartItem in place
-                  // This ensures the UI sees the change immediately
                   HomeProvider.cartItem[cartItemIndex] = cartItem;
-                  
+
                   hasUpdates = true;
                   updateCount++;
 
                   final itemType = isMart ? 'MART' : 'FOOD';
                   print(
-                    '[PRICE_SYNC] ✅ [$itemType] Updated price for ${result.productName ?? cartItem.name}: ₹$oldPrice → ₹$newPrice (${changePercent.toStringAsFixed(1)}% change)',
-                  );
-                  print(
-                    '[PRICE_SYNC] 📝 [$itemType] Price in cart: ${oldPriceValue} → ${cartItem.price}, Discount: ${oldDiscountValue} → ${cartItem.discountPrice}',
-                  );
-                  print(
-                    '[PRICE_SYNC] 💾 Saved to database: ID=${cartItem.id}, Price=${cartItem.price}, Discount=${cartItem.discountPrice}',
+                    '[PRICE_SYNC] ✅ [$itemType] Updated price for ${result.productName ?? cartItem.name}: ₹$oldPrice → ₹$newPrice',
                   );
 
-                  // Show notification for large changes (> 5%)
+                  // Show notification for large changes (> 5%) on non-promotional items
                   if (changePercent >= 5) {
                     _showPriceChangeNotification(result);
                   }
                 } catch (e) {
-                  // Fallback - just update price if anything fails
+                  // Fallback
                   cartItem.price = result.newPrice;
                   await DatabaseHelper.instance.updateCartProduct(cartItem);
-                  // Update in place
                   HomeProvider.cartItem[cartItemIndex] = cartItem;
                   hasUpdates = true;
                   print('[PRICE_SYNC] Error updating price (fallback): $e');
@@ -2071,82 +2164,102 @@ class CartControllerProvider extends ChangeNotifier {
               }
             }
           } catch (e) {
-            print('[PRICE_SYNC] Error updating price for ${result.productId}: $e');
+            print(
+              '[PRICE_SYNC] Error updating price for ${result.productId}: $e',
+            );
           }
         }
       }
 
       // Refresh cart from database to ensure UI is updated
       if (hasUpdates) {
-        print('[PRICE_SYNC] Refreshing cart after price updates...');
-        
-        print('[PRICE_SYNC] 🔄 Refreshing cart after $updateCount price updates...');
-        
+        print(
+          '[PRICE_SYNC] 🔄 Refreshing cart after $updateCount price updates...',
+        );
+
         // Refresh cart items from database
         print('[PRICE_SYNC] 📥 Fetching updated cart from database...');
         await cartProvider.refreshCart();
-        
+
         // Force a complete refresh of HomeProvider.cartItem
-        final finalCartItems = await DatabaseHelper.instance.fetchCartProducts();
-        print('[PRICE_SYNC] 📦 Fetched ${finalCartItems.length} items from database');
-        
+        final finalCartItems = await DatabaseHelper.instance
+            .fetchCartProducts();
+        print(
+          '[PRICE_SYNC] 📦 Fetched ${finalCartItems.length} items from database',
+        );
+
         // Verify the prices were actually updated in database
         print('[PRICE_SYNC] 🔍 Verifying database updates:');
         for (var item in finalCartItems) {
-          print('[PRICE_SYNC]   - ${item.name}: Price=₹${item.price}, Discount=₹${item.discountPrice}');
+          final isPromo = item.promoId != null && item.promoId!.isNotEmpty;
+          print(
+            '[PRICE_SYNC]   - ${item.name}: ${isPromo ? "🎯 PROMO" : "Regular"} Price=₹${item.price}, Discount=₹${item.discountPrice}',
+          );
         }
-        
+
         // Clear and rebuild HomeProvider.cartItem
         HomeProvider.cartItem.clear();
         HomeProvider.cartItem.addAll(finalCartItems);
-        print('[PRICE_SYNC] ✅ Updated HomeProvider.cartItem (${HomeProvider.cartItem.length} items)');
-        
+        print(
+          '[PRICE_SYNC] ✅ Updated HomeProvider.cartItem (${HomeProvider.cartItem.length} items)',
+        );
+
         // Force update the cart stream
         cartProvider.forceStreamUpdate();
         print('[PRICE_SYNC] ✅ Forced cart stream update');
-        
+
         print('[PRICE_SYNC] 🧮 Recalculating totals...');
-        
+
         // Recalculate totals with updated prices
-        if (vendorModel.id != null || HomeProvider.cartItem.any((item) => _isMartItem(item))) {
+        if (vendorModel.id != null ||
+            HomeProvider.cartItem.any((item) => _isMartItem(item))) {
           await calculatePrice();
-          print('[PRICE_SYNC] ✅ Totals recalculated: SubTotal=₹$subTotal, Total=₹$totalAmount');
+          print(
+            '[PRICE_SYNC] ✅ Totals recalculated: SubTotal=₹$subTotal, Total=₹$totalAmount',
+          );
         } else {
-          print('[PRICE_SYNC] ⚠️ Vendor not loaded, skipping total recalculation');
+          print(
+            '[PRICE_SYNC] ⚠️ Vendor not loaded, skipping total recalculation',
+          );
         }
-        
+
         // Increment version to force UI rebuild
         _priceSyncVersion++;
-        print('[PRICE_SYNC] 🔢 Incremented priceSyncVersion to $_priceSyncVersion');
-        
+        print(
+          '[PRICE_SYNC] 🔢 Incremented priceSyncVersion to $_priceSyncVersion',
+        );
+
         // CRITICAL: Notify listeners to trigger UI rebuild
         notifyListeners();
         print('[PRICE_SYNC] 📢 Notified CartControllerProvider listeners');
-        
-        // Also notify HomeProvider if it has listeners
-        try {
-          final homeProvider = Provider.of<HomeProvider>(Get.context!, listen: false);
-          homeProvider.notifyListeners();
-          print('[PRICE_SYNC] 📢 Notified HomeProvider listeners');
-        } catch (e) {
-          // HomeProvider might not be in context, that's okay
-          print('[PRICE_SYNC] ⚠️ Could not notify HomeProvider: $e');
-        }
-        
+
         // Small delay then notify again to ensure UI catches the update
         await Future.delayed(Duration(milliseconds: 300));
         _priceSyncVersion++;
         notifyListeners();
-        print('[PRICE_SYNC] 🔢 Final priceSyncVersion: $_priceSyncVersion, notified again');
-        
+        print(
+          '[PRICE_SYNC] 🔢 Final priceSyncVersion: $_priceSyncVersion, notified again',
+        );
+
         print('[PRICE_SYNC] ========== PRICE SYNC COMPLETE ==========');
-        print('[PRICE_SYNC] ✅ Updated $updateCount items, Cart totals recalculated');
+        print('[PRICE_SYNC] ✅ Updated $updateCount non-promotional items');
+        print(
+          '[PRICE_SYNC] 🎯 Promotional items: ${promotionalItems.length} items (prices fixed)',
+        );
         print('[PRICE_SYNC] 📋 Final cart state:');
         for (var item in finalCartItems) {
-          print('[PRICE_SYNC]   - ${item.name}: Price=₹${item.price}, Discount=₹${item.discountPrice}, Qty=${item.quantity}');
+          final isPromo = item.promoId != null && item.promoId!.isNotEmpty;
+          print(
+            '[PRICE_SYNC]   - ${item.name}: ${isPromo ? "🎯 PROMO" : "Regular"} Price=₹${item.price}, Discount=₹${item.discountPrice}, Qty=${item.quantity}',
+          );
         }
       } else {
-        print('[PRICE_SYNC] No price changes detected');
+        print(
+          '[PRICE_SYNC] No price changes detected for non-promotional items',
+        );
+        print(
+          '[PRICE_SYNC] 🎯 Promotional items: ${promotionalItems.length} items (prices fixed)',
+        );
       }
     } catch (e, stackTrace) {
       print('[PRICE_SYNC] ❌ Error syncing cart prices: $e');
@@ -2155,9 +2268,26 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Show notification for significant price changes
+  /// Show notification for significant price changes (skips promotional items)
   void _showPriceChangeNotification(PriceUpdateResult result) {
     try {
-      if (result.productName == null || result.oldPrice == null || result.newPrice == null) {
+      // Check if this is a promotional item
+      final cartItem = HomeProvider.cartItem.firstWhere(
+        (item) => item.id == result.productId,
+        orElse: () => CartProductModel(),
+      );
+
+      final isPromo = cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
+      if (isPromo) {
+        print(
+          '[PRICE_SYNC] ⏭️  Skipping price change notification for promotional item: ${result.productName}',
+        );
+        return; // Don't show notifications for promotional items
+      }
+
+      if (result.productName == null ||
+          result.oldPrice == null ||
+          result.newPrice == null) {
         return;
       }
 
