@@ -36,6 +36,15 @@
 -keep class proguard.annotation.** { *; }
 -dontwarn proguard.annotation.**
 
+# 🔑 CRITICAL: Keep Razorpay AnalyticsUtil class to prevent NoSuchMethodError
+-keep class com.razorpay.AnalyticsUtil { *; }
+-keepclassmembers class com.razorpay.AnalyticsUtil {
+    public static *** logFunctionEntry(...);
+    public static *** logFunctionExit(...);
+    public static *** logEvent(...);
+    public static *** log(...);
+}
+
 # Razorpay SDK - CRITICAL for release builds
 -keep class com.razorpay.** { *; }
 -dontwarn com.razorpay.**

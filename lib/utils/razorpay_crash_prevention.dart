@@ -55,8 +55,32 @@ class RazorpayCrashPrevention {
         return false;
       }
 
-      // Create Razorpay instance
-      _razorpay = Razorpay();
+      // 🔑 CRITICAL: Create Razorpay instance with error handling for Android 14+ broadcast receiver issues
+      // Note: The actual receiver registration happens later when opening payment, not during instantiation
+      // So we create the instance here, but the error might occur when opening payment
+      try {
+        _razorpay = Razorpay();
+        log('RAZORPAY_CRASH_PREVENTION: ✅ Razorpay instance created successfully');
+      } catch (e, stackTrace) {
+        // 🔑 CRITICAL: Catch RemoteException and other initialization errors
+        // This can happen on Android 14+ when Razorpay tries to register broadcast receivers
+        log('RAZORPAY_CRASH_PREVENTION: ❌ Error creating Razorpay instance: $e');
+        log('RAZORPAY_CRASH_PREVENTION: Stack trace: $stackTrace');
+        
+        // Check if it's a RemoteException (Android 14+ broadcast receiver issue)
+        final errorString = e.toString();
+        if (errorString.contains('RemoteException') || 
+            errorString.contains('registerReceiver') ||
+            errorString.contains('registerReceiverWithFeature')) {
+          log('RAZORPAY_CRASH_PREVENTION: ⚠️ Detected Android 14+ broadcast receiver issue during instantiation');
+          log('RAZORPAY_CRASH_PREVENTION: This is unusual - receiver registration typically happens during payment open');
+          log('RAZORPAY_CRASH_PREVENTION: Ensure CheckoutActivity is declared in AndroidManifest.xml');
+        }
+        
+        _isInitialized = false;
+        _isInitializationSafe = false;
+        return false;
+      }
 
       // 🔑 CRITICAL: Only register event handlers once to prevent duplicate callbacks
       if (!_areListenersRegistered) {
@@ -120,8 +144,20 @@ class RazorpayCrashPrevention {
 
       log('RAZORPAY_CRASH_PREVENTION: ✅ Safe initialization completed');
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      // 🔑 CRITICAL: Enhanced error handling for Android 14+ issues
       log('RAZORPAY_CRASH_PREVENTION: ❌ Initialization failed: $e');
+      log('RAZORPAY_CRASH_PREVENTION: Stack trace: $stackTrace');
+      
+      // Check for specific Android 14+ broadcast receiver errors
+      final errorString = e.toString();
+      if (errorString.contains('RemoteException') || 
+          errorString.contains('registerReceiver') ||
+          errorString.contains('registerReceiverWithFeature')) {
+        log('RAZORPAY_CRASH_PREVENTION: ⚠️ Android 14+ broadcast receiver registration issue detected');
+        log('RAZORPAY_CRASH_PREVENTION: Ensure receivers are declared in AndroidManifest.xml');
+      }
+      
       _isInitialized = false;
       _isInitializationSafe = false;
       return false;
@@ -165,18 +201,53 @@ class RazorpayCrashPrevention {
         log('🔑 [RAZORPAY_CRASH_PREVENTION] Calling Razorpay.open() with options');
         log('🔑 [RAZORPAY_CRASH_PREVENTION] Options: key=${options['key']?.toString().substring(0, 10)}..., amount=${options['amount']}, order_id=${options['order_id']}');
         
-        // Call open directly - it's a synchronous call that opens native activity
-        _razorpay!.open(options);
-        
-        // Small delay to ensure the native activity starts
-        await Future.delayed(const Duration(milliseconds: 100));
-        
-        log('✅ [RAZORPAY_CRASH_PREVENTION] Payment opened successfully - open() called');
-        return true;
+        // 🔑 CRITICAL: Wrap in try-catch to prevent crashes from propagating
+        // Razorpay.open() can throw exceptions that crash the app if not caught
+        // This is where Android 14+ RemoteException typically occurs (during receiver registration)
+        try {
+          // Call open directly - it's a synchronous call that opens native activity
+          // On Android 14+, this might trigger receiver registration which can fail
+          _razorpay!.open(options);
+          
+          // Small delay to ensure the native activity starts
+          await Future.delayed(const Duration(milliseconds: 100));
+          
+          log('✅ [RAZORPAY_CRASH_PREVENTION] Payment opened successfully - open() called');
+          return true;
+        } catch (nativeError, nativeStack) {
+          // 🔑 CRITICAL: Catch any native errors and log them without crashing
+          log('❌ [RAZORPAY_CRASH_PREVENTION] Native error in Razorpay.open(): $nativeError');
+          log('❌ [RAZORPAY_CRASH_PREVENTION] Native stack trace: $nativeStack');
+          
+          // 🔑 CRITICAL: Check for Android 14+ RemoteException (broadcast receiver issue)
+          final errorString = nativeError.toString();
+          if (errorString.contains('RemoteException') || 
+              errorString.contains('registerReceiver') ||
+              errorString.contains('registerReceiverWithFeature')) {
+            log('❌ [RAZORPAY_CRASH_PREVENTION] ⚠️ Android 14+ broadcast receiver registration failed');
+            log('❌ [RAZORPAY_CRASH_PREVENTION] This is a known issue with Razorpay SDK on Android 14+');
+            log('❌ [RAZORPAY_CRASH_PREVENTION] Ensure CheckoutActivity is declared in AndroidManifest.xml');
+            log('❌ [RAZORPAY_CRASH_PREVENTION] Consider updating Razorpay SDK to latest version');
+          }
+          
+          // Don't rethrow - return false instead to prevent app crash
+          // The error is logged, and the calling code can handle the failure gracefully
+          return false;
+        }
       } catch (openError, stackTrace) {
         log('❌ [RAZORPAY_CRASH_PREVENTION] Error calling Razorpay.open(): $openError');
         log('❌ [RAZORPAY_CRASH_PREVENTION] Stack trace: $stackTrace');
-        rethrow;
+        
+        // Check for RemoteException in outer catch as well
+        final errorString = openError.toString();
+        if (errorString.contains('RemoteException') || 
+            errorString.contains('registerReceiver') ||
+            errorString.contains('registerReceiverWithFeature')) {
+          log('❌ [RAZORPAY_CRASH_PREVENTION] ⚠️ Android 14+ broadcast receiver issue detected in outer catch');
+        }
+        
+        // 🔑 CRITICAL: Don't rethrow - return false to prevent app crash
+        return false;
       }
     } catch (e, stackTrace) {
       log('❌ [RAZORPAY_CRASH_PREVENTION] Error opening payment: $e');
@@ -214,10 +285,32 @@ class RazorpayCrashPrevention {
   /// **CHECK IF RAZORPAY CAN BE SAFELY INITIALIZED**
   ///
   /// This method checks for the specific NoSuchFieldError that causes crashes
+  /// Also handles Android 14+ RemoteException for broadcast receiver registration
   Future<bool> _canSafelyInitializeRazorpay() async {
     try {
       // ✅ CRITICAL: Test if Razorpay can be instantiated without crashes
-      final testRazorpay = Razorpay();
+      Razorpay? testRazorpay;
+      try {
+        testRazorpay = Razorpay();
+      } catch (e, stackTrace) {
+        // 🔑 CRITICAL: Catch RemoteException and other initialization errors
+        // This can happen on Android 14+ when Razorpay tries to register broadcast receivers
+        log('RAZORPAY_CRASH_PREVENTION: ❌ Error creating test Razorpay instance: $e');
+        log('RAZORPAY_CRASH_PREVENTION: Stack trace: $stackTrace');
+        
+        final errorString = e.toString();
+        if (errorString.contains('RemoteException') || 
+            errorString.contains('registerReceiver') ||
+            errorString.contains('registerReceiverWithFeature')) {
+          log('RAZORPAY_CRASH_PREVENTION: ⚠️ Android 14+ broadcast receiver issue detected in test');
+          log('RAZORPAY_CRASH_PREVENTION: This may be a transient issue, will attempt initialization anyway');
+          // Don't return false immediately - the actual initialization might work
+          // The error might only occur during receiver registration, not during instantiation
+        } else {
+          // For other errors, fail the safety check
+          return false;
+        }
+      }
 
       // ✅ NEW: Test if the problematic field exists
       // This prevents the NoSuchFieldError for activity_result_invalid_parameters
@@ -235,23 +328,40 @@ class RazorpayCrashPrevention {
             log(
               'RAZORPAY_CRASH_PREVENTION: Empty constant detected: $constant',
             );
+            if (testRazorpay != null) {
+              try {
+                testRazorpay.clear();
+              } catch (_) {}
+            }
             return false;
           }
         }
 
         // Clean up test instance
-        testRazorpay.clear();
+        if (testRazorpay != null) {
+          try {
+            testRazorpay.clear();
+          } catch (e) {
+            log('RAZORPAY_CRASH_PREVENTION: Warning - error clearing test instance: $e');
+          }
+        }
 
         log('RAZORPAY_CRASH_PREVENTION: ✅ Razorpay can be safely initialized');
         return true;
       } catch (e) {
         log('RAZORPAY_CRASH_PREVENTION: ❌ Razorpay constant access failed: $e');
+        if (testRazorpay != null) {
+          try {
+            testRazorpay.clear();
+          } catch (_) {}
+        }
         return false;
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       log(
         'RAZORPAY_CRASH_PREVENTION: ❌ Razorpay instantiation test failed: $e',
       );
+      log('RAZORPAY_CRASH_PREVENTION: Stack trace: $stackTrace');
       return false;
     }
   }

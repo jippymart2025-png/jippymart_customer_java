@@ -14,7 +14,19 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../DealsScreen/DealsScreen.dart';
+import '../../profile_screen/profile_screen.dart';
+
 class DashBoardProvider extends ChangeNotifier {
+  DashBoardProvider() {
+    // Initialize page list immediately when provider is created
+    print('[DASHBOARD_PROVIDER] Constructor called, initializing pageList...');
+    _initializePageList();
+    print(
+      '[DASHBOARD_PROVIDER] pageList initialized with ${pageList.length} items',
+    );
+  }
+
   void changeNavbar(
     int index,
     HomeProvider homeProvider,
@@ -33,7 +45,7 @@ class DashBoardProvider extends ChangeNotifier {
         }
       }
       if (index == 1) {
-        favouriteProvider.initFunction();
+        // Deals screen - no initialization needed
       }
       if (index == 2) {
         cartControllerProvider.initFunction(context);
@@ -52,21 +64,32 @@ class DashBoardProvider extends ChangeNotifier {
   bool canPopNow = false;
 
   Future<void> initFunction(BuildContext context) async {
-    loadUserData(context);
-    currentTheme = Constant.theme;
+    // Initialize page list first (synchronously) so dashboard can render
     _initializePageList();
+    currentTheme = Constant.theme;
+    // Load user data in background (async, non-blocking)
+    loadUserData(context);
   }
 
   void _initializePageList() {
+    if (pageList.isNotEmpty) {
+      print('[DASHBOARD_PROVIDER] pageList already initialized, skipping');
+      return;
+    }
+    print('[DASHBOARD_PROVIDER] Initializing pageList...');
     pageList = [
       const HomeScreenTwo(),
-      const FavouriteScreen(),
       const CartCheckOutScreen(),
+      const DealsScreen(),
       const OrderScreen(),
+      const ProfileScreen(),
     ];
     if (selectedIndex >= pageList.length) {
       selectedIndex = 0;
     }
+    print(
+      '[DASHBOARD_PROVIDER] pageList initialized: ${pageList.length} pages, selectedIndex: $selectedIndex',
+    );
     notifyListeners();
   }
 

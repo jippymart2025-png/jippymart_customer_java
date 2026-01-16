@@ -121,9 +121,9 @@ class CartControllerProvider extends ChangeNotifier {
 
     if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
       // 🔑 CRITICAL: For COD, verify it's allowed
-      if (controller.subTotal > 599) {
+      if (controller.subTotal > controller.cashOnDeliverySettingModel.getMaxAmount()) {
         ShowToastDialog.showToast(
-          "Cash on Delivery is not available for orders above ₹599. Please select online payment."
+          "Cash on Delivery is not available for orders above ₹${controller.cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}. Please select online payment."
               .tr,
         );
         controller.endOrderProcessing();
@@ -489,7 +489,7 @@ class CartControllerProvider extends ChangeNotifier {
 
                   SizedBox(height: 10),
                   // Validation messages
-                  if (subTotal > 599 &&
+                  if (subTotal > cashOnDeliverySettingModel.getMaxAmount() &&
                       selectedPaymentMethod == PaymentGateway.cod.name)
                     Container(
                       padding: EdgeInsets.all(8),
@@ -504,7 +504,7 @@ class CartControllerProvider extends ChangeNotifier {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              "COD not available for orders above ₹599",
+                              "COD not available for orders above ₹${cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}",
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.orange[800],
@@ -567,9 +567,9 @@ class CartControllerProvider extends ChangeNotifier {
                     }
                     // Validate selection
                     if (selectedPaymentMethod == PaymentGateway.cod.name) {
-                      if (subTotal > 599) {
+                      if (subTotal > cashOnDeliverySettingModel.getMaxAmount()) {
                         ShowToastDialog.showToast(
-                          "COD not available for orders above ₹599. Please select online payment."
+                          "COD not available for orders above ₹${cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}. Please select online payment."
                               .tr,
                         );
                         return;
@@ -1164,7 +1164,7 @@ class CartControllerProvider extends ChangeNotifier {
       getPaymentSettings();
       validateUserProfile();
       Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (subTotal > 599 &&
+        if (subTotal > cashOnDeliverySettingModel.getMaxAmount() &&
             selectedPaymentMethod == PaymentGateway.cod.name) {
           selectedPaymentMethod = PaymentGateway.razorpay.name;
         }
@@ -3557,16 +3557,17 @@ class CartControllerProvider extends ChangeNotifier {
           (item) => item.promoId != null && item.promoId!.isNotEmpty,
         );
         final hasMartItems = hasMartItemsInCart();
-        // 🔑 FIXED: Calculate tax ONLY on deliveryCharges (what customer actually pays)
-        // When delivery is free (above ₹299), customer only pays extra km charge
-        // Tax should be calculated on the actual amount charged, not on waived base charge
-        // Example: If customer pays ₹7 (extra km), tax should be on ₹7, not on ₹30 (base + extra)
-        final double taxableDeliveryFee = deliveryCharges > 0
-            ? deliveryCharges
-            : 0.0;
+        // 🔑 FIXED: Calculate tax on base delivery charge + extra km charges
+        // When delivery is free (above ₹299) but distance exceeds free km:
+        // - Customer pays only extra km charge (e.g., ₹14 for 2 km)
+        // - But tax should be calculated on base charge (₹23) + extra km (₹14) = ₹37
+        // originalDeliveryFee already contains base + extra km, so always use it when available
+        final double taxableDeliveryFee = originalDeliveryFee > 0
+            ? originalDeliveryFee
+            : (deliveryCharges > 0 ? deliveryCharges : 0.0);
 
         print(
-          '[TAX_CALC] Delivery charges (customer pays): ₹$deliveryCharges, Original fee (waived): ₹$originalDeliveryFee, Taxable fee: ₹$taxableDeliveryFee',
+          '[TAX_CALC] Delivery charges (customer pays): ₹$deliveryCharges, Original fee (base + extra km): ₹$originalDeliveryFee, Taxable fee: ₹$taxableDeliveryFee',
         );
 
         if (Constant.taxList != null) {
@@ -3600,7 +3601,7 @@ class CartControllerProvider extends ChangeNotifier {
           double sgstFallback = subTotal * 0.05; // 5% on subtotal
           double gstFallback = taxableDeliveryFee > 0
               ? taxableDeliveryFee *
-                    0.18 // 18% on delivery charges (what customer pays)
+                    0.18 // 18% on delivery charges or base charge (even when free delivery)
               : 0.0;
           taxAmount = sgstFallback + gstFallback;
           print(
@@ -3688,12 +3689,19 @@ class CartControllerProvider extends ChangeNotifier {
 
         // 🔑 FIX: Ensure values are valid before updating UI
         // If calculation resulted in invalid values, keep previous values
-        if (subTotal < 0 ||
+        // Also check for zero values when cart is not empty (indicates calculation error)
+        final bool isCartEmpty = HomeProvider.cartItem.isEmpty;
+        final bool hasInvalidValues = subTotal < 0 ||
             totalAmount < 0 ||
             subTotal.isNaN ||
-            totalAmount.isNaN) {
+            totalAmount.isNaN ||
+            subTotal.isInfinite ||
+            totalAmount.isInfinite ||
+            (!isCartEmpty && (subTotal == 0.0 || totalAmount == 0.0));
+        
+        if (hasInvalidValues) {
           print(
-            '[PRICE_CALC] ⚠️ Invalid values calculated, restoring previous values',
+            '[PRICE_CALC] ⚠️ Invalid values calculated (subTotal: $subTotal, totalAmount: $totalAmount, cartEmpty: $isCartEmpty), restoring previous values',
           );
           subTotal = previousSubTotal;
           totalAmount = previousTotalAmount;
@@ -3949,7 +3957,7 @@ class CartControllerProvider extends ChangeNotifier {
           negativeString: "Cancel".tr,
           positiveClick: () {
             Get.back(); // Close dialog
-            Get.to(() => const PhoneNumberScreen());
+            Get.to(() => PhoneNumberScreen());
           },
           negativeClick: () {
             Get.back(); // Close dialog
@@ -4110,6 +4118,58 @@ class CartControllerProvider extends ChangeNotifier {
         _endOrderProcessing();
         return;
       }
+      
+      // 🔑 CRITICAL: Validate calculations before placing order
+      // Ensure all values are valid and not zero
+      if (HomeProvider.cartItem.isEmpty) {
+        ShowToastDialog.showToast("Cart is empty. Please add items to cart.".tr);
+        endOrderProcessing();
+        return;
+      }
+      
+      // Recalculate price to ensure latest values
+      await calculatePrice();
+      
+      // Validate calculations are valid
+      if (subTotal <= 0 || subTotal.isNaN || subTotal.isInfinite) {
+        print('❌ [ORDER_VALIDATION] Invalid subTotal: $subTotal');
+        ShowToastDialog.showToast(
+          "Order calculation error. Please refresh and try again.".tr,
+        );
+        endOrderProcessing();
+        return;
+      }
+      
+      if (totalAmount <= 0 || totalAmount.isNaN || totalAmount.isInfinite) {
+        print('❌ [ORDER_VALIDATION] Invalid totalAmount: $totalAmount');
+        ShowToastDialog.showToast(
+          "Order total is invalid. Please refresh and try again.".tr,
+        );
+        endOrderProcessing();
+        return;
+      }
+      
+      // Validate cart items have valid prices
+      bool hasInvalidItems = false;
+      for (var item in HomeProvider.cartItem) {
+        final itemPrice = double.tryParse(item.price ?? '0') ?? 0.0;
+        if (itemPrice <= 0 || itemPrice.isNaN) {
+          hasInvalidItems = true;
+          print('❌ [ORDER_VALIDATION] Invalid item price: ${item.name} - ${item.price}');
+          break;
+        }
+      }
+      
+      if (hasInvalidItems) {
+        ShowToastDialog.showToast(
+          "Some items have invalid prices. Please refresh and try again.".tr,
+        );
+        endOrderProcessing();
+        return;
+      }
+      
+      print('✅ [ORDER_VALIDATION] Calculations validated - SubTotal: ₹$subTotal, Total: ₹$totalAmount');
+      
       // 🔑 CRITICAL: Validate payment method is selected
       if (selectedPaymentMethod.isEmpty) {
         ShowToastDialog.showToast("Please select payment method".tr);
@@ -4129,9 +4189,22 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
 
-      if (selectedPaymentMethod == PaymentGateway.cod.name && subTotal > 599) {
+      // 🔑 CRITICAL: Validate COD is enabled before allowing COD orders
+      if (selectedPaymentMethod == PaymentGateway.cod.name) {
+        if (cashOnDeliverySettingModel.isEnabled != true) {
+          ShowToastDialog.showToast(
+            "Cash on Delivery is currently disabled. Please select another payment method."
+                .tr,
+          );
+          endOrderProcessing();
+          return;
+        }
+      }
+
+      if (selectedPaymentMethod == PaymentGateway.cod.name &&
+          subTotal > cashOnDeliverySettingModel.getMaxAmount()) {
         ShowToastDialog.showToast(
-          "Cash on Delivery is not available for orders above ₹599. Please select another payment method."
+          "Cash on Delivery is not available for orders above ₹${cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}. Please select another payment method."
               .tr,
         );
         endOrderProcessing();
@@ -4505,6 +4578,47 @@ class CartControllerProvider extends ChangeNotifier {
       '✅ [ORDER_CREATION] Starting order creation for payment ID: $_lastPaymentId',
     );
 
+    // 🔑 CRITICAL: Final validation before creating order
+    // Ensure calculations are valid and not zero
+    if (HomeProvider.cartItem.isEmpty) {
+      print('❌ [ORDER_CREATION] Cart is empty, cannot create order');
+      ShowToastDialog.closeLoader();
+      ShowToastDialog.showToast("Cart is empty. Please add items to cart.".tr);
+      _isOrderCreationInProgress = false;
+      _currentOrderPaymentId = null;
+      endOrderProcessing();
+      return;
+    }
+    
+    // Recalculate to ensure latest values
+    await calculatePrice();
+    
+    if (subTotal <= 0 || subTotal.isNaN || subTotal.isInfinite) {
+      print('❌ [ORDER_CREATION] Invalid subTotal: $subTotal, cannot create order');
+      ShowToastDialog.closeLoader();
+      ShowToastDialog.showToast(
+        "Order calculation error. Please refresh and try again.".tr,
+      );
+      _isOrderCreationInProgress = false;
+      _currentOrderPaymentId = null;
+      endOrderProcessing();
+      return;
+    }
+    
+    if (totalAmount <= 0 || totalAmount.isNaN || totalAmount.isInfinite) {
+      print('❌ [ORDER_CREATION] Invalid totalAmount: $totalAmount, cannot create order');
+      ShowToastDialog.closeLoader();
+      ShowToastDialog.showToast(
+        "Order total is invalid. Please refresh and try again.".tr,
+      );
+      _isOrderCreationInProgress = false;
+      _currentOrderPaymentId = null;
+      endOrderProcessing();
+      return;
+    }
+    
+    print('✅ [ORDER_CREATION] Final validation passed - SubTotal: ₹$subTotal, Total: ₹$totalAmount');
+
     String? orderId;
     List<CartProductModel> orderedProducts = [];
     OrderModel? orderModel;
@@ -4768,7 +4882,7 @@ class CartControllerProvider extends ChangeNotifier {
       notifyListeners();
       // Navigate to order success screen
       orderPlacingProvider.initFunction(orderModels: orderModel);
-      Get.off(const OrderPlacingScreen());
+      Get.off(() => OrderPlacingScreen());
       notifyListeners();
     } catch (e) {
       print("OrderPlacingScreen  $e");
@@ -4857,8 +4971,15 @@ class CartControllerProvider extends ChangeNotifier {
                 );
               }
 
+              // 🔑 CRITICAL: If COD is disabled and currently selected, switch to another payment method
+              if (selectedPaymentMethod == PaymentGateway.cod.name &&
+                  cashOnDeliverySettingModel.isEnabled != true) {
+                selectedPaymentMethod = '';
+                print('[PAYMENT_SETTINGS] COD is disabled, clearing COD selection');
+              }
+
               if (cashOnDeliverySettingModel.isEnabled == true &&
-                  subTotal <= 599 &&
+                  subTotal <= cashOnDeliverySettingModel.getMaxAmount() &&
                   !hasMartItemsInCart()) {
                 selectedPaymentMethod = PaymentGateway.cod.name;
               } else if (razorPayModel.isEnabled == true) {
@@ -5525,6 +5646,49 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
 
+      // 🔑 CRITICAL: Validate calculations before creating order after payment
+      if (HomeProvider.cartItem.isEmpty) {
+        print('❌ [ORDER_PLACEMENT] Cart is empty, cannot create order');
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("Cart is empty. Please add items to cart.".tr);
+        _isOrderBeingCreated = false;
+        _isOrderCreationInProgress = false;
+        _currentOrderPaymentId = null;
+        endOrderProcessing();
+        return;
+      }
+      
+      // Recalculate to ensure latest values
+      await calculatePrice();
+      
+      if (subTotal <= 0 || subTotal.isNaN || subTotal.isInfinite) {
+        print('❌ [ORDER_PLACEMENT] Invalid subTotal: $subTotal, cannot create order');
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast(
+          "Order calculation error. Please refresh and try again.".tr,
+        );
+        _isOrderBeingCreated = false;
+        _isOrderCreationInProgress = false;
+        _currentOrderPaymentId = null;
+        endOrderProcessing();
+        return;
+      }
+      
+      if (totalAmount <= 0 || totalAmount.isNaN || totalAmount.isInfinite) {
+        print('❌ [ORDER_PLACEMENT] Invalid totalAmount: $totalAmount, cannot create order');
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast(
+          "Order total is invalid. Please refresh and try again.".tr,
+        );
+        _isOrderBeingCreated = false;
+        _isOrderCreationInProgress = false;
+        _currentOrderPaymentId = null;
+        endOrderProcessing();
+        return;
+      }
+      
+      print('✅ [ORDER_PLACEMENT] Calculations validated - SubTotal: ₹$subTotal, Total: ₹$totalAmount');
+
       // 🔑 ENSURE PAYMENT METHOD IS SET CORRECTLY FOR PREPAID ORDERS
       if (selectedPaymentMethod.isEmpty ||
           selectedPaymentMethod == PaymentGateway.cod.name) {
@@ -5544,10 +5708,24 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      if (selectedPaymentMethod == PaymentGateway.cod.name && subTotal > 599) {
+      // 🔑 CRITICAL: Validate COD is enabled before allowing COD orders
+      if (selectedPaymentMethod == PaymentGateway.cod.name) {
+        if (cashOnDeliverySettingModel.isEnabled != true) {
+          ShowToastDialog.closeLoader();
+          ShowToastDialog.showToast(
+            "Cash on Delivery is currently disabled. Please select another payment method."
+                .tr,
+          );
+          endOrderProcessing();
+          return;
+        }
+      }
+
+      if (selectedPaymentMethod == PaymentGateway.cod.name &&
+          subTotal > cashOnDeliverySettingModel.getMaxAmount()) {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
-          "Cash on Delivery is not available for orders above ₹599. Please select another payment method."
+          "Cash on Delivery is not available for orders above ₹${cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}. Please select another payment method."
               .tr,
         );
         endOrderProcessing();

@@ -130,7 +130,7 @@ class PlaytimeProductCard extends StatelessWidget {
           negativeString: "Cancel".tr,
           positiveClick: () {
             Get.back(); // Close dialog
-            Get.to(() => const PhoneNumberScreen());
+            Get.to(() => PhoneNumberScreen());
           },
           negativeClick: () {
             Get.back(); // Close dialog

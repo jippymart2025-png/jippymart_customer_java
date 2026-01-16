@@ -11,6 +11,9 @@ class Preferences {
   static const selectedLocationLng = "selectedLocationLng";
   static const selectedLocationAddress = "selectedLocationAddress";
   static const selectedLocationAddressAs = "selectedLocationAddressAs";
+  
+  // Zone ID storage
+  static const selectedZoneId = "selectedZoneId";
 
   static const themKey = "themKey";
 
@@ -27,6 +30,9 @@ class Preferences {
   static const midTransSettings = "midTransSettings";
   static const orangeMoneySettings = "orangeMoneySettings";
   static const xenditSettings = "xenditSettings";
+  
+  // Google Maps API Key stored locally as fallback
+  static const googleMapsApiKey = "googleMapsApiKey";
 
   static late SharedPreferences pref;
 

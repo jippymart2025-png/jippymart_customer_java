@@ -20,6 +20,7 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+
   late Animation<Offset> _slideAnimation;
 
   // Store the selected country code
@@ -58,24 +59,24 @@ class _PhoneNumberScreenState extends State<PhoneNumberScreen>
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             elevation: 0,
-            actions: [
-              InkWell(
-                onTap: () {
-                  Get.offAll(() => const DashBoardScreen());
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Text(
-                    "Skip".tr,
-                    style: TextStyle(
-                      color: AppThemeData.primary300,
-                      fontSize: 18,
-                      fontFamily: AppThemeData.semiBold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            // actions: [
+            //   InkWell(
+            //     onTap: () {
+            //       Get.offAll(() => const DashBoardScreen());
+            //     },
+            //     child: Padding(
+            //       padding: const EdgeInsets.symmetric(horizontal: 16),
+            //       child: Text(
+            //         "Skip".tr,
+            //         style: TextStyle(
+            //           color: AppThemeData.primary300,
+            //           fontSize: 18,
+            //           fontFamily: AppThemeData.semiBold,
+            //         ),
+            //       ),
+            //     ),
+            //   ),
+            // ],
           ),
           body: Stack(
             children: [

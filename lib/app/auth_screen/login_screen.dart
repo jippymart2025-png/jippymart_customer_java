@@ -31,12 +31,12 @@ class LoginScreen extends StatelessWidget {
                   if (permission == LocationPermission.always ||
                       permission == LocationPermission.whileInUse) {
                     if (Constant.selectedLocation.location == null) {
-                      Get.offAll(const LocationPermissionScreen());
+                      Get.offAll(() => LocationPermissionScreen());
                     } else {
                       Get.offAll(const DashBoardScreen());
                     }
                   } else {
-                    Get.offAll(const LocationPermissionScreen());
+                    Get.offAll(() => LocationPermissionScreen());
                   }
                 },
                 child: Padding(
@@ -92,7 +92,7 @@ class LoginScreen extends StatelessWidget {
                       ),
                       isRight: false,
                       onPress: () async {
-                        Get.to(const PhoneNumberScreen());
+                        Get.to(() => PhoneNumberScreen());
                       },
                     ),
                   ),

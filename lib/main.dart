@@ -177,8 +177,9 @@ void _runFacebookAppEventsTests() {
       // Run SDK verification test
       await FacebookAppEventsTest.verifySDK();
 
-      // Optionally run all tests (uncomment to enable)
-      // await FacebookAppEventsTest.runAllTests();
+      // Run all tests to verify events are working
+      await Future.delayed(const Duration(seconds: 2));
+      await FacebookAppEventsTest.runAllTests();
     } catch (e) {
       if (kDebugMode) {
         print('❌ [FB TEST] Error running tests: $e');

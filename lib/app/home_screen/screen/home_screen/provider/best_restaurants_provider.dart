@@ -26,6 +26,7 @@ class BestRestaurantProvider extends ChangeNotifier {
   }
 
   List<VendorModel> allNearestRestaurant = <VendorModel>[];
+  List<VendorModel> bestRestaurantList = <VendorModel>[];
   List<VendorModel> popularRestaurantList = <VendorModel>[];
   List<VendorModel> newArrivalRestaurantList = <VendorModel>[];
   List<AdvertisementModel> advertisementList = <AdvertisementModel>[];
@@ -45,6 +46,12 @@ class BestRestaurantProvider extends ChangeNotifier {
       return;
     }
     try {
+      // Fetch best restaurants from bestrestaurants endpoint
+      final bestRestaurants = await getBestRestaurants(zoneId: zoneId);
+      bestRestaurantList.clear();
+      bestRestaurantList.addAll(bestRestaurants);
+      
+      // Fetch all restaurants from nearest endpoint with filter
       final restaurants = await getNearestRestaurants(
         zoneId: zoneId,
         latitude: latitude,
@@ -197,6 +204,51 @@ class BestRestaurantProvider extends ChangeNotifier {
     // Wait for all related data to load
     await Future.wait(futures);
     print('[DEBUG] All related data loaded');
+  }
+
+  // Get best restaurants from bestrestaurants endpoint
+  static Future<List<VendorModel>> getBestRestaurants({
+    required String zoneId,
+  }) async {
+    try {
+      final headers = await getHeaders();
+      String url = '${AppConst.baseUrl}restaurants/bestrestaurants?zone_id=$zoneId';
+      final uri = Uri.parse(url);
+      print('[BEST_RESTAURANT_API] Fetching best restaurants from: $uri');
+
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(_networkTimeout);
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        print('getBestRestaurants ${response.body}');
+
+        if (jsonResponse['success'] == true) {
+          List<dynamic> data = jsonResponse['data'];
+          List<VendorModel> restaurants = data
+              .map((item) => VendorModel.fromJson(item))
+              .toList();
+
+          print(
+            '[BEST_RESTAURANT_API] Best restaurants fetched successfully: ${restaurants.length}',
+          );
+
+          return restaurants;
+        } else {
+          print('[BEST_RESTAURANT_API] API returned success: false');
+          return [];
+        }
+      } else {
+        print('[BEST_RESTAURANT_API] HTTP error: ${response.statusCode}');
+        throw Exception('Failed to load best restaurants: ${response.statusCode}');
+      }
+    } on TimeoutException catch (e) {
+      print('[BEST_RESTAURANT_API] Timeout fetching best restaurants: $e');
+      return [];
+    } catch (e) {
+      print('[BEST_RESTAURANT_API] Error fetching best restaurants: $e');
+      rethrow;
+    }
   }
 
   static Future<List<VendorModel>> getNearestRestaurants({

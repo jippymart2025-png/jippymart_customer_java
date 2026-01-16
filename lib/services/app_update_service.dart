@@ -537,7 +537,7 @@ class AppUpdateService {
       );
     } else {
       Get.offAll(
-        () => const PhoneNumberScreen(),
+        () => PhoneNumberScreen(),
         transition: Transition.fadeIn,
         duration: const Duration(milliseconds: 1200),
       );

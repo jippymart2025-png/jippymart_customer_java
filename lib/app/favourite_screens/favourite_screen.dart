@@ -62,6 +62,16 @@ class FavouriteScreen extends StatelessWidget {
                               ),
                               child: Row(
                                 children: [
+                                  IconButton(
+                                    onPressed: () => Get.back(),
+                                    icon: Icon(
+                                      Icons.arrow_back_ios,
+                                      color: AppThemeData.grey900,
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    constraints: const BoxConstraints(),
+                                  ),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       "Your Favourites, All in One Place".tr,
@@ -135,7 +145,7 @@ class FavouriteScreen extends StatelessWidget {
             color: AppThemeData.primary300,
             textColor: AppThemeData.grey50,
             onPress: () async {
-              Get.offAll(const PhoneNumberScreen());
+              Get.offAll(() => PhoneNumberScreen());
             },
           ),
         ],
@@ -650,206 +660,213 @@ class FavouriteScreen extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Food Image
-                    Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: NetworkImageWidget(
-                            imageUrl: productModel.photo.toString(),
-                            fit: BoxFit.cover,
-                            height: 100,
-                            width: 100,
-                          ),
-                        ),
-                        // Veg/Non-Veg Indicator
-                        Positioned(
-                          top: 8,
-                          left: 8,
-                          child: Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: productModel.nonveg == true
-                                ? SvgPicture.asset(
-                                    "assets/icons/ic_nonveg.svg",
-                                    height: 12,
-                                  )
-                                : SvgPicture.asset(
-                                    "assets/icons/ic_veg.svg",
-                                    height: 12,
-                                  ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 12),
-
-                    // Food Details
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Food Image
+                      Stack(
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  productModel.name.toString(),
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: AppThemeData.grey900,
-                                    fontFamily: AppThemeData.semiBold,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              // Favorite remove button
-                              GestureDetector(
-                                onTap: () async {
-                                  try {
-                                    await favouriteProvider
-                                        .removeFavoriteFoodUI(
-                                          productModel.id.toString(),
-                                          index,
-                                        );
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Removed from favorites'.tr,
-                                        ),
-                                        duration: const Duration(seconds: 2),
-                                      ),
-                                    );
-                                  } catch (e) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Failed to remove: Please try again'
-                                              .tr,
-                                        ),
-                                        backgroundColor: Colors.red,
-                                      ),
-                                    );
-                                  }
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.all(4),
-                                  child: SvgPicture.asset(
-                                    "assets/icons/ic_like_fill.svg",
-                                    colorFilter: ColorFilter.mode(
-                                      AppThemeData.primary300,
-                                      BlendMode.srcIn,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-
-                          // Rating
-                          Row(
-                            children: [
-                              SvgPicture.asset(
-                                "assets/icons/ic_star.svg",
-                                colorFilter: const ColorFilter.mode(
-                                  AppThemeData.warning300,
-                                  BlendMode.srcIn,
-                                ),
-                                height: 16,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                Constant.calculateReview(
-                                  reviewCount: productModel.reviewsCount!
-                                      .toStringAsFixed(0),
-                                  reviewSum: productModel.reviewsSum.toString(),
-                                ),
-                                style: TextStyle(
-                                  color: AppThemeData.grey700,
-                                  fontFamily: AppThemeData.medium,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              Text(
-                                " (${productModel.reviewsCount!.toStringAsFixed(0)})",
-                                style: TextStyle(
-                                  color: AppThemeData.grey500,
-                                  fontFamily: AppThemeData.regular,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-
-                          // Description
-                          Text(
-                            productModel.description ?? "",
-                            style: TextStyle(
-                              color: AppThemeData.grey600,
-                              fontFamily: AppThemeData.regular,
-                              fontSize: 14,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: NetworkImageWidget(
+                              imageUrl: productModel.photo.toString(),
+                              fit: BoxFit.cover,
+                              height: 100,
+                              width: 100,
                             ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(height: 8),
-
-                          // Price
-                          Row(
-                            children: [
-                              if (double.parse(disPrice) > 0 &&
-                                  double.parse(disPrice) < double.parse(price))
-                                Text(
-                                  Constant.amountShow(amount: disPrice),
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    color: AppThemeData.primary300,
-                                    fontFamily: AppThemeData.bold,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              if (double.parse(disPrice) > 0 &&
-                                  double.parse(disPrice) < double.parse(price))
-                                const SizedBox(width: 8),
-                              Text(
-                                Constant.amountShow(amount: price),
-                                style: TextStyle(
-                                  fontSize:
-                                      double.parse(disPrice) > 0 &&
-                                          double.parse(disPrice) <
-                                              double.parse(price)
-                                      ? 14
-                                      : 18,
-                                  color:
-                                      double.parse(disPrice) > 0 &&
-                                          double.parse(disPrice) <
-                                              double.parse(price)
-                                      ? AppThemeData.grey500
-                                      : AppThemeData.primary300,
-                                  fontFamily: AppThemeData.bold,
-                                  fontWeight: FontWeight.w700,
-                                  decoration:
-                                      double.parse(disPrice) > 0 &&
-                                          double.parse(disPrice) <
-                                              double.parse(price)
-                                      ? TextDecoration.lineThrough
-                                      : TextDecoration.none,
-                                ),
+                          // Veg/Non-Veg Indicator
+                          Positioned(
+                            top: 8,
+                            left: 8,
+                            child: Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.9),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                            ],
+                              child: productModel.nonveg == true
+                                  ? SvgPicture.asset(
+                                      "assets/icons/ic_nonveg.svg",
+                                      height: 12,
+                                    )
+                                  : SvgPicture.asset(
+                                      "assets/icons/ic_veg.svg",
+                                      height: 12,
+                                    ),
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+
+                      // Food Details
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    productModel.name.toString(),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: AppThemeData.grey900,
+                                      fontFamily: AppThemeData.semiBold,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                // Favorite remove button
+                                GestureDetector(
+                                  onTap: () async {
+                                    try {
+                                      await favouriteProvider
+                                          .removeFavoriteFoodUI(
+                                            productModel.id.toString(),
+                                            index,
+                                          );
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Removed from favorites'.tr,
+                                          ),
+                                          duration: const Duration(seconds: 2),
+                                        ),
+                                      );
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Failed to remove: Please try again'
+                                                .tr,
+                                          ),
+                                          backgroundColor: Colors.red,
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(4),
+                                    child: SvgPicture.asset(
+                                      "assets/icons/ic_like_fill.svg",
+                                      colorFilter: ColorFilter.mode(
+                                        AppThemeData.primary300,
+                                        BlendMode.srcIn,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+
+                            // Rating
+                            Row(
+                              children: [
+                                SvgPicture.asset(
+                                  "assets/icons/ic_star.svg",
+                                  colorFilter: const ColorFilter.mode(
+                                    AppThemeData.warning300,
+                                    BlendMode.srcIn,
+                                  ),
+                                  height: 16,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  Constant.calculateReview(
+                                    reviewCount: productModel.reviewsCount!
+                                        .toStringAsFixed(0),
+                                    reviewSum: productModel.reviewsSum
+                                        .toString(),
+                                  ),
+                                  style: TextStyle(
+                                    color: AppThemeData.grey700,
+                                    fontFamily: AppThemeData.medium,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                Text(
+                                  " (${productModel.reviewsCount!.toStringAsFixed(0)})",
+                                  style: TextStyle(
+                                    color: AppThemeData.grey500,
+                                    fontFamily: AppThemeData.regular,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+
+                            // Description
+                            Text(
+                              productModel.description ?? "",
+                              style: TextStyle(
+                                color: AppThemeData.grey600,
+                                fontFamily: AppThemeData.regular,
+                                fontSize: 14,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 8),
+
+                            // Price
+                            Row(
+                              children: [
+                                if (double.parse(disPrice) > 0 &&
+                                    double.parse(disPrice) <
+                                        double.parse(price))
+                                  Text(
+                                    Constant.amountShow(amount: disPrice),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: AppThemeData.primary300,
+                                      fontFamily: AppThemeData.bold,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                if (double.parse(disPrice) > 0 &&
+                                    double.parse(disPrice) <
+                                        double.parse(price))
+                                  const SizedBox(width: 8),
+                                Text(
+                                  Constant.amountShow(amount: price),
+                                  style: TextStyle(
+                                    fontSize:
+                                        double.parse(disPrice) > 0 &&
+                                            double.parse(disPrice) <
+                                                double.parse(price)
+                                        ? 14
+                                        : 18,
+                                    color:
+                                        double.parse(disPrice) > 0 &&
+                                            double.parse(disPrice) <
+                                                double.parse(price)
+                                        ? AppThemeData.grey500
+                                        : AppThemeData.primary300,
+                                    fontFamily: AppThemeData.bold,
+                                    fontWeight: FontWeight.w700,
+                                    decoration:
+                                        double.parse(disPrice) > 0 &&
+                                            double.parse(disPrice) <
+                                                double.parse(price)
+                                        ? TextDecoration.lineThrough
+                                        : TextDecoration.none,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

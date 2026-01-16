@@ -64,6 +64,7 @@ class _BannerViewState extends State<BannerView> {
               },
               itemBuilder: (BuildContext context, int index) {
                 BannerModel bannerModel = homeProvider.bannerModel[index];
+                final isLastItem = index == homeProvider.bannerModel.length - 1;
                 return InkWell(
                   onTap: () async {
                     homeProvider.bannerOnTapFunction(
@@ -72,7 +73,7 @@ class _BannerViewState extends State<BannerView> {
                     );
                   },
                   child: Padding(
-                    padding: const EdgeInsets.only(right: 0),
+                    padding: EdgeInsets.only(right: isLastItem ? 0 : 8),
                     child: ClipRRect(
                       borderRadius: const BorderRadius.all(Radius.circular(12)),
                       child: NetworkImageWidget(

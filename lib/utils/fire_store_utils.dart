@@ -1143,6 +1143,84 @@ class FireStoreUtils {
     }
   }
 
+  /// **FETCH ALL ACTIVE PROMOTIONS**
+  static Future<List<Map<String, dynamic>>> getAllActivePromotions({
+    required String zoneId,
+  }) async {
+    try {
+      final uri = Uri.parse('${AppConst.baseUrl}firestore/promotions/active')
+          .replace(
+            queryParameters: {
+              'zoneId': zoneId, // ✅ SEND ZONE ID
+            },
+          );
+
+      final response = await http.get(uri, headers: await getHeaders());
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+
+        if (responseData['success'] == true && responseData['data'] != null) {
+          final List<dynamic> promotionsData =
+              responseData['data']['promotions'] ?? [];
+
+          final now = DateTime.now();
+          List<Map<String, dynamic>> promotionsList = [];
+
+          for (final promo in promotionsData) {
+            try {
+              final isAvailable =
+                  promo['isAvailable'] == 1 || promo['isAvailable'] == true;
+
+              // ⏱ Time validation
+              final startTime = DateTime.parse(promo['start_time']);
+              final endTime = DateTime.parse(promo['end_time']);
+
+              // 🗺 Zone validation (extra safety)
+              final promoZoneId = promo['zoneId']?.toString();
+
+              if (!isAvailable ||
+                  promoZoneId != zoneId ||
+                  now.isBefore(startTime) ||
+                  now.isAfter(endTime)) {
+                continue;
+              }
+
+              promotionsList.add({
+                'id': promo['id'],
+                'payment_mode': promo['payment_mode'],
+                'product_title': promo['product_title'],
+                'extra_km_charge': promo['extra_km_charge'],
+                'product_id': promo['product_id'],
+                'end_time': promo['end_time'],
+                'restaurant_id': promo['restaurant_id'],
+                'start_time': promo['start_time'],
+                'item_limit': promo['item_limit'],
+                'restaurant_title': promo['restaurant_title'],
+                'vType': promo['vType'],
+                'zoneId': promoZoneId,
+                'free_delivery_km': promo['free_delivery_km'],
+                'special_price': promo['special_price'],
+                'isAvailable': true,
+              });
+            } catch (e) {
+              print('Error parsing promotion: $e');
+            }
+          }
+
+          return promotionsList;
+        } else {
+          throw Exception(responseData['message'] ?? 'API failed');
+        }
+      } else {
+        throw Exception('HTTP ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error fetching promotions: $e');
+      return [];
+    }
+  }
+
   /// **ULTRA-FAST PROMOTIONAL DATA FETCHING WITH API**
   static Future<List<Map<String, dynamic>>> fetchActivePromotions({
     required String restaurantId,

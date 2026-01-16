@@ -13,6 +13,7 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/utils/safe_http_client.dart';
+import 'package:jippymart_customer/utils/preferences.dart';
 
 class GlobalSettingsProvider extends ChangeNotifier {
   void initFunction(BuildContext context) {
@@ -26,6 +27,9 @@ class GlobalSettingsProvider extends ChangeNotifier {
 
   getSettings(BuildContext context) async {
     try {
+      // First, try to load from local storage as fallback
+      _loadApiKeyFromLocalStorage();
+      
       final response = await SafeHttpClient.safeGet(
         Uri.parse('${AppConst.baseUrl}settings/mobile'),
         headers: await getHeaders(),
@@ -33,7 +37,9 @@ class GlobalSettingsProvider extends ChangeNotifier {
       );
 
       if (response == null) {
-        // Network error handled by SafeHttpClient - app continues without crashing
+        // Network error - use locally stored API key if available
+        log('[SETTINGS] ⚠️ API request failed - using locally stored API key if available');
+        _loadApiKeyFromLocalStorage();
         return;
       }
 
@@ -43,20 +49,46 @@ class GlobalSettingsProvider extends ChangeNotifier {
           final Map<String, dynamic> documents = data['data']['documents'];
           final Map<String, dynamic> derived = data['data']['derived'];
           _setConstantsFromApi(documents, derived);
+        } else {
+          // API returned but success=false - use local storage
+          log('[SETTINGS] ⚠️ API returned success=false - using locally stored API key');
+          _loadApiKeyFromLocalStorage();
         }
       } else {
-        throw Exception('Failed to load settings: ${response.statusCode}');
+        // HTTP error - use local storage
+        log('[SETTINGS] ⚠️ API returned status ${response.statusCode} - using locally stored API key');
+        _loadApiKeyFromLocalStorage();
       }
     } catch (e) {
-      // Errors are handled gracefully - app continues without crashing
-      log('Error loading settings: $e');
+      // Any error - use local storage
+      log('[SETTINGS] ⚠️ Error loading settings: $e - using locally stored API key');
+      _loadApiKeyFromLocalStorage();
+    }
+  }
+  
+  /// Load API key from local storage as fallback
+  void _loadApiKeyFromLocalStorage() {
+    try {
+      final localApiKey = Preferences.getString(Preferences.googleMapsApiKey);
+      if (localApiKey.isNotEmpty && localApiKey.length > 10) {
+        Constant.mapAPIKey = localApiKey;
+        log('[SETTINGS] ✅ Loaded API key from local storage: ${localApiKey.substring(0, 10)}...');
+      } else {
+        // If local storage is also empty, use static fallback
+        Constant.mapAPIKey = 'AIzaSyCKCRzqaR1-uzbnEmB-JqVkbUKNGOJHv34';
+        log('[SETTINGS] ⚠️ Local storage empty - using static fallback key');
+      }
+    } catch (e) {
+      // If Preferences not initialized, use static fallback
+      Constant.mapAPIKey = 'AIzaSyCKCRzqaR1-uzbnEmB-JqVkbUKNGOJHv34';
+      log('[SETTINGS] ⚠️ Error loading from local storage: $e - using static fallback key');
     }
   }
 
   _setConstantsFromApi(
     Map<String, dynamic> documents,
     Map<String, dynamic> derived,
-  ) {
+  ) async {
     // Subscription model
     Constant.isSubscriptionModelApplied =
         documents['restaurant']?['subscription_model'] ?? false;
@@ -84,7 +116,30 @@ class GlobalSettingsProvider extends ChangeNotifier {
     }
 
     // Map API key and placeholder
-    Constant.mapAPIKey = documents['googleMapKey']?['key'] ?? '';
+    // Try multiple sources: documents['googleMapKey']['key'], then derived['mapAPIKey']
+    String? apiKeyFromDocuments = documents['googleMapKey']?['key'];
+    String? apiKeyFromDerived = derived['mapAPIKey'];
+    
+    final newApiKey = apiKeyFromDocuments ?? apiKeyFromDerived ?? '';
+    
+    // Only update if we got a valid key from API
+    if (newApiKey.isNotEmpty && newApiKey.length > 10) {
+      Constant.mapAPIKey = newApiKey;
+      
+      // Save to local storage for future use if API fails
+      try {
+        await Preferences.setString(Preferences.googleMapsApiKey, newApiKey);
+        log('[SETTINGS] ✅ Google Maps API Key loaded and saved locally: ${newApiKey.substring(0, 10)}... (length: ${newApiKey.length})');
+      } catch (e) {
+        log('[SETTINGS] ⚠️ Error saving API key to local storage: $e');
+        log('[SETTINGS] ✅ Google Maps API Key loaded: ${newApiKey.substring(0, 10)}... (length: ${newApiKey.length})');
+      }
+    } else {
+      // API didn't return a valid key - try local storage
+      log('[SETTINGS] ⚠️ API returned empty/invalid key - checking local storage');
+      _loadApiKeyFromLocalStorage();
+    }
+    
     Constant.placeHolderImage =
         documents['googleMapKey']?['placeHolderImage'] ?? '';
 

@@ -1,11 +1,20 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io' show Platform;
+import 'package:app_links/app_links.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
+import 'package:jippymart_customer/app/DealsScreen/DealsScreen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
@@ -37,6 +46,10 @@ class FinalDeepLinkService {
     'deep_link_methods',
   );
 
+  // iOS support using app_links package
+  AppLinks? _appLinks;
+  StreamSubscription<Uri>? _appLinksSubscription;
+
   StreamSubscription? _sub;
   bool _initialized = false;
   String? _pendingDeepLink; // Added to store pending deep link
@@ -52,29 +65,65 @@ class FinalDeepLinkService {
 
     _initialized = true;
 
-    // 1) Listen to event stream (real-time links) - persistent subscription
-    log('🔗 [FLUTTER] Setting up persistent event channel listener...');
-    print('🔗 [FLUTTER] PRINT TEST - Setting up event channel listener...');
-    _sub = _eventChannel.receiveBroadcastStream().listen(
-      (dynamic link) {
-        if (link != null) {
-          final String url = link as String;
-          log('🔗 [FLUTTER] Received link from Android (event): $url');
-          print(
-            '🔗 [FLUTTER] PRINT TEST - Received link from Android (event): $url',
-          );
+    // Platform-specific initialization
+    if (Platform.isAndroid) {
+      // Android: Use event channels
+      log('🔗 [FLUTTER] Setting up Android event channel listener...');
+      print('🔗 [FLUTTER] PRINT TEST - Setting up Android event channel listener...');
+      _sub = _eventChannel.receiveBroadcastStream().listen(
+        (dynamic link) {
+          if (link != null) {
+            final String url = link as String;
+            log('🔗 [FLUTTER] Received link from Android (event): $url');
+            print(
+              '🔗 [FLUTTER] PRINT TEST - Received link from Android (event): $url',
+            );
+            _handleLink(url, context);
+          }
+        },
+        onError: (error) {
+          log('❌ [FLUTTER] Deep link stream error: $error');
+          print('❌ [FLUTTER] PRINT TEST - Deep link stream error: $error');
+        },
+      );
+
+      // Query initial link for Android
+      log('🔗 [FLUTTER] Querying initial link (Android)...');
+      await _getInitialLink(context);
+    } else if (Platform.isIOS) {
+      // iOS: Use app_links package
+      log('🔗 [FLUTTER] Setting up iOS app_links listener...');
+      print('🔗 [FLUTTER] PRINT TEST - Setting up iOS app_links listener...');
+      _appLinks = AppLinks();
+
+      // Listen to incoming links (app already running)
+      _appLinksSubscription = _appLinks!.uriLinkStream.listen(
+        (Uri uri) {
+          final String url = uri.toString();
+          log('🔗 [FLUTTER] Received link from iOS (app_links): $url');
+          print('🔗 [FLUTTER] PRINT TEST - Received link from iOS (app_links): $url');
+          _handleLink(url, context);
+        },
+        onError: (error) {
+          log('❌ [FLUTTER] iOS app_links stream error: $error');
+          print('❌ [FLUTTER] PRINT TEST - iOS app_links stream error: $error');
+        },
+      );
+
+      // Handle initial link (cold start)
+      try {
+        final Uri? initialUri = await _appLinks!.getInitialLink();
+        if (initialUri != null) {
+          final String url = initialUri.toString();
+          log('🔗 [FLUTTER] Received initial link from iOS: $url');
+          print('🔗 [FLUTTER] PRINT TEST - Received initial link from iOS: $url');
           _handleLink(url, context);
         }
-      },
-      onError: (error) {
-        log('❌ [FLUTTER] Deep link stream error: $error');
-        print('❌ [FLUTTER] PRINT TEST - Deep link stream error: $error');
-      },
-    );
-
-    // 2) Also query initial link (fallback if stream did not get cold-start link)
-    log('🔗 [FLUTTER] Querying initial link...');
-    await _getInitialLink(context);
+      } catch (e) {
+        log('❌ [FLUTTER] Error getting initial iOS link: $e');
+        print('❌ [FLUTTER] PRINT TEST - Error getting initial iOS link: $e');
+      }
+    }
 
     log('🔗 [FINAL DEEP LINK SERVICE] ✅ Singleton initialized successfully');
   }
@@ -145,11 +194,23 @@ class FinalDeepLinkService {
     final isLoggedIn = await _checkUserLoginStatus();
 
     final uri = Uri.parse(url);
-    final pathSegments = uri.pathSegments;
+    // Clean path segments - remove empty strings from trailing slashes
+    final pathSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+    
+    // Handle deals - check for 'deals' with or without trailing slash
+    if (pathSegments.isNotEmpty && pathSegments[0] == 'deals') {
+      print('🔗 [GLOBAL_DEEPLINK] Deals link detected, navigating...');
+      // Wait for app to be ready, then navigate
+      await Future.delayed(Duration(milliseconds: 500));
+      _navigateToDeals();
+      return; // Don't process further
+    }
+    
     if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
-      await Future.delayed(Duration(seconds: 2));
+      await Future.delayed(Duration(milliseconds: 500));
       print('🔗 [GLOBAL_DEEPLINK] Catering link clicked, navigating...');
       _navigateToCatering();
+      return; // Don't process further
     }
 
     if (isLoggedIn) {
@@ -240,6 +301,10 @@ class FinalDeepLinkService {
       print('🔥 [NEW HANDLER] ===== RESTAURANT DEEP LINK NAVIGATION =====');
       print('🔥 [NEW HANDLER] Restaurant ID: $restaurantId');
 
+      // Clean restaurant ID (remove any trailing slashes or whitespace)
+      restaurantId = restaurantId.trim().replaceAll(RegExp(r'[/\s]+$'), '');
+      print('🔥 [NEW HANDLER] Cleaned Restaurant ID: $restaurantId');
+
       // Import FireStoreUtils for fetching restaurant data
       final restaurant = await FireStoreUtils.getVendorById(restaurantId);
 
@@ -249,6 +314,31 @@ class FinalDeepLinkService {
         print(
           '🔥 [NEW HANDLER] Restaurant Status: ${restaurant.isOpen == true ? "OPEN" : "CLOSED"}',
         );
+        print('🔥 [NEW HANDLER] Restaurant Zone ID: ${restaurant.zoneId}');
+        print('🔥 [NEW HANDLER] Selected Zone ID: ${Constant.selectedZone?.id}');
+
+        // Check zone validation
+        if (Constant.selectedZone?.id == null) {
+          print('⚠️ [NEW HANDLER] No zone selected, cannot validate restaurant zone');
+          ShowToastDialog.showToast(
+            "Please select a zone first".tr,
+          );
+          _navigateToDashboard();
+          return;
+        }
+
+        // Ensure zone matches current selected zone
+        if (restaurant.zoneId != Constant.selectedZone?.id) {
+          print(
+            '⚠️ [NEW HANDLER] Restaurant zone ${restaurant.zoneId} != selected zone ${Constant.selectedZone?.id}',
+          );
+          ShowToastDialog.showToast(
+            "Sorry, The Zone is not available in your area. Change the other location first."
+                .tr,
+          );
+          _navigateToDashboard();
+          return;
+        }
 
         // Wait briefly for app to be ready
         print('🔥 [NEW HANDLER] Waiting briefly for app to be ready...');
@@ -256,17 +346,32 @@ class FinalDeepLinkService {
 
         // Navigate to restaurant details with actual data
         print('🔥 [NEW HANDLER] Navigating to restaurant details with data...');
+        
+        // Get the correct context (prefer navigator key context)
+        final ctx = GlobalDeeplinkHandler.navigatorKey.currentContext ?? context;
+        
         // Use GetX navigation with restaurant data
-        RestaurantDetailsProvider restaurantDetailsProvider =
-            Provider.of<RestaurantDetailsProvider>(context, listen: false);
-        restaurantDetailsProvider.initFunction(vendorModels: restaurant);
-        Get.to(() => const RestaurantDetailsScreen());
+        try {
+          RestaurantDetailsProvider restaurantDetailsProvider =
+              Provider.of<RestaurantDetailsProvider>(ctx, listen: false);
+          restaurantDetailsProvider.initFunction(vendorModels: restaurant);
+          Get.to(() => const RestaurantDetailsScreen());
+        } catch (e) {
+          print('⚠️ [NEW HANDLER] Could not get provider from context, using arguments: $e');
+          // Fallback: use GetX arguments
+          Get.to(
+            () => const RestaurantDetailsScreen(),
+            arguments: {"vendorModel": restaurant},
+          );
+        }
       } else {
+        print('❌ [NEW HANDLER] Restaurant not found for ID: $restaurantId');
         // Navigate to dashboard instead of showing nothing
         _navigateToDashboard();
       }
     } catch (e) {
       print('❌ [NEW HANDLER] Error navigating to restaurant: $e');
+      print('🔍 [NEW HANDLER] Stack trace: ${StackTrace.current}');
       print('🔍 [NEW HANDLER] Redirecting to dashboard due to error...');
 
       // Navigate to dashboard on error
@@ -359,6 +464,9 @@ class FinalDeepLinkService {
     log('🔗 [FINAL DEEP LINK SERVICE] Disposing...');
     _sub?.cancel();
     _sub = null;
+    _appLinksSubscription?.cancel();
+    _appLinksSubscription = null;
+    _appLinks = null;
     _initialized = false;
     _pendingDeepLink = null;
     _hasProcessedDeepLink = false;
@@ -398,10 +506,46 @@ class FinalDeepLinkService {
     // Small extra delay to let the current frame finish (avoid jank)
     await Future.delayed(const Duration(milliseconds: 200));
 
+    // FIRST: Check if URL contains restaurant pattern (before parsing)
+    if (url.contains('/restaurant/') || url.contains('/restaurants/')) {
+      print('🔥 [NEW HANDLER] ✅ Detected restaurant URL pattern in: $url');
+      // Use regex to extract restaurant ID, handling trailing slashes
+      final regex = RegExp(r'/(?:restaurant|restaurants)/([^/?]+)');
+      final match = regex.firstMatch(url);
+      if (match != null) {
+        String restaurantId = match.group(1)!.trim();
+        // Remove any trailing slashes or whitespace
+        restaurantId = restaurantId.replaceAll(RegExp(r'[/\s]+$'), '');
+        print('🔥 [NEW HANDLER] ✅ Extracted Restaurant ID from URL: $restaurantId');
+        if (restaurantId.isNotEmpty) {
+          _navigateToRestaurantWithData(restaurantId, context);
+          return;
+        } else {
+          print('❌ [NEW HANDLER] Restaurant ID is empty after extraction');
+        }
+      } else {
+        print('❌ [NEW HANDLER] Could not extract restaurant ID from URL: $url');
+      }
+    }
+
     // Extract product ID from URL
     final uri = Uri.parse(url);
-    final pathSegments = uri.pathSegments;
+    // Clean path segments - remove empty strings from trailing slashes
+    final pathSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
     String? productId;
+
+    // Log URL parsing for debugging
+    print('🔥 [NEW HANDLER] Parsing URL: $url');
+    print('🔥 [NEW HANDLER] Scheme: ${uri.scheme}');
+    print('🔥 [NEW HANDLER] Path segments (cleaned): $pathSegments');
+    print('🔥 [NEW HANDLER] Path segments length: ${pathSegments.length}');
+    
+    // Handle deals early - check for deals with or without trailing slash
+    if (pathSegments.isNotEmpty && pathSegments[0] == 'deals') {
+      print('🔥 [NEW HANDLER] HTTPS scheme - Deals screen detected');
+      _navigateToDeals();
+      return;
+    }
 
     // Handle different URL formats
     if (uri.scheme == 'jippymart') {
@@ -413,11 +557,16 @@ class FinalDeepLinkService {
         } else if (pathSegments.length >= 2 &&
             pathSegments[0] == 'restaurant') {
           // Format: jippymart://restaurant/123
-          final restaurantId = pathSegments[1];
+          final restaurantId = pathSegments[1].trim().replaceAll(RegExp(r'[/\s]+$'), '');
+          print('🔥 [NEW HANDLER] Custom scheme - Restaurant ID: $restaurantId');
           _navigateToRestaurantWithData(restaurantId, context);
           return;
         }
         if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
+          return;
+        } else if (pathSegments.isNotEmpty && pathSegments[0] == 'deals') {
+          print('🔥 [NEW HANDLER] Custom scheme - Deals screen');
+          _navigateToDeals();
           return;
         } else {
           productId = pathSegments[0];
@@ -429,21 +578,29 @@ class FinalDeepLinkService {
       // categories
     } else if (uri.scheme == 'https' || uri.scheme == 'http') {
       // HTTPS scheme: https://jippymart.in/product/123 or https://jippymart.in/restaurant/123
-      if (pathSegments.length >= 2 && pathSegments[0] == 'product') {
-        productId = pathSegments[1];
-        print('🔥 [NEW HANDLER] HTTPS scheme - Product ID: $productId');
-      } else if (pathSegments.length >= 2 && pathSegments[0] == 'restaurant') {
-        final restaurantId = pathSegments[1];
+      
+      // Check for restaurant URLs FIRST (before product handling)
+      if (pathSegments.isNotEmpty && pathSegments[0] == 'restaurant' && pathSegments.length >= 2) {
+        // Handle restaurant ID - clean it (remove trailing slashes)
+        String restaurantId = pathSegments[1].trim();
+        // Remove any trailing slashes that might be in the ID itself
+        restaurantId = restaurantId.replaceAll(RegExp(r'[/\s]+$'), '');
         print('🔥 [NEW HANDLER] HTTPS scheme - Restaurant ID: $restaurantId');
         _navigateToRestaurantWithData(restaurantId, context);
         return;
-      } else if (pathSegments.length >= 2 && pathSegments[0] == 'restaurants') {
-        final restaurantId = pathSegments[1];
+      } else if (pathSegments.isNotEmpty && pathSegments[0] == 'restaurants' && pathSegments.length >= 2) {
+        // Handle restaurant ID - clean it (remove trailing slashes)
+        String restaurantId = pathSegments[1].trim();
+        // Remove any trailing slashes that might be in the ID itself
+        restaurantId = restaurantId.replaceAll(RegExp(r'[/\s]+$'), '');
         print(
           '🔥 [NEW HANDLER] HTTPS scheme (plural) - Restaurant ID: $restaurantId',
         );
         _navigateToRestaurantWithData(restaurantId, context);
         return;
+      } else if (pathSegments.length >= 2 && pathSegments[0] == 'product') {
+        productId = pathSegments[1];
+        print('🔥 [NEW HANDLER] HTTPS scheme - Product ID: $productId');
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'category') {
         final categoryId = pathSegments[1];
         print('🔥 [NEW HANDLER] HTTPS scheme - Category ID: $categoryId');
@@ -457,7 +614,7 @@ class FinalDeepLinkService {
         return;
       } else if (pathSegments.length >= 2 && pathSegments[0] == 'categories') {
         final categoryId = pathSegments[1];
-        print('🔥 ¸ $categoryId');
+        print('🔥 [NEW HANDLER] HTTPS scheme - Category ID: $categoryId');
         if (categoryDetailsProvider != null) {
           _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
         } else {
@@ -466,14 +623,28 @@ class FinalDeepLinkService {
           );
         }
         return;
-      }
-      if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
+      } else if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
         // print('🔗 [GLOBAL_DEEPLINK] Catering link clicked, navigating...');
         // _navigateToCatering();
         return;
+      } else if (pathSegments.isNotEmpty && pathSegments[0] == 'deals') {
+        print('🔥 [NEW HANDLER] HTTPS scheme - Deals screen (already handled above)');
+        _navigateToDeals();
+        return;
       } else if (pathSegments.isNotEmpty) {
-        // Direct product ID in path
-        productId = pathSegments[0];
+        // Direct product ID in path (only if not restaurant/category)
+        // Don't treat "restaurant" as a product ID
+        if (            pathSegments[0] != 'restaurant' && 
+            pathSegments[0] != 'restaurants' && 
+            pathSegments[0] != 'category' && 
+            pathSegments[0] != 'categories' &&
+            pathSegments[0] != 'catering' &&
+            pathSegments[0] != 'deals') {
+          productId = pathSegments[0];
+          print('🔥 [NEW HANDLER] Direct path segment as Product ID: $productId');
+        } else {
+          print('❌ [NEW HANDLER] Unknown URL pattern, cannot determine type');
+        }
       }
     }
 
@@ -591,6 +762,102 @@ class FinalDeepLinkService {
       Get.to(() => CateringServiceScreen()); // <-- your screen widget
     } catch (e) {
       print('❌ [GLOBAL_DEEPLINK] Error navigating to catering: $e');
+    }
+  }
+
+  void _navigateToDeals() {
+    try {
+      print('🔗 [GLOBAL_DEEPLINK] Navigating to DealsScreen via Dashboard');
+      // Navigate to dashboard and set selected index to 2 (DealsScreen)
+      final ctx = GlobalDeeplinkHandler.navigatorKey.currentContext;
+      if (ctx != null) {
+        // Check if we're already on dashboard
+        final currentRoute = Get.currentRoute;
+        if (currentRoute == '/') {
+          // Already on dashboard, just change the tab
+          try {
+            final dashBoardProvider = Provider.of<DashBoardProvider>(ctx, listen: false);
+            final homeProvider = Provider.of<HomeProvider>(ctx, listen: false);
+            final splashProvider = Provider.of<SplashProvider>(ctx, listen: false);
+            final cartProvider = Provider.of<CartControllerProvider>(ctx, listen: false);
+            final orderProvider = Provider.of<OrderProvider>(ctx, listen: false);
+            final favouriteProvider = Provider.of<FavouriteProvider>(ctx, listen: false);
+            
+            dashBoardProvider.changeNavbar(
+              2, // DealsScreen index
+              homeProvider,
+              splashProvider,
+              cartProvider,
+              orderProvider,
+              ctx,
+              favouriteProvider,
+            );
+          } catch (e) {
+            print('⚠️ [GLOBAL_DEEPLINK] Error accessing providers, navigating to dashboard: $e');
+            Get.offAll(() => const DashBoardScreen());
+            // Wait a bit then try to change tab
+            Future.delayed(const Duration(milliseconds: 500), () {
+              final newCtx = GlobalDeeplinkHandler.navigatorKey.currentContext;
+              if (newCtx != null) {
+                try {
+                  final dashBoardProvider = Provider.of<DashBoardProvider>(newCtx, listen: false);
+                  final homeProvider = Provider.of<HomeProvider>(newCtx, listen: false);
+                  final splashProvider = Provider.of<SplashProvider>(newCtx, listen: false);
+                  final cartProvider = Provider.of<CartControllerProvider>(newCtx, listen: false);
+                  final orderProvider = Provider.of<OrderProvider>(newCtx, listen: false);
+                  final favouriteProvider = Provider.of<FavouriteProvider>(newCtx, listen: false);
+                  
+                  dashBoardProvider.changeNavbar(
+                    2,
+                    homeProvider,
+                    splashProvider,
+                    cartProvider,
+                    orderProvider,
+                    newCtx,
+                    favouriteProvider,
+                  );
+                } catch (e2) {
+                  print('❌ [GLOBAL_DEEPLINK] Error changing tab after navigation: $e2');
+                }
+              }
+            });
+          }
+        } else {
+          // Not on dashboard, navigate to it first
+          Get.offAll(() => const DashBoardScreen());
+          // Wait a bit then change to deals tab
+          Future.delayed(const Duration(milliseconds: 500), () {
+            final newCtx = GlobalDeeplinkHandler.navigatorKey.currentContext;
+            if (newCtx != null) {
+              try {
+                final dashBoardProvider = Provider.of<DashBoardProvider>(newCtx, listen: false);
+                final homeProvider = Provider.of<HomeProvider>(newCtx, listen: false);
+                final splashProvider = Provider.of<SplashProvider>(newCtx, listen: false);
+                final cartProvider = Provider.of<CartControllerProvider>(newCtx, listen: false);
+                final orderProvider = Provider.of<OrderProvider>(newCtx, listen: false);
+                final favouriteProvider = Provider.of<FavouriteProvider>(newCtx, listen: false);
+                
+                dashBoardProvider.changeNavbar(
+                  2,
+                  homeProvider,
+                  splashProvider,
+                  cartProvider,
+                  orderProvider,
+                  newCtx,
+                  favouriteProvider,
+                );
+              } catch (e) {
+                print('❌ [GLOBAL_DEEPLINK] Error changing tab: $e');
+              }
+            }
+          });
+        }
+      } else {
+        // No context available, navigate to dashboard
+        Get.offAll(() => const DashBoardScreen());
+      }
+    } catch (e) {
+      print('❌ [GLOBAL_DEEPLINK] Error navigating to deals: $e');
     }
   }
 }

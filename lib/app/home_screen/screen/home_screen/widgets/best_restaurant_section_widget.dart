@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/provider/restaurant_list_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/restaurant_list_screen.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
@@ -10,63 +9,20 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
-import 'package:jippymart_customer/widget/filter_bar.dart';
 import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
 import 'package:provider/provider.dart';
 
-class BestRestaurantsSection extends StatefulWidget {
+class BestRestaurantsSection extends StatelessWidget {
   final List<VendorModel> restaurantList;
 
   const BestRestaurantsSection({super.key, required this.restaurantList});
 
   @override
-  State<BestRestaurantsSection> createState() => _BestRestaurantsSectionState();
-}
-
-class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
-  Set<FilterType> selectedFilters = {};
-  late List<VendorModel> filteredList;
-
-  @override
-  void initState() {
-    super.initState();
-    filteredList = List.from(widget.restaurantList);
-  }
-
-  void onFilterToggled(FilterType filter, BestRestaurantProvider provider) {
-    String? apiFilter;
-
-    switch (filter) {
-      case FilterType.distance:
-        apiFilter = 'distance';
-        break;
-      case FilterType.rating:
-        apiFilter = 'rating';
-        break;
-      case FilterType.priceLowToHigh:
-      case FilterType.priceHighToLow:
-        // These filters are not supported by API, show message or ignore
-        _showUnsupportedFilterMessage();
-        return;
-    }
-    // Apply filter through API
-    provider.applyFilter(apiFilter);
-  }
-
-  void _showUnsupportedFilterMessage() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('This filter is currently not available'),
-        duration: Duration(seconds: 2),
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Consumer4<
+    // Capture restaurantList for use in builder
+    final restaurantListForDisplay = restaurantList;
+    return Consumer3<
       BestRestaurantProvider,
-      HomeProvider,
       RestaurantListProvider,
       RestaurantDetailsProvider
     >(
@@ -74,12 +30,13 @@ class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
           (
             context,
             provider,
-            homeProvider,
             restaurantListProvider,
             restaurantDetailsProvider,
             _,
           ) {
-            final displayList = provider.allNearestRestaurant;
+            // Use passed restaurantList and limit to 9 items
+            final displayList = restaurantListForDisplay.take(9).toList();
+            final allRestaurantsList = provider.bestRestaurantList;
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -101,7 +58,7 @@ class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
                       InkWell(
                         onTap: () {
                           restaurantListProvider.initFunction(
-                            vendorLists: displayList,
+                            vendorLists: allRestaurantsList,
                             titles: "Best Restaurants",
                           );
                           Get.to(const RestaurantListScreen());
@@ -119,19 +76,7 @@ class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
                     ],
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
-                  child: FilterBar(
-                    selectedFilters: selectedFilters,
-                    onFilterToggled: (filter) =>
-                        onFilterToggled(filter, provider),
-                    availableFilters: provider.availableFilters,
-                    currentFilter: provider.currentFilter,
-                  ),
-                ),
+                const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: LayoutBuilder(
@@ -145,8 +90,8 @@ class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
                         gridDelegate:
                             const SliverGridDelegateWithFixedCrossAxisCount(
                               crossAxisCount: 3,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 16,
+                              crossAxisSpacing: 6,
+                              mainAxisSpacing: 8,
                               childAspectRatio: 0.65,
                             ),
                         itemBuilder: (BuildContext context, int index) {
@@ -184,7 +129,7 @@ class _BestRestaurantsSectionState extends State<BestRestaurantsSection> {
                                 children: [
                                   // Main Content
                                   Padding(
-                                    padding: const EdgeInsets.all(10),
+                                    padding: const EdgeInsets.all(8),
                                     child: Column(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,

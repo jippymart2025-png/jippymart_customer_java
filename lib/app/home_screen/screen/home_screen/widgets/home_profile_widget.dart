@@ -50,7 +50,7 @@ Widget homeProfileAddressWidget({
                 Constant.userModel == null
                     ? InkWell(
                         onTap: () {
-                          Get.offAll(const PhoneNumberScreen());
+                          Get.offAll(() => PhoneNumberScreen());
                         },
                         child: Text(
                           "Login".tr,

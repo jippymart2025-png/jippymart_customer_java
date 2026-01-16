@@ -1,6 +1,7 @@
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -12,6 +13,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:provider/provider.dart';
 
 class SignupProvider extends ChangeNotifier {
   TextEditingController firstNameEditingController = TextEditingController();
@@ -134,10 +136,45 @@ class SignupProvider extends ChangeNotifier {
         ShowToastDialog.showToast("Account created successfully".tr);
         if (newUser.shippingAddress != null &&
             newUser.shippingAddress!.isNotEmpty) {
-          splashProvider.initFunction(context);
-          Get.offAll(const DashBoardScreen());
+          // IMPORTANT: Wait for location and zone check before navigating
+          ShowToastDialog.showLoader("Setting up your location...");
+          
+          try {
+            // Get home provider
+            final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+            
+            // Initialize home provider first
+            print('[SIGNUP] Initializing home provider...');
+            await homeProvider.initFunction(context: context);
+            
+            // Wait for location and zone check before navigating
+            print('[SIGNUP] Waiting for location and zone detection...');
+            await homeProvider.ensureLocationAndZoneChecked().timeout(
+              const Duration(seconds: 20),
+              onTimeout: () {
+                print('[SIGNUP] ⚠️ Location and zone check timed out after 20s, continuing to dashboard');
+                // Set flags so UI doesn't hang
+                homeProvider.zoneCheckCompleted = true;
+                homeProvider.hasActuallyCheckedZone = true;
+                homeProvider.isLoadingFunction(false);
+                homeProvider.notifyListeners();
+              },
+            );
+            
+            print('[SIGNUP] ✅ Location and zone check completed. Zone: ${Constant.selectedZone?.id}, Available: ${Constant.isZoneAvailable}');
+          } catch (e) {
+            print('[SIGNUP] ❌ Error during location/zone check: $e');
+            // Continue anyway - zone will be checked in background
+          }
+          
+          ShowToastDialog.closeLoader();
+          
+          // Navigate to dashboard AFTER location/zone check is complete
+          if (context.mounted) {
+            Get.offAll(const DashBoardScreen());
+          }
         } else {
-          Get.offAll(const LocationPermissionScreen());
+          Get.offAll(() => LocationPermissionScreen());
         }
       } else {
         ShowToastDialog.closeLoader();

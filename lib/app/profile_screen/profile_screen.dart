@@ -26,6 +26,8 @@ import 'dart:io';
 
 import '../edit_profile_screen/provider/edit_profile_provider.dart'
     show EditProfileProvider;
+import '../favourite_screens/favourite_screen.dart';
+import '../favourite_screens/provider/favorite_provider.dart';
 
 final InAppReview inAppReview = InAppReview.instance;
 
@@ -51,7 +53,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Initialize the provider after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final controller = Provider.of<MyProfileProvider>(context, listen: false);
+        final controller = Provider.of<MyProfileProvider>(
+          context,
+          listen: false,
+        );
         // Only initialize if still loading (not already initialized)
         if (controller.isLoading.value) {
           controller.initFunction(context: context);
@@ -79,239 +84,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       child: SingleChildScrollView(
                         child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: Responsive.getScreenPadding(context).horizontal,
+                          padding: EdgeInsets.only(
+                            left: Responsive.getScreenPadding(
+                              context,
+                            ).horizontal,
+                            right: Responsive.getScreenPadding(
+                              context,
+                            ).horizontal,
+                            bottom: 20,
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                          Text(
-                            "My Profile".tr,
-                            style: TextStyle(
-                              fontSize: Responsive.getFontSize(context, 24),
-                              color: AppThemeData.grey900,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          Text(
-                            "Manage your personal information, preferences, and settings all in one place."
-                                .tr,
-                            style: TextStyle(
-                              fontSize: Responsive.getFontSize(context, 16),
-                              color: AppThemeData.grey900,
-                              fontFamily: AppThemeData.regular,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
-                          SizedBox(height: Responsive.getSpacing(context, baseSpacing: 20)),
-                          Text(
-                            "General Information".tr,
-                            style: TextStyle(
-                              fontSize: Responsive.getFontSize(context, 12),
-                              color: AppThemeData.grey500,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: Responsive.width(100, context),
-                            decoration: ShapeDecoration(
-                              color: AppThemeData.grey50,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                              Text(
+                                "My Profile".tr,
+                                style: TextStyle(
+                                  fontSize: Responsive.getFontSize(context, 24),
+                                  color: AppThemeData.grey900,
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 8,
+                              Text(
+                                "Manage your personal information, preferences, and settings all in one place."
+                                    .tr,
+                                style: TextStyle(
+                                  fontSize: Responsive.getFontSize(context, 16),
+                                  color: AppThemeData.grey900,
+                                  fontFamily: AppThemeData.regular,
+                                  fontWeight: FontWeight.w400,
+                                ),
                               ),
-                              child: Consumer<EditProfileProvider>(
-                                builder: (context, editProfileProvider, _) {
-                                  return Column(
-                                    children: [
-                                      cardDecoration(
-                                        controller,
-                                        "assets/images/ic_profile.svg",
-                                        "Profile Information".tr,
-                                        () async {
-                                          // Check if user is logged in
-                                          final isLoggedIn =
-                                              await SqlStorageConst.isUserLoggedIn();
-                                          if (!isLoggedIn) {
-                                            _showLoginRequiredDialog(context);
-                                            return;
-                                          }
-                                          editProfileProvider.initFunction();
-                                          Get.to(const EditProfileScreen());
-                                        },
-                                      ),
-                                    ],
-                                  );
-                                },
+                              SizedBox(
+                                height: Responsive.getSpacing(
+                                  context,
+                                  baseSpacing: 20,
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 20),
-                          const SizedBox(height: 10),
-                          // Text(
-                          //   "Preferences".tr,
-                          //   style: TextStyle(
-                          //     fontSize: 12,
-                          //     color: AppThemeData.grey500,
-                          //     fontFamily: AppThemeData.semiBold,
-                          //     fontWeight: FontWeight.w500,
-                          //   ),
-                          // ),
-                          // const SizedBox(height: 10),
-                          // Container(
-                          //   width: Responsive.width(100, context),
-                          //   decoration: ShapeDecoration(
-                          //     color: AppThemeData.grey50,
-                          //     shape: RoundedRectangleBorder(
-                          //       borderRadius: BorderRadius.circular(8),
-                          //     ),
-                          //   ),
-                          //   child: Padding(
-                          //     padding: const EdgeInsets.symmetric(
-                          //       horizontal: 10,
-                          //       vertical: 8,
-                          //     ),
-                          //     child: Column(
-                          //       children: [
-                          //         cardDecoration(
-                          //           controller,
-                          //           "assets/icons/ic_change_language.svg",
-                          //           "Change Language".tr,
-                          //           () {
-                          //             Get.to(const ChangeLanguageScreen());
-                          //           },
-                          //         ),
-                          //       ],
-                          //     ),
-                          //   ),
-                          // ),
-                          SizedBox(height: Responsive.getSpacing(context, baseSpacing: 10)),
-                          Text(
-                            "Social".tr,
-                            style: TextStyle(
-                              fontSize: Responsive.getFontSize(context, 12),
-                              color: AppThemeData.grey500,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: double.infinity,
-                            decoration: ShapeDecoration(
-                              color: AppThemeData.grey50,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                              Text(
+                                "General Information".tr,
+                                style: TextStyle(
+                                  fontSize: Responsive.getFontSize(context, 12),
+                                  color: AppThemeData.grey500,
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w500,
+                                ),
                               ),
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: Responsive.getHorizontalSpacing(context, baseSpacing: 10),
-                                vertical: 8,
-                              ),
-                              child: Column(
-                                children: [
-                                  Constant.userModel == null
-                                      ? const SizedBox()
-                                      : cardDecoration(
-                                          controller,
-                                          "assets/icons/ic_share.svg",
-                                          "Share app",
-                                          () {
-                                            SharePlus.instance.share(
-                                              ShareParams(
-                                                text:
-                                                    'Hey! Just downloaded JippyMart and loving it!\nYou should try it too - get Rs.100 off on your first order!\nDon\'t miss out on this deal!\n\nGoogle Play: ${Constant.googlePlayLink}\nApp Store: ${Constant.appStoreLink}',
-                                                subject: 'Look what I made!',
-                                              ),
-                                            );
-                                          },
-                                        ),
-                                  cardDecoration(
-                                    controller,
-                                    "assets/icons/ic_rate.svg",
-                                    "Rate the app",
-                                    () async {
-                                      final inAppReview = InAppReview.instance;
-                                      if (await inAppReview.isAvailable()) {
-                                        await inAppReview.requestReview();
-                                      } else {
-                                        await inAppReview.openStoreListing();
-                                      }
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Text(
-                            "Legal".tr,
-                            style: TextStyle(
-                              fontSize: Responsive.getFontSize(context, 12),
-                              color: AppThemeData.grey500,
-                              fontFamily: AppThemeData.semiBold,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            width: double.infinity,
-                            decoration: ShapeDecoration(
-                              color: AppThemeData.grey50,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: Responsive.getHorizontalSpacing(context, baseSpacing: 10),
-                                vertical: 8,
-                              ),
-                              child: Column(
-                                children: [
-                                  cardDecoration(
-                                    controller,
-                                    "assets/icons/ic_privacy_policy.svg",
-                                    "Privacy Policy",
-                                    () {
-                                      Get.to(
-                                        const TermsAndConditionScreen(
-                                          type: "privacy",
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  cardDecoration(
-                                    controller,
-                                    "assets/icons/ic_tearm_condition.svg",
-                                    "Terms and Conditions",
-                                    () {
-                                      Get.to(
-                                        const TermsAndConditionScreen(
-                                          type: "termAndCondition",
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          const SizedBox(height: 10),
-                          Consumer<LoginProvider>(
-                            builder: (context, loginProvider, _) {
-                              return Container(
-                                width: double.infinity,
+                              const SizedBox(height: 10),
+                              Container(
+                                width: Responsive.width(100, context),
                                 decoration: ShapeDecoration(
                                   color: AppThemeData.grey50,
                                   shape: RoundedRectangleBorder(
@@ -321,220 +142,471 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: Padding(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10,
-                                    vertical: 6,
+                                    vertical: 8,
+                                  ),
+                                  child: Consumer<EditProfileProvider>(
+                                    builder: (context, editProfileProvider, _) {
+                                      return Column(
+                                        children: [
+                                          cardDecoration(
+                                            controller,
+                                            "assets/images/ic_profile.svg",
+                                            "Profile Information".tr,
+                                            () async {
+                                              // Check if user is logged in
+                                              final isLoggedIn =
+                                                  await SqlStorageConst.isUserLoggedIn();
+                                              if (!isLoggedIn) {
+                                                _showLoginRequiredDialog(
+                                                  context,
+                                                );
+                                                return;
+                                              }
+                                              editProfileProvider
+                                                  .initFunction();
+                                              Get.to(const EditProfileScreen());
+                                            },
+                                          ),
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                width: Responsive.width(100, context),
+                                decoration: ShapeDecoration(
+                                  color: AppThemeData.grey50,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      cardDecoration(
+                                        controller,
+                                        "assets/images/ic_favourite.svg",
+                                        "Favorites".tr,
+                                        () async {
+                                          final isLoggedIn =
+                                              await SqlStorageConst.isUserLoggedIn();
+                                          if (!isLoggedIn) {
+                                            _showLoginRequiredDialog(context);
+                                            return;
+                                          }
+
+                                          await context
+                                              .read<FavouriteProvider>()
+                                              .getData();
+                                          Get.to(const FavouriteScreen());
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                              const SizedBox(height: 10),
+
+                              // Text(
+                              //   "Preferences".tr,
+                              //   style: TextStyle(
+                              //     fontSize: 12,
+                              //     color: AppThemeData.grey500,
+                              //     fontFamily: AppThemeData.semiBold,
+                              //     fontWeight: FontWeight.w500,
+                              //   ),
+                              // ),
+                              // const SizedBox(height: 10),
+                              // Container(
+                              //   width: Responsive.width(100, context),
+                              //   decoration: ShapeDecoration(
+                              //     color: AppThemeData.grey50,
+                              //     shape: RoundedRectangleBorder(
+                              //       borderRadius: BorderRadius.circular(8),
+                              //     ),
+                              //   ),
+                              //   child: Padding(
+                              //     padding: const EdgeInsets.symmetric(
+                              //       horizontal: 10,
+                              //       vertical: 8,
+                              //     ),
+                              //     child: Column(
+                              //       children: [
+                              //         cardDecoration(
+                              //           controller,
+                              //           "assets/icons/ic_change_language.svg",
+                              //           "Change Language".tr,
+                              //           () {
+                              //             Get.to(const ChangeLanguageScreen());
+                              //           },
+                              //         ),
+                              //       ],
+                              //     ),
+                              //   ),
+                              // ),
+                              Text(
+                                "Social".tr,
+                                style: TextStyle(
+                                  fontSize: Responsive.getFontSize(context, 12),
+                                  color: AppThemeData.grey500,
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                decoration: ShapeDecoration(
+                                  color: AppThemeData.grey50,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: Responsive.getHorizontalSpacing(
+                                      context,
+                                      baseSpacing: 10,
+                                    ),
+                                    vertical: 8,
                                   ),
                                   child: Column(
                                     children: [
                                       Constant.userModel == null
-                                          ? cardDecoration(
-                                              controller,
-                                              "assets/icons/ic_logout.svg",
-                                              "Log In",
-                                              () {
-                                                Get.offAll(
-                                                  const PhoneNumberScreen(),
-                                                );
-                                              },
-                                            )
+                                          ? const SizedBox()
                                           : cardDecoration(
                                               controller,
-                                              "assets/icons/ic_logout.svg",
-                                              "Log out",
+                                              "assets/icons/ic_share.svg",
+                                              "Share app",
                                               () {
-                                                showDialog(
-                                                  context: context,
-                                                  builder: (BuildContext context) {
-                                                    return CustomDialogBox(
-                                                      title: "Log out".tr,
-                                                      descriptions:
-                                                          "Are you sure you want to log out? You will need to enter your credentials to log back in."
-                                                              .tr,
-                                                      positiveString:
-                                                          "Log out".tr,
-                                                      negativeString:
-                                                          "Cancel".tr,
-                                                      positiveClick: () async {
-                                                        Constant
-                                                                .userModel!
-                                                                .fcmToken =
-                                                            "";
-                                                        await EditProfileProvider.updateUser(
-                                                          Constant.userModel!,
-                                                        );
-                                                        Constant.userModel =
-                                                            null;
-                                                        FireStoreUtils
-                                                                .backendUserId =
-                                                            null;
-                                                        // Clear auth token if used
-                                                        try {
-                                                          loginProvider
-                                                                  .authToken =
-                                                              '';
-                                                        } catch (_) {}
-                                                        // Clear preferences (or use your Preferences.clear() if available)
-                                                        await Preferences.clearSharPreference();
-                                                        // Delete API token from secure storage
-                                                        final FlutterSecureStorage
-                                                        secureStorage =
-                                                            const FlutterSecureStorage();
-                                                        await secureStorage
-                                                            .delete(
-                                                              key: 'api_token',
-                                                            );
-                                                        // Clear cart data before logout
-                                                        print(
-                                                          'DEBUG: Profile logout - Starting cart clearing process',
-                                                        );
-                                                        try {
-                                                          // Force clear cart from database directly
-                                                          await DatabaseHelper
-                                                              .instance
-                                                              .deleteAllCartProducts();
-
-                                                          // Also try to clear via CartController if available
-                                                          CartControllerProvider
-                                                          cartControllerProvider =
-                                                              Provider.of<
-                                                                CartControllerProvider
-                                                              >(
-                                                                context,
-                                                                listen: false,
-                                                              );
-                                                          print(
-                                                            'DEBUG: Profile logout - CartController found, clearing cart',
-                                                          );
-                                                          await cartControllerProvider
-                                                              .clearCart();
-                                                        } catch (e) {
-                                                          print(
-                                                            'DEBUG: Profile logout - Error clearing cart: $e',
-                                                          );
-                                                        }
-                                                        Get.deleteAll(
-                                                          force: true,
-                                                        );
-                                                        Get.offAll(
-                                                          const PhoneNumberScreen(),
-                                                        );
-                                                      },
-                                                      negativeClick: () {
-                                                        Get.back();
-                                                      },
-                                                      img: Image.asset(
-                                                        'assets/images/ic_logout.gif',
-                                                        height: 50,
-                                                        width: 50,
-                                                      ),
-                                                    );
-                                                  },
+                                                SharePlus.instance.share(
+                                                  ShareParams(
+                                                    text:
+                                                        'Hey! Just downloaded JippyMart and loving it!\nYou should try it too - get Rs.100 off on your first order!\nDon\'t miss out on this deal!\n\nGoogle Play: ${Constant.googlePlayLink}\nApp Store: ${Constant.appStoreLink}',
+                                                    subject:
+                                                        'Look what I made!',
+                                                  ),
                                                 );
                                               },
                                             ),
+                                      cardDecoration(
+                                        controller,
+                                        "assets/icons/ic_rate.svg",
+                                        "Rate the app",
+                                        () async {
+                                          final inAppReview =
+                                              InAppReview.instance;
+                                          if (await inAppReview.isAvailable()) {
+                                            await inAppReview.requestReview();
+                                          } else {
+                                            await inAppReview
+                                                .openStoreListing();
+                                          }
+                                        },
+                                      ),
                                     ],
                                   ),
                                 ),
-                              );
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          Constant.userModel == null
-                              ? const SizedBox()
-                              : Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 20,
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                "Legal".tr,
+                                style: TextStyle(
+                                  fontSize: Responsive.getFontSize(context, 12),
+                                  color: AppThemeData.grey500,
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Container(
+                                width: double.infinity,
+                                decoration: ShapeDecoration(
+                                  color: AppThemeData.grey50,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: InkWell(
-                                    onTap: () {
-                                      showDialog(
-                                        context: context,
-                                        builder: (BuildContext context) {
-                                          return CustomDialogBox(
-                                            title: "Delete Account".tr,
-                                            descriptions:
-                                                "Are you sure you want to delete your account? This action is irreversible and will permanently remove all your data."
-                                                    .tr,
-                                            positiveString: "Delete".tr,
-                                            negativeString: "Cancel".tr,
-                                            positiveClick: () async {
-                                              try {
-                                                controller.deleteUserAccount(
-                                                  context: context,
-                                                );
-                                              } catch (_) {}
-                                            },
-                                            negativeClick: () {
-                                              Get.back();
-                                            },
-                                            img: Image.asset(
-                                              'assets/icons/delete_dialog.gif',
-                                              height: 50,
-                                              width: 50,
+                                ),
+                                child: Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: Responsive.getHorizontalSpacing(
+                                      context,
+                                      baseSpacing: 10,
+                                    ),
+                                    vertical: 8,
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      cardDecoration(
+                                        controller,
+                                        "assets/icons/ic_privacy_policy.svg",
+                                        "Privacy Policy",
+                                        () {
+                                          Get.to(
+                                            const TermsAndConditionScreen(
+                                              type: "privacy",
                                             ),
                                           );
                                         },
-                                      );
-                                    },
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        SvgPicture.asset(
-                                          "assets/icons/ic_delete.svg",
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(
-                                          "Delete Account".tr,
-                                          textAlign: TextAlign.start,
-                                          style: TextStyle(
-                                            fontFamily: AppThemeData.medium,
-                                            fontSize: 16,
-                                            color: AppThemeData.danger300,
-                                          ),
-                                        ),
-                                      ],
+                                      ),
+                                      cardDecoration(
+                                        controller,
+                                        "assets/icons/ic_tearm_condition.svg",
+                                        "Terms and Conditions",
+                                        () {
+                                          Get.to(
+                                            const TermsAndConditionScreen(
+                                              type: "termAndCondition",
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              Consumer<LoginProvider>(
+                                builder: (context, loginProvider, _) {
+                                  return Container(
+                                    width: double.infinity,
+                                    decoration: ShapeDecoration(
+                                      color: AppThemeData.grey50,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                          FutureBuilder<Map<String, dynamic>?>(
-                            future: AppUpdateService.getLatestVersionInfo(),
-                            builder: (context, snapshot) {
-                              String versionText = "V : ${Constant.appVersion}";
-                              
-                              if (snapshot.hasData && snapshot.data != null) {
-                                final versionInfo = snapshot.data!;
-                                if (Platform.isAndroid) {
-                                  final androidVersion = versionInfo['android_version'] ?? '';
-                                  if (androidVersion.isNotEmpty) {
-                                    versionText = "V : $androidVersion";
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 6,
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Constant.userModel == null
+                                              ? cardDecoration(
+                                                  controller,
+                                                  "assets/icons/ic_logout.svg",
+                                                  "Log In",
+                                                  () {
+                                                    Get.offAll(
+                                                      PhoneNumberScreen(),
+                                                    );
+                                                  },
+                                                )
+                                              : cardDecoration(
+                                                  controller,
+                                                  "assets/icons/ic_logout.svg",
+                                                  "Log out",
+                                                  () {
+                                                    showDialog(
+                                                      context: context,
+                                                      builder: (BuildContext context) {
+                                                        return CustomDialogBox(
+                                                          title: "Log out".tr,
+                                                          descriptions:
+                                                              "Are you sure you want to log out? You will need to enter your credentials to log back in."
+                                                                  .tr,
+                                                          positiveString:
+                                                              "Log out".tr,
+                                                          negativeString:
+                                                              "Cancel".tr,
+                                                          positiveClick: () async {
+                                                            Constant
+                                                                    .userModel!
+                                                                    .fcmToken =
+                                                                "";
+                                                            await EditProfileProvider.updateUser(
+                                                              Constant
+                                                                  .userModel!,
+                                                            );
+                                                            Constant.userModel =
+                                                                null;
+                                                            FireStoreUtils
+                                                                    .backendUserId =
+                                                                null;
+                                                            // Clear auth token if used
+                                                            try {
+                                                              loginProvider
+                                                                      .authToken =
+                                                                  '';
+                                                            } catch (_) {}
+                                                            // Clear preferences (or use your Preferences.clear() if available)
+                                                            await Preferences.clearSharPreference();
+                                                            // Delete API token from secure storage
+                                                            final FlutterSecureStorage
+                                                            secureStorage =
+                                                                const FlutterSecureStorage();
+                                                            await secureStorage
+                                                                .delete(
+                                                                  key:
+                                                                      'api_token',
+                                                                );
+                                                            // Clear cart data before logout
+                                                            print(
+                                                              'DEBUG: Profile logout - Starting cart clearing process',
+                                                            );
+                                                            try {
+                                                              // Force clear cart from database directly
+                                                              await DatabaseHelper
+                                                                  .instance
+                                                                  .deleteAllCartProducts();
+
+                                                              // Also try to clear via CartController if available
+                                                              CartControllerProvider
+                                                              cartControllerProvider =
+                                                                  Provider.of<
+                                                                    CartControllerProvider
+                                                                  >(
+                                                                    context,
+                                                                    listen:
+                                                                        false,
+                                                                  );
+                                                              print(
+                                                                'DEBUG: Profile logout - CartController found, clearing cart',
+                                                              );
+                                                              await cartControllerProvider
+                                                                  .clearCart();
+                                                            } catch (e) {
+                                                              print(
+                                                                'DEBUG: Profile logout - Error clearing cart: $e',
+                                                              );
+                                                            }
+                                                            Get.deleteAll(
+                                                              force: true,
+                                                            );
+                                                            Get.offAll(
+                                                              PhoneNumberScreen(),
+                                                            );
+                                                          },
+                                                          negativeClick: () {
+                                                            Get.back();
+                                                          },
+                                                          img: Image.asset(
+                                                            'assets/images/ic_logout.gif',
+                                                            height: 50,
+                                                            width: 50,
+                                                          ),
+                                                        );
+                                                      },
+                                                    );
+                                                  },
+                                                ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              Constant.userModel == null
+                                  ? const SizedBox()
+                                  : Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 20,
+                                      ),
+                                      child: InkWell(
+                                        onTap: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return CustomDialogBox(
+                                                title: "Delete Account".tr,
+                                                descriptions:
+                                                    "Are you sure you want to delete your account? This action is irreversible and will permanently remove all your data."
+                                                        .tr,
+                                                positiveString: "Delete".tr,
+                                                negativeString: "Cancel".tr,
+                                                positiveClick: () async {
+                                                  try {
+                                                    controller
+                                                        .deleteUserAccount(
+                                                          context: context,
+                                                        );
+                                                  } catch (_) {}
+                                                },
+                                                negativeClick: () {
+                                                  Get.back();
+                                                },
+                                                img: Image.asset(
+                                                  'assets/icons/delete_dialog.gif',
+                                                  height: 50,
+                                                  width: 50,
+                                                ),
+                                              );
+                                            },
+                                          );
+                                        },
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            SvgPicture.asset(
+                                              "assets/icons/ic_delete.svg",
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(
+                                              "Delete Account".tr,
+                                              textAlign: TextAlign.start,
+                                              style: TextStyle(
+                                                fontFamily: AppThemeData.medium,
+                                                fontSize: 16,
+                                                color: AppThemeData.danger300,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                              FutureBuilder<Map<String, dynamic>?>(
+                                future: AppUpdateService.getLatestVersionInfo(),
+                                builder: (context, snapshot) {
+                                  String versionText =
+                                      "V : ${Constant.appVersion}";
+
+                                  if (snapshot.hasData &&
+                                      snapshot.data != null) {
+                                    final versionInfo = snapshot.data!;
+                                    if (Platform.isAndroid) {
+                                      final androidVersion =
+                                          versionInfo['android_version'] ?? '';
+                                      if (androidVersion.isNotEmpty) {
+                                        versionText = "V : $androidVersion";
+                                      }
+                                    } else if (Platform.isIOS) {
+                                      final iosVersion =
+                                          versionInfo['ios_version'] ?? '';
+                                      if (iosVersion.isNotEmpty) {
+                                        versionText = "V : $iosVersion";
+                                      }
+                                    }
                                   }
-                                } else if (Platform.isIOS) {
-                                  final iosVersion = versionInfo['ios_version'] ?? '';
-                                  if (iosVersion.isNotEmpty) {
-                                    versionText = "V : $iosVersion";
-                                  }
-                                }
-                              }
-                              
-                              return Center(
-                                child: Text(
-                                  versionText,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontFamily: AppThemeData.medium,
-                                    fontSize: 14,
-                                    color: AppThemeData.grey900,
-                                  ),
-                                ),
-                              );
-                            },
+
+                                  return Center(
+                                    child: Text(
+                                      versionText,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontFamily: AppThemeData.medium,
+                                        fontSize: 14,
+                                        color: AppThemeData.grey900,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
                     ),
                   ),
                 );
@@ -556,7 +628,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           negativeString: "Cancel".tr,
           positiveClick: () {
             Get.back(); // Close dialog
-            Get.to(() => const PhoneNumberScreen());
+            Get.to(() => PhoneNumberScreen());
           },
           negativeClick: () {
             Get.back(); // Close dialog
@@ -586,14 +658,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         },
         child: Row(
           children: [
-            SvgPicture.asset(
-              image,
-              colorFilter: title == "Log In"
-                  ? const ColorFilter.mode(
-                      AppThemeData.success500,
-                      BlendMode.srcIn,
-                    )
-                  : null,
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: SvgPicture.asset(
+                image,
+                width: 24,
+                height: 24,
+                colorFilter: title == "Log In"
+                    ? const ColorFilter.mode(
+                        AppThemeData.success500,
+                        BlendMode.srcIn,
+                      )
+                    : null,
+              ),
             ),
             const SizedBox(width: 10),
             Expanded(

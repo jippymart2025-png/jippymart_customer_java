@@ -71,7 +71,9 @@ class SelectPaymentScreen extends StatelessWidget {
                                           .cashOnDeliverySettingModel
                                           .isEnabled ==
                                       true &&
-                                  controller.subTotal <= 599 &&
+                                  controller.subTotal <=
+                                      controller.cashOnDeliverySettingModel
+                                          .getMaxAmount() &&
                                   !controller.hasPromotionalItems(),
                               child: cardDecoration(
                                 controller,
@@ -85,7 +87,9 @@ class SelectPaymentScreen extends StatelessWidget {
                                           .cashOnDeliverySettingModel
                                           .isEnabled ==
                                       true &&
-                                  controller.subTotal > 599,
+                                  controller.subTotal >
+                                      controller.cashOnDeliverySettingModel
+                                          .getMaxAmount(),
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
@@ -102,7 +106,7 @@ class SelectPaymentScreen extends StatelessWidget {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        "Cash on Delivery is not available for orders above ₹599"
+                                        "Cash on Delivery is not available for orders above ₹${controller.cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}"
                                             .tr,
                                         style: TextStyle(
                                           fontFamily: AppThemeData.medium,
@@ -121,7 +125,9 @@ class SelectPaymentScreen extends StatelessWidget {
                                           .cashOnDeliverySettingModel
                                           .isEnabled ==
                                       true &&
-                                  controller.subTotal <= 599 &&
+                                  controller.subTotal <=
+                                      controller.cashOnDeliverySettingModel
+                                          .getMaxAmount() &&
                                   controller.hasPromotionalItems(),
                               child: Container(
                                 padding: const EdgeInsets.all(12),

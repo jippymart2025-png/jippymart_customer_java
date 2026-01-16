@@ -1,5 +1,6 @@
 import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
+import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/location_permission_screen/provider/location_permission_provider.dart';
@@ -24,6 +25,36 @@ import 'dart:math' as math;
 
 class LocationPermissionScreen extends StatelessWidget {
   const LocationPermissionScreen({super.key});
+
+  /// Helper function to navigate to appropriate screen based on login status
+  static Future<void> navigateAfterLocationSet(
+    BuildContext context,
+    SplashProvider? splashProvider,
+  ) async {
+    try {
+      // Check if user is logged in
+      final apiToken = await SqlStorageConst.getAuthToken();
+      final userId = await SqlStorageConst.getFirebaseId();
+
+      if (apiToken != null &&
+          apiToken.isNotEmpty &&
+          userId != null &&
+          userId.isNotEmpty) {
+        // User is logged in, go to dashboard
+        if (splashProvider != null) {
+          splashProvider.refreshFunction(Get.context ?? context);
+        }
+        Get.offAll(const DashBoardScreen());
+      } else {
+        // User not logged in, go to login screen
+        Get.offAll(const PhoneNumberScreen());
+      }
+    } catch (e) {
+      print('[LOCATION_PERMISSION] Error in navigateAfterLocationSet: $e');
+      // Fallback to login screen
+      Get.offAll(const PhoneNumberScreen());
+    }
+  }
 
   Future<void> updateLocationInLocal(UserLocation location) async {
     final box = GetStorage();
@@ -147,10 +178,25 @@ class LocationPermissionScreen extends StatelessWidget {
                                         showError: true,
                                       );
                                   if (success) {
-                                    splashProvider.refreshFunction(
-                                      Get.context ?? context,
-                                    );
-                                    Get.offAll(const DashBoardScreen());
+                                    // Check if user is logged in before navigating
+                                    final apiToken =
+                                        await SqlStorageConst.getAuthToken();
+                                    final userId =
+                                        await SqlStorageConst.getFirebaseId();
+
+                                    if (apiToken != null &&
+                                        apiToken.isNotEmpty &&
+                                        userId != null &&
+                                        userId.isNotEmpty) {
+                                      // User is logged in, go to dashboard
+                                      splashProvider.refreshFunction(
+                                        Get.context ?? context,
+                                      );
+                                      Get.offAll(const DashBoardScreen());
+                                    } else {
+                                      // User not logged in, go to login screen
+                                      Get.offAll(const PhoneNumberScreen());
+                                    }
                                   }
                                 } catch (e) {
                                   print('[LOCATION_PERMISSION] Error: $e');
@@ -292,10 +338,11 @@ class LocationPermissionScreen extends StatelessWidget {
                                       await updateLocationInLocal(
                                         addressModel.location!,
                                       );
-                                      splashProvider.refreshFunction(
-                                        Get.context ?? context,
+                                      // Navigate based on login status
+                                      await LocationPermissionScreen.navigateAfterLocationSet(
+                                        context,
+                                        splashProvider,
                                       );
-                                      Get.offAll(const DashBoardScreen());
                                     }
                                   } else {
                                     Navigator.push(
@@ -422,10 +469,11 @@ class LocationPermissionScreen extends StatelessWidget {
                                             await updateLocationInLocal(
                                               addressModel.location!,
                                             );
-                                            splashProvider.refreshFunction(
-                                              Get.context ?? context,
+                                            // Navigate based on login status
+                                            await LocationPermissionScreen.navigateAfterLocationSet(
+                                              context,
+                                              splashProvider,
                                             );
-                                            Get.offAll(const DashBoardScreen());
                                           },
                                           initialPosition: const LatLng(
                                             -33.8567844,
@@ -473,14 +521,23 @@ class LocationPermissionScreen extends StatelessWidget {
                                   );
                                   Get.to(const AddressListScreen())?.then((
                                     value,
-                                  ) {
+                                  ) async {
                                     if (value != null) {
                                       homeProvider
                                           .changeLocationAddressFunction(
                                             addressModel: value,
                                             context: Get.context ?? context,
                                           );
-                                      Get.offAll(const DashBoardScreen());
+                                      // Navigate based on login status
+                                      final splashProvider =
+                                          Provider.of<SplashProvider>(
+                                            Get.context ?? context,
+                                            listen: false,
+                                          );
+                                      await LocationPermissionScreen.navigateAfterLocationSet(
+                                        Get.context ?? context,
+                                        splashProvider,
+                                      );
                                     }
                                   });
                                   // Get.to(const AddressListScreen())!.then((
@@ -518,10 +575,11 @@ class LocationPermissionScreen extends StatelessWidget {
                                       );
 
                                   if (success) {
-                                    splashProvider.refreshFunction(
-                                      Get.context ?? context,
+                                    // Navigate based on login status
+                                    await LocationPermissionScreen.navigateAfterLocationSet(
+                                      context,
+                                      splashProvider,
                                     );
-                                    Get.offAll(const DashBoardScreen());
                                   }
                                 } catch (e) {
                                   print(

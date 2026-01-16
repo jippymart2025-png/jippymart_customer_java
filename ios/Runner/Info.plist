@@ -117,5 +117,26 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
+	<!-- ================= DEEP LINKING CONFIGURATION ================= -->
+	
+	<!-- URL Schemes: Custom scheme for deep linking (jippymart://) -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.jippymart.customerapp</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>jippymart</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Universal Links: Associated Domains for HTTPS deep links -->
+	<!-- Note: The actual Associated Domains capability must be added in Xcode -->
+	<!-- and the entitlements file must reference applinks:jippymart.in -->
+
 </dict>
 </plist>

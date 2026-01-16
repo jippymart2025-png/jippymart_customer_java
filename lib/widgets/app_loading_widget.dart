@@ -2,7 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 
-class AppLoadingWidget extends StatelessWidget {
+class AppLoadingWidget extends StatefulWidget {
   final String? title;
   final String? subtitle;
   final IconData? icon;
@@ -25,27 +25,54 @@ class AppLoadingWidget extends StatelessWidget {
   });
 
   @override
+  State<AppLoadingWidget> createState() => _AppLoadingWidgetState();
+}
+
+class _AppLoadingWidgetState extends State<AppLoadingWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // **ANIMATED ICON**
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1000),
-            tween: Tween(begin: 0.0, end: 1.0),
-            builder: (context, value, child) {
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
               return Transform.scale(
-                scale: 0.8 + (0.2 * value),
+                scale: _scaleAnimation.value,
                 child: Container(
-                  width: size ?? 60,
-                  height: size ?? 60,
+                  width: widget.size ?? 60,
+                  height: widget.size ?? 60,
                   decoration: BoxDecoration(
-                    color: backgroundColor ?? AppThemeData.primary300,
+                    color: widget.backgroundColor ?? AppThemeData.primary300,
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: (backgroundColor ?? AppThemeData.primary300)
+                        color: (widget.backgroundColor ?? AppThemeData.primary300)
                             .withValues(alpha: 0.3),
                         blurRadius: 15,
                         spreadRadius: 3,
@@ -53,89 +80,54 @@ class AppLoadingWidget extends StatelessWidget {
                     ],
                   ),
                   child: Icon(
-                    icon ?? Icons.search,
-                    color: iconColor ?? Colors.white,
-                    size: (size ?? 60) * 0.5,
+                    widget.icon ?? Icons.search,
+                    color: widget.iconColor ?? Colors.white,
+                    size: (widget.size ?? 60) * 0.5,
                   ),
                 ),
               );
-            },
-            onEnd: () {
-              // Restart animation
             },
           ),
 
           const SizedBox(height: 24),
 
           // **LOADING TEXT**
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1500),
-            tween: Tween(begin: 0.0, end: 1.0),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Column(
-                  children: [
-                    if (title != null) ...[
-                      Text(
-                        title!,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppThemeData.grey900,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    if (subtitle != null) ...[
-                      Text(
-                        subtitle!,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppThemeData.grey400,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ],
+          Column(
+            children: [
+              if (widget.title != null) ...[
+                Text(
+                  widget.title!,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppThemeData.grey900,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
-              );
-            },
+                const SizedBox(height: 8),
+              ],
+              if (widget.subtitle != null) ...[
+                Text(
+                  widget.subtitle!,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppThemeData.grey400,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ],
           ),
 
-          if (showDots) ...[
+          if (widget.showDots) ...[
             const SizedBox(height: 20),
-
-            // **ANIMATED DOTS**
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(3, (index) {
-                return TweenAnimationBuilder<double>(
-                  duration: Duration(milliseconds: 800 + (index * 300)),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
-                      width: 6,
-                      height: 6,
-                      decoration: BoxDecoration(
-                        color: const Color(
-                          0xFFFF5201,
-                        ).withValues(alpha: 0.3 + (0.7 * value)),
-                        shape: BoxShape.circle,
-                      ),
-                    );
-                  },
-                  onEnd: () {
-                    // Restart animation
-                  },
-                );
-              }),
-            ),
+            _AnimatedDots(),
           ],
 
-          if (showFunFact) ...[const SizedBox(height: 40), _buildFunFact()],
+          if (widget.showFunFact) ...[
+            const SizedBox(height: 40),
+            _buildFunFact(),
+          ],
         ],
       ),
     );
@@ -175,6 +167,71 @@ class AppLoadingWidget extends StatelessWidget {
   }
 }
 
+/// Animated dots widget with continuous looping
+class _AnimatedDots extends StatefulWidget {
+  const _AnimatedDots();
+
+  @override
+  State<_AnimatedDots> createState() => _AnimatedDotsState();
+}
+
+class _AnimatedDotsState extends State<_AnimatedDots>
+    with TickerProviderStateMixin {
+  late List<AnimationController> _controllers;
+  late List<Animation<double>> _animations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(3, (index) {
+      final controller = AnimationController(
+        duration: Duration(milliseconds: 600 + (index * 200)),
+        vsync: this,
+      );
+      controller.repeat(reverse: true);
+      return controller;
+    });
+
+    _animations = _controllers.map((controller) {
+      return Tween<double>(begin: 0.3, end: 1.0).animate(
+        CurvedAnimation(parent: controller, curve: Curves.easeInOut),
+      );
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(3, (index) {
+        return AnimatedBuilder(
+          animation: _animations[index],
+          builder: (context, child) {
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF5201)
+                    .withValues(alpha: _animations[index].value),
+                shape: BoxShape.circle,
+              ),
+            );
+          },
+        );
+      }),
+    );
+  }
+}
+
 // **PREDEFINED LOADING WIDGETS FOR COMMON USE CASES**
 
 class SearchLoadingWidget extends StatelessWidget {
@@ -192,15 +249,64 @@ class SearchLoadingWidget extends StatelessWidget {
   }
 }
 
-class RestaurantLoadingWidget extends StatelessWidget {
+class RestaurantLoadingWidget extends StatefulWidget {
   final bool showFunFact;
 
   const RestaurantLoadingWidget({super.key, this.showFunFact = true});
 
   @override
-  Widget build(BuildContext context) {
-    // Try to find DarkThemeProvider, fallback to default theme if not found
+  State<RestaurantLoadingWidget> createState() => _RestaurantLoadingWidgetState();
+}
 
+class _RestaurantLoadingWidgetState extends State<RestaurantLoadingWidget>
+    with TickerProviderStateMixin {
+  late AnimationController _scaleController;
+  late AnimationController _plateRotationController;
+  late AnimationController _iconRotationController;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Scale animation for pulsing effect
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
+    );
+
+    // Continuous rotation for plate
+    _plateRotationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat();
+
+    // Continuous rotation for icon (slower)
+    _iconRotationController = AnimationController(
+      duration: const Duration(seconds: 3),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _scaleController.dispose();
+    _plateRotationController.dispose();
+    _iconRotationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Stack(
       children: [
         Positioned(
@@ -242,157 +348,104 @@ class RestaurantLoadingWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               // **ANIMATED RESTAURANT ICON WITH ROTATING PLATE**
-              TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 2000),
-                tween: Tween(begin: 0.0, end: 1.0),
-                builder: (context, value, child) {
+              AnimatedBuilder(
+                animation: Listenable.merge([
+                  _scaleController,
+                  _plateRotationController,
+                  _iconRotationController,
+                ]),
+                builder: (context, child) {
                   return Opacity(
-                    opacity: value,
+                    opacity: _fadeAnimation.value,
                     child: Transform.scale(
-                      scale: 0.8 + (0.2 * value),
+                      scale: _scaleAnimation.value,
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
                           // Rotating plate background
-                          TweenAnimationBuilder<double>(
-                            duration: const Duration(seconds: 2),
-                            tween: Tween(begin: 0.0, end: 1.0),
-                            builder: (context, rotationValue, child) {
-                              return Transform.rotate(
-                                angle: rotationValue * 2 * 3.14159,
-                                // Full rotation
-                                child: Container(
-                                  width: 90,
-                                  height: 90,
-                                  decoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFFFF5201,
-                                    ).withValues(alpha: 0.1),
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: const Color(
-                                        0xFFFF5201,
-                                      ).withValues(alpha: 0.3),
-                                      width: 2,
-                                    ),
-                                  ),
-                                  child: CustomPaint(painter: PlatePainter()),
+                          Transform.rotate(
+                            angle: _plateRotationController.value * 2 * pi,
+                            child: Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF5201)
+                                    .withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFFFF5201)
+                                      .withValues(alpha: 0.3),
+                                  width: 2,
                                 ),
-                              );
-                            },
-                            onEnd: () {
-                              // Restart rotation animation
-                            },
+                              ),
+                              child: CustomPaint(painter: PlatePainter()),
+                            ),
                           ),
                           // Main restaurant icon with rotation
-                          TweenAnimationBuilder<double>(
-                            duration: const Duration(seconds: 3),
-                            tween: Tween(begin: 0.0, end: 1.0),
-                            builder: (context, rotationValue, child) {
-                              return Transform.rotate(
-                                angle: rotationValue * 2 * 3.14159,
-                                // Full rotation
-                                child: Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFF5201),
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(
-                                          0xFFFF5201,
-                                        ).withValues(alpha: 0.3),
-                                        blurRadius: 20,
-                                        spreadRadius: 5,
-                                      ),
-                                    ],
+                          Transform.rotate(
+                            angle: _iconRotationController.value * 2 * pi,
+                            child: Container(
+                              width: 80,
+                              height: 80,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFF5201),
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFF5201)
+                                        .withValues(alpha: 0.3),
+                                    blurRadius: 20,
+                                    spreadRadius: 5,
                                   ),
-                                  child: const Icon(
-                                    Icons.restaurant_menu,
-                                    color: Colors.white,
-                                    size: 40,
-                                  ),
-                                ),
-                              );
-                            },
-                            onEnd: () {
-                              // Restart rotation animation
-                            },
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.restaurant_menu,
+                                color: Colors.white,
+                                size: 40,
+                              ),
+                            ),
                           ),
                         ],
                       ),
                     ),
                   );
                 },
-                onEnd: () {
-                  // Restart animation
-                },
               ),
 
               const SizedBox(height: 24),
 
-              // **LOADING TEXT WITH SAME ANIMATION**
-              TweenAnimationBuilder<double>(
-                duration: const Duration(milliseconds: 2000),
-                tween: Tween(begin: 0.0, end: 1.0),
-                builder: (context, value, child) {
-                  return Opacity(
-                    opacity: value,
-                    child: Column(
-                      children: [
-                        Text(
-                          "🍽️ Preparing Your Food Journey",
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: AppThemeData.grey900,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Loading delicious restaurants & dishes...",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppThemeData.grey400,
-                          ),
-                        ),
-                      ],
+              // **LOADING TEXT**
+              Column(
+                children: [
+                  Text(
+                    "🍽️ Preparing Your Food Journey",
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppThemeData.grey900,
                     ),
-                  );
-                },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    "Loading delicious restaurants & dishes...",
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppThemeData.grey400,
+                    ),
+                  ),
+                ],
               ),
 
               const SizedBox(height: 20),
 
               // **ANIMATED DOTS**
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  return TweenAnimationBuilder<double>(
-                    duration: Duration(milliseconds: 800 + (index * 300)),
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    builder: (context, value, child) {
-                      return Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        width: 6,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(
-                            alpha: 0.3 + (0.7 * value),
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                      );
-                    },
-                    onEnd: () {
-                      // Restart animation
-                    },
-                  );
-                }),
-              ),
+              _AnimatedDots(),
 
-              if (showFunFact) ...[const SizedBox(height: 40), _buildFunFact()],
+              if (widget.showFunFact) ...[
+                const SizedBox(height: 40),
+                _buildFunFact(),
+              ],
             ],
           ),
         ),
@@ -467,10 +520,43 @@ class DataLoadingWidget extends StatelessWidget {
   }
 }
 
-class OrderLoadingWidget extends StatelessWidget {
+class OrderLoadingWidget extends StatefulWidget {
   final String? message;
 
   const OrderLoadingWidget({super.key, this.message});
+
+  @override
+  State<OrderLoadingWidget> createState() => _OrderLoadingWidgetState();
+}
+
+class _OrderLoadingWidgetState extends State<OrderLoadingWidget>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -479,14 +565,13 @@ class OrderLoadingWidget extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           // **ANIMATED HAND WITH SERVING DISH ICON**
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1500),
-            tween: Tween(begin: 0.0, end: 1.0),
-            builder: (context, value, child) {
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
               return Opacity(
-                opacity: value,
+                opacity: _fadeAnimation.value,
                 child: Transform.scale(
-                  scale: 0.8 + (0.2 * value),
+                  scale: _scaleAnimation.value,
                   child: Container(
                     width: 80,
                     height: 80,
@@ -510,72 +595,36 @@ class OrderLoadingWidget extends StatelessWidget {
                 ),
               );
             },
-            onEnd: () {
-              // Restart animation
-            },
           ),
 
           const SizedBox(height: 24),
 
-          // **LOADING TEXT WITH SAME ANIMATION**
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 1500),
-            tween: Tween(begin: 0.0, end: 1.0),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Column(
-                  children: [
-                    Text(
-                      message ?? "🍽️ Loading Your Orders",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppThemeData.grey900,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Fetching your delicious order history...",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppThemeData.grey400,
-                      ),
-                    ),
-                  ],
+          // **LOADING TEXT**
+          Column(
+            children: [
+              Text(
+                widget.message ?? "🍽️ Loading Your Orders",
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppThemeData.grey900,
                 ),
-              );
-            },
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Fetching your delicious order history...",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppThemeData.grey400,
+                ),
+              ),
+            ],
           ),
 
           const SizedBox(height: 20),
 
           // **ANIMATED DOTS**
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(3, (index) {
-              return TweenAnimationBuilder<double>(
-                duration: Duration(milliseconds: 800 + (index * 300)),
-                tween: Tween(begin: 0.0, end: 1.0),
-                builder: (context, value, child) {
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: const Color(
-                        0xFFFF5201,
-                      ).withValues(alpha: 0.3 + (0.7 * value)),
-                      shape: BoxShape.circle,
-                    ),
-                  );
-                },
-                onEnd: () {
-                  // Restart animation
-                },
-              );
-            }),
-          ),
+          _AnimatedDots(),
         ],
       ),
     );

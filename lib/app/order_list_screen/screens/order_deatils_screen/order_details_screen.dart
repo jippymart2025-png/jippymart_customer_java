@@ -316,19 +316,34 @@ class OrderDetailsScreen extends StatelessWidget {
     }
 
     // Taxes
-    // GST should be calculated on actual deliveryCharges, not originalDeliveryFee
-    // originalDeliveryFee is only for display purposes (strikethrough price)
+    // 🔑 FIXED: Calculate tax on base delivery charge + extra km charges
+    // When delivery is free (above ₹299) but distance exceeds free km:
+    // - Customer pays only extra km charge (e.g., ₹14 for 2 km)
+    // - But tax should be calculated on base charge (₹23) + extra km (₹14) = ₹37
+    // originalDeliveryFee already contains base + extra km, so always use it when available
+    final double taxableDeliveryFee = originalDeliveryFee > 0
+        ? originalDeliveryFee
+        : (deliveryCharges > 0 ? deliveryCharges : 0.0);
+    
+    print(
+      '[TAX_CALC] Order Details - Delivery charges (customer pays): ₹$deliveryCharges, Original fee (base + extra km): ₹$originalDeliveryFee, Taxable fee: ₹$taxableDeliveryFee',
+    );
+    
     double sgst = subTotal * 0.05;
-    double gst = deliveryCharges * 0.18;
-    // taxAmount = sgst + gst;
+    double gst = taxableDeliveryFee * 0.18;
     sgst = sgst.isNaN ? 0.0 : sgst;
     gst = gst.isNaN ? 0.0 : gst;
     taxAmount = sgst + gst;
     print("taxAmount = $taxAmount (SGST: $sgst, GST: $gst)");
     if (taxAmount == 0.0) {
-      double sgstFallback = subTotal * 0.05; // 5%
-      double gstFallback = deliveryCharges * 0.18; // 18%
+      double sgstFallback = subTotal * 0.05; // 5% on subtotal
+      double gstFallback = taxableDeliveryFee > 0
+          ? taxableDeliveryFee * 0.18 // 18% on delivery charges or base charge (even when free delivery)
+          : 0.0;
       taxAmount = sgstFallback + gstFallback;
+      print(
+        '[TAX_CALC] Order Details - Fallback tax applied → SGST (5% of ₹$subTotal): ₹$sgstFallback, GST (18% of ₹$taxableDeliveryFee): ₹$gstFallback, Total: ₹$taxAmount',
+      );
     }
     if (taxAmount.isNaN) taxAmount = 0.0;
     bool isFreeDelivery = false;

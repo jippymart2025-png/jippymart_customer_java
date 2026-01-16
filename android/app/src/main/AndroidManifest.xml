@@ -94,6 +94,13 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="jippymart.in" android:pathPrefix="/deals" />
+            </intent-filter>
+
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="jippymart.in" android:pathPattern="/product/.*" />
             </intent-filter>
 
@@ -137,6 +144,49 @@
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
+
+        <!-- ✅ Facebook App Events Configuration -->
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id" />
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token" />
+
+        <!-- ✅ Razorpay Broadcast Receiver Declarations (Android 14+ compatibility) -->
+        <!-- These receivers are required for Razorpay SDK to work on Android 14+ -->
+        <!-- The SDK tries to register receivers dynamically, but Android 14+ requires explicit declaration -->
+        
+        <!-- RzpTokenReceiver for device token sharing -->
+        <receiver
+            android:name="com.razorpay.RzpTokenReceiver"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="rzp.device_token.share" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- Generic receiver for Razorpay payment callbacks -->
+        <!-- Note: The actual receiver class name may vary, but declaring common ones helps -->
+        <receiver
+            android:name="com.razorpay.CheckoutPresenterImpl$PaymentResultReceiver"
+            android:exported="false"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="com.razorpay.PAYMENT_RESULT" />
+            </intent-filter>
+        </receiver>
+        
+        <!-- Additional generic receiver for Razorpay internal communications -->
+        <receiver
+            android:name="com.razorpay.CheckoutPresenterImpl$1"
+            android:exported="false"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="com.razorpay.PAYMENT_CALLBACK" />
+            </intent-filter>
+        </receiver>
         <!--        <activity-->
 <!--            android:name=".MainActivity"-->
 <!--            android:exported="true"-->

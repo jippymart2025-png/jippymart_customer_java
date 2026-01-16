@@ -10,6 +10,9 @@ import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/signup_
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
+import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -90,7 +93,9 @@ class LoginProvider extends ChangeNotifier {
         throw Exception('HTTP ${response.statusCode}: ${response.body}');
       }
     } on SocketException {
-      throw Exception('No internet connection. Please check your network and try again.');
+      throw Exception(
+        'No internet connection. Please check your network and try again.',
+      );
     } on TimeoutException {
       throw Exception('Request timed out. Please try again.');
     } catch (e) {
@@ -204,9 +209,66 @@ class LoginProvider extends ChangeNotifier {
             countryCode: countryCode,
           );
           notifyListeners();
-          splashProvider.refreshFunction(context);
+
+          // IMPORTANT: Wait for location and zone check before navigating
           ShowToastDialog.closeLoader();
-          Get.offAll(() => const DashBoardScreen());
+          ShowToastDialog.showLoader("Setting up your location...");
+          
+          try {
+            // Get home provider
+            final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+            
+            // Initialize home provider first
+            print('[LOGIN] Initializing home provider...');
+            await homeProvider.initFunction(context: context);
+            
+            // Wait for location and zone check before navigating
+            print('[LOGIN] Waiting for location and zone detection...');
+            await homeProvider.ensureLocationAndZoneChecked().timeout(
+              const Duration(seconds: 20),
+              onTimeout: () {
+                print('[LOGIN] ⚠️ Location and zone check timed out after 20s, continuing to dashboard');
+                // Set flags so UI doesn't hang
+                homeProvider.zoneCheckCompleted = true;
+                homeProvider.hasActuallyCheckedZone = true;
+                homeProvider.isLoadingFunction(false);
+                homeProvider.notifyListeners();
+              },
+            );
+            
+            print('[LOGIN] ✅ Location and zone check completed. Zone: ${Constant.selectedZone?.id}, Available: ${Constant.isZoneAvailable}');
+          } catch (e) {
+            print('[LOGIN] ❌ Error during location/zone check: $e');
+            // Continue anyway - zone will be checked in background
+          }
+          
+          ShowToastDialog.closeLoader();
+          
+          // Navigate to dashboard AFTER location/zone check is complete
+          if (context.mounted) {
+            Get.offAll(() => const DashBoardScreen());
+            
+            // Load address list in background after navigation
+            Future.microtask(() async {
+              try {
+                final addressListProvider = Provider.of<AddressListProvider>(context, listen: false);
+                await addressListProvider.initFunction(context: context)
+                    .timeout(const Duration(seconds: 10));
+              } catch (e) {
+                print('[LOGIN] Error in addressListProvider.initFunction: ${e.toString()}');
+              }
+            });
+            
+            // Process deep links in background
+            Future.microtask(() {
+              try {
+                final deepLinkService = FinalDeepLinkService();
+                deepLinkService.processPendingDeepLinkAfterLogin(context);
+              } catch (e) {
+                print('[LOGIN] Error in deepLinkService: ${e.toString()}');
+              }
+            });
+          }
         } else {
           ShowToastDialog.closeLoader();
           signupProvider.initFunction(

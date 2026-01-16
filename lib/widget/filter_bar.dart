@@ -1,6 +1,8 @@
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:flutter/material.dart';
 
+import '../themes/app_them_data.dart';
+
 String capitalize(String s) =>
     s.isNotEmpty ? '${s[0].toUpperCase()}${s.substring(1).toLowerCase()}' : s;
 
@@ -45,7 +47,7 @@ class FilterBar extends StatelessWidget {
                 ),
               ),
               selected: isSelected,
-              selectedColor: theme.primaryColor,
+              selectedColor: AppThemeData.primary300,
               onSelected: (_) => onFilterToggled(filter),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),

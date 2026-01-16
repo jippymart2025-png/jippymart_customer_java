@@ -35,6 +35,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -287,6 +288,14 @@ class HomeProvider extends ChangeNotifier {
             print(
               '[DEBUG] ✅ Set Constant.selectedLocation.zoneId: ${detectedZone.id}',
             );
+            
+            // PRODUCTION: Store zone ID in persistent storage
+            try {
+              await Preferences.setString(Preferences.selectedZoneId, detectedZone.id!);
+              print('[HOME_PROVIDER] ✅ Zone ID stored in preferences: ${detectedZone.id}');
+            } catch (e) {
+              print('[HOME_PROVIDER] ⚠️ Error storing zone ID: $e');
+            }
           }
           print(
             '[DEBUG] User location:  ${Constant.isZoneAvailable} $latitude, $longitude',
@@ -295,6 +304,12 @@ class HomeProvider extends ChangeNotifier {
             '[DEBUG] Zone detected: ${detectedZone.name} (${detectedZone.id})',
           );
           print('[DEBUG] Is zone available: ${Constant.isZoneAvailable}');
+          // Load restaurants after zone is detected
+          _loadRestaurantsAfterZoneSet();
+          // PRODUCTION: Reload banners with zone ID after zone detection
+          unawaited(_loadBanners());
+          zoneCheckCompleted = true;
+          hasActuallyCheckedZone = true; // Mark that we've actually checked
           notifyListeners();
         } else {
           await _setFallbackZone();
@@ -306,7 +321,24 @@ class HomeProvider extends ChangeNotifier {
     } else {
       await _setFallbackZone();
     }
+    zoneCheckCompleted = true;
+    hasActuallyCheckedZone = true; // Mark that we've actually checked
     notifyListeners();
+  }
+
+  /// Load restaurants after zone is set (called from getZone)
+  void _loadRestaurantsAfterZoneSet() {
+    if (Constant.selectedZone?.id != null && Constant.selectedZone!.id!.isNotEmpty) {
+      // Check if restaurants are already loaded or loading
+      if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
+        print('[HOME_PROVIDER] Loading restaurants after zone detection...');
+        unawaited(
+          bestRestaurantProvider.loadRestaurantsAndRelatedData().catchError((e) {
+            print('[HOME_PROVIDER] Error loading restaurants after zone set: $e');
+          }),
+        );
+      }
+    }
   }
 
   /// Zone detection for coordinates
@@ -386,6 +418,14 @@ class HomeProvider extends ChangeNotifier {
             print(
               '[DEBUG] Using fallback zone: ${fallbackZoneModel.name} (${fallbackZoneModel.id})',
             );
+            
+            // PRODUCTION: Store fallback zone ID in persistent storage
+            try {
+              await Preferences.setString(Preferences.selectedZoneId, fallbackZoneModel.id!);
+              print('[HOME_PROVIDER] ✅ Fallback zone ID stored in preferences: ${fallbackZoneModel.id}');
+            } catch (e) {
+              print('[HOME_PROVIDER] ⚠️ Error storing fallback zone ID: $e');
+            }
             if (Constant.selectedLocation.location?.latitude == null ||
                 Constant.selectedLocation.location?.longitude == null) {
               Constant.selectedLocation = ShippingAddress(
@@ -401,6 +441,12 @@ class HomeProvider extends ChangeNotifier {
                 locality: '${fallbackZoneModel.name}, Andhra Pradesh, India',
               );
             }
+            // Load restaurants even with fallback zone
+            _loadRestaurantsAfterZoneSet();
+            // PRODUCTION: Reload banners with zone ID after fallback zone is set
+            unawaited(_loadBanners());
+            zoneCheckCompleted = true;
+            hasActuallyCheckedZone = true; // Mark that we've actually checked
             return;
           }
         }
@@ -408,19 +454,52 @@ class HomeProvider extends ChangeNotifier {
       Constant.selectedZone = null;
       Constant.isZoneAvailable = false;
       print('[DEBUG] No fallback zone available!');
+      
+      // PRODUCTION: Clear zone ID from storage when zone is null
+      try {
+        await Preferences.setString(Preferences.selectedZoneId, '');
+        print('[HOME_PROVIDER] ✅ Cleared zone ID from storage');
+      } catch (e) {
+        print('[HOME_PROVIDER] ⚠️ Error clearing zone ID: $e');
+      }
+      
+      zoneCheckCompleted = true;
+      hasActuallyCheckedZone = true; // Mark that we've actually checked
       notifyListeners();
     } on TimeoutException catch (e) {
       print('[DEBUG] Timeout while setting fallback zone: $e');
       Constant.selectedZone = null;
       Constant.isZoneAvailable = false;
+      
+      // PRODUCTION: Clear zone ID from storage on timeout
+      try {
+        await Preferences.setString(Preferences.selectedZoneId, '');
+      } catch (storageError) {
+        print('[HOME_PROVIDER] ⚠️ Error clearing zone ID on timeout: $storageError');
+      }
+      
+      zoneCheckCompleted = true;
+      hasActuallyCheckedZone = true; // Mark that we've actually checked
       notifyListeners();
     } catch (e) {
       print('[DEBUG] Error setting fallback zone: $e');
       Constant.selectedZone = null;
       Constant.isZoneAvailable = false;
+      
+      // PRODUCTION: Clear zone ID from storage on error
+      try {
+        await Preferences.setString(Preferences.selectedZoneId, '');
+      } catch (storageError) {
+        print('[HOME_PROVIDER] ⚠️ Error clearing zone ID on error: $storageError');
+      }
+      
+      zoneCheckCompleted = true;
+      hasActuallyCheckedZone = true; // Mark that we've actually checked
       notifyListeners();
     }
 
+    zoneCheckCompleted = true;
+    hasActuallyCheckedZone = true; // Mark that we've actually checked
     notifyListeners();
   }
 
@@ -471,6 +550,16 @@ class HomeProvider extends ChangeNotifier {
 
   bool isLoading = false;
 
+  /// Tracks whether we've finished at least one zone check
+  /// (either a real zone or a fallback zone).
+  /// Default to true so UI shows content immediately on first install
+  /// Will be updated as zone detection completes in background
+  bool zoneCheckCompleted = true;
+  
+  /// Tracks whether we've actually performed a zone check (not just defaulted)
+  /// This prevents showing "Service Not Available" before checking location
+  bool hasActuallyCheckedZone = false;
+
   void isLoadingFunction(bool value) {
     isLoading = value;
     notifyListeners();
@@ -483,6 +572,7 @@ class HomeProvider extends ChangeNotifier {
   int currentPage = 0;
   int currentBottomPage = 0;
   Timer? _bannerTimer;
+  Timer? _bottomBannerTimer;
   var selectedIndex = 0;
   late CategoryViewProvider categoryViewProvider;
   late BestRestaurantProvider bestRestaurantProvider;
@@ -511,9 +601,49 @@ class HomeProvider extends ChangeNotifier {
     orderProvider = Provider.of<OrderProvider>(context, listen: false);
     martProvider = Provider.of<MartProvider>(context, listen: false);
     splashProvider = Provider.of<SplashProvider>(context, listen: false);
+    
+    // PRODUCTION: Load zone ID from storage if available
+    await _loadZoneIdFromStorage();
+    
+    // For non-blocking mode (first install), set zoneCheckCompleted immediately
+    // This ensures UI shows content right away instead of waiting
+    if (Constant.selectedZone == null) {
+      print('[HOME_PROVIDER] First install detected, setting zoneCheckCompleted = true immediately');
+      zoneCheckCompleted = true;
+    } else {
+      print('[HOME_PROVIDER] Zone exists, setting zoneCheckCompleted = true immediately');
+      zoneCheckCompleted = true;
+    }
+    
     notifyListeners();
     startBannerTimer();
-    await _loadAllDataInParallel(context, waitForSupplemental: false);
+    
+    // Load data in background (non-blocking) - don't await
+    _loadAllDataInParallel(context, waitForSupplemental: false)
+        .catchError((e) {
+      print('[HOME_PROVIDER] Error in initFunction: $e');
+    });
+  }
+  
+  /// PRODUCTION: Load zone ID from persistent storage
+  /// This ensures zone ID is available immediately on app start
+  Future<void> _loadZoneIdFromStorage() async {
+    try {
+      final savedZoneId = Preferences.getString(Preferences.selectedZoneId);
+      if (savedZoneId.isNotEmpty && Constant.selectedZone?.id != savedZoneId) {
+        print('[HOME_PROVIDER] ✅ Loaded zone ID from storage: $savedZoneId');
+        // If we have a saved zone ID but no zone object, we'll fetch it during location check
+        // For now, just log it - the zone will be set during ensureLocationAndZoneChecked
+        if (Constant.selectedLocation.zoneId == null || Constant.selectedLocation.zoneId!.isEmpty) {
+          Constant.selectedLocation.zoneId = savedZoneId;
+          print('[HOME_PROVIDER] ✅ Set zoneId in selectedLocation from storage');
+        }
+      } else if (savedZoneId.isEmpty) {
+        print('[HOME_PROVIDER] No zone ID found in storage (first install or cleared)');
+      }
+    } catch (e) {
+      print('[HOME_PROVIDER] ⚠️ Error loading zone ID from storage: $e');
+    }
   }
 
   void startBannerTimer() {
@@ -554,6 +684,53 @@ class HomeProvider extends ChangeNotifier {
     _bannerTimer?.cancel();
   }
 
+  void startBottomBannerTimer() {
+    _bottomBannerTimer?.cancel();
+    if (bannerBottomModel.isEmpty) return;
+    if (!pageBottomController.hasClients) return;
+    
+    _bottomBannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (!pageBottomController.hasClients) {
+        timer.cancel();
+        return;
+      }
+      if (bannerBottomModel.isEmpty) {
+        timer.cancel();
+        return;
+      }
+      
+      int nextPage = currentBottomPage + 1;
+      if (nextPage >= bannerBottomModel.length) {
+        nextPage = 0;
+      }
+      
+      currentBottomPage = nextPage;
+      try {
+        await pageBottomController.animateToPage(
+          currentBottomPage,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOut,
+        );
+      } catch (e) {
+        timer.cancel();
+      }
+    });
+    notifyListeners();
+  }
+
+  void stopBottomBannerTimer() {
+    _bottomBannerTimer?.cancel();
+  }
+
+  void changeBottomBannerPage(int value) {
+    currentBottomPage = value;
+    // Restart timer after manual page change
+    if (bannerBottomModel.isNotEmpty) {
+      startBottomBannerTimer();
+    }
+    notifyListeners();
+  }
+
   late TabController tabController;
   List<BannerModel> bannerModel = <BannerModel>[];
   List<BannerModel> bannerBottomModel = <BannerModel>[];
@@ -590,11 +767,50 @@ class HomeProvider extends ChangeNotifier {
     required bool waitForSupplemental,
     bool skipLocationSetup = false,
   }) async {
-    isLoadingFunction(true);
+    print('[HOME_PROVIDER] _performInitialLoad started');
     getCartData();
+    
+    // Check if we already have zone data - if yes, mark as completed immediately
+    if (!waitForSupplemental && Constant.selectedZone != null) {
+      print('[HOME_PROVIDER] Zone already exists, marking as completed immediately');
+      zoneCheckCompleted = true;
+      hasActuallyCheckedZone = true; // We have a zone, so we've checked
+      notifyListeners();
+    }
+    
+    // Safety timeout: For first install, show content after max 3 seconds
+    // This ensures UI never hangs on first install
+    if (!waitForSupplemental) {
+      // Short timeout for first install - show content quickly
+      Future.delayed(const Duration(seconds: 3), () {
+        if (!zoneCheckCompleted) {
+          print('[HOME_PROVIDER] First install timeout (3s): forcing zoneCheckCompleted = true to show content');
+          zoneCheckCompleted = true;
+          notifyListeners();
+        }
+      });
+    }
+    
+    // For non-blocking mode, don't set isLoading to true at all
+    // This prevents the loading screen from showing
+    // zoneCheckCompleted is already true by default, so content shows immediately
+    if (!waitForSupplemental) {
+      print('[HOME_PROVIDER] Non-blocking mode: skipping isLoading=true, zoneCheckCompleted=true (default), loading in background');
+    } else {
+      print('[HOME_PROVIDER] Blocking mode: setting isLoading to true, zoneCheckCompleted to false');
+      isLoadingFunction(true);
+      zoneCheckCompleted = false; // In blocking mode, wait for zone check
+      notifyListeners();
+    }
+    
     try {
+      // Load user model in background if needed (non-blocking)
       if (Constant.userModel == null) {
-        await ensureUserModelIsLoaded();
+        unawaited(
+          ensureUserModelIsLoaded().catchError((e) {
+            print('[HOME_PROVIDER] Error loading user model: $e');
+          }),
+        );
       } else if (Constant.userModel!.shippingAddress != null &&
           Constant.userModel!.shippingAddress!.isNotEmpty &&
           addressListProvider.shippingAddressList.isEmpty) {
@@ -603,28 +819,155 @@ class HomeProvider extends ChangeNotifier {
         print("_performInitialLoad ");
         notifyListeners();
       }
+      
+      // Load location and zone
       if (!skipLocationSetup) {
-        await _ensureUserLocationIsSet();
-        await getZone();
+        if (waitForSupplemental) {
+          await _ensureUserLocationIsSet();
+          await getZone();
+        } else {
+          // In non-blocking mode, check if we have saved location first
+          // If yes, use it immediately and show content, then update in background
+          bool hasSavedLocation = Constant.selectedLocation.location?.latitude != null &&
+              Constant.selectedLocation.location?.longitude != null &&
+              (Constant.selectedLocation.location!.latitude != 0.0 ||
+               Constant.selectedLocation.location!.longitude != 0.0);
+          
+          if (hasSavedLocation && Constant.selectedZone != null) {
+            // We have location and zone, mark as completed immediately
+            print('[HOME_PROVIDER] Using saved location/zone, showing content immediately');
+            zoneCheckCompleted = true;
+            hasActuallyCheckedZone = true; // We have a zone, so we've checked
+            notifyListeners();
+            
+            // Still update in background to get latest zone status
+            unawaited(() async {
+              try {
+                await _ensureUserLocationIsSet().timeout(
+                  const Duration(seconds: 5),
+                  onTimeout: () {
+                    print('[HOME_PROVIDER] _ensureUserLocationIsSet timed out');
+                  },
+                );
+                await getZone().timeout(
+                  const Duration(seconds: 5),
+                  onTimeout: () {
+                    print('[HOME_PROVIDER] getZone timed out');
+                  },
+                );
+              } catch (e) {
+                print('[HOME_PROVIDER] Error updating location/zone: $e');
+              }
+            }());
+          } else {
+            // No saved location (first install) - show content immediately, then load in background
+            print(
+              '[HOME_PROVIDER] No saved location (first install), showing content immediately, loading location/zone in background...',
+            );
+            
+            // For first install, mark as completed immediately so UI shows content
+            // Location/zone will load in background and update when ready
+            zoneCheckCompleted = true;
+            notifyListeners();
+            
+            // Load location and zone in background without blocking UI
+            unawaited(() async {
+              try {
+                // Try to get location with timeout
+                await _ensureUserLocationIsSet().timeout(
+                  const Duration(seconds: 8),
+                  onTimeout: () {
+                    print('[HOME_PROVIDER] _ensureUserLocationIsSet timed out, using fallback');
+                    // If location times out, try to set fallback zone
+                    if (Constant.selectedLocation.location?.latitude == null ||
+                        Constant.selectedLocation.location?.latitude == 0.0) {
+                      unawaited(_setFallbackZone());
+                    }
+                  },
+                );
+
+                // Only call getZone if we have valid location
+                if (Constant.selectedLocation.location?.latitude != null &&
+                    Constant.selectedLocation.location!.latitude != 0.0) {
+                  await getZone().timeout(
+                    const Duration(seconds: 8),
+                    onTimeout: () {
+                      print('[HOME_PROVIDER] getZone timed out');
+                      // Try fallback
+                      unawaited(_setFallbackZone());
+                    },
+                  );
+                } else {
+                  // No valid location, use fallback
+                  unawaited(_setFallbackZone());
+                }
+
+                print(
+                  '[HOME_PROVIDER] Zone detection completed in background, zoneId: ${Constant.selectedZone?.id}',
+                );
+                notifyListeners();
+              } catch (e) {
+                print('[HOME_PROVIDER] Error loading location/zone: $e');
+                // Try fallback zone
+                unawaited(_setFallbackZone());
+              }
+            }());
+          }
+        }
       } else {
         log(
           '[HOME_PROVIDER] Skipping _ensureUserLocationIsSet() - location was just manually set',
         );
+        // Still need to get zone if location was manually set
+        if (waitForSupplemental) {
+          await getZone();
+        } else {
+          // Location was just set, so we can mark as completed immediately
+          // and update zone in background
+          zoneCheckCompleted = true;
+          notifyListeners();
+          
+          unawaited(
+            getZone().timeout(
+              const Duration(seconds: 10),
+              onTimeout: () {
+                print('[HOME_PROVIDER] getZone timed out');
+              },
+            ).catchError((e) {
+              print('[HOME_PROVIDER] Error getting zone: $e');
+            }),
+          );
+        }
       }
+      
       final categoryFuture = categoryViewProvider.loadVendorCategories();
       final bannerFuture = _loadBanners();
-      final restaurantFuture = bestRestaurantProvider
-          .loadRestaurantsAndRelatedData();
+      // Only load restaurants if zone is available or fallback zone is set
+      final restaurantFuture = (Constant.selectedZone?.id != null && Constant.selectedZone!.id!.isNotEmpty)
+          ? bestRestaurantProvider.loadRestaurantsAndRelatedData()
+          : Future.value().then((_) {
+              print('[HOME_PROVIDER] Skipping restaurant load - no zone available yet');
+            });
       if (waitForSupplemental) {
         await Future.wait([
           categoryFuture,
           bannerFuture,
           restaurantFuture,
         ], eagerError: true);
+        print('[HOME_PROVIDER] All data loaded (waitForSupplemental=true), setting isLoading to false');
         isLoadingFunction(false);
       } else {
-        await restaurantFuture;
+        // For non-blocking mode, set loading to false immediately
+        // and let data load in background
+        print('[HOME_PROVIDER] Non-blocking mode: setting isLoading to false immediately');
         isLoadingFunction(false);
+        
+        // Load data in background without blocking
+        unawaited(
+          restaurantFuture.catchError((error, stack) {
+            log('[HOME_PROVIDER] Restaurant load failed: $error\n$stack');
+          }),
+        );
         unawaited(
           categoryFuture.catchError((error, stack) {
             log('[HOME_PROVIDER] Category load failed: $error\n$stack');
@@ -650,94 +993,165 @@ class HomeProvider extends ChangeNotifier {
       }
     } catch (e, stack) {
       log('[HOME_PROVIDER] Error loading home data: $e\n$stack');
+      print('[HOME_PROVIDER] ERROR: $e');
+      print('[HOME_PROVIDER] Setting isLoading to false after error');
+      isLoadingFunction(false);
       ShowToastDialog.showToast(
         "Unable to load Home data right now. Pull to refresh to try again.".tr,
       );
-      isLoadingFunction(false);
     } finally {
+      print('[HOME_PROVIDER] Finally block: ensuring isLoading is false');
       isLoadingFunction(false);
     }
   }
 
   // Load vendor categories in parallel
   // http://192.168.0.105:8000/api/menu-items/banners/top?zone_id=PsKHGNMgkuQaMDONJVOC
-  // Get top banners
+  // Get top banners - PRODUCTION: Always fetch based on zone ID
   static Future<List<BannerModel>> getHomeTopBanner(String type) async {
     try {
-      String? customerZoneId = Constant.selectedZone?.id;
-      // Build URL with zone_id parameter
+      // PRODUCTION: Get zone ID from multiple sources with priority
+      String? customerZoneId;
+      
+      // Priority 1: Use zone ID from Constant.selectedZone
+      if (Constant.selectedZone?.id != null && Constant.selectedZone!.id!.isNotEmpty) {
+        customerZoneId = Constant.selectedZone!.id;
+        log('[BANNER_API] Using zone ID from Constant.selectedZone: $customerZoneId');
+      }
+      // Priority 2: Use zone ID from Constant.selectedLocation
+      else if (Constant.selectedLocation.zoneId != null && Constant.selectedLocation.zoneId!.isNotEmpty) {
+        customerZoneId = Constant.selectedLocation.zoneId;
+        log('[BANNER_API] Using zone ID from Constant.selectedLocation: $customerZoneId');
+      }
+      // Priority 3: Try to load from storage
+      else {
+        try {
+          customerZoneId = Preferences.getString(Preferences.selectedZoneId);
+          if (customerZoneId.isNotEmpty) {
+            log('[BANNER_API] Using zone ID from storage: $customerZoneId');
+            // Update selectedLocation with zone ID from storage
+            Constant.selectedLocation.zoneId = customerZoneId;
+          }
+        } catch (e) {
+          log('[BANNER_API] Error loading zone ID from storage: $e');
+        }
+      }
+      
+      // Build URL with zone_id parameter - PRODUCTION: Always include zone_id if available
       String url = '${AppConst.baseUrl}menu-items/banners/$type';
       if (customerZoneId != null && customerZoneId.isNotEmpty) {
         url += '?zone_id=$customerZoneId';
+        log('[BANNER_API] Fetching $type banners for zone: $customerZoneId');
+      } else {
+        log('[BANNER_API] ⚠️ No zone ID available, fetching banners without zone filter');
       }
+      
       final headers = await getHeaders();
-      log('[BANNER_API] Fetching top banners from: $url');
+      log('[BANNER_API] Request URL: $url');
       final response = await http
           .get(Uri.parse(url), headers: headers)
           .timeout(_networkTimeout);
+      
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        log(' getHomeTopBanner  ${response.body}');
         if (jsonResponse['success'] == true) {
           List<dynamic> data = jsonResponse['data'];
           List<BannerModel> banners = data
               .map((item) => BannerModel.fromJson(item))
               .toList();
           log(
-            '[BANNER_API] Top banners fetched successfully: ${banners.length}',
+            '[BANNER_API] ✅ $type banners fetched successfully: ${banners.length} banners for zone: $customerZoneId',
           );
           return banners;
         } else {
-          log('[BANNER_API] API returned success: false');
+          log('[BANNER_API] ⚠️ API returned success: false - ${jsonResponse['message'] ?? 'Unknown error'}');
           return [];
         }
       } else {
-        log('[BANNER_API] HTTP error: ${response.statusCode}');
-        throw Exception('Failed to load top banners: ${response.statusCode}');
+        log('[BANNER_API] ❌ HTTP error: ${response.statusCode}');
+        throw Exception('Failed to load $type banners: ${response.statusCode}');
       }
     } on TimeoutException catch (e) {
-      log('[BANNER_API] Timeout fetching top banners: $e');
-      rethrow;
+      log('[BANNER_API] ❌ Timeout fetching $type banners: $e');
+      return []; // Return empty list instead of rethrowing for better UX
     } catch (e) {
-      log('[BANNER_API] Error fetching top banners: $e');
-      rethrow;
+      log('[BANNER_API] ❌ Error fetching $type banners: $e');
+      return []; // Return empty list instead of rethrowing for better UX
     }
   }
 
+  /// PRODUCTION: Load banners based on current zone ID
+  /// This method ensures banners are always fetched for the correct zone
   Future<void> _loadBanners() async {
-    print('[DEBUG] Loading banners from API');
-    // Log current zone information
-    String? currentZoneId = Constant.selectedZone?.id;
+    log('[BANNER_LOADING] Starting banner load process...');
+    
+    // Log current zone information from all sources
+    String? zoneIdFromConstant = Constant.selectedZone?.id;
+    String? zoneIdFromLocation = Constant.selectedLocation.zoneId;
+    String? zoneIdFromStorage = Preferences.getString(Preferences.selectedZoneId);
     String? currentZoneTitle = Constant.selectedZone?.name;
-    print(
-      '[BANNER_LOADING] Current customer zone - ID: $currentZoneId, Title: $currentZoneTitle',
+    
+    log(
+      '[BANNER_LOADING] Zone sources - Constant.selectedZone: $zoneIdFromConstant, '
+      'selectedLocation.zoneId: $zoneIdFromLocation, Storage: $zoneIdFromStorage, Title: $currentZoneTitle',
     );
+    
+    // PRODUCTION: Ensure we have zone ID before loading banners
+    String? effectiveZoneId = zoneIdFromConstant ?? zoneIdFromLocation ?? (zoneIdFromStorage.isNotEmpty ? zoneIdFromStorage : null);
+    
+    if (effectiveZoneId == null || effectiveZoneId.isEmpty) {
+      log('[BANNER_LOADING] ⚠️ No zone ID available, banners will be loaded without zone filter');
+    } else {
+      log('[BANNER_LOADING] ✅ Using zone ID for banner fetch: $effectiveZoneId');
+    }
+    
     try {
       await Future.wait([
         getHomeTopBanner("top").then((value) {
           bannerModel = value;
-          print('[BANNER_LOADING] Top banners loaded: ${value.length}');
-          print(
-            '[BANNER_LOADING] Top banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
-          );
+          log('[BANNER_LOADING] ✅ Top banners loaded: ${value.length}');
+          if (value.isNotEmpty) {
+            log(
+              '[BANNER_LOADING] Top banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
+            );
+          }
+        }).catchError((e) {
+          log('[BANNER_LOADING] ❌ Error loading top banners: $e');
+          bannerModel = []; // Set empty list on error
         }),
         getHomeTopBanner("middle").then((value) {
           bannerBottomModel = value;
-          print('[BANNER_LOADING] Bottom banners loaded: ${value.length}');
-          print(
-            '[BANNER_LOADING] Bottom banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
-          );
+          log('[BANNER_LOADING] ✅ Middle banners loaded: ${value.length}');
+          if (value.isNotEmpty) {
+            log(
+              '[BANNER_LOADING] Middle banner details: ${value.map((b) => '${b.title} (Zone: ${b.zoneId})').join(', ')}',
+            );
+          }
+        }).catchError((e) {
+          log('[BANNER_LOADING] ❌ Error loading middle banners: $e');
+          bannerBottomModel = []; // Set empty list on error
         }),
       ]);
+      
+      // Start timers only if banners are loaded
       if (bannerModel.isNotEmpty) {
         startBannerTimer();
       }
-      print(
-        '[BANNER_LOADING] Total banners loaded - Top: ${bannerModel.length}, Bottom: ${bannerBottomModel.length}',
+      if (bannerBottomModel.isNotEmpty) {
+        startBottomBannerTimer();
+      }
+      
+      log(
+        '[BANNER_LOADING] ✅ Banner load completed - Top: ${bannerModel.length}, Middle: ${bannerBottomModel.length}',
       );
+      
+      notifyListeners();
     } catch (e) {
-      print('[BANNER_LOADING] Error loading banners: $e');
-      // Handle error appropriately (show error message, etc.)
+      log('[BANNER_LOADING] ❌ Critical error loading banners: $e');
+      // Set empty lists to prevent UI errors
+      bannerModel = [];
+      bannerBottomModel = [];
+      notifyListeners();
     }
   }
 
@@ -829,6 +1243,90 @@ class HomeProvider extends ChangeNotifier {
       print('[DEBUG] Error loading user model fresh: $e');
     }
     print('[DEBUG] User model not available, proceeding anyway');
+  }
+
+  /// Public method to ensure location and zone are checked synchronously
+  /// Used by splash screen to wait for location/zone before navigation
+  /// This method properly awaits all async operations
+  Future<void> ensureLocationAndZoneChecked() async {
+    print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Starting location and zone check...');
+    
+    // Set loading state
+    isLoadingFunction(true);
+    zoneCheckCompleted = false;
+    hasActuallyCheckedZone = false;
+    notifyListeners();
+    
+    try {
+      // Step 1: Ensure user model is loaded (needed for default addresses)
+      print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Step 1 - Loading user model...');
+      await ensureUserModelIsLoaded().timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {
+          print('[HOME_PROVIDER] ensureLocationAndZoneChecked: User model load timed out');
+        },
+      );
+      
+      // Step 2: Ensure location is set
+      print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Step 2 - Setting location...');
+      await _ensureUserLocationIsSet().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Location check timed out');
+        },
+      );
+      
+      // Step 3: Get zone for the location
+      if (Constant.selectedLocation.location?.latitude != null &&
+          Constant.selectedLocation.location!.latitude != 0.0) {
+        print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Step 3 - Getting zone...');
+        try {
+          await getZone().timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Zone check timed out, using fallback');
+            },
+          );
+        } catch (e) {
+          print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Error getting zone: $e, using fallback');
+          await _setFallbackZone();
+        }
+      } else {
+        print('[HOME_PROVIDER] ensureLocationAndZoneChecked: No valid location, setting fallback zone');
+        await _setFallbackZone();
+      }
+      
+      // If zone is still null after getZone, use fallback
+      if (Constant.selectedZone == null) {
+        print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Zone is null after getZone, setting fallback');
+        await _setFallbackZone();
+      }
+      
+      // Mark as completed
+      zoneCheckCompleted = true;
+      hasActuallyCheckedZone = true;
+      isLoadingFunction(false);
+      notifyListeners();
+      
+      // PRODUCTION: Reload banners with zone ID after zone check completes
+      // This ensures banners are fetched with the correct zone ID after login
+      print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Reloading banners with zone ID...');
+      unawaited(_loadBanners());
+      
+      print('[HOME_PROVIDER] ensureLocationAndZoneChecked: ✅ Completed. Zone: ${Constant.selectedZone?.id}, Available: ${Constant.isZoneAvailable}');
+    } catch (e) {
+      print('[HOME_PROVIDER] ensureLocationAndZoneChecked: ❌ Error - $e');
+      // Try fallback zone
+      await _setFallbackZone();
+      zoneCheckCompleted = true;
+      hasActuallyCheckedZone = true;
+      isLoadingFunction(false);
+      notifyListeners();
+      
+      // PRODUCTION: Reload banners with zone ID even if fallback zone is used
+      print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Reloading banners with fallback zone ID...');
+      unawaited(_loadBanners());
+    }
   }
 
   Future<void> _ensureUserLocationIsSet() async {

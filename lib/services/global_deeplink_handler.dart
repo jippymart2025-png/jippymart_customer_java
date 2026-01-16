@@ -1,10 +1,22 @@
 import 'package:jippymart_customer/app/category_service/category__service_screen.dart';
+import 'package:jippymart_customer/app/DealsScreen/DealsScreen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart'
+    show CartControllerProvider;
+import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
+import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_screen/mart_category_detail_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
+import 'package:jippymart_customer/constant/constant.dart';
+import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/utils/crash_prevention.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:flutter/material.dart';
@@ -13,6 +25,7 @@ import 'package:provider/provider.dart';
 
 import '../app/mart/provider/category_details_provider.dart'
     show CategoryDetailsProvider;
+import 'cart_provider.dart';
 import 'mart_firestore_service.dart';
 
 /// 🔗 Global Deeplink Handler Service
@@ -131,6 +144,8 @@ class GlobalDeeplinkHandler {
       } else {}
     } else if (pathSegments.isNotEmpty && pathSegments[0] == 'catering') {
       _navigateToCatering();
+    } else if (pathSegments.isNotEmpty && pathSegments[0] == 'deals') {
+      _navigateToDeals();
     } else {}
   }
 
@@ -140,6 +155,158 @@ class GlobalDeeplinkHandler {
       Get.to(() => CateringServiceScreen()); // <-- your screen widget
     } catch (e) {
       print('❌ [GLOBAL_DEEPLINK] Error navigating to catering: $e');
+    }
+  }
+
+  void _navigateToDeals() {
+    try {
+      print('🔗 [GLOBAL_DEEPLINK] Navigating to DealsScreen via Dashboard');
+      // Navigate to dashboard and set selected index to 2 (DealsScreen)
+      final ctx = navigatorKey.currentContext;
+      if (ctx != null) {
+        // Check if we're already on dashboard
+        final currentRoute = Get.currentRoute;
+        if (currentRoute == '/') {
+          // Already on dashboard, just change the tab
+          try {
+            final dashBoardProvider = Provider.of<DashBoardProvider>(
+              ctx,
+              listen: false,
+            );
+            final homeProvider = Provider.of<HomeProvider>(ctx, listen: false);
+            final splashProvider = Provider.of<SplashProvider>(
+              ctx,
+              listen: false,
+            );
+            final cartProvider = Provider.of<CartControllerProvider>(
+              ctx,
+              listen: false,
+            );
+            final orderProvider = Provider.of<OrderProvider>(
+              ctx,
+              listen: false,
+            );
+            final favouriteProvider = Provider.of<FavouriteProvider>(
+              ctx,
+              listen: false,
+            );
+
+            dashBoardProvider.changeNavbar(
+              2,
+              // DealsScreen index
+              homeProvider,
+              splashProvider,
+              cartProvider,
+              orderProvider,
+              ctx,
+              favouriteProvider,
+            );
+          } catch (e) {
+            print(
+              '⚠️ [GLOBAL_DEEPLINK] Error accessing providers, navigating to dashboard: $e',
+            );
+            Get.offAll(() => const DashBoardScreen());
+            // Wait a bit then try to change tab
+            Future.delayed(const Duration(milliseconds: 500), () {
+              final newCtx = navigatorKey.currentContext;
+              if (newCtx != null) {
+                try {
+                  final dashBoardProvider = Provider.of<DashBoardProvider>(
+                    newCtx,
+                    listen: false,
+                  );
+                  final homeProvider = Provider.of<HomeProvider>(
+                    newCtx,
+                    listen: false,
+                  );
+                  final splashProvider = Provider.of<SplashProvider>(
+                    newCtx,
+                    listen: false,
+                  );
+                  final cartProvider = Provider.of<CartProvider>(
+                    newCtx,
+                    listen: false,
+                  );
+                  final orderProvider = Provider.of<OrderProvider>(
+                    newCtx,
+                    listen: false,
+                  );
+                  final favouriteProvider = Provider.of<FavouriteProvider>(
+                    newCtx,
+                    listen: false,
+                  );
+
+                  dashBoardProvider.changeNavbar(
+                    2,
+                    homeProvider,
+                    splashProvider,
+                    cartProvider as CartControllerProvider,
+                    orderProvider,
+                    newCtx,
+                    favouriteProvider,
+                  );
+                } catch (e2) {
+                  print(
+                    '❌ [GLOBAL_DEEPLINK] Error changing tab after navigation: $e2',
+                  );
+                }
+              }
+            });
+          }
+        } else {
+          // Not on dashboard, navigate to it first
+          Get.offAll(() => const DashBoardScreen());
+          // Wait a bit then change to deals tab
+          Future.delayed(const Duration(milliseconds: 500), () {
+            final newCtx = navigatorKey.currentContext;
+            if (newCtx != null) {
+              try {
+                final dashBoardProvider = Provider.of<DashBoardProvider>(
+                  newCtx,
+                  listen: false,
+                );
+                final homeProvider = Provider.of<HomeProvider>(
+                  newCtx,
+                  listen: false,
+                );
+                final splashProvider = Provider.of<SplashProvider>(
+                  newCtx,
+                  listen: false,
+                );
+                final cartProvider = Provider.of<CartProvider>(
+                  newCtx,
+                  listen: false,
+                );
+                final orderProvider = Provider.of<OrderProvider>(
+                  newCtx,
+                  listen: false,
+                );
+                final favouriteProvider = Provider.of<FavouriteProvider>(
+                  newCtx,
+                  listen: false,
+                );
+
+                dashBoardProvider.changeNavbar(
+                  2,
+                  homeProvider,
+                  splashProvider,
+                  cartProvider as CartControllerProvider,
+                  orderProvider,
+                  newCtx,
+                  favouriteProvider,
+                );
+              } catch (e) {
+                print('❌ [GLOBAL_DEEPLINK] Error changing tab: $e');
+              }
+            }
+          });
+        }
+      } else {
+        // No context available, navigate to dashboard
+        Get.offAll(() => const DashBoardScreen());
+      }
+    } catch (e) {
+      print('❌ [GLOBAL_DEEPLINK] Error navigating to deals: $e');
     }
   }
 
@@ -177,6 +344,11 @@ class GlobalDeeplinkHandler {
   void _navigateToRestaurant(String restaurantId, BuildContext context) async {
     try {
       print('🔗 [GLOBAL_DEEPLINK] 🍽️ Navigating to restaurant: $restaurantId');
+
+      // Clean restaurant ID (remove any trailing slashes or whitespace)
+      restaurantId = restaurantId.trim().replaceAll(RegExp(r'[/\s]+$'), '');
+      print('🔗 [GLOBAL_DEEPLINK] Cleaned Restaurant ID: $restaurantId');
+
       // Track current restaurant to prevent duplicate navigation
       if (_currentRestaurantId == restaurantId) {
         print(
@@ -195,18 +367,65 @@ class GlobalDeeplinkHandler {
       final restaurant = await FireStoreUtils.getVendorById(restaurantId);
 
       if (restaurant != null) {
+        print('🔗 [GLOBAL_DEEPLINK] ✅ Restaurant found: ${restaurant.title}');
+        print('🔗 [GLOBAL_DEEPLINK] Restaurant Zone ID: ${restaurant.zoneId}');
+        print(
+          '🔗 [GLOBAL_DEEPLINK] Selected Zone ID: ${Constant.selectedZone?.id}',
+        );
+
+        // Check zone validation
+        if (Constant.selectedZone?.id == null) {
+          print(
+            '⚠️ [GLOBAL_DEEPLINK] No zone selected, cannot validate restaurant zone',
+          );
+          ShowToastDialog.showToast("Please select a zone first".tr);
+          Get.toNamed('/');
+          return;
+        }
+
+        // Ensure zone matches current selected zone
+        if (restaurant.zoneId != Constant.selectedZone?.id) {
+          print(
+            '⚠️ [GLOBAL_DEEPLINK] Restaurant zone ${restaurant.zoneId} != selected zone ${Constant.selectedZone?.id}',
+          );
+          ShowToastDialog.showToast(
+            "Sorry, The Zone is not available in your area. Change the other location first."
+                .tr,
+          );
+          Get.toNamed('/');
+          return;
+        }
+
         await Future.delayed(Duration(milliseconds: 100));
 
-        Get.to(
-          () => RestaurantDetailsScreen(),
-          arguments: {'vendorModel': restaurant},
-        );
+        // Get the correct context
+        final ctx = navigatorKey.currentContext ?? context;
+
+        // Try to initialize provider if available
+        try {
+          final restaurantDetailsProvider =
+              Provider.of<RestaurantDetailsProvider>(ctx, listen: false);
+          restaurantDetailsProvider.initFunction(vendorModels: restaurant);
+          Get.to(() => const RestaurantDetailsScreen());
+        } catch (e) {
+          print(
+            '⚠️ [GLOBAL_DEEPLINK] Could not get provider, using arguments: $e',
+          );
+          // Fallback: use GetX arguments
+          Get.to(
+            () => const RestaurantDetailsScreen(),
+            arguments: {'vendorModel': restaurant},
+          );
+        }
 
         await Future.delayed(Duration(milliseconds: 300));
       } else {
+        print('❌ [GLOBAL_DEEPLINK] Restaurant not found for ID: $restaurantId');
         Get.toNamed('/');
       }
     } catch (e) {
+      print('❌ [GLOBAL_DEEPLINK] Error navigating to restaurant: $e');
+      print('🔍 [GLOBAL_DEEPLINK] Stack trace: ${StackTrace.current}');
       Get.toNamed('/');
     }
   }
@@ -263,6 +482,9 @@ class GlobalDeeplinkHandler {
         if (categoryId != null) {
           _navigateToCategory(categoryId, context);
         }
+      } else if (url.contains('/deals') || url.contains('/deals/')) {
+        print('🔗 [GLOBAL_DEEPLINK] 🎁 Processing deals deep link');
+        _navigateToDeals();
       }
 
       print('🔗 [GLOBAL_DEEPLINK] Deep link processed successfully: $url');
@@ -279,7 +501,12 @@ class GlobalDeeplinkHandler {
   String? _extractRestaurantId(String url) {
     final regex = RegExp(r'/(?:restaurant|restaurants)/([^/?]+)');
     final match = regex.firstMatch(url);
-    return match?.group(1);
+    String? restaurantId = match?.group(1);
+    // Clean restaurant ID (remove any trailing slashes or whitespace)
+    if (restaurantId != null) {
+      restaurantId = restaurantId.trim().replaceAll(RegExp(r'[/\s]+$'), '');
+    }
+    return restaurantId;
   }
 
   /// Extract product ID from URL

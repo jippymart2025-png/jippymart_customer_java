@@ -144,8 +144,8 @@ class MartNavigationScreen extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  width: 24,
-                  height: 24,
+                  width: 15,
+                  height: 15,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isActive
@@ -155,8 +155,8 @@ class MartNavigationScreen extends StatelessWidget {
                   child: Center(
                     child: SvgPicture.asset(
                       isActive ? activeIcon : icon,
-                      width: 20,
-                      height: 20,
+                      width: 15,
+                      height: 15,
                       colorFilter: ColorFilter.mode(
                         isActive ? primaryColor : const Color(0xFF6B7280),
                         BlendMode.srcIn,
