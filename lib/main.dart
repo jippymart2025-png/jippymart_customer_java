@@ -129,6 +129,8 @@ void main() async {
   if (kDebugMode) {
     _runFacebookAppEventsTests();
   }
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 1024 * 1024 * 100;
+  PaintingBinding.instance.imageCache.maximumSize = 200;
 
   runApp(MyApp());
 }
