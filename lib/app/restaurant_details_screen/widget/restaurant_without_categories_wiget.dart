@@ -521,9 +521,7 @@ Widget buildProductsWithoutCategories(
                                           }
                                         }
 
-                                        controller
-                                            .calculatePrice(productModel)
-                                            .then((_) {});
+                                        controller.calculatePrice(productModel);
                                         // productDetailsBottomSheet(
                                         //     context,
                                         //     productModel);

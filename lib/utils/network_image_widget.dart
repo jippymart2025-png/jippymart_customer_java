@@ -13,7 +13,7 @@ class NetworkImageWidget extends StatelessWidget {
   final double? width;
   final Widget? errorWidget;
   final BoxFit? fit;
-  final double? borderRadius;    
+  final double? borderRadius;
   final Color? color;
   final bool fixOrientation;
 
@@ -38,24 +38,28 @@ class NetworkImageWidget extends StatelessWidget {
     BoxFit? fit,
   }) {
     final placeholder = Constant.placeholderImage;
-    
+
     // Check if placeholder is empty or null
-    if (placeholder.isEmpty || placeholder == "null" || placeholder == "Null" || placeholder == "NULL") {
+    if (placeholder.isEmpty ||
+        placeholder == "null" ||
+        placeholder == "Null" ||
+        placeholder == "NULL") {
       // Use default asset if placeholder is invalid
       return Image.asset(
-        "assets/images/food_delivery.png",
+        "assets/images/food_delivery.jpeg",
         fit: fit ?? BoxFit.fitWidth,
         height: height ?? Responsive.height(8, context),
         width: width ?? Responsive.width(15, context),
       );
     }
-    
+
     // Check if placeholder is a network URL
-    final isNetworkUrl = placeholder.startsWith('http://') || 
-                        placeholder.startsWith('https://') ||
-                        placeholder.contains('firebasestorage') ||
-                        placeholder.contains('://');
-    
+    final isNetworkUrl =
+        placeholder.startsWith('http://') ||
+        placeholder.startsWith('https://') ||
+        placeholder.contains('firebasestorage') ||
+        placeholder.contains('://');
+
     if (isNetworkUrl) {
       // Use Image.network for URLs
       return Image.network(
@@ -66,7 +70,7 @@ class NetworkImageWidget extends StatelessWidget {
         errorBuilder: (ctx, error, stackTrace) {
           // Fallback to default asset if network image fails
           return Image.asset(
-            "assets/images/food_delivery.png",
+            "assets/images/food_delivery.jpeg",
             fit: fit ?? BoxFit.fitWidth,
             height: height ?? Responsive.height(8, ctx),
             width: width ?? Responsive.width(15, ctx),
@@ -74,13 +78,44 @@ class NetworkImageWidget extends StatelessWidget {
         },
       );
     } else {
-      // Use Image.asset for asset paths
-      return Image.asset(
-        placeholder,
-        fit: fit ?? BoxFit.fitWidth,
-        height: height ?? Responsive.height(8, context),
-        width: width ?? Responsive.width(15, context),
-      );
+      // Check if the path looks like an asset path (contains assets/)
+      if (placeholder.contains('assets/') || placeholder.contains('images/')) {
+        // Use Image.asset for asset paths
+        return Image.asset(
+          placeholder,
+          fit: fit ?? BoxFit.fitWidth,
+          height: height ?? Responsive.height(8, context),
+          width: width ?? Responsive.width(15, context),
+          errorBuilder: (ctx, error, stackTrace) {
+            // Fallback to default asset if specified asset fails
+            return Image.asset(
+              "assets/images/food_delivery.jpeg",
+              fit: fit ?? BoxFit.fitWidth,
+              height: height ?? Responsive.height(8, ctx),
+              width: width ?? Responsive.width(15, ctx),
+            );
+          },
+        );
+      } else {
+        // If it's not clearly a network URL and not an asset path,
+        // assume it's an asset and try loading it
+        try {
+          return Image.asset(
+            placeholder,
+            fit: fit ?? BoxFit.fitWidth,
+            height: height ?? Responsive.height(8, context),
+            width: width ?? Responsive.width(15, context),
+          );
+        } catch (e) {
+          // Fallback to default asset
+          return Image.asset(
+            "assets/images/food_delivery.jpeg",
+            fit: fit ?? BoxFit.fitWidth,
+            height: height ?? Responsive.height(8, context),
+            width: width ?? Responsive.width(15, context),
+          );
+        }
+      }
     }
   }
 
@@ -92,11 +127,11 @@ class NetworkImageWidget extends StatelessWidget {
         imageUrl == "Null" ||
         imageUrl == "NULL") {
       return errorWidget ??
-          Image.network(
-            Constant.placeholderImage,
-            fit: fit ?? BoxFit.fitWidth,
-            height: height ?? Responsive.height(8, context),
-            width: width ?? Responsive.width(15, context),
+          NetworkImageWidget.getPlaceholderImage(
+            context: context,
+            height: height,
+            width: width,
+            fit: fit,
           );
     }
 
@@ -116,12 +151,13 @@ class NetworkImageWidget extends StatelessWidget {
       Uri.parse(cleanImageUrl);
     } catch (e) {
       print('[NETWORK_IMAGE] Invalid URL format: $imageUrl');
-      return errorWidget ?? NetworkImageWidget.getPlaceholderImage(
-        context: context,
-        height: height,
-        width: width,
-        fit: fit,
-      );
+      return errorWidget ??
+          NetworkImageWidget.getPlaceholderImage(
+            context: context,
+            height: height,
+            width: width,
+            fit: fit,
+          );
     }
 
     // Add to performance tracking for optimization
@@ -129,7 +165,7 @@ class NetworkImageWidget extends StatelessWidget {
 
     // If orientation fix is requested, use the oriented version
     if (fixOrientation) {
-      return OrientedNetworkImage(
+      return _OrientedNetworkImage(
         imageUrl: cleanImageUrl,
         height: height,
         width: width,
@@ -145,7 +181,7 @@ class NetworkImageWidget extends StatelessWidget {
 
     // For AVIF images, use a fallback approach since Flutter doesn't support AVIF natively
     if (isAvifFormat) {
-      return AvifFallbackImage(
+      return _AvifFallbackImage(
         imageUrl: cleanImageUrl,
         height: height,
         width: width,
@@ -161,16 +197,28 @@ class NetworkImageWidget extends StatelessWidget {
       height: height ?? Responsive.height(8, context),
       width: width ?? Responsive.width(15, context),
       color: color,
+      // Enhanced caching configuration
+      maxWidthDiskCache: 1000,
+      maxHeightDiskCache: 1000,
+      memCacheWidth: 300,
+      memCacheHeight: 300,
+      // Keep images in cache longer
+      cacheKey: cleanImageUrl,
+      // Use URL as cache key for consistency
+      useOldImageOnUrlChange: true,
       progressIndicatorBuilder: (context, url, downloadProgress) =>
           _buildLoadingWidget(),
       errorWidget: (context, url, error) {
-        print('[NETWORK_IMAGE] Error loading cached image: $error');
-        return errorWidget ?? NetworkImageWidget.getPlaceholderImage(
-        context: context,
-        height: height,
-        width: width,
-        fit: fit,
-      );
+        print(
+          '[NETWORK_IMAGE] Error loading cached image: $error for URL: $url',
+        );
+        return errorWidget ??
+            NetworkImageWidget.getPlaceholderImage(
+              context: context,
+              height: height,
+              width: width,
+              fit: fit,
+            );
       },
     );
   }
@@ -213,8 +261,8 @@ class NetworkImageWidget extends StatelessWidget {
   }
 }
 
-// New widget specifically for handling AVIF images with fallback
-class AvifFallbackImage extends StatelessWidget {
+// Make AvifFallbackImage a private class (prefixed with underscore)
+class _AvifFallbackImage extends StatelessWidget {
   final String imageUrl;
   final double? height;
   final double? width;
@@ -222,7 +270,7 @@ class AvifFallbackImage extends StatelessWidget {
   final BoxFit? fit;
   final Color? color;
 
-  const AvifFallbackImage({
+  const _AvifFallbackImage({
     super.key,
     this.height,
     this.width,
@@ -250,12 +298,7 @@ class AvifFallbackImage extends StatelessWidget {
             width: width ?? Responsive.width(15, context),
             color: color,
             progressIndicatorBuilder: (context, url, downloadProgress) =>
-                Image.asset(
-                  "assets/images/simmer_gif.gif",
-                  height: height,
-                  width: width,
-                  fit: BoxFit.fill,
-                ),
+                _buildLoadingWidget(),
             errorWidget: (context, url, error) {
               print('[AVIF_FALLBACK] Error loading fallback image: $error');
               return _buildErrorWidget(context);
@@ -274,11 +317,11 @@ class AvifFallbackImage extends StatelessWidget {
 
   Widget _buildErrorWidget(BuildContext context) {
     return errorWidget ??
-        Image.network(
-          Constant.placeholderImage,
-          fit: fit ?? BoxFit.fitWidth,
-          height: height ?? Responsive.height(8, context),
-          width: width ?? Responsive.width(15, context),
+        NetworkImageWidget.getPlaceholderImage(
+          context: context,
+          height: height,
+          width: width,
+          fit: fit,
         );
   }
 
@@ -382,8 +425,8 @@ class AvifFallbackImage extends StatelessWidget {
   }
 }
 
-// New widget for handling EXIF orientation properly
-class OrientedNetworkImage extends StatelessWidget {
+// Make OrientedNetworkImage a private class (prefixed with underscore)
+class _OrientedNetworkImage extends StatelessWidget {
   final String imageUrl;
   final double? height;
   final double? width;
@@ -392,7 +435,7 @@ class OrientedNetworkImage extends StatelessWidget {
   final double? borderRadius;
   final Color? color;
 
-  const OrientedNetworkImage({
+  const _OrientedNetworkImage({
     super.key,
     this.height,
     this.width,

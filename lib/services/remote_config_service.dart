@@ -32,9 +32,9 @@ class RemoteConfigService {
       await _remoteConfig.setDefaults({'base_url': AppConst.defaultBaseUrl});
       await _remoteConfig.fetchAndActivate();
       final fetchedUrl = _remoteConfig.getString('base_url');
-      if (fetchedUrl.isNotEmpty) {
-        // AppConst.baseUrl = "http://192.168.0.21:8000/api/";
-        _normalizeUrl(fetchedUrl);
+      if (fetchedUrl.isNotEmpty && !fetchedUrl.contains('{{')) {
+        // AppConst.baseUrl = "http://192.168.0.11:8000/api/";
+        AppConst.baseUrl = _normalizeUrl(fetchedUrl);
         if (kDebugMode) {
           print('[RemoteConfig] base_url fetched: $fetchedUrl');
           print('[RemoteConfig] base_url applied: ${AppConst.baseUrl}');
@@ -43,7 +43,7 @@ class RemoteConfigService {
         AppConst.baseUrl = AppConst.defaultBaseUrl;
         if (kDebugMode) {
           print(
-            '[RemoteConfig] base_url empty, fallback to default ${AppConst.baseUrl}',
+            '[RemoteConfig] base_url empty or contains template, fallback to default ${AppConst.baseUrl}',
           );
         }
       }

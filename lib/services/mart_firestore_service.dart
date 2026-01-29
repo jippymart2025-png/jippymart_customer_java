@@ -9,6 +9,8 @@ import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
+import 'package:jippymart_customer/services/api_queue_manager.dart';
+import 'package:jippymart_customer/services/cache_manager.dart';
 
 class MartFirestoreService extends GetxService {
   // Firebase Firestore instance
@@ -420,119 +422,138 @@ class MartFirestoreService extends GetxService {
   }
 
   // ==================== CATEGORIES METHODS ====================
-  /// Get all categories from API
+  /// Get all categories from API (with caching and queuing)
   Future<List<MartCategoryModel>> getCategories({int limit = 100}) async {
-    try {
-      print('[MART API] 📂 Fetching categories from API...');
-      final url = '${AppConst.baseUrl}mart-items/getmartcategory';
-      final response = await http.get(
-        Uri.parse(url),
-        headers: await getHeaders(),
-      );
-      if (response.statusCode != 200) {
-        print('[MART API] ❌ HTTP error: ${response.statusCode}');
-        return [];
-      }
-      final responseData = json.decode(response.body);
+    const cacheKey = 'mart_categories';
 
-      if (!responseData['status']) {
-        print(
-          '[MART API] ❌ API returned false status: ${responseData['message']}',
-        );
-        return [];
-      }
-      print(
-        '[MART API] 📂 API call completed, found ${responseData['count']} categories',
-      );
-
-      if (responseData['data'] == null || responseData['data'].isEmpty) {
-        print('[MART API] ⚠️ No categories found');
-        return [];
-      }
-      // Convert API response to MartCategoryModel
-      final categories = (responseData['data'] as List)
-          .map((item) {
-            try {
-              if (item == null) return null;
-
-              final Map<String, dynamic> categoryData =
-                  Map<String, dynamic>.from(item);
-
-              // Handle array fields that might be strings
-              // In getCategories method - keep this as it's correct
-              if (categoryData['review_attributes'] is String) {
-                try {
-                  categoryData['review_attributes'] = json.decode(
-                    categoryData['review_attributes'],
-                  );
-                } catch (e) {
-                  categoryData['review_attributes'] = [];
-                }
-              } else if (categoryData['review_attributes'] == null) {
-                categoryData['review_attributes'] = [];
-              }
-
-              // Handle numeric fields that might be strings
-              if (categoryData['category_order'] is String) {
-                categoryData['category_order'] =
-                    int.tryParse(categoryData['category_order']) ?? 0;
-              }
-              if (categoryData['section_order'] is String) {
-                categoryData['section_order'] =
-                    int.tryParse(categoryData['section_order']) ?? 0;
-              }
-
-              // Handle boolean fields that might be null
-              if (categoryData['show_in_homepage'] == null) {
-                categoryData['show_in_homepage'] = false;
-              }
-              if (categoryData['publish'] == null) {
-                categoryData['publish'] = true;
-              }
-              if (categoryData['has_subcategories'] == null) {
-                categoryData['has_subcategories'] = false;
-              }
-
-              // Handle subcategories_count
-              if (categoryData['subcategories_count'] == null) {
-                categoryData['subcategories_count'] = 0;
-              }
-              return MartCategoryModel.fromJson(categoryData);
-            } catch (e) {
-              return null;
-            }
-          })
-          .whereType<MartCategoryModel>()
-          .toList();
-
-      // Sort categories by category_order
-      categories.sort(
-        (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
-      );
-
-      // Apply limit
-      final limitedResults = categories.take(limit).toList();
-
-      print(
-        '[MART API] ✅ Successfully parsed ${limitedResults.length} categories from API',
-      );
-
-      // Debug: Log the categories
-      for (int i = 0; i < limitedResults.length; i++) {
-        final category = limitedResults[i];
-        final title = category.title ?? 'No Title';
-        final order = category.categoryOrder ?? 0;
-        final section = category.section ?? 'No Section';
-        print(
-          '[MART API]   ${i + 1}. $title - Order: $order, Section: $section',
-        );
-      }
-
-      return limitedResults;
-    } catch (e) {
-      print('[MART API] ❌ Error fetching categories from API: $e');
-      return [];
+    // Try cache first
+    final cached = CacheManager().getCategories<List<MartCategoryModel>>(cacheKey);
+    if (cached != null && cached.isNotEmpty) {
+      print('[MART API] 📂 Using cached categories (${cached.length} items)');
+      return cached.take(limit).toList();
     }
+
+    // Use queue manager for API call
+    return await ApiQueueManager().enqueue(
+      priority: RequestPriority.high,
+      request: () async {
+        try {
+          print('[MART API] 📂 Fetching categories from API...');
+          final url = '${AppConst.baseUrl}mart-items/getmartcategory';
+          final response = await http.get(
+            Uri.parse(url),
+            headers: await getHeaders(),
+          );
+          if (response.statusCode != 200) {
+            print('[MART API] ❌ HTTP error: ${response.statusCode}');
+            return [];
+          }
+          final responseData = json.decode(response.body);
+
+          if (!responseData['status']) {
+            print(
+              '[MART API] ❌ API returned false status: ${responseData['message']}',
+            );
+            return [];
+          }
+          print(
+            '[MART API] 📂 API call completed, found ${responseData['count']} categories',
+          );
+
+          if (responseData['data'] == null || responseData['data'].isEmpty) {
+            print('[MART API] ⚠️ No categories found');
+            return [];
+          }
+          // Convert API response to MartCategoryModel
+          final categories = (responseData['data'] as List)
+              .map((item) {
+                try {
+                  if (item == null) return null;
+
+                  final Map<String, dynamic> categoryData =
+                      Map<String, dynamic>.from(item);
+
+                  // Handle array fields that might be strings
+                  // In getCategories method - keep this as it's correct
+                  if (categoryData['review_attributes'] is String) {
+                    try {
+                      categoryData['review_attributes'] = json.decode(
+                        categoryData['review_attributes'],
+                      );
+                    } catch (e) {
+                      categoryData['review_attributes'] = [];
+                    }
+                  } else if (categoryData['review_attributes'] == null) {
+                    categoryData['review_attributes'] = [];
+                  }
+
+                  // Handle numeric fields that might be strings
+                  if (categoryData['category_order'] is String) {
+                    categoryData['category_order'] =
+                        int.tryParse(categoryData['category_order']) ?? 0;
+                  }
+                  if (categoryData['section_order'] is String) {
+                    categoryData['section_order'] =
+                        int.tryParse(categoryData['section_order']) ?? 0;
+                  }
+
+                  // Handle boolean fields that might be null
+                  if (categoryData['show_in_homepage'] == null) {
+                    categoryData['show_in_homepage'] = false;
+                  }
+                  if (categoryData['publish'] == null) {
+                    categoryData['publish'] = true;
+                  }
+                  if (categoryData['has_subcategories'] == null) {
+                    categoryData['has_subcategories'] = false;
+                  }
+
+                  // Handle subcategories_count
+                  if (categoryData['subcategories_count'] == null) {
+                    categoryData['subcategories_count'] = 0;
+                  }
+                  return MartCategoryModel.fromJson(categoryData);
+                } catch (e) {
+                  return null;
+                }
+              })
+              .whereType<MartCategoryModel>()
+              .toList();
+
+          // Sort categories by category_order
+          categories.sort(
+            (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
+          );
+
+          // Cache the full result
+          CacheManager().setCategories(cacheKey, categories);
+
+          // Apply limit
+          final limitedResults = categories.take(limit).toList();
+
+          print(
+            '[MART API] ✅ Successfully parsed ${limitedResults.length} categories from API',
+          );
+
+          // Debug: Log the categories
+          for (int i = 0; i < limitedResults.length; i++) {
+            final category = limitedResults[i];
+            final title = category.title ?? 'No Title';
+            final order = category.categoryOrder ?? 0;
+            final section = category.section ?? 'No Section';
+            print(
+              '[MART API]   ${i + 1}. $title - Order: $order, Section: $section',
+            );
+          }
+
+          return limitedResults;
+        } catch (e) {
+          print('[MART API] ❌ Error fetching categories from API: $e');
+          return [];
+        }
+      },
+      key: cacheKey, // Deduplication key
+    );
   }
 
   /// Get homepage categories from API

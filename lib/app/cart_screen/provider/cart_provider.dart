@@ -11,7 +11,8 @@ import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/oder_placing_screens.dart';
 import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/provider/order_placing_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
-import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart'
+    hide Variants;
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/send_notification.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -121,7 +122,8 @@ class CartControllerProvider extends ChangeNotifier {
 
     if (controller.selectedPaymentMethod == PaymentGateway.cod.name) {
       // 🔑 CRITICAL: For COD, verify it's allowed
-      if (controller.subTotal > controller.cashOnDeliverySettingModel.getMaxAmount()) {
+      if (controller.subTotal >
+          controller.cashOnDeliverySettingModel.getMaxAmount()) {
         ShowToastDialog.showToast(
           "Cash on Delivery is not available for orders above ₹${controller.cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}. Please select online payment."
               .tr,
@@ -567,7 +569,8 @@ class CartControllerProvider extends ChangeNotifier {
                     }
                     // Validate selection
                     if (selectedPaymentMethod == PaymentGateway.cod.name) {
-                      if (subTotal > cashOnDeliverySettingModel.getMaxAmount()) {
+                      if (subTotal >
+                          cashOnDeliverySettingModel.getMaxAmount()) {
                         ShowToastDialog.showToast(
                           "COD not available for orders above ₹${cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}. Please select online payment."
                               .tr,
@@ -2626,7 +2629,7 @@ class CartControllerProvider extends ChangeNotifier {
       // If mart items in cart → call getMartCoupons API
       // If restaurant items in cart → call getRestaurantCoupons API
       final allCoupons = _currentContext == "mart"
-          ? await RestaurantDetailsProvider.getMartCoupons(
+          ? await RestaurantApiHelper.getMartCoupons(
               restaurantId: restaurantId,
             ).timeout(
               const Duration(seconds: 10),
@@ -2635,7 +2638,7 @@ class CartControllerProvider extends ChangeNotifier {
                 return <CouponModel>[];
               },
             )
-          : await RestaurantDetailsProvider.getRestaurantCoupons(
+          : await RestaurantApiHelper.getRestaurantCoupons(
               restaurantId: restaurantId,
             ).timeout(
               const Duration(seconds: 10),
@@ -2802,7 +2805,7 @@ class CartControllerProvider extends ChangeNotifier {
       // If mart items in cart → call getMartCoupons API
       // If restaurant items in cart → call getRestaurantCoupons API
       final allCoupons = _currentContext == "mart"
-          ? await RestaurantDetailsProvider.getMartCoupons(
+          ? await RestaurantApiHelper.getMartCoupons(
               restaurantId: restaurantId,
             ).timeout(
               const Duration(seconds: 10),
@@ -2813,7 +2816,7 @@ class CartControllerProvider extends ChangeNotifier {
                 return <CouponModel>[];
               },
             )
-          : await RestaurantDetailsProvider.getRestaurantCoupons(
+          : await RestaurantApiHelper.getRestaurantCoupons(
               restaurantId: restaurantId,
             ).timeout(
               const Duration(seconds: 10),
@@ -3130,16 +3133,14 @@ class CartControllerProvider extends ChangeNotifier {
       // If mart items in cart → call getMartCoupons API
       // If restaurant items in cart → call getRestaurantCoupons API
       final globalCoupons = _currentContext == "mart"
-          ? await RestaurantDetailsProvider.getMartCoupons(
-              restaurantId: '',
-            ).timeout(
+          ? await RestaurantApiHelper.getMartCoupons(restaurantId: '').timeout(
               const Duration(seconds: 10),
               onTimeout: () {
                 print('[COUPON_LOAD] ⏱️ Global mart coupon API call timed out');
                 return <CouponModel>[];
               },
             )
-          : await RestaurantDetailsProvider.getRestaurantCoupons(
+          : await RestaurantApiHelper.getRestaurantCoupons(
               restaurantId: '',
             ).timeout(
               const Duration(seconds: 10),
@@ -3691,14 +3692,15 @@ class CartControllerProvider extends ChangeNotifier {
         // If calculation resulted in invalid values, keep previous values
         // Also check for zero values when cart is not empty (indicates calculation error)
         final bool isCartEmpty = HomeProvider.cartItem.isEmpty;
-        final bool hasInvalidValues = subTotal < 0 ||
+        final bool hasInvalidValues =
+            subTotal < 0 ||
             totalAmount < 0 ||
             subTotal.isNaN ||
             totalAmount.isNaN ||
             subTotal.isInfinite ||
             totalAmount.isInfinite ||
             (!isCartEmpty && (subTotal == 0.0 || totalAmount == 0.0));
-        
+
         if (hasInvalidValues) {
           print(
             '[PRICE_CALC] ⚠️ Invalid values calculated (subTotal: $subTotal, totalAmount: $totalAmount, cartEmpty: $isCartEmpty), restoring previous values',
@@ -4118,18 +4120,20 @@ class CartControllerProvider extends ChangeNotifier {
         _endOrderProcessing();
         return;
       }
-      
+
       // 🔑 CRITICAL: Validate calculations before placing order
       // Ensure all values are valid and not zero
       if (HomeProvider.cartItem.isEmpty) {
-        ShowToastDialog.showToast("Cart is empty. Please add items to cart.".tr);
+        ShowToastDialog.showToast(
+          "Cart is empty. Please add items to cart.".tr,
+        );
         endOrderProcessing();
         return;
       }
-      
+
       // Recalculate price to ensure latest values
       await calculatePrice();
-      
+
       // Validate calculations are valid
       if (subTotal <= 0 || subTotal.isNaN || subTotal.isInfinite) {
         print('❌ [ORDER_VALIDATION] Invalid subTotal: $subTotal');
@@ -4139,7 +4143,7 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-      
+
       if (totalAmount <= 0 || totalAmount.isNaN || totalAmount.isInfinite) {
         print('❌ [ORDER_VALIDATION] Invalid totalAmount: $totalAmount');
         ShowToastDialog.showToast(
@@ -4148,18 +4152,20 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-      
+
       // Validate cart items have valid prices
       bool hasInvalidItems = false;
       for (var item in HomeProvider.cartItem) {
         final itemPrice = double.tryParse(item.price ?? '0') ?? 0.0;
         if (itemPrice <= 0 || itemPrice.isNaN) {
           hasInvalidItems = true;
-          print('❌ [ORDER_VALIDATION] Invalid item price: ${item.name} - ${item.price}');
+          print(
+            '❌ [ORDER_VALIDATION] Invalid item price: ${item.name} - ${item.price}',
+          );
           break;
         }
       }
-      
+
       if (hasInvalidItems) {
         ShowToastDialog.showToast(
           "Some items have invalid prices. Please refresh and try again.".tr,
@@ -4167,9 +4173,11 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-      
-      print('✅ [ORDER_VALIDATION] Calculations validated - SubTotal: ₹$subTotal, Total: ₹$totalAmount');
-      
+
+      print(
+        '✅ [ORDER_VALIDATION] Calculations validated - SubTotal: ₹$subTotal, Total: ₹$totalAmount',
+      );
+
       // 🔑 CRITICAL: Validate payment method is selected
       if (selectedPaymentMethod.isEmpty) {
         ShowToastDialog.showToast("Please select payment method".tr);
@@ -4589,12 +4597,14 @@ class CartControllerProvider extends ChangeNotifier {
       endOrderProcessing();
       return;
     }
-    
+
     // Recalculate to ensure latest values
     await calculatePrice();
-    
+
     if (subTotal <= 0 || subTotal.isNaN || subTotal.isInfinite) {
-      print('❌ [ORDER_CREATION] Invalid subTotal: $subTotal, cannot create order');
+      print(
+        '❌ [ORDER_CREATION] Invalid subTotal: $subTotal, cannot create order',
+      );
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast(
         "Order calculation error. Please refresh and try again.".tr,
@@ -4604,9 +4614,11 @@ class CartControllerProvider extends ChangeNotifier {
       endOrderProcessing();
       return;
     }
-    
+
     if (totalAmount <= 0 || totalAmount.isNaN || totalAmount.isInfinite) {
-      print('❌ [ORDER_CREATION] Invalid totalAmount: $totalAmount, cannot create order');
+      print(
+        '❌ [ORDER_CREATION] Invalid totalAmount: $totalAmount, cannot create order',
+      );
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast(
         "Order total is invalid. Please refresh and try again.".tr,
@@ -4616,8 +4628,10 @@ class CartControllerProvider extends ChangeNotifier {
       endOrderProcessing();
       return;
     }
-    
-    print('✅ [ORDER_CREATION] Final validation passed - SubTotal: ₹$subTotal, Total: ₹$totalAmount');
+
+    print(
+      '✅ [ORDER_CREATION] Final validation passed - SubTotal: ₹$subTotal, Total: ₹$totalAmount',
+    );
 
     String? orderId;
     List<CartProductModel> orderedProducts = [];
@@ -4975,7 +4989,9 @@ class CartControllerProvider extends ChangeNotifier {
               if (selectedPaymentMethod == PaymentGateway.cod.name &&
                   cashOnDeliverySettingModel.isEnabled != true) {
                 selectedPaymentMethod = '';
-                print('[PAYMENT_SETTINGS] COD is disabled, clearing COD selection');
+                print(
+                  '[PAYMENT_SETTINGS] COD is disabled, clearing COD selection',
+                );
               }
 
               if (cashOnDeliverySettingModel.isEnabled == true &&
@@ -5650,19 +5666,23 @@ class CartControllerProvider extends ChangeNotifier {
       if (HomeProvider.cartItem.isEmpty) {
         print('❌ [ORDER_PLACEMENT] Cart is empty, cannot create order');
         ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast("Cart is empty. Please add items to cart.".tr);
+        ShowToastDialog.showToast(
+          "Cart is empty. Please add items to cart.".tr,
+        );
         _isOrderBeingCreated = false;
         _isOrderCreationInProgress = false;
         _currentOrderPaymentId = null;
         endOrderProcessing();
         return;
       }
-      
+
       // Recalculate to ensure latest values
       await calculatePrice();
-      
+
       if (subTotal <= 0 || subTotal.isNaN || subTotal.isInfinite) {
-        print('❌ [ORDER_PLACEMENT] Invalid subTotal: $subTotal, cannot create order');
+        print(
+          '❌ [ORDER_PLACEMENT] Invalid subTotal: $subTotal, cannot create order',
+        );
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
           "Order calculation error. Please refresh and try again.".tr,
@@ -5673,9 +5693,11 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-      
+
       if (totalAmount <= 0 || totalAmount.isNaN || totalAmount.isInfinite) {
-        print('❌ [ORDER_PLACEMENT] Invalid totalAmount: $totalAmount, cannot create order');
+        print(
+          '❌ [ORDER_PLACEMENT] Invalid totalAmount: $totalAmount, cannot create order',
+        );
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
           "Order total is invalid. Please refresh and try again.".tr,
@@ -5686,8 +5708,10 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
         return;
       }
-      
-      print('✅ [ORDER_PLACEMENT] Calculations validated - SubTotal: ₹$subTotal, Total: ₹$totalAmount');
+
+      print(
+        '✅ [ORDER_PLACEMENT] Calculations validated - SubTotal: ₹$subTotal, Total: ₹$totalAmount',
+      );
 
       // 🔑 ENSURE PAYMENT METHOD IS SET CORRECTLY FOR PREPAID ORDERS
       if (selectedPaymentMethod.isEmpty ||

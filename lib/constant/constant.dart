@@ -49,7 +49,7 @@ class Constant {
   static String radius = "50";
   static String driverRadios = "50";
   static String distanceType = "km";
-  static String placeholderImage = "assets/images/food_delivery.png";
+  static String placeholderImage = "assets/images/food_delivery.jpeg";
   static String googlePlayLink = "";
   static String appStoreLink = "";
   static String appVersion = "";

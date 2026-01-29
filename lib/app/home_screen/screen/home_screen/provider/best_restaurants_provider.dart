@@ -12,6 +12,8 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 
+import '../../../../restaurant_details_screen/provider/restaurant_details_provider.dart';
+
 class BestRestaurantProvider extends ChangeNotifier {
   static const Duration _networkTimeout = Duration(seconds: 15);
   Future<void>? _storiesLoadingTask;
@@ -50,7 +52,7 @@ class BestRestaurantProvider extends ChangeNotifier {
       final bestRestaurants = await getBestRestaurants(zoneId: zoneId);
       bestRestaurantList.clear();
       bestRestaurantList.addAll(bestRestaurants);
-      
+
       // Fetch all restaurants from nearest endpoint with filter
       final restaurants = await getNearestRestaurants(
         zoneId: zoneId,
@@ -166,9 +168,7 @@ class BestRestaurantProvider extends ChangeNotifier {
   Future<void> _loadRelatedDataInParallel(List<VendorModel> restaurants) async {
     final futures = <Future<void>>[];
     futures.add(
-      RestaurantDetailsProvider.getRestaurantCoupons(restaurantId: '').then((
-        value,
-      ) {
+      RestaurantApiHelper.getRestaurantCoupons(restaurantId: '').then((value) {
         couponRestaurantList.clear();
         couponList.clear();
         for (var element1 in value) {
@@ -212,7 +212,8 @@ class BestRestaurantProvider extends ChangeNotifier {
   }) async {
     try {
       final headers = await getHeaders();
-      String url = '${AppConst.baseUrl}restaurants/bestrestaurants?zone_id=$zoneId';
+      String url =
+          '${AppConst.baseUrl}restaurants/bestrestaurants?zone_id=$zoneId';
       final uri = Uri.parse(url);
       print('[BEST_RESTAURANT_API] Fetching best restaurants from: $uri');
 
@@ -240,7 +241,9 @@ class BestRestaurantProvider extends ChangeNotifier {
         }
       } else {
         print('[BEST_RESTAURANT_API] HTTP error: ${response.statusCode}');
-        throw Exception('Failed to load best restaurants: ${response.statusCode}');
+        throw Exception(
+          'Failed to load best restaurants: ${response.statusCode}',
+        );
       }
     } on TimeoutException catch (e) {
       print('[BEST_RESTAURANT_API] Timeout fetching best restaurants: $e');
