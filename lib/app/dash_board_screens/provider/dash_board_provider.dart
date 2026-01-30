@@ -1,22 +1,313 @@
-import 'dart:async';
-import 'dart:developer';
-import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
-import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
-import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
-import 'package:jippymart_customer/app/favourite_screens/favourite_screen.dart';
-import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/home_screen_two.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
-import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/order_screen.dart';
-import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
-import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
-import 'package:jippymart_customer/constant/constant.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-
-import '../../DealsScreen/DealsScreen.dart';
-import '../../profile_screen/profile_screen.dart';
-
+// import 'dart:async';
+// import 'dart:developer';
+// import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
+// import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
+// import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+// import 'package:jippymart_customer/app/favourite_screens/favourite_screen.dart';
+// import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+// import 'package:jippymart_customer/app/home_screen/screen/home_screen/home_screen_two.dart';
+// import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+// import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/order_screen.dart';
+// import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
+// import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
+// import 'package:jippymart_customer/constant/constant.dart';
+// import 'package:flutter/material.dart';
+// import 'package:get/get.dart';
+//
+// import '../../DealsScreen/DealsScreen.dart';
+// import '../../profile_screen/profile_screen.dart';
+//
+// //
+// // class DashBoardProvider extends ChangeNotifier {
+// //   DashBoardProvider() {
+// //     // Initialize page list immediately when provider is created
+// //     print('[DASHBOARD_PROVIDER] Constructor called, initializing pageList...');
+// //     _initializePageList();
+// //     print(
+// //       '[DASHBOARD_PROVIDER] pageList initialized with ${pageList.length} items',
+// //     );
+// //   }
+// //
+// //   void changeNavbar(
+// //     int index,
+// //     HomeProvider homeProvider,
+// //     SplashProvider splashProvider,
+// //     CartControllerProvider cartControllerProvider,
+// //     OrderProvider orderProvider,
+// //     BuildContext context,
+// //     FavouriteProvider favouriteProvider,
+// //   ) {
+// //     if (index >= 0 && index < pageList.length) {
+// //       selectedIndex = index;
+// //       notifyListeners();
+// //       if (index == 0) {
+// //         if (homeProvider.bannerModel.isEmpty) {
+// //           splashProvider.refreshFunction(context);
+// //         }
+// //       }
+// //       if (index == 1) {
+// //         // Deals screen - no initialization needed
+// //       }
+// //       if (index == 2) {
+// //         cartControllerProvider.initFunction(context);
+// //       }
+// //       if (index == 3) {
+// //         orderProvider.initFunction();
+// //       }
+// //     } else {}
+// //   }
+// //
+// //   bool isCartScreenInitialized = false;
+// //   int selectedIndex = 0;
+// //   List<Widget> pageList = [];
+// //   String currentTheme = "theme_1";
+// //   DateTime? currentBackPressTime;
+// //   bool canPopNow = false;
+// //
+// //   Future<void> initFunction(BuildContext context) async {
+// //     // Initialize page list first (synchronously) so dashboard can render
+// //     _initializePageList();
+// //     currentTheme = Constant.theme;
+// //     // Load user data in background (async, non-blocking)
+// //     loadUserData(context);
+// //   }
+// //
+// //   void _initializePageList() {
+// //     if (pageList.isNotEmpty) {
+// //       print('[DASHBOARD_PROVIDER] pageList already initialized, skipping');
+// //       return;
+// //     }
+// //     print('[DASHBOARD_PROVIDER] Initializing pageList...');
+// //     pageList = [
+// //       const HomeScreenTwo(),
+// //       const CartCheckOutScreen(),
+// //       const DealsScreen(),
+// //       const OrderScreen(),
+// //       const ProfileScreen(),
+// //     ];
+// //     if (selectedIndex >= pageList.length) {
+// //       selectedIndex = 0;
+// //     }
+// //     print(
+// //       '[DASHBOARD_PROVIDER] pageList initialized: ${pageList.length} pages, selectedIndex: $selectedIndex',
+// //     );
+// //     notifyListeners();
+// //   }
+// //
+// //   Future<void> loadUserData(BuildContext context) async {
+// //     try {
+// //       if (Constant.userModel == null) {
+// //         print('[DASHBOARD] User model is null, cannot load additional data');
+// //         return;
+// //       } else {
+// //         print(
+// //           '[DASHBOARD] User model exists: ${Constant.userModel?.firstName}',
+// //         );
+// //       }
+// //       await _checkUserShippingAddresses();
+// //     } catch (e) {
+// //       print('[DASHBOARD] Error loading user data: $e');
+// //     }
+// //   }
+// //
+// //   /// Check if user has shipping addresses and show alert if none
+// //   Future<void> _checkUserShippingAddresses() async {
+// //     try {
+// //       await Future.delayed(const Duration(seconds: 3000));
+// //       if (Constant.userModel != null) {
+// //         final hasAddresses =
+// //             Constant.userModel!.shippingAddress != null &&
+// //             Constant.userModel!.shippingAddress!.isNotEmpty;
+// //         if (!hasAddresses) {
+// //           log("_checkUserShippingAddresses ");
+// //           // _showAddressRequiredAlert();
+// //         } else {}
+// //       } else {}
+// //     } catch (e) {
+// //       print("_checkUserShippingAddresses ${e.toString()}");
+// //     }
+// //   }
+// //
+// //   // void _showAddressRequiredAlert() {
+// //   //   if (Get.isDialogOpen == true) {
+// //   //     return;
+// //   //   }
+// //   //   try {
+// //   //     Get.dialog(
+// //   //       WillPopScope(
+// //   //         onWillPop: () async => false,
+// //   //         child: Dialog(
+// //   //           shape: RoundedRectangleBorder(
+// //   //             borderRadius: BorderRadius.circular(24),
+// //   //           ),
+// //   //           elevation: 20,
+// //   //           child: Container(
+// //   //             decoration: BoxDecoration(
+// //   //               borderRadius: BorderRadius.circular(24),
+// //   //               gradient: const LinearGradient(
+// //   //                 begin: Alignment.topLeft,
+// //   //                 end: Alignment.bottomRight,
+// //   //                 colors: [Color(0xFFFFF8F0), Color(0xFFFFF0E6)],
+// //   //               ),
+// //   //             ),
+// //   //             child: Column(
+// //   //               mainAxisSize: MainAxisSize.min,
+// //   //               children: [
+// //   //                 // Header
+// //   //                 Container(
+// //   //                   padding: const EdgeInsets.all(24),
+// //   //                   child: Column(
+// //   //                     children: [
+// //   //                       Container(
+// //   //                         padding: const EdgeInsets.all(16),
+// //   //                         decoration: BoxDecoration(
+// //   //                           shape: BoxShape.circle,
+// //   //                           gradient: const LinearGradient(
+// //   //                             begin: Alignment.topLeft,
+// //   //                             end: Alignment.bottomRight,
+// //   //                             colors: [Color(0xFFFF6B35), Color(0xFFFF8C42)],
+// //   //                           ),
+// //   //                         ),
+// //   //                         child: const Icon(
+// //   //                           Icons.location_on_rounded,
+// //   //                           color: Colors.white,
+// //   //                           size: 32,
+// //   //                         ),
+// //   //                       ),
+// //   //                       const SizedBox(height: 16),
+// //   //                       const Text(
+// //   //                         '📍 Address Required',
+// //   //                         style: TextStyle(
+// //   //                           fontSize: 24,
+// //   //                           fontWeight: FontWeight.bold,
+// //   //                           color: Color(0xFF2D3436),
+// //   //                         ),
+// //   //                       ),
+// //   //                       const SizedBox(height: 8),
+// //   //                       Text(
+// //   //                         'Complete your profile to continue',
+// //   //                         style: TextStyle(
+// //   //                           fontSize: 16,
+// //   //                           color: Colors.grey[600],
+// //   //                         ),
+// //   //                       ),
+// //   //                     ],
+// //   //                   ),
+// //   //                 ),
+// //   //                 // Content
+// //   //                 Padding(
+// //   //                   padding: const EdgeInsets.symmetric(horizontal: 24),
+// //   //                   child: Column(
+// //   //                     children: [
+// //   //                       Container(
+// //   //                         padding: const EdgeInsets.all(20),
+// //   //                         decoration: BoxDecoration(
+// //   //                           color: Colors.white,
+// //   //                           borderRadius: BorderRadius.circular(16),
+// //   //                           border: Border.all(
+// //   //                             color: const Color(0xFFFF6B35).withOpacity(0.2),
+// //   //                           ),
+// //   //                         ),
+// //   //                         child: Row(
+// //   //                           children: [
+// //   //                             Container(
+// //   //                               padding: const EdgeInsets.all(8),
+// //   //                               decoration: BoxDecoration(
+// //   //                                 color: const Color(
+// //   //                                   0xFFFF6B35,
+// //   //                                 ).withOpacity(0.1),
+// //   //                                 borderRadius: BorderRadius.circular(8),
+// //   //                               ),
+// //   //                               child: const Icon(
+// //   //                                 Icons.shopping_cart_rounded,
+// //   //                                 color: Color(0xFFFF6B35),
+// //   //                                 size: 20,
+// //   //                               ),
+// //   //                             ),
+// //   //                             const SizedBox(width: 12),
+// //   //                             const Expanded(
+// //   //                               child: Text(
+// //   //                                 'To place orders and enjoy our services, you need to add a delivery address.',
+// //   //                                 style: TextStyle(
+// //   //                                   fontSize: 16,
+// //   //                                   color: Color(0xFF2D3436),
+// //   //                                   height: 1.5,
+// //   //                                 ),
+// //   //                               ),
+// //   //                             ),
+// //   //                           ],
+// //   //                         ),
+// //   //                       ),
+// //   //                       const SizedBox(height: 16),
+// //   //                     ],
+// //   //                   ),
+// //   //                 ),
+// //   //
+// //   //                 // Action button
+// //   //                 Padding(
+// //   //                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+// //   //                   child: SizedBox(
+// //   //                     width: double.infinity,
+// //   //                     height: 50,
+// //   //                     child: ElevatedButton(
+// //   //                       onPressed: () {
+// //   //                         Get.back();
+// //   //
+// //   //                         Get.to(() => const AddressListScreen());
+// //   //                       },
+// //   //                       style: ElevatedButton.styleFrom(
+// //   //                         backgroundColor: const Color(0xFFFF6B35),
+// //   //                         shape: RoundedRectangleBorder(
+// //   //                           borderRadius: BorderRadius.circular(12),
+// //   //                         ),
+// //   //                       ),
+// //   //                       child: const Row(
+// //   //                         mainAxisAlignment: MainAxisAlignment.center,
+// //   //                         children: [
+// //   //                           Icon(
+// //   //                             Icons.add_location_alt_rounded,
+// //   //                             color: Colors.white,
+// //   //                             size: 20,
+// //   //                           ),
+// //   //                           SizedBox(width: 8),
+// //   //                           Text(
+// //   //                             'Add Address',
+// //   //                             style: TextStyle(
+// //   //                               color: Colors.white,
+// //   //                               fontSize: 16,
+// //   //                               fontWeight: FontWeight.bold,
+// //   //                             ),
+// //   //                           ),
+// //   //                         ],
+// //   //                       ),
+// //   //                     ),
+// //   //                   ),
+// //   //                 ),
+// //   //               ],
+// //   //             ),
+// //   //           ),
+// //   //         ),
+// //   //       ),
+// //   //       barrierDismissible: false,
+// //   //     );
+// //   //   } catch (e) {
+// //   //     print('[DASHBOARD] Error showing dialog: $e');
+// //   //     // Fallback to simple snackbar
+// //   //     Get.snackbar(
+// //   //       'Address Required',
+// //   //       'Please add a delivery address to continue using the app.',
+// //   //       snackPosition: SnackPosition.BOTTOM,
+// //   //       backgroundColor: Colors.orange,
+// //   //       colorText: Colors.white,
+// //   //     );
+// //   //   }
+// //   // }
+// //
+// //   void onClose() {
+// //     // Clean up any resources if needed
+// //     print('[DEBUG] Dashboard provider closed');
+// //   }
+// // }
 //
 // class DashBoardProvider extends ChangeNotifier {
 //   DashBoardProvider() {
@@ -40,23 +331,31 @@ import '../../profile_screen/profile_screen.dart';
 //     if (index >= 0 && index < pageList.length) {
 //       selectedIndex = index;
 //       notifyListeners();
-//       if (index == 0) {
-//         if (homeProvider.bannerModel.isEmpty) {
-//           splashProvider.refreshFunction(context);
-//         }
+//
+//       // Initialize screen-specific data if needed
+//       switch (index) {
+//         case 0: // Home
+//           if (homeProvider.bannerModel.isEmpty) {
+//             splashProvider.refreshFunction(context);
+//           }
+//           break;
+//         case 1: // Deals screen
+//           // No initialization needed
+//           break;
+//         case 2: // Cart
+//           cartControllerProvider.initFunction(context);
+//           break;
+//         case 3: // Orders
+//           orderProvider.initFunction();
+//           break;
+//         case 4: // Profile
+//           // No initialization needed
+//           break;
 //       }
-//       if (index == 1) {
-//         // Deals screen - no initialization needed
-//       }
-//       if (index == 2) {
-//         cartControllerProvider.initFunction(context);
-//       }
-//       if (index == 3) {
-//         orderProvider.initFunction();
-//       }
-//     } else {}
+//     }
 //   }
 //
+//   // Instance properties
 //   bool isCartScreenInitialized = false;
 //   int selectedIndex = 0;
 //   List<Widget> pageList = [];
@@ -68,8 +367,9 @@ import '../../profile_screen/profile_screen.dart';
 //     // Initialize page list first (synchronously) so dashboard can render
 //     _initializePageList();
 //     currentTheme = Constant.theme;
+//
 //     // Load user data in background (async, non-blocking)
-//     loadUserData(context);
+//     unawaited(loadUserData(context));
 //   }
 //
 //   void _initializePageList() {
@@ -77,6 +377,7 @@ import '../../profile_screen/profile_screen.dart';
 //       print('[DASHBOARD_PROVIDER] pageList already initialized, skipping');
 //       return;
 //     }
+//
 //     print('[DASHBOARD_PROVIDER] Initializing pageList...');
 //     pageList = [
 //       const HomeScreenTwo(),
@@ -85,9 +386,11 @@ import '../../profile_screen/profile_screen.dart';
 //       const OrderScreen(),
 //       const ProfileScreen(),
 //     ];
+//
 //     if (selectedIndex >= pageList.length) {
 //       selectedIndex = 0;
 //     }
+//
 //     print(
 //       '[DASHBOARD_PROVIDER] pageList initialized: ${pageList.length} pages, selectedIndex: $selectedIndex',
 //     );
@@ -99,11 +402,9 @@ import '../../profile_screen/profile_screen.dart';
 //       if (Constant.userModel == null) {
 //         print('[DASHBOARD] User model is null, cannot load additional data');
 //         return;
-//       } else {
-//         print(
-//           '[DASHBOARD] User model exists: ${Constant.userModel?.firstName}',
-//         );
 //       }
+//
+//       print('[DASHBOARD] User model exists: ${Constant.userModel?.firstName}');
 //       await _checkUserShippingAddresses();
 //     } catch (e) {
 //       print('[DASHBOARD] Error loading user data: $e');
@@ -113,195 +414,196 @@ import '../../profile_screen/profile_screen.dart';
 //   /// Check if user has shipping addresses and show alert if none
 //   Future<void> _checkUserShippingAddresses() async {
 //     try {
-//       await Future.delayed(const Duration(seconds: 3000));
+//       // Delay check to avoid interrupting initial user experience
+//       await Future.delayed(const Duration(seconds: 3));
+//
 //       if (Constant.userModel != null) {
 //         final hasAddresses =
 //             Constant.userModel!.shippingAddress != null &&
 //             Constant.userModel!.shippingAddress!.isNotEmpty;
+//
 //         if (!hasAddresses) {
-//           log("_checkUserShippingAddresses ");
-//           // _showAddressRequiredAlert();
-//         } else {}
-//       } else {}
+//           _showAddressRequiredAlert();
+//         }
+//       }
 //     } catch (e) {
-//       print("_checkUserShippingAddresses ${e.toString()}");
+//       print("[DASHBOARD] Error checking addresses: ${e.toString()}");
 //     }
 //   }
 //
-//   // void _showAddressRequiredAlert() {
-//   //   if (Get.isDialogOpen == true) {
-//   //     return;
-//   //   }
-//   //   try {
-//   //     Get.dialog(
-//   //       WillPopScope(
-//   //         onWillPop: () async => false,
-//   //         child: Dialog(
-//   //           shape: RoundedRectangleBorder(
-//   //             borderRadius: BorderRadius.circular(24),
-//   //           ),
-//   //           elevation: 20,
-//   //           child: Container(
-//   //             decoration: BoxDecoration(
-//   //               borderRadius: BorderRadius.circular(24),
-//   //               gradient: const LinearGradient(
-//   //                 begin: Alignment.topLeft,
-//   //                 end: Alignment.bottomRight,
-//   //                 colors: [Color(0xFFFFF8F0), Color(0xFFFFF0E6)],
-//   //               ),
-//   //             ),
-//   //             child: Column(
-//   //               mainAxisSize: MainAxisSize.min,
-//   //               children: [
-//   //                 // Header
-//   //                 Container(
-//   //                   padding: const EdgeInsets.all(24),
-//   //                   child: Column(
-//   //                     children: [
-//   //                       Container(
-//   //                         padding: const EdgeInsets.all(16),
-//   //                         decoration: BoxDecoration(
-//   //                           shape: BoxShape.circle,
-//   //                           gradient: const LinearGradient(
-//   //                             begin: Alignment.topLeft,
-//   //                             end: Alignment.bottomRight,
-//   //                             colors: [Color(0xFFFF6B35), Color(0xFFFF8C42)],
-//   //                           ),
-//   //                         ),
-//   //                         child: const Icon(
-//   //                           Icons.location_on_rounded,
-//   //                           color: Colors.white,
-//   //                           size: 32,
-//   //                         ),
-//   //                       ),
-//   //                       const SizedBox(height: 16),
-//   //                       const Text(
-//   //                         '📍 Address Required',
-//   //                         style: TextStyle(
-//   //                           fontSize: 24,
-//   //                           fontWeight: FontWeight.bold,
-//   //                           color: Color(0xFF2D3436),
-//   //                         ),
-//   //                       ),
-//   //                       const SizedBox(height: 8),
-//   //                       Text(
-//   //                         'Complete your profile to continue',
-//   //                         style: TextStyle(
-//   //                           fontSize: 16,
-//   //                           color: Colors.grey[600],
-//   //                         ),
-//   //                       ),
-//   //                     ],
-//   //                   ),
-//   //                 ),
-//   //                 // Content
-//   //                 Padding(
-//   //                   padding: const EdgeInsets.symmetric(horizontal: 24),
-//   //                   child: Column(
-//   //                     children: [
-//   //                       Container(
-//   //                         padding: const EdgeInsets.all(20),
-//   //                         decoration: BoxDecoration(
-//   //                           color: Colors.white,
-//   //                           borderRadius: BorderRadius.circular(16),
-//   //                           border: Border.all(
-//   //                             color: const Color(0xFFFF6B35).withOpacity(0.2),
-//   //                           ),
-//   //                         ),
-//   //                         child: Row(
-//   //                           children: [
-//   //                             Container(
-//   //                               padding: const EdgeInsets.all(8),
-//   //                               decoration: BoxDecoration(
-//   //                                 color: const Color(
-//   //                                   0xFFFF6B35,
-//   //                                 ).withOpacity(0.1),
-//   //                                 borderRadius: BorderRadius.circular(8),
-//   //                               ),
-//   //                               child: const Icon(
-//   //                                 Icons.shopping_cart_rounded,
-//   //                                 color: Color(0xFFFF6B35),
-//   //                                 size: 20,
-//   //                               ),
-//   //                             ),
-//   //                             const SizedBox(width: 12),
-//   //                             const Expanded(
-//   //                               child: Text(
-//   //                                 'To place orders and enjoy our services, you need to add a delivery address.',
-//   //                                 style: TextStyle(
-//   //                                   fontSize: 16,
-//   //                                   color: Color(0xFF2D3436),
-//   //                                   height: 1.5,
-//   //                                 ),
-//   //                               ),
-//   //                             ),
-//   //                           ],
-//   //                         ),
-//   //                       ),
-//   //                       const SizedBox(height: 16),
-//   //                     ],
-//   //                   ),
-//   //                 ),
-//   //
-//   //                 // Action button
-//   //                 Padding(
-//   //                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-//   //                   child: SizedBox(
-//   //                     width: double.infinity,
-//   //                     height: 50,
-//   //                     child: ElevatedButton(
-//   //                       onPressed: () {
-//   //                         Get.back();
-//   //
-//   //                         Get.to(() => const AddressListScreen());
-//   //                       },
-//   //                       style: ElevatedButton.styleFrom(
-//   //                         backgroundColor: const Color(0xFFFF6B35),
-//   //                         shape: RoundedRectangleBorder(
-//   //                           borderRadius: BorderRadius.circular(12),
-//   //                         ),
-//   //                       ),
-//   //                       child: const Row(
-//   //                         mainAxisAlignment: MainAxisAlignment.center,
-//   //                         children: [
-//   //                           Icon(
-//   //                             Icons.add_location_alt_rounded,
-//   //                             color: Colors.white,
-//   //                             size: 20,
-//   //                           ),
-//   //                           SizedBox(width: 8),
-//   //                           Text(
-//   //                             'Add Address',
-//   //                             style: TextStyle(
-//   //                               color: Colors.white,
-//   //                               fontSize: 16,
-//   //                               fontWeight: FontWeight.bold,
-//   //                             ),
-//   //                           ),
-//   //                         ],
-//   //                       ),
-//   //                     ),
-//   //                   ),
-//   //                 ),
-//   //               ],
-//   //             ),
-//   //           ),
-//   //         ),
-//   //       ),
-//   //       barrierDismissible: false,
-//   //     );
-//   //   } catch (e) {
-//   //     print('[DASHBOARD] Error showing dialog: $e');
-//   //     // Fallback to simple snackbar
-//   //     Get.snackbar(
-//   //       'Address Required',
-//   //       'Please add a delivery address to continue using the app.',
-//   //       snackPosition: SnackPosition.BOTTOM,
-//   //       backgroundColor: Colors.orange,
-//   //       colorText: Colors.white,
-//   //     );
-//   //   }
-//   // }
+//   void _showAddressRequiredAlert() {
+//     if (Get.isDialogOpen == true) {
+//       return;
+//     }
+//
+//     try {
+//       Get.dialog(
+//         WillPopScope(
+//           onWillPop: () async => false,
+//           child: Dialog(
+//             shape: RoundedRectangleBorder(
+//               borderRadius: BorderRadius.circular(24),
+//             ),
+//             elevation: 20,
+//             child: Container(
+//               decoration: BoxDecoration(
+//                 borderRadius: BorderRadius.circular(24),
+//                 gradient: const LinearGradient(
+//                   begin: Alignment.topLeft,
+//                   end: Alignment.bottomRight,
+//                   colors: [Color(0xFFFFF8F0), Color(0xFFFFF0E6)],
+//                 ),
+//               ),
+//               child: Column(
+//                 mainAxisSize: MainAxisSize.min,
+//                 children: [
+//                   // Header
+//                   Container(
+//                     padding: const EdgeInsets.all(24),
+//                     child: Column(
+//                       children: [
+//                         Container(
+//                           padding: const EdgeInsets.all(16),
+//                           decoration: BoxDecoration(
+//                             shape: BoxShape.circle,
+//                             gradient: const LinearGradient(
+//                               begin: Alignment.topLeft,
+//                               end: Alignment.bottomRight,
+//                               colors: [Color(0xFFFF6B35), Color(0xFFFF8C42)],
+//                             ),
+//                           ),
+//                           child: const Icon(
+//                             Icons.location_on_rounded,
+//                             color: Colors.white,
+//                             size: 32,
+//                           ),
+//                         ),
+//                         const SizedBox(height: 16),
+//                         const Text(
+//                           '📍 Address Required',
+//                           style: TextStyle(
+//                             fontSize: 24,
+//                             fontWeight: FontWeight.bold,
+//                             color: Color(0xFF2D3436),
+//                           ),
+//                         ),
+//                         const SizedBox(height: 8),
+//                         Text(
+//                           'Complete your profile to continue',
+//                           style: TextStyle(
+//                             fontSize: 16,
+//                             color: Colors.grey[600],
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                   ),
+//                   // Content
+//                   Padding(
+//                     padding: const EdgeInsets.symmetric(horizontal: 24),
+//                     child: Column(
+//                       children: [
+//                         Container(
+//                           padding: const EdgeInsets.all(20),
+//                           decoration: BoxDecoration(
+//                             color: Colors.white,
+//                             borderRadius: BorderRadius.circular(16),
+//                             border: Border.all(
+//                               color: const Color(0xFFFF6B35).withOpacity(0.2),
+//                             ),
+//                           ),
+//                           child: Row(
+//                             children: [
+//                               Container(
+//                                 padding: const EdgeInsets.all(8),
+//                                 decoration: BoxDecoration(
+//                                   color: const Color(
+//                                     0xFFFF6B35,
+//                                   ).withOpacity(0.1),
+//                                   borderRadius: BorderRadius.circular(8),
+//                                 ),
+//                                 child: const Icon(
+//                                   Icons.shopping_cart_rounded,
+//                                   color: Color(0xFFFF6B35),
+//                                   size: 20,
+//                                 ),
+//                               ),
+//                               const SizedBox(width: 12),
+//                               const Expanded(
+//                                 child: Text(
+//                                   'To place orders and enjoy our services, you need to add a delivery address.',
+//                                   style: TextStyle(
+//                                     fontSize: 16,
+//                                     color: Color(0xFF2D3436),
+//                                     height: 1.5,
+//                                   ),
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                         const SizedBox(height: 16),
+//                       ],
+//                     ),
+//                   ),
+//                   // Action button
+//                   Padding(
+//                     padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+//                     child: SizedBox(
+//                       width: double.infinity,
+//                       height: 50,
+//                       child: ElevatedButton(
+//                         onPressed: () {
+//                           Get.back();
+//                           Get.to(() => const AddressListScreen());
+//                         },
+//                         style: ElevatedButton.styleFrom(
+//                           backgroundColor: const Color(0xFFFF6B35),
+//                           shape: RoundedRectangleBorder(
+//                             borderRadius: BorderRadius.circular(12),
+//                           ),
+//                         ),
+//                         child: const Row(
+//                           mainAxisAlignment: MainAxisAlignment.center,
+//                           children: [
+//                             Icon(
+//                               Icons.add_location_alt_rounded,
+//                               color: Colors.white,
+//                               size: 20,
+//                             ),
+//                             SizedBox(width: 8),
+//                             Text(
+//                               'Add Address',
+//                               style: TextStyle(
+//                                 color: Colors.white,
+//                                 fontSize: 16,
+//                                 fontWeight: FontWeight.bold,
+//                               ),
+//                             ),
+//                           ],
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ),
+//         barrierDismissible: false,
+//       );
+//     } catch (e) {
+//       print('[DASHBOARD] Error showing dialog: $e');
+//       // Fallback to simple snackbar
+//       Get.snackbar(
+//         'Address Required',
+//         'Please add a delivery address to continue using the app.',
+//         snackPosition: SnackPosition.BOTTOM,
+//         backgroundColor: Colors.orange,
+//         colorText: Colors.white,
+//       );
+//     }
+//   }
 //
 //   void onClose() {
 //     // Clean up any resources if needed
@@ -309,15 +611,35 @@ import '../../profile_screen/profile_screen.dart';
 //   }
 // }
 
+import 'dart:async';
+import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
+import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/home_screen_two.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/order_screen.dart';
+import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
+import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
+import 'package:jippymart_customer/constant/constant.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+
+import '../../DealsScreen/DealsScreen.dart';
+import '../../profile_screen/profile_screen.dart';
+
 class DashBoardProvider extends ChangeNotifier {
   DashBoardProvider() {
-    // Initialize page list immediately when provider is created
-    print('[DASHBOARD_PROVIDER] Constructor called, initializing pageList...');
+    print('[DASHBOARD_PROVIDER] Initializing...');
     _initializePageList();
-    print(
-      '[DASHBOARD_PROVIDER] pageList initialized with ${pageList.length} items',
-    );
   }
+
+  // State
+  int selectedIndex = 0;
+  List<Widget> pageList = [];
+  DateTime? currentBackPressTime;
+  bool canPopNow = false;
+  bool _addressCheckCompleted = false;
 
   void changeNavbar(
     int index,
@@ -328,57 +650,39 @@ class DashBoardProvider extends ChangeNotifier {
     BuildContext context,
     FavouriteProvider favouriteProvider,
   ) {
-    if (index >= 0 && index < pageList.length) {
-      selectedIndex = index;
-      notifyListeners();
+    if (index < 0 || index >= pageList.length) return;
 
-      // Initialize screen-specific data if needed
-      switch (index) {
-        case 0: // Home
-          if (homeProvider.bannerModel.isEmpty) {
-            splashProvider.refreshFunction(context);
-          }
-          break;
-        case 1: // Deals screen
-          // No initialization needed
-          break;
-        case 2: // Cart
-          cartControllerProvider.initFunction(context);
-          break;
-        case 3: // Orders
-          orderProvider.initFunction();
-          break;
-        case 4: // Profile
-          // No initialization needed
-          break;
-      }
+    selectedIndex = index;
+    notifyListeners();
+
+    // Initialize screen-specific data if needed
+    switch (index) {
+      case 0: // Home
+        if (homeProvider.bannerModel.isEmpty) {
+          splashProvider.refreshFunction(context);
+        }
+        break;
+      case 2: // Cart
+        cartControllerProvider.initFunction(context);
+        break;
+      case 3: // Orders
+        orderProvider.initFunction();
+        break;
     }
   }
-
-  // Instance properties
-  bool isCartScreenInitialized = false;
-  int selectedIndex = 0;
-  List<Widget> pageList = [];
-  String currentTheme = "theme_1";
-  DateTime? currentBackPressTime;
-  bool canPopNow = false;
 
   Future<void> initFunction(BuildContext context) async {
-    // Initialize page list first (synchronously) so dashboard can render
-    _initializePageList();
     currentTheme = Constant.theme;
 
-    // Load user data in background (async, non-blocking)
-    unawaited(loadUserData(context));
+    // Load user data in background
+    unawaited(_loadUserDataInBackground(context));
   }
 
-  void _initializePageList() {
-    if (pageList.isNotEmpty) {
-      print('[DASHBOARD_PROVIDER] pageList already initialized, skipping');
-      return;
-    }
+  String currentTheme = "theme_1";
 
-    print('[DASHBOARD_PROVIDER] Initializing pageList...');
+  void _initializePageList() {
+    if (pageList.isNotEmpty) return;
+
     pageList = [
       const HomeScreenTwo(),
       const CartCheckOutScreen(),
@@ -387,35 +691,32 @@ class DashBoardProvider extends ChangeNotifier {
       const ProfileScreen(),
     ];
 
-    if (selectedIndex >= pageList.length) {
-      selectedIndex = 0;
-    }
-
-    print(
-      '[DASHBOARD_PROVIDER] pageList initialized: ${pageList.length} pages, selectedIndex: $selectedIndex',
-    );
+    selectedIndex = selectedIndex.clamp(0, pageList.length - 1);
+    print('[DASHBOARD_PROVIDER] Initialized with ${pageList.length} pages');
     notifyListeners();
   }
 
-  Future<void> loadUserData(BuildContext context) async {
+  Future<void> _loadUserDataInBackground(BuildContext context) async {
     try {
       if (Constant.userModel == null) {
-        print('[DASHBOARD] User model is null, cannot load additional data');
+        print('[DASHBOARD] User model is null');
         return;
       }
 
-      print('[DASHBOARD] User model exists: ${Constant.userModel?.firstName}');
-      await _checkUserShippingAddresses();
+      // Only check address once per session
+      if (!_addressCheckCompleted) {
+        await _checkUserShippingAddresses();
+        _addressCheckCompleted = true;
+      }
     } catch (e) {
       print('[DASHBOARD] Error loading user data: $e');
     }
   }
 
-  /// Check if user has shipping addresses and show alert if none
   Future<void> _checkUserShippingAddresses() async {
     try {
-      // Delay check to avoid interrupting initial user experience
-      await Future.delayed(const Duration(seconds: 3));
+      // Wait for app to be fully loaded before checking
+      await Future.delayed(const Duration(seconds: 5));
 
       if (Constant.userModel != null) {
         final hasAddresses =
@@ -427,14 +728,12 @@ class DashBoardProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print("[DASHBOARD] Error checking addresses: ${e.toString()}");
+      print("[DASHBOARD] Error checking addresses: $e");
     }
   }
 
   void _showAddressRequiredAlert() {
-    if (Get.isDialogOpen == true) {
-      return;
-    }
+    if (Get.isDialogOpen == true) return;
 
     try {
       Get.dialog(
@@ -442,145 +741,55 @@ class DashBoardProvider extends ChangeNotifier {
           onWillPop: () async => false,
           child: Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
             ),
-            elevation: 20,
+            elevation: 10,
             child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [Color(0xFFFFF8F0), Color(0xFFFFF0E6)],
-                ),
-              ),
+              padding: const EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xFFFF6B35), Color(0xFFFF8C42)],
-                            ),
-                          ),
-                          child: const Icon(
-                            Icons.location_on_rounded,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          '📍 Address Required',
-                          style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF2D3436),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Complete your profile to continue',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                      ],
+                  const Icon(
+                    Icons.location_on_rounded,
+                    color: Color(0xFFFF6B35),
+                    size: 48,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Address Required',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
                   ),
-                  // Content
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: const Color(0xFFFF6B35).withOpacity(0.2),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(
-                                    0xFFFF6B35,
-                                  ).withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                  Icons.shopping_cart_rounded,
-                                  color: Color(0xFFFF6B35),
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Expanded(
-                                child: Text(
-                                  'To place orders and enjoy our services, you need to add a delivery address.',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Color(0xFF2D3436),
-                                    height: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-                    ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Please add a delivery address to place orders.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 14, color: Colors.grey),
                   ),
-                  // Action button
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Get.back();
-                          Get.to(() => const AddressListScreen());
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFFF6B35),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Get.back();
+                        Get.to(() => const AddressListScreen());
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF6B35),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.add_location_alt_rounded,
-                              color: Colors.white,
-                              size: 20,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Add Address',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                      ),
+                      child: const Text(
+                        'Add Address',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -594,19 +803,13 @@ class DashBoardProvider extends ChangeNotifier {
       );
     } catch (e) {
       print('[DASHBOARD] Error showing dialog: $e');
-      // Fallback to simple snackbar
+      // Simple fallback
       Get.snackbar(
         'Address Required',
-        'Please add a delivery address to continue using the app.',
+        'Please add a delivery address to continue.',
         snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: Colors.orange,
-        colorText: Colors.white,
+        duration: const Duration(seconds: 3),
       );
     }
-  }
-
-  void onClose() {
-    // Clean up any resources if needed
-    print('[DEBUG] Dashboard provider closed');
   }
 }
