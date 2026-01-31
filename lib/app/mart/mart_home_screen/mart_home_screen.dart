@@ -453,39 +453,22 @@ class _GroceryItem extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(18),
                   child: imageUrl != null
-                      ? Image.network(
-                          imageUrl!,
+                      ? NetworkImageWidget(
+                          imageUrl: imageUrl!,
                           width: 87,
                           height: 91,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFECEAFD),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: const Icon(
-                                Icons.image,
-                                color: Color(0xFF5D56F3),
-                                size: 30,
-                              ),
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFECEAFD),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: const Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Color(0xFF5D56F3),
-                                ),
-                              ),
-                            );
-                          },
+                          errorWidget: Container(
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFECEAFD),
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                            child: const Icon(
+                              Icons.image,
+                              color: Color(0xFF5D56F3),
+                              size: 30,
+                            ),
+                          ),
                         )
                       : Container(
                           decoration: BoxDecoration(
@@ -1053,6 +1036,7 @@ class _MartDynamicSectionsEnhancedState
         return Column(
           children: uniqueCategories.map((category) {
             return _buildCategorySection(
+              context,
               controller,
               category,
               categoryProducts[category] ?? [],
@@ -1064,6 +1048,7 @@ class _MartDynamicSectionsEnhancedState
   }
 
   Widget _buildCategorySection(
+    BuildContext context,
     MartProvider controller,
     String categoryName,
     List<MartItemModel> products,
@@ -1075,9 +1060,7 @@ class _MartDynamicSectionsEnhancedState
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(),
-      child: Consumer<CategoryDetailsProvider>(
-        builder: (context, categoryDetailsProvider, _) {
-          return Column(
+      child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
@@ -1105,17 +1088,12 @@ class _MartDynamicSectionsEnhancedState
                     const SizedBox(width: 8),
                     GestureDetector(
                       onTap: () {
-                        print(
-                          '[MART DYNAMIC SECTIONS] 🔗 Navigating to category: $categoryName',
-                        );
-
-                        // Find the category ID for this category title
                         final category = controller.martCategories.firstWhere(
                           (cat) => cat.title == categoryName,
                           orElse: () =>
                               MartCategoryModel(id: '', title: categoryName),
                         );
-                        categoryDetailsProvider.initFunction(
+                        context.read<CategoryDetailsProvider>().initFunction(
                           categoryIds:
                               category.id ??
                               'category_${categoryName.toLowerCase().replaceAll(' ', '_')}',
@@ -1176,10 +1154,8 @@ class _MartDynamicSectionsEnhancedState
 
               const SizedBox(height: 24), // Add spacing between sections
             ],
-          );
-        },
-      ),
-    );
+          ),
+        );
   }
 
   String _getVolumeUnit(MartItemModel product) {
@@ -1232,14 +1208,18 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
         }
         return Column(
           children: controller.availableSections.map((section) {
-            return _buildSection(controller, section);
+            return _buildSection(context, controller, section);
           }).toList(),
         );
       },
     );
   }
 
-  Widget _buildSection(MartProvider controller, String sectionName) {
+  Widget _buildSection(
+    BuildContext context,
+    MartProvider controller,
+    String sectionName,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(
@@ -1264,45 +1244,39 @@ class _MartDynamicSectionsState extends State<MartDynamicSections> {
                     letterSpacing: -0.5,
                   ),
                 ),
-                Consumer<CategoryDetailsProvider>(
-                  builder: (context, categoryDetailsProvider, _) {
-                    return GestureDetector(
-                      onTap: () {
-                        print(
-                          '[MART DYNAMIC SECTIONS] 🔗 Navigating to section: $sectionName',
-                        );
-                        categoryDetailsProvider.initFunction(
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () {
+                    context.read<CategoryDetailsProvider>().initFunction(
                           categoryIds:
                               'section_${sectionName.toLowerCase().replaceAll(' ', '_')}',
                           categoryNames: sectionName,
                           sectionNames: 'section',
                           initialFilters: sectionName,
                         );
-                        Get.to(() => MartCategoryDetailScreen());
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: ColorConst.martPrimary.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          child: Text(
-                            'View All',
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: ColorConst.martPrimary,
-                            ),
-                          ),
+                    Get.to(() => MartCategoryDetailScreen());
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: ColorConst.martPrimary.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      child: Text(
+                        'View All',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: ColorConst.martPrimary,
                         ),
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ],
             ),

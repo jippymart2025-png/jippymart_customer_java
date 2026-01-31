@@ -9,6 +9,7 @@ import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provide
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/signup_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
+import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
@@ -666,14 +667,43 @@ class LoginProvider extends ChangeNotifier {
     Constant.userModel = userModel;
     await SqlStorageConst.storeUserData(userModel, countryCode: countryCode);
 
-    // Proceed to dashboard immediately for better UX
-    ShowToastDialog.closeLoader();
+    if (!context.mounted) return;
 
-    if (context.mounted) {
-      Get.offAll(() => const DashBoardScreen());
+    // Check location and zone before navigating - show zone selection if not in zone
+    ShowToastDialog.showLoader("Checking your location...".tr);
+    try {
+      final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+      await homeProvider.initFunction(context: context);
+      await homeProvider.ensureLocationAndZoneChecked().timeout(
+        const Duration(seconds: 20),
+        onTimeout: () {
+          print('[LOGIN] Location/zone check timed out');
+          return null;
+        },
+      );
 
-      // Run location and zone check in background without blocking UI
-      _performBackgroundInitialization(context);
+      if (!context.mounted) return;
+      ShowToastDialog.closeLoader();
+
+      // If in zone with valid location -> home, else -> zone selection screen
+      if (Constant.isZoneAvailable == true &&
+          Constant.selectedZone?.id != null &&
+          Constant.selectedLocation.location?.latitude != null &&
+          Constant.selectedLocation.location!.latitude != 0) {
+        Get.offAll(() => const DashBoardScreen());
+      } else {
+        // Not in zone or no valid location - show location/zone selection screen
+        print('[LOGIN] User not in zone or no valid location, showing zone selection');
+        Get.offAll(() => const LocationPermissionScreen());
+      }
+      Future.microtask(() => _performBackgroundInitialization(Get.context ?? context));
+    } catch (e) {
+      print('[LOGIN] Error during location/zone check: $e');
+      if (context.mounted) {
+        ShowToastDialog.closeLoader();
+        Get.offAll(() => const LocationPermissionScreen());
+        Future.microtask(() => _performBackgroundInitialization(Get.context ?? context));
+      }
     }
   }
 

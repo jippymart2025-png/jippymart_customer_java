@@ -6,15 +6,14 @@ import 'package:jippymart_customer/app/edit_profile_screen/edit_profile_screen.d
 import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
-import 'package:jippymart_customer/services/app_update_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
@@ -22,7 +21,6 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'dart:io';
 
 import '../edit_profile_screen/provider/edit_profile_provider.dart'
     show EditProfileProvider;
@@ -152,11 +150,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                             controller,
                                             "assets/images/ic_profile.svg",
                                             "Profile Information".tr,
-                                            () async {
-                                              // Check if user is logged in
-                                              final isLoggedIn =
-                                                  await SqlStorageConst.isUserLoggedIn();
-                                              if (!isLoggedIn) {
+                                            () {
+                                              // Use cached login state (no async call needed)
+                                              if (!controller.isUserLoggedIn &&
+                                                  Constant.userModel == null) {
                                                 _showLoginRequiredDialog(
                                                   context,
                                                 );
@@ -164,7 +161,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                               }
                                               editProfileProvider
                                                   .initFunction();
-                                              Get.to(const EditProfileScreen());
+                                              Get.to(
+                                                () => const EditProfileScreen(),
+                                              );
                                             },
                                           ),
                                         ],
@@ -193,18 +192,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         controller,
                                         "assets/images/ic_favourite.svg",
                                         "Favorites".tr,
-                                        () async {
-                                          final isLoggedIn =
-                                              await SqlStorageConst.isUserLoggedIn();
-                                          if (!isLoggedIn) {
+                                        () {
+                                          // Use cached login state (no async call needed)
+                                          if (!controller.isUserLoggedIn &&
+                                              Constant.userModel == null) {
                                             _showLoginRequiredDialog(context);
                                             return;
                                           }
 
-                                          await context
+                                          // Navigate first for faster perceived performance
+                                          // FavouriteScreen will load data on init
+                                          Get.to(() => const FavouriteScreen());
+                                          // Trigger refresh in background
+                                          context
                                               .read<FavouriteProvider>()
-                                              .getData();
-                                          Get.to(const FavouriteScreen());
+                                              .refreshData();
                                         },
                                       ),
                                     ],
@@ -350,7 +352,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         "Privacy Policy",
                                         () {
                                           Get.to(
-                                            const TermsAndConditionScreen(
+                                            () => const TermsAndConditionScreen(
                                               type: "privacy",
                                             ),
                                           );
@@ -362,7 +364,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         "Terms and Conditions",
                                         () {
                                           Get.to(
-                                            const TermsAndConditionScreen(
+                                            () => const TermsAndConditionScreen(
                                               type: "termAndCondition",
                                             ),
                                           );
@@ -397,7 +399,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                   "Log In",
                                                   () {
                                                     Get.offAll(
-                                                      PhoneNumberScreen(),
+                                                      () => PhoneNumberScreen(),
                                                     );
                                                   },
                                                 )
@@ -423,7 +425,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                                     .userModel!
                                                                     .fcmToken =
                                                                 "";
-                                                            await EditProfileProvider.updateUser(
+                                                            await EditProfileProvider.updateUserStatic(
                                                               Constant
                                                                   .userModel!,
                                                             );
@@ -450,9 +452,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                                       'api_token',
                                                                 );
                                                             // Clear cart data before logout
-                                                            print(
-                                                              'DEBUG: Profile logout - Starting cart clearing process',
-                                                            );
+                                                            if (kDebugMode) {
+                                                              print(
+                                                                'DEBUG: Profile logout - Starting cart clearing process',
+                                                              );
+                                                            }
                                                             try {
                                                               // Force clear cart from database directly
                                                               await DatabaseHelper
@@ -469,21 +473,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                                                     listen:
                                                                         false,
                                                                   );
-                                                              print(
-                                                                'DEBUG: Profile logout - CartController found, clearing cart',
-                                                              );
+                                                              if (kDebugMode) {
+                                                                print(
+                                                                  'DEBUG: Profile logout - CartController found, clearing cart',
+                                                                );
+                                                              }
                                                               await cartControllerProvider
                                                                   .clearCart();
                                                             } catch (e) {
-                                                              print(
-                                                                'DEBUG: Profile logout - Error clearing cart: $e',
-                                                              );
+                                                              if (kDebugMode) {
+                                                                print(
+                                                                  'DEBUG: Profile logout - Error clearing cart: $e',
+                                                                );
+                                                              }
                                                             }
+                                                            // Clear provider cache
+                                                            controller
+                                                                .clearCache();
                                                             Get.deleteAll(
                                                               force: true,
                                                             );
                                                             Get.offAll(
-                                                              PhoneNumberScreen(),
+                                                              () =>
+                                                                  PhoneNumberScreen(),
                                                             );
                                                           },
                                                           negativeClick: () {
@@ -566,42 +578,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         ),
                                       ),
                                     ),
-                              FutureBuilder<Map<String, dynamic>?>(
-                                future: AppUpdateService.getLatestVersionInfo(),
-                                builder: (context, snapshot) {
-                                  String versionText =
-                                      "V : ${Constant.appVersion}";
-
-                                  if (snapshot.hasData &&
-                                      snapshot.data != null) {
-                                    final versionInfo = snapshot.data!;
-                                    if (Platform.isAndroid) {
-                                      final androidVersion =
-                                          versionInfo['android_version'] ?? '';
-                                      if (androidVersion.isNotEmpty) {
-                                        versionText = "V : $androidVersion";
-                                      }
-                                    } else if (Platform.isIOS) {
-                                      final iosVersion =
-                                          versionInfo['ios_version'] ?? '';
-                                      if (iosVersion.isNotEmpty) {
-                                        versionText = "V : $iosVersion";
-                                      }
-                                    }
-                                  }
-
-                                  return Center(
-                                    child: Text(
-                                      versionText,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontFamily: AppThemeData.medium,
-                                        fontSize: 14,
-                                        color: AppThemeData.grey900,
-                                      ),
-                                    ),
-                                  );
-                                },
+                              // Use cached version text from provider (avoids API call on every rebuild)
+                              Center(
+                                child: Text(
+                                  controller.versionText,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontFamily: AppThemeData.medium,
+                                    fontSize: 14,
+                                    color: AppThemeData.grey900,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -689,25 +676,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
             ),
-            title == "Dark Mode"
-                ? Transform.scale(
-                    scale: 0.8,
-                    child: CupertinoSwitch(
-                      value: controller.isDarkModeSwitch.value,
-                      activeColor: AppThemeData.primary300,
-                      onChanged: (value) {
-                        controller.isDarkModeSwitch.value = value;
-                        if (controller.isDarkModeSwitch.value == true) {
-                          Preferences.setString(Preferences.themKey, "Dark");
-                        } else if (controller.isDarkMode.value == "Light") {
-                          Preferences.setString(Preferences.themKey, "Light");
-                        } else {
-                          Preferences.setString(Preferences.themKey, "");
-                        }
-                      },
-                    ),
-                  )
-                : const Icon(Icons.keyboard_arrow_right),
+            if (title == "Dark Mode")
+              Transform.scale(
+                scale: 0.8,
+                child: CupertinoSwitch(
+                  value: controller.isDarkModeSwitch,
+                  activeColor: AppThemeData.primary300,
+                  onChanged: (value) {
+                    controller.isDarkModeSwitch = value;
+                    if (controller.isDarkModeSwitch == true) {
+                      Preferences.setString(Preferences.themKey, "Dark");
+                    } else if (controller.isDarkMode == "Light") {
+                      Preferences.setString(Preferences.themKey, "Light");
+                    } else {
+                      Preferences.setString(Preferences.themKey, "");
+                    }
+                  },
+                ),
+              )
+            else
+              const Icon(Icons.keyboard_arrow_right),
           ],
         ),
       ),

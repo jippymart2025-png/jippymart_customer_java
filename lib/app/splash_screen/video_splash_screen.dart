@@ -105,6 +105,8 @@ class _VideoSplashScreenState extends State<VideoSplashScreen> {
       if (!mounted || _hasNavigated) return;
       
       // Navigate based on location permission and auth status
+      // When force timeout fires, always go to LocationPermissionScreen for logged-in users
+      // with permission - this ensures zone is checked before home (main flow may have timed out)
       _hasNavigated = true;
       if (!hasLocationPermission) {
         print('[SPLASH_SCREEN] No location permission, going to LocationPermissionScreen');
@@ -114,9 +116,10 @@ class _VideoSplashScreenState extends State<VideoSplashScreen> {
           duration: const Duration(milliseconds: 800),
         );
       } else {
-        print('[SPLASH_SCREEN] User is logged in with location permission, going to DashBoardScreen');
+        // Has permission - go to LocationPermissionScreen to verify zone before home
+        print('[SPLASH_SCREEN] Force nav: checking zone via LocationPermissionScreen');
         Get.offAll(
-          () => const DashBoardScreen(),
+          () => const LocationPermissionScreen(),
           transition: Transition.fadeIn,
           duration: const Duration(milliseconds: 800),
         );

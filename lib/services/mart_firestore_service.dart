@@ -450,9 +450,12 @@ class MartFirestoreService extends GetxService {
           }
           final responseData = json.decode(response.body);
 
-          if (!responseData['status']) {
+          // Support both 'status' and 'success' (API inconsistency)
+          final isSuccess = responseData['status'] == true ||
+              responseData['success'] == true;
+          if (!isSuccess) {
             print(
-              '[MART API] ❌ API returned false status: ${responseData['message']}',
+              '[MART API] ❌ API returned error: ${responseData['message'] ?? responseData['msg']}',
             );
             return [];
           }
@@ -577,9 +580,11 @@ class MartFirestoreService extends GetxService {
 
       final responseData = json.decode(response.body);
 
-      if (!responseData['status']) {
+      final isSuccess = responseData['status'] == true ||
+          responseData['success'] == true;
+      if (!isSuccess) {
         print(
-          '[MART API] ❌ API returned false status: ${responseData['message']}',
+          '[MART API] ❌ API returned error: ${responseData['message'] ?? responseData['msg']}',
         );
         return [];
       }
@@ -1431,8 +1436,10 @@ class MartFirestoreService extends GetxService {
         return [];
       }
       final responseData = json.decode(response.body);
-      if (!responseData['success']) {
-        print('[MART API] ❌ API returned false status');
+      final isSuccess = responseData['success'] == true ||
+          responseData['status'] == true;
+      if (!isSuccess) {
+        print('[MART API] ❌ API returned error');
         return [];
       }
       print(

@@ -1,5 +1,4 @@
-import 'dart:developer';
-import 'dart:math' hide log;
+import 'dart:math';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
@@ -58,11 +57,12 @@ class ProductListView extends StatelessWidget {
                   itemBuilder: (context, index) {
                     VendorCategoryModel vendorCategoryModel =
                         controller.vendorCategoryList[index];
-                    String? categoryKey = controller.returnKeyCategories(
+                    final categoryKey = controller.returnKeyCategories(
                       index: index,
-                    );
+                    ) ?? 'category_$index';
                     return KeyedSubtree(
-                      key: controller.categoryKeys[categoryKey],
+                      key: controller.categoryKeys[categoryKey] ??
+                          ValueKey(categoryKey),
                       child: _buildCategoryExpansionTile(
                         context,
                         vendorCategoryModel,
@@ -157,7 +157,6 @@ class ProductListView extends StatelessWidget {
           ),
           itemBuilder: (context, productIndex) {
             ProductModel productModel = products[productIndex];
-            log(productModel.id.toString(), name: " productsLength");
             return _buildProductItem(
               productModel,
               context,

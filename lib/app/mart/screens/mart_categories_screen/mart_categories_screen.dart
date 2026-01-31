@@ -35,8 +35,8 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
   }
 
   Future<void> _loadCategories() async {
+    if (!mounted) return;
     try {
-      // Skip subcategories loading for faster category screen loading
       await _martController.loadCategoriesStreaming(skipSubcategories: true);
     } catch (e) {
       print('Error loading categories: $e');
@@ -75,22 +75,27 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
       backgroundColor: Colors.white, // Pure white background for grocery app
       body: Consumer2<MartProvider, MartCategoryProvider>(
         builder: (context, controller, martCategoryProvider, _) {
-          if (controller.isCategoryLoading) {
+          if (controller.isCategoryLoading && controller.martCategories.isEmpty) {
             return _buildLoadingState();
           }
-          if (controller.errorMessage.isNotEmpty) {
-            return _buildErrorState();
+          // Prioritize categories over error - another loader (e.g. loadVendorCategories)
+          // may set errorMessage; show categories if we have them
+          if (controller.martCategories.isNotEmpty) {
+            return RefreshIndicator(
+              backgroundColor: Colors.white,
+              color: MartTheme.jippyMartButton,
+              onRefresh: _loadCategories,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+                child: _buildCategoriesBySections(controller.martCategories),
+              ),
+            );
           }
-          return RefreshIndicator(
-            backgroundColor: Colors.white,
-            color: MartTheme.jippyMartButton,
-            onRefresh: _loadCategories,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-              child: _buildCategoriesBySections(controller.martCategories),
-            ),
-          );
+          if (controller.errorMessage.isNotEmpty) {
+            return _buildErrorState(controller);
+          }
+          return _buildEmptyState();
         },
       ),
     );
@@ -132,7 +137,7 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
     );
   }
 
-  Widget _buildErrorState() {
+  Widget _buildErrorState(MartProvider controller) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -153,10 +158,12 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Unable to Load Categories',
+            Text(
+              controller.errorMessage.isNotEmpty
+                  ? controller.errorMessage
+                  : 'Unable to Load Categories',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
                 color: Colors.black87,
@@ -170,7 +177,11 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: _loadCategories,
+              onPressed: () async {
+                controller.errorMessage = '';
+                controller.notifyListeners();
+                await _loadCategories();
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: MartTheme.jippyMartButton,
                 foregroundColor: Colors.white,
@@ -187,6 +198,47 @@ class _MartCategoriesScreenState extends State<MartCategoriesScreen> {
               child: const Text(
                 'Try Again',
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.category_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No Categories Available',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Categories will appear here once they are added',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _loadCategories,
+              icon: const Icon(Icons.refresh, size: 20),
+              label: const Text('Refresh'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: MartTheme.jippyMartButton,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],

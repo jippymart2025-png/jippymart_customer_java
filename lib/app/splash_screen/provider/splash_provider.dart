@@ -214,7 +214,25 @@ class SplashProvider extends ChangeNotifier {
         return;
       }
       
-      // Navigate to dashboard AFTER location/zone check is complete
+      // If not in zone or no valid location, show zone selection screen
+      final bool inZone = Constant.isZoneAvailable == true &&
+          Constant.selectedZone?.id != null &&
+          Constant.selectedLocation.location?.latitude != null &&
+          Constant.selectedLocation.location!.latitude != 0;
+      
+      if (!inZone) {
+        print('[SPLASH] User not in zone or no valid location, showing zone selection');
+        _hasNavigated = true;
+        Get.offAll(
+          () => const LocationPermissionScreen(),
+          transition: Transition.fadeIn,
+          duration: const Duration(milliseconds: 800),
+        );
+        _checkUpdatesInBackground();
+        return;
+      }
+      
+      // Navigate to dashboard - user is in zone
       print('[SPLASH] Navigating to dashboard after location/zone check...');
       _hasNavigated = true;
       try {

@@ -36,6 +36,19 @@ import 'package:video_compress/video_compress.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/utils/safe_http_client.dart';
 
+/// Current product price info from Firestore (for reorder with live prices)
+class ProductPriceInfo {
+  final double currentPrice;
+  final double discountPrice;
+  final String? promoId;
+
+  ProductPriceInfo({
+    required this.currentPrice,
+    required this.discountPrice,
+    this.promoId,
+  });
+}
+
 class FireStoreUtils {
   // static FirebaseFirestore fireStore = FirebaseFirestore.instance;
   static final bool _isDatabaseHealthy = true;
@@ -897,6 +910,61 @@ class FireStoreUtils {
     }
 
     return list;
+  }
+
+  /// Fetch current product price from API for reorder (live prices)
+  static Future<ProductPriceInfo?> getCurrentProductPrice({
+    required String productId,
+    required String vendorId,
+  }) async {
+    try {
+      final product = await getProductById(productId, forceRefresh: false);
+      if (product == null) return null;
+
+      final productVendorId = product.vendorID ?? '';
+      if (productVendorId.isNotEmpty && productVendorId != vendorId) {
+        return null;
+      }
+
+      final price = double.tryParse(product.price ?? '0') ?? 0.0;
+      final discountPrice =
+          double.tryParse(product.disPrice ?? product.price ?? '0') ?? 0.0;
+
+      return ProductPriceInfo(
+        currentPrice: price,
+        discountPrice: discountPrice > 0 ? discountPrice : price,
+        promoId: null,
+      );
+    } catch (e) {
+      dev.log('Error fetching current product price: $e');
+      return null;
+    }
+  }
+
+  /// Fetch single order by ID from API
+  static Future<OrderModel?> getOrderById(String orderId) async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}firestore/orders/$orderId'),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final jsonResponse = json.decode(response.body);
+        if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+          final data = jsonResponse['data'];
+          final orderData =
+              data is Map<String, dynamic> ? data : data['order'] ?? data;
+          if (orderData != null && orderData is Map<String, dynamic>) {
+            return OrderModel.fromJson(orderData);
+          }
+        }
+      }
+      return null;
+    } catch (e) {
+      dev.log('Error fetching order by ID: $e');
+      return null;
+    }
   }
 
   static Future<EmailTemplateModel?> getEmailTemplates(String type) async {

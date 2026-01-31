@@ -1,15 +1,12 @@
-import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
-import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 import '../../../constant/constant.dart';
 import '../../../constant/show_toast_dialog.dart';
@@ -89,46 +86,13 @@ class ProductDetailsView extends StatelessWidget {
                                   const SizedBox(width: 8),
                                   InkWell(
                                     onTap: () async {
-                                      final userId =
-                                          await SqlStorageConst.getFirebaseId();
-                                      if (controller.favouriteItemList
-                                          .where(
-                                            (p0) =>
-                                                p0.productId == productModel.id,
-                                          )
-                                          .isNotEmpty) {
-                                        controller.favouriteItemList
-                                            .removeWhere(
-                                              (item) =>
-                                                  item.productId ==
-                                                  productModel.id,
-                                            );
-                                        await FavouriteProvider.removeFavouriteFood(
-                                          productModel.id.toString(),
-                                        );
-                                      } else {
-                                        FavouriteItemModel
-                                        favouriteModel = FavouriteItemModel(
-                                          productId: productModel.id.toString(),
-                                          storeId: controller.vendorModel.id,
-                                          userId: userId,
-                                        );
-                                        controller.favouriteItemList.add(
-                                          favouriteModel,
-                                        );
-                                        await FavouriteProvider.addFavouriteFood(
-                                          productModel.id.toString(),
-                                        );
-                                      }
+                                      await controller.toggleProductFavorite(
+                                        productModel.id.toString(),
+                                      );
                                     },
-                                    child:
-                                        controller.favouriteItemList
-                                            .where(
-                                              (p0) =>
-                                                  p0.productId ==
-                                                  productModel.id,
-                                            )
-                                            .isNotEmpty
+                                    child: controller.isProductFavorite(
+                                            productModel.id.toString(),
+                                          )
                                         ? SvgPicture.asset(
                                             "assets/icons/ic_like_fill.svg",
                                           )

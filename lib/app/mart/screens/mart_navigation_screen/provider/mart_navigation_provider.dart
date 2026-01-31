@@ -41,11 +41,13 @@ class MartNavigationProvider extends ChangeNotifier {
   void changeIndex(int index) {
     selectedIndex = index;
     if (index == 1) {
+      // Use loadCategoriesStreaming (with full fallback chain) for Categories tab,
+      // not loadVendorCategories which can overwrite with empty/failed result
       if (martProvider.martCategories.isEmpty) {
-        martProvider.loadVendorCategories();
+        martProvider.loadCategoriesStreaming(skipSubcategories: true);
       }
     }
-    notifyListeners(); // Add this to ensure UI updates
+    notifyListeners();
   }
 
   // Navigation methods

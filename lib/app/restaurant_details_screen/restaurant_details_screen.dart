@@ -61,10 +61,10 @@ class RestaurantDetailsScreen extends StatelessWidget {
               ),
               child: RefreshIndicator(
                 onRefresh: () async {
+                  // getArgument already loads favorites internally - no duplicate call
                   await controller.getArgument(
                     vendorModels: controller.vendorModel,
                   );
-                  await controller.loadFavorites();
                 },
                 child: NestedScrollView(
                   headerSliverBuilder:
@@ -741,202 +741,112 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                               onTap: () {
                                                 controller.toggleOfferFilter();
                                               },
-                                              child: TweenAnimationBuilder<double>(
-                                                duration: Duration(seconds: 2),
-                                                tween: Tween(
-                                                  begin: 0.95,
-                                                  end: 1.05,
+                                              child: AnimatedContainer(
+                                                duration: const Duration(
+                                                  milliseconds: 300,
                                                 ),
-                                                builder: (context, value, child) {
-                                                  return Transform.scale(
-                                                    scale:
-                                                        controller.isOfferFilter
-                                                        ? 1.0
-                                                        : value,
-                                                    child: AnimatedContainer(
-                                                      duration: Duration(
-                                                        milliseconds: 300,
-                                                      ),
-                                                      curve: Curves.easeInOut,
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 8,
-                                                            vertical: 6,
+                                                curve: Curves.easeInOut,
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 6,
+                                                    ),
+                                                decoration:
+                                                    controller.isOfferFilter
+                                                    ? BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          colors: [
+                                                            const Color(0xFFFF6B6B),
+                                                            const Color(0xFFFF8E53),
+                                                            const Color(0xFFFF6B6B),
+                                                          ],
+                                                          begin: Alignment.topLeft,
+                                                          end: Alignment.bottomRight,
+                                                          stops: const [0.0, 0.5, 1.0],
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(120),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                                                            blurRadius: 12,
+                                                            offset: const Offset(0, 3),
                                                           ),
-                                                      decoration:
-                                                          controller
-                                                              .isOfferFilter
-                                                          ? BoxDecoration(
-                                                              gradient: LinearGradient(
-                                                                colors: [
-                                                                  Color(
-                                                                    0xFFFF6B6B,
-                                                                  ),
-                                                                  Color(
-                                                                    0xFFFF8E53,
-                                                                  ),
-                                                                  Color(
-                                                                    0xFFFF6B6B,
-                                                                  ),
-                                                                ],
-                                                                begin: Alignment
-                                                                    .topLeft,
-                                                                end: Alignment
-                                                                    .bottomRight,
-                                                                stops: [
-                                                                  0.0,
-                                                                  0.5,
-                                                                  1.0,
-                                                                ],
-                                                              ),
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    120,
-                                                                  ),
-                                                              boxShadow: [
-                                                                BoxShadow(
-                                                                  color: Color(
-                                                                    0xFFFF6B6B,
-                                                                  ).withOpacity(0.4),
-                                                                  blurRadius:
-                                                                      12,
-                                                                  offset:
-                                                                      Offset(
-                                                                        0,
-                                                                        3,
-                                                                      ),
-                                                                ),
-                                                                BoxShadow(
-                                                                  color: Color(
-                                                                    0xFFFF8E53,
-                                                                  ).withOpacity(0.2),
-                                                                  blurRadius:
-                                                                      20,
-                                                                  offset:
-                                                                      Offset(
-                                                                        0,
-                                                                        5,
-                                                                      ),
-                                                                ),
-                                                              ],
-                                                              border: Border.all(
-                                                                color: Color(
-                                                                  0xFFFF6B6B,
-                                                                ),
-                                                                width: 1.5,
-                                                              ),
-                                                            )
-                                                          : BoxDecoration(
-                                                              gradient: LinearGradient(
-                                                                colors: [
-                                                                  Color(
-                                                                    0xFFFF6B6B,
-                                                                  ).withOpacity(
-                                                                    0.08,
-                                                                  ),
-                                                                  Color(
-                                                                    0xFFFF8E53,
-                                                                  ).withOpacity(
-                                                                    0.05,
-                                                                  ),
-                                                                ],
-                                                                begin: Alignment
-                                                                    .topLeft,
-                                                                end: Alignment
-                                                                    .bottomRight,
-                                                              ),
-                                                              borderRadius:
-                                                                  BorderRadius.circular(
-                                                                    120,
-                                                                  ),
-                                                              border: Border.all(
-                                                                color: Color(
-                                                                  0xFFFF6B6B,
-                                                                ).withOpacity(0.3),
-                                                                width: 1.5,
-                                                              ),
-                                                              boxShadow: [
-                                                                BoxShadow(
-                                                                  color: Color(
-                                                                    0xFFFF6B6B,
-                                                                  ).withOpacity(0.1),
-                                                                  blurRadius: 6,
-                                                                  offset:
-                                                                      Offset(
-                                                                        0,
-                                                                        2,
-                                                                      ),
-                                                                ),
-                                                              ],
-                                                            ),
-                                                      child: Row(
-                                                        mainAxisSize:
-                                                            MainAxisSize.min,
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .start,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
-                                                        children: [
-                                                          Icon(
-                                                            Icons.local_offer,
-                                                            size: 16,
-                                                            color:
-                                                                controller
-                                                                    .isOfferFilter
-                                                                ? Colors.white
-                                                                : Color(
-                                                                    0xFFFF6B6B,
-                                                                  ),
+                                                          BoxShadow(
+                                                            color: const Color(0xFFFF8E53).withOpacity(0.2),
+                                                            blurRadius: 20,
+                                                            offset: const Offset(0, 5),
                                                           ),
-                                                          const SizedBox(
-                                                            width: 4,
-                                                          ),
-                                                          Text(
-                                                            'Offers'.tr,
-                                                            style: TextStyle(
-                                                              color:
-                                                                  controller
-                                                                      .isOfferFilter
-                                                                  ? Colors.white
-                                                                  : Color(
-                                                                      0xFFFF6B6B,
-                                                                    ),
-                                                              fontFamily:
-                                                                  AppThemeData
-                                                                      .semiBold,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w600,
-                                                              fontSize: 12,
-                                                              shadows:
-                                                                  controller
-                                                                      .isOfferFilter
-                                                                  ? [
-                                                                      Shadow(
-                                                                        color: Colors
-                                                                            .black
-                                                                            .withOpacity(
-                                                                              0.3,
-                                                                            ),
-                                                                        offset:
-                                                                            Offset(
-                                                                              0,
-                                                                              1,
-                                                                            ),
-                                                                        blurRadius:
-                                                                            2,
-                                                                      ),
-                                                                    ]
-                                                                  : null,
-                                                            ),
+                                                        ],
+                                                        border: Border.all(
+                                                          color: const Color(0xFFFF6B6B),
+                                                          width: 1.5,
+                                                        ),
+                                                      )
+                                                    : BoxDecoration(
+                                                        gradient: LinearGradient(
+                                                          colors: [
+                                                            const Color(0xFFFF6B6B).withOpacity(0.08),
+                                                            const Color(0xFFFF8E53).withOpacity(0.05),
+                                                          ],
+                                                          begin: Alignment.topLeft,
+                                                          end: Alignment.bottomRight,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(120),
+                                                        border: Border.all(
+                                                          color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                                                          width: 1.5,
+                                                        ),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color: const Color(0xFFFF6B6B).withOpacity(0.1),
+                                                            blurRadius: 6,
+                                                            offset: const Offset(0, 2),
                                                           ),
                                                         ],
                                                       ),
+                                                child: Row(
+                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.start,
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.center,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.local_offer,
+                                                      size: 16,
+                                                      color:
+                                                          controller.isOfferFilter
+                                                          ? Colors.white
+                                                          : const Color(0xFFFF6B6B),
                                                     ),
-                                                  );
-                                                },
+                                                    const SizedBox(width: 4),
+                                                    Text(
+                                                      'Offers'.tr,
+                                                      style: TextStyle(
+                                                        color:
+                                                            controller.isOfferFilter
+                                                            ? Colors.white
+                                                            : const Color(0xFFFF6B6B),
+                                                        fontFamily:
+                                                            AppThemeData.semiBold,
+                                                        fontWeight: FontWeight.w600,
+                                                        fontSize: 12,
+                                                        shadows:
+                                                            controller.isOfferFilter
+                                                            ? [
+                                                                Shadow(
+                                                                  color: Colors.black.withOpacity(0.3),
+                                                                  offset: const Offset(0, 1),
+                                                                  blurRadius: 2,
+                                                                ),
+                                                              ]
+                                                            : null,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
                                             ),
                                             const SizedBox(width: 6),

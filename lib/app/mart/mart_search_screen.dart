@@ -151,7 +151,7 @@ class _MartSearchScreenState extends State<MartSearchScreen>
         ),
         child: Stack(
           children: [
-            ...List.generate(8, (index) {
+            ...List.generate(4, (index) {
               // 🔑 Reduced from 12 to 8 emojis
               final screenWidth = MediaQuery.of(context).size.width;
               final screenHeight = MediaQuery.of(context).size.height;
@@ -159,37 +159,21 @@ class _MartSearchScreenState extends State<MartSearchScreen>
               // 🔑 Position only at edges and diagonals
               double left, top;
               switch (index) {
-                case 0: // Top-left corner
+                case 0:
                   left = 10;
                   top = 100;
                   break;
-                case 1: // Top-right corner
+                case 1:
                   left = screenWidth - 50;
                   top = 120;
                   break;
-                case 2: // Bottom-left corner
+                case 2:
                   left = 15;
                   top = screenHeight - 200;
                   break;
-                case 3: // Bottom-right corner
+                case 3:
                   left = screenWidth - 45;
                   top = screenHeight - 180;
-                  break;
-                case 4: // Top-center edge
-                  left = screenWidth * 0.5 - 25;
-                  top = 80;
-                  break;
-                case 5: // Bottom-center edge
-                  left = screenWidth * 0.5 - 25;
-                  top = screenHeight - 150;
-                  break;
-                case 6: // Left-center edge
-                  left = 20;
-                  top = screenHeight * 0.5;
-                  break;
-                case 7: // Right-center edge
-                  left = screenWidth - 40;
-                  top = screenHeight * 0.5;
                   break;
                 default:
                   left = 0;

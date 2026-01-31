@@ -183,7 +183,7 @@ class LocationService {
 
       if (Constant.userModel != null) {
         try {
-          await EditProfileProvider.updateUser(Constant.userModel!);
+          await EditProfileProvider.updateUserStatic(Constant.userModel!);
         } catch (e) {
           log('[LOCATION_SERVICE] Error updating user profile: $e');
         }

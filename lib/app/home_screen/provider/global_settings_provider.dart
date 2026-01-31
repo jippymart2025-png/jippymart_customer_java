@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:developer';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/edit_profile_screen/provider/edit_profile_provider.dart';
@@ -29,7 +30,7 @@ class GlobalSettingsProvider extends ChangeNotifier {
     try {
       // First, try to load from local storage as fallback
       _loadApiKeyFromLocalStorage();
-      
+
       final response = await SafeHttpClient.safeGet(
         Uri.parse('${AppConst.baseUrl}settings/mobile'),
         headers: await getHeaders(),
@@ -38,7 +39,9 @@ class GlobalSettingsProvider extends ChangeNotifier {
 
       if (response == null) {
         // Network error - use locally stored API key if available
-        log('[SETTINGS] ⚠️ API request failed - using locally stored API key if available');
+        log(
+          '[SETTINGS] ⚠️ API request failed - using locally stored API key if available',
+        );
         _loadApiKeyFromLocalStorage();
         return;
       }
@@ -51,28 +54,36 @@ class GlobalSettingsProvider extends ChangeNotifier {
           _setConstantsFromApi(documents, derived);
         } else {
           // API returned but success=false - use local storage
-          log('[SETTINGS] ⚠️ API returned success=false - using locally stored API key');
+          log(
+            '[SETTINGS] ⚠️ API returned success=false - using locally stored API key',
+          );
           _loadApiKeyFromLocalStorage();
         }
       } else {
         // HTTP error - use local storage
-        log('[SETTINGS] ⚠️ API returned status ${response.statusCode} - using locally stored API key');
+        log(
+          '[SETTINGS] ⚠️ API returned status ${response.statusCode} - using locally stored API key',
+        );
         _loadApiKeyFromLocalStorage();
       }
     } catch (e) {
       // Any error - use local storage
-      log('[SETTINGS] ⚠️ Error loading settings: $e - using locally stored API key');
+      log(
+        '[SETTINGS] ⚠️ Error loading settings: $e - using locally stored API key',
+      );
       _loadApiKeyFromLocalStorage();
     }
   }
-  
+
   /// Load API key from local storage as fallback
   void _loadApiKeyFromLocalStorage() {
     try {
       final localApiKey = Preferences.getString(Preferences.googleMapsApiKey);
       if (localApiKey.isNotEmpty && localApiKey.length > 10) {
         Constant.mapAPIKey = localApiKey;
-        log('[SETTINGS] ✅ Loaded API key from local storage: ${localApiKey.substring(0, 10)}...');
+        log(
+          '[SETTINGS] ✅ Loaded API key from local storage: ${localApiKey.substring(0, 10)}...',
+        );
       } else {
         // If local storage is also empty, use static fallback
         Constant.mapAPIKey = 'AIzaSyCKCRzqaR1-uzbnEmB-JqVkbUKNGOJHv34';
@@ -81,7 +92,9 @@ class GlobalSettingsProvider extends ChangeNotifier {
     } catch (e) {
       // If Preferences not initialized, use static fallback
       Constant.mapAPIKey = 'AIzaSyCKCRzqaR1-uzbnEmB-JqVkbUKNGOJHv34';
-      log('[SETTINGS] ⚠️ Error loading from local storage: $e - using static fallback key');
+      log(
+        '[SETTINGS] ⚠️ Error loading from local storage: $e - using static fallback key',
+      );
     }
   }
 
@@ -119,27 +132,33 @@ class GlobalSettingsProvider extends ChangeNotifier {
     // Try multiple sources: documents['googleMapKey']['key'], then derived['mapAPIKey']
     String? apiKeyFromDocuments = documents['googleMapKey']?['key'];
     String? apiKeyFromDerived = derived['mapAPIKey'];
-    
+
     final newApiKey = apiKeyFromDocuments ?? apiKeyFromDerived ?? '';
-    
+
     // Only update if we got a valid key from API
     if (newApiKey.isNotEmpty && newApiKey.length > 10) {
       Constant.mapAPIKey = newApiKey;
-      
+
       // Save to local storage for future use if API fails
       try {
         await Preferences.setString(Preferences.googleMapsApiKey, newApiKey);
-        log('[SETTINGS] ✅ Google Maps API Key loaded and saved locally: ${newApiKey.substring(0, 10)}... (length: ${newApiKey.length})');
+        log(
+          '[SETTINGS] ✅ Google Maps API Key loaded and saved locally: ${newApiKey.substring(0, 10)}... (length: ${newApiKey.length})',
+        );
       } catch (e) {
         log('[SETTINGS] ⚠️ Error saving API key to local storage: $e');
-        log('[SETTINGS] ✅ Google Maps API Key loaded: ${newApiKey.substring(0, 10)}... (length: ${newApiKey.length})');
+        log(
+          '[SETTINGS] ✅ Google Maps API Key loaded: ${newApiKey.substring(0, 10)}... (length: ${newApiKey.length})',
+        );
       }
     } else {
       // API didn't return a valid key - try local storage
-      log('[SETTINGS] ⚠️ API returned empty/invalid key - checking local storage');
+      log(
+        '[SETTINGS] ⚠️ API returned empty/invalid key - checking local storage',
+      );
       _loadApiKeyFromLocalStorage();
     }
-    
+
     Constant.placeHolderImage =
         documents['googleMapKey']?['placeHolderImage'] ?? '';
 
@@ -156,6 +175,19 @@ class GlobalSettingsProvider extends ChangeNotifier {
         documents['privacyPolicy']?['privacy_policy'] ?? '';
     Constant.termsAndConditions =
         documents['termsAndConditions']?['termsAndConditions'] ?? '';
+
+    if (kDebugMode) {
+      print('[SETTINGS] Privacy Policy length: ${Constant.privacyPolicy.length}');
+      print('[SETTINGS] Terms & Conditions length: ${Constant.termsAndConditions.length}');
+      if (Constant.privacyPolicy.isEmpty) {
+        print('[SETTINGS] ⚠️ Privacy Policy is empty - check API data structure');
+        print('[SETTINGS] Privacy Policy data: ${documents['privacyPolicy']}');
+      }
+      if (Constant.termsAndConditions.isEmpty) {
+        print('[SETTINGS] ⚠️ Terms & Conditions is empty - check API data structure');
+        print('[SETTINGS] Terms data: ${documents['termsAndConditions']}');
+      }
+    }
 
     // Wallet settings
     Constant.walletSetting = documents['walletSettings']?['isEnabled'] ?? false;
@@ -196,7 +228,7 @@ class GlobalSettingsProvider extends ChangeNotifier {
           if (value != null) {
             UserModel driverUserModel = value;
             driverUserModel.fcmToken = token;
-            EditProfileProvider.updateUser(driverUserModel);
+            EditProfileProvider.updateUserStatic(driverUserModel);
           }
         });
       }

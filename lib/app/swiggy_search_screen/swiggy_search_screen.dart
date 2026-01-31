@@ -11,7 +11,6 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
-import 'package:jippymart_customer/widgets/app_loading_widget.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
 
 class SwiggySearchScreen extends StatefulWidget {
@@ -147,91 +146,30 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            height: 120,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                TweenAnimationBuilder<double>(
-                  duration: const Duration(seconds: 2),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Transform.rotate(
-                      angle: value * 2 * 3.14159,
-                      child: Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppThemeData.primary300.withOpacity(0.3),
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 1500),
-                  tween: Tween(begin: 0.8, end: 1.2),
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: value,
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: AppThemeData.primary300,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppThemeData.primary300.withOpacity(0.3),
-                              blurRadius: 20,
-                              spreadRadius: 5,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.restaurant_menu,
-                          color: Colors.white,
-                          size: 25,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            height: 80,
+            width: 80,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppThemeData.primary300,
+              backgroundColor: AppThemeData.primary300.withOpacity(0.2),
             ),
           ),
           const SizedBox(height: 32),
-          TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 2000),
-            tween: Tween(begin: 0.0, end: 1.0),
-            builder: (context, value, child) {
-              return Opacity(
-                opacity: value,
-                child: Column(
-                  children: [
-                    Text(
-                      "🍽️ Preparing Your Food Journey",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppThemeData.grey900,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Loading delicious restaurants & dishes...",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppThemeData.grey400,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            },
+          Text(
+            "🍽️ Preparing Your Food Journey",
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: AppThemeData.grey900,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Loading delicious restaurants & dishes...",
+            style: TextStyle(
+              fontSize: 14,
+              color: AppThemeData.grey400,
+            ),
           ),
         ],
       ),
@@ -244,33 +182,12 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            height: 100,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                TweenAnimationBuilder<double>(
-                  duration: const Duration(milliseconds: 1000),
-                  tween: Tween(begin: 0.0, end: 1.0),
-                  builder: (context, value, child) {
-                    return Transform.scale(
-                      scale: 0.9 + (0.1 * value),
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: AppThemeData.primary300,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.search,
-                          color: Colors.white,
-                          size: 30,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ],
+            width: 48,
+            height: 48,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: AppThemeData.primary300,
+              backgroundColor: AppThemeData.primary300.withOpacity(0.2),
             ),
           ),
           const SizedBox(height: 24),
@@ -418,59 +335,46 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
       itemCount: controller.searchSuggestions.length,
       itemBuilder: (context, index) {
         String suggestion = controller.searchSuggestions[index];
-
-        return TweenAnimationBuilder<double>(
-          duration: Duration(milliseconds: 200 + (index * 50)),
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder: (context, value, child) {
-            return Transform.translate(
-              offset: Offset(0, 20 * (1 - value)),
-              child: Opacity(
-                opacity: value,
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  decoration: BoxDecoration(
-                    color: AppThemeData.grey50,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppThemeData.grey200, width: 1),
-                  ),
-                  child: ListTile(
-                    leading: Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppThemeData.primary100,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          _getSearchEmoji(suggestion),
-                          style: const TextStyle(fontSize: 18),
-                        ),
-                      ),
-                    ),
-                    title: Text(
-                      suggestion,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                        color: AppThemeData.grey900,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.arrow_forward_ios,
-                      color: AppThemeData.grey400,
-                      size: 16,
-                    ),
-                    onTap: () {
-                      searchController.text = suggestion;
-                      controller.selectSuggestion(suggestion);
-                    },
-                  ),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: AppThemeData.grey50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppThemeData.grey200, width: 1),
+          ),
+          child: ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: AppThemeData.primary100,
+                shape: BoxShape.circle,
+              ),
+              child: Center(
+                child: Text(
+                  _getSearchEmoji(suggestion),
+                  style: const TextStyle(fontSize: 18),
                 ),
               ),
-            );
-          },
+            ),
+            title: Text(
+              suggestion,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: AppThemeData.grey900,
+              ),
+            ),
+            trailing: Icon(
+              Icons.arrow_forward_ios,
+              color: AppThemeData.grey400,
+              size: 16,
+            ),
+            onTap: () {
+              searchController.text = suggestion;
+              controller.selectSuggestion(suggestion);
+            },
+          ),
         );
       },
     );
@@ -642,25 +546,11 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
       spacing: 8,
       runSpacing: 8,
       children: controller.recentSearches.asMap().entries.map((entry) {
-        int index = entry.key;
-        String search = entry.value;
-        return TweenAnimationBuilder<double>(
-          duration: Duration(milliseconds: 300 + (index * 100)),
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder: (context, value, child) {
-            return Transform.scale(
-              scale: 0.8 + (0.2 * value),
-              child: Opacity(
-                opacity: value,
-                child: _buildCreativeSearchChip(
-                  search: search,
-                  isRecent: true,
-                  index: index,
-                  controller: controller,
-                ),
-              ),
-            );
-          },
+        return _buildCreativeSearchChip(
+          search: entry.value,
+          isRecent: true,
+          index: entry.key,
+          controller: controller,
         );
       }).toList(),
     );
@@ -671,25 +561,11 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
       spacing: 8,
       runSpacing: 8,
       children: controller.trendingSearches.asMap().entries.map((entry) {
-        int index = entry.key;
-        String trend = entry.value;
-        return TweenAnimationBuilder<double>(
-          duration: Duration(milliseconds: 400 + (index * 120)),
-          tween: Tween(begin: 0.0, end: 1.0),
-          builder: (context, value, child) {
-            return Transform.scale(
-              scale: 0.8 + (0.2 * value),
-              child: Opacity(
-                opacity: value,
-                child: _buildCreativeSearchChip(
-                  search: trend,
-                  isRecent: false,
-                  index: index,
-                  controller: controller,
-                ),
-              ),
-            );
-          },
+        return _buildCreativeSearchChip(
+          search: entry.value,
+          isRecent: false,
+          index: entry.key,
+          controller: controller,
         );
       }).toList(),
     );
@@ -946,108 +822,104 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   }
 
   Widget _buildRestaurantCard(VendorModel restaurant) {
-    return Consumer<RestaurantDetailsProvider>(
-      builder: (context, restaurantDetailsProvider, _) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16),
-          color: AppThemeData.grey50,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            onTap: !RestaurantStatusUtils.canAcceptOrders(restaurant)
-                ? () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text("Restaurant Closed"),
-                        backgroundColor: Colors.red,
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                  }
-                : () {
-                    restaurantDetailsProvider.initFunction(
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      color: AppThemeData.grey50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: InkWell(
+        onTap: !RestaurantStatusUtils.canAcceptOrders(restaurant)
+            ? () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Restaurant Closed"),
+                    backgroundColor: Colors.red,
+                    duration: const Duration(seconds: 3),
+                  ),
+                );
+              }
+            : () {
+                context.read<RestaurantDetailsProvider>().initFunction(
                       vendorModels: restaurant,
                     );
-                    Get.to(() => const RestaurantDetailsScreen());
-                  },
-            borderRadius: BorderRadius.circular(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+                Get.to(() => const RestaurantDetailsScreen());
+              },
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
               children: [
-                Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(12),
-                        topRight: Radius.circular(12),
-                      ),
-                      child: CachedNetworkImage(
-                        imageUrl: restaurant.photo ?? '',
-                        height: 180,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Container(
-                          height: 180,
-                          color: AppThemeData.grey200,
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                        errorWidget: (context, url, error) => Container(
-                          height: 180,
-                          color: AppThemeData.grey200,
-                          child: const Icon(Icons.restaurant, size: 50),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 12,
-                      left: 12,
-                      child: RestaurantStatusUtils.getStatusWidget(restaurant),
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        restaurant.title ?? 'Restaurant',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppThemeData.grey900,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        restaurant.location ?? 'Location not available',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppThemeData.grey400,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      if (restaurant.categoryTitle != null &&
-                          restaurant.categoryTitle!.isNotEmpty)
-                        Text(
-                          restaurant.categoryTitle!.join(', '),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: AppThemeData.primary300,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                    ],
+                ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
                   ),
+                  child: CachedNetworkImage(
+                    imageUrl: restaurant.photo ?? '',
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 180,
+                      color: AppThemeData.grey200,
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 180,
+                      color: AppThemeData.grey200,
+                      child: const Icon(Icons.restaurant, size: 50),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: RestaurantStatusUtils.getStatusWidget(restaurant),
                 ),
               ],
             ),
-          ),
-        );
-      },
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    restaurant.title ?? 'Restaurant',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppThemeData.grey900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    restaurant.location ?? 'Location not available',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: AppThemeData.grey400,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  if (restaurant.categoryTitle != null &&
+                      restaurant.categoryTitle!.isNotEmpty)
+                    Text(
+                      restaurant.categoryTitle!.join(', '),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppThemeData.primary300,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1150,6 +1022,10 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   }
 
   Widget _buildSimpleProductDetails(ProductModel product) {
+    final vendorId = product.vendorID ?? '';
+    final vendorFuture =
+        vendorId.isNotEmpty ? _getVendorDetails(vendorId) : null;
+
     return SafeArea(
       child: Container(
         decoration: BoxDecoration(
@@ -1189,94 +1065,128 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
               ),
             ),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Center(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: CachedNetworkImage(
-                          imageUrl: product.photo ?? '',
-                          height: 200,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            height: 200,
-                            color: AppThemeData.grey200,
-                            child: const Center(
-                              child: CircularProgressIndicator(),
+              child: vendorFuture != null
+                  ? FutureBuilder<VendorModel?>(
+                      future: vendorFuture,
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: _buildProductDetailsContent(
+                              context,
+                              product,
+                              null,
+                              true,
                             ),
+                          );
+                        }
+                        return SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildProductDetailsContent(
+                            context,
+                            product,
+                            snapshot.data,
+                            false,
                           ),
-                          errorWidget: (context, url, error) => Container(
-                            height: 200,
-                            color: AppThemeData.grey200,
-                            child: const Icon(Icons.fastfood, size: 50),
-                          ),
-                        ),
-                      ),
+                        );
+                      },
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _buildProductDetailsContent(context, product, null),
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      product.name ?? 'Unknown Product',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppThemeData.grey900,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProductDetailsContent(
+    BuildContext context,
+    ProductModel product, [
+    VendorModel? vendor,
+    bool isLoading = false,
+  ]) {
+    final canAcceptOrders =
+        vendor != null && RestaurantStatusUtils.canAcceptOrders(vendor);
+    final isProductAvailable = product.isAvailable ?? true;
+    final isButtonEnabled = canAcceptOrders && isProductAvailable && !isLoading;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: CachedNetworkImage(
+              imageUrl: product.photo ?? '',
+              height: 200,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                height: 200,
+                color: AppThemeData.grey200,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                height: 200,
+                color: AppThemeData.grey200,
+                child: const Icon(Icons.fastfood, size: 50),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text(
+          product.name ?? 'Unknown Product',
+          style: TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: AppThemeData.grey900,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (product.description != null && product.description!.isNotEmpty)
+          Text(
+            product.description!,
+            style: TextStyle(
+              fontSize: 16,
+              color: AppThemeData.grey600,
+            ),
+          ),
+        const SizedBox(height: 20),
+        if (product.vendorID != null && product.vendorID!.isNotEmpty)
+          isLoading
+              ? Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppThemeData.grey100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (product.description != null &&
-                        product.description!.isNotEmpty)
+                      const SizedBox(width: 12),
                       Text(
-                        product.description!,
+                        "Loading restaurant details...",
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           color: AppThemeData.grey600,
                         ),
                       ),
-                    const SizedBox(height: 20),
-                    if (product.vendorID != null &&
-                        product.vendorID!.isNotEmpty)
-                      FutureBuilder<VendorModel?>(
-                        future: _getVendorDetails(product.vendorID!),
-                        builder: (context, snapshot) {
-                          if (snapshot.connectionState ==
-                              ConnectionState.waiting) {
-                            return Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppThemeData.grey100,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                children: [
-                                  const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Text(
-                                    "Loading restaurant details...",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: AppThemeData.grey600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          if (snapshot.hasError) {
-                            return const SizedBox.shrink();
-                          }
-                          if (snapshot.hasData && snapshot.data != null) {
-                            final vendor = snapshot.data!;
-                            return Container(
+                    ],
+                  ),
+                )
+              : vendor != null
+                  ? Container(
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 color: AppThemeData.grey100,
@@ -1440,174 +1350,114 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                                   ),
                                 ],
                               ),
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        },
+                            )
+                  : const SizedBox.shrink(),
+        const SizedBox(height: 20),
+        if (product.vendorID != null && product.vendorID!.isNotEmpty) ...[
+          if (vendor != null)
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  context.read<RestaurantDetailsProvider>().initFunction(
+                        vendorModels: vendor,
+                      );
+                  Get.to(() => const RestaurantDetailsScreen());
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppThemeData.grey200,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.restaurant, color: AppThemeData.grey900),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Go to Restaurant",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppThemeData.grey900,
                       ),
-                    const SizedBox(height: 20),
-                    Column(
-                      children: [
-                        if (product.vendorID != null)
-                          Consumer<RestaurantDetailsProvider>(
-                            builder: (context, restaurantDetailsProvider, _) {
-                              return SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: ElevatedButton(
-                                  onPressed: () async {
-                                    final vendor = await _getVendorDetails(
-                                      product.vendorID!,
-                                    );
-                                    if (vendor != null) {
-                                      Navigator.pop(context);
-                                      restaurantDetailsProvider.initFunction(
-                                        vendorModels: vendor,
-                                      );
-                                      Get.to(
-                                        () => const RestaurantDetailsScreen(),
-                                      );
-                                    }
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppThemeData.grey200,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.restaurant,
-                                        color: AppThemeData.grey900,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        "Go to Restaurant",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
-                                          color: AppThemeData.grey900,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                        if (product.vendorID != null)
-                          const SizedBox(height: 12),
-                        FutureBuilder<VendorModel?>(
-                          future: _getVendorDetails(product.vendorID ?? ''),
-                          builder: (context, vendorSnapshot) {
-                            bool isLoadingVendor =
-                                vendorSnapshot.connectionState ==
-                                ConnectionState.waiting;
-                            bool canAcceptOrders = false;
-                            String buttonText = "Loading...".tr;
-                            String statusReason = "";
-                            if (vendorSnapshot.hasData &&
-                                vendorSnapshot.data != null) {
-                              final vendor = vendorSnapshot.data!;
-                              canAcceptOrders =
-                                  RestaurantStatusUtils.canAcceptOrders(vendor);
-                              final status =
-                                  RestaurantStatusUtils.getRestaurantStatus(
-                                    vendor,
-                                  );
-                              statusReason = status['reason'];
-                              if (canAcceptOrders &&
-                                  (product.isAvailable ?? true)) {
-                                buttonText = "Add to Cart".tr;
-                              } else if (!canAcceptOrders) {
-                                buttonText = "Restaurant is closed".tr;
-                              } else if (!(product.isAvailable ?? true)) {
-                                buttonText = "Product unavailable".tr;
-                              }
-                            } else if (!isLoadingVendor) {
-                              buttonText = "Restaurant unavailable".tr;
-                            }
-                            bool isButtonEnabled =
-                                canAcceptOrders &&
-                                (product.isAvailable ?? true) &&
-                                !isLoadingVendor;
-                            return SizedBox(
-                              width: double.infinity,
-                              height: 50,
-                              child: ElevatedButton(
-                                onPressed: isButtonEnabled
-                                    ? () async {
-                                        await _addToCart(product);
-                                      }
-                                    : () {
-                                        if (!isLoadingVendor &&
-                                            vendorSnapshot.hasData &&
-                                            vendorSnapshot.data != null) {
-                                          String message;
-                                          if (!canAcceptOrders) {
-                                            final status =
-                                                RestaurantStatusUtils.getRestaurantStatus(
-                                                  vendorSnapshot.data!,
-                                                );
-                                            message = status['reason'];
-                                          } else if (!(product.isAvailable ??
-                                              true)) {
-                                            message =
-                                                "This product is currently unavailable"
-                                                    .tr;
-                                          } else {
-                                            message =
-                                                "Unable to add to cart".tr;
-                                          }
-
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: Text(message),
-                                              backgroundColor: Colors.red,
-                                              duration: const Duration(
-                                                seconds: 3,
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: isButtonEnabled
-                                      ? const Color(0xFFFF5200)
-                                      : AppThemeData.grey400,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                ),
-                                child: Text(
-                                  buttonText,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: isButtonEnabled
-                                        ? AppThemeData.grey50
-                                        : AppThemeData.grey600,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
                     ),
-                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
+          if (vendor != null) const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: isButtonEnabled
+                  ? () async => await _addToCart(product)
+                  : () {
+                      if (!isLoading && vendor != null) {
+                        String message;
+                        if (!canAcceptOrders) {
+                          final status =
+                              RestaurantStatusUtils.getRestaurantStatus(vendor);
+                          message = status['reason'];
+                        } else if (!isProductAvailable) {
+                          message = "This product is currently unavailable".tr;
+                        } else {
+                          message = "Unable to add to cart".tr;
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(message),
+                            backgroundColor: Colors.red,
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    isButtonEnabled ? const Color(0xFFFF5200) : AppThemeData.grey400,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                _getAddToCartButtonText(
+                  isLoading,
+                  canAcceptOrders,
+                  isProductAvailable,
+                  vendor,
+                ),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isButtonEnabled
+                      ? AppThemeData.grey50
+                      : AppThemeData.grey600,
+                ),
+              ),
+            ),
+          ),
+        ],
+        const SizedBox(height: 20),
+      ],
     );
+  }
+
+  String _getAddToCartButtonText(
+    bool isLoading,
+    bool canAcceptOrders,
+    bool isProductAvailable,
+    VendorModel? vendor,
+  ) {
+    if (isLoading) return "Loading...".tr;
+    if (vendor == null) return "Restaurant unavailable".tr;
+    if (!canAcceptOrders) return "Restaurant is closed".tr;
+    if (!isProductAvailable) return "Product unavailable".tr;
+    return "Add to Cart".tr;
   }
 
   Future<VendorModel?> _getVendorDetails(String vendorID) async {

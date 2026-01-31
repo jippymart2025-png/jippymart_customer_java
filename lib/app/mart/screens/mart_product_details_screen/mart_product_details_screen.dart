@@ -493,6 +493,125 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
                     const SizedBox(height: 16),
 
+                    // Available options (when product has variants)
+                    if (widget.product.has_options == true &&
+                        widget.product.options != null &&
+                        widget.product.options!.isNotEmpty) ...[
+                      const Text(
+                        'Available options',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...(widget.product.options!.map((option) {
+                        final hasDiscount = option['original_price'] != null &&
+                            option['price'] != null &&
+                            option['original_price'] > option['price'];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: SizedBox(
+                                  width: 56,
+                                  height: 56,
+                                  child: (option['image']?.toString().isNotEmpty == true)
+                                      ? NetworkImageWidget(
+                                          imageUrl: option['image'].toString(),
+                                          width: 56,
+                                          height: 56,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : NetworkImageWidget(
+                                          imageUrl: widget.product.photo,
+                                          width: 56,
+                                          height: 56,
+                                          fit: BoxFit.cover,
+                                        ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      option['option_title']?.toString() ??
+                                          option['option_subtitle']?.toString() ??
+                                          'Option',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          '₹${option['price']?.toString() ?? '0'}',
+                                          style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                        if (hasDiscount) ...[
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            '₹${option['original_price']?.toString() ?? '0'}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey[600],
+                                              decoration: TextDecoration.lineThrough,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Material(
+                                color: ColorConst.orangeLight,
+                                borderRadius: BorderRadius.circular(10),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(10),
+                                  onTap: () => _addOptionToCart(option),
+                                  child: const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 10,
+                                    ),
+                                    child: Text(
+                                      'ADD',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      })),
+                      const SizedBox(height: 16),
+                    ],
+
                     // Delivery Information
                     Row(
                       children: [
@@ -806,7 +925,265 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
     );
   }
 
+  /// Add a selected option (variant) to cart
+  Future<void> _addOptionToCart(Map<String, dynamic> selectedOption) async {
+    try {
+      CartControllerProvider cartControllerProvider =
+          Provider.of<CartControllerProvider>(context, listen: false);
+      final cartProduct = CartProductModel(
+        id: "${widget.product.id}_${selectedOption['id']}",
+        name:
+            "${widget.product.name} - ${selectedOption['option_title'] ?? selectedOption['option_subtitle'] ?? 'Option'}",
+        photo: selectedOption['image']?.toString().isNotEmpty == true
+            ? selectedOption['image'].toString()
+            : widget.product.photo,
+        price: selectedOption['original_price']?.toString() ??
+            selectedOption['price']?.toString() ??
+            widget.product.price.toString(),
+        discountPrice: selectedOption['price']?.toString() ??
+            widget.product.disPrice?.toString() ??
+            widget.product.price.toString(),
+        vendorID: "mart_${widget.product.vendorID ?? 'unknown'}",
+        vendorName: "Jippy Mart",
+        categoryId: widget.product.categoryID,
+        quantity: 1,
+        extrasPrice: '0',
+        extras: [],
+        variantInfo: null,
+        promoId: null,
+      );
+      final success = await cartControllerProvider.addToCart(
+        cartProductModel: cartProduct,
+        isIncrement: true,
+        quantity: 1,
+      );
+      if (success) {
+        await Future.delayed(const Duration(milliseconds: 300));
+        _refreshCartStatus();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${cartProduct.name} added to cart'),
+              backgroundColor: Colors.green.shade600,
+              duration: const Duration(seconds: 2),
+              action: SnackBarAction(
+                label: 'View Cart',
+                textColor: Colors.white,
+                onPressed: () {
+                  Get.to(
+                    () => const CartScreen(
+                      hideBackButton: false,
+                      source: 'mart',
+                      isFromMartNavigation: false,
+                    ),
+                    fullscreenDialog: true,
+                  );
+                },
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error adding option to cart: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add to cart: ${e.toString()}'),
+            backgroundColor: Colors.red.shade600,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// Show bottom sheet to choose an option (when product has options)
+  void _showOptionsBottomSheet() {
+    if (widget.product.options == null || widget.product.options!.isEmpty) return;
+    final sheetHeight = MediaQuery.of(context).size.height * 0.6;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => SizedBox(
+        height: sheetHeight,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  widget.product.name ?? 'Choose option',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  itemCount: widget.product.options!.length,
+                itemBuilder: (context, index) {
+                  final option = widget.product.options![index];
+                  final hasDiscount = option['original_price'] != null &&
+                      option['price'] != null &&
+                      option['original_price'] > option['price'];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            width: 50,
+                            height: 50,
+                            child: (option['image']?.toString().isNotEmpty == true)
+                                ? NetworkImageWidget(
+                                    imageUrl: option['image'].toString(),
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                  )
+                                : NetworkImageWidget(
+                                    imageUrl: widget.product.photo,
+                                    width: 50,
+                                    height: 50,
+                                    fit: BoxFit.cover,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                option['option_title']?.toString() ??
+                                    option['option_subtitle']?.toString() ??
+                                    'Option',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Text(
+                                    '₹${option['price']?.toString() ?? '0'}',
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.green,
+                                    ),
+                                  ),
+                                  if (hasDiscount) ...[
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '₹${option['original_price']?.toString() ?? '0'}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                        decoration: TextDecoration.lineThrough,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        Material(
+                          color: ColorConst.orangeLight,
+                          borderRadius: BorderRadius.circular(10),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _addOptionToCart(option);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 10,
+                              ),
+                              child: Text(
+                                'ADD',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+
   Widget _buildAddToCartButton() {
+    final hasOptions = widget.product.has_options == true &&
+        widget.product.options != null &&
+        widget.product.options!.isNotEmpty;
+
+    if (hasOptions) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _showOptionsBottomSheet,
+          icon: const Icon(Icons.checklist_rounded, size: 22),
+          label: const Text('Choose option'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: ColorConst.orangeLight,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      );
+    }
+
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
@@ -846,39 +1223,6 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               await Future.delayed(Duration(milliseconds: 500));
               // Refresh cart status to update UI
               _refreshCartStatus();
-              // Show success message
-              // ScaffoldMessenger.of(context).showSnackBar(
-              //   SnackBar(
-              //     content: Row(
-              //       children: [
-              //         Icon(Icons.check_circle, color: Colors.white, size: 20),
-              //         SizedBox(width: 8),
-              //         Expanded(
-              //           child: Text(
-              //             '${quantity}x ${widget.product.name} added to cart successfully!',
-              //             style: TextStyle(color: Colors.white),
-              //           ),
-              //         ),
-              //       ],
-              //     ),
-              //     backgroundColor: Colors.green.shade600,
-              //     duration: Duration(seconds: 2),
-              //     action: SnackBarAction(
-              //       label: 'View Cart',
-              //       textColor: Colors.white,
-              //       onPressed: () {
-              //         Get.to(
-              //           () => const CartScreen(
-              //             hideBackButton: false,
-              //             source: 'mart',
-              //             isFromMartNavigation: false,
-              //           ),
-              //           fullscreenDialog: true,
-              //         );
-              //       },
-              //     ),
-              //   ),
-              // );
             }
           } catch (e) {
             print('Error adding to cart: $e');

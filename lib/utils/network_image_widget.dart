@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/utils/performance_optimizer.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:ui' as ui;
@@ -121,11 +122,15 @@ class NetworkImageWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Handle null or empty URLs
+    // Handle null, empty, or invalid URLs
     if (imageUrl.isEmpty ||
         imageUrl == "null" ||
         imageUrl == "Null" ||
-        imageUrl == "NULL") {
+        imageUrl == "NULL" ||
+        imageUrl == "[]" ||
+        imageUrl == "[" ||
+        imageUrl == "]" ||
+        imageUrl.startsWith("[") && imageUrl.endsWith("]")) {
       return errorWidget ??
           NetworkImageWidget.getPlaceholderImage(
             context: context,
@@ -146,11 +151,40 @@ class NetworkImageWidget extends StatelessWidget {
       cleanImageUrl = cleanImageUrl.substring(1, cleanImageUrl.length - 1);
     }
 
+    // Handle URLs with spaces - encode them properly
+    if (cleanImageUrl.contains(' ')) {
+      try {
+        final uri = Uri.parse(cleanImageUrl);
+        // Re-encode the path segments to handle spaces
+        cleanImageUrl = uri.replace(
+          pathSegments: uri.pathSegments.map((s) => Uri.encodeComponent(s)).toList(),
+        ).toString();
+      } catch (e) {
+        // If parsing fails, try simple space replacement
+        cleanImageUrl = cleanImageUrl.replaceAll(' ', '%20');
+      }
+    }
+
     // Check if URL is valid
     try {
-      Uri.parse(cleanImageUrl);
+      final uri = Uri.parse(cleanImageUrl);
+      // Ensure the URL has a valid host
+      if (uri.host.isEmpty) {
+        if (kDebugMode) {
+          print('[NETWORK_IMAGE] Invalid URL - no host: $imageUrl');
+        }
+        return errorWidget ??
+            NetworkImageWidget.getPlaceholderImage(
+              context: context,
+              height: height,
+              width: width,
+              fit: fit,
+            );
+      }
     } catch (e) {
-      print('[NETWORK_IMAGE] Invalid URL format: $imageUrl');
+      if (kDebugMode) {
+        print('[NETWORK_IMAGE] Invalid URL format: $imageUrl');
+      }
       return errorWidget ??
           NetworkImageWidget.getPlaceholderImage(
             context: context,
@@ -209,9 +243,11 @@ class NetworkImageWidget extends StatelessWidget {
       progressIndicatorBuilder: (context, url, downloadProgress) =>
           _buildLoadingWidget(),
       errorWidget: (context, url, error) {
-        print(
-          '[NETWORK_IMAGE] Error loading cached image: $error for URL: $url',
-        );
+        if (kDebugMode) {
+          print(
+            '[NETWORK_IMAGE] Error loading cached image: $error for URL: $url',
+          );
+        }
         return errorWidget ??
             NetworkImageWidget.getPlaceholderImage(
               context: context,
@@ -240,7 +276,9 @@ class NetworkImageWidget extends StatelessWidget {
         width: width,
         fit: BoxFit.fill,
         errorBuilder: (context, error, stackTrace) {
-          print('[NETWORK_IMAGE] Error loading shimmer gif: $error');
+          if (kDebugMode) {
+            print('[NETWORK_IMAGE] Error loading shimmer gif: $error');
+          }
           return Container(
             height: height,
             width: width,
@@ -250,7 +288,9 @@ class NetworkImageWidget extends StatelessWidget {
         },
       );
     } catch (e) {
-      print('[NETWORK_IMAGE] Error creating loading widget: $e');
+      if (kDebugMode) {
+        print('[NETWORK_IMAGE] Error creating loading widget: $e');
+      }
       return Container(
         height: height,
         width: width,
@@ -300,16 +340,20 @@ class _AvifFallbackImage extends StatelessWidget {
             progressIndicatorBuilder: (context, url, downloadProgress) =>
                 _buildLoadingWidget(),
             errorWidget: (context, url, error) {
-              print('[AVIF_FALLBACK] Error loading fallback image: $error');
+              if (kDebugMode) {
+                print('[AVIF_FALLBACK] Error loading fallback image: $error');
+              }
               return _buildErrorWidget(context);
             },
           );
         }
 
         // If no fallback available, show error widget
-        print(
-          '[AVIF_FALLBACK] No fallback URL available for AVIF image: $imageUrl',
-        );
+        if (kDebugMode) {
+          print(
+            '[AVIF_FALLBACK] No fallback URL available for AVIF image: $imageUrl',
+          );
+        }
         return _buildErrorWidget(context);
       },
     );
@@ -334,7 +378,9 @@ class _AvifFallbackImage extends StatelessWidget {
         width: width,
         fit: BoxFit.fill,
         errorBuilder: (context, error, stackTrace) {
-          print('[AVIF_FALLBACK] Error loading shimmer gif: $error');
+          if (kDebugMode) {
+            print('[AVIF_FALLBACK] Error loading shimmer gif: $error');
+          }
           return Container(
             height: height,
             width: width,
@@ -344,7 +390,9 @@ class _AvifFallbackImage extends StatelessWidget {
         },
       );
     } catch (e) {
-      print('[AVIF_FALLBACK] Error creating loading widget: $e');
+      if (kDebugMode) {
+        print('[AVIF_FALLBACK] Error creating loading widget: $e');
+      }
       return Container(
         height: height,
         width: width,
@@ -384,7 +432,9 @@ class _AvifFallbackImage extends StatelessWidget {
             },
           );
       if (response.statusCode == 200) {
-        print('[AVIF_FALLBACK] Using WebP fallback: $fallbackUrl');
+        if (kDebugMode) {
+          print('[AVIF_FALLBACK] Using WebP fallback: $fallbackUrl');
+        }
         return fallbackUrl;
       }
 
@@ -412,14 +462,20 @@ class _AvifFallbackImage extends StatelessWidget {
             },
           );
       if (jpegResponse.statusCode == 200) {
-        print('[AVIF_FALLBACK] Using JPEG fallback: $fallbackUrl');
+        if (kDebugMode) {
+          print('[AVIF_FALLBACK] Using JPEG fallback: $fallbackUrl');
+        }
         return fallbackUrl;
       }
 
-      print('[AVIF_FALLBACK] No fallback URL found for: $avifUrl');
+      if (kDebugMode) {
+        print('[AVIF_FALLBACK] No fallback URL found for: $avifUrl');
+      }
       return null;
     } catch (e) {
-      print('[AVIF_FALLBACK] Error getting fallback URL: $e');
+      if (kDebugMode) {
+        print('[AVIF_FALLBACK] Error getting fallback URL: $e');
+      }
       return null;
     }
   }
@@ -477,7 +533,9 @@ class _OrientedNetworkImage extends StatelessWidget {
     try {
       Uri.parse(cleanImageUrl);
     } catch (e) {
-      print('[ORIENTED_IMAGE] Invalid URL format: $imageUrl');
+      if (kDebugMode) {
+        print('[ORIENTED_IMAGE] Invalid URL format: $imageUrl');
+      }
       return errorWidget ??
           NetworkImageWidget.getPlaceholderImage(
             context: context,
@@ -495,7 +553,9 @@ class _OrientedNetworkImage extends StatelessWidget {
         }
 
         if (snapshot.hasError || snapshot.data == null) {
-          print('[ORIENTED_IMAGE] Error loading image: ${snapshot.error}');
+          if (kDebugMode) {
+            print('[ORIENTED_IMAGE] Error loading image: ${snapshot.error}');
+          }
           return errorWidget ??
               NetworkImageWidget.getPlaceholderImage(
                 context: context,
@@ -534,7 +594,9 @@ class _OrientedNetworkImage extends StatelessWidget {
         return frame.image;
       }
     } catch (e) {
-      print('[ORIENTED_IMAGE] Error loading image: $e');
+      if (kDebugMode) {
+        print('[ORIENTED_IMAGE] Error loading image: $e');
+      }
     }
     return null;
   }
@@ -548,7 +610,9 @@ class _OrientedNetworkImage extends StatelessWidget {
         width: width,
         fit: BoxFit.fill,
         errorBuilder: (context, error, stackTrace) {
-          print('[ORIENTED_IMAGE] Error loading shimmer gif: $error');
+          if (kDebugMode) {
+            print('[ORIENTED_IMAGE] Error loading shimmer gif: $error');
+          }
           return Container(
             height: height,
             width: width,
@@ -558,7 +622,9 @@ class _OrientedNetworkImage extends StatelessWidget {
         },
       );
     } catch (e) {
-      print('[ORIENTED_IMAGE] Error creating loading widget: $e');
+      if (kDebugMode) {
+        print('[ORIENTED_IMAGE] Error creating loading widget: $e');
+      }
       return Container(
         height: height,
         width: width,

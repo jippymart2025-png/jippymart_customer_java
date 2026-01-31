@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class MartItemModel {
   final String id;
   final String name;
@@ -115,6 +117,30 @@ class MartItemModel {
     this.categoryTitle,
   });
 
+  /// Parse options from API (handles List or JSON string).
+  static List<Map<String, dynamic>>? _parseOptionsFromJson(dynamic value) {
+    if (value == null) return null;
+    if (value is List) {
+      if (value.isEmpty) return null;
+      return List<Map<String, dynamic>>.from(
+        value.map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{}),
+      );
+    }
+    if (value is String && value.trim().isNotEmpty) {
+      try {
+        final decoded = json.decode(value);
+        if (decoded is List) {
+          return List<Map<String, dynamic>>.from(
+            decoded.map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{}),
+          );
+        }
+      } catch (e) {
+        print('[MART ITEM MODEL] Error parsing options string: $e');
+      }
+    }
+    return null;
+  }
+
   factory MartItemModel.fromJson(Map<String, dynamic> json) {
     try {
       print('[MART ITEM MODEL] Parsing JSON: ${json.keys.toList()}');
@@ -198,9 +224,7 @@ class MartItemModel {
         variants: json['variants'] is List
             ? List<Map<String, dynamic>>.from(json['variants'])
             : null,
-        options: json['options'] is List
-            ? List<Map<String, dynamic>>.from(json['options'])
-            : null,
+        options: _parseOptionsFromJson(json['options']),
         reviewCount: json['reviewCount']?.toString(),
         reviewSum: json['reviewSum']?.toString(),
         takeawayOption: takeawayOption,

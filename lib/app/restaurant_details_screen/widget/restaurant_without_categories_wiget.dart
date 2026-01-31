@@ -1,15 +1,12 @@
-import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart'
     show Constant, cartItem;
 import 'package:jippymart_customer/models/cart_product_model.dart';
-import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/special_price_badge.dart';
@@ -152,36 +149,31 @@ Widget buildProductsWithoutCategories(
                               ),
                             ),
                             const SizedBox(width: 8),
-                            FutureBuilder<Map<String, dynamic>?>(
-                              future:
-                                  FireStoreUtils.getActivePromotionForProduct(
-                                    productId: productModel.id.toString() ?? '',
-                                    restaurantId: productModel.vendorID ?? '',
+                            // Use cached promotion data - no server/Firestore calls
+                            if (productModel.id != null &&
+                                productModel.vendorID != null &&
+                                controller.hasActivePromotion(
+                                  productModel.id!.toString(),
+                                  productModel.vendorID!,
+                                ))
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  'SPECIAL OFFER',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                              builder: (context, promoSnapshot) {
-                                if (promoSnapshot.data != null) {
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 6,
-                                      vertical: 2,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                    child: Text(
-                                      'SPECIAL OFFER',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  );
-                                }
-                                return const SizedBox.shrink();
-                              },
-                            ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -190,18 +182,19 @@ Widget buildProductsWithoutCategories(
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      FutureBuilder<Map<String, dynamic>?>(
-                        future: Future.value(
-                          controller.getActivePromotionForProduct(
-                            productId: productModel.id.toString() ?? '',
-                            restaurantId: productModel.vendorID ?? '',
-                          ),
-                        ),
-                        builder: (context, promoSnapshot) {
-                          final hasPromo = promoSnapshot.data != null;
+                      Builder(
+                        builder: (context) {
+                          // Use cached data - no async/network calls
+                          final promo = productModel.id != null &&
+                                  productModel.vendorID != null
+                              ? controller.getActivePromotionForProduct(
+                                  productId: productModel.id!.toString(),
+                                  restaurantId: productModel.vendorID!,
+                                )
+                              : null;
+                          final hasPromo = promo != null;
                           final promoPrice = hasPromo
-                              ? (promoSnapshot.data!['special_price'] as num)
-                                    .toString()
+                              ? (promo['special_price'] as num).toString()
                               : null;
 
                           if (hasPromo) {
@@ -363,39 +356,23 @@ Widget buildProductsWithoutCategories(
                     ),
                   ),
                 ),
-                // Special promotional price badge
-                FutureBuilder<Map<String, dynamic>?>(
-                  future: Future.value(
-                    controller.getActivePromotionForProduct(
-                      productId: productModel.id.toString() ?? '',
-                      restaurantId: productModel.vendorID ?? '',
+                // Special promotional price badge - use cached data, no server calls
+                if (productModel.id != null &&
+                    productModel.vendorID != null &&
+                    controller.hasActivePromotion(
+                      productModel.id!.toString(),
+                      productModel.vendorID!,
+                    ))
+                  Positioned(
+                    top: 0,
+                    left: 0,
+                    child: const SpecialPriceBadge(
+                      showShimmer: true,
+                      width: 60,
+                      height: 60,
+                      margin: EdgeInsets.zero,
                     ),
                   ),
-                  builder: (context, promoSnapshot) {
-                    print(
-                      '[DEBUG] Product ${productModel.id} - Promotion data: ${promoSnapshot.data}',
-                    );
-                    if (promoSnapshot.data != null) {
-                      print(
-                        '[DEBUG] Showing SPECIAL badge for product ${productModel.id}',
-                      );
-                      print(
-                        '[DEBUG] Badge will be rendered with black background and white text',
-                      );
-                      return Positioned(
-                        top: 0,
-                        left: 0,
-                        child: const SpecialPriceBadge(
-                          showShimmer: true,
-                          width: 60,
-                          height: 60,
-                          margin: EdgeInsets.zero,
-                        ),
-                      );
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
                 if (!isItemAvailable)
                   Positioned.fill(
                     child: Container(
@@ -412,33 +389,13 @@ Widget buildProductsWithoutCategories(
                   top: 10,
                   child: InkWell(
                     onTap: () async {
-                      final userId = await SqlStorageConst.getFirebaseId();
-                      if (controller.favouriteItemList
-                          .where((p0) => p0.productId == productModel.id)
-                          .isNotEmpty) {
-                        controller.favouriteItemList.removeWhere(
-                          (item) => item.productId == productModel.id,
-                        );
-                        await FavouriteProvider.removeFavouriteFood(
-                          productModel.id.toString(),
-                        );
-                      } else {
-                        FavouriteItemModel favouriteModel = FavouriteItemModel(
-                          productId: productModel.id.toString(),
-                          storeId: controller.vendorModel.id,
-                          userId: userId,
-                        );
-                        controller.favouriteItemList.add(favouriteModel);
-
-                        await FavouriteProvider.addFavouriteFood(
-                          productModel.id.toString(),
-                        );
-                      }
+                      await controller.toggleProductFavorite(
+                        productModel.id.toString(),
+                      );
                     },
-                    child:
-                        controller.favouriteItemList
-                            .where((p0) => p0.productId == productModel.id)
-                            .isNotEmpty
+                    child: controller.isProductFavorite(
+                            productModel.id.toString(),
+                          )
                         ? SvgPicture.asset("assets/icons/ic_like_fill.svg")
                         : SvgPicture.asset("assets/icons/ic_like.svg"),
                   ),
@@ -552,8 +509,9 @@ Widget buildProductsWithoutCategories(
                                             child: InkWell(
                                               onTap: () async {
                                                 // Check for promotional price
-                                                final promo =
-                                                    await FireStoreUtils.getActivePromotionForProduct(
+                                                // Use cached promotion - no server call
+                                                final promo = controller
+                                                    .getActivePromotionForProduct(
                                                       productId:
                                                           productModel.id
                                                               .toString() ??
