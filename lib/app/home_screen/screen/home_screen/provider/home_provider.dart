@@ -2203,6 +2203,11 @@ class HomeProvider extends ChangeNotifier {
     return areaList;
   }
 
+  /// Public method to reload banners (useful after zone changes)
+  Future<void> reloadBanners() async {
+    await _loadBanners();
+  }
+
   // Banner loading with cache
   Future<void> _loadBanners() async {
     if (_isTaskRunning('loadBanners')) return;

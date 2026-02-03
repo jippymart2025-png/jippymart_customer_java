@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer' as developer;
+import 'package:flutter/foundation.dart';
 
 import 'package:app_links/app_links.dart';
 import 'package:get/get.dart';
@@ -120,52 +121,31 @@ class MobileDeepLinkService {
   /// Handle custom scheme links (jippymart://)
   void _handleCustomScheme(String link) {
     developer.log('🔗 [MOBILE_DEEP_LINK] Handling custom scheme: $link');
-
-    try {
-      final uri = Uri.parse(link);
-      final segments = uri.pathSegments;
-
-      if (segments.length >= 2) {
-        final type = segments[0]; // product, restaurant, mart
-        final id = segments[1]; // 123
-
-        developer.log(
-          '🔗 [MOBILE_DEEP_LINK] Custom scheme - Type: $type, ID: $id',
-        );
-        _navigateToContent(type, id);
-      } else {
-        developer.log(
-          '❌ [MOBILE_DEEP_LINK] Invalid custom scheme format: $link',
-        );
-      }
-    } catch (e) {
-      developer.log('❌ [MOBILE_DEEP_LINK] Error parsing custom scheme: $e');
-    }
+    _parseAndNavigate(link, 'custom');
   }
 
   /// Handle HTTPS scheme links (https://jippymart.in)
   void _handleHttpsScheme(String link) {
     developer.log('🔗 [MOBILE_DEEP_LINK] Handling HTTPS scheme: $link');
+    _parseAndNavigate(link, 'https');
+  }
 
+  /// Parse URI and navigate to content
+  void _parseAndNavigate(String link, String schemeType) {
     try {
       final uri = Uri.parse(link);
-      final pathSegments = uri.pathSegments;
+      final segments = uri.pathSegments;
 
-      if (pathSegments.length >= 2) {
-        final type = pathSegments[0]; // product, restaurant, mart
-        final id = pathSegments[1]; // 123
-
-        developer.log(
-          '🔗 [MOBILE_DEEP_LINK] HTTPS scheme - Type: $type, ID: $id',
-        );
+      if (segments.length >= 2) {
+        final type = segments[0];
+        final id = segments[1];
+        developer.log('🔗 [MOBILE_DEEP_LINK] $schemeType scheme - Type: $type, ID: $id');
         _navigateToContent(type, id);
       } else {
-        developer.log(
-          '❌ [MOBILE_DEEP_LINK] Invalid HTTPS scheme format: $link',
-        );
+        developer.log('❌ [MOBILE_DEEP_LINK] Invalid $schemeType scheme format: $link');
       }
     } catch (e) {
-      developer.log('❌ [MOBILE_DEEP_LINK] Error parsing HTTPS scheme: $e');
+      developer.log('❌ [MOBILE_DEEP_LINK] Error parsing $schemeType scheme: $e');
     }
   }
 
@@ -195,52 +175,45 @@ class MobileDeepLinkService {
   /// Navigate to product details screen
   void _navigateToProduct(String productId) {
     developer.log('🔗 [MOBILE_DEEP_LINK] Navigating to product: $productId');
-
-    // Add a small delay to ensure the app is fully loaded
-    Future.delayed(Duration(milliseconds: 500), () {
-      try {
-        // Navigate to product details screen
-        // This will be implemented based on your app's navigation structure
-        Get.toNamed('/product-detail', arguments: {'id': productId});
-        developer.log('✅ [MOBILE_DEEP_LINK] Navigated to product: $productId');
-      } catch (e) {
-        developer.log('❌ [MOBILE_DEEP_LINK] Error navigating to product: $e');
-      }
-    });
+    _navigateWithDelay(
+      () => Get.toNamed('/product-detail', arguments: {'id': productId}),
+      'product',
+      productId,
+    );
   }
 
   /// Navigate to restaurant details screen
   void _navigateToRestaurant(String restaurantId) {
-    developer.log(
-      '🔗 [MOBILE_DEEP_LINK] Navigating to restaurant: $restaurantId',
+    developer.log('🔗 [MOBILE_DEEP_LINK] Navigating to restaurant: $restaurantId');
+    _navigateWithDelay(
+      () => Get.toNamed('/restaurant-detail', arguments: {'id': restaurantId}),
+      'restaurant',
+      restaurantId,
     );
-
-    Future.delayed(Duration(milliseconds: 500), () {
-      try {
-        // Navigate to restaurant details screen
-        Get.toNamed('/restaurant-detail', arguments: {'id': restaurantId});
-        developer.log(
-          '✅ [MOBILE_DEEP_LINK] Navigated to restaurant: $restaurantId',
-        );
-      } catch (e) {
-        developer.log(
-          '❌ [MOBILE_DEEP_LINK] Error navigating to restaurant: $e',
-        );
-      }
-    });
   }
 
   /// Navigate to mart/category screen
   void _navigateToMart(String martId) {
     developer.log('🔗 [MOBILE_DEEP_LINK] Navigating to mart: $martId');
+    _navigateWithDelay(
+      () => Get.toNamed('/mart-detail', arguments: {'id': martId}),
+      'mart',
+      martId,
+    );
+  }
 
-    Future.delayed(Duration(milliseconds: 500), () {
+  /// Helper method to navigate with delay
+  void _navigateWithDelay(
+    VoidCallback navigationCallback,
+    String type,
+    String id,
+  ) {
+    Future.delayed(const Duration(milliseconds: 500), () {
       try {
-        // Navigate to mart/category screen
-        Get.toNamed('/mart-detail', arguments: {'id': martId});
-        developer.log('✅ [MOBILE_DEEP_LINK] Navigated to mart: $martId');
+        navigationCallback();
+        developer.log('✅ [MOBILE_DEEP_LINK] Navigated to $type: $id');
       } catch (e) {
-        developer.log('❌ [MOBILE_DEEP_LINK] Error navigating to mart: $e');
+        developer.log('❌ [MOBILE_DEEP_LINK] Error navigating to $type: $e');
       }
     });
   }

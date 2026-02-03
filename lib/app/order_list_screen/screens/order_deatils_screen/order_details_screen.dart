@@ -2780,6 +2780,7 @@
 // }
 
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
+import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
 import 'package:jippymart_customer/app/chat_screens/chat_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
@@ -2838,38 +2839,50 @@ class OrderDetailsScreen extends StatelessWidget {
   // Cache for promotional details to avoid repeated Firestore calls
   static final Map<String, Map<String, dynamic>> _promoDetailsCache = {};
 
+  // Cached delivery charge fetched from backend (mirrors cart provider behaviour)
+  static DeliveryCharge? _cachedMartDeliveryCharge;
+  static DateTime? _lastDeliveryChargeFetchTime;
+  static const Duration _deliveryChargeCacheExpiry = Duration(minutes: 5);
+
+  // Fallback values used only when API data is unavailable
+  static const double _fallbackThreshold = 299.0;
+  static const double _fallbackBaseCharge = 23.0;
+  static const double _fallbackFreeKm = 5.0;
+  static const double _fallbackPerKm = 7.0;
+  static const double _promoFreeDeliveryKm = 3.0;
+
   Future<OrderBillDetails> _calculateOrderBillDetails(
     OrderModel order,
     VendorModel? vendor,
     DeliveryCharge deliveryCharge,
     double totalDistance,
   ) async {
+    final DeliveryCharge resolvedDeliveryCharge = await _resolveDeliveryCharge(
+      deliveryCharge,
+      vendor: vendor,
+    );
+
     // Calculate subtotal first (local calculation)
     final subTotalResult = _calculateSubTotal(order);
     final double subTotal = subTotalResult['subTotal'] as double;
     final bool hasPromotionalItems =
         subTotalResult['hasPromotionalItems'] as bool;
 
-    const double fallbackThreshold = 299.0;
-    const double fallbackBaseCharge = 23.0;
-    const double fallbackFreeKm = 5.0;
-    const double fallbackPerKm = 7.0;
-
     final double threshold = _getDoubleValue(
-      deliveryCharge.itemTotalThreshold,
-      fallbackThreshold,
+      resolvedDeliveryCharge.itemTotalThreshold,
+      _fallbackThreshold,
     );
     final double baseCharge = _getDoubleValue(
-      deliveryCharge.baseDeliveryCharge,
-      fallbackBaseCharge,
+      resolvedDeliveryCharge.baseDeliveryCharge,
+      _fallbackBaseCharge,
     );
     final double freeKm = _getDoubleValue(
-      deliveryCharge.freeDeliveryDistanceKm,
-      fallbackFreeKm,
+      resolvedDeliveryCharge.freeDeliveryDistanceKm,
+      _fallbackFreeKm,
     );
     final double perKm = _getDoubleValue(
-      deliveryCharge.perKmChargeAboveFreeDistance,
-      fallbackPerKm,
+      resolvedDeliveryCharge.perKmChargeAboveFreeDistance,
+      _fallbackPerKm,
     );
 
     // Delivery charges calculation
@@ -2931,6 +2944,62 @@ class OrderDetailsScreen extends StatelessWidget {
       totalAmount: totalAmount,
       isFreeDelivery: isFreeDelivery,
     );
+  }
+
+  Future<DeliveryCharge> _resolveDeliveryCharge(
+    DeliveryCharge deliveryCharge, {
+    VendorModel? vendor,
+  }) async {
+    if (_hasDeliveryChargeData(deliveryCharge)) {
+      return deliveryCharge;
+    }
+
+    if (_cachedMartDeliveryCharge != null && _isDeliveryChargeCacheValid()) {
+      vendor?.deliveryCharge ??= _cachedMartDeliveryCharge;
+      return _cachedMartDeliveryCharge!;
+    }
+
+    final apiDeliveryCharge = await FireStoreUtils.getDeliveryCharge();
+    if (_hasDeliveryChargeData(apiDeliveryCharge)) {
+      _cachedMartDeliveryCharge = apiDeliveryCharge;
+      _lastDeliveryChargeFetchTime = DateTime.now();
+      vendor?.deliveryCharge = apiDeliveryCharge;
+      return apiDeliveryCharge!;
+    }
+
+    final fallbackCharge = DeliveryCharge(
+      itemTotalThreshold: _fallbackThreshold,
+      baseDeliveryCharge: _fallbackBaseCharge,
+      freeDeliveryDistanceKm: _fallbackFreeKm,
+      perKmChargeAboveFreeDistance: _fallbackPerKm,
+    );
+    vendor?.deliveryCharge ??= fallbackCharge;
+    return fallbackCharge;
+  }
+
+  bool _hasDeliveryChargeData(DeliveryCharge? charge) {
+    if (charge == null) {
+      return false;
+    }
+
+    final hasThreshold =
+        charge.itemTotalThreshold != null && charge.itemTotalThreshold! > 0;
+    final hasBaseCharge =
+        charge.baseDeliveryCharge != null && charge.baseDeliveryCharge! > 0;
+    final hasFreeKm =
+        charge.freeDeliveryDistanceKm != null && charge.freeDeliveryDistanceKm! > 0;
+    final hasPerKm = charge.perKmChargeAboveFreeDistance != null &&
+        charge.perKmChargeAboveFreeDistance! > 0;
+
+    return hasThreshold || hasBaseCharge || hasFreeKm || hasPerKm;
+  }
+
+  bool _isDeliveryChargeCacheValid() {
+    if (_lastDeliveryChargeFetchTime == null) {
+      return false;
+    }
+    return DateTime.now().difference(_lastDeliveryChargeFetchTime!) <
+        _deliveryChargeCacheExpiry;
   }
 
   double _getDoubleValue(dynamic value, double defaultValue) {
@@ -3492,6 +3561,22 @@ class OrderDetailsScreen extends StatelessWidget {
     required double totalDistance,
     required VendorModel vendor,
   }) {
+    final deliveryChargeModel = vendor.deliveryCharge;
+    final double baseCharge = _getDoubleValue(
+      deliveryChargeModel?.baseDeliveryCharge,
+      _fallbackBaseCharge,
+    );
+    final double threshold = _getDoubleValue(
+      deliveryChargeModel?.itemTotalThreshold,
+      _fallbackThreshold,
+    );
+    final double freeKm = _getDoubleValue(
+      deliveryChargeModel?.freeDeliveryDistanceKm,
+      _fallbackFreeKm,
+    );
+    final double payableDeliveryFee =
+        bill.deliveryCharges < 0 ? 0.0 : bill.deliveryCharges;
+
     if (vendor.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       return Text(
@@ -3505,101 +3590,33 @@ class OrderDetailsScreen extends StatelessWidget {
     }
 
     if (hasPromotionalItems) {
-      if (totalDistance <= 3.0) {
-        return Row(
-          children: [
-            Text(
-              'Free Delivery',
-              style: TextStyle(
-                fontFamily: AppThemeData.regular,
-                color: AppThemeData.success400,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              Constant.amountShow(amount: '23.00'),
-              style: TextStyle(
-                fontFamily: AppThemeData.regular,
-                color: AppThemeData.danger300,
-                fontSize: 16,
-                decoration: TextDecoration.lineThrough,
-                decorationColor: AppThemeData.danger300,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              Constant.amountShow(amount: '0.00'),
-              style: TextStyle(
-                fontFamily: AppThemeData.regular,
-                color: AppThemeData.grey900,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        );
-      } else {
-        return Row(
-          children: [
-            Text(
-              Constant.amountShow(amount: bill.deliveryCharges.toString()),
-              style: TextStyle(
-                fontFamily: AppThemeData.regular,
-                color: AppThemeData.grey900,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        );
-      }
-    }
+      final bool isWithinPromoFreeRadius = totalDistance <= _promoFreeDeliveryKm;
+      final double promoCurrentFee =
+          isWithinPromoFreeRadius ? 0.0 : payableDeliveryFee;
 
-    if (bill.isFreeDelivery) {
-      return Row(
-        children: [
-          Text(
-            'Free Delivery',
-            style: TextStyle(
-              fontFamily: AppThemeData.regular,
-              color: AppThemeData.success400,
-              fontSize: 16,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            Constant.amountShow(amount: bill.originalDeliveryFee.toString()),
-            style: TextStyle(
-              fontFamily: AppThemeData.regular,
-              color: AppThemeData.danger300,
-              fontSize: 16,
-              decoration: TextDecoration.lineThrough,
-              decorationColor: AppThemeData.danger300,
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            Constant.amountShow(amount: '0.00'),
-            style: TextStyle(
-              fontFamily: AppThemeData.regular,
-              color: AppThemeData.grey900,
-              fontSize: 16,
-            ),
-          ),
-        ],
+      return buildDeliveryFeeUI(
+        isFreeDelivery: true,
+        originalFee: baseCharge,
+        currentFee: promoCurrentFee,
       );
     }
 
-    return Row(
-      children: [
-        Text(
-          Constant.amountShow(amount: bill.deliveryCharges.toString()),
-          style: TextStyle(
-            fontFamily: AppThemeData.regular,
-            color: AppThemeData.grey900,
-            fontSize: 16,
-          ),
-        ),
-      ],
+    final bool qualifiesForFreeByThreshold = bill.subTotal >= threshold;
+    if (qualifiesForFreeByThreshold) {
+      final bool isWithinFreeDistance = totalDistance <= freeKm;
+      final double currentFee = isWithinFreeDistance ? 0.0 : payableDeliveryFee;
+
+      return buildDeliveryFeeUI(
+        isFreeDelivery: true,
+        originalFee: baseCharge,
+        currentFee: currentFee,
+      );
+    }
+
+    return buildDeliveryFeeUI(
+      isFreeDelivery: false,
+      originalFee: 0.0,
+      currentFee: payableDeliveryFee,
     );
   }
 
@@ -4584,17 +4601,18 @@ class OrderDetailsScreen extends StatelessWidget {
   }
 
   VendorModel _createDefaultMartVendor() {
+    final cachedDeliveryCharge = _cachedMartDeliveryCharge;
+    final deliveryCharge = (cachedDeliveryCharge != null &&
+            _isDeliveryChargeCacheValid())
+        ? cachedDeliveryCharge
+        : null;
+
     return VendorModel(
       title: "Jippy Mart",
       location: "Jippy Mart Store",
       phonenumber: "Contact Support",
       isSelfDelivery: false,
-      deliveryCharge: DeliveryCharge(
-        baseDeliveryCharge: 23.0,
-        itemTotalThreshold: 299.0,
-        freeDeliveryDistanceKm: 7.0,
-        perKmChargeAboveFreeDistance: 8.0,
-      ),
+      deliveryCharge: deliveryCharge,
       latitude: 0.0,
       longitude: 0.0,
       vType: 'mart',

@@ -19,72 +19,48 @@ class MartFirestoreService extends GetxService {
     return this;
   }
 
-  /// Get trending items from API
+  /// Get trending items from API (cached 5 min, queued)
   Future<List<MartItemModel>> getTrendingItems({int limit = 20}) async {
+    const cacheKey = 'mart_trending_items';
+    final cached = CacheManager().getMartItems<List<MartItemModel>>(cacheKey);
+    if (cached != null && cached.isNotEmpty) {
+      print('[MART API] 📂 Using cached trending items (${cached.length})');
+      return cached.take(limit).toList();
+    }
+    return await ApiQueueManager().enqueue(
+      priority: RequestPriority.normal,
+      key: cacheKey,
+      request: () => CacheManager().getOrSetMartItems<List<MartItemModel>>(
+        cacheKey,
+        () => _fetchTrendingItemsFromApi(limit),
+      ),
+    );
+  }
+
+  Future<List<MartItemModel>> _fetchTrendingItemsFromApi(int limit) async {
     try {
-      print('[MART API] 🔥 Fetching trending items from API...');
-      // Make API request
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}mart-items/trending'),
         headers: await getHeaders(),
       );
-
-      print('[MART API] 🔥 API response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-
-        if (responseData['status'] == true) {
-          final List<dynamic> itemsData = responseData['data'];
-          final int count = responseData['count'] ?? 0;
-          print('[MART API] 🔥 API returned $count trending items');
-          if (itemsData.isEmpty) {
-            print('[MART API] ⚠️ No trending items found in API response');
-            return [];
-          }
-          // Convert API data to MartItemModel
-          final items = itemsData
-              .map((itemData) {
-                try {
-                  // Create a copy of the item data and ensure it's a Map
-                  final Map<String, dynamic> data = Map<String, dynamic>.from(
-                    itemData,
-                  );
-
-                  // Handle any data transformations needed
-                  return _parseApiItem(data);
-                } catch (e) {
-                  print(
-                    '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
-                  );
-                  print('[MART API] Item data: $itemData');
-                  return null;
-                }
-              })
-              .whereType<MartItemModel>()
-              .toList();
-
-          print(
-            '[MART API] ✅ Successfully parsed ${items.length} trending items from API',
-          );
-          // Debug: Log the trending items
-          for (int i = 0; i < items.length; i++) {
-            final item = items[i];
-            print(
-              '[MART API]   ${i + 1}. ${item.name} - isTrending: ${item.isTrending}, price: ₹${item.price}',
-            );
-          }
-          return items;
-        } else {
-          print('[MART API] ❌ API returned error: ${responseData['message']}');
-          return [];
-        }
-      } else {
-        print('[MART API] ❌ HTTP error: ${response.statusCode}');
-        return [];
-      }
+      if (response.statusCode != 200) return [];
+      final responseData = json.decode(response.body);
+      if (responseData['status'] != true) return [];
+      final itemsData = responseData['data'] as List? ?? [];
+      if (itemsData.isEmpty) return [];
+      final items = itemsData
+          .map((itemData) {
+            try {
+              return _parseApiItem(Map<String, dynamic>.from(itemData));
+            } catch (e) {
+              return null;
+            }
+          })
+          .whereType<MartItemModel>()
+          .toList();
+      return items;
     } catch (e) {
-      print('[MART API] ❌ Error fetching trending items from API: $e');
+      print('[MART API] ❌ Error fetching trending items: $e');
       return [];
     }
   }
@@ -175,165 +151,102 @@ class MartFirestoreService extends GetxService {
     return [];
   }
 
-  /// Get featured items from API
+  /// Get featured items from API (cached 5 min, queued)
   Future<List<MartItemModel>> getFeaturedItems({int limit = 20}) async {
-    try {
-      print('[MART API] ⭐ Fetching featured items from API...');
+    const cacheKey = 'mart_featured_items';
+    final cached = CacheManager().getMartItems<List<MartItemModel>>(cacheKey);
+    if (cached != null && cached.isNotEmpty) {
+      print('[MART API] 📂 Using cached featured items (${cached.length})');
+      return cached.take(limit).toList();
+    }
+    return await ApiQueueManager().enqueue(
+      priority: RequestPriority.normal,
+      key: cacheKey,
+      request: () => CacheManager().getOrSetMartItems<List<MartItemModel>>(
+        cacheKey,
+        () => _fetchFeaturedItemsFromApi(limit),
+      ),
+    );
+  }
 
-      // Make API request
+  Future<List<MartItemModel>> _fetchFeaturedItemsFromApi(int limit) async {
+    try {
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}mart-items/featured'),
         headers: await getHeaders(),
       );
-
-      print('[MART API] ⭐ API response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-
-        if (responseData['status'] == true) {
-          final List<dynamic> itemsData = responseData['data'];
-          final int count = responseData['count'] ?? 0;
-
-          print('[MART API] ⭐ API returned $count featured items');
-
-          if (itemsData.isEmpty) {
-            print('[MART API] ⚠️ No featured items found in API response');
-            return [];
-          }
-
-          // Convert API data to MartItemModel
-          final items = itemsData
-              .map((itemData) {
-                try {
-                  // Create a copy of the item data and ensure it's a Map
-                  final Map<String, dynamic> data = Map<String, dynamic>.from(
-                    itemData,
-                  );
-
-                  // Handle any data transformations needed
-                  return _parseApiItem(data);
-                } catch (e) {
-                  print(
-                    '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
-                  );
-                  print('[MART API] Item data: $itemData');
-                  return null;
-                }
-              })
-              .whereType<MartItemModel>()
-              .toList();
-
-          print(
-            '[MART API] ✅ Successfully parsed ${items.length} featured items from API',
-          );
-
-          // Debug: Log the featured items
-          for (int i = 0; i < items.length; i++) {
-            final item = items[i];
-            print(
-              '[MART API]   ${i + 1}. ${item.name} - isFeature: ${item.isFeature}, price: ₹${item.price}',
-            );
-          }
-
-          return items;
-        } else {
-          print('[MART API] ❌ API returned error: ${responseData['message']}');
-          return [];
-        }
-      } else {
-        print('[MART API] ❌ HTTP error: ${response.statusCode}');
-        return [];
-      }
+      if (response.statusCode != 200) return [];
+      final responseData = json.decode(response.body);
+      if (responseData['status'] != true) return [];
+      final itemsData = responseData['data'] as List? ?? [];
+      if (itemsData.isEmpty) return [];
+      final items = itemsData
+          .map((itemData) {
+            try {
+              return _parseApiItem(Map<String, dynamic>.from(itemData));
+            } catch (e) {
+              return null;
+            }
+          })
+          .whereType<MartItemModel>()
+          .toList();
+      return items;
     } catch (e) {
-      print('[MART API] ❌ Error fetching featured items from API: $e');
+      print('[MART API] ❌ Error fetching featured items: $e');
       return [];
     }
   }
 
-  /// Get items on sale from API
+  /// Get items on sale from API (cached 5 min, queued)
   Future<List<MartItemModel>> getItemsOnSale({int limit = 20}) async {
+    const cacheKey = 'mart_items_on_sale';
+    final cached = CacheManager().getMartItems<List<MartItemModel>>(cacheKey);
+    if (cached != null && cached.isNotEmpty) {
+      print('[MART API] 📂 Using cached items on sale (${cached.length})');
+      return cached.take(limit).toList();
+    }
+    return await ApiQueueManager().enqueue(
+      priority: RequestPriority.normal,
+      key: cacheKey,
+      request: () => CacheManager().getOrSetMartItems<List<MartItemModel>>(
+        cacheKey,
+        () => _fetchItemsOnSaleFromApi(limit),
+      ),
+    );
+  }
+
+  Future<List<MartItemModel>> _fetchItemsOnSaleFromApi(int limit) async {
     try {
-      // Make API request
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}mart-items/on-sale'),
         headers: await getHeaders(),
       );
-
-      print('[MART API] 🏷️ API response status: ${response.statusCode}');
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-
-        if (responseData['status'] == true) {
-          final List<dynamic> itemsData = responseData['data'];
-          final int count = responseData['count'] ?? 0;
-
-          print('[MART API] 🏷️ API returned $count items on sale');
-
-          if (itemsData.isEmpty) {
-            print('[MART API] ⚠️ No items on sale found in API response');
-            return [];
-          }
-
-          // Convert API data to MartItemModel
-          final items = itemsData
-              .map((itemData) {
-                try {
-                  // Create a copy of the item data and ensure it's a Map
-                  final Map<String, dynamic> data = Map<String, dynamic>.from(
-                    itemData,
-                  );
-
-                  // Handle any data transformations needed
-                  return _parseApiItem(data);
-                } catch (e) {
-                  print(
-                    '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
-                  );
-                  print('[MART API] Item data: $itemData');
-                  return null;
-                }
-              })
-              .whereType<MartItemModel>()
-              .toList();
-
-          // Note: The API already returns only items on sale, so no need for additional filtering
-          // But we can add a safety check to ensure items have valid sale prices
-          final validSaleItems = items
-              .where(
-                (item) =>
-                    item.disPrice != null &&
-                    item.disPrice! > 0 &&
-                    item.disPrice! < item.price,
-              )
-              .toList();
-
-          print(
-            '[MART API] ✅ Successfully parsed ${validSaleItems.length} valid items on sale from API',
-          );
-
-          // Debug: Log the sale items with discount information
-          for (int i = 0; i < validSaleItems.length; i++) {
-            final item = validSaleItems[i];
-            final discountPercent =
-                ((item.price - item.disPrice!) / item.price * 100).round();
-            print(
-              '[MART API]   ${i + 1}. ${item.name} - Original: ₹${item.price}, Sale: ₹${item.disPrice} (${discountPercent}% off)',
-            );
-          }
-
-          return validSaleItems;
-        } else {
-          print('[MART API] ❌ API returned error: ${responseData['message']}');
-          return [];
-        }
-      } else {
-        print('[MART API] ❌ HTTP error: ${response.statusCode}');
-        return [];
-      }
+      if (response.statusCode != 200) return [];
+      final responseData = json.decode(response.body);
+      if (responseData['status'] != true) return [];
+      final itemsData = responseData['data'] as List? ?? [];
+      if (itemsData.isEmpty) return [];
+      final items = itemsData
+          .map((itemData) {
+            try {
+              return _parseApiItem(Map<String, dynamic>.from(itemData));
+            } catch (e) {
+              return null;
+            }
+          })
+          .whereType<MartItemModel>()
+          .toList();
+      final validSaleItems = items
+          .where(
+            (item) =>
+                item.disPrice != null &&
+                item.disPrice! > 0 &&
+                item.disPrice! < item.price,
+          )
+          .toList();
+      return validSaleItems;
     } catch (e) {
-      print('[MART API] ❌ Error fetching items on sale from API: $e');
+      print('[MART API] ❌ Error fetching items on sale: $e');
       return [];
     }
   }
@@ -559,27 +472,29 @@ class MartFirestoreService extends GetxService {
     );
   }
 
-  /// Get homepage categories from API
+  /// Get homepage categories from API (cached 15 min, separate from getCategories)
   Future<List<MartCategoryModel>> getHomepageCategories({
-    int limit = 10,
+    int limit = 24,
   }) async {
+    const cacheKey = 'mart_homepage_categories';
+    return CacheManager().getOrSetCategories<List<MartCategoryModel>>(
+      cacheKey,
+      () => _fetchHomepageCategoriesFromApi(),
+    ).then((categories) => categories.take(limit).toList());
+  }
+
+  Future<List<MartCategoryModel>> _fetchHomepageCategoriesFromApi() async {
     try {
       print('[MART API] 🏠 Fetching homepage categories from API...');
-      // Build the API URL
-      final url = '${AppConst.baseUrl}mart-items/categoryhome';
-
       final response = await http.get(
-        Uri.parse(url),
+        Uri.parse('${AppConst.baseUrl}mart-items/categoryhome'),
         headers: await getHeaders(),
       );
-
       if (response.statusCode != 200) {
         print('[MART API] ❌ HTTP error: ${response.statusCode}');
         return [];
       }
-
       final responseData = json.decode(response.body);
-
       final isSuccess = responseData['status'] == true ||
           responseData['success'] == true;
       if (!isSuccess) {
@@ -588,26 +503,16 @@ class MartFirestoreService extends GetxService {
         );
         return [];
       }
-
-      print(
-        '[MART API] 🏠 API call completed, found ${responseData['count']} homepage categories',
-      );
-
       if (responseData['data'] == null || responseData['data'].isEmpty) {
         print('[MART API] ⚠️ No homepage categories found');
         return [];
       }
-
-      // Convert API response to MartCategoryModel
       final categories = (responseData['data'] as List)
           .map((item) {
             try {
               if (item == null) return null;
-
               final Map<String, dynamic> categoryData =
                   Map<String, dynamic>.from(item);
-
-              // Handle array fields that might be strings
               if (categoryData['review_attributes'] is String) {
                 try {
                   categoryData['review_attributes'] = json.decode(
@@ -619,8 +524,6 @@ class MartFirestoreService extends GetxService {
               } else if (categoryData['review_attributes'] == null) {
                 categoryData['review_attributes'] = [];
               }
-
-              // Handle numeric fields that might be strings
               if (categoryData['category_order'] is String) {
                 categoryData['category_order'] =
                     int.tryParse(categoryData['category_order']) ?? 0;
@@ -629,7 +532,6 @@ class MartFirestoreService extends GetxService {
                 categoryData['section_order'] =
                     int.tryParse(categoryData['section_order']) ?? 0;
               }
-              // Handle boolean fields that might be null
               if (categoryData['show_in_homepage'] == null) {
                 categoryData['show_in_homepage'] = false;
               }
@@ -639,7 +541,6 @@ class MartFirestoreService extends GetxService {
               if (categoryData['has_subcategories'] == null) {
                 categoryData['has_subcategories'] = false;
               }
-              // Handle subcategories_count
               if (categoryData['subcategories_count'] == null) {
                 categoryData['subcategories_count'] = 0;
               }
@@ -650,26 +551,13 @@ class MartFirestoreService extends GetxService {
           })
           .whereType<MartCategoryModel>()
           .toList();
-      // Sort categories by category_order
       categories.sort(
         (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
       );
-      // Apply limit
-      final limitedResults = categories.take(limit).toList();
       print(
-        '[MART API] ✅ Successfully parsed ${limitedResults.length} homepage categories from API',
+        '[MART API] ✅ Parsed ${categories.length} homepage categories (cached 15 min)',
       );
-      // Debug: Log the homepage categories
-      for (int i = 0; i < limitedResults.length; i++) {
-        final category = limitedResults[i];
-        final title = category.title ?? 'No Title';
-        final order = category.categoryOrder ?? 0;
-        final section = category.section ?? 'No Section';
-        print(
-          '[MART API]   ${i + 1}. $title - Order: $order, Section: $section',
-        );
-      }
-      return limitedResults;
+      return categories;
     } catch (e) {
       print('[MART API] ❌ Error fetching homepage categories from API: $e');
       print('[MART API] ❌ Error type: ${e.runtimeType}');
@@ -1414,108 +1302,112 @@ class MartFirestoreService extends GetxService {
     }
   }
 
-  /// Get published categories from Firestoresdf
-  ///
-  /// sdf
+  /// Get featured categories (cached 15 min, queued via ApiQueueManager)
   Future<List<MartCategoryModel>> getFeaturedCategories({
     String? martId,
   }) async {
-    try {
-      print('[MART API] ⭐ Fetching featured categories from API...');
-      // Build the API URL
-      String url = '${AppConst.baseUrl}mart-items/getFeaturedCategories';
-      if (martId != null && martId.isNotEmpty) {
-        url += '?martId=$martId';
-      }
-      final response = await http.get(
-        Uri.parse(url),
-        headers: await getHeaders(),
-      );
-      if (response.statusCode != 200) {
-        print('[MART API] ❌ HTTP error: ${response.statusCode}');
-        return [];
-      }
-      final responseData = json.decode(response.body);
-      final isSuccess = responseData['success'] == true ||
-          responseData['status'] == true;
-      if (!isSuccess) {
-        print('[MART API] ❌ API returned error');
-        return [];
-      }
+    final cacheKey = 'mart_featured_categories_${martId ?? "default"}';
+
+    final cached =
+        CacheManager().getCategories<List<MartCategoryModel>>(cacheKey);
+    if (cached != null && cached.isNotEmpty) {
       print(
-        '[MART API] ⭐ API call completed, found ${responseData['count']} featured categories',
+        '[MART API] 📂 Using cached featured categories (${cached.length} items)',
       );
-      if (responseData['data'] == null || responseData['data'].isEmpty) {
-        print('[MART API] ⚠️ No featured categories found');
-        return [];
-      }
-      // Convert API response to MartCategoryModel
-      final categories = (responseData['data'] as List)
-          .map((item) {
-            try {
-              if (item == null) return null;
-
-              final Map<String, dynamic> categoryData =
-                  Map<String, dynamic>.from(item);
-
-              // Handle array fields that might be strings
-              if (categoryData['review_attributes'] is String) {
-                try {
-                  categoryData['review_attributes'] = json.decode(
-                    categoryData['review_attributes'],
-                  );
-                } catch (e) {
-                  categoryData['review_attributes'] = [];
-                }
-              } else if (categoryData['review_attributes'] == null) {
-                categoryData['review_attributes'] = [];
-              }
-
-              // Handle numeric fields that might be strings
-              if (categoryData['category_order'] is String) {
-                categoryData['category_order'] =
-                    int.tryParse(categoryData['category_order']) ?? 0;
-              }
-              if (categoryData['section_order'] is String) {
-                categoryData['section_order'] =
-                    int.tryParse(categoryData['section_order']) ?? 0;
-              }
-
-              // Handle boolean fields that might be null
-              if (categoryData['show_in_homepage'] == null) {
-                categoryData['show_in_homepage'] = false;
-              }
-              if (categoryData['publish'] == null) {
-                categoryData['publish'] = true;
-              }
-              if (categoryData['has_subcategories'] == null) {
-                categoryData['has_subcategories'] = false;
-              }
-              // Handle subcategories_count
-              if (categoryData['subcategories_count'] == null) {
-                categoryData['subcategories_count'] = 0;
-              }
-
-              return MartCategoryModel.fromJson(categoryData);
-            } catch (e) {
-              return null;
-            }
-          })
-          .whereType<MartCategoryModel>()
-          .toList();
-
-      // Sort categories by category_order
-      categories.sort(
-        (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
-      );
-      print(
-        '[MART API] ✅ Successfully parsed ${categories.length} featured categories from API',
-      );
-      return categories;
-    } catch (e) {
-      print('[MART API] ❌ Error fetching featured categories from API: $e');
-      return [];
+      return cached;
     }
+
+    return await ApiQueueManager().enqueue(
+      priority: RequestPriority.high,
+      key: cacheKey,
+      request: () async {
+        try {
+          print('[MART API] ⭐ Fetching featured categories from API...');
+          String url = '${AppConst.baseUrl}mart-items/getFeaturedCategories';
+          if (martId != null && martId.isNotEmpty) {
+            url += '?martId=$martId';
+          }
+          final response = await http.get(
+            Uri.parse(url),
+            headers: await getHeaders(),
+          );
+          if (response.statusCode != 200) {
+            print('[MART API] ❌ HTTP error: ${response.statusCode}');
+            return [];
+          }
+          final responseData = json.decode(response.body);
+          final isSuccess = responseData['success'] == true ||
+              responseData['status'] == true;
+          if (!isSuccess) {
+            print('[MART API] ❌ API returned error');
+            return [];
+          }
+          print(
+            '[MART API] ⭐ API call completed, found ${responseData['count']} featured categories',
+          );
+          if (responseData['data'] == null || responseData['data'].isEmpty) {
+            print('[MART API] ⚠️ No featured categories found');
+            return [];
+          }
+          final categories = (responseData['data'] as List)
+              .map((item) {
+                try {
+                  if (item == null) return null;
+                  final Map<String, dynamic> categoryData =
+                      Map<String, dynamic>.from(item);
+                  if (categoryData['review_attributes'] is String) {
+                    try {
+                      categoryData['review_attributes'] = json.decode(
+                        categoryData['review_attributes'],
+                      );
+                    } catch (e) {
+                      categoryData['review_attributes'] = [];
+                    }
+                  } else if (categoryData['review_attributes'] == null) {
+                    categoryData['review_attributes'] = [];
+                  }
+                  if (categoryData['category_order'] is String) {
+                    categoryData['category_order'] =
+                        int.tryParse(categoryData['category_order']) ?? 0;
+                  }
+                  if (categoryData['section_order'] is String) {
+                    categoryData['section_order'] =
+                        int.tryParse(categoryData['section_order']) ?? 0;
+                  }
+                  if (categoryData['show_in_homepage'] == null) {
+                    categoryData['show_in_homepage'] = false;
+                  }
+                  if (categoryData['publish'] == null) {
+                    categoryData['publish'] = true;
+                  }
+                  if (categoryData['has_subcategories'] == null) {
+                    categoryData['has_subcategories'] = false;
+                  }
+                  if (categoryData['subcategories_count'] == null) {
+                    categoryData['subcategories_count'] = 0;
+                  }
+                  return MartCategoryModel.fromJson(categoryData);
+                } catch (e) {
+                  return null;
+                }
+              })
+              .whereType<MartCategoryModel>()
+              .toList();
+
+          categories.sort(
+            (a, b) => (a.categoryOrder ?? 0).compareTo(b.categoryOrder ?? 0),
+          );
+          CacheManager().setCategories(cacheKey, categories);
+          print(
+            '[MART API] ✅ Parsed ${categories.length} featured categories (cached 15 min)',
+          );
+          return categories;
+        } catch (e) {
+          print('[MART API] ❌ Error fetching featured categories: $e');
+          return [];
+        }
+      },
+    );
   }
 
   /// Get items by vendor from API
@@ -2287,24 +2179,15 @@ class MartFirestoreService extends GetxService {
     }
   }
 
-  Stream<List<MartItemModel>> streamSimilarProducts({
+  /// One-time fetch for similar products by category (no periodic polling).
+  Future<List<MartItemModel>> _fetchSimilarProductsOnce({
     required String categoryId,
     String? subcategoryId,
     String? excludeProductId,
     bool? isAvailable,
     int limit = 6,
-  }) {
+  }) async {
     try {
-      print(
-        '[MART API] 📡 Starting stream for similar products - category: $categoryId',
-      );
-      if (subcategoryId != null) {
-        print('[MART API] 📡 Subcategory filter: $subcategoryId');
-      }
-      if (excludeProductId != null) {
-        print('[MART API] 📡 Excluding product: $excludeProductId');
-      }
-      // Build the API URL with query parameters
       final uri = Uri.parse('${AppConst.baseUrl}mart-items/by-category')
           .replace(
             queryParameters: {
@@ -2316,105 +2199,76 @@ class MartFirestoreService extends GetxService {
             },
           );
 
-      print('[MART API] 📡 API URL: $uri');
-
-      // Since we can't create a true real-time stream with HTTP API,
-      // we'll use a periodic stream that polls the API at intervals
-      return Stream.periodic(const Duration(seconds: 30), (_) async {
-        try {
-          final response = await http
-              .get(uri, headers: await getHeaders())
-              .timeout(
-                const Duration(seconds: 10),
-                onTimeout: () {
-                  print('[MART API] ⏰ Similar products API timeout');
-                  throw TimeoutException('Similar products API timeout');
-                },
-              );
-
-          print(
-            '[MART API] 📡 API call completed with status: ${response.statusCode}',
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              print('[MART API] ⏰ Similar products API timeout');
+              throw TimeoutException('Similar products API timeout');
+            },
           );
 
-          if (response.statusCode == 200) {
-            final Map<String, dynamic> responseData = json.decode(
-              response.body,
-            );
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['status'] == true) {
+          final List<dynamic> itemsData = responseData['data'];
+          if (itemsData.isEmpty) return <MartItemModel>[];
 
-            if (responseData['status'] == true) {
-              final List<dynamic> itemsData = responseData['data'];
-              final int count = responseData['count'] ?? itemsData.length;
+          final items = itemsData
+              .map((itemData) {
+                try {
+                  if (itemData is! Map<String, dynamic>) return null;
+                  final Map<String, dynamic> itemMap =
+                      Map<String, dynamic>.from(itemData);
+                  _preprocessItemData(itemMap);
+                  return MartItemModel.fromJson(itemMap);
+                } catch (e) {
+                  return null;
+                }
+              })
+              .whereType<MartItemModel>()
+              .toList();
 
-              print('[MART API] 📡 API returned $count items');
-
-              if (itemsData.isEmpty) {
-                print(
-                  '[MART API] ⚠️ No items found in API response for category: $categoryId',
-                );
-                return <MartItemModel>[];
-              }
-
-              // Convert API data to MartItemModel
-              final items = itemsData
-                  .map((itemData) {
-                    try {
-                      if (itemData is! Map<String, dynamic>) {
-                        print(
-                          '[MART API] ⚠️ Item data is not a Map, type: ${itemData.runtimeType}',
-                        );
-                        return null;
-                      }
-
-                      final Map<String, dynamic> itemMap =
-                          Map<String, dynamic>.from(itemData);
-
-                      // Pre-process data before model creation
-                      _preprocessItemData(itemMap);
-
-                      return MartItemModel.fromJson(itemMap);
-                    } catch (e) {
-                      print(
-                        '[MART API] ❌ Error parsing API item ${itemData['id']}: $e',
-                      );
-                      return null;
-                    }
-                  })
-                  .whereType<MartItemModel>()
-                  .toList();
-
-              // Exclude the current product if specified
-              List<MartItemModel> filteredItems = items;
-              if (excludeProductId != null) {
-                filteredItems = items
-                    .where((item) => item.id != excludeProductId)
-                    .toList();
-              }
-
-              // Limit to requested amount
-              final finalItems = filteredItems.take(limit).toList();
-
-              print(
-                '[MART API] 📡 Stream returning ${finalItems.length} similar products',
-              );
-              return finalItems;
-            } else {
-              print(
-                '[MART API] ⚠️ API returned false status: ${responseData['message']}',
-              );
-              return <MartItemModel>[];
-            }
-          } else {
-            print('[MART API] ❌ API error: ${response.statusCode}');
-            return <MartItemModel>[];
+          List<MartItemModel> filteredItems = items;
+          if (excludeProductId != null) {
+            filteredItems =
+                items.where((item) => item.id != excludeProductId).toList();
           }
-        } on TimeoutException catch (e) {
-          print('[MART API] ⏰ Timeout in stream for similar products: $e');
-          return <MartItemModel>[];
-        } catch (e) {
-          print('[MART API] ❌ Error in stream for similar products: $e');
-          return <MartItemModel>[];
+          return filteredItems.take(limit).toList();
         }
-      }).asyncMap((event) => event).handleError((error) {
+      }
+      return <MartItemModel>[];
+    } on TimeoutException catch (e) {
+      print('[MART API] ⏰ Timeout fetching similar products: $e');
+      return <MartItemModel>[];
+    } catch (e) {
+      print('[MART API] ❌ Error fetching similar products: $e');
+      return <MartItemModel>[];
+    }
+  }
+
+  Stream<List<MartItemModel>> streamSimilarProducts({
+    required String categoryId,
+    String? subcategoryId,
+    String? excludeProductId,
+    bool? isAvailable,
+    int limit = 6,
+  }) {
+    try {
+      print(
+        '[MART API] 📡 One-time fetch for similar products - category: $categoryId',
+      );
+      // One-time fetch: emit once, no periodic polling
+      return Stream.fromFuture(
+        _fetchSimilarProductsOnce(
+          categoryId: categoryId,
+          subcategoryId: subcategoryId,
+          excludeProductId: excludeProductId,
+          isAvailable: isAvailable,
+          limit: limit,
+        ),
+      ).handleError((error) {
         print('[MART API] ❌ Stream error for similar products: $error');
         return <MartItemModel>[];
       });
@@ -2542,49 +2396,11 @@ class MartFirestoreService extends GetxService {
         }
       }
 
-      // Create a stream controller
-      final StreamController<List<MartItemModel>> controller =
-          StreamController<List<MartItemModel>>.broadcast();
-
-      // Emit immediately from Future
-      fetchAndFilter().then((items) {
-        if (!controller.isClosed) {
-          print('[MART API] 📡 Emitting ${items.length} products immediately');
-          controller.add(items);
-        }
-      }).catchError((error) {
-        print('[MART API] ❌ Error in immediate fetch: $error');
-        if (!controller.isClosed) {
-          controller.add(<MartItemModel>[]);
-        }
+      // One-time fetch: emit once, no periodic polling (avoids full catalog fetch every 30s)
+      return Stream.fromFuture(fetchAndFilter()).handleError((error) {
+        print('[MART API] ❌ Error in fetch: $error');
+        return <MartItemModel>[];
       });
-
-      // Then emit periodically every 30 seconds
-      Timer? periodicTimer;
-      periodicTimer = Timer.periodic(
-        const Duration(seconds: 30),
-        (_) {
-          if (controller.isClosed) {
-            periodicTimer?.cancel();
-            return;
-          }
-          fetchAndFilter().then((items) {
-            if (!controller.isClosed) {
-              print('[MART API] 📡 Periodic update: Emitting ${items.length} products');
-              controller.add(items);
-            }
-          }).catchError((error) {
-            print('[MART API] ❌ Error in periodic fetch: $error');
-          });
-        },
-      );
-
-      // Clean up when stream is cancelled
-      controller.onCancel = () {
-        periodicTimer?.cancel();
-      };
-
-      return controller.stream;
     } catch (e) {
       print('[MART API] ❌ Error creating stream for all products: $e');
       return Stream.value(<MartItemModel>[]);
@@ -2602,8 +2418,8 @@ class MartFirestoreService extends GetxService {
     // Initial fetch
     _fetchItemsByBrand(_controller, brandID);
 
-    // Optional: Set up periodic refreshes if needed
-    final timer = Timer.periodic(Duration(seconds: 30), (timer) {
+    // Periodic refresh every 5 minutes (reduced from 30s to avoid heavy polling)
+    final timer = Timer.periodic(const Duration(minutes: 5), (timer) {
       _fetchItemsByBrand(_controller, brandID);
     });
 

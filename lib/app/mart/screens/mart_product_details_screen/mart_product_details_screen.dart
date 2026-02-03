@@ -55,14 +55,27 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
     });
   }
 
-  /// Initialize the similar products stream
+  /// Initialize the similar products stream (by-category when available, else one-time all-products)
   void _initializeSimilarProductsStream() {
     final controller = Provider.of<MartProvider>(context, listen: false);
-    _similarProductsStream = controller.streamAllProducts(
-      excludeProductId: widget.product.id,
-      isAvailable: true,
-      limit: 10,
-    );
+    final product = widget.product;
+    if (product.categoryID != null && product.categoryID!.isNotEmpty) {
+      _similarProductsStream = controller.streamSimilarProducts(
+        categoryId: product.categoryID!,
+        subcategoryId: product.subcategoryID is String
+            ? product.subcategoryID as String?
+            : null,
+        excludeProductId: product.id,
+        isAvailable: true,
+        limit: 10,
+      );
+    } else {
+      _similarProductsStream = controller.streamAllProducts(
+        excludeProductId: product.id,
+        isAvailable: true,
+        limit: 10,
+      );
+    }
   }
 
   /// Fetch delivery settings from Firestore
@@ -928,6 +941,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
   /// Add a selected option (variant) to cart
   Future<void> _addOptionToCart(Map<String, dynamic> selectedOption) async {
     try {
+      final martController = Provider.of<MartProvider>(context, listen: false);
       CartControllerProvider cartControllerProvider =
           Provider.of<CartControllerProvider>(context, listen: false);
       final cartProduct = CartProductModel(
@@ -943,7 +957,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         discountPrice: selectedOption['price']?.toString() ??
             widget.product.disPrice?.toString() ??
             widget.product.price.toString(),
-        vendorID: "mart_${widget.product.vendorID ?? 'unknown'}",
+        vendorID: "mart_${widget.product.vendorID ?? martController.selectedVendorId ?? 'unknown'}",
         vendorName: "Jippy Mart",
         categoryId: widget.product.categoryID,
         quantity: 1,
@@ -1189,9 +1203,10 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
       child: ElevatedButton(
         onPressed: () async {
           try {
+            final martController = Provider.of<MartProvider>(context, listen: false);
             CartControllerProvider cartControllerProvider =
                 Provider.of<CartControllerProvider>(context, listen: false);
-            final martVendorID = "mart_${widget.product.vendorID ?? 'unknown'}";
+            final martVendorID = "mart_${widget.product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
             final cartProduct = CartProductModel(
               id: widget.product.id,
               name: widget.product.name,
@@ -1356,6 +1371,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                 IconButton(
                   onPressed: () async {
                     try {
+                      final martController = Provider.of<MartProvider>(context, listen: false);
                       // Get the cart controller
                       CartControllerProvider cartControllerProvider =
                           Provider.of<CartControllerProvider>(
@@ -1365,7 +1381,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
                       // Create CartProductModel for removal
                       final martVendorID =
-                          "mart_${widget.product.vendorID ?? 'unknown'}";
+                          "mart_${widget.product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
                       final cartProduct = CartProductModel(
                         id: widget.product.id,
                         name: widget.product.name,

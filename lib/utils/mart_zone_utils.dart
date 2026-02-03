@@ -5,21 +5,46 @@ import 'package:jippymart_customer/services/mart_vendor_service.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 
 class MartZoneUtils {
-  // static List<MartVendorModel>? _cachedMartVendors;
-  // static DateTime? _lastFetchTime;
+  static List<MartVendorModel>? _cachedMartVendors;
+  static String? _cachedZoneId;
+  static DateTime? _lastFetchTime;
+  static const Duration _cacheTTL = Duration(minutes: 5);
 
   static Future<List<MartVendorModel>> getCachedMartVendors() async {
-    // if (_cachedMartVendors != null &&
-    //     _lastFetchTime != null &&
-    //     DateTime.now().difference(_lastFetchTime!).inMinutes < 1) {
-    //   return _cachedMartVendors!;
-    // }
     final zoneId = Constant.selectedZone?.id;
-    if (zoneId == null) return [];
-    final vendors = await MartVendorService.getMartVendorsByZone(zoneId);
-    // _cachedMartVendors = vendors;
-    // _lastFetchTime = DateTime.now();
+    if (zoneId == null || zoneId.isEmpty) return [];
+
+    if (_cachedMartVendors != null &&
+        _cachedZoneId == zoneId &&
+        _lastFetchTime != null &&
+        DateTime.now().difference(_lastFetchTime!) < _cacheTTL) {
+      return _cachedMartVendors!;
+    }
+
+    // Use same API as mart_provider (mart-items/getMartVendors) and filter by zone.
+    // mart-vendor/zone/$zoneId can return empty due to zone ID format mismatch.
+    final allVendors = await MartVendorService.getAllMartVendors(search: '');
+    final zoneStr = zoneId.toString().trim();
+    var vendors = allVendors
+        .where((v) =>
+            v.zoneId != null &&
+            v.zoneId!.toString().trim() == zoneStr)
+        .toList();
+
+    // Fallback: if zone filter gives empty but mart has vendors, use all (same as mart_provider)
+    if (vendors.isEmpty && allVendors.isNotEmpty) {
+      vendors = allVendors;
+    }
+
+    _cachedMartVendors = vendors;
+    _cachedZoneId = zoneId;
+    _lastFetchTime = DateTime.now();
     return vendors;
+  }
+
+  /// Prefetch vendors when tab bar is shown so first Mart click is fast
+  static void prefetchMartVendors() {
+    getCachedMartVendors();
   }
 
   /// Check if mart is available in the current zone

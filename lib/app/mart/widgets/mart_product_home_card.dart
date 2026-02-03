@@ -1,4 +1,5 @@
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -34,9 +35,10 @@ class MartProductCardHome extends StatelessWidget {
     }
 
     try {
+      final martController = Provider.of<MartProvider>(context, listen: false);
       CartControllerProvider cartControllerProvider =
           Provider.of<CartControllerProvider>(context, listen: false);
-      final martVendorID = "mart_${product.vendorID ?? 'unknown'}";
+      final martVendorID = "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
       final cartProduct = CartProductModel(
         id: product.id,
         name: product.name,

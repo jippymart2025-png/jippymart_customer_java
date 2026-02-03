@@ -622,7 +622,9 @@ import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/widget/osm_map/map_picker_page.dart';
+import 'package:jippymart_customer/widget/osm_map/place_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
@@ -704,7 +706,56 @@ class LocationPermissionScreen extends StatelessWidget {
     box.write('user_location', {
       'latitude': location.latitude,
       'longitude': location.longitude,
+      'timestamp': DateTime.now().millisecondsSinceEpoch,
     });
+    
+    // Also save to Preferences for consistency
+    await Preferences.setString(
+      Preferences.selectedLocationLat,
+      location.latitude.toString(),
+    );
+    await Preferences.setString(
+      Preferences.selectedLocationLng,
+      location.longitude.toString(),
+    );
+  }
+  
+  /// Cache zone data after zone is set
+  static Future<void> cacheZoneData() async {
+    try {
+      final box = GetStorage();
+      
+      // Cache zone availability status
+      box.write('zone_data', {
+        'isZoneAvailable': Constant.isZoneAvailable,
+        'zoneId': Constant.selectedZone?.id ?? Constant.selectedLocation.zoneId ?? '',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
+      
+      // Also ensure zone ID is stored in Preferences
+      final zoneId = Constant.selectedZone?.id ?? Constant.selectedLocation.zoneId;
+      if (zoneId != null && zoneId.isNotEmpty) {
+        await Preferences.setString(Preferences.selectedZoneId, zoneId);
+        print('[LOCATION_PERMISSION] ✅ Cached zone ID: $zoneId');
+      }
+      
+      // Cache location with zone info
+      if (Constant.selectedLocation.location != null) {
+        final location = Constant.selectedLocation.location!;
+        box.write('user_location', {
+          'latitude': location.latitude,
+          'longitude': location.longitude,
+          'zoneId': zoneId ?? '',
+          'isZoneAvailable': Constant.isZoneAvailable,
+          'address': Constant.selectedLocation.address ?? Constant.selectedLocation.locality ?? '',
+          'locality': Constant.selectedLocation.locality ?? '',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
+        print('[LOCATION_PERMISSION] ✅ Cached location with zone data');
+      }
+    } catch (e) {
+      print('[LOCATION_PERMISSION] Error caching zone data: $e');
+    }
   }
 
   /// Fast address finder with tolerance
@@ -756,25 +807,68 @@ class LocationPermissionScreen extends StatelessWidget {
     List<ShippingAddress>? existingAddresses,
     SplashProvider splashProvider,
   ) async {
-    if (result == null) return;
+    // Check if result is null (user cancelled)
+    if (result == null) {
+      print('[MAP_SELECTION] User cancelled map selection');
+      return;
+    }
 
     try {
       double? lat;
       double? lng;
       String? address;
 
-      // Handle different result types
-      if (result.coordinates != null) {
-        lat = result.coordinates.latitude;
-        lng = result.coordinates.longitude;
-        address = result.address?.toString();
-      } else if (result.geometry != null && result.geometry!.location != null) {
-        lat = result.geometry!.location.lat;
-        lng = result.geometry!.location.lng;
-        address = result.formattedAddress?.toString();
+      // Handle different result types - OSM MapPickerPage returns PlaceModel
+      // Google Maps PlacePicker returns PickResult
+      try {
+        // Try OSM PlaceModel format first
+        if (result is PlaceModel) {
+          lat = result.coordinates.latitude;
+          lng = result.coordinates.longitude;
+          address = result.address;
+        } 
+        // Try accessing as dynamic for OSM format (in case type checking fails)
+        else {
+          try {
+            final dynamicResult = result as dynamic;
+            if (dynamicResult.coordinates != null) {
+              final coords = dynamicResult.coordinates;
+              lat = coords.latitude?.toDouble() ?? 
+                    (coords.latitude is double ? coords.latitude : null);
+              lng = coords.longitude?.toDouble() ?? 
+                    (coords.longitude is double ? coords.longitude : null);
+              address = dynamicResult.address?.toString() ?? dynamicResult.address;
+            }
+          } catch (e) {
+            // Try Google Maps PickResult format
+            try {
+              final dynamicResult = result as dynamic;
+              if (dynamicResult.geometry != null && 
+                  dynamicResult.geometry.location != null) {
+                final loc = dynamicResult.geometry.location;
+                lat = loc.lat?.toDouble() ?? 
+                      (loc.lat is double ? loc.lat : null);
+                lng = loc.lng?.toDouble() ?? 
+                      (loc.lng is double ? loc.lng : null);
+                address = dynamicResult.formattedAddress?.toString();
+              }
+            } catch (e2) {
+              print('[MAP_SELECTION] Error accessing both formats: $e2');
+            }
+          }
+        }
+      } catch (e) {
+        print('[MAP_SELECTION] Error parsing result: $e');
+        print('[MAP_SELECTION] Result type: ${result.runtimeType}');
+        print('[MAP_SELECTION] Result: $result');
+        ShowToastDialog.showToast("Invalid location data received".tr);
+        return;
       }
 
       if (lat == null || lng == null) {
+        print('[MAP_SELECTION] Missing coordinates: lat=$lat, lng=$lng');
+        print('[MAP_SELECTION] Result type: ${result.runtimeType}');
+        print('[MAP_SELECTION] Result: $result');
         ShowToastDialog.showToast("Invalid location selected".tr);
         return;
       }
@@ -830,14 +924,46 @@ class LocationPermissionScreen extends StatelessWidget {
       Constant.selectedLocation = addressModel;
       await updateLocationInLocal(addressModel.location!);
 
-      // Navigate immediately
-      await LocationPermissionScreen.navigateAfterLocationSet(
-        context,
-        splashProvider,
-      );
-    } catch (e) {
+      // Check zone after setting location
+      try {
+        final currentContext = Get.context ?? context;
+        
+        final homeProvider = Provider.of<HomeProvider>(
+          currentContext,
+          listen: false,
+        );
+        await homeProvider.getZone();
+        
+        // Cache zone data after zone is set
+        await LocationPermissionScreen.cacheZoneData();
+        
+        // Reload banners after zone is set
+        await homeProvider.reloadBanners();
+
+        // Navigate immediately
+        await LocationPermissionScreen.navigateAfterLocationSet(
+          currentContext,
+          splashProvider,
+        );
+      } catch (zoneError) {
+        print('[MAP_SELECTION] Error checking zone: $zoneError');
+        // Even if zone check fails, try to navigate
+        try {
+          final currentContext = Get.context ?? context;
+          await LocationPermissionScreen.navigateAfterLocationSet(
+            currentContext,
+            splashProvider,
+          );
+        } catch (navError) {
+          print('[MAP_SELECTION] Error navigating: $navError');
+          // If navigation fails, show error to user
+          ShowToastDialog.showToast("Location set but navigation failed. Please restart the app.".tr);
+        }
+      }
+    } catch (e, stackTrace) {
       print('[MAP_SELECTION] Error: $e');
-      ShowToastDialog.showToast("Failed to process location".tr);
+      print('[MAP_SELECTION] Stack trace: $stackTrace');
+      ShowToastDialog.showToast("Failed to process location. Please try again.".tr);
     }
   }
 
@@ -883,119 +1009,142 @@ class LocationPermissionScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 32),
-                    Consumer<SplashProvider>(
-                      builder: (context, splashProvider, _) {
-                        return RoundedButtonFill(
-                          title: "Use Current Location".tr,
-                          color: AppThemeData.primary300,
-                          textColor: AppThemeData.grey50,
-                          onPress: () async {
-                            if (!_shouldProcessTap()) return;
+                    RoundedButtonFill(
+                      title: "Use Current Location".tr,
+                      color: AppThemeData.primary300,
+                      textColor: AppThemeData.grey50,
+                      onPress: () async {
+                        if (!_shouldProcessTap()) return;
 
-                            Constant.checkPermission(
-                              context: context,
-                              onTap: () async {
-                                try {
-                                  bool success =
-                                      await LocationService.updateLocationAndNavigate(
-                                        showLoader: true,
-                                        showError: true,
-                                      );
-                                  if (success) {
-                                    await LocationPermissionScreen.navigateAfterLocationSet(
-                                      context,
-                                      splashProvider,
-                                    );
-                                  }
-                                } catch (e) {
-                                  print('[CURRENT_LOCATION] Error: $e');
-                                  ShowToastDialog.showToast(
-                                    "Failed to get location. Please try again."
-                                        .tr,
+                        Constant.checkPermission(
+                          context: context,
+                          onTap: () async {
+                            try {
+                              bool success =
+                                  await LocationService.updateLocationAndNavigate(
+                                    showLoader: true,
+                                    showError: true,
                                   );
-                                }
-                              },
-                            );
+                              if (success) {
+                                // Check zone after setting location
+                                final homeProvider =
+                                    Provider.of<HomeProvider>(
+                                  Get.context ?? context,
+                                  listen: false,
+                                );
+                                await homeProvider.getZone();
+                                
+                                // Cache zone data after zone is set
+                                await LocationPermissionScreen.cacheZoneData();
+                                
+                                // Reload banners after zone is set
+                                await homeProvider.reloadBanners();
+                                
+                                final splashProvider =
+                                    Provider.of<SplashProvider>(
+                                  Get.context ?? context,
+                                  listen: false,
+                                );
+                                await LocationPermissionScreen.navigateAfterLocationSet(
+                                  Get.context ?? context,
+                                  splashProvider,
+                                );
+                              }
+                            } catch (e) {
+                              print('[CURRENT_LOCATION] Error: $e');
+                              ShowToastDialog.showToast(
+                                "Failed to get location. Please try again."
+                                    .tr,
+                              );
+                            }
                           },
                         );
                       },
                     ),
                     const SizedBox(height: 10),
-                    Consumer<SplashProvider>(
-                      builder: (context, splashProvider, _) {
-                        return RoundedButtonFill(
-                          title: "Set From Map".tr,
-                          color: AppThemeData.primary300,
-                          textColor: AppThemeData.grey50,
-                          icon: Padding(
-                            padding: const EdgeInsets.only(right: 10),
-                            child: SvgPicture.asset(
-                              "assets/icons/ic_location_pin.svg",
-                              colorFilter: const ColorFilter.mode(
-                                AppThemeData.grey50,
-                                BlendMode.srcIn,
-                              ),
-                            ),
+                    RoundedButtonFill(
+                      title: "Set From Map".tr,
+                      color: AppThemeData.primary300,
+                      textColor: AppThemeData.grey50,
+                      icon: Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: SvgPicture.asset(
+                          "assets/icons/ic_location_pin.svg",
+                          colorFilter: const ColorFilter.mode(
+                            AppThemeData.grey50,
+                            BlendMode.srcIn,
                           ),
-                          isRight: false,
-                          onPress: () async {
-                            if (!_shouldProcessTap()) return;
+                        ),
+                      ),
+                      isRight: false,
+                      onPress: () async {
+                        if (!_shouldProcessTap()) return;
 
-                            Constant.checkPermission(
-                              context: context,
-                              onTap: () async {
-                                try {
-                                  final existingAddresses =
-                                      Constant.userModel?.shippingAddress;
+                        Constant.checkPermission(
+                          context: context,
+                          onTap: () async {
+                            try {
+                              final existingAddresses =
+                                  Constant.userModel?.shippingAddress;
 
-                                  if (Constant.selectedMapType == 'osm') {
-                                    final result = await Get.to(
-                                      () => MapPickerPage(),
-                                    );
-                                    await _handleMapSelection(
-                                      context,
-                                      result,
-                                      existingAddresses,
-                                      splashProvider,
-                                    );
-                                  } else {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => PlacePicker(
-                                          apiKey: Constant.mapAPIKey,
-                                          onPlacePicked: (result) async {
-                                            await _handleMapSelection(
-                                              context,
-                                              result,
-                                              existingAddresses,
-                                              splashProvider,
-                                            );
-                                          },
-                                          initialPosition: const LatLng(
-                                            -33.8567844,
-                                            151.213108,
-                                          ),
-                                          useCurrentLocation: true,
-                                          selectInitialPosition: true,
-                                          usePinPointingSearch: true,
-                                          usePlaceDetailSearch: true,
-                                          zoomGesturesEnabled: true,
-                                          zoomControlsEnabled: true,
-                                          resizeToAvoidBottomInset: false,
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                } catch (e) {
-                                  print('[SET_FROM_MAP] Error: $e');
-                                  ShowToastDialog.showToast(
-                                    "Failed to add location. Please try again."
-                                        .tr,
+                              final splashProvider =
+                                  Provider.of<SplashProvider>(
+                                Get.context ?? context,
+                                listen: false,
+                              );
+
+                              if (Constant.selectedMapType == 'osm') {
+                                final result = await Get.to(
+                                  () => MapPickerPage(),
+                                );
+                                // Only process if result is not null (user selected a location)
+                                if (result != null) {
+                                  await _handleMapSelection(
+                                    Get.context ?? context,
+                                    result,
+                                    existingAddresses,
+                                    splashProvider,
                                   );
                                 }
-                              },
-                            );
+                              } else {
+                                Navigator.push(
+                                  Get.context ?? context,
+                                  MaterialPageRoute(
+                                    builder: (context) => PlacePicker(
+                                      apiKey: Constant.mapAPIKey,
+                                      onPlacePicked: (result) async {
+                                        // Only process if result is not null
+                                        if (result != null) {
+                                          await _handleMapSelection(
+                                            Get.context ?? context,
+                                            result,
+                                            existingAddresses,
+                                            splashProvider,
+                                          );
+                                        }
+                                      },
+                                      initialPosition: const LatLng(
+                                        -33.8567844,
+                                        151.213108,
+                                      ),
+                                      useCurrentLocation: true,
+                                      selectInitialPosition: true,
+                                      usePinPointingSearch: true,
+                                      usePlaceDetailSearch: true,
+                                      zoomGesturesEnabled: true,
+                                      zoomControlsEnabled: true,
+                                      resizeToAvoidBottomInset: false,
+                                    ),
+                                  ),
+                                );
+                              }
+                            } catch (e) {
+                              print('[SET_FROM_MAP] Error: $e');
+                              ShowToastDialog.showToast(
+                                "Failed to add location. Please try again."
+                                    .tr,
+                              );
+                            }
                           },
                         );
                       },
@@ -1049,40 +1198,55 @@ class LocationPermissionScreen extends StatelessWidget {
                                 },
                           ),
                     const SizedBox(height: 10),
-                    Consumer<SplashProvider>(
-                      builder: (contexts, splashProvider, _) {
-                        return RoundedButtonFill(
-                          title: "Change Location".tr,
-                          color: AppThemeData.primary300,
-                          textColor: AppThemeData.grey50,
-                          onPress: () async {
-                            if (!_shouldProcessTap()) return;
+                    RoundedButtonFill(
+                      title: "Change Location".tr,
+                      color: AppThemeData.primary300,
+                      textColor: AppThemeData.grey50,
+                      onPress: () async {
+                        if (!_shouldProcessTap()) return;
 
-                            Constant.checkPermission(
-                              context: context,
-                              onTap: () async {
-                                try {
-                                  bool success =
-                                      await LocationService.updateLocationAndNavigate(
-                                        showLoader: true,
-                                        showError: true,
-                                      );
-
-                                  if (success) {
-                                    await LocationPermissionScreen.navigateAfterLocationSet(
-                                      context,
-                                      splashProvider,
-                                    );
-                                  }
-                                } catch (e) {
-                                  print('[CHANGE_LOCATION] Error: $e');
-                                  ShowToastDialog.showToast(
-                                    "Failed to change location. Please try again."
-                                        .tr,
+                        Constant.checkPermission(
+                          context: context,
+                          onTap: () async {
+                            try {
+                              bool success =
+                                  await LocationService.updateLocationAndNavigate(
+                                    showLoader: true,
+                                    showError: true,
                                   );
-                                }
-                              },
-                            );
+
+                              if (success) {
+                                // Check zone after setting location
+                                final homeProvider =
+                                    Provider.of<HomeProvider>(
+                                  Get.context ?? context,
+                                  listen: false,
+                                );
+                                await homeProvider.getZone();
+                                
+                                // Cache zone data after zone is set
+                                await LocationPermissionScreen.cacheZoneData();
+                                
+                                // Reload banners after zone is set
+                                await homeProvider.reloadBanners();
+                                
+                                final splashProvider =
+                                    Provider.of<SplashProvider>(
+                                  Get.context ?? context,
+                                  listen: false,
+                                );
+                                await LocationPermissionScreen.navigateAfterLocationSet(
+                                  Get.context ?? context,
+                                  splashProvider,
+                                );
+                              }
+                            } catch (e) {
+                              print('[CHANGE_LOCATION] Error: $e');
+                              ShowToastDialog.showToast(
+                                "Failed to change location. Please try again."
+                                    .tr,
+                              );
+                            }
                           },
                         );
                       },

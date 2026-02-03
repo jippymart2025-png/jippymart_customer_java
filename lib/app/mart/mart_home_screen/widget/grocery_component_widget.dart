@@ -29,7 +29,7 @@ Widget groceryComponent(Size size) {
             }
             if (!controller.isHomepageCategoriesLoaded) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                controller.loadHomepageCategoriesStreaming(limit: 6);
+                controller.loadHomepageCategoriesStreaming(limit: 24);
               });
             }
             return _buildEmptyState();
@@ -153,7 +153,7 @@ Widget _buildErrorState(MartProvider controller) {
           ElevatedButton(
             onPressed: () {
               controller.errorMessage = '';
-              controller.loadHomepageCategoriesStreaming(limit: 6);
+              controller.loadHomepageCategoriesStreaming(limit: 24);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -227,9 +227,7 @@ Widget _buildCategoriesGrid(
     child: ListView.separated(
       padding: EdgeInsets.zero,
       scrollDirection: Axis.horizontal,
-      itemCount: controller.featuredCategories.length > 5
-          ? 5
-          : controller.featuredCategories.length,
+      itemCount: controller.featuredCategories.length,
       separatorBuilder: (context, index) => const SizedBox(width: 30),
       itemBuilder: (context, index) {
         final category = controller.featuredCategories[index];

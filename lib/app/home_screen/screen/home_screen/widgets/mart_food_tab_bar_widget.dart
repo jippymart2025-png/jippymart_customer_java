@@ -16,6 +16,7 @@ Widget martFoodTabBarWidgetHome({
   required MartNavigationProvider martNavigationProvider,
   required BuildContext context,
 }) {
+  MartZoneUtils.prefetchMartVendors();
 
   Future<void> checkMartAvailability(
     MartProvider martProvider,
@@ -29,7 +30,15 @@ Widget martFoodTabBarWidgetHome({
     }
 
     _isMartChecking = true;
-    ShowToastDialog.showLoader("Checking mart availability...".tr);
+
+    // Delay loader so quick loads (e.g. cache hit) feel instant
+    bool loaderShown = false;
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (_isMartChecking && !loaderShown) {
+        loaderShown = true;
+        ShowToastDialog.showLoader("Checking mart availability...".tr);
+      }
+    });
 
     try {
       // First, verify zone is available and fresh
@@ -47,51 +56,29 @@ Widget martFoodTabBarWidgetHome({
         return;
       }
 
-      debugPrint("✅ Zone ID: $currentZoneId");
+      debugPrint("✅ Zone ID: $currentZoneId - proceeding to Mart");
 
-      // Check mart vendors availability BEFORE initializing provider
-      final martVendors = await MartZoneUtils.getCachedMartVendors();
-      
-      if (martVendors.isEmpty) {
-        debugPrint("❌ No mart vendors found in zone");
-        ShowToastDialog.closeLoader();
-        ComingSoonDialogHelper.show(
-          title: "COMING SOON".tr,
-          message:
-              "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-        );
-        _isMartChecking = false;
-        return;
-      }
+      // Skip vendor pre-check - mart_provider.initFunction() loads vendors.
+      // Avoids false "Coming Soon" when zone/API formats differ.
 
-      // Check if all vendors are closed
-      final allClosed = martVendors.every((v) => v.isOpen == false);
-      if (allClosed) {
-        debugPrint("❌ All mart vendors are closed");
-        ShowToastDialog.closeLoader();
-        ComingSoonDialogHelper.show(
-          title: "Mart Available from 7AM to 9PM".tr,
-          message: "",
-        );
-        _isMartChecking = false;
-        return;
-      }
+      // Close checking loader before showing loading
+      ShowToastDialog.closeLoader();
 
-      debugPrint("✅ Mart is available, initializing...");
+      // Delay "Loading mart..." so quick inits feel instant
+      bool loadingLoaderShown = false;
+      Future.delayed(const Duration(milliseconds: 200), () {
+        if (_isMartChecking && !loadingLoaderShown) {
+          loadingLoaderShown = true;
+          ShowToastDialog.showLoader("Loading mart...".tr);
+        }
+      });
 
-      // Only initialize AFTER confirming mart is available
-      // This prevents unnecessary loading if mart is not available
-      ShowToastDialog.showLoader("Loading mart...".tr);
-      
       try {
-        // Initialize providers (these are synchronous setup calls)
-        martProvider.initFunction();
+        // Initialize providers – must await so Mart content loads before navigation
         martNavigationProvider.initFunction(context: context);
-        
-        // Small delay to allow initialization to complete
-        await Future.delayed(const Duration(milliseconds: 100));
-        
-        // Navigate to mart screen first
+        await martProvider.initFunction();
+
+        // Navigate to mart screen after data is loaded
         Get.to(() => const MartNavigationScreen());
         
         // Close loader immediately after navigation starts
@@ -110,13 +97,9 @@ Widget martFoodTabBarWidgetHome({
       }
       
     } catch (e) {
-      debugPrint("❌ Mart check failed: $e");
+      debugPrint("❌ Mart load failed: $e");
       ShowToastDialog.closeLoader();
-      ComingSoonDialogHelper.show(
-        title: "COMING SOON".tr,
-        message:
-            "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-      );
+      // Don't show Coming Soon on load errors - may be temporary (network, etc.)
     } finally {
       // Ensure loader is always closed, even if navigation fails
       ShowToastDialog.closeLoader();

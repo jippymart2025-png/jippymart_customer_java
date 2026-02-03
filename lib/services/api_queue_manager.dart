@@ -74,7 +74,7 @@ class ApiQueueManager {
     // Check for deduplication
     if (key != null && _deduplicationMap.containsKey(key)) {
       print('[API_QUEUE] 🔄 Request deduplicated: $key');
-      return await _deduplicationMap[key]!.completer.future as Future<T>;
+      return await _deduplicationMap[key]!.completer.future;
     }
 
     final queuedRequest = QueuedRequest(
@@ -98,7 +98,7 @@ class ApiQueueManager {
 
     print('[API_QUEUE] 📋 Request enqueued (priority: ${priority.name}, queue size: ${_requestQueue.length})');
 
-    return await queuedRequest.completer.future as Future<T>;
+    return await queuedRequest.completer.future;
   }
 
   void _processNextRequest() {

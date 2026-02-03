@@ -263,6 +263,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     _initializeDeepLinkServicesInBackground(context);
     _initializeSmartLookInBackground();
     WidgetsBinding.instance.addObserver(this);
+    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       LanguageModel languageModel = LanguageModel(
         slug: "en",
@@ -275,6 +276,18 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       );
     });
     super.initState();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed) {
+      // Notify deep link service that app has resumed
+      FinalDeepLinkService().onAppResumed();
+    } else if (state == AppLifecycleState.paused) {
+      // Notify deep link service that app has paused
+      FinalDeepLinkService().onAppPaused();
+    }
   }
 
   @override
@@ -326,7 +339,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         title: 'JippyMart Customer'.tr,
         debugShowCheckedModeBanner: false,
         localizationsDelegates: const [CountryLocalizations.delegate],
-        builder: EasyLoading.init(),
+        builder: (context, child) {
+          return EasyLoading.init()(
+            context,
+            SafeArea(
+              child: child ?? const SizedBox.shrink(),
+            ),
+          );
+        },
         home: Consumer<GlobalSettingsProvider>(
           builder: (context, controller, _) {
             return const VideoSplashScreen();

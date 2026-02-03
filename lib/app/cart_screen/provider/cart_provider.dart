@@ -6365,8 +6365,11 @@ class CartControllerProvider extends ChangeNotifier {
   VendorModel? _cachedVendorModel;
   DeliveryCharge? _cachedDeliveryCharge;
   List<CouponModel>? _cachedCouponList;
+  List<CouponModel>? _cachedGlobalCouponList;
   DateTime? _lastCacheTime;
+  DateTime? _lastGlobalCouponCacheTime;
   static const Duration cacheExpiry = Duration(minutes: 5);
+  static const Duration globalCouponCacheExpiry = Duration(minutes: 5);
 
   // 🔑 PRODUCT CACHE
   final Map<String, ProductModel?> _productCache = {};
@@ -6858,18 +6861,19 @@ class CartControllerProvider extends ChangeNotifier {
           final previousDeliveryCharges = deliveryCharges;
           final previousTaxAmount = taxAmount;
 
-          // Reset values
-          deliveryCharges = 0.0;
-          subTotal = 0.0;
-          couponAmount = 0.0;
-          specialDiscountAmount = 0.0;
-          taxAmount = 0.0;
-          totalAmount = 0.0;
-
           if (HomeProvider.cartItem.isEmpty) {
+            deliveryCharges = 0.0;
+            subTotal = 0.0;
+            couponAmount = 0.0;
+            specialDiscountAmount = 0.0;
+            taxAmount = 0.0;
+            totalAmount = 0.0;
             notifyListeners();
             return;
           }
+
+          // Don't reset for non-empty cart - each _calculate* overwrites in sequence.
+          // Avoids UI flicker to 0 during async calculation.
 
           // Load vendor if needed
           if (vendorModel.id == null) {
@@ -6909,6 +6913,10 @@ class CartControllerProvider extends ChangeNotifier {
         },
         timeout: const Duration(seconds: 5),
       );
+    } catch (e) {
+      print('[CART_PRICE] ❌ Calculation failed: $e');
+      notifyListeners();
+      rethrow;
     } finally {
       _isCalculatingPrice = false;
       _endOperation('calculatePrice');
@@ -6916,14 +6924,18 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<void> _loadVendorForPriceCalculation() async {
-    final martItems = HomeProvider.cartItem
-        .where((item) => _isMartItem(item))
-        .toList();
+    try {
+      final martItems = HomeProvider.cartItem
+          .where((item) => _isMartItem(item))
+          .toList();
 
-    if (martItems.isNotEmpty) {
-      await _loadFreshMartVendor(martItems);
-    } else if (HomeProvider.cartItem.isNotEmpty) {
-      await _loadFreshRestaurantVendor(HomeProvider.cartItem.first.vendorID);
+      if (martItems.isNotEmpty) {
+        await _loadFreshMartVendor(martItems);
+      } else if (HomeProvider.cartItem.isNotEmpty) {
+        await _loadFreshRestaurantVendor(HomeProvider.cartItem.first.vendorID);
+      }
+    } catch (e) {
+      print('[CART_VENDOR] ⚠️ Error loading vendor for price: $e');
     }
   }
 
@@ -8653,6 +8665,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> forceRefreshCart() async {
     _startOperation('forceRefreshCart');
 
+    _invalidateCartRelatedCaches();
     await cartProvider.refreshCart();
     await _loadFreshVendorForCart();
     await preloadCartProducts(forceRefresh: true);
@@ -8670,6 +8683,9 @@ class CartControllerProvider extends ChangeNotifier {
     _startOperation('getCartData');
 
     cartProvider.cartStream.listen((event) async {
+      // Smart cache: cart DB changed → invalidate so next load reflects changes
+      _invalidateCartRelatedCaches();
+
       HomeProvider.cartItem.clear();
       HomeProvider.cartItem.addAll(event);
 
@@ -8701,27 +8717,12 @@ class CartControllerProvider extends ChangeNotifier {
       defaultValue: "Delivery".tr,
     );
 
-    if (userModel.id == null) {
-      final userId = await SqlStorageConst.getFirebaseId();
-      await AddressListProvider.getUserProfile(userId.toString()).then((value) {
-        if (value != null) {
-          userModel = value;
-        }
-      });
-    }
-
-    if (_cachedDeliveryCharge != null && _isCacheValid()) {
-      deliveryChargeModel = _cachedDeliveryCharge!;
-    } else {
-      await FireStoreUtils.getDeliveryCharge().then((value) {
-        if (value != null) {
-          deliveryChargeModel = value;
-          _cachedDeliveryCharge = value;
-          _updateCacheTime();
-          calculatePrice();
-        }
-      });
-    }
+    // Run independent operations in parallel to reduce total time
+    await Future.wait([
+      if (userModel.id == null) _loadUserProfileForCart(),
+      if (_cachedDeliveryCharge == null || !_isCacheValid())
+          _loadDeliveryChargeForCart(),
+    ]);
 
     _detectCurrentContext();
 
@@ -8757,6 +8758,27 @@ class CartControllerProvider extends ChangeNotifier {
 
     _endOperation('getCartData');
     notifyListeners();
+  }
+
+  Future<void> _loadUserProfileForCart() async {
+    try {
+      final userId = await SqlStorageConst.getFirebaseId();
+      final value =
+          await AddressListProvider.getUserProfile(userId.toString());
+      if (value != null) userModel = value;
+    } catch (_) {}
+  }
+
+  Future<void> _loadDeliveryChargeForCart() async {
+    try {
+      final value = await FireStoreUtils.getDeliveryCharge();
+      if (value != null) {
+        deliveryChargeModel = value;
+        _cachedDeliveryCharge = value;
+        _updateCacheTime();
+        calculatePrice();
+      }
+    } catch (_) {}
   }
 
   Future<void> preloadCartProducts({bool forceRefresh = false}) async {
@@ -8846,7 +8868,15 @@ class CartControllerProvider extends ChangeNotifier {
     _cachedVendorModel = null;
     _lastCacheTime = null;
     vendorModel = VendorModel();
+    _invalidateCartRelatedCaches();
     notifyListeners();
+  }
+
+  /// Smart cache: invalidate when cart/vendor changes so UI reflects DB changes
+  void _invalidateCartRelatedCaches() {
+    _cachedGlobalCouponList = null;
+    _lastGlobalCouponCacheTime = null;
+    _cachedCouponList = null;
   }
 
   // Add these methods to the CartControllerProvider class:
@@ -9247,11 +9277,28 @@ class CartControllerProvider extends ChangeNotifier {
 
   // Add these methods also if they're missing:
 
+  bool _isGlobalCouponCacheValid() {
+    return _lastGlobalCouponCacheTime != null &&
+        DateTime.now().difference(_lastGlobalCouponCacheTime!) <
+            globalCouponCacheExpiry;
+  }
+
   Future<void> _loadGlobalCouponsOnly() async {
     if (_isLoadingCoupons) {
       print(
         '[COUPON_LOAD] ⚠️ Global coupon load already in progress, skipping...',
       );
+      return;
+    }
+
+    // Cache-first: use cached global coupons if valid (5 min TTL)
+    if (_cachedGlobalCouponList != null &&
+        _cachedGlobalCouponList!.isNotEmpty &&
+        _isGlobalCouponCacheValid()) {
+      couponList = _cachedGlobalCouponList!;
+      allCouponList = _cachedGlobalCouponList!;
+      await _markUsedCoupons();
+      notifyListeners();
       return;
     }
 
@@ -9306,6 +9353,8 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       _cachedCouponList = contextFilteredCoupons;
+      _cachedGlobalCouponList = contextFilteredCoupons;
+      _lastGlobalCouponCacheTime = DateTime.now();
       _updateCacheTime();
 
       couponList = contextFilteredCoupons;
@@ -9851,10 +9900,14 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _loadFreshMartVendor(List<CartProductModel> martItems) async {
     try {
       final firstMartItem = martItems.first;
-      final vendorId = firstMartItem.vendorID;
+      var vendorId = firstMartItem.vendorID;
+      // Cart stores "mart_123"; API expects raw ID "123"
+      if (vendorId != null && vendorId.startsWith('mart_')) {
+        vendorId = vendorId.substring(5);
+      }
       MartVendorModel? martVendor;
 
-      if (vendorId != null && vendorId.isNotEmpty) {
+      if (vendorId != null && vendorId.isNotEmpty && vendorId != 'unknown') {
         martVendor = await MartVendorService.getMartVendorById(vendorId);
         martVendor ??= await MartVendorService.getDefaultMartVendor();
       } else {
@@ -9885,7 +9938,7 @@ class CartControllerProvider extends ChangeNotifier {
           isOpen: martVendor.isOpen,
         );
       }
-      notifyListeners();
+      if (!_isCalculatingPrice) notifyListeners();
     } catch (e) {
       print('[MART_VENDOR] ❌ Error: $e');
     }
@@ -9899,7 +9952,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (freshVendor != null) {
         vendorModel = freshVendor;
       }
-      notifyListeners();
+      if (!_isCalculatingPrice) notifyListeners();
     } catch (e) {
       print('[RESTAURANT_VENDOR] ❌ Error: $e');
     }
@@ -9948,6 +10001,31 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Returns vendor_id for order API. For mart: vendorModel.id or first cart item's vendorID.
+  /// Strips "mart_" prefix when sending to backend (backend expects raw ID in mart_vendor table).
+  String _getVendorIdForOrder() {
+    String? rawId;
+    if (vendorModel.id != null && vendorModel.id!.isNotEmpty) {
+      rawId = vendorModel.id!;
+    } else if (hasMartItemsInCart()) {
+      final martItems = HomeProvider.cartItem
+          .where((item) => _isMartItem(item))
+          .toList();
+      if (martItems.isNotEmpty) {
+        rawId = martItems.first.vendorID;
+      }
+    }
+    if (rawId == null || rawId.isEmpty) {
+      if (HomeProvider.cartItem.isNotEmpty) {
+        rawId = HomeProvider.cartItem.first.vendorID;
+      }
+    }
+    if (rawId == null || rawId.isEmpty) return 'mart_default';
+    // Backend mart_vendor table uses raw ID; cart stores "mart_123" format
+    final id = rawId.startsWith('mart_') ? rawId.substring(5) : rawId;
+    return (id.isEmpty || id == 'unknown') ? 'mart_default' : id;
   }
 
   void _detectCurrentContext() {
@@ -10786,7 +10864,7 @@ class CartControllerProvider extends ChangeNotifier {
     isCartReady = HomeProvider.cartItem.isNotEmpty && subTotal > 0;
     isPaymentReady = isCartReadyForPayment();
     isAddressValid = selectedAddress?.id != null;
-    notifyListeners();
+    if (!_isCalculatingPrice) notifyListeners();
   }
 
   bool isCartReadyForPayment() {
@@ -10826,7 +10904,7 @@ class CartControllerProvider extends ChangeNotifier {
         selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
     }
-    notifyListeners();
+    if (!_isCalculatingPrice) notifyListeners();
   }
 
   Future<void> rollbackFailedOrder(
@@ -10926,28 +11004,30 @@ class CartControllerProvider extends ChangeNotifier {
                             width: 30,
                             height: 30,
                           ),
-                          SizedBox(
-                            width: 150,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Cash on Delivery",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Cash on Delivery",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
                                   ),
-                                ),
-                                Text(
-                                  "Pay when you receive your order",
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[600],
+                                  Text(
+                                    "Pay when you receive your order",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey[600],
+                                    ),
+                                    maxLines: 2,
                                   ),
-                                  maxLines: 2,
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -11731,6 +11811,36 @@ class CartControllerProvider extends ChangeNotifier {
         '✅ [ORDER_CREATION] Final validation passed - SubTotal: ₹$subTotal, Total: ₹$totalAmount',
       );
 
+      // 🔑 MART FIX: Ensure vendor is loaded before order (backend needs valid vendor_id)
+      if (hasMartItemsInCart()) {
+        final martItems = HomeProvider.cartItem
+            .where((item) => _isMartItem(item))
+            .toList();
+        if (martItems.isNotEmpty &&
+            (vendorModel.id == null ||
+                vendorModel.id!.isEmpty ||
+                vendorModel.id == 'mart_default')) {
+          await _loadFreshMartVendor(martItems);
+          print(
+            '[ORDER_CREATION] Loaded mart vendor for order: ${vendorModel.id}',
+          );
+        }
+        // Validate we have a real vendor ID (not mart_default) before proceeding
+        final vendorId = _getVendorIdForOrder();
+        if (vendorId == 'mart_default') {
+          print('❌ [ORDER_CREATION] No valid mart vendor found in cart items');
+          ShowToastDialog.closeLoader();
+          ShowToastDialog.showToast(
+            "Unable to process order. Please remove items and add them again from Mart.".tr,
+          );
+          _isOrderCreationInProgress = false;
+          _currentOrderPaymentId = null;
+          endOrderProcessing();
+          _unlockGlobal();
+          return;
+        }
+      }
+
       // 🔑 FIX 2: Build order model and API payload
       String? orderId;
       List<CartProductModel> orderedProducts = [];
@@ -11738,8 +11848,9 @@ class CartControllerProvider extends ChangeNotifier {
 
       tempProduc.clear();
 
-      // Check vendor subscription
-      if ((Constant.isSubscriptionModelApplied == true ||
+      // Check vendor subscription (skip for mart - uses different table)
+      if (!hasMartItemsInCart() &&
+          (Constant.isSubscriptionModelApplied == true ||
               Constant.adminCommission?.isEnabled == true) &&
           vendorModel.subscriptionPlan != null &&
           vendorModel.id != null) {
@@ -11809,7 +11920,7 @@ class CartControllerProvider extends ChangeNotifier {
       orderModel.address = selectedAddress;
       orderModel.authorID = await SqlStorageConst.getFirebaseId();
       orderModel.author = userModel;
-      orderModel.vendorID = vendorModel.id;
+      orderModel.vendorID = _getVendorIdForOrder();
       orderModel.vendor = vendorModel;
       orderModel.products = tempProduc;
       orderModel.specialDiscount = specialDiscountMap;
@@ -11853,12 +11964,14 @@ class CartControllerProvider extends ChangeNotifier {
         "surge_percent": surgePercent,
         "admin_surge_fee": await getAdminSurgeFee(),
         "special_discount": specialDiscountMap,
-        "vendor_id": vendorModel.id ?? 'mart_default',
+        "vendor_id": _getVendorIdForOrder(),
+        "v_type": vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
         "status": Constant.orderPlaced,
         "created_at": DateTime.now().toIso8601String(),
       };
 
       print('🌐 [ORDER_CREATION] Creating order via API...');
+      print('🌐 [ORDER_CREATION] vendor_id: ${orderPayload["vendor_id"]}, v_type: ${orderPayload["v_type"]}');
       print('🌐 [ORDER_CREATION] Payment method: $selectedPaymentMethod');
       print('🌐 [ORDER_CREATION] Total amount: ₹$totalAmount');
 

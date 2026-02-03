@@ -32,32 +32,19 @@ class RestaurantDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double initialBottomPadding = 10;
-    double bottomSafeAreaPadding = MediaQuery.of(context).size.height * 0.033;
-    bottomSafeAreaPadding = bottomSafeAreaPadding - initialBottomPadding;
-    if (bottomSafeAreaPadding < initialBottomPadding) {
-      bottomSafeAreaPadding = initialBottomPadding;
-    }
+    final bottomSafeArea = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: EdgeInsets.only(
-        // bottom: responseToKeyboard
-        //     ? max(
-        //         MediaQuery.of(context).viewInsets.bottom,
-        //         bottomSafeAreaPadding,
-        //       )
-        //     : bottomSafeAreaPadding,
-      ),
+      padding: EdgeInsets.zero,
       child: Consumer<RestaurantDetailsProvider>(
         builder: (context, controller, _) {
           return Scaffold(
             body: Padding(
               padding: EdgeInsets.only(
                 bottom: responseToKeyboard
-                    ? max(
-                        MediaQuery.of(context).viewInsets.bottom,
-                        bottomSafeAreaPadding,
-                      )
-                    : bottomSafeAreaPadding,
+                    ? (MediaQuery.of(context).viewInsets.bottom > 0
+                          ? 0
+                          : bottomSafeArea)
+                    : bottomSafeArea,
               ),
               child: RefreshIndicator(
                 onRefresh: () async {
@@ -754,60 +741,111 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                 decoration:
                                                     controller.isOfferFilter
                                                     ? BoxDecoration(
-                                                        gradient: LinearGradient(
-                                                          colors: [
-                                                            const Color(0xFFFF6B6B),
-                                                            const Color(0xFFFF8E53),
-                                                            const Color(0xFFFF6B6B),
-                                                          ],
-                                                          begin: Alignment.topLeft,
-                                                          end: Alignment.bottomRight,
-                                                          stops: const [0.0, 0.5, 1.0],
-                                                        ),
+                                                        gradient:
+                                                            LinearGradient(
+                                                              colors: [
+                                                                const Color(
+                                                                  0xFFFF6B6B,
+                                                                ),
+                                                                const Color(
+                                                                  0xFFFF8E53,
+                                                                ),
+                                                                const Color(
+                                                                  0xFFFF6B6B,
+                                                                ),
+                                                              ],
+                                                              begin: Alignment
+                                                                  .topLeft,
+                                                              end: Alignment
+                                                                  .bottomRight,
+                                                              stops: const [
+                                                                0.0,
+                                                                0.5,
+                                                                1.0,
+                                                              ],
+                                                            ),
                                                         borderRadius:
-                                                            BorderRadius.circular(120),
+                                                            BorderRadius.circular(
+                                                              120,
+                                                            ),
                                                         boxShadow: [
                                                           BoxShadow(
-                                                            color: const Color(0xFFFF6B6B).withOpacity(0.4),
+                                                            color: const Color(
+                                                              0xFFFF6B6B,
+                                                            ).withOpacity(0.4),
                                                             blurRadius: 12,
-                                                            offset: const Offset(0, 3),
+                                                            offset:
+                                                                const Offset(
+                                                                  0,
+                                                                  3,
+                                                                ),
                                                           ),
                                                           BoxShadow(
-                                                            color: const Color(0xFFFF8E53).withOpacity(0.2),
+                                                            color: const Color(
+                                                              0xFFFF8E53,
+                                                            ).withOpacity(0.2),
                                                             blurRadius: 20,
-                                                            offset: const Offset(0, 5),
+                                                            offset:
+                                                                const Offset(
+                                                                  0,
+                                                                  5,
+                                                                ),
                                                           ),
                                                         ],
                                                         border: Border.all(
-                                                          color: const Color(0xFFFF6B6B),
+                                                          color: const Color(
+                                                            0xFFFF6B6B,
+                                                          ),
                                                           width: 1.5,
                                                         ),
                                                       )
                                                     : BoxDecoration(
-                                                        gradient: LinearGradient(
-                                                          colors: [
-                                                            const Color(0xFFFF6B6B).withOpacity(0.08),
-                                                            const Color(0xFFFF8E53).withOpacity(0.05),
-                                                          ],
-                                                          begin: Alignment.topLeft,
-                                                          end: Alignment.bottomRight,
-                                                        ),
+                                                        gradient:
+                                                            LinearGradient(
+                                                              colors: [
+                                                                const Color(
+                                                                  0xFFFF6B6B,
+                                                                ).withOpacity(
+                                                                  0.08,
+                                                                ),
+                                                                const Color(
+                                                                  0xFFFF8E53,
+                                                                ).withOpacity(
+                                                                  0.05,
+                                                                ),
+                                                              ],
+                                                              begin: Alignment
+                                                                  .topLeft,
+                                                              end: Alignment
+                                                                  .bottomRight,
+                                                            ),
                                                         borderRadius:
-                                                            BorderRadius.circular(120),
+                                                            BorderRadius.circular(
+                                                              120,
+                                                            ),
                                                         border: Border.all(
-                                                          color: const Color(0xFFFF6B6B).withOpacity(0.3),
+                                                          color: const Color(
+                                                            0xFFFF6B6B,
+                                                          ).withOpacity(0.3),
                                                           width: 1.5,
                                                         ),
                                                         boxShadow: [
                                                           BoxShadow(
-                                                            color: const Color(0xFFFF6B6B).withOpacity(0.1),
+                                                            color: const Color(
+                                                              0xFFFF6B6B,
+                                                            ).withOpacity(0.1),
                                                             blurRadius: 6,
-                                                            offset: const Offset(0, 2),
+                                                            offset:
+                                                                const Offset(
+                                                                  0,
+                                                                  2,
+                                                                ),
                                                           ),
                                                         ],
                                                       ),
                                                 child: Row(
-                                                  mainAxisSize: MainAxisSize.min,
+                                                  mainAxisSize:
+                                                      MainAxisSize.min,
                                                   mainAxisAlignment:
                                                       MainAxisAlignment.start,
                                                   crossAxisAlignment:
@@ -817,28 +855,44 @@ class RestaurantDetailsScreen extends StatelessWidget {
                                                       Icons.local_offer,
                                                       size: 16,
                                                       color:
-                                                          controller.isOfferFilter
+                                                          controller
+                                                              .isOfferFilter
                                                           ? Colors.white
-                                                          : const Color(0xFFFF6B6B),
+                                                          : const Color(
+                                                              0xFFFF6B6B,
+                                                            ),
                                                     ),
                                                     const SizedBox(width: 4),
                                                     Text(
                                                       'Offers'.tr,
                                                       style: TextStyle(
                                                         color:
-                                                            controller.isOfferFilter
+                                                            controller
+                                                                .isOfferFilter
                                                             ? Colors.white
-                                                            : const Color(0xFFFF6B6B),
-                                                        fontFamily:
-                                                            AppThemeData.semiBold,
-                                                        fontWeight: FontWeight.w600,
+                                                            : const Color(
+                                                                0xFFFF6B6B,
+                                                              ),
+                                                        fontFamily: AppThemeData
+                                                            .semiBold,
+                                                        fontWeight:
+                                                            FontWeight.w600,
                                                         fontSize: 12,
                                                         shadows:
-                                                            controller.isOfferFilter
+                                                            controller
+                                                                .isOfferFilter
                                                             ? [
                                                                 Shadow(
-                                                                  color: Colors.black.withOpacity(0.3),
-                                                                  offset: const Offset(0, 1),
+                                                                  color: Colors
+                                                                      .black
+                                                                      .withOpacity(
+                                                                        0.3,
+                                                                      ),
+                                                                  offset:
+                                                                      const Offset(
+                                                                        0,
+                                                                        1,
+                                                                      ),
                                                                   blurRadius: 2,
                                                                 ),
                                                               ]
@@ -1012,43 +1066,41 @@ class RestaurantDetailsScreen extends StatelessWidget {
                     onTap: () {
                       Get.to(const CartCheckOutScreen());
                     },
-                    child: SafeArea(
-                      child: Container(
-                        height: 70,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [Color(0xFFF48000), Color(0xFFff0404)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(20),
-                            topRight: Radius.circular(20),
-                          ),
+                    child: Container(
+                      height: 70,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFF48000), Color(0xFFff0404)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        padding: const EdgeInsets.symmetric(horizontal: 25),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              '${HomeProvider.cartItem.length} items',
-                              style: TextStyle(
-                                fontFamily: AppThemeData.medium,
-                                color: AppThemeData.grey50,
-                                fontSize: 20,
-                              ),
-                            ),
-                            Text(
-                              'View Cart',
-                              style: TextStyle(
-                                fontFamily: AppThemeData.semiBold,
-                                color: AppThemeData.grey50,
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
                         ),
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 25),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            '${HomeProvider.cartItem.length} items',
+                            style: TextStyle(
+                              fontFamily: AppThemeData.medium,
+                              color: AppThemeData.grey50,
+                              fontSize: 20,
+                            ),
+                          ),
+                          Text(
+                            'View Cart',
+                            style: TextStyle(
+                              fontFamily: AppThemeData.semiBold,
+                              color: AppThemeData.grey50,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),

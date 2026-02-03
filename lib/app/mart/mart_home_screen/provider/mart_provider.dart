@@ -10,6 +10,8 @@ import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
+import 'package:jippymart_customer/services/api_queue_manager.dart';
+import 'package:jippymart_customer/services/cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
@@ -22,58 +24,115 @@ class MartProvider extends ChangeNotifier {
       <String, List<MartItemModel>>{};
   List<String> uniqueCategoryTitles = <String>[];
 
+  /// Loads category section titles from getHomepageCategories/getCategories (cached)
+  /// and sample products via getItemsByCategoryOnly per category with limit=10.
+  /// Avoids heavy getMartItems() full-catalog fetch.
   Future<void> loadCategoryProductsForSections() async {
     try {
-      final allProducts = await _firestoreService.getMartItems();
-      final Map<String, List<MartItemModel>> categoryMap = {};
-      for (final product in allProducts) {
-        final categoryTitle = product.categoryTitle ?? 'Uncategorized';
-
-        if (!categoryMap.containsKey(categoryTitle)) {
-          categoryMap[categoryTitle] = [];
-        }
-
-        if (categoryMap[categoryTitle]!.length < 10) {
-          categoryMap[categoryTitle]!.add(product);
+      // 1. Get category list from cached/lightweight APIs (no full catalog)
+      var categories = await _firestoreService.getHomepageCategories(limit: 50);
+      // Fallback: if homepage returns fewer than 5, use getCategories for more
+      if (categories.length < 5) {
+        final moreCategories =
+            await _firestoreService.getCategories(limit: 50);
+        if (moreCategories.isNotEmpty) {
+          categories = moreCategories;
         }
       }
-      categoryProductsMap.clear();
-      categoryProductsMap.addAll(categoryMap);
+      if (categories.isEmpty) {
+        categories = await _firestoreService.getCategories(limit: 50);
+      }
+      if (categories.isEmpty) {
+        print(
+          '[MART CONTROLLER] ⚠️ No categories for sections, skipping category products',
+        );
+        categoryProductsMap.clear();
+        uniqueCategoryTitles.clear();
+        notifyListeners();
+        return;
+      }
+
+      // 2. Build category titles list (preserve API order)
+      final List<String> titles = [];
+      for (final cat in categories) {
+        final title = cat.title?.trim();
+        if (title != null && title.isNotEmpty && !titles.contains(title)) {
+          titles.add(title);
+        }
+      }
+
+      // 3. Apply same special ordering as before
+      _applyCategorySectionOrder(titles);
+
+      // 4. Set section titles immediately so UI can show headers
       uniqueCategoryTitles.clear();
-      uniqueCategoryTitles.addAll(categoryMap.keys.toList());
-      if (uniqueCategoryTitles.contains('Pet Care')) {
-        uniqueCategoryTitles.remove('Pet Care');
-        uniqueCategoryTitles.insert(
-          _safeInsertIndex(uniqueCategoryTitles.length, 7),
-          'Pet Care',
-        );
+      uniqueCategoryTitles.addAll(titles);
+      categoryProductsMap.clear();
+      for (final t in titles) {
+        categoryProductsMap[t] = [];
       }
-      if (uniqueCategoryTitles.contains('Fruits & Vegetables')) {
-        uniqueCategoryTitles.remove('Fruits & Vegetables');
-        uniqueCategoryTitles.insert(
-          _safeInsertIndex(uniqueCategoryTitles.length, 0),
-          'Fruits & Vegetables',
-        );
+      notifyListeners();
+
+      // 5. Fetch sample products per category (limit=10) in parallel
+      final categoryById = {
+        for (final c in categories) (c.title?.trim() ?? ''): c,
+      };
+      final futures = <Future<void>>[];
+      for (final title in titles) {
+        final cat = categoryById[title];
+        if (cat?.id == null || cat!.id!.isEmpty) continue;
+        futures.add(_loadSectionProductsForCategory(cat.id!, title, 10));
       }
-      if (uniqueCategoryTitles.contains('Cooking Essentials')) {
-        uniqueCategoryTitles.remove('Cooking Essentials');
-        uniqueCategoryTitles.insert(
-          _safeInsertIndex(uniqueCategoryTitles.length, 1),
-          'Cooking Essentials',
-        );
-      }
+      await Future.wait(futures);
+
       print(
-        '[MART CONTROLLER] ✅ Loaded ${uniqueCategoryTitles.length} unique categories:',
+        '[MART CONTROLLER] ✅ Loaded ${uniqueCategoryTitles.length} unique categories (sections):',
       );
       for (final category in uniqueCategoryTitles) {
         print(
           '  - $category: ${categoryProductsMap[category]?.length ?? 0} products',
         );
       }
-
       notifyListeners();
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error loading products by category: $e');
+    }
+  }
+
+  void _applyCategorySectionOrder(List<String> titles) {
+    if (titles.contains('Pet Care')) {
+      titles.remove('Pet Care');
+      titles.insert(_safeInsertIndex(titles.length, 7), 'Pet Care');
+    }
+    if (titles.contains('Fruits & Vegetables')) {
+      titles.remove('Fruits & Vegetables');
+      titles.insert(_safeInsertIndex(titles.length, 0), 'Fruits & Vegetables');
+    }
+    if (titles.contains('Cooking Essentials')) {
+      titles.remove('Cooking Essentials');
+      titles.insert(_safeInsertIndex(titles.length, 1), 'Cooking Essentials');
+    }
+  }
+
+  Future<void> _loadSectionProductsForCategory(
+    String categoryId,
+    String categoryTitle,
+    int limit,
+  ) async {
+    try {
+      final products = await _firestoreService.getItemsByCategoryOnly(
+        categoryId: categoryId,
+        isAvailable: true,
+        limit: limit,
+      );
+      if (products.isNotEmpty &&
+          categoryProductsMap.containsKey(categoryTitle)) {
+        categoryProductsMap[categoryTitle] = products.take(limit).toList();
+      }
+    } catch (e) {
+      print(
+        '[MART CONTROLLER] ⚠️ Error loading section products for "$categoryTitle": $e',
+      );
     }
   }
 
@@ -95,15 +154,17 @@ class MartProvider extends ChangeNotifier {
       final products = categoryProductsMap[title];
       if (products == null || products.isEmpty) continue;
       final firstProduct = products.first;
-      result.add(MartCategoryModel(
-        id: firstProduct.categoryID ?? 'cat_$i',
-        title: title,
-        photo: firstProduct.photo.isNotEmpty ? firstProduct.photo : null,
-        categoryOrder: i,
-        section: 'Other',
-        sectionOrder: 0,
-        itemCount: products.length,
-      ));
+      result.add(
+        MartCategoryModel(
+          id: firstProduct.categoryID ?? 'cat_$i',
+          title: title,
+          photo: firstProduct.photo.isNotEmpty ? firstProduct.photo : null,
+          categoryOrder: i,
+          section: 'Other',
+          sectionOrder: 0,
+          itemCount: products.length,
+        ),
+      );
     }
     return result;
   }
@@ -186,20 +247,23 @@ class MartProvider extends ChangeNotifier {
   bool filterNonVegOnly = false;
   bool filterAvailableOnly = true;
 
-  void initFunction() async {
-    loadMartBannersStream();
-    loadFeaturedCategories();
-    loadCategoryProductsForSections();
-    loadVendorCategories();
+  /// Staggered init: critical path first (banners + vendors + categories), then
+  /// loadCategoryProductsForSections in background. Uses ApiQueueManager and
+  /// CacheManager for banners (30 min), homepage categories (15 min).
+  Future<void> initFunction() async {
+    // Phase 1: Critical – banners, vendors, then categories
+    await loadMartBanners();
+    await loadMartVendors(); // Must run before loadVendorCategories (needs selectedVendorId)
+    await loadHomepageCategoriesStreaming(limit: 24); // Homepage categories for MartDynamicCategoriesSection
+    await loadVendorCategories();
 
-    ///
-    // _preloadSections();
-    // _initializeServices();
-    // setupSearchListener();
     if (martTopBanners.isNotEmpty) {
       startMartBannerTimer();
     }
     notifyListeners();
+
+    // Phase 2: Background – section products (no await)
+    loadCategoryProductsForSections();
   }
 
   Future<void> refreshData() async {
@@ -212,7 +276,7 @@ class MartProvider extends ChangeNotifier {
       // Load independent data in parallel (no duplicate API calls)
       await Future.wait([
         loadMartVendors(refresh: true),
-        loadHomepageCategoriesStreaming(limit: 10),
+        loadHomepageCategoriesStreaming(limit: 24),
         loadFeaturedCategories(),
         loadCategoryProductsForSections(),
       ]);
@@ -230,35 +294,36 @@ class MartProvider extends ChangeNotifier {
   /// Load featured/onSale once, then derive spotlight and steals - reduces API calls by 50%
   Future<void> _loadVendorDependentData() async {
     if (selectedVendorId.isEmpty) return;
-    await Future.wait([
-      loadFeaturedItems(),
-      loadItemsOnSale(),
-    ]);
+    await Future.wait([loadFeaturedItems(), loadItemsOnSale()]);
     _updateSpotlightAndStealsFromLoadedData();
   }
 
   void _updateSpotlightAndStealsFromLoadedData() {
     spotlightItems.clear();
     spotlightItems.addAll(
-      featuredItems.map((item) => {
-            'id': item.id,
-            'name': item.displayName,
-            'image': item.mainImage,
-            'price': item.currentPrice,
-            'description': item.displayDescription,
-          }),
+      featuredItems.map(
+        (item) => {
+          'id': item.id,
+          'name': item.displayName,
+          'image': item.mainImage,
+          'price': item.currentPrice,
+          'description': item.displayDescription,
+        },
+      ),
     );
     stealsItems.clear();
     stealsItems.addAll(
-      itemsOnSale.map((item) => {
-            'id': item.id,
-            'name': item.displayName,
-            'image': item.mainImage,
-            'price': item.currentPrice,
-            'originalPrice': item.originalPrice,
-            'discount': item.calculatedDiscountPercentage,
-            'description': item.displayDescription,
-          }),
+      itemsOnSale.map(
+        (item) => {
+          'id': item.id,
+          'name': item.displayName,
+          'image': item.mainImage,
+          'price': item.currentPrice,
+          'originalPrice': item.originalPrice,
+          'discount': item.calculatedDiscountPercentage,
+          'description': item.displayDescription,
+        },
+      ),
     );
   }
 
@@ -324,70 +389,120 @@ class MartProvider extends ChangeNotifier {
     _martBannerTimer?.cancel();
   }
 
-  /// Load mart banners using lazy loading streams
+  /// Load mart banners using lazy loading streams (legacy; init uses loadMartBanners)
   void loadMartBannersStream() {
     _initializeBannerStreams();
+  }
+
+  /// Load mart banners with cache (30 min) and ApiQueueManager. Used by initFunction.
+  Future<void> loadMartBanners() async {
+    final zoneId = Constant.selectedZone?.id ?? 'default';
+    final cacheKey = 'mart_banners_$zoneId';
+
+    final cached =
+        CacheManager().getBanners<List<MartBannerModel>>(cacheKey);
+    if (cached != null && cached.isNotEmpty) {
+      martTopBanners = cached;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      final list = await ApiQueueManager().enqueue<List<MartBannerModel>>(
+        priority: RequestPriority.high,
+        key: cacheKey,
+        request: () async {
+          final result = await _fetchMartBannersApi();
+          if (result.isNotEmpty) {
+            CacheManager().setBanners(cacheKey, result);
+          }
+          return result;
+        },
+      );
+      martTopBanners = list;
+      notifyListeners();
+    } catch (e) {
+      print('[MART CONTROLLER] ❌ Error loading banners: $e');
+    }
+  }
+
+  Future<List<MartBannerModel>> _fetchMartBannersApi() async {
+    try {
+      final response = await http.get(
+        Uri.parse('${AppConst.baseUrl}banners/top'),
+        headers: await getHeaders(),
+      );
+      if (response.statusCode != 200) return [];
+      final responseData = json.decode(response.body);
+      if (responseData['success'] != true) return [];
+      final data = responseData['data'] as List? ?? [];
+      final bannerList = <MartBannerModel>[];
+      final customerZoneId = Constant.selectedZone?.id;
+      for (final bannerData in data) {
+        final banner = MartBannerModel.fromJson(
+          Map<String, dynamic>.from(bannerData as Map),
+        );
+        final show = banner.zoneId == null ||
+            banner.zoneId!.isEmpty ||
+            customerZoneId == null ||
+            customerZoneId.isEmpty ||
+            banner.zoneId == customerZoneId;
+        if (show) bannerList.add(banner);
+      }
+      bannerList.sort(
+        (a, b) => (a.setOrder ?? 0).compareTo(b.setOrder ?? 0),
+      );
+      return bannerList;
+    } catch (e) {
+      print('[MART CONTROLLER] ❌ Error fetching banners: $e');
+      return [];
+    }
   }
 
   static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
     final StreamController<List<MartBannerModel>> controller =
         StreamController<List<MartBannerModel>>();
-    String? customerZoneId = Constant.selectedZone?.id;
+
     Future<void> fetchBanners() async {
       try {
-        final response = await http.get(
-          Uri.parse('${AppConst.baseUrl}banners/top'),
-          headers: await getHeaders(),
-        );
-        print("getMartBottomBannersStream ${response.body}");
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseData = json.decode(response.body);
-          if (responseData['success'] == true) {
-            List<MartBannerModel> bannerList = [];
-            List<MartBannerModel> filteredBannerList = [];
-            for (var bannerData in responseData['data']) {
-              MartBannerModel banner = MartBannerModel.fromJson(bannerData);
-              bannerList.add(banner);
-              print(
-                "getMartBottomBannersStream ${banner.id} ${banner.categoryId} ${banner.zoneId} ",
+        final zoneId = Constant.selectedZone?.id ?? 'default';
+        final cacheKey = 'mart_banners_stream_$zoneId';
+        final list = await CacheManager().getOrSetBanners<List<MartBannerModel>>(
+          cacheKey,
+          () async {
+            final response = await http.get(
+              Uri.parse('${AppConst.baseUrl}banners/top'),
+              headers: await getHeaders(),
+            );
+            if (response.statusCode != 200) return <MartBannerModel>[];
+            final responseData = json.decode(response.body);
+            if (responseData['success'] != true) return <MartBannerModel>[];
+            final data = responseData['data'] as List? ?? [];
+            final filteredBannerList = <MartBannerModel>[];
+            for (var bannerData in data) {
+              final banner = MartBannerModel.fromJson(
+                Map<String, dynamic>.from(bannerData as Map),
               );
-              bool shouldShowBanner = false;
-              if (banner.zoneId == null || banner.zoneId!.isEmpty) {
-                shouldShowBanner = true;
-              } else if (customerZoneId == null || customerZoneId.isEmpty) {
-                shouldShowBanner = true;
-              } else if (banner.zoneId == customerZoneId) {
-                shouldShowBanner = true;
-              }
-
-              if (shouldShowBanner) {
-                filteredBannerList.add(banner);
-              }
+              final show = banner.zoneId == null ||
+                  banner.zoneId!.isEmpty ||
+                  zoneId == 'default' ||
+                  banner.zoneId == zoneId;
+              if (show) filteredBannerList.add(banner);
             }
-
-            // Sort by set_order in memory
-            filteredBannerList.sort((a, b) {
-              int orderA = a.setOrder ?? 0;
-              int orderB = b.setOrder ?? 0;
-              return orderA.compareTo(orderB);
-            });
-
-            controller.add(filteredBannerList);
-          } else {
-            controller.add(<MartBannerModel>[]);
-          }
-        } else {
-          controller.add(<MartBannerModel>[]);
-        }
+            filteredBannerList.sort(
+              (a, b) => (a.setOrder ?? 0).compareTo(b.setOrder ?? 0),
+            );
+            return filteredBannerList;
+          },
+        );
+        controller.add(list);
       } catch (error) {
         print("Error fetching banners: $error");
         controller.add(<MartBannerModel>[]);
       }
     }
 
-    // Initial fetch
     fetchBanners();
-
     return controller.stream;
   }
 
@@ -905,13 +1020,15 @@ class MartProvider extends ChangeNotifier {
       await loadFeaturedItems();
       spotlightItems.clear();
       spotlightItems.addAll(
-        featuredItems.map((item) => {
-              'id': item.id,
-              'name': item.displayName,
-              'image': item.mainImage,
-              'price': item.currentPrice,
-              'description': item.displayDescription,
-            }),
+        featuredItems.map(
+          (item) => {
+            'id': item.id,
+            'name': item.displayName,
+            'image': item.mainImage,
+            'price': item.currentPrice,
+            'description': item.displayDescription,
+          },
+        ),
       );
     } catch (e) {
       // Error handled in loadFeaturedItems
@@ -924,15 +1041,17 @@ class MartProvider extends ChangeNotifier {
       await loadItemsOnSale();
       stealsItems.clear();
       stealsItems.addAll(
-        itemsOnSale.map((item) => {
-              'id': item.id,
-              'name': item.displayName,
-              'image': item.mainImage,
-              'price': item.currentPrice,
-              'originalPrice': item.originalPrice,
-              'discount': item.calculatedDiscountPercentage,
-              'description': item.displayDescription,
-            }),
+        itemsOnSale.map(
+          (item) => {
+            'id': item.id,
+            'name': item.displayName,
+            'image': item.mainImage,
+            'price': item.currentPrice,
+            'originalPrice': item.originalPrice,
+            'discount': item.calculatedDiscountPercentage,
+            'description': item.displayDescription,
+          },
+        ),
       );
     } catch (e) {
       // Error handled in loadItemsOnSale
@@ -1091,7 +1210,7 @@ class MartProvider extends ChangeNotifier {
   /// Search categories with debouncing
 
   // ==================== STREAMING DATA LOADING METHODS ====================
-  Future<void> loadHomepageCategoriesStreaming({int limit = 10}) async {
+  Future<void> loadHomepageCategoriesStreaming({int limit = 24}) async {
     try {
       isCategoryLoading = true;
       errorMessage = '';
@@ -1099,6 +1218,14 @@ class MartProvider extends ChangeNotifier {
       var categories = await _firestoreService.getHomepageCategories(
         limit: limit,
       );
+      // Fallback: if homepage returns fewer than 5, use getCategories for more
+      if (categories.length < 5) {
+        final moreCategories =
+            await _firestoreService.getCategories(limit: limit);
+        if (moreCategories.isNotEmpty) {
+          categories = moreCategories;
+        }
+      }
       if (categories.isEmpty) {
         categories = await _firestoreService.getFeaturedCategories(
           martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
@@ -1108,9 +1235,7 @@ class MartProvider extends ChangeNotifier {
         categories = martCategories.take(limit).toList();
       }
       if (categories.isEmpty && categoryProductsMap.isNotEmpty) {
-        categories = _deriveCategoriesFromProducts()
-            .take(limit)
-            .toList();
+        categories = _deriveCategoriesFromProducts().take(limit).toList();
       }
       if (categories.isNotEmpty) {
         featuredCategories.clear();
@@ -1121,15 +1246,12 @@ class MartProvider extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      errorMessage =
-          'Unable to load categories. Please check your connection.';
+      errorMessage = 'Unable to load categories. Please check your connection.';
       isCategoryLoading = false;
       isHomepageCategoriesLoaded = false;
       notifyListeners();
     } catch (e) {
-      print(
-        '[MART CONTROLLER] ❌ Error loading homepage categories: $e',
-      );
+      print('[MART CONTROLLER] ❌ Error loading homepage categories: $e');
       errorMessage = 'Unable to load categories. Please try again.';
       isCategoryLoading = false;
       notifyListeners();
@@ -1273,8 +1395,9 @@ class MartProvider extends ChangeNotifier {
           print(
             '[MART CONTROLLER] ⚠️ getCategories empty, trying getHomepageCategories...',
           );
-          categories =
-              await _firestoreService.getHomepageCategories(limit: 100);
+          categories = await _firestoreService.getHomepageCategories(
+            limit: 100,
+          );
         }
         if (categories.isEmpty) {
           print(
@@ -1303,9 +1426,7 @@ class MartProvider extends ChangeNotifier {
           martCategories.addAll(categories);
           errorMessage = '';
 
-          print(
-            '[MART CONTROLLER] ✅ Categories loaded (${categories.length})',
-          );
+          print('[MART CONTROLLER] ✅ Categories loaded (${categories.length})');
 
           if (!skipSubcategories) {
             await loadFirstPageHomepageSubcategories();
@@ -1438,7 +1559,7 @@ class MartProvider extends ChangeNotifier {
     try {
       print('[MART CONTROLLER] 🔄 Manual streaming refresh triggered...');
       await Future.wait([
-        loadHomepageCategoriesStreaming(limit: 10),
+        loadHomepageCategoriesStreaming(limit: 24),
         loadTrendingItemsStreaming(),
         loadFeaturedItemsStreaming(),
         loadCategoriesStreaming(),
@@ -1453,18 +1574,17 @@ class MartProvider extends ChangeNotifier {
 
   // ==================== SIMILAR PRODUCTS STREAM ====================
 
-  /// Stream all products from mart_items collection
+  /// Stream all products from mart_items collection (one-time fetch, no polling)
   Stream<List<MartItemModel>> streamAllProducts({
     String? excludeProductId,
     bool? isAvailable,
     int limit = 10,
   }) {
     try {
-      print('[MART CONTROLLER] 📡 Starting all products stream');
+      print('[MART CONTROLLER] 📡 Starting all products stream (one-time)');
       if (excludeProductId != null) {
         print('[MART CONTROLLER] 📡 Excluding product: $excludeProductId');
       }
-      // Use the Firestore service stream method for all products
       return _firestoreService.streamAllProducts(
         excludeProductId: excludeProductId,
         isAvailable: isAvailable,
@@ -1472,6 +1592,31 @@ class MartProvider extends ChangeNotifier {
       );
     } catch (e) {
       print('[MART CONTROLLER] ❌ Error creating all products stream: $e');
+      return Stream<List<MartItemModel>>.empty();
+    }
+  }
+
+  /// Stream similar products by category (one-time fetch, lighter than full catalog)
+  Stream<List<MartItemModel>> streamSimilarProducts({
+    required String categoryId,
+    String? subcategoryId,
+    String? excludeProductId,
+    bool? isAvailable,
+    int limit = 10,
+  }) {
+    try {
+      print(
+        '[MART CONTROLLER] 📡 Starting similar products stream (one-time) - category: $categoryId',
+      );
+      return _firestoreService.streamSimilarProducts(
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
+        excludeProductId: excludeProductId,
+        isAvailable: isAvailable,
+        limit: limit,
+      );
+    } catch (e) {
+      print('[MART CONTROLLER] ❌ Error creating similar products stream: $e');
       return Stream<List<MartItemModel>>.empty();
     }
   }

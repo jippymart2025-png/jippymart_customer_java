@@ -1676,6 +1676,7 @@ import 'package:jippymart_customer/utils/color_utils.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -1728,13 +1729,20 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      final now = DateTime.now();
-      if (_lastLoadTime == null ||
-          now.difference(_lastLoadTime!) > const Duration(minutes: 5)) {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Check zone when screen becomes visible (e.g. switching tabs, zone changed elsewhere)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
         _checkAndReloadIfZoneChanged();
       }
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkAndReloadIfZoneChanged();
     }
   }
 
@@ -2031,9 +2039,17 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Container(
-        child: Stack(
+    // Listen to HomeProvider so we rebuild when zone changes (e.g. address selection)
+    return Consumer<HomeProvider>(
+      builder: (context, homeProvider, _) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _checkAndReloadIfZoneChanged();
+          }
+        });
+        return Scaffold(
+          body: Container(
+            child: Stack(
           children: [
             // Decorative circles in background - KEPT AS IS
             Positioned(
@@ -2127,13 +2143,15 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
                       ],
                     ),
                   ),
-          ],
-        ),
-      ),
-      appBar: PreferredSize(
+            ],
+            ),
+          ),
+          appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
         child: _AnimatedAppBar(),
       ),
+        );
+      },
     );
   }
 }

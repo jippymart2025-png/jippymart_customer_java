@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
+import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/provider/category_details_provider.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
@@ -63,9 +64,10 @@ class MartProductCard extends StatelessWidget {
     }
 
     try {
+      final martController = Provider.of<MartProvider>(context, listen: false);
       CartControllerProvider cartControllerProvider =
           Provider.of<CartControllerProvider>(context, listen: false);
-      final martVendorID = "mart_${product.vendorID ?? 'unknown'}";
+      final martVendorID = "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
       final cartProduct = CartProductModel(
         id: product.id,
         name: product.name,
@@ -232,6 +234,7 @@ class MartProductCard extends StatelessWidget {
     }
 
     try {
+      final martController = Provider.of<MartProvider>(context, listen: false);
       // Get the cart controller
       CartControllerProvider cartControllerProvider =
           Provider.of<CartControllerProvider>(context, listen: false);
@@ -252,7 +255,7 @@ class MartProductCard extends StatelessWidget {
             selectedOption['price']?.toString() ??
             product.disPrice?.toString() ??
             product.price.toString(),
-        vendorID: "mart_${product.vendorID ?? 'unknown'}",
+        vendorID: "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}",
         vendorName: "Jippy Mart",
         categoryId: product.categoryID,
         quantity: 1,

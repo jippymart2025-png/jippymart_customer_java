@@ -849,15 +849,16 @@ class _AddressListScreenState extends State<AddressListScreen> {
           ),
         ),
       ),
-      body: Consumer<AddressListProvider>(
-        builder: (context, controller, _) {
-          if (controller.isInitializing) {
-            return _buildLoadingState();
-          }
+      body: SafeArea(
+        child: Consumer<AddressListProvider>(
+          builder: (context, controller, _) {
+            if (controller.isInitializing) {
+              return _buildLoadingState();
+            }
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildActionButtons(controller),
@@ -869,6 +870,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
             ),
           );
         },
+      ),
       ),
     );
   }

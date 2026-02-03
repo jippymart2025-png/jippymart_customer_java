@@ -19,8 +19,6 @@ class BestRestaurantsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Capture restaurantList for use in builder
-    final restaurantListForDisplay = restaurantList;
     return Consumer3<
       BestRestaurantProvider,
       RestaurantListProvider,
@@ -34,9 +32,24 @@ class BestRestaurantsSection extends StatelessWidget {
             restaurantDetailsProvider,
             _,
           ) {
-            // Use passed restaurantList and limit to 9 items
-            final displayList = restaurantListForDisplay.take(9).toList();
-            final allRestaurantsList = provider.bestRestaurantList;
+            // Filter out restaurants that are not open (isOpen == false or null)
+            // Use provider's list directly to ensure we get the latest data
+            // Use RestaurantStatusUtils for consistency with the rest of the app
+            final filteredRestaurantList = provider.bestRestaurantList
+                .where((restaurant) => RestaurantStatusUtils.canAcceptOrders(restaurant))
+                .toList();
+            
+            // Use filtered list and limit to 9 items
+            final displayList = filteredRestaurantList.take(9).toList();
+            
+            // Use the same filtered list for "See all" screen
+            final allRestaurantsList = filteredRestaurantList;
+            
+            // Don't display section if there are no restaurants
+            if (displayList.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

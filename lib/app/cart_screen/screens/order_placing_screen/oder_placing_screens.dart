@@ -35,9 +35,9 @@ class OrderPlacingScreen extends StatelessWidget {
               ),
               body: controller.isLoading
                   ? Constant.loader(message: "Preparing your order...".tr)
-                  : (controller.isPlacing || 
-                      (controller.orderModel.id != null && 
-                       controller.orderModel.id.toString().isNotEmpty))
+                  : (controller.isPlacing ||
+                        (controller.orderModel.id != null &&
+                            controller.orderModel.id.toString().isNotEmpty))
                   ? Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       child: Column(
@@ -295,10 +295,11 @@ class OrderPlacingScreen extends StatelessWidget {
               bottomNavigationBar: Consumer2<OrderProvider, DashBoardProvider>(
                 builder: (context, orderProvider, dashBoardProvider, _) {
                   // Show Track Order button when order is placed (has ID)
-                  final isOrderPlaced = controller.isPlacing || 
-                      (controller.orderModel.id != null && 
-                       controller.orderModel.id.toString().isNotEmpty);
-                  
+                  final isOrderPlaced =
+                      controller.isPlacing ||
+                      (controller.orderModel.id != null &&
+                          controller.orderModel.id.toString().isNotEmpty);
+
                   return Container(
                     color: AppThemeData.grey50,
                     padding: const EdgeInsets.symmetric(
@@ -315,10 +316,15 @@ class OrderPlacingScreen extends StatelessWidget {
                               textColor: AppThemeData.grey50,
                               fontSizes: 16,
                               onPress: () async {
-                                orderProvider.initFunction();
+                                // Refresh order data first
+                                await orderProvider.initFunction();
+
+                                // Force refresh dashboard if needed
                                 dashBoardProvider.selectedIndex =
                                     Constant.walletSetting == false ? 3 : 3;
-                                Get.offAll(const DashBoardScreen());
+
+                                // Use Get.offAll with a callback to ensure refresh
+                                Get.offAll(() => const DashBoardScreen());
                               },
                             )
                           : RoundedButtonFill(
@@ -327,10 +333,15 @@ class OrderPlacingScreen extends StatelessWidget {
                               textColor: AppThemeData.grey50,
                               fontSizes: 16,
                               onPress: () async {
-                                orderProvider.initFunction();
+                                // Refresh order data first
+                                await orderProvider.initFunction();
+
+                                // Force refresh dashboard if needed
                                 dashBoardProvider.selectedIndex =
                                     Constant.walletSetting == false ? 3 : 3;
-                                Get.offAll(const DashBoardScreen());
+
+                                // Use Get.offAll with a callback to ensure refresh
+                                Get.offAll(() => const DashBoardScreen());
                               },
                             ),
                     ),

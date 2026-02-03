@@ -12,6 +12,7 @@ import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
+import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ import 'package:in_app_review/in_app_review.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../edit_profile_screen/provider/edit_profile_provider.dart'
     show EditProfileProvider;
@@ -29,11 +31,66 @@ import '../favourite_screens/provider/favorite_provider.dart';
 
 final InAppReview inAppReview = InAppReview.instance;
 
-void rateApp() async {
-  if (await inAppReview.isAvailable()) {
-    inAppReview.requestReview();
-  } else {
-    inAppReview.openStoreListing(); // fallback
+/// Open app store for rating
+/// Always opens the store directly for better reliability
+Future<void> rateApp() async {
+  try {
+    String? storeUrl;
+    
+    if (Platform.isIOS) {
+      // iOS - Use App Store link if available, otherwise use default
+      storeUrl = Constant.appStoreLink.isNotEmpty
+          ? Constant.appStoreLink
+          : null; // Will use openStoreListing as fallback
+    } else if (Platform.isAndroid) {
+      // Android - Use Play Store link if available, otherwise use default
+      storeUrl = Constant.googlePlayLink.isNotEmpty
+          ? Constant.googlePlayLink
+          : 'https://play.google.com/store/apps/details?id=com.jippymart.customer';
+    }
+
+    // Try to open store URL directly first (most reliable)
+    if (storeUrl != null && storeUrl.isNotEmpty) {
+      try {
+        final uri = Uri.parse(storeUrl);
+        if (await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          print('[RATE_APP] Successfully opened store URL: $storeUrl');
+          return;
+        } else {
+          print('[RATE_APP] Cannot launch URL: $storeUrl');
+        }
+      } catch (e) {
+        print('[RATE_APP] Error launching URL: $e');
+      }
+    }
+
+    // Fallback: Use InAppReview's openStoreListing (works on both platforms)
+    try {
+      print('[RATE_APP] Using InAppReview.openStoreListing as fallback');
+      await inAppReview.openStoreListing();
+      print('[RATE_APP] Successfully opened store via InAppReview');
+    } catch (e) {
+      print('[RATE_APP] InAppReview.openStoreListing failed: $e');
+      
+      // Last resort: Try in-app review dialog (though it may not show due to quotas)
+      try {
+        if (await inAppReview.isAvailable()) {
+          await inAppReview.requestReview();
+          print('[RATE_APP] Requested in-app review (may not show due to quotas)');
+        }
+      } catch (e2) {
+        print('[RATE_APP] All methods failed: $e2');
+      }
+    }
+  } catch (e) {
+    print('[RATE_APP] Unexpected error: $e');
+    // Final attempt
+    try {
+      await inAppReview.openStoreListing();
+    } catch (e2) {
+      print('[RATE_APP] Final fallback also failed: $e2');
+    }
   }
 }
 
@@ -303,14 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                         "assets/icons/ic_rate.svg",
                                         "Rate the app",
                                         () async {
-                                          final inAppReview =
-                                              InAppReview.instance;
-                                          if (await inAppReview.isAvailable()) {
-                                            await inAppReview.requestReview();
-                                          } else {
-                                            await inAppReview
-                                                .openStoreListing();
-                                          }
+                                          await rateApp();
                                         },
                                       ),
                                     ],

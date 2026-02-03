@@ -1615,56 +1615,31 @@ class _OrderScreenState extends State<OrderScreen>
   }
 
   Widget _buildOrderTotal(OrderModel orderModel) {
-    return FutureBuilder<double>(
-      future: calculateOrderTotalInList(orderModel),
-      builder: (context, snapshot) {
-        return Row(
-          children: [
-            Expanded(
-              child: Text(
-                "Total to Pay",
-                style: TextStyle(
-                  color: AppThemeData.grey900,
-                  fontFamily: AppThemeData.semiBold,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
+    final double toPayAmount = orderModel.toPayAmount ?? 0.0;
+
+    return Row(
+      children: [
+        Expanded(
+          child: Text(
+            "Total to Pay",
+            style: TextStyle(
+              color: AppThemeData.grey900,
+              fontFamily: AppThemeData.semiBold,
+              fontWeight: FontWeight.w600,
+              fontSize: 16,
             ),
-            if (snapshot.connectionState == ConnectionState.waiting)
-              Container(
-                width: 60,
-                height: 16,
-                decoration: BoxDecoration(
-                  color: AppThemeData.grey200,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              )
-            else if (snapshot.hasData)
-              Text(
-                Constant.amountShow(amount: snapshot.data!.toString()),
-                style: TextStyle(
-                  color: AppThemeData.primary300,
-                  fontFamily: AppThemeData.semiBold,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              )
-            else
-              Text(
-                Constant.amountShow(
-                  amount: orderModel.toPayAmount?.toString() ?? "0.0",
-                ),
-                style: TextStyle(
-                  color: AppThemeData.primary300,
-                  fontFamily: AppThemeData.semiBold,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                ),
-              ),
-          ],
-        );
-      },
+          ),
+        ),
+        Text(
+          Constant.amountShow(amount: toPayAmount.toString()),
+          style: TextStyle(
+            color: AppThemeData.primary300,
+            fontFamily: AppThemeData.semiBold,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1771,238 +1746,11 @@ class _OrderScreenState extends State<OrderScreen>
   Future<void> _refreshOrders(OrderProvider controller) async {
     if (_isRefreshing) return;
 
-    _isRefreshing = true;
-    await controller.refreshOrders();
-    _isRefreshing = false;
-  }
-
-  // Keep all your existing calculation methods
-
-  Future<double> calculateOrderTotalInList(OrderModel order) async {
+    setState(() => _isRefreshing = true);
     try {
-      final vendor =
-          order.vendor ??
-          VendorModel(
-            title: "Jippy Mart",
-            location: "Jippy Mart Store",
-            phonenumber: "Contact Support",
-            isSelfDelivery: false,
-            deliveryCharge: DeliveryCharge(
-              baseDeliveryCharge: 23.0,
-              itemTotalThreshold: 299.0,
-              freeDeliveryDistanceKm: 7.0,
-              perKmChargeAboveFreeDistance: 8.0,
-            ),
-            latitude: 0.0,
-            longitude: 0.0,
-            vType: 'mart',
-          );
-      final deliveryCharge = vendor.deliveryCharge ?? DeliveryCharge();
-      final totalDistance = order.vendor != null
-          ? Constant.calculateDistance(
-              vendor.latitude ?? 0.0,
-              vendor.longitude ?? 0.0,
-              order.address?.location?.latitude ?? 0.0,
-              order.address?.location?.longitude ?? 0.0,
-            )
-          : 0.0;
-
-      double subTotal = 0.0;
-      double deliveryCharges = 0.0;
-      double originalDeliveryFee = 0.0;
-      double couponAmount = 0.0;
-      double specialDiscountAmount = 0.0;
-      double taxAmount = 0.0;
-      double deliveryTips = double.tryParse(order.tipAmount ?? '0') ?? 0.0;
-
-      if (order.products != null) {
-        for (var element in order.products!) {
-          final priceValue = double.tryParse(element.price.toString()) ?? 0.0;
-          final discountPriceValue =
-              double.tryParse(element.discountPrice.toString()) ?? 0.0;
-          final hasPromo =
-              element.promoId != null && element.promoId!.isNotEmpty;
-          final isPricePromotional =
-              priceValue > 0 &&
-              discountPriceValue > 0 &&
-              priceValue < discountPriceValue;
-          final isPromotional = hasPromo || isPricePromotional;
-          double itemPrice;
-          if (isPromotional) {
-            itemPrice = priceValue < discountPriceValue
-                ? priceValue
-                : discountPriceValue;
-          } else if (discountPriceValue <= 0) {
-            itemPrice = priceValue;
-          } else {
-            itemPrice = discountPriceValue;
-          }
-          final quantity = double.parse(element.quantity.toString());
-          final extrasPrice = double.parse(element.extrasPrice.toString());
-          final itemTotal = (itemPrice * quantity) + (extrasPrice * quantity);
-          subTotal += itemTotal;
-        }
-      }
-
-      const double fallbackThreshold = 299.0;
-      const double fallbackBaseCharge = 23.0;
-      const double fallbackFreeKm = 5.0;
-      const double fallbackPerKm = 7.0;
-
-      final double threshold =
-          (deliveryCharge.itemTotalThreshold ?? fallbackThreshold).toDouble();
-      final double baseCharge =
-          (deliveryCharge.baseDeliveryCharge ?? fallbackBaseCharge).toDouble();
-      final double freeKm =
-          (deliveryCharge.freeDeliveryDistanceKm ?? fallbackFreeKm).toDouble();
-      final double perKm =
-          (deliveryCharge.perKmChargeAboveFreeDistance ?? fallbackPerKm)
-              .toDouble();
-
-      final hasPromotionalItems = (order.products ?? []).any((item) {
-        final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
-        final discountPriceValue =
-            double.tryParse(item.discountPrice.toString()) ?? 0.0;
-        final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
-        final isPricePromotional =
-            priceValue > 0 &&
-            discountPriceValue > 0 &&
-            priceValue < discountPriceValue;
-        return hasPromo || isPricePromotional;
-      });
-
-      if (vendor.isSelfDelivery == true &&
-          Constant.isSelfDeliveryFeature == true) {
-        deliveryCharges = 0.0;
-        originalDeliveryFee = 0.0;
-      } else if (hasPromotionalItems) {
-        final promotionalItems = (order.products ?? []).where((item) {
-          final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
-          final discountPriceValue =
-              double.tryParse(item.discountPrice.toString()) ?? 0.0;
-          final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
-          final isPricePromotional =
-              priceValue > 0 &&
-              discountPriceValue > 0 &&
-              priceValue < discountPriceValue;
-          return hasPromo || isPricePromotional;
-        }).toList();
-
-        if (promotionalItems.isNotEmpty) {
-          final firstPromoItem = promotionalItems.first;
-          double promoFreeKm = 3.0;
-          double promoExtraKmCharge = fallbackPerKm;
-          const double promoBaseCharge = fallbackBaseCharge;
-
-          try {
-            final promoDetails =
-                await FireStoreUtils.getActivePromotionForProduct(
-                  productId: firstPromoItem.id ?? '',
-                  restaurantId: firstPromoItem.vendorID ?? '',
-                );
-
-            if (promoDetails != null) {
-              promoFreeKm =
-                  (promoDetails['free_delivery_km'] as num?)?.toDouble() ??
-                  promoFreeKm;
-              promoExtraKmCharge =
-                  (promoDetails['extra_km_charge'] as num?)?.toDouble() ??
-                  promoExtraKmCharge;
-            }
-          } catch (_) {}
-
-          if (totalDistance <= promoFreeKm) {
-            deliveryCharges = 0.0;
-            originalDeliveryFee = promoBaseCharge;
-          } else {
-            double extraKm = (totalDistance - promoFreeKm).ceilToDouble();
-            deliveryCharges = extraKm * promoExtraKmCharge;
-            originalDeliveryFee = deliveryCharges;
-          }
-        }
-      }
-
-      if (deliveryCharges == 0.0 && originalDeliveryFee == 0.0) {
-        if (subTotal < threshold) {
-          if (totalDistance <= freeKm) {
-            deliveryCharges = baseCharge;
-            originalDeliveryFee = baseCharge;
-          } else {
-            double extraKm = (totalDistance - freeKm).ceilToDouble();
-            deliveryCharges = baseCharge + (extraKm * perKm);
-            originalDeliveryFee = deliveryCharges;
-          }
-        } else {
-          if (totalDistance <= freeKm) {
-            deliveryCharges = 0.0;
-            originalDeliveryFee = baseCharge;
-          } else {
-            double extraKm = (totalDistance - freeKm).ceilToDouble();
-            deliveryCharges = extraKm * perKm;
-            originalDeliveryFee = baseCharge + deliveryCharges;
-          }
-        }
-      }
-
-      if (hasPromotionalItems) {
-        couponAmount = 0.0;
-      } else if (order.couponId != null &&
-          order.couponId!.isNotEmpty &&
-          order.discount != null) {
-        couponAmount = double.tryParse(order.discount.toString()) ?? 0.0;
-      } else {
-        couponAmount = 0.0;
-      }
-
-      if (order.specialDiscount != null &&
-          order.specialDiscount!['special_discount'] != null) {
-        specialDiscountAmount =
-            double.tryParse(
-              order.specialDiscount!['special_discount'].toString(),
-            ) ??
-            0.0;
-      }
-
-      final double taxableDeliveryFee = originalDeliveryFee > 0
-          ? originalDeliveryFee
-          : (deliveryCharges > 0 ? deliveryCharges : 0.0);
-
-      double sgst = subTotal * 0.05;
-      double gst = taxableDeliveryFee * 0.18;
-      sgst = sgst.isNaN ? 0.0 : sgst;
-      gst = gst.isNaN ? 0.0 : gst;
-      taxAmount = sgst + gst;
-
-      if (taxAmount == 0.0) {
-        double sgstFallback = subTotal * 0.05;
-        double gstFallback = taxableDeliveryFee > 0
-            ? taxableDeliveryFee * 0.18
-            : 0.0;
-        taxAmount = sgstFallback + gstFallback;
-      }
-      if (taxAmount.isNaN) taxAmount = 0.0;
-
-      bool isFreeDelivery = false;
-      if (hasPromotionalItems) {
-        if (deliveryCharges == 0.0 && originalDeliveryFee > 0.0) {
-          isFreeDelivery = true;
-        }
-      } else {
-        if (subTotal >= threshold && totalDistance <= freeKm) {
-          isFreeDelivery = true;
-        }
-      }
-
-      final totalAmount =
-          (subTotal - couponAmount - specialDiscountAmount) +
-          taxAmount +
-          (isFreeDelivery ? 0.0 : deliveryCharges) +
-          deliveryTips;
-
-      return totalAmount;
-    } catch (e) {
-      print('Error calculating order total: $e');
-      return order.toPayAmount?.toDouble() ?? 0.0;
+      await controller.refreshOrders();
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
     }
   }
 

@@ -35,6 +35,7 @@ import 'package:uuid/uuid.dart';
 import 'package:video_compress/video_compress.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/utils/safe_http_client.dart';
+import 'package:jippymart_customer/services/api_queue_manager.dart';
 
 /// Current product price info from Firestore (for reorder with live prices)
 class ProductPriceInfo {
@@ -155,61 +156,134 @@ class FireStoreUtils {
   //   return vendorModel;
   // }
 
-  // optimized
+  // optimized — with in-memory cache (5 min TTL), pending-request deduplication, and ApiQueueManager
 
-  static Future<VendorModel?> getVendorById(String vendorId) async {
-    VendorModel? vendorModel;
+  static final Map<String, _CachedVendor> _vendorCache = {};
+  static final Map<String, Future<VendorModel?>> _pendingVendorRequests = {};
+  static const Duration _vendorCacheDuration = Duration(minutes: 5);
 
+  static bool _isValidVendorId(String vendorId) {
+    if (vendorId.isEmpty || vendorId == 'null') return false;
+    return vendorId.trim().isNotEmpty;
+  }
+
+  static bool _isVendorCacheValid(_CachedVendor entry) {
+    return DateTime.now().difference(entry.fetchedAt) <= _vendorCacheDuration;
+  }
+
+  static VendorModel? _getCachedVendor(String vendorId) {
+    final entry = _vendorCache[vendorId];
+    if (entry != null && _isVendorCacheValid(entry)) {
+      return entry.vendor;
+    }
+    if (entry != null) {
+      _vendorCache.remove(vendorId);
+    }
+    return null;
+  }
+
+  static Future<VendorModel?> _fetchVendorFromApi(String vendorId) async {
     try {
-      // 1. Parse URI once (cached if reused)
       final uri = Uri.parse('${AppConst.baseUrl}restaurants/$vendorId');
-
-      // 2. Fetch headers in parallel with other preparations
-      final headersFuture = getHeaders();
-
-      // 3. Optimize timeout
       final response = await http
-          .get(uri, headers: await headersFuture)
+          .get(uri, headers: await getHeaders())
           .timeout(
-            Duration(seconds: 10),
+            const Duration(seconds: 10),
             onTimeout: () {
               throw TimeoutException('Vendor fetch timeout');
             },
           );
-
-      // 4. Check status before processing body
       if (response.statusCode != 200) {
-        dev.log("⚠️ Vendor fetch failed: ${response.statusCode}");
+        if (kDebugMode) {
+          dev.log("⚠️ Vendor fetch failed: ${response.statusCode}");
+        }
         return null;
       }
-
-      // 5. Process only if needed (avoid full log in production)
-      if (kDebugMode) {
-        dev.log("getVendorById ${vendorId.substring(0, 8)}... success");
-      }
-
-      // 6. Parse JSON efficiently
       final jsonResponse = json.decode(response.body);
-
       if (jsonResponse['success'] == true) {
         final data = jsonResponse['data'];
         if (data != null && data is Map<String, dynamic>) {
-          vendorModel = VendorModel.fromJson(data);
+          return VendorModel.fromJson(data);
         }
       }
+      return null;
     } on TimeoutException catch (e) {
-      dev.log("⏰ Timeout: $e");
+      if (kDebugMode) dev.log("⏰ Vendor timeout: $e");
       return null;
     } on http.ClientException catch (e) {
-      dev.log("🌐 Network error: $e");
+      if (kDebugMode) dev.log("🌐 Vendor network error: $e");
       return null;
     } catch (e) {
-      // Remove UI code from business logic
-      dev.log("❌ Error fetching vendor: $e");
+      if (kDebugMode) dev.log("❌ Error fetching vendor: $e");
+      return null;
+    }
+  }
+
+  static Future<VendorModel?> getVendorById(
+    String vendorId, {
+    bool forceRefresh = false,
+  }) async {
+    if (!_isValidVendorId(vendorId)) {
+      if (kDebugMode) {
+        dev.log("getVendorById invalid id: $vendorId");
+      }
       return null;
     }
 
-    return vendorModel;
+    final normalizedId = vendorId.trim();
+
+    if (!forceRefresh) {
+      final cached = _getCachedVendor(normalizedId);
+      if (cached != null) return Future.value(cached);
+
+      final pending = _pendingVendorRequests[normalizedId];
+      if (pending != null) return pending;
+    }
+
+    final completer = Completer<VendorModel?>();
+    _pendingVendorRequests[normalizedId] = completer.future;
+
+    try {
+      final vendorModel = await ApiQueueManager().enqueue<VendorModel?>(
+        priority: RequestPriority.normal,
+        key: 'vendor_$normalizedId',
+        request: () => _fetchVendorFromApi(normalizedId),
+      );
+
+      if (vendorModel != null) {
+        _vendorCache[normalizedId] = _CachedVendor(
+          vendor: vendorModel,
+          fetchedAt: DateTime.now(),
+        );
+      }
+
+      completer.complete(vendorModel);
+      return vendorModel;
+    } catch (e) {
+      if (kDebugMode) dev.log("❌ getVendorById error: $e");
+      completer.complete(null);
+      return null;
+    } finally {
+      _pendingVendorRequests.remove(normalizedId);
+    }
+  }
+
+  /// Clear vendor cache (e.g. on logout).
+  static void clearVendorCache() {
+    _vendorCache.clear();
+  }
+
+  /// Remove a single vendor from cache.
+  static void removeVendorFromCache(String vendorId) {
+    _vendorCache.remove(vendorId.trim());
+  }
+
+  /// Remove expired vendor cache entries (call periodically if desired).
+  static void cleanupExpiredVendorCache() {
+    final now = DateTime.now();
+    _vendorCache.removeWhere((key, value) {
+      return now.difference(value.fetchedAt) > _vendorCacheDuration;
+    });
   }
 
   StreamController<List<VendorModel>>? getNearestVendorController;
@@ -835,81 +909,151 @@ class FireStoreUtils {
 
   static Future<List<OrderModel>> getAllOrder() async {
     List<OrderModel> list = [];
-    final currentUid = await SqlStorageConst.getFirebaseId();
-    print(" userId   $currentUid  ");
-    if (kDebugMode) {
-      print('Current UID: $currentUid');
+    var currentUid = await SqlStorageConst.getFirebaseId();
+    if (currentUid == null || currentUid.isEmpty) {
+      currentUid = Constant.userModel?.firebaseId;
     }
-    if (currentUid == null) {
+    if (kDebugMode) {
+      print('getAllOrder: userId=$currentUid');
+    }
+    if (currentUid == null || currentUid.isEmpty) {
       if (kDebugMode) {
-        print('No current UID found, returning empty list');
+        print('getAllOrder: No user ID found, returning empty list');
       }
       return list;
     }
-    // try {
-    final Map<String, String> queryParams = {
-      'author_id': currentUid,
-      // 'filter': 'cancelled',
-      // 'filter': 'rejected',
-      // 'filter': 'pending',
-      // 'filter': 'preparing',
-      // 'filter': 'completed',
-    };
+
+    try {
+      list = await _fetchOrdersFromFirestore(currentUid);
+      if (list.isEmpty) {
+        list = await _fetchOrdersFromMobile();
+      }
+    } catch (e, st) {
+      if (kDebugMode) {
+        print('getAllOrder error: $e');
+        dev.log('getAllOrder stack: $st');
+      }
+    }
+
+    if (kDebugMode) {
+      print('getAllOrder: Returning ${list.length} orders');
+    }
+    return list;
+  }
+
+  static Future<List<OrderModel>> _fetchOrdersFromFirestore(
+    String authorId,
+  ) async {
+    var list = <OrderModel>[];
     final uri = Uri.parse(
       '${AppConst.baseUrl}firestore/orders',
-    ).replace(queryParameters: queryParams);
+    ).replace(queryParameters: {'author_id': authorId});
     if (kDebugMode) {
-      print('API URL: $uri');
+      print('getAllOrder: API URL: $uri');
     }
     final response = await http.get(uri, headers: await getHeaders());
     if (kDebugMode) {
-      print('API Response Status: ${response.statusCode}');
-      dev.log('getAllOrder ${response.body}');
+      print('getAllOrder: Response status: ${response.statusCode}');
+      dev.log('getAllOrder body: ${response.body}');
     }
-    if (response.statusCode == 200) {
-      final Map<String, dynamic> responseData = json.decode(response.body);
-      if (responseData['success'] == true) {
-        final List<dynamic> ordersData = responseData['data']['orders'];
-        if (kDebugMode) {
-          print('Found ${ordersData.length} orders in API response');
-        }
-        for (var orderData in ordersData) {
-          OrderModel orderModel = OrderModel.fromJson(orderData);
-          list.add(orderModel);
-          if (kDebugMode) {
-            print('Successfully parsed order: ${orderModel.id}');
-          }
-          // } catch (e) {
-          //   if (kDebugMode) {
-          //     print('Error parsing order data: $e');
-          //     print('Problematic order data: $orderData');
-          //   }
-          // }
-        }
-        // Sort by createdAt in descending order (since API might not guarantee order)
-        list = list.where((order) => order.createdAt != null).toList();
-        list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
-      } else {
-        if (kDebugMode) {
-          print('API returned success: false');
-        }
-      }
-    } else {
+    if (response.statusCode != 200) return list;
+
+    final responseData = json.decode(response.body) as Map<String, dynamic>?;
+    if (responseData == null || responseData['success'] != true) {
       if (kDebugMode) {
-        print('API call failed with status: ${response.statusCode}');
+        print('getAllOrder: success=false or null');
       }
+      return list;
     }
-    // } catch (error) {
-    //   if (kDebugMode) {
-    //     print('Error in getAllOrder API call: $error');
-    //   }
-    // }
+
+    final data = responseData['data'];
+    List<dynamic> ordersData = [];
+    if (data is List) {
+      ordersData = data;
+    } else if (data is Map && data['orders'] != null) {
+      final orders = data['orders'];
+      ordersData = orders is List ? orders : [];
+    }
 
     if (kDebugMode) {
-      print('Returning ${list.length} orders');
+      print('getAllOrder: Found ${ordersData.length} orders in response');
     }
 
+    for (var raw in ordersData) {
+      try {
+        final orderData = raw is Map<String, dynamic>
+            ? raw
+            : Map<String, dynamic>.from(raw as Map);
+        final orderModel = OrderModel.fromJson(_normalizeOrderJson(orderData));
+        list.add(orderModel);
+      } catch (e) {
+        if (kDebugMode) {
+          print('getAllOrder: Skip order parse error: $e');
+        }
+      }
+    }
+
+    list = list.where((o) => o.createdAt != null).toList();
+    list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
     return list;
+  }
+
+  static Future<List<OrderModel>> _fetchOrdersFromMobile() async {
+    var list = <OrderModel>[];
+    try {
+      final uri = Uri.parse('${AppConst.baseUrl}mobile/orders');
+      if (kDebugMode) {
+        print('getAllOrder: Fallback mobile/orders URL: $uri');
+      }
+      final response = await http.get(uri, headers: await getHeaders());
+      if (response.statusCode != 200) return list;
+
+      final responseData = json.decode(response.body) as Map<String, dynamic>?;
+      if (responseData == null || responseData['success'] != true) return list;
+
+      final data = responseData['data'];
+      List<dynamic> ordersData = [];
+      if (data is List) {
+        ordersData = data;
+      } else if (data is Map && data['orders'] != null) {
+        final orders = data['orders'];
+        ordersData = orders is List ? orders : [];
+      }
+
+      for (var raw in ordersData) {
+        try {
+          final orderData = raw is Map<String, dynamic>
+              ? raw
+              : Map<String, dynamic>.from(raw as Map);
+          final orderModel = OrderModel.fromJson(
+            _normalizeOrderJson(orderData),
+          );
+          list.add(orderModel);
+        } catch (_) {}
+      }
+
+      list = list.where((o) => o.createdAt != null).toList();
+      list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
+    } catch (e) {
+      if (kDebugMode) {
+        print('getAllOrder: mobile/orders fallback error: $e');
+      }
+    }
+    return list;
+  }
+
+  static Map<String, dynamic> _normalizeOrderJson(Map<String, dynamic> json) {
+    final out = Map<String, dynamic>.from(json);
+    if (out['createdAt'] == null && out['created_at'] != null) {
+      out['createdAt'] = out['created_at'];
+    }
+    if (out['vendorID'] == null && out['vendor_id'] != null) {
+      out['vendorID'] = out['vendor_id'];
+    }
+    if (out['id'] == null && out['order_id'] != null) {
+      out['id'] = out['order_id'];
+    }
+    return out;
   }
 
   /// Fetch current product price from API for reorder (live prices)
@@ -953,8 +1097,9 @@ class FireStoreUtils {
         final jsonResponse = json.decode(response.body);
         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
           final data = jsonResponse['data'];
-          final orderData =
-              data is Map<String, dynamic> ? data : data['order'] ?? data;
+          final orderData = data is Map<String, dynamic>
+              ? data
+              : data['order'] ?? data;
           if (orderData != null && orderData is Map<String, dynamic>) {
             return OrderModel.fromJson(orderData);
           }
@@ -1880,5 +2025,13 @@ class _CachedProduct {
     : fetchedAt = DateTime.now();
 
   final ProductModel product;
+  final DateTime fetchedAt;
+}
+
+class _CachedVendor {
+  _CachedVendor({required this.vendor, required DateTime fetchedAt})
+    : fetchedAt = DateTime.now();
+
+  final VendorModel vendor;
   final DateTime fetchedAt;
 }
