@@ -1624,6 +1624,8 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:jippymart_customer/services/cache_manager.dart';
+import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 
 class HomeProvider extends ChangeNotifier {
   // Constants and static properties
@@ -2110,12 +2112,19 @@ class HomeProvider extends ChangeNotifier {
     if (zoneModel.zone != null) {
       final detectedZone = convertToOldZoneModel(zoneModel);
       if (detectedZone != null) {
+        // Clear mart vendor cache when zone changes to ensure fresh data
+        final previousZoneId = Constant.selectedZone?.id;
         Constant.selectedZone = detectedZone;
         Constant.isZoneAvailable = zoneModel.isZoneAvailable == true;
 
         if (detectedZone.id != null && detectedZone.id!.isNotEmpty) {
           Constant.selectedLocation.zoneId = detectedZone.id;
           Preferences.setString(Preferences.selectedZoneId, detectedZone.id!);
+          
+          // Clear mart vendor cache if zone changed
+          if (previousZoneId != null && previousZoneId != detectedZone.id) {
+            MartZoneUtils.clearMartVendorCache();
+          }
         }
 
         // Load restaurants in background
@@ -2456,8 +2465,40 @@ class HomeProvider extends ChangeNotifier {
   Future<void> getRefresh(BuildContext context) async {
     isLoadingFunction(true);
 
-    // Clear cache for fresh data
+    print('[HOME_PROVIDER] 🔄 Starting refresh - clearing all caches...');
+
+    // Clear provider's internal cache
     _clearCache();
+
+    // Clear global CacheManager caches for home screen data
+    // This ensures fresh data is fetched on refresh
+    final zoneId = Constant.selectedZone?.id;
+    
+    // Clear restaurant caches
+    if (zoneId != null && zoneId.isNotEmpty) {
+      CacheManager().remove('best_restaurants_$zoneId');
+      CacheManager().clearByPattern('nearest_restaurants_$zoneId');
+      CacheManager().remove('stories_$zoneId');
+    }
+    
+    // Clear category cache
+    CacheManager().remove('categories_home');
+    
+    // Clear banner caches
+    CacheManager().clearByPattern('banners_');
+    CacheManager().clearByPattern('mart_banners_');
+    
+    // Clear coupon and advertisement caches
+    CacheManager().remove('restaurant_coupons_all');
+    CacheManager().remove('advertisements_all');
+    
+    // Clear deals screen caches if zone exists
+    if (zoneId != null && zoneId.isNotEmpty) {
+      CacheManager().remove('deals_banners_$zoneId');
+      CacheManager().remove('promotions_$zoneId');
+    }
+    
+    print('[HOME_PROVIDER] ✅ Caches cleared, reloading data...');
 
     try {
       await Future.wait([
@@ -2469,8 +2510,11 @@ class HomeProvider extends ChangeNotifier {
             Constant.selectedZone!.id!.isNotEmpty)
           bestRestaurantProvider.loadRestaurantsAndRelatedData(),
       ], eagerError: true);
+      
+      print('[HOME_PROVIDER] ✅ Refresh completed successfully');
     } catch (e) {
-      print('[HOME_PROVIDER] Refresh error: $e');
+      print('[HOME_PROVIDER] ❌ Refresh error: $e');
+      ShowToastDialog.showToast("Refresh failed. Please try again.".tr);
     } finally {
       isLoadingFunction(false);
     }

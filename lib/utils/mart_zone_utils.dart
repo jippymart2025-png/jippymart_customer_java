@@ -10,35 +10,89 @@ class MartZoneUtils {
   static DateTime? _lastFetchTime;
   static const Duration _cacheTTL = Duration(minutes: 5);
 
+  /// Clear mart vendor cache - call this when zone changes
+  static void clearMartVendorCache() {
+    _cachedMartVendors = null;
+    _cachedZoneId = null;
+    _lastFetchTime = null;
+    debugPrint('🗑️ [MART_ZONE_UTILS] Cleared mart vendor cache');
+  }
+
   static Future<List<MartVendorModel>> getCachedMartVendors() async {
     final zoneId = Constant.selectedZone?.id;
-    if (zoneId == null || zoneId.isEmpty) return [];
+    if (zoneId == null || zoneId.isEmpty) {
+      clearMartVendorCache();
+      return [];
+    }
 
+    // CRITICAL: If zone changed, clear cache to ensure fresh data for new zone
+    if (_cachedZoneId != null && _cachedZoneId != zoneId) {
+      debugPrint(
+        '🔄 [MART_ZONE_UTILS] Zone changed from $_cachedZoneId to $zoneId - clearing cache',
+      );
+      clearMartVendorCache();
+    }
+
+    // Return cached data if valid for current zone
     if (_cachedMartVendors != null &&
         _cachedZoneId == zoneId &&
         _lastFetchTime != null &&
         DateTime.now().difference(_lastFetchTime!) < _cacheTTL) {
+      debugPrint(
+        '✅ [MART_ZONE_UTILS] Using cached vendors for zone: $zoneId (${_cachedMartVendors!.length} vendors)',
+      );
       return _cachedMartVendors!;
     }
 
-    // Use same API as mart_provider (mart-items/getMartVendors) and filter by zone.
-    // mart-vendor/zone/$zoneId can return empty due to zone ID format mismatch.
-    final allVendors = await MartVendorService.getAllMartVendors(search: '');
+    // Fetch fresh data for current zone
+    debugPrint('🔍 [MART_ZONE_UTILS] Fetching fresh vendors for zone: $zoneId');
+    
+    // Use zone-specific API first (more efficient and zone-accurate)
     final zoneStr = zoneId.toString().trim();
-    var vendors = allVendors
-        .where((v) =>
-            v.zoneId != null &&
-            v.zoneId!.toString().trim() == zoneStr)
-        .toList();
+    var vendors = await MartVendorService.getMartVendorsByZone(zoneStr);
+    
+    // Additional client-side validation: ensure vendors actually belong to this zone
+    vendors = vendors.where((vendor) {
+      final vendorZoneId = vendor.zoneId?.toString().trim();
+      return vendorZoneId != null && 
+             vendorZoneId.isNotEmpty && 
+             vendorZoneId == zoneStr;
+    }).toList();
 
-    // Fallback: if zone filter gives empty but mart has vendors, use all (same as mart_provider)
-    if (vendors.isEmpty && allVendors.isNotEmpty) {
-      vendors = allVendors;
+    // Fallback: if zone-specific API returns empty, try filtering all vendors
+    // This handles cases where zone ID format might mismatch
+    // NOTE: We do NOT fallback to all vendors - if no zone-specific vendors exist,
+    // mart is NOT available in this zone (this prevents mart from opening in all zones)
+    if (vendors.isEmpty) {
+      debugPrint(
+        '⚠️ [MART_ZONE_UTILS] Zone-specific API returned empty, trying fallback filter...',
+      );
+      final allVendors = await MartVendorService.getAllMartVendors(search: '');
+      vendors = allVendors
+          .where((v) =>
+              v.zoneId != null &&
+              v.zoneId!.toString().trim() == zoneStr)
+          .toList();
+
+      // CRITICAL: Do NOT fallback to all vendors - if no vendors match this zone,
+      // mart is NOT available. This ensures mart only opens in zones where it's actually available.
+      if (vendors.isEmpty) {
+        debugPrint(
+          '❌ [MART_ZONE_UTILS] No vendors found for zone $zoneStr - mart NOT available in this zone',
+        );
+        // Return empty list - mart is not available
+      }
     }
 
+    // Cache the results
     _cachedMartVendors = vendors;
     _cachedZoneId = zoneId;
     _lastFetchTime = DateTime.now();
+    
+    debugPrint(
+      '✅ [MART_ZONE_UTILS] Cached ${vendors.length} vendors for zone: $zoneId',
+    );
+    
     return vendors;
   }
 
@@ -49,103 +103,67 @@ class MartZoneUtils {
 
   /// Check if mart is available in the current zone
   /// Returns true if there's at least one mart vendor in the current zone
+  /// Uses cached data when available for faster response
+  /// CRITICAL: This method validates zone and location before checking availability
   static Future<bool> isMartAvailableInCurrentZone() async {
     try {
-      print('\n🔍 [MART_ZONE_UTILS] ===== MART ZONE CHECKING STARTED =====');
-      print(
-        '📍 [MART_ZONE_UTILS] Current Zone ID: ${Constant.selectedZone?.id ?? "NULL"}',
-      );
-      print(
-        '📍 [MART_ZONE_UTILS] Current Zone Name: ${Constant.selectedZone?.name ?? "NULL"}',
-      );
-      print(
-        '📍 [MART_ZONE_UTILS] Zone Latitude: ${Constant.selectedZone?.latitude ?? "NULL"}',
-      );
-      print(
-        '📍 [MART_ZONE_UTILS] Zone Longitude: ${Constant.selectedZone?.longitude ?? "NULL"}',
-      );
-      print(
-        '📍 [MART_ZONE_UTILS] Zone Published: ${Constant.selectedZone?.publish ?? "NULL"}',
-      );
-      // Check if we have a selected zone
-      if (Constant.selectedZone?.id == null) {
-        print('❌ [MART_ZONE_UTILS] No zone selected - Mart not available');
-        print('🔍 [MART_ZONE_UTILS] ===== MART ZONE CHECKING ENDED =====\n');
+      debugPrint('🔍 [MART_ZONE_UTILS] Checking mart availability for current zone');
+      
+      // CRITICAL: First validate that we have a selected zone
+      if (Constant.selectedZone?.id == null || Constant.selectedZone!.id!.isEmpty) {
+        debugPrint('❌ [MART_ZONE_UTILS] No zone selected - Mart not available');
         return false;
       }
-      print(
-        '🔍 [MART_ZONE_UTILS] Fetching mart vendors for zone: ${Constant.selectedZone!.id}',
-      );
-      print(
-        '🔍 [MART_ZONE_UTILS] DEBUG: Current zone ID type: ${Constant.selectedZone!.id.runtimeType}',
-      );
-      print(
-        '🔍 [MART_ZONE_UTILS] DEBUG: Current zone ID length: ${Constant.selectedZone!.id!.length}',
-      );
-      print(
-        '🔍 [MART_ZONE_UTILS] DEBUG: Current zone ID bytes: ${Constant.selectedZone!.id!.codeUnits}',
-      );
 
-      // DEBUG: Let's also check all mart vendors to see what zones they're in
-      print(
-        '🔍 [MART_ZONE_UTILS] DEBUG: Checking all mart vendors in database...',
-      );
-      final allMartVendors = await MartVendorService.getAllMartVendors();
-      print(
-        '📊 [MART_ZONE_UTILS] DEBUG: Total mart vendors in database: ${allMartVendors.length}',
-      );
+      final currentZoneId = Constant.selectedZone!.id!;
+      
+      // CRITICAL: Validate that we have a valid location
+      // Zone without location means location wasn't properly set
+      if (Constant.selectedLocation.location?.latitude == null ||
+          Constant.selectedLocation.location?.longitude == null ||
+          Constant.selectedLocation.location!.latitude == 0.0 ||
+          Constant.selectedLocation.location!.longitude == 0.0) {
+        debugPrint('❌ [MART_ZONE_UTILS] No valid location - Mart not available');
+        return false;
+      }
 
-      if (allMartVendors.isNotEmpty) {
-        print('📊 [MART_ZONE_UTILS] DEBUG: All mart vendors and their zones:');
-        for (int i = 0; i < allMartVendors.length; i++) {
-          final vendor = allMartVendors[i];
-          print('   ${i + 1}. ${vendor.title} (ID: ${vendor.id})');
-          print('      Zone ID: ${vendor.zoneId}');
-          print('      Zone ID type: ${vendor.zoneId.runtimeType}');
-          print('      Zone ID length: ${vendor.zoneId?.length}');
-          print('      Zone ID bytes: ${vendor.zoneId?.codeUnits}');
-          print('      vType: ${vendor.vType}');
-          print('      Is Open: ${vendor.isOpen}');
-          print('      Location: ${vendor.latitude}, ${vendor.longitude}');
-          // Check if zone IDs match
-          final currentZoneId = Constant.selectedZone!.id!;
-          final vendorZoneId = vendor.zoneId;
-          print('      Zone ID Match: ${currentZoneId == vendorZoneId}');
-          print('      Zone ID Equals: ${currentZoneId == vendorZoneId}');
-          print(
-            '      Zone ID Contains: ${currentZoneId.contains(vendorZoneId ?? '')}',
-          );
-        }
+      // CRITICAL: Validate zone matches location's zoneId if available
+      // This ensures zone and location are in sync
+      if (Constant.selectedLocation.zoneId != null &&
+          Constant.selectedLocation.zoneId!.isNotEmpty &&
+          Constant.selectedLocation.zoneId != currentZoneId) {
+        debugPrint(
+          '❌ [MART_ZONE_UTILS] Zone mismatch: location zone (${Constant.selectedLocation.zoneId}) != selected zone ($currentZoneId) - Mart not available',
+        );
+        return false;
       }
-      // Get mart vendors for the current zone
-      final martVendors = await MartVendorService.getMartVendorsByZone(
-        Constant.selectedZone!.id!,
+      
+      // Clear cache to ensure fresh check (prevents stale data from wrong zone)
+      // This ensures we always check the current zone, not a cached previous zone
+      clearMartVendorCache();
+      
+      // Fetch fresh vendors for current zone (no cache to prevent stale data)
+      final martVendors = await getCachedMartVendors();
+      
+      // CRITICAL: Double-check that vendors actually belong to current zone
+      // Filter out any vendors that don't match the zone (defense in depth)
+      final validVendors = martVendors.where((vendor) {
+        final vendorZoneId = vendor.zoneId?.toString().trim();
+        return vendorZoneId != null &&
+               vendorZoneId.isNotEmpty &&
+               vendorZoneId == currentZoneId;
+      }).toList();
+      
+      // Check if there are any valid mart vendors in this zone
+      final isAvailable = validVendors.isNotEmpty;
+      
+      debugPrint(
+        '🎯 [MART_ZONE_UTILS] Mart Available: $isAvailable (${validVendors.length} valid vendors in zone $currentZoneId)',
       );
-      // Check if there are any mart vendors in this zone
-      final isAvailable = martVendors.isNotEmpty;
-      print('📊 [MART_ZONE_UTILS] Mart vendors found: ${martVendors.length}');
-      if (martVendors.isNotEmpty) {
-        print('✅ [MART_ZONE_UTILS] Mart vendors in zone:');
-        for (int i = 0; i < martVendors.length; i++) {
-          final vendor = martVendors[i];
-          print('   ${i + 1}. Vendor ID: ${vendor.id}');
-          print('      Name: ${vendor.title}');
-          print('      vType: ${vendor.vType}');
-          print('      Zone ID: ${vendor.zoneId}');
-          print('      Is Open: ${vendor.isOpen}');
-          print('      Location: ${vendor.latitude}, ${vendor.longitude}');
-        }
-      } else {
-        print('❌ [MART_ZONE_UTILS] No mart vendors found in this zone');
-      }
-      print('🎯 [MART_ZONE_UTILS] Final Result: Mart Available = $isAvailable');
-      print('🔍 [MART_ZONE_UTILS] ===== MART ZONE CHECKING ENDED =====\n');
+      
       return isAvailable;
     } catch (e) {
-      print('❌ [MART_ZONE_UTILS] Error checking mart availability: $e');
-      print(
-        '🔍 [MART_ZONE_UTILS] ===== MART ZONE CHECKING ENDED (ERROR) =====\n',
-      );
+      debugPrint('❌ [MART_ZONE_UTILS] Error checking mart availability: $e');
       return false;
     }
   }

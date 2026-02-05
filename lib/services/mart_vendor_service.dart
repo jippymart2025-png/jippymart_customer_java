@@ -4,10 +4,26 @@ import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
+import 'package:jippymart_customer/services/cache_manager.dart';
+import 'package:jippymart_customer/services/api_queue_manager.dart';
 
 class MartVendorService {
   static Future<List<MartVendorModel>> getAllMartVendors({
     String search = 'Jippy mart',
+  }) async {
+    final cacheKey = 'mart_vendors_all_$search';
+    return await CacheManager().getOrSetMartItems<List<MartVendorModel>>(
+      cacheKey,
+      () => ApiQueueManager().enqueue<List<MartVendorModel>>(
+        priority: RequestPriority.normal,
+        key: cacheKey,
+        request: () => _fetchAllMartVendors(search: search),
+      ),
+    );
+  }
+
+  static Future<List<MartVendorModel>> _fetchAllMartVendors({
+    String search = 'mart',
   }) async {
     try {
       print('🔍 [MART_VENDOR_SERVICE] Querying ALL mart vendors via API');
@@ -168,6 +184,18 @@ class MartVendorService {
 
   // Get mart vendor by ID
   static Future<MartVendorModel?> getMartVendorById(String vendorId) async {
+    final cacheKey = 'mart_vendor_$vendorId';
+    return await CacheManager().getOrSetMartItems<MartVendorModel?>(
+      cacheKey,
+      () => ApiQueueManager().enqueue<MartVendorModel?>(
+        priority: RequestPriority.normal,
+        key: cacheKey,
+        request: () => _fetchMartVendorById(vendorId),
+      ),
+    );
+  }
+
+  static Future<MartVendorModel?> _fetchMartVendorById(String vendorId) async {
     try {
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}mart-vendor/$vendorId'),
@@ -189,6 +217,18 @@ class MartVendorService {
   // Get default mart vendor (first available)
 
   static Future<MartVendorModel?> getDefaultMartVendor() async {
+    const cacheKey = 'mart_vendor_default';
+    return await CacheManager().getOrSetMartItems<MartVendorModel?>(
+      cacheKey,
+      () => ApiQueueManager().enqueue<MartVendorModel?>(
+        priority: RequestPriority.normal,
+        key: cacheKey,
+        request: () => _fetchDefaultMartVendor(),
+      ),
+    );
+  }
+
+  static Future<MartVendorModel?> _fetchDefaultMartVendor() async {
     try {
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}mart-vendor/default'),
@@ -213,6 +253,20 @@ class MartVendorService {
   static Future<List<MartVendorModel>> getMartVendorsByZone(
     String zoneId,
   ) async {
+    final cacheKey = 'mart_vendors_zone_$zoneId';
+    return await CacheManager().getOrSetMartItems<List<MartVendorModel>>(
+      cacheKey,
+      () => ApiQueueManager().enqueue<List<MartVendorModel>>(
+        priority: RequestPriority.normal,
+        key: cacheKey,
+        request: () => _fetchMartVendorsByZone(zoneId),
+      ),
+    );
+  }
+
+  static Future<List<MartVendorModel>> _fetchMartVendorsByZone(
+    String zoneId,
+  ) async {
     try {
       print('🔍 [MART_VENDOR_SERVICE] Querying mart vendors for zone: $zoneId');
       print('🌐 [MART_VENDOR_SERVICE] Using API endpoint for zone: $zoneId');
@@ -232,23 +286,45 @@ class MartVendorService {
 
           // Convert API response to MartVendorModel objects
           final List<MartVendorModel> vendors = [];
+          final zoneIdStr = zoneId.toString().trim();
 
           for (var vendorData in data) {
             try {
               print(
                 '🔍 [MART_VENDOR_SERVICE] Processing vendor: ${vendorData['title']}',
               );
-              print('   Zone ID: ${vendorData['zoneId']}');
+              final vendorZoneId = vendorData['zoneId']?.toString().trim();
+              print('   Zone ID from API: $vendorZoneId');
+              print('   Requested Zone ID: $zoneIdStr');
               print('   Is Open: ${vendorData['isOpen']}');
               print('   vType: ${vendorData['vType']}');
+
               // Convert to MartVendorModel
               final vendor = MartVendorModel.fromJson({
                 ...vendorData,
                 'id': vendorData['id'],
               });
+
+              // CRITICAL: Validate that vendor actually belongs to the requested zone
+              // This prevents vendors from other zones from being returned
+              final vendorZoneIdFinal = vendor.zoneId?.toString().trim();
+              if (vendorZoneIdFinal == null || vendorZoneIdFinal.isEmpty) {
+                print(
+                  '   ⚠️ [MART_VENDOR_SERVICE] Vendor has no zoneId, skipping',
+                );
+                continue;
+              }
+
+              if (vendorZoneIdFinal != zoneIdStr) {
+                print(
+                  '   ❌ [MART_VENDOR_SERVICE] Zone mismatch: vendor zone ($vendorZoneIdFinal) != requested zone ($zoneIdStr), skipping',
+                );
+                continue;
+              }
+
               vendors.add(vendor);
               print(
-                '✅ [MART_VENDOR_SERVICE] Successfully added vendor: ${vendor.title}',
+                '✅ [MART_VENDOR_SERVICE] Successfully added vendor: ${vendor.title} (zone verified)',
               );
             } catch (e) {
               print('❌ [MART_VENDOR_SERVICE] Error processing vendor data: $e');
@@ -257,7 +333,7 @@ class MartVendorService {
             }
           }
           print(
-            '📊 [MART_VENDOR_SERVICE] Final results: ${vendors.length} vendors',
+            '📊 [MART_VENDOR_SERVICE] Final results: ${vendors.length} vendors (after zone validation)',
           );
           return vendors;
         } else {

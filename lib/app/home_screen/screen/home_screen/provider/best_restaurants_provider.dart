@@ -11,6 +11,8 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/services/cache_manager.dart';
+import 'package:jippymart_customer/services/api_queue_manager.dart';
 
 import '../../../../restaurant_details_screen/provider/restaurant_details_provider.dart';
 
@@ -48,23 +50,39 @@ class BestRestaurantProvider extends ChangeNotifier {
       return;
     }
     try {
-      // Fetch best restaurants from bestrestaurants endpoint
-      final bestRestaurants = await getBestRestaurants(zoneId: zoneId);
+      // Fetch best restaurants from bestrestaurants endpoint with cache and queue
+      final bestRestaurantsKey = 'best_restaurants_$zoneId';
+      final bestRestaurants = await CacheManager().getOrSetRestaurants<List<VendorModel>>(
+        bestRestaurantsKey,
+        () => ApiQueueManager().enqueue<List<VendorModel>>(
+          priority: RequestPriority.high,
+          key: bestRestaurantsKey,
+          request: () => getBestRestaurants(zoneId: zoneId),
+        ),
+      );
       bestRestaurantList.clear();
       bestRestaurantList.addAll(bestRestaurants);
 
-      // Fetch all restaurants from nearest endpoint with filter
-      final restaurants = await getNearestRestaurants(
-        zoneId: zoneId,
-        latitude: latitude,
-        longitude: longitude,
-        radius: double.parse(Constant.radius),
-        filter: filter,
-        onFiltersReceived: (availableFilters, currentFilter) {
-          this.availableFilters = availableFilters;
-          this.currentFilter = currentFilter;
-          notifyListeners();
-        },
+      // Fetch all restaurants from nearest endpoint with filter, cache and queue
+      final nearestKey = 'nearest_restaurants_${zoneId}_${filter ?? 'all'}_${latitude}_${longitude}';
+      final restaurants = await CacheManager().getOrSetRestaurants<List<VendorModel>>(
+        nearestKey,
+        () => ApiQueueManager().enqueue<List<VendorModel>>(
+          priority: RequestPriority.high,
+          key: nearestKey,
+          request: () => getNearestRestaurants(
+            zoneId: zoneId,
+            latitude: latitude,
+            longitude: longitude,
+            radius: double.parse(Constant.radius),
+            filter: filter,
+            onFiltersReceived: (availableFilters, currentFilter) {
+              this.availableFilters = availableFilters;
+              this.currentFilter = currentFilter;
+              notifyListeners();
+            },
+          ),
+        ),
       );
       popularRestaurantList.clear();
       newArrivalRestaurantList.clear();
@@ -104,11 +122,20 @@ class BestRestaurantProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Load stories from API instead of Firebase
+  // Load stories from API instead of Firebase with cache and queue
   Future<void> _loadStoriesFromAPI(String zoneId) async {
     try {
       print('[DEBUG] Loading stories from API for zone: $zoneId');
-      final stories = await getStoriesFromAPI(zoneId: zoneId);
+      final storiesKey = 'stories_$zoneId';
+      final stories = await CacheManager().getOrSet<List<StoryModel>>(
+        storiesKey,
+        () => ApiQueueManager().enqueue<List<StoryModel>>(
+          priority: RequestPriority.normal,
+          key: storiesKey,
+          request: () => getStoriesFromAPI(zoneId: zoneId),
+        ),
+        type: CacheType.general,
+      );
       storyList.clear();
       storyList.addAll(stories);
       print('[DEBUG] Stories loaded from API: ${storyList.length}');
@@ -164,11 +191,20 @@ class BestRestaurantProvider extends ChangeNotifier {
     }
   }
 
-  // Load related data (coupons, ads) in parallel (stories are now loaded separately)
+  // Load related data (coupons, ads) in parallel (stories are now loaded separately) with cache and queue
   Future<void> _loadRelatedDataInParallel(List<VendorModel> restaurants) async {
     final futures = <Future<void>>[];
+    final couponsKey = 'restaurant_coupons_all';
     futures.add(
-      RestaurantApiHelper.getRestaurantCoupons(restaurantId: '').then((value) {
+      CacheManager().getOrSet<List<CouponModel>>(
+        couponsKey,
+        () => ApiQueueManager().enqueue<List<CouponModel>>(
+          priority: RequestPriority.low,
+          key: couponsKey,
+          request: () => RestaurantApiHelper.getRestaurantCoupons(restaurantId: ''),
+        ),
+        type: CacheType.general,
+      ).then((value) {
         couponRestaurantList.clear();
         couponList.clear();
         for (var element1 in value) {
@@ -184,10 +220,19 @@ class BestRestaurantProvider extends ChangeNotifier {
       }),
     );
 
-    // Load advertisements (if enabled)
+    // Load advertisements (if enabled) with cache and queue
     if (Constant.isEnableAdsFeature == true) {
+      final adsKey = 'advertisements_all';
       futures.add(
-        FireStoreUtils.getAllAdvertisement().then((value) {
+        CacheManager().getOrSet<List<AdvertisementModel>>(
+          adsKey,
+          () => ApiQueueManager().enqueue<List<AdvertisementModel>>(
+            priority: RequestPriority.low,
+            key: adsKey,
+            request: () => FireStoreUtils.getAllAdvertisement(),
+          ),
+          type: CacheType.banners,
+        ).then((value) {
           advertisementList.clear();
           for (var element1 in value) {
             for (var element in restaurants) {

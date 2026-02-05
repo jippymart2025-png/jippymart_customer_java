@@ -1685,6 +1685,8 @@ import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'dart:convert';
 import 'dart:async';
+import 'package:jippymart_customer/services/cache_manager.dart';
+import 'package:jippymart_customer/services/api_queue_manager.dart';
 
 import '../../models/user_model.dart';
 import 'bannerdeals.dart';
@@ -1711,6 +1713,7 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
   DateTime? _lastLoadTime;
   int _retryCount = 0;
   static const int _maxRetries = 1;
+  Timer? _zoneChangeDebounceTimer;
 
   @override
   void initState() {
@@ -1725,6 +1728,7 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _zoneChangeDebounceTimer?.cancel();
     super.dispose();
   }
 
@@ -1751,11 +1755,17 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
     if (newZoneId != null &&
         newZoneId.isNotEmpty &&
         newZoneId != _currentZoneId) {
-      _currentZoneId = newZoneId;
-      _productCache.clear();
-      _vendorCache.clear();
-      _restaurantStatusCache.clear();
-      _loadAllData();
+      // Debounce zone change reload
+      _zoneChangeDebounceTimer?.cancel();
+      _zoneChangeDebounceTimer = Timer(const Duration(milliseconds: 500), () {
+        if (mounted && newZoneId == Constant.selectedZone?.id) {
+          _currentZoneId = newZoneId;
+          _productCache.clear();
+          _vendorCache.clear();
+          _restaurantStatusCache.clear();
+          _loadAllData();
+        }
+      });
     }
   }
 
@@ -1770,6 +1780,52 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
     }
 
     await _loadAllData();
+  }
+
+  /// Refresh all data - clears cache and forces fresh fetch
+  /// This method is called by RefreshIndicator to ensure fresh data is loaded
+  Future<void> _refreshAllData() async {
+    try {
+      // Clear cache to force fresh data on refresh
+      String? zoneId = _currentZoneId;
+      if (zoneId == null || zoneId.isEmpty) {
+        zoneId = await _getCurrentZoneIdWithRetry();
+      }
+
+      if (zoneId != null && zoneId.isNotEmpty) {
+        // Clear deals banners cache
+        final bannersCacheKey = 'deals_banners_$zoneId';
+        CacheManager().remove(bannersCacheKey);
+        print('[DEALS_SCREEN] 🗑️ Cleared cache: $bannersCacheKey');
+
+        // Clear promotions cache
+        final promotionsCacheKey = 'promotions_$zoneId';
+        CacheManager().remove(promotionsCacheKey);
+        print('[DEALS_SCREEN] 🗑️ Cleared cache: $promotionsCacheKey');
+      }
+
+      // Reset last load time to force reload (bypasses cache check)
+      _lastLoadTime = null;
+
+      // Clear internal caches
+      _productCache.clear();
+      _vendorCache.clear();
+      _restaurantStatusCache.clear();
+
+      // Reset retry count for fresh attempt
+      _retryCount = 0;
+
+      // Load fresh data (this will handle loading state)
+      await _loadAllData();
+    } catch (e) {
+      print('[DEALS_SCREEN] Error refreshing data: $e');
+      // If refresh fails, ensure loading state is cleared
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadAllData() async {
@@ -1821,6 +1877,29 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
         return;
       }
 
+      final cacheKey = 'deals_banners_$zoneId';
+      final banners = await CacheManager().getOrSetBanners<List<BannerModel>>(
+        cacheKey,
+        () => ApiQueueManager().enqueue<List<BannerModel>>(
+          priority: RequestPriority.normal,
+          key: cacheKey,
+          request: () => _fetchDealsBanners(zoneId!),
+        ),
+      );
+
+      setState(() {
+        _dealsBanners = banners;
+      });
+    } catch (e) {
+      print('[DEALS_SCREEN] Error loading banners: $e');
+      setState(() {
+        _dealsBanners = [];
+      });
+    }
+  }
+
+  Future<List<BannerModel>> _fetchDealsBanners(String zoneId) async {
+    try {
       final url = '${AppConst.baseUrl}menu-items/banners/deals?zone_id=$zoneId';
       final headers = await _getHeaders();
 
@@ -1833,34 +1912,19 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
 
         if (jsonResponse['success'] == true) {
           final data = jsonResponse['data'] as List;
-          final banners = data
+          return data
               .take(15) // Limit to 15 banners for performance
               .map((item) => BannerModel.fromJson(item))
               .toList();
-
-          setState(() {
-            _dealsBanners = banners;
-          });
-        } else {
-          setState(() {
-            _dealsBanners = [];
-          });
         }
-      } else {
-        setState(() {
-          _dealsBanners = [];
-        });
       }
+      return [];
     } on TimeoutException {
       print('[DEALS_SCREEN] Banner load timeout');
-      setState(() {
-        _dealsBanners = [];
-      });
+      return [];
     } catch (e) {
-      print('[DEALS_SCREEN] Error loading banners: $e');
-      setState(() {
-        _dealsBanners = [];
-      });
+      print('[DEALS_SCREEN] Error fetching banners: $e');
+      return [];
     }
   }
 
@@ -1879,8 +1943,15 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
         return;
       }
 
-      final promotionsData = await FireStoreUtils.getAllActivePromotions(
-        zoneId: zoneId,
+      final cacheKey = 'promotions_$zoneId';
+      final promotionsData = await CacheManager().getOrSet<List<Map<String, dynamic>>>(
+        cacheKey,
+        () => ApiQueueManager().enqueue<List<Map<String, dynamic>>>(
+          priority: RequestPriority.normal,
+          key: cacheKey,
+          request: () => FireStoreUtils.getAllActivePromotions(zoneId: zoneId!),
+        ),
+        type: CacheType.general,
       );
 
       if (promotionsData.isNotEmpty) {
@@ -2096,7 +2167,7 @@ class _DealsScreenState extends State<DealsScreen> with WidgetsBindingObserver {
                   )
                 : RefreshIndicator(
                     onRefresh: () async {
-                      await _loadAllData();
+                      await _refreshAllData();
                     },
                     child: CustomScrollView(
                       physics: const AlwaysScrollableScrollPhysics(),

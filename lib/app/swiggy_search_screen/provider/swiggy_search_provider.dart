@@ -42,6 +42,9 @@ class SwiggySearchProvider extends ChangeNotifier {
 
   // Timer for debounce
   Timer? _debounceTimer;
+  
+  // Batch update flag to prevent multiple notifyListeners
+  bool _isUpdating = false;
 
   // Constants
   static const int MAX_RECENT_SEARCHES = 10;
@@ -147,6 +150,7 @@ class SwiggySearchProvider extends ChangeNotifier {
   void _updateSuggestions(String query) {
     if (query.isEmpty) {
       showSuggestions = false;
+      _notifyIfNotUpdating();
       return;
     }
     try {
@@ -157,12 +161,20 @@ class SwiggySearchProvider extends ChangeNotifier {
 
       searchSuggestions.assignAll(suggestions);
       showSuggestions = suggestions.isNotEmpty;
-      notifyListeners();
+      _notifyIfNotUpdating();
 
       print("💡 Showing ${suggestions.length} suggestions");
     } catch (e) {
       print("❌ Suggestions failed: $e");
       showSuggestions = false;
+      _notifyIfNotUpdating();
+    }
+  }
+  
+  /// Helper to batch notifyListeners calls
+  void _notifyIfNotUpdating() {
+    if (!_isUpdating) {
+      notifyListeners();
     }
   }
 
@@ -245,6 +257,8 @@ class SwiggySearchProvider extends ChangeNotifier {
       return;
     }
 
+    _isUpdating = true;
+    
     if (!loadMore) {
       // New search
       searchText = query;
@@ -257,6 +271,9 @@ class SwiggySearchProvider extends ChangeNotifier {
       isLoadingMore = true;
       currentPage++;
     }
+    
+    _isUpdating = false;
+    notifyListeners();
 
     if (query.trim().isEmpty) {
       _clearSearchResults();
@@ -272,6 +289,8 @@ class SwiggySearchProvider extends ChangeNotifier {
         limit: SEARCH_LIMIT,
       );
 
+      _isUpdating = true;
+      
       if (loadMore) {
         // Append to existing results
         restaurantResults.addAll(searchResults['restaurants']);
@@ -307,9 +326,11 @@ class SwiggySearchProvider extends ChangeNotifier {
       print("❌ Unified search failed: $e");
       // You can add fallback to individual searches here if needed
     } finally {
+      _isUpdating = true;
       isLoadingData = false;
       isSearching = false;
       isLoadingMore = false;
+      _isUpdating = false;
       notifyListeners();
     }
   }

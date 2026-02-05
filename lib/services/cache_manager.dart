@@ -35,12 +35,13 @@ class CacheManager {
   CacheManager._internal();
 
   final Map<String, CacheEntry> _cache = {};
+  final Map<String, Future<dynamic>> _pendingRequests = {};
   Timer? _cleanupTimer;
 
   // TTL values for different cache types
   static const Duration _bannerTTL = Duration(minutes: 30);
   static const Duration _categoryTTL = Duration(minutes: 15);
-  static const Duration _restaurantTTL = Duration(minutes: 30);
+  static const Duration _restaurantTTL = Duration(minutes: 5);
   static const Duration _userProfileTTL = Duration(minutes: 10);
   static const Duration _martItemTTL = Duration(minutes: 5);
   static const Duration _zoneTTL = Duration(minutes: 30);
@@ -113,7 +114,7 @@ class CacheManager {
     return entry != null && !entry.isExpired;
   }
 
-  /// Get or set data (cache-first approach) - FIXED VERSION
+  /// Get or set data (cache-first approach) - OPTIMIZED VERSION with pending request tracking
   Future<T> getOrSet<T>(
     String key,
     Future<T> Function() fetchFunction, {
@@ -128,11 +129,61 @@ class CacheManager {
       return cached;
     }
 
+    // Check if there's already a pending request for this key
+    if (_pendingRequests.containsKey(key)) {
+      print('[CACHE] ⏳ Request already pending for: $key, waiting for result...');
+      try {
+        final result = await _pendingRequests[key] as Future<T>;
+        // Double-check cache after pending request completes (it might have been cached)
+        final cachedAfterPending = get<T>(key);
+        if (cachedAfterPending != null) {
+          print('[CACHE] ✅ Got cached data after pending request completed');
+          return cachedAfterPending;
+        }
+        return result;
+      } catch (e) {
+        // If pending request failed, remove it and continue to fetch
+        _pendingRequests.remove(key);
+        rethrow;
+      }
+    }
+
     // Fetch fresh data
     print('[CACHE] 🔄 Cache miss, fetching fresh data for: $key');
+    
+    // Create the fetch future and store it in pending requests
+    final fetchFuture = _fetchAndCache<T>(key, fetchFunction, type);
+    _pendingRequests[key] = fetchFuture;
+
+    try {
+      final data = await fetchFuture;
+      return data;
+    } finally {
+      // Remove from pending requests once done (success or failure)
+      _pendingRequests.remove(key);
+    }
+  }
+
+  /// Internal method to fetch and cache data
+  Future<T> _fetchAndCache<T>(
+    String key,
+    Future<T> Function() fetchFunction,
+    CacheType type,
+  ) async {
     try {
       final data = await fetchFunction();
       print('[CACHE] 📦 Fetched data type: ${data.runtimeType}, Expected: $T');
+
+      // Don't cache empty lists from errors (they might be error responses)
+      // Only cache if data is not empty or if it's a non-list type
+      bool shouldCache = true;
+      if (data is List) {
+        // Only cache non-empty lists to avoid caching error responses
+        if (data.isEmpty) {
+          print('[CACHE] ⚠️ Skipping cache for empty list (might be error response)');
+          shouldCache = false;
+        }
+      }
 
       // Special handling for common type mismatches
       dynamic dataToStore = data;
@@ -141,18 +192,24 @@ class CacheManager {
       if (data is List && T.toString().contains('Future<List<VendorModel>>')) {
         print('[CACHE] 🔧 Type adjustment: Storing List directly (not Future)');
         // Store the list directly, not wrapped in Future
-        set(key, data, type: type);
+        if (shouldCache) {
+          set(key, data, type: type);
+        }
         return data as T;
       }
       // If we got Future but should store direct value
       else if (data is Future && !T.toString().contains('Future')) {
         print('[CACHE] 🔧 Awaiting Future before storing');
         dataToStore = await data;
-        set(key, dataToStore, type: type);
+        if (shouldCache && !(dataToStore is List && (dataToStore as List).isEmpty)) {
+          set(key, dataToStore, type: type);
+        }
         return dataToStore as T;
       } else {
-        // Normal case
-        set(key, data, type: type);
+        // Normal case - only cache if shouldCache is true
+        if (shouldCache) {
+          set(key, data, type: type);
+        }
         return data;
       }
     } catch (e, stackTrace) {
@@ -182,6 +239,7 @@ class CacheManager {
   /// Remove specific cache entry
   void remove(String key) {
     _cache.remove(key);
+    _pendingRequests.remove(key);
     print('[CACHE] 🗑️ Removed: $key');
   }
 
@@ -208,7 +266,8 @@ class CacheManager {
   void clearAll() {
     final count = _cache.length;
     _cache.clear();
-    print('[CACHE] 🧹 Cleared all $count cache entries');
+    _pendingRequests.clear();
+    print('[CACHE] 🧹 Cleared all $count cache entries and pending requests');
   }
 
   /// Clear cache entries by type pattern
@@ -267,6 +326,7 @@ class CacheManager {
   /// Dispose cache manager
   void dispose() {
     _cleanupTimer?.cancel();
+    _pendingRequests.clear();
     clearAll();
   }
 
@@ -318,8 +378,49 @@ class CacheManager {
       return cached as T;
     }
 
+    // Check if there's already a pending request for this key
+    if (_pendingRequests.containsKey(key)) {
+      print('[CACHE RESTAURANTS] ⏳ Request already pending for: $key, waiting for result...');
+      try {
+        final result = await _pendingRequests[key] as Future<T>;
+        // Double-check cache after pending request completes
+        final cachedAfterPending = get<List<VendorModel>>(key);
+        if (cachedAfterPending != null) {
+          print('[CACHE RESTAURANTS] ✅ Got cached data after pending request completed');
+          if (T == Future<List<VendorModel>>) {
+            return Future.value(cachedAfterPending) as T;
+          }
+          return cachedAfterPending as T;
+        }
+        return result;
+      } catch (e) {
+        // If pending request failed, remove it and continue to fetch
+        _pendingRequests.remove(key);
+        rethrow;
+      }
+    }
+
     // Cache miss → fetch
     print('[CACHE RESTAURANTS] 🔄 Cache miss, fetching...');
+    
+    // Create the fetch future and store it in pending requests
+    final fetchFuture = _fetchRestaurantsAndCache<T>(key, fetch);
+    _pendingRequests[key] = fetchFuture;
+
+    try {
+      final data = await fetchFuture;
+      return data;
+    } finally {
+      // Remove from pending requests once done
+      _pendingRequests.remove(key);
+    }
+  }
+
+  /// Internal method to fetch and cache restaurant data
+  Future<T> _fetchRestaurantsAndCache<T>(
+    String key,
+    Future<T> Function() fetch,
+  ) async {
     try {
       final data = await fetch();
       print('[CACHE RESTAURANTS] 📦 Fetched type: ${data.runtimeType}');
@@ -333,9 +434,12 @@ class CacheManager {
         list = await data;
       }
 
-      if (list != null) {
+      // Only cache non-empty lists
+      if (list != null && list.isNotEmpty) {
         set(key, list, type: CacheType.restaurants);
         print('[CACHE RESTAURANTS] 💾 Stored ${list.length} restaurants');
+      } else if (list != null && list.isEmpty) {
+        print('[CACHE RESTAURANTS] ⚠️ Skipping cache for empty list (might be error response)');
       }
 
       return data;

@@ -438,19 +438,16 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/services/cache_manager.dart';
+import 'package:jippymart_customer/services/api_queue_manager.dart';
 
 class FavouriteProvider extends ChangeNotifier {
   static const Duration _networkTimeout = Duration(seconds: 15);
-  static const Duration _cacheDuration = Duration(minutes: 5);
 
   bool favouriteRestaurant = true;
   List<VendorModel> favouriteVendorList = <VendorModel>[];
   List<ProductModel> favouriteFoodList = <ProductModel>[];
   bool isLoading = false;
-
-  // Caching mechanism
-  Map<String, dynamic> _cache = {};
-  DateTime? _lastCacheTime;
 
   // Batch loading control
   bool _isLoadingVendors = false;
@@ -460,13 +457,6 @@ class FavouriteProvider extends ChangeNotifier {
   Timer? _debounceTimer;
 
   Future<void> initFunction({bool forceRefresh = false}) async {
-    if (!forceRefresh && _isCacheValid()) {
-      // Use cached data
-      isLoading = false;
-      notifyListeners();
-      return;
-    }
-
     isLoading = true;
     notifyListeners();
 
@@ -475,36 +465,11 @@ class FavouriteProvider extends ChangeNotifier {
         _loadFavoriteRestaurants(forceRefresh),
         _loadFavoriteFoods(forceRefresh),
       ]);
-
-      _updateCacheTime();
     } catch (e) {
       log('Error loading favorites: $e');
-      // Try to load from cache even if network fails
-      if (!_isCacheValid()) {
-        _loadFromCache();
-      }
     } finally {
       isLoading = false;
       notifyListeners();
-    }
-  }
-
-  bool _isCacheValid() {
-    if (_lastCacheTime == null) return false;
-    return DateTime.now().difference(_lastCacheTime!) < _cacheDuration;
-  }
-
-  void _updateCacheTime() {
-    _lastCacheTime = DateTime.now();
-    _cache = {'vendors': favouriteVendorList, 'foods': favouriteFoodList};
-  }
-
-  void _loadFromCache() {
-    if (_cache['vendors'] != null) {
-      favouriteVendorList = List<VendorModel>.from(_cache['vendors']);
-    }
-    if (_cache['foods'] != null) {
-      favouriteFoodList = List<ProductModel>.from(_cache['foods']);
     }
   }
 
@@ -514,11 +479,26 @@ class FavouriteProvider extends ChangeNotifier {
     try {
       _isLoadingVendors = true;
 
-      if (!forceRefresh && _isCacheValid()) {
+      final userId = await SqlStorageConst.getFirebaseId();
+      if (userId == null) {
+        favouriteVendorList = [];
         return;
       }
 
-      final restaurants = await _getFavouriteRestaurantsWithRetry();
+      final cacheKey = 'favorite_restaurants_$userId';
+      if (forceRefresh) {
+        CacheManager().remove(cacheKey);
+      }
+
+      final restaurants = await CacheManager().getOrSetUserProfile<List<VendorModel>>(
+        cacheKey,
+        () => ApiQueueManager().enqueue<List<VendorModel>>(
+          priority: RequestPriority.normal,
+          key: cacheKey,
+          request: () => getFavouriteRestaurants(),
+        ),
+      );
+
       favouriteVendorList = restaurants;
     } finally {
       _isLoadingVendors = false;
@@ -531,11 +511,26 @@ class FavouriteProvider extends ChangeNotifier {
     try {
       _isLoadingFoods = true;
 
-      if (!forceRefresh && _isCacheValid()) {
+      final userId = await SqlStorageConst.getFirebaseId();
+      if (userId == null) {
+        favouriteFoodList = [];
         return;
       }
 
-      final foods = await _getFavouriteFoodsWithRetry();
+      final cacheKey = 'favorite_items_$userId';
+      if (forceRefresh) {
+        CacheManager().remove(cacheKey);
+      }
+
+      final foods = await CacheManager().getOrSetUserProfile<List<ProductModel>>(
+        cacheKey,
+        () => ApiQueueManager().enqueue<List<ProductModel>>(
+          priority: RequestPriority.normal,
+          key: cacheKey,
+          request: () => getFavouriteFoods(),
+        ),
+      );
+
       favouriteFoodList = foods;
     } finally {
       _isLoadingFoods = false;
@@ -552,20 +547,6 @@ class FavouriteProvider extends ChangeNotifier {
   }
 
   // ========== RESTAURANT FAVORITES API METHODS ==========
-
-  Future<List<VendorModel>> _getFavouriteRestaurantsWithRetry({
-    int retryCount = 2,
-  }) async {
-    for (int i = 0; i < retryCount; i++) {
-      try {
-        return await getFavouriteRestaurants();
-      } catch (e) {
-        if (i == retryCount - 1) rethrow;
-        await Future.delayed(Duration(seconds: i + 1));
-      }
-    }
-    return [];
-  }
 
   static Future<List<VendorModel>> getFavouriteRestaurants() async {
     try {
@@ -652,20 +633,6 @@ class FavouriteProvider extends ChangeNotifier {
   }
 
   // ========== FOOD FAVORITES API METHODS ==========
-
-  Future<List<ProductModel>> _getFavouriteFoodsWithRetry({
-    int retryCount = 2,
-  }) async {
-    for (int i = 0; i < retryCount; i++) {
-      try {
-        return await getFavouriteFoods();
-      } catch (e) {
-        if (i == retryCount - 1) rethrow;
-        await Future.delayed(Duration(seconds: i + 1));
-      }
-    }
-    return [];
-  }
 
   static Future<List<ProductModel>> getFavouriteFoods() async {
     try {
@@ -767,6 +734,12 @@ class FavouriteProvider extends ChangeNotifier {
       // Call API in background
       unawaited(removeFavouriteRestaurant(restaurantId));
 
+      // Invalidate cache
+      final userId = await SqlStorageConst.getFirebaseId();
+      if (userId != null) {
+        CacheManager().remove('favorite_restaurants_$userId');
+      }
+
       log('🎯 Restaurant removed from UI: $restaurantId');
     } catch (e) {
       log('⚠️ Error removing restaurant from UI: $e');
@@ -784,6 +757,12 @@ class FavouriteProvider extends ChangeNotifier {
       // Call API in background
       unawaited(removeFavouriteFood(productId));
 
+      // Invalidate cache
+      final userId = await SqlStorageConst.getFirebaseId();
+      if (userId != null) {
+        CacheManager().remove('favorite_items_$userId');
+      }
+
       log('🎯 Food item removed from UI: $productId');
     } catch (e) {
       log('⚠️ Error removing food item from UI: $e');
@@ -800,6 +779,12 @@ class FavouriteProvider extends ChangeNotifier {
 
       // Call API in background
       unawaited(addFavouriteFood(productId));
+
+      // Invalidate cache
+      final userId = await SqlStorageConst.getFirebaseId();
+      if (userId != null) {
+        CacheManager().remove('favorite_items_$userId');
+      }
 
       log('🎯 Food item added to UI: $productId');
     } catch (e) {

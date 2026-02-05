@@ -430,7 +430,7 @@ Widget _buildDeliveryFeeSection(
         ),
         buildDeliveryFeeUI(
           isFreeDelivery: true,
-          originalFee: 23.0,
+          originalFee: 21.0,
           currentFee: controller.deliveryCharges,
         ),
       ],
@@ -440,8 +440,8 @@ Widget _buildDeliveryFeeSection(
   if (hasMartItems) {
     print('[CART_UI] 🛒 Building mart delivery UI...');
     double itemThreshold = 199.0;
-    double freeDeliveryKm = 5.0;
-    double baseDeliveryCharge = 23.0;
+    double freeDeliveryKm = 3.0;
+    double baseDeliveryCharge = 21.0;
     final subtotal = controller.subTotal;
     final distance = controller.totalDistance;
     final isAboveThreshold = subtotal >= itemThreshold;
@@ -500,7 +500,7 @@ Widget _buildDeliveryFeeSection(
 
   // Get the base delivery charge for restaurant items (should be ₹23)
   double baseDeliveryCharge =
-      (controller.deliveryChargeModel.baseDeliveryCharge ?? 23.0).toDouble();
+      (controller.deliveryChargeModel.baseDeliveryCharge ?? 21.0).toDouble();
   print('[CART_UI]   - Base delivery charge: ₹$baseDeliveryCharge');
 
   Widget regularDeliveryWidget;

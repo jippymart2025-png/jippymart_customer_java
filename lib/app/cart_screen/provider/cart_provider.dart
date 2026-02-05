@@ -8721,7 +8721,7 @@ class CartControllerProvider extends ChangeNotifier {
     await Future.wait([
       if (userModel.id == null) _loadUserProfileForCart(),
       if (_cachedDeliveryCharge == null || !_isCacheValid())
-          _loadDeliveryChargeForCart(),
+        _loadDeliveryChargeForCart(),
     ]);
 
     _detectCurrentContext();
@@ -8763,8 +8763,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _loadUserProfileForCart() async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();
-      final value =
-          await AddressListProvider.getUserProfile(userId.toString());
+      final value = await AddressListProvider.getUserProfile(userId.toString());
       if (value != null) userModel = value;
     } catch (_) {}
   }
@@ -10128,7 +10127,7 @@ class CartControllerProvider extends ChangeNotifier {
       firstPromoItem.id ?? '',
       firstPromoItem.vendorID ?? '',
     );
-    final baseCharge = 23.0;
+    final baseCharge = 21.0;
 
     _calculateDeliveryCharge(
       orderType: 'promotional',
@@ -10177,7 +10176,7 @@ class CartControllerProvider extends ChangeNotifier {
     final dc = deliveryChargeModel;
     final subtotal = subTotal;
     final threshold = dc.itemTotalThreshold ?? 299;
-    final baseCharge = dc.baseDeliveryCharge ?? 23;
+    final baseCharge = dc.baseDeliveryCharge ?? 21;
     final freeKm = dc.freeDeliveryDistanceKm ?? 7;
     final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
     final distance = totalDistance;
@@ -10211,7 +10210,7 @@ class CartControllerProvider extends ChangeNotifier {
     final dc = deliveryChargeModel;
     final subtotal = subTotal;
     final threshold = dc.itemTotalThreshold ?? 299;
-    final baseCharge = dc.baseDeliveryCharge ?? 23;
+    final baseCharge = dc.baseDeliveryCharge ?? 21;
     final freeKm = dc.freeDeliveryDistanceKm ?? 7;
     final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
 
@@ -11831,7 +11830,8 @@ class CartControllerProvider extends ChangeNotifier {
           print('❌ [ORDER_CREATION] No valid mart vendor found in cart items');
           ShowToastDialog.closeLoader();
           ShowToastDialog.showToast(
-            "Unable to process order. Please remove items and add them again from Mart.".tr,
+            "Unable to process order. Please remove items and add them again from Mart."
+                .tr,
           );
           _isOrderCreationInProgress = false;
           _currentOrderPaymentId = null;
@@ -11965,13 +11965,16 @@ class CartControllerProvider extends ChangeNotifier {
         "admin_surge_fee": await getAdminSurgeFee(),
         "special_discount": specialDiscountMap,
         "vendor_id": _getVendorIdForOrder(),
-        "v_type": vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
+        "v_type":
+            vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
         "status": Constant.orderPlaced,
         "created_at": DateTime.now().toIso8601String(),
       };
 
       print('🌐 [ORDER_CREATION] Creating order via API...');
-      print('🌐 [ORDER_CREATION] vendor_id: ${orderPayload["vendor_id"]}, v_type: ${orderPayload["v_type"]}');
+      print(
+        '🌐 [ORDER_CREATION] vendor_id: ${orderPayload["vendor_id"]}, v_type: ${orderPayload["v_type"]}',
+      );
       print('🌐 [ORDER_CREATION] Payment method: $selectedPaymentMethod');
       print('🌐 [ORDER_CREATION] Total amount: ₹$totalAmount');
 

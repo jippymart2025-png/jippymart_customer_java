@@ -3,7 +3,7 @@ class AppConst {
   // static const String defaultBaseUrl = "http://sanhits.online/api/";
   // static const String defaultBaseUrl = "https://web.jippymart.in/api/";
 
-  static const String defaultBaseUrl = "http://192.168.0.29:8000/api/";
+  static const String defaultBaseUrl = "http://192.168.0.23:8000/api/";
 
   /// Active API base URL used throughout the app. Initialized with
   /// [defaultBaseUrl] and can be overridden by Firebase Remote Config.

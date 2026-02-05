@@ -8,6 +8,7 @@ import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
@@ -22,12 +23,14 @@ class SwiggySearchScreen extends StatefulWidget {
 
 class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   final TextEditingController searchController = TextEditingController();
-  final CartProvider cartProvider = CartProvider();
   final FocusNode searchFocusNode = FocusNode();
 
   // Cache vendor details to avoid repeated API calls
   final Map<String, VendorModel?> _vendorCache = {};
   final Map<String, Future<VendorModel?>> _vendorFutures = {};
+
+  // Memoize emoji lookups for performance
+  final Map<String, String> _emojiCache = {};
 
   @override
   void initState() {
@@ -47,19 +50,15 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Consumer<SwiggySearchProvider>(
-        builder: (context, controller, _) {
-          return Scaffold(
-            backgroundColor: AppThemeData.grey50,
-            appBar: _buildAppBar(controller),
-            body: _buildBody(controller),
-          );
-        },
+      child: Scaffold(
+        backgroundColor: AppThemeData.grey50,
+        appBar: _buildAppBar(),
+        body: _buildBody(),
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(SwiggySearchProvider controller) {
+  PreferredSizeWidget _buildAppBar() {
     return AppBar(
       backgroundColor: AppThemeData.grey50,
       elevation: 0,
@@ -67,77 +66,97 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         icon: Icon(Icons.arrow_back_ios, color: AppThemeData.grey900),
         onPressed: () => Get.back(),
       ),
-      title: Container(
-        height: 40,
-        decoration: BoxDecoration(
-          color: AppThemeData.grey100,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: TextField(
-          controller: searchController,
-          focusNode: searchFocusNode,
-          onChanged: controller.updateSearchText,
-          onSubmitted: (value) {
-            if (value.trim().isNotEmpty) {
-              controller.performUnifiedSearch(value.trim());
-            }
-          },
-          style: TextStyle(color: AppThemeData.grey900, fontSize: 16),
-          decoration: InputDecoration(
-            hintText: "Search for restaurants, dishes, or cuisines",
-            hintStyle: TextStyle(color: AppThemeData.grey400, fontSize: 16),
-            prefixIcon: Icon(
-              Icons.search,
-              color: AppThemeData.grey400,
-              size: 20,
+      title: Selector<SwiggySearchProvider, String>(
+        selector: (_, provider) => provider.searchText,
+        builder: (context, searchText, _) {
+          final controller = context.read<SwiggySearchProvider>();
+          return Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppThemeData.grey100,
+              borderRadius: BorderRadius.circular(20),
             ),
-            suffixIcon: controller.searchText.isNotEmpty
-                ? IconButton(
-                    icon: Icon(
-                      Icons.clear,
-                      color: AppThemeData.grey400,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      searchController.clear();
-                      controller.clearSearch();
-                    },
-                  )
-                : const SizedBox.shrink(),
-            border: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
+            child: TextField(
+              controller: searchController,
+              focusNode: searchFocusNode,
+              onChanged: controller.updateSearchText,
+              onSubmitted: (value) {
+                if (value.trim().isNotEmpty) {
+                  controller.performUnifiedSearch(value.trim());
+                }
+              },
+              style: TextStyle(color: AppThemeData.grey900, fontSize: 16),
+              decoration: InputDecoration(
+                hintText: "Search for restaurants, dishes, or cuisines",
+                hintStyle: TextStyle(color: AppThemeData.grey400, fontSize: 16),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: AppThemeData.grey400,
+                  size: 20,
+                ),
+                suffixIcon: searchText.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(
+                          Icons.clear,
+                          color: AppThemeData.grey400,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          searchController.clear();
+                          controller.clearSearch();
+                        },
+                      )
+                    : const SizedBox.shrink(),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildBody(SwiggySearchProvider controller) {
-    // Show loading state
-    if (controller.isLoadingData && !controller.hasSearched) {
-      return _buildLoadingState();
-    }
+  Widget _buildBody() {
+    return Selector<SwiggySearchProvider, Map<String, dynamic>>(
+      selector: (_, provider) => {
+        'isLoadingData': provider.isLoadingData,
+        'hasSearched': provider.hasSearched,
+        'isSearching': provider.isSearching,
+        'showSuggestions': provider.showSuggestions,
+        'hasSuggestions': provider.searchSuggestions.isNotEmpty,
+      },
+      builder: (context, state, _) {
+        final controller = context.read<SwiggySearchProvider>();
 
-    // Show search loading state
-    if (controller.isSearching) {
-      return _buildSearchLoadingState();
-    }
+        // Show loading state
+        if (state['isLoadingData'] == true && state['hasSearched'] == false) {
+          return _buildLoadingState();
+        }
 
-    // Show suggestions while typing
-    if (controller.showSuggestions && controller.searchSuggestions.isNotEmpty) {
-      return _buildSuggestionsList(controller);
-    }
+        // Show search loading state
+        if (state['isSearching'] == true) {
+          return _buildSearchLoadingState();
+        }
 
-    // Show search results
-    if (controller.hasSearched) {
-      return _buildSearchResults(controller);
-    }
+        // Show suggestions while typing
+        if (state['showSuggestions'] == true &&
+            state['hasSuggestions'] == true) {
+          return _buildSuggestionsList();
+        }
 
-    // Show initial state (recent + trending)
-    return _buildInitialState(controller);
+        // Show search results
+        if (state['hasSearched'] == true) {
+          return _buildSearchResults();
+        }
+
+        // Show initial state (recent + trending)
+        return _buildInitialState();
+      },
+    );
   }
 
   Widget _buildLoadingState() {
@@ -166,10 +185,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
           const SizedBox(height: 8),
           Text(
             "Loading delicious restaurants & dishes...",
-            style: TextStyle(
-              fontSize: 14,
-              color: AppThemeData.grey400,
-            ),
+            style: TextStyle(fontSize: 14, color: AppThemeData.grey400),
           ),
         ],
       ),
@@ -209,7 +225,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  void _clearRecentSearches(SwiggySearchProvider controller) {
+  void _clearRecentSearches() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -240,7 +256,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
             ),
             TextButton(
               onPressed: () {
-                controller.clearRecentSearches();
+                context.read<SwiggySearchProvider>().clearRecentSearches();
                 Navigator.pop(context);
                 Get.snackbar(
                   "Cleared",
@@ -264,30 +280,42 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildInitialState(SwiggySearchProvider controller) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (controller.recentSearches.isNotEmpty) ...[
-            _buildRecentSearchesHeader(controller),
-            const SizedBox(height: 16),
-            _buildRecentSearches(controller),
-            const SizedBox(height: 32),
-          ],
-          if (controller.trendingSearches.isNotEmpty) ...[
-            _buildSectionHeader("🔥 Trending Now"),
-            const SizedBox(height: 16),
-            _buildTrendingSearches(controller),
-            const SizedBox(height: 16),
-          ],
-        ],
-      ),
+  Widget _buildInitialState() {
+    return Selector<SwiggySearchProvider, Map<String, dynamic>>(
+      selector: (_, provider) => {
+        'recentSearches': provider.recentSearches,
+        'trendingSearches': provider.trendingSearches,
+      },
+      builder: (context, state, _) {
+        final controller = context.read<SwiggySearchProvider>();
+        final recentSearches = state['recentSearches'] as List<String>;
+        final trendingSearches = state['trendingSearches'] as List<String>;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (recentSearches.isNotEmpty) ...[
+                _buildRecentSearchesHeader(),
+                const SizedBox(height: 16),
+                _buildRecentSearches(recentSearches),
+                const SizedBox(height: 32),
+              ],
+              if (trendingSearches.isNotEmpty) ...[
+                _buildSectionHeader("🔥 Trending Now"),
+                const SizedBox(height: 16),
+                _buildTrendingSearches(trendingSearches),
+                const SizedBox(height: 16),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildRecentSearchesHeader(SwiggySearchProvider controller) {
+  Widget _buildRecentSearchesHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -301,7 +329,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
           ),
         ),
         GestureDetector(
-          onTap: () => _clearRecentSearches(controller),
+          onTap: () => _clearRecentSearches(),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
@@ -329,122 +357,173 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildSuggestionsList(SwiggySearchProvider controller) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: controller.searchSuggestions.length,
-      itemBuilder: (context, index) {
-        String suggestion = controller.searchSuggestions[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 8),
-          decoration: BoxDecoration(
-            color: AppThemeData.grey50,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppThemeData.grey200, width: 1),
-          ),
-          child: ListTile(
-            leading: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppThemeData.primary100,
-                shape: BoxShape.circle,
-              ),
-              child: Center(
-                child: Text(
-                  _getSearchEmoji(suggestion),
-                  style: const TextStyle(fontSize: 18),
+  Widget _buildSuggestionsList() {
+    return Selector<SwiggySearchProvider, List<String>>(
+      selector: (_, provider) => provider.searchSuggestions,
+      builder: (context, suggestions, _) {
+        final controller = context.read<SwiggySearchProvider>();
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: suggestions.length,
+          itemBuilder: (context, index) {
+            final suggestion = suggestions[index];
+            return RepaintBoundary(
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: AppThemeData.grey50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppThemeData.grey200, width: 1),
+                ),
+                child: ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppThemeData.primary100,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        _getSearchEmoji(suggestion),
+                        style: const TextStyle(fontSize: 18),
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    suggestion,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppThemeData.grey900,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.arrow_forward_ios,
+                    color: AppThemeData.grey400,
+                    size: 16,
+                  ),
+                  onTap: () {
+                    searchController.text = suggestion;
+                    controller.selectSuggestion(suggestion);
+                  },
                 ),
               ),
-            ),
-            title: Text(
-              suggestion,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: AppThemeData.grey900,
-              ),
-            ),
-            trailing: Icon(
-              Icons.arrow_forward_ios,
-              color: AppThemeData.grey400,
-              size: 16,
-            ),
-            onTap: () {
-              searchController.text = suggestion;
-              controller.selectSuggestion(suggestion);
-            },
-          ),
+            );
+          },
         );
       },
     );
   }
 
-  Widget _buildSearchResults(SwiggySearchProvider controller) {
-    // Show "No results found" when search has no results
-    if (controller.restaurantResults.isEmpty &&
-        controller.productResults.isEmpty &&
-        controller.categoryResults.isEmpty) {
-      return _buildNoResults();
-    }
+  Widget _buildSearchResults() {
+    return Selector<SwiggySearchProvider, Map<String, dynamic>>(
+      selector: (_, provider) => {
+        'restaurantCount': provider.restaurantResults.length,
+        'productCount': provider.productResults.length,
+        'categoryCount': provider.categoryResults.length,
+        'hasMore': provider.hasMoreResults,
+        'isLoadingMore': provider.isLoadingMore,
+        'searchText': provider.searchText,
+      },
+      builder: (context, state, _) {
+        final controller = context.read<SwiggySearchProvider>();
 
-    // Show search results
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Results summary
-          _buildResultsSummary(controller),
-          const SizedBox(height: 20),
+        // Show "No results found" when search has no results
+        if (state['restaurantCount'] == 0 &&
+            state['productCount'] == 0 &&
+            state['categoryCount'] == 0) {
+          return _buildNoResults();
+        }
 
-          // Products section (Show first - users want dishes first)
-          if (controller.productResults.isNotEmpty) ...[
-            _buildSectionHeader(
-              "🍕 Dishes (${controller.productResults.length})",
+        // Use CustomScrollView for better performance with nested lists
+        return CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Results summary
+                  _buildResultsSummary(),
+                  const SizedBox(height: 20),
+                ]),
+              ),
             ),
-            const SizedBox(height: 12),
-            _buildProductsList(controller),
-            const SizedBox(height: 24),
-          ],
 
-          // Restaurants section
-          if (controller.restaurantResults.isNotEmpty) ...[
-            _buildSectionHeader(
-              "🍴 Restaurants (${controller.restaurantResults.length})",
+            // Products section
+            if (state['productCount'] as int > 0)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _buildSectionHeader("🍕 Dishes (${state['productCount']})"),
+                    const SizedBox(height: 12),
+                  ]),
+                ),
+              ),
+            if (state['productCount'] as int > 0)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: _buildProductsSliver(),
+              ),
+            if (state['productCount'] as int > 0)
+              const SliverPadding(padding: EdgeInsets.only(bottom: 24)),
+
+            // Restaurants section
+            if (state['restaurantCount'] as int > 0)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _buildSectionHeader(
+                      "🍴 Restaurants (${state['restaurantCount']})",
+                    ),
+                    const SizedBox(height: 12),
+                  ]),
+                ),
+              ),
+            if (state['restaurantCount'] as int > 0)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: _buildRestaurantsSliver(),
+              ),
+
+            // Categories section
+            if (state['categoryCount'] as int > 0)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    _buildSectionHeader(
+                      "📂 Categories (${state['categoryCount']})",
+                    ),
+                    const SizedBox(height: 12),
+                    _buildCategoriesList(),
+                    const SizedBox(height: 24),
+                  ]),
+                ),
+              ),
+
+            // Load More Button or Loading indicator
+            SliverPadding(
+              padding: const EdgeInsets.all(16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  if (state['hasMore'] == true &&
+                      state['isLoadingMore'] == false)
+                    _buildLoadMoreButton()
+                  else if (state['hasMore'] == false &&
+                      (state['restaurantCount'] as int > 0 ||
+                          state['productCount'] as int > 0))
+                    _buildNoMoreResultsMessage()
+                  else if (state['isLoadingMore'] == true)
+                    _buildLoadingIndicator(),
+                ]),
+              ),
             ),
-            const SizedBox(height: 12),
-            _buildRestaurantsList(controller),
           ],
-
-          // Categories section (if you want to show them)
-          if (controller.categoryResults.isNotEmpty) ...[
-            _buildSectionHeader(
-              "📂 Categories (${controller.categoryResults.length})",
-            ),
-            const SizedBox(height: 12),
-            _buildCategoriesList(controller),
-            const SizedBox(height: 24),
-          ],
-
-          // Load More Button
-          if (controller.hasMoreResults && !controller.isLoadingMore) ...[
-            const SizedBox(height: 20),
-            _buildLoadMoreButton(controller),
-          ] else if (!controller.hasMoreResults &&
-              (controller.restaurantResults.isNotEmpty ||
-                  controller.productResults.isNotEmpty)) ...[
-            const SizedBox(height: 20),
-            _buildNoMoreResultsMessage(),
-          ],
-
-          // Loading indicator for pagination
-          if (controller.isLoadingMore) ...[
-            const SizedBox(height: 20),
-            _buildLoadingIndicator(),
-          ],
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -478,51 +557,63 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
               backgroundColor: AppThemeData.primary300,
               foregroundColor: Colors.white,
             ),
-            child: Text("Go Back"),
+            child: const Text("Go Back"),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildResultsSummary(SwiggySearchProvider controller) {
-    final totalResults =
-        controller.restaurantResults.length +
-        controller.productResults.length +
-        controller.categoryResults.length;
+  Widget _buildResultsSummary() {
+    return Selector<SwiggySearchProvider, Map<String, dynamic>>(
+      selector: (_, provider) => {
+        'restaurantCount': provider.restaurantResults.length,
+        'productCount': provider.productResults.length,
+        'categoryCount': provider.categoryResults.length,
+        'searchText': provider.searchText,
+      },
+      builder: (context, state, _) {
+        final totalResults =
+            (state['restaurantCount'] as int) +
+            (state['productCount'] as int) +
+            (state['categoryCount'] as int);
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppThemeData.primary50,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppThemeData.primary50,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(Icons.search, color: AppThemeData.primary300, size: 20),
-              const SizedBox(width: 8),
+              Row(
+                children: [
+                  Icon(Icons.search, color: AppThemeData.primary300, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      "Found $totalResults results for \"${state['searchText']}\"",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppThemeData.primary300,
+                        fontFamily: AppThemeData.semiBold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
               Text(
-                "Found $totalResults results for \"${controller.searchText}\"",
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppThemeData.primary300,
-                  fontFamily: AppThemeData.semiBold,
-                ),
+                "🍕 Dishes: ${state['productCount']} | "
+                "🍴 Restaurants: ${state['restaurantCount']} | "
+                "📂 Categories: ${state['categoryCount']}",
+                style: TextStyle(fontSize: 12, color: AppThemeData.primary400),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            "🍕 Dishes: ${controller.productResults.length} | "
-            "🍴 Restaurants: ${controller.restaurantResults.length} | "
-            "📂 Categories: ${controller.categoryResults.length}",
-            style: TextStyle(fontSize: 12, color: AppThemeData.primary400),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -541,31 +632,29 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildRecentSearches(SwiggySearchProvider controller) {
+  Widget _buildRecentSearches(List<String> searches) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: controller.recentSearches.asMap().entries.map((entry) {
+      children: searches.asMap().entries.map((entry) {
         return _buildCreativeSearchChip(
           search: entry.value,
           isRecent: true,
           index: entry.key,
-          controller: controller,
         );
       }).toList(),
     );
   }
 
-  Widget _buildTrendingSearches(SwiggySearchProvider controller) {
+  Widget _buildTrendingSearches(List<String> searches) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: controller.trendingSearches.asMap().entries.map((entry) {
+      children: searches.asMap().entries.map((entry) {
         return _buildCreativeSearchChip(
           search: entry.value,
           isRecent: false,
           index: entry.key,
-          controller: controller,
         );
       }).toList(),
     );
@@ -575,7 +664,6 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     required String search,
     required bool isRecent,
     required int index,
-    required SwiggySearchProvider controller,
   }) {
     String emoji = _getSearchEmoji(search);
     Color primaryColor = isRecent
@@ -591,7 +679,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     return GestureDetector(
       onTap: () {
         searchController.text = search;
-        controller.performUnifiedSearch(search);
+        context.read<SwiggySearchProvider>().performUnifiedSearch(search);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -647,115 +735,169 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   }
 
   String _getSearchEmoji(String search) {
+    // Check cache first
+    if (_emojiCache.containsKey(search)) {
+      return _emojiCache[search]!;
+    }
+
     final lowerSearch = search.toLowerCase();
+    String emoji = '🍽️'; // Default
 
     // Food categories
-    if (lowerSearch.contains('pizza')) return '🍕';
-    if (lowerSearch.contains('biryani')) return '🍛';
-    if (lowerSearch.contains('burger')) return '🍔';
-    if (lowerSearch.contains('coffee')) return '☕';
-    if (lowerSearch.contains('ice cream')) return '🍦';
-    if (lowerSearch.contains('chicken')) return '🍗';
-    if (lowerSearch.contains('pasta')) return '🍝';
-    if (lowerSearch.contains('sushi')) return '🍣';
-    if (lowerSearch.contains('taco')) return '🌮';
-    if (lowerSearch.contains('sandwich')) return '🥪';
-    if (lowerSearch.contains('salad')) return '🥗';
-    if (lowerSearch.contains('soup')) return '🍲';
-    if (lowerSearch.contains('noodles')) return '🍜';
-    if (lowerSearch.contains('rice')) return '🍚';
-    if (lowerSearch.contains('bread')) return '🍞';
-    if (lowerSearch.contains('cake')) return '🍰';
-    if (lowerSearch.contains('dessert')) return '🍮';
-    if (lowerSearch.contains('sweet')) return '🍭';
-    if (lowerSearch.contains('spicy')) return '🌶️';
-    if (lowerSearch.contains('healthy')) return '🥑';
-    if (lowerSearch.contains('vegetarian') || lowerSearch.contains('veg'))
-      return '🥬';
-
+    if (lowerSearch.contains('pizza'))
+      emoji = '🍕';
+    else if (lowerSearch.contains('biryani'))
+      emoji = '🍛';
+    else if (lowerSearch.contains('burger'))
+      emoji = '🍔';
+    else if (lowerSearch.contains('coffee'))
+      emoji = '☕';
+    else if (lowerSearch.contains('ice cream'))
+      emoji = '🍦';
+    else if (lowerSearch.contains('chicken'))
+      emoji = '🍗';
+    else if (lowerSearch.contains('pasta'))
+      emoji = '🍝';
+    else if (lowerSearch.contains('sushi'))
+      emoji = '🍣';
+    else if (lowerSearch.contains('taco'))
+      emoji = '🌮';
+    else if (lowerSearch.contains('sandwich'))
+      emoji = '🥪';
+    else if (lowerSearch.contains('salad'))
+      emoji = '🥗';
+    else if (lowerSearch.contains('soup'))
+      emoji = '🍲';
+    else if (lowerSearch.contains('noodles'))
+      emoji = '🍜';
+    else if (lowerSearch.contains('rice'))
+      emoji = '🍚';
+    else if (lowerSearch.contains('bread'))
+      emoji = '🍞';
+    else if (lowerSearch.contains('cake'))
+      emoji = '🍰';
+    else if (lowerSearch.contains('dessert'))
+      emoji = '🍮';
+    else if (lowerSearch.contains('sweet'))
+      emoji = '🍭';
+    else if (lowerSearch.contains('spicy'))
+      emoji = '🌶️';
+    else if (lowerSearch.contains('healthy'))
+      emoji = '🥑';
+    else if (lowerSearch.contains('vegetarian') || lowerSearch.contains('veg'))
+      emoji = '🥬';
     // Cuisines
-    if (lowerSearch.contains('chinese')) return '🥢';
-    if (lowerSearch.contains('italian')) return '🍝';
-    if (lowerSearch.contains('indian')) return '🍛';
-    if (lowerSearch.contains('mexican')) return '🌮';
-    if (lowerSearch.contains('japanese')) return '🍣';
-    if (lowerSearch.contains('thai')) return '🍜';
-    if (lowerSearch.contains('korean')) return '🥘';
-    if (lowerSearch.contains('american')) return '🍔';
-    if (lowerSearch.contains('fast food')) return '🍟';
-
+    else if (lowerSearch.contains('chinese'))
+      emoji = '🥢';
+    else if (lowerSearch.contains('italian'))
+      emoji = '🍝';
+    else if (lowerSearch.contains('indian'))
+      emoji = '🍛';
+    else if (lowerSearch.contains('mexican'))
+      emoji = '🌮';
+    else if (lowerSearch.contains('japanese'))
+      emoji = '🍣';
+    else if (lowerSearch.contains('thai'))
+      emoji = '🍜';
+    else if (lowerSearch.contains('korean'))
+      emoji = '🥘';
+    else if (lowerSearch.contains('american'))
+      emoji = '🍔';
+    else if (lowerSearch.contains('fast food'))
+      emoji = '🍟';
     // General food terms
-    if (lowerSearch.contains('food')) return '🍽️';
-    if (lowerSearch.contains('restaurant')) return '🍴';
-    if (lowerSearch.contains('meal')) return '🍽️';
-    if (lowerSearch.contains('lunch')) return '🍱';
-    if (lowerSearch.contains('dinner')) return '🍽️';
-    if (lowerSearch.contains('breakfast')) return '🥞';
-    if (lowerSearch.contains('snack')) return '🍿';
+    else if (lowerSearch.contains('food'))
+      emoji = '🍽️';
+    else if (lowerSearch.contains('restaurant'))
+      emoji = '🍴';
+    else if (lowerSearch.contains('meal'))
+      emoji = '🍽️';
+    else if (lowerSearch.contains('lunch'))
+      emoji = '🍱';
+    else if (lowerSearch.contains('dinner'))
+      emoji = '🍽️';
+    else if (lowerSearch.contains('breakfast'))
+      emoji = '🥞';
+    else if (lowerSearch.contains('snack'))
+      emoji = '🍿';
 
-    return '🍽️';
+    // Cache the result
+    _emojiCache[search] = emoji;
+    return emoji;
   }
 
-  Widget _buildRestaurantsList(SwiggySearchProvider controller) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: controller.restaurantResults.length,
-      itemBuilder: (context, index) {
-        VendorModel restaurant = controller.restaurantResults[index];
-        return _buildRestaurantCard(restaurant);
-      },
-    );
-  }
-
-  Widget _buildProductsList(SwiggySearchProvider controller) {
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: controller.productResults.length,
-      itemBuilder: (context, index) {
-        ProductModel product = controller.productResults[index];
-        return _buildProductCard(product);
-      },
-    );
-  }
-
-  Widget _buildCategoriesList(SwiggySearchProvider controller) {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: controller.categoryResults.map((category) {
-        return GestureDetector(
-          onTap: () {
-            // You can implement category search here
-            searchController.text = category.title ?? '';
-            controller.performUnifiedSearch(category.title ?? '');
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: AppThemeData.primary100,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppThemeData.primary200),
-            ),
-            child: Text(
-              category.title ?? 'Category',
-              style: TextStyle(
-                color: AppThemeData.primary300,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+  Widget _buildRestaurantsSliver() {
+    return Selector<SwiggySearchProvider, List<VendorModel>>(
+      selector: (_, provider) => provider.restaurantResults,
+      builder: (context, restaurants, _) {
+        return SliverList(
+          delegate: SliverChildBuilderDelegate((context, index) {
+            return RepaintBoundary(
+              child: _buildRestaurantCard(restaurants[index]),
+            );
+          }, childCount: restaurants.length),
         );
-      }).toList(),
+      },
     );
   }
 
-  Widget _buildLoadMoreButton(SwiggySearchProvider controller) {
+  Widget _buildProductsSliver() {
+    return Selector<SwiggySearchProvider, List<ProductModel>>(
+      selector: (_, provider) => provider.productResults,
+      builder: (context, products, _) {
+        return SliverList(
+          delegate: SliverChildBuilderDelegate((context, index) {
+            return RepaintBoundary(child: _buildProductCard(products[index]));
+          }, childCount: products.length),
+        );
+      },
+    );
+  }
+
+  Widget _buildCategoriesList() {
+    return Selector<SwiggySearchProvider, List<VendorCategoryModel>>(
+      selector: (_, provider) => provider.categoryResults,
+      builder: (context, categories, _) {
+        final controller = context.read<SwiggySearchProvider>();
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: categories.map<Widget>((VendorCategoryModel category) {
+            return GestureDetector(
+              onTap: () {
+                searchController.text = category.title ?? '';
+                controller.performUnifiedSearch(category.title ?? '');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: AppThemeData.primary100,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppThemeData.primary200),
+                ),
+                child: Text(
+                  category.title ?? 'Category',
+                  style: TextStyle(
+                    color: AppThemeData.primary300,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadMoreButton() {
     return Center(
       child: ElevatedButton(
         onPressed: () {
-          controller.loadMoreResults();
+          context.read<SwiggySearchProvider>().loadMoreResults();
         },
         style: ElevatedButton.styleFrom(
           backgroundColor: AppThemeData.primary500,
@@ -822,182 +964,186 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   }
 
   Widget _buildRestaurantCard(VendorModel restaurant) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      color: AppThemeData.grey50,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: InkWell(
-        onTap: !RestaurantStatusUtils.canAcceptOrders(restaurant)
-            ? () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("Restaurant Closed"),
-                    backgroundColor: Colors.red,
-                    duration: const Duration(seconds: 3),
-                  ),
-                );
-              }
-            : () {
-                context.read<RestaurantDetailsProvider>().initFunction(
-                      vendorModels: restaurant,
-                    );
-                Get.to(() => const RestaurantDetailsScreen());
-              },
-        borderRadius: BorderRadius.circular(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    topRight: Radius.circular(12),
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: restaurant.photo ?? '',
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      height: 180,
-                      color: AppThemeData.grey200,
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
+    return RepaintBoundary(
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        color: AppThemeData.grey50,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: InkWell(
+          onTap: !RestaurantStatusUtils.canAcceptOrders(restaurant)
+              ? () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("Restaurant Closed"),
+                      backgroundColor: Colors.red,
+                      duration: const Duration(seconds: 3),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 180,
-                      color: AppThemeData.grey200,
-                      child: const Icon(Icons.restaurant, size: 50),
-                    ),
-                  ),
-                ),
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: RestaurantStatusUtils.getStatusWidget(restaurant),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                  );
+                }
+              : () {
+                  context.read<RestaurantDetailsProvider>().initFunction(
+                    vendorModels: restaurant,
+                  );
+                  Get.to(() => const RestaurantDetailsScreen());
+                },
+          borderRadius: BorderRadius.circular(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
                 children: [
-                  Text(
-                    restaurant.title ?? 'Restaurant',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppThemeData.grey900,
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    restaurant.location ?? 'Location not available',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppThemeData.grey400,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  if (restaurant.categoryTitle != null &&
-                      restaurant.categoryTitle!.isNotEmpty)
-                    Text(
-                      restaurant.categoryTitle!.join(', '),
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppThemeData.primary300,
-                        fontWeight: FontWeight.w500,
+                    child: CachedNetworkImage(
+                      imageUrl: restaurant.photo ?? '',
+                      height: 180,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        height: 180,
+                        color: AppThemeData.grey200,
+                        child: const Center(child: CircularProgressIndicator()),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        height: 180,
+                        color: AppThemeData.grey200,
+                        child: const Icon(Icons.restaurant, size: 50),
                       ),
                     ),
+                  ),
+                  Positioned(
+                    top: 12,
+                    left: 12,
+                    child: RestaurantStatusUtils.getStatusWidget(restaurant),
+                  ),
                 ],
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      restaurant.title ?? 'Restaurant',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppThemeData.grey900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      restaurant.location ?? 'Location not available',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppThemeData.grey400,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (restaurant.categoryTitle != null &&
+                        restaurant.categoryTitle!.isNotEmpty)
+                      Text(
+                        restaurant.categoryTitle!.join(', '),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppThemeData.primary300,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildProductCard(ProductModel product) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      color: AppThemeData.grey50,
-      child: ListTile(
-        leading: CircleAvatar(
-          radius: 25,
-          backgroundColor: AppThemeData.warning100,
-          child: product.photo != null && product.photo!.isNotEmpty
-              ? ClipOval(
-                  child: CachedNetworkImage(
-                    imageUrl: product.photo!,
-                    width: 50,
-                    height: 50,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Icon(
-                      Icons.fastfood,
-                      color: AppThemeData.warning300,
-                      size: 20,
+    return RepaintBoundary(
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 12),
+        color: AppThemeData.grey50,
+        child: ListTile(
+          leading: CircleAvatar(
+            radius: 25,
+            backgroundColor: AppThemeData.warning100,
+            child: product.photo != null && product.photo!.isNotEmpty
+                ? ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: product.photo!,
+                      width: 50,
+                      height: 50,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Icon(
+                        Icons.fastfood,
+                        color: AppThemeData.warning300,
+                        size: 20,
+                      ),
+                      errorWidget: (context, url, error) => Icon(
+                        Icons.fastfood,
+                        color: AppThemeData.warning300,
+                        size: 20,
+                      ),
                     ),
-                    errorWidget: (context, url, error) => Icon(
-                      Icons.fastfood,
-                      color: AppThemeData.warning300,
-                      size: 20,
-                    ),
+                  )
+                : Icon(
+                    Icons.fastfood,
+                    color: AppThemeData.warning300,
+                    size: 20,
+                  ),
+          ),
+          title: Text(
+            product.name ?? 'Product',
+            style: TextStyle(
+              fontFamily: AppThemeData.semiBold,
+              color: AppThemeData.grey900,
+            ),
+          ),
+          subtitle: Text(
+            product.description ?? 'Description not available',
+            style: TextStyle(color: AppThemeData.grey400),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          trailing: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (product.disPrice != null &&
+                  product.disPrice!.isNotEmpty &&
+                  product.disPrice != "0")
+                Text(
+                  "₹${product.disPrice}",
+                  style: TextStyle(
+                    fontFamily: AppThemeData.semiBold,
+                    color: AppThemeData.primary300,
+                    fontSize: 16,
                   ),
                 )
-              : Icon(Icons.fastfood, color: AppThemeData.warning300, size: 20),
-        ),
-        title: Text(
-          product.name ?? 'Product',
-          style: TextStyle(
-            fontFamily: AppThemeData.semiBold,
-            color: AppThemeData.grey900,
-          ),
-        ),
-        subtitle: Text(
-          product.description ?? 'Description not available',
-          style: TextStyle(color: AppThemeData.grey400),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (product.disPrice != null &&
-                product.disPrice!.isNotEmpty &&
-                product.disPrice != "0")
-              Text(
-                "₹${product.disPrice}",
-                style: TextStyle(
-                  fontFamily: AppThemeData.semiBold,
-                  color: AppThemeData.primary300,
-                  fontSize: 16,
+              else
+                Text(
+                  "₹${product.price ?? '0'}",
+                  style: TextStyle(
+                    fontFamily: AppThemeData.semiBold,
+                    color: AppThemeData.primary300,
+                    fontSize: 16,
+                  ),
                 ),
-              )
-            else
-              Text(
-                "₹${product.price ?? '0'}",
-                style: TextStyle(
-                  fontFamily: AppThemeData.semiBold,
-                  color: AppThemeData.primary300,
-                  fontSize: 16,
-                ),
+              Icon(
+                Icons.arrow_forward_ios,
+                color: AppThemeData.grey400,
+                size: 16,
               ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: AppThemeData.grey400,
-              size: 16,
-            ),
-          ],
+            ],
+          ),
+          onTap: () {
+            _showProductDetailsBottomSheet(context, product);
+          },
         ),
-        onTap: () {
-          _showProductDetailsBottomSheet(context, product);
-        },
       ),
     );
   }
@@ -1023,8 +1169,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
 
   Widget _buildSimpleProductDetails(ProductModel product) {
     final vendorId = product.vendorID ?? '';
-    final vendorFuture =
-        vendorId.isNotEmpty ? _getVendorDetails(vendorId) : null;
+    final vendorFuture = vendorId.isNotEmpty
+        ? _getVendorDetails(vendorId)
+        : null;
 
     return SafeArea(
       child: Container(
@@ -1094,7 +1241,11 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                     )
                   : SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: _buildProductDetailsContent(context, product, null),
+                      child: _buildProductDetailsContent(
+                        context,
+                        product,
+                        null,
+                      ),
                     ),
             ),
           ],
@@ -1128,9 +1279,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
               placeholder: (context, url) => Container(
                 height: 200,
                 color: AppThemeData.grey200,
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
+                child: const Center(child: CircularProgressIndicator()),
               ),
               errorWidget: (context, url, error) => Container(
                 height: 200,
@@ -1153,10 +1302,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         if (product.description != null && product.description!.isNotEmpty)
           Text(
             product.description!,
-            style: TextStyle(
-              fontSize: 16,
-              color: AppThemeData.grey600,
-            ),
+            style: TextStyle(fontSize: 16, color: AppThemeData.grey600),
           ),
         const SizedBox(height: 20),
         if (product.vendorID != null && product.vendorID!.isNotEmpty)
@@ -1186,172 +1332,157 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   ),
                 )
               : vendor != null
-                  ? Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: AppThemeData.grey100,
-                                borderRadius: BorderRadius.circular(12),
+              ? Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppThemeData.grey100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "From Restaurant",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppThemeData.grey900,
                               ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    flex: 2,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "From Restaurant",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppThemeData.grey900,
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: CachedNetworkImage(
+                                    imageUrl: vendor.photo ?? '',
+                                    height: 50,
+                                    width: 50,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
+                                      height: 50,
+                                      width: 50,
+                                      color: AppThemeData.grey200,
+                                      child: const Icon(
+                                        Icons.restaurant,
+                                        size: 25,
+                                      ),
+                                    ),
+                                    errorWidget: (context, url, error) =>
+                                        Container(
+                                          height: 50,
+                                          width: 50,
+                                          color: AppThemeData.grey200,
+                                          child: const Icon(
+                                            Icons.restaurant,
+                                            size: 25,
                                           ),
                                         ),
-                                        const SizedBox(height: 12),
-                                        Row(
-                                          children: [
-                                            ClipRRect(
-                                              borderRadius:
-                                                  BorderRadius.circular(8),
-                                              child: CachedNetworkImage(
-                                                imageUrl: vendor.photo ?? '',
-                                                height: 50,
-                                                width: 50,
-                                                fit: BoxFit.cover,
-                                                placeholder: (context, url) =>
-                                                    Container(
-                                                      height: 50,
-                                                      width: 50,
-                                                      color:
-                                                          AppThemeData.grey200,
-                                                      child: const Icon(
-                                                        Icons.restaurant,
-                                                        size: 25,
-                                                      ),
-                                                    ),
-                                                errorWidget:
-                                                    (context, url, error) =>
-                                                        Container(
-                                                          height: 50,
-                                                          width: 50,
-                                                          color: AppThemeData
-                                                              .grey200,
-                                                          child: const Icon(
-                                                            Icons.restaurant,
-                                                            size: 25,
-                                                          ),
-                                                        ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            Expanded(
-                                              child: Column(
-                                                crossAxisAlignment:
-                                                    CrossAxisAlignment.start,
-                                                children: [
-                                                  Text(
-                                                    vendor.title ??
-                                                        'Unknown Restaurant',
-                                                    style: TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color:
-                                                          AppThemeData.grey900,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 4),
-                                                  Row(
-                                                    children: [
-                                                      Icon(
-                                                        Icons.star,
-                                                        size: 16,
-                                                        color: AppThemeData
-                                                            .warning400,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        _calculateRating(
-                                                          product.reviewsSum,
-                                                          product.reviewsCount,
-                                                        ),
-                                                        style: TextStyle(
-                                                          fontSize: 14,
-                                                          color: AppThemeData
-                                                              .grey600,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        vendor.title ?? 'Unknown Restaurant',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppThemeData.grey900,
                                         ),
-                                      ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.star,
+                                            size: 16,
+                                            color: AppThemeData.warning400,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _calculateRating(
+                                              product.reviewsSum,
+                                              product.reviewsCount,
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: AppThemeData.grey600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 20),
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              "Price",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: AppThemeData.grey900,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            if (product.disPrice != null &&
+                                product.disPrice!.isNotEmpty &&
+                                product.disPrice != "0")
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    "₹${product.disPrice}",
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: AppThemeData.success500,
                                     ),
                                   ),
-                                  const SizedBox(width: 20),
-                                  Expanded(
-                                    flex: 1,
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        Text(
-                                          "Price",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppThemeData.grey900,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        if (product.disPrice != null &&
-                                            product.disPrice!.isNotEmpty &&
-                                            product.disPrice != "0")
-                                          Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.end,
-                                            children: [
-                                              Text(
-                                                "₹${product.disPrice}",
-                                                style: TextStyle(
-                                                  fontSize: 24,
-                                                  fontWeight: FontWeight.bold,
-                                                  color:
-                                                      AppThemeData.success500,
-                                                ),
-                                              ),
-                                              Text(
-                                                "₹${product.price ?? '0'}",
-                                                style: TextStyle(
-                                                  fontSize: 16,
-                                                  decoration: TextDecoration
-                                                      .lineThrough,
-                                                  color: AppThemeData.grey500,
-                                                ),
-                                              ),
-                                            ],
-                                          )
-                                        else
-                                          Text(
-                                            "₹${product.price ?? '0'}",
-                                            style: TextStyle(
-                                              fontSize: 24,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppThemeData.warning500,
-                                            ),
-                                          ),
-                                      ],
+                                  Text(
+                                    "₹${product.price ?? '0'}",
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      decoration: TextDecoration.lineThrough,
+                                      color: AppThemeData.grey500,
                                     ),
                                   ),
                                 ],
+                              )
+                            else
+                              Text(
+                                "₹${product.price ?? '0'}",
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppThemeData.warning500,
+                                ),
                               ),
-                            )
-                  : const SizedBox.shrink(),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox.shrink(),
         const SizedBox(height: 20),
         if (product.vendorID != null && product.vendorID!.isNotEmpty) ...[
           if (vendor != null)
@@ -1362,8 +1493,8 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                 onPressed: () {
                   Navigator.pop(context);
                   context.read<RestaurantDetailsProvider>().initFunction(
-                        vendorModels: vendor,
-                      );
+                    vendorModels: vendor,
+                  );
                   Get.to(() => const RestaurantDetailsScreen());
                 },
                 style: ElevatedButton.styleFrom(
@@ -1418,8 +1549,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                       }
                     },
               style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    isButtonEnabled ? const Color(0xFFFF5200) : AppThemeData.grey400,
+                backgroundColor: isButtonEnabled
+                    ? const Color(0xFFFF5200)
+                    : AppThemeData.grey400,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
@@ -1504,6 +1636,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
 
   Future<void> _addToCart(ProductModel product) async {
     final currentContext = context;
+    final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
     try {
       final vendor = await _getVendorDetails(product.vendorID ?? '');

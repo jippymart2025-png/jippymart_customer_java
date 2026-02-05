@@ -6,19 +6,32 @@ import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/utils/utils/common.dart';
+import 'package:jippymart_customer/services/cache_manager.dart';
+import 'package:jippymart_customer/services/api_queue_manager.dart';
 
 class CategoryViewProvider extends ChangeNotifier {
   static const Duration _networkTimeout = Duration(seconds: 12);
   List<VendorCategoryModel> vendorCategoryModel = <VendorCategoryModel>[];
 
   Future<void> loadVendorCategories() async {
-    await getHomeVendorCategory().then((value) {
-      vendorCategoryModel = value;
-      notifyListeners();
-    });
+    final categories = await getHomeVendorCategory();
+    vendorCategoryModel = categories;
+    notifyListeners();
   }
 
   Future<List<VendorCategoryModel>> getHomeVendorCategory() async {
+    const cacheKey = 'categories_home';
+    return await CacheManager().getOrSetCategories<List<VendorCategoryModel>>(
+      cacheKey,
+      () => ApiQueueManager().enqueue<List<VendorCategoryModel>>(
+        priority: RequestPriority.high,
+        key: cacheKey,
+        request: () => _fetchHomeVendorCategory(),
+      ),
+    );
+  }
+
+  Future<List<VendorCategoryModel>> _fetchHomeVendorCategory() async {
     List<VendorCategoryModel> list = [];
     try {
       final headers = await getHeaders();

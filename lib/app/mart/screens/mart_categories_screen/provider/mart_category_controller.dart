@@ -6,16 +6,31 @@ import 'package:jippymart_customer/services/mart_firestore_service.dart';
 class MartCategoryProvider extends ChangeNotifier {
   final MartFirestoreService _firestoreService =
       Get.find<MartFirestoreService>();
-  List<MartCategoryModel> martCategories = [];
 
-  Future<void> loadCategories() async {
-    print(" loadCategories");
-    martCategories = await _firestoreService.getCategories(limit: 100);
-    print("loadCategories length ${martCategories.length} ");
+  // Private list
+  List<MartCategoryModel> _martCategories = [];
+  List<MartCategoryModel> get martCategories => _martCategories;
+
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  String? _error;
+  String? get error => _error;
+
+  Future<void> loadCategories({int limit = 100}) async {
+    _isLoading = true;
+    _error = null;
     notifyListeners();
-  }
 
-  void initFunction() {
-    loadCategories();
+    try {
+      _martCategories =
+          await _firestoreService.getCategories(limit: limit);
+    } catch (e) {
+      _error = e.toString();
+      debugPrint("Error loading categories: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }
