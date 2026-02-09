@@ -3124,9 +3124,10 @@ class OrderDetailsScreen extends StatelessWidget {
               deliveryCharges = 0.0;
               originalDeliveryFee = baseCharge;
             } else {
+              // 🔑 FIX: For promotional items above free km, GST should be on base charge + extra km charges
               double extraKm = (totalDistance - freeDeliveryKm).ceilToDouble();
               deliveryCharges = extraKm * extraKmCharge;
-              originalDeliveryFee = deliveryCharges;
+              originalDeliveryFee = baseCharge + deliveryCharges; // Base charge + extra km for GST
             }
             return {
               'deliveryCharges': deliveryCharges,

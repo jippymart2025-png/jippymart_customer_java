@@ -1434,32 +1434,6 @@ import 'package:http/http.dart' as http;
 //   }
 // }
 
-import 'dart:async';
-import 'dart:convert';
-import 'dart:developer';
-import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
-import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/models/AttributesModel.dart';
-import 'package:jippymart_customer/models/cart_product_model.dart';
-import 'package:jippymart_customer/models/coupon_model.dart';
-import 'package:jippymart_customer/models/favourite_item_model.dart';
-import 'package:jippymart_customer/models/product_model.dart';
-import 'package:jippymart_customer/models/vendor_category_model.dart';
-import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/services/cart_provider.dart';
-import 'package:jippymart_customer/services/promotional_cache_service.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
-import 'package:jippymart_customer/utils/performance_monitor.dart';
-import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:jippymart_customer/utils/utils/app_constant.dart';
-import 'package:jippymart_customer/utils/utils/common.dart';
-import 'package:http/http.dart' as http;
-
 /// STATIC HELPER METHODS - Moved outside the class
 class RestaurantApiHelper {
   static Future<List<CouponModel>> getRestaurantCoupons({

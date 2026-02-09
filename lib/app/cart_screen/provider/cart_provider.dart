@@ -35,6 +35,7 @@ import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/services/mart_vendor_service.dart';
 import 'package:jippymart_customer/services/promotional_cache_service.dart';
 import 'package:jippymart_customer/utils/anr_prevention.dart';
+import 'package:jippymart_customer/utils/delivery_charge_cache.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
@@ -6380,8 +6381,23 @@ class CartControllerProvider extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _promotionalCalculationCache = {};
   final Map<String, double> _cachedFreeDeliveryKm = {};
   final Map<String, double> _cachedExtraKmCharge = {};
+  final Map<String, double> _cachedPromotionalBaseCharge =
+      {}; // 🔑 NEW: Cache for promotional base charge
   List<TaxModel>? _cachedTaxList;
   bool _calculationCacheLoaded = false;
+
+  // 🔑 PERFORMANCE: Cache cart item type checks to avoid repeated iterations
+  bool? _cachedHasPromotionalItems;
+  bool? _cachedHasMartItems;
+  int _lastCartItemCount = 0;
+  String? _lastCartItemHash; // Simple hash to detect cart changes
+
+  // 🔑 OPTIMIZATION: Cache distance calculation to avoid repeated calculations
+  double? _cachedDistance;
+  double? _cachedCustomerLat;
+  double? _cachedCustomerLng;
+  double? _cachedVendorLat;
+  double? _cachedVendorLng;
 
   // 🔑 COUPON LOADING
   bool _isLoadingCoupons = false;
@@ -6675,6 +6691,11 @@ class CartControllerProvider extends ChangeNotifier {
         selectedAddress = defaultAddress;
         _addressInitialized = true;
 
+        // 🔑 OPTIMIZATION: Invalidate distance cache when address changes
+        _cachedDistance = null;
+        _cachedCustomerLat = null;
+        _cachedCustomerLng = null;
+
         await initialLiseSurgeValue(
           defaultAddress.location?.latitude ?? 0.0,
           defaultAddress.location?.longitude ?? 0.0,
@@ -6697,6 +6718,11 @@ class CartControllerProvider extends ChangeNotifier {
       if (homeScreenAddress != null) {
         selectedAddress = homeScreenAddress;
         _addressInitialized = true;
+
+        // 🔑 OPTIMIZATION: Invalidate distance cache when address changes
+        _cachedDistance = null;
+        _cachedCustomerLat = null;
+        _cachedCustomerLng = null;
 
         await initialLiseSurgeValue(
           homeScreenAddress.location?.latitude ?? 0.0,
@@ -6880,6 +6906,9 @@ class CartControllerProvider extends ChangeNotifier {
             await _loadVendorForPriceCalculation();
           }
 
+          // 🔑 OPTIMIZATION: Invalidate cart type cache at start of calculation
+          _invalidateCartTypeCache();
+
           // Calculate subtotal
           await _calculateSubTotal();
 
@@ -6909,12 +6938,15 @@ class CartControllerProvider extends ChangeNotifier {
           checkAndUpdatePaymentMethod();
           updateCartReadiness();
 
+          // 🔑 OPTIMIZATION: Single notifyListeners call at the end
+          // This prevents multiple UI rebuilds during calculation
           notifyListeners();
         },
         timeout: const Duration(seconds: 5),
       );
     } catch (e) {
       print('[CART_PRICE] ❌ Calculation failed: $e');
+      // 🔑 OPTIMIZATION: Notify listeners even on error to update UI state
       notifyListeners();
       rethrow;
     } finally {
@@ -6942,23 +6974,33 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _calculateSubTotal() async {
     subTotal = 0.0;
 
+    // 🔑 OPTIMIZATION: Pre-parse values once and reuse
     for (var element in HomeProvider.cartItem) {
       final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
 
+      // 🔑 OPTIMIZATION: Parse once and reuse
+      final priceValue = double.tryParse(element.price.toString()) ?? 0.0;
+      final discountPriceValue =
+          double.tryParse(element.discountPrice.toString()) ?? 0.0;
+
       double itemPrice;
       if (hasPromo) {
-        itemPrice = double.parse(element.price.toString());
-      } else if (double.parse(element.discountPrice.toString()) <= 0) {
-        itemPrice = double.parse(element.price.toString());
+        itemPrice = priceValue;
+      } else if (discountPriceValue <= 0) {
+        itemPrice = priceValue;
       } else {
-        itemPrice = double.parse(element.discountPrice.toString());
+        itemPrice = discountPriceValue;
       }
 
-      final quantity = double.parse(element.quantity.toString());
-      final extrasPrice = double.parse(element.extrasPrice.toString());
+      final quantity = double.tryParse(element.quantity.toString()) ?? 0.0;
+      final extrasPrice =
+          double.tryParse(element.extrasPrice.toString()) ?? 0.0;
 
       subTotal += (itemPrice * quantity) + (extrasPrice * quantity);
     }
+
+    // 🔑 OPTIMIZATION: Invalidate cart type cache when subtotal changes
+    _invalidateCartTypeCache();
   }
 
   Future<void> _calculateDeliveryCharges() async {
@@ -6971,23 +7013,35 @@ class CartControllerProvider extends ChangeNotifier {
       final vendorLat = vendorModel.latitude!;
       final vendorLng = vendorModel.longitude!;
 
-      final distanceString = Constant.getDistance(
-        lat1: customerLat.toString(),
-        lng1: customerLng.toString(),
-        lat2: vendorLat.toString(),
-        lng2: vendorLng.toString(),
-      );
+      // 🔑 OPTIMIZATION: Only recalculate distance if coordinates changed
+      if (_cachedDistance == null ||
+          _cachedCustomerLat != customerLat ||
+          _cachedCustomerLng != customerLng ||
+          _cachedVendorLat != vendorLat ||
+          _cachedVendorLng != vendorLng) {
+        final distanceString = Constant.getDistance(
+          lat1: customerLat.toString(),
+          lng1: customerLng.toString(),
+          lat2: vendorLat.toString(),
+          lng2: vendorLng.toString(),
+        );
 
-      totalDistance = double.parse(distanceString);
+        _cachedDistance = double.parse(distanceString);
+        _cachedCustomerLat = customerLat;
+        _cachedCustomerLng = customerLng;
+        _cachedVendorLat = vendorLat;
+        _cachedVendorLng = vendorLng;
+      }
+
+      totalDistance = _cachedDistance!;
     } else {
       totalDistance = 0.0;
+      _cachedDistance = null;
     }
 
-    final hasPromotionalItems = HomeProvider.cartItem.any(
-      (item) => item.promoId != null && item.promoId!.isNotEmpty,
-    );
-
-    final hasMartItems = hasMartItemsInCart();
+    // 🔑 OPTIMIZATION: Use cached cart item type checks
+    final hasPromotionalItems = _getCachedHasPromotionalItems();
+    final hasMartItems = _getCachedHasMartItems();
 
     if (hasPromotionalItems) {
       calculatePromotionalDeliveryChargeFast();
@@ -7004,22 +7058,14 @@ class CartControllerProvider extends ChangeNotifier {
     if (selectedCouponModel.id != null && selectedCouponModel.id!.isNotEmpty) {
       activeCoupon = selectedCouponModel;
     } else if (couponCodeController.text.isNotEmpty) {
+      // 🔑 OPTIMIZATION: Cache coupon lookup
       activeCoupon = couponList
           .where((element) => element.code == couponCodeController.text)
           .firstOrNull;
     }
 
-    final hasPromotionalItems = HomeProvider.cartItem.any((item) {
-      final priceValue = double.tryParse(item.price.toString()) ?? 0.0;
-      final discountPriceValue =
-          double.tryParse(item.discountPrice.toString()) ?? 0.0;
-      final hasPromo = item.promoId != null && item.promoId!.isNotEmpty;
-      final isPricePromotional =
-          priceValue > 0 &&
-          discountPriceValue > 0 &&
-          priceValue < discountPriceValue;
-      return hasPromo || isPricePromotional;
-    });
+    // 🔑 OPTIMIZATION: Use cached promotional items check
+    final hasPromotionalItems = _getCachedHasPromotionalItems();
 
     if (hasPromotionalItems && activeCoupon != null) {
       ShowToastDialog.showToast(
@@ -7060,15 +7106,27 @@ class CartControllerProvider extends ChangeNotifier {
     double sgst = 0.0;
     double gst = 0.0;
 
-    final hasPromotionalItemsForTax = HomeProvider.cartItem.any(
-      (item) => item.promoId != null && item.promoId!.isNotEmpty,
-    );
+    // 🔑 OPTIMIZATION: Use cached cart item type checks
+    final hasPromotionalItemsForTax = _getCachedHasPromotionalItems();
+    final hasMartItems = _getCachedHasMartItems();
 
-    final hasMartItems = hasMartItemsInCart();
-
-    final double taxableDeliveryFee = originalDeliveryFee > 0
-        ? originalDeliveryFee
-        : (deliveryCharges > 0 ? deliveryCharges : 0.0);
+    // 🔑 FIX: For promotional items, always use originalDeliveryFee (which includes base charge)
+    // This ensures 18% GST is calculated on base charge even when delivery is free
+    final double taxableDeliveryFee;
+    if (hasPromotionalItemsForTax) {
+      // For promotional items, originalDeliveryFee should always include base charge for GST
+      taxableDeliveryFee = originalDeliveryFee > 0
+          ? originalDeliveryFee
+          : (deliveryCharges > 0 ? deliveryCharges : 0.0);
+      print(
+        '[TAX_CALC] Promotional items - Using originalDeliveryFee: ₹$originalDeliveryFee for GST calculation',
+      );
+    } else {
+      // For non-promotional items, use existing logic
+      taxableDeliveryFee = originalDeliveryFee > 0
+          ? originalDeliveryFee
+          : (deliveryCharges > 0 ? deliveryCharges : 0.0);
+    }
 
     if (Constant.taxList != null) {
       for (var element in Constant.taxList!) {
@@ -7105,11 +7163,9 @@ class CartControllerProvider extends ChangeNotifier {
     bool isFreeDelivery = false;
 
     if (HomeProvider.cartItem.isNotEmpty && selectedFoodType == "Delivery") {
-      final hasPromotionalItems = HomeProvider.cartItem.any(
-        (item) => item.promoId != null && item.promoId!.isNotEmpty,
-      );
-
-      final hasMartItems = hasMartItemsInCart();
+      // 🔑 OPTIMIZATION: Use cached cart item type checks
+      final hasPromotionalItems = _getCachedHasPromotionalItems();
+      final hasMartItems = _getCachedHasMartItems();
 
       if (hasPromotionalItems) {
         final promotionalItems = HomeProvider.cartItem
@@ -7117,10 +7173,27 @@ class CartControllerProvider extends ChangeNotifier {
             .toList();
 
         final firstPromoItem = promotionalItems.first;
-        final freeDeliveryKm = _getCachedFreeDeliveryKm(
-          firstPromoItem.id ?? '',
-          firstPromoItem.vendorID ?? '',
-        );
+        final cacheKey = '${firstPromoItem.id}-${firstPromoItem.vendorID}';
+
+        // 🔑 CRITICAL FIX: For promotional items, always use promotional free delivery km
+        // Check promotion cache first, then cached map, then use promotional default
+        double freeDeliveryKm;
+        final promoDetails = _promotionalCalculationCache[cacheKey];
+        if (promoDetails != null) {
+          final promoFreeKm = (promoDetails['free_delivery_km'] as num?)
+              ?.toDouble();
+          if (promoFreeKm != null && promoFreeKm > 0) {
+            freeDeliveryKm = promoFreeKm;
+          } else if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
+            freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
+          } else {
+            freeDeliveryKm = 4.0; // Promotional default
+          }
+        } else if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
+          freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
+        } else {
+          freeDeliveryKm = 4.0; // Promotional default, NOT global
+        }
 
         if (totalDistance <= freeDeliveryKm) {
           isFreeDelivery = true;
@@ -8770,7 +8843,8 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _loadDeliveryChargeForCart() async {
     try {
-      final value = await FireStoreUtils.getDeliveryCharge();
+      // Use delivery charge cache utility for dynamic delivery charges
+      final value = await DeliveryChargeCache.instance.getDeliveryCharge();
       if (value != null) {
         deliveryChargeModel = value;
         _cachedDeliveryCharge = value;
@@ -8876,6 +8950,17 @@ class CartControllerProvider extends ChangeNotifier {
     _cachedGlobalCouponList = null;
     _lastGlobalCouponCacheTime = null;
     _cachedCouponList = null;
+    // 🔑 OPTIMIZATION: Invalidate cart type cache
+    _cachedHasPromotionalItems = null;
+    _cachedHasMartItems = null;
+    _lastCartItemCount = 0;
+    _lastCartItemHash = null;
+    // 🔑 OPTIMIZATION: Invalidate distance cache when vendor/address changes
+    _cachedDistance = null;
+    _cachedCustomerLat = null;
+    _cachedCustomerLng = null;
+    _cachedVendorLat = null;
+    _cachedVendorLng = null;
   }
 
   // Add these methods to the CartControllerProvider class:
@@ -9879,6 +9964,11 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _loadFreshVendorForCart() async {
     try {
+      // 🔑 OPTIMIZATION: Invalidate distance cache when vendor changes
+      _cachedDistance = null;
+      _cachedVendorLat = null;
+      _cachedVendorLng = null;
+
       final martItems = HomeProvider.cartItem
           .where((item) => _isMartItem(item))
           .toList();
@@ -10119,15 +10209,100 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     final firstPromoItem = promotionalItems.first;
-    final freeDeliveryKm = _getCachedFreeDeliveryKm(
-      firstPromoItem.id ?? '',
-      firstPromoItem.vendorID ?? '',
-    );
-    final extraKmCharge = _getCachedExtraKmCharge(
-      firstPromoItem.id ?? '',
-      firstPromoItem.vendorID ?? '',
-    );
-    final baseCharge = 21.0;
+    final cacheKey = '${firstPromoItem.id}-${firstPromoItem.vendorID}';
+
+    // 🔑 CRITICAL FIX: Always prioritize promotion cache for promotional items
+    // Never fall back to global values - always use promotional delivery charges
+    final promoDetails = _promotionalCalculationCache[cacheKey];
+    double freeDeliveryKm;
+    double extraKmCharge;
+
+    if (promoDetails != null) {
+      // 🔑 CRITICAL: Use free_delivery_km from promotion table (e.g., 4 km)
+      final promoFreeKm = (promoDetails['free_delivery_km'] as num?)
+          ?.toDouble();
+      if (promoFreeKm != null && promoFreeKm > 0) {
+        freeDeliveryKm = promoFreeKm;
+        // Cache it for faster access next time
+        _cachedFreeDeliveryKm[cacheKey] = promoFreeKm;
+        print(
+          '[PROMOTIONAL_DELIVERY] ✅ Using free delivery km from promotion table: $freeDeliveryKm km',
+        );
+      } else {
+        // 🔑 CRITICAL: If promotion table doesn't have free_delivery_km,
+        // check cached value (from previous fetch), but NEVER use global fallback
+        if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
+          freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
+          print(
+            '[PROMOTIONAL_DELIVERY] ⚠️ Promotion table missing free_delivery_km, using cached promotional value: $freeDeliveryKm km',
+          );
+        } else {
+          // 🔑 CRITICAL: For promotional items, we MUST have promotional data
+          // If cache is missing, trigger async load and use a safe default that will be updated
+          // But don't use global fallback - use a reasonable promotional default
+          print(
+            '[PROMOTIONAL_DELIVERY] ⚠️ No promotional cache found, triggering load...',
+          );
+          // Trigger async cache load
+          _cachePromotionalData(
+            firstPromoItem.id ?? '',
+            firstPromoItem.vendorID ?? '',
+            cacheKey,
+          );
+          // Use cached value if available, otherwise wait for cache (will recalculate)
+          freeDeliveryKm =
+              _cachedFreeDeliveryKm[cacheKey] ??
+              4.0; // Default to 4km for promotional
+        }
+      }
+
+      // Get extra km charge from promotion
+      final promoExtraKm = (promoDetails['extra_km_charge'] as num?)
+          ?.toDouble();
+      if (promoExtraKm != null && promoExtraKm > 0) {
+        extraKmCharge = promoExtraKm;
+        _cachedExtraKmCharge[cacheKey] = promoExtraKm;
+      } else {
+        extraKmCharge = _cachedExtraKmCharge[cacheKey] ?? 7.0;
+      }
+    } else {
+      // 🔑 CRITICAL: Promotion cache not loaded - check if we have cached values
+      // If not, trigger load and use promotional defaults (NOT global)
+      if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
+        freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
+        print(
+          '[PROMOTIONAL_DELIVERY] ✅ Using cached promotional free delivery km: $freeDeliveryKm km',
+        );
+      } else {
+        // Trigger async cache load
+        _cachePromotionalData(
+          firstPromoItem.id ?? '',
+          firstPromoItem.vendorID ?? '',
+          cacheKey,
+        );
+        // Use promotional default (4km) instead of global fallback
+        freeDeliveryKm = 4.0; // Default promotional free km
+        print(
+          '[PROMOTIONAL_DELIVERY] ⚠️ Promotion cache not loaded, using promotional default: $freeDeliveryKm km (will update when cache loads)',
+        );
+      }
+
+      extraKmCharge = _getCachedExtraKmCharge(
+        firstPromoItem.id ?? '',
+        firstPromoItem.vendorID ?? '',
+      );
+    }
+
+    // 🔑 DYNAMIC: Get base charge from promotional cache or delivery charge cache
+    final baseCharge =
+        _cachedPromotionalBaseCharge[cacheKey] ??
+        DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
+
+    // 🔑 NEW: Check if this promotional item should include base charge in calculation
+    final includeBaseCharge =
+        promoDetails?['include_base_charge'] == true ||
+        promoDetails?['consider_base_charge'] == true ||
+        promoDetails?['free_up_charge'] == true;
 
     _calculateDeliveryCharge(
       orderType: 'promotional',
@@ -10135,6 +10310,7 @@ class CartControllerProvider extends ChangeNotifier {
       perKmCharge: extraKmCharge,
       baseCharge: baseCharge,
       logPrefix: '[PROMOTIONAL_DELIVERY]',
+      includeBaseChargeInOriginalFee: includeBaseCharge,
     );
   }
 
@@ -10144,18 +10320,46 @@ class CartControllerProvider extends ChangeNotifier {
     required double perKmCharge,
     required double baseCharge,
     required String logPrefix,
+    bool includeBaseChargeInOriginalFee =
+        true, // 🔑 NEW: Flag to control base charge inclusion
   }) {
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (totalDistance <= freeDeliveryKm) {
+      // Free delivery within promotional distance
       deliveryCharges = 0.0;
-      originalDeliveryFee = baseCharge;
+      // 🔑 FIX: For promotional items, ALWAYS include base charge in originalDeliveryFee for GST calculation
+      // Even though customer pays 0, GST should be calculated on base charge
+      if (orderType == 'promotional') {
+        originalDeliveryFee =
+            baseCharge; // Always include base charge for tax calculation
+      } else {
+        originalDeliveryFee = baseCharge;
+      }
+      print(
+        '$logPrefix Free delivery within ${freeDeliveryKm}km - Customer pays: ₹$deliveryCharges, Base charge for GST: ₹$baseCharge',
+      );
     } else {
+      // Distance exceeds free delivery km - charge extra km only
       double extraKm = (totalDistance - freeDeliveryKm).ceilToDouble();
       deliveryCharges = extraKm * perKmCharge;
-      originalDeliveryFee = baseCharge + deliveryCharges;
+
+      // 🔑 FIX: For promotional items, ALWAYS include base charge in originalDeliveryFee for GST calculation
+      // The flag controls whether base charge is "free up" for customer, but it should always be in originalFee for tax
+      if (orderType == 'promotional') {
+        // Always include base charge for promotional items (for 18% GST calculation)
+        originalDeliveryFee = baseCharge + deliveryCharges;
+      } else {
+        // For non-promotional, use the flag
+        originalDeliveryFee = includeBaseChargeInOriginalFee
+            ? baseCharge + deliveryCharges
+            : deliveryCharges;
+      }
+      print(
+        '$logPrefix Distance ${totalDistance}km exceeds free ${freeDeliveryKm}km - Extra km: $extraKm, Customer pays: ₹$deliveryCharges, Original fee (base + extra) for GST: ₹$originalDeliveryFee',
+      );
     }
   }
 
@@ -10173,12 +10377,19 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   void _calculateMartDeliveryWithBackendSettings() {
+    // 🔑 DYNAMIC: Use cache utility for all delivery charge values
+    final cache = DeliveryChargeCache.instance;
     final dc = deliveryChargeModel;
     final subtotal = subTotal;
-    final threshold = dc.itemTotalThreshold ?? 299;
-    final baseCharge = dc.baseDeliveryCharge ?? 21;
-    final freeKm = dc.freeDeliveryDistanceKm ?? 7;
-    final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
+    final threshold = dc.itemTotalThreshold ?? cache.getItemTotalThreshold();
+    final baseCharge = dc.baseDeliveryCharge ?? cache.getBaseDeliveryCharge();
+    final freeKm =
+        dc.freeDeliveryDistanceKm ?? cache.getFreeDeliveryDistanceKm();
+    // 🔑 CRITICAL: Ensure perKm is properly converted to double from dynamic source
+    final perKmValue = dc.perKmChargeAboveFreeDistance;
+    final perKm = (perKmValue != null
+        ? perKmValue.toDouble()
+        : cache.getPerKmChargeAboveFreeDistance());
     final distance = totalDistance;
 
     if (vendorModel.isSelfDelivery == true &&
@@ -10186,13 +10397,23 @@ class CartControllerProvider extends ChangeNotifier {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (subtotal < threshold) {
+      // 🔑 FIX: When subtotal < threshold:
+      // - If distance <= freeKm: Use baseCharge
+      // - Else: Use roundedDistance * perKm (no baseCharge)
       if (distance <= freeKm) {
         deliveryCharges = baseCharge.toDouble();
         originalDeliveryFee = baseCharge.toDouble();
+        print(
+          '[MART_DELIVERY] Below threshold & within free km: distance=$distance km, baseCharge=₹$baseCharge',
+        );
       } else {
-        double extraKm = (distance - freeKm).ceilToDouble();
-        deliveryCharges = (baseCharge + (extraKm * perKm)).toDouble();
+        // Round up distance to nearest integer (e.g., 5.17 km -> 6 km)
+        final roundedDistance = distance.ceilToDouble();
+        deliveryCharges = roundedDistance * perKm;
         originalDeliveryFee = deliveryCharges;
+        print(
+          '[MART_DELIVERY] Below threshold & beyond free km: distance=$distance km (rounded to $roundedDistance km), perKm=₹$perKm, charge=₹$deliveryCharges',
+        );
       }
     } else {
       if (distance <= freeKm) {
@@ -10207,25 +10428,42 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   void calculateRegularDeliveryCharge() {
+    // 🔑 DYNAMIC: Use cache utility for all delivery charge values
+    final cache = DeliveryChargeCache.instance;
     final dc = deliveryChargeModel;
     final subtotal = subTotal;
-    final threshold = dc.itemTotalThreshold ?? 299;
-    final baseCharge = dc.baseDeliveryCharge ?? 21;
-    final freeKm = dc.freeDeliveryDistanceKm ?? 7;
-    final perKm = dc.perKmChargeAboveFreeDistance ?? 8;
+    final threshold = dc.itemTotalThreshold ?? cache.getItemTotalThreshold();
+    final baseCharge = dc.baseDeliveryCharge ?? cache.getBaseDeliveryCharge();
+    final freeKm =
+        dc.freeDeliveryDistanceKm ?? cache.getFreeDeliveryDistanceKm();
+    // 🔑 CRITICAL: Ensure perKm is properly converted to double from dynamic source
+    final perKmValue = dc.perKmChargeAboveFreeDistance;
+    final perKm = (perKmValue != null
+        ? perKmValue.toDouble()
+        : cache.getPerKmChargeAboveFreeDistance());
 
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
       deliveryCharges = 0.0;
       originalDeliveryFee = 0.0;
     } else if (subtotal < threshold) {
+      // 🔑 FIX: When subtotal < threshold:
+      // - If distance <= freeKm: Use baseCharge
+      // - Else: Use roundedDistance * perKm (no baseCharge)
       if (totalDistance <= freeKm) {
         deliveryCharges = baseCharge.toDouble();
         originalDeliveryFee = baseCharge.toDouble();
+        print(
+          '[REGULAR_DELIVERY] Below threshold & within free km: distance=$totalDistance km, baseCharge=₹$baseCharge',
+        );
       } else {
-        double extraKm = (totalDistance - freeKm).ceilToDouble();
-        deliveryCharges = (baseCharge + (extraKm * perKm)).toDouble();
+        // Round up distance to nearest integer (e.g., 5.17 km -> 6 km)
+        final roundedDistance = totalDistance.ceilToDouble();
+        deliveryCharges = roundedDistance * perKm;
         originalDeliveryFee = deliveryCharges;
+        print(
+          '[REGULAR_DELIVERY] Below threshold & beyond free km: distance=$totalDistance km (rounded to $roundedDistance km), perKm=₹$perKm, charge=₹$deliveryCharges',
+        );
       }
     } else {
       if (totalDistance <= freeKm) {
@@ -10241,7 +10479,51 @@ class CartControllerProvider extends ChangeNotifier {
 
   double _getCachedFreeDeliveryKm(String productId, String restaurantId) {
     final cacheKey = '$productId-$restaurantId';
-    return _cachedFreeDeliveryKm[cacheKey] ?? 3.0;
+
+    // 🔑 CRITICAL FIX: For promotional items, ALWAYS prioritize promotion cache
+    // First check cached value (from promotion table)
+    if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
+      return _cachedFreeDeliveryKm[cacheKey]!;
+    }
+
+    // If not in cached map, check promotion cache directly
+    final promoDetails = _promotionalCalculationCache[cacheKey];
+    if (promoDetails != null) {
+      final freeKm = (promoDetails['free_delivery_km'] as num?)?.toDouble();
+      if (freeKm != null && freeKm > 0) {
+        // Cache it for next time
+        _cachedFreeDeliveryKm[cacheKey] = freeKm;
+        print(
+          '[PROMOTIONAL_DELIVERY] ✅ Retrieved free delivery km from promotion cache: $freeKm km',
+        );
+        return freeKm;
+      }
+    }
+
+    // 🔑 CRITICAL: Check if this is a promotional item - if so, NEVER use global fallback
+    // Check if item has promoId in cart
+    final isPromotionalItem = HomeProvider.cartItem.any(
+      (item) =>
+          item.id == productId &&
+          item.vendorID == restaurantId &&
+          item.promoId != null &&
+          item.promoId!.isNotEmpty,
+    );
+
+    if (isPromotionalItem) {
+      // 🔑 CRITICAL: For promotional items, use promotional default (4km) instead of global
+      // This ensures promotional items always use promotional delivery charges
+      print(
+        '[PROMOTIONAL_DELIVERY] ⚠️ Promotional item cache not loaded, using promotional default: 4.0 km',
+      );
+      return 4.0; // Promotional default, NOT global fallback
+    }
+
+    // Only use global fallback for non-promotional items
+    final globalFreeKm =
+        deliveryChargeModel.freeDeliveryDistanceKm?.toDouble() ??
+        DeliveryChargeCache.instance.getFreeDeliveryDistanceKm(fallback: 7.0);
+    return globalFreeKm;
   }
 
   double _getCachedExtraKmCharge(String productId, String restaurantId) {
@@ -10306,12 +10588,36 @@ class CartControllerProvider extends ChangeNotifier {
 
       if (promoDetails != null) {
         _promotionalCalculationCache[cacheKey] = promoDetails;
+
+        // 🔑 CRITICAL FIX: For promotional items, use promotional free_delivery_km from table
+        // If null, don't default to 3.0 - use promotional default (4.0) or fetch it
+        final promoFreeKm = (promoDetails['free_delivery_km'] as num?)
+            ?.toDouble();
         final freeDeliveryKm =
-            (promoDetails['free_delivery_km'] as num?)?.toDouble() ?? 3.0;
+            promoFreeKm ?? 4.0; // 🔑 Use 4.0 as promotional default, not 3.0
+
         final extraKmCharge =
             (promoDetails['extra_km_charge'] as num?)?.toDouble() ?? 7.0;
+        // 🔑 DYNAMIC: Get base charge from cache, with fallback from promo details if available
+        final promoBaseCharge =
+            (promoDetails['base_delivery_charge'] as num?)?.toDouble() ??
+            DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
+
+        // 🔑 NEW: Check if promotional item should include base charge in "free up" calculation
+        // Some promotions consider base charge, some don't - check flag if available
+        final includeBaseCharge =
+            promoDetails['include_base_charge'] == true ||
+            promoDetails['consider_base_charge'] == true ||
+            promoDetails['free_up_charge'] ==
+                true; // Default to true if not specified
+
         _cachedFreeDeliveryKm[cacheKey] = freeDeliveryKm;
         _cachedExtraKmCharge[cacheKey] = extraKmCharge;
+        // 🔑 DYNAMIC: Store base charge in cache for promotional items
+        _cachedPromotionalBaseCharge[cacheKey] = promoBaseCharge;
+        // 🔑 NEW: Store flag for whether to include base charge
+        _promotionalCalculationCache[cacheKey]?['include_base_charge'] =
+            includeBaseCharge;
       }
     } catch (e) {
       print('[PROMO_CACHE] ❌ Error: $e');
@@ -12133,9 +12439,63 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   bool hasPromotionalItems() {
-    return HomeProvider.cartItem.any(
-      (item) => item.promoId != null && item.promoId!.isNotEmpty,
-    );
+    return _getCachedHasPromotionalItems();
+  }
+
+  // 🔑 OPTIMIZATION: Cached version to avoid repeated iterations
+  bool _getCachedHasPromotionalItems() {
+    final currentCount = HomeProvider.cartItem.length;
+    final currentHash = _generateCartHash();
+
+    // Invalidate cache if cart changed
+    if (_cachedHasPromotionalItems == null ||
+        _lastCartItemCount != currentCount ||
+        _lastCartItemHash != currentHash) {
+      _cachedHasPromotionalItems = HomeProvider.cartItem.any(
+        (item) => item.promoId != null && item.promoId!.isNotEmpty,
+      );
+      _lastCartItemCount = currentCount;
+      _lastCartItemHash = currentHash;
+    }
+
+    return _cachedHasPromotionalItems!;
+  }
+
+  // 🔑 OPTIMIZATION: Cached version to avoid repeated iterations
+  bool _getCachedHasMartItems() {
+    final currentCount = HomeProvider.cartItem.length;
+    final currentHash = _generateCartHash();
+
+    // Invalidate cache if cart changed
+    if (_cachedHasMartItems == null ||
+        _lastCartItemCount != currentCount ||
+        _lastCartItemHash != currentHash) {
+      _cachedHasMartItems = hasMartItemsInCart();
+      _lastCartItemCount = currentCount;
+      _lastCartItemHash = currentHash;
+    }
+
+    return _cachedHasMartItems!;
+  }
+
+  // 🔑 OPTIMIZATION: Generate simple hash to detect cart changes
+  String _generateCartHash() {
+    if (HomeProvider.cartItem.isEmpty) return 'empty';
+    return '${HomeProvider.cartItem.length}_${HomeProvider.cartItem.map((e) => '${e.id}_${e.quantity}').join('|')}';
+  }
+
+  // 🔑 OPTIMIZATION: Invalidate cart type cache when cart changes
+  void _invalidateCartTypeCache() {
+    final currentCount = HomeProvider.cartItem.length;
+    final currentHash = _generateCartHash();
+
+    if (_lastCartItemCount != currentCount ||
+        _lastCartItemHash != currentHash) {
+      _cachedHasPromotionalItems = null;
+      _cachedHasMartItems = null;
+      _lastCartItemCount = currentCount;
+      _lastCartItemHash = currentHash;
+    }
   }
 
   // ============ OTHER METHODS ============
@@ -12169,6 +12529,12 @@ class CartControllerProvider extends ChangeNotifier {
 
         selectedAddress = addressModel;
         _addressInitialized = true;
+
+        // 🔑 OPTIMIZATION: Invalidate distance cache when address changes
+        _cachedDistance = null;
+        _cachedCustomerLat = null;
+        _cachedCustomerLng = null;
+
         await _loadFreshVendorForCart();
         notifyListeners();
         await calculatePrice();

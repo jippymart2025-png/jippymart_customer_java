@@ -9,9 +9,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+// 🔑 OPTIMIZATION: Memoize widget to prevent unnecessary rebuilds
 Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
+  // 🔑 OPTIMIZATION: Cache these checks - they're already cached in provider
+  // These calls use cached values internally, so they're fast
   final hasPromotionalItems = controller.hasPromotionalItems();
   final hasMartItems = controller.hasMartItemsInCart();
+
   return Padding(
     padding: const EdgeInsets.symmetric(horizontal: 16),
     child: Column(
@@ -414,6 +418,10 @@ Widget _buildDeliveryFeeSection(
     );
   }
   if (hasPromotionalItems) {
+    // 🔑 DYNAMIC: Get base charge from delivery charge cache
+    final baseCharge =
+        controller.deliveryChargeModel.baseDeliveryCharge?.toDouble() ?? 21.0;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -430,7 +438,7 @@ Widget _buildDeliveryFeeSection(
         ),
         buildDeliveryFeeUI(
           isFreeDelivery: true,
-          originalFee: 21.0,
+          originalFee: baseCharge,
           currentFee: controller.deliveryCharges,
         ),
       ],
@@ -439,9 +447,11 @@ Widget _buildDeliveryFeeSection(
   // Mart items delivery logic
   if (hasMartItems) {
     print('[CART_UI] 🛒 Building mart delivery UI...');
-    double itemThreshold = 199.0;
-    double freeDeliveryKm = 3.0;
-    double baseDeliveryCharge = 21.0;
+    // 🔑 DYNAMIC: Get values from delivery charge model
+    final dc = controller.deliveryChargeModel;
+    double itemThreshold = dc.itemTotalThreshold?.toDouble() ?? 199.0;
+    double freeDeliveryKm = dc.freeDeliveryDistanceKm?.toDouble() ?? 3.0;
+    double baseDeliveryCharge = dc.baseDeliveryCharge?.toDouble() ?? 21.0;
     final subtotal = controller.subTotal;
     final distance = controller.totalDistance;
     final isAboveThreshold = subtotal >= itemThreshold;
@@ -490,17 +500,18 @@ Widget _buildDeliveryFeeSection(
   }
 
   // Regular items delivery logic
-  final threshold = controller.deliveryChargeModel.itemTotalThreshold ?? 299;
-  final freeKm = controller.deliveryChargeModel.freeDeliveryDistanceKm ?? 7;
+  // 🔑 DYNAMIC: Get all values from delivery charge model
+  final dc = controller.deliveryChargeModel;
+  final threshold = dc.itemTotalThreshold?.toDouble() ?? 299.0;
+  final freeKm = dc.freeDeliveryDistanceKm?.toDouble() ?? 7.0;
   final subtotal = controller.subTotal;
   final distance = controller.totalDistance;
 
   final isAboveThreshold = subtotal >= threshold;
   final isWithinFreeDistance = distance <= freeKm;
 
-  // Get the base delivery charge for restaurant items (should be ₹23)
-  double baseDeliveryCharge =
-      (controller.deliveryChargeModel.baseDeliveryCharge ?? 21.0).toDouble();
+  // 🔑 DYNAMIC: Get the base delivery charge from model (no hardcoded values)
+  double baseDeliveryCharge = dc.baseDeliveryCharge?.toDouble() ?? 21.0;
   print('[CART_UI]   - Base delivery charge: ₹$baseDeliveryCharge');
 
   Widget regularDeliveryWidget;

@@ -1245,8 +1245,18 @@ class _OrderScreenState extends State<OrderScreen>
   Widget build(BuildContext context) {
     super.build(context);
 
+    // Guard against building when widget is being disposed or removed from tree
+    if (!mounted) {
+      return const SizedBox.shrink();
+    }
+
     return Consumer2<DashBoardProvider, OrderProvider>(
       builder: (context, dashBoardProvider, controller, _) {
+        // Additional mounted check inside builder
+        if (!mounted) {
+          return const SizedBox.shrink();
+        }
+        
         return Scaffold(
           body: Container(
             decoration: BoxDecoration(
@@ -1324,7 +1334,9 @@ class _OrderScreenState extends State<OrderScreen>
   }
 
   Widget _buildOrderList(OrderProvider controller) {
+    // Add key to ensure TabController is properly recreated when needed
     return DefaultTabController(
+      key: const ValueKey('order_tab_controller'),
       length: 6,
       child: Column(
         children: [
@@ -1412,7 +1424,13 @@ class _OrderScreenState extends State<OrderScreen>
   }
 
   Widget _buildTabViews(OrderProvider controller) {
+    // Guard against building tab views when widget is not mounted
+    if (!mounted) {
+      return const SizedBox.shrink();
+    }
+    
     return TabBarView(
+      key: const ValueKey('order_tab_view'),
       children: [
         _buildOrderListView(
           controller.allList,

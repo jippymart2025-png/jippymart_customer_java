@@ -255,12 +255,32 @@ class OrderDetailsProvider extends ChangeNotifier {
             'DEBUG: Order Details Controller - SGST (5%) on item total: ₹$sgst',
           );
         } else if (title.contains('gst')) {
+          // 🔑 FIX: For promotional items when delivery is above free km,
+          // calculate GST on base charge + extra km charges (not just extra km)
+          final deliveryChargePaid = _parseDouble(orderModel.deliveryCharge);
+          double taxableDeliveryFee = deliveryChargePaid;
+          
+          // Check if there are promotional items
+          final hasPromotionalItems = orderModel.products?.any(
+            (item) => item.promoId != null && item.promoId!.isNotEmpty,
+          ) ?? false;
+          
+          // If promotional items and customer paid delivery charge (above free km),
+          // add base charge for GST calculation
+          if (hasPromotionalItems && deliveryChargePaid > 0) {
+            final baseCharge = orderModel.vendor?.deliveryCharge?.baseDeliveryCharge?.toDouble() ?? 21.0;
+            taxableDeliveryFee = baseCharge + deliveryChargePaid;
+            print(
+              'DEBUG: Order Details Controller - Promotional item: GST on base charge (₹$baseCharge) + delivery charge (₹$deliveryChargePaid) = ₹$taxableDeliveryFee',
+            );
+          }
+          
           gst = Constant.calculateTax(
-            amount: _parseDouble(orderModel.deliveryCharge).toString(),
+            amount: taxableDeliveryFee.toString(),
             taxModel: element,
           );
           print(
-            'DEBUG: Order Details Controller - GST (18%) on delivery fee: ₹$gst',
+            'DEBUG: Order Details Controller - GST (18%) on delivery fee: ₹$gst (taxable fee: ₹$taxableDeliveryFee)',
           );
         }
       }

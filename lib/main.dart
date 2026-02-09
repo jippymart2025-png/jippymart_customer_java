@@ -26,6 +26,7 @@ import 'package:jippymart_customer/utils/anr_monitor.dart';
 import 'package:jippymart_customer/utils/app_lifecycle_logger.dart';
 import 'package:jippymart_customer/utils/cache_manager.dart';
 import 'package:jippymart_customer/utils/crash_prevention.dart';
+import 'package:jippymart_customer/utils/delivery_charge_cache.dart';
 import 'package:jippymart_customer/utils/native_lock_prevention.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/production_logger.dart';
@@ -78,6 +79,16 @@ import 'app/splash_screen/video_splash_screen.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
 
+// Note: Provider package (v6.1.5) doesn't support true lazy loading.
+// All providers in MultiProvider are created eagerly when the widget tree builds.
+// However, provider constructors are lightweight (just ChangeNotifier instances),
+// and heavy initialization happens later in initFunction() methods.
+//
+// For true lazy loading, consider:
+// 1. Moving screen-specific providers to screen-level Provider widgets
+// 2. Using a different state management solution that supports lazy loading
+// 3. Creating providers on-demand in screen build methods
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GlobalDeeplinkHandler.init();
@@ -103,6 +114,18 @@ void main() async {
   Get.put(MartFirestoreService(), permanent: true);
   final cartProvider = CartProvider();
   await cartProvider.checkCartPersistence();
+
+  // 🔑 Initialize delivery charge cache on app launch (non-blocking)
+  try {
+    DeliveryChargeCache.instance.initializeOnAppLaunch();
+    if (kDebugMode) {
+      print('✅ Delivery charge cache initialized');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('⚠️ Delivery charge cache initialization failed: $e');
+    }
+  }
   // Initialize network connectivity service
   try {
     await NetworkConnectivityService().initialize();
@@ -129,7 +152,8 @@ void main() async {
   if (kDebugMode) {
     _runFacebookAppEventsTests();
   }
-  PaintingBinding.instance.imageCache.maximumSizeBytes = 1024 * 1024 * 100;
+  PaintingBinding.instance.imageCache.maximumSizeBytes =
+      1024 * 1024 * 80; // 80 MB
   PaintingBinding.instance.imageCache.maximumSize = 200;
 
   runApp(MyApp());
@@ -294,45 +318,58 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        // ============================================
+        // EAGER PROVIDERS - Used immediately at startup
+        // ============================================
+        ChangeNotifierProvider(create: (_) => GlobalSettingsProvider()),
+        ChangeNotifierProvider(create: (_) => SplashProvider()),
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => HomeProvider()),
+        ChangeNotifierProvider(create: (_) => LoginProvider()),
+        ChangeNotifierProvider(create: (_) => LocationPermissionProvider()),
+        ChangeNotifierProvider(create: (_) => DashBoardProvider()),
+        ChangeNotifierProvider(create: (_) => AddressListProvider()),
+        ChangeNotifierProvider(create: (_) => CartControllerProvider()),
+
+        // ============================================
+        // EAGER PROVIDERS - Used early in app flow
+        // ============================================
         ChangeNotifierProvider(create: (_) => CategoryRestaurantProvider()),
         ChangeNotifierProvider(create: (_) => DiscountRestaurantListProvider()),
         ChangeNotifierProvider(create: (_) => RestaurantListProvider()),
         ChangeNotifierProvider(create: (_) => StoryProvider()),
-        ChangeNotifierProvider(create: (_) => AddressListProvider()),
         ChangeNotifierProvider(create: (_) => AllAdvertisementProvider()),
-        ChangeNotifierProvider(create: (_) => LoginProvider()),
-        ChangeNotifierProvider(create: (_) => CartControllerProvider()),
         ChangeNotifierProvider(create: (_) => CategoryServiceProvider()),
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => DashBoardProvider()),
-        ChangeNotifierProvider(create: (_) => EditProfileProvider()),
         ChangeNotifierProvider(create: (_) => FavouriteProvider()),
-        ChangeNotifierProvider(create: (_) => LocationPermissionProvider()),
         ChangeNotifierProvider(create: (_) => MartProvider()),
         ChangeNotifierProvider(create: (_) => MartCategoryProvider()),
-        ChangeNotifierProvider(create: (_) => MartEditProfileProvider()),
         ChangeNotifierProvider(create: (_) => MartNavigationProvider()),
+        ChangeNotifierProvider(create: (_) => OrderProvider()),
+        ChangeNotifierProvider(create: (_) => SearchScreenProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryDetailsProvider()),
+        ChangeNotifierProvider(create: (_) => MapViewProvider()),
+        ChangeNotifierProvider(create: (_) => CategoryViewProvider()),
+        ChangeNotifierProvider(create: (_) => BestRestaurantProvider()),
+        ChangeNotifierProvider(create: (_) => ViewAllCategoryProvider()),
+
+        // ============================================
+        // LAZY PROVIDERS - Screen-specific, only created when accessed
+        // Note: Provider package creates these eagerly, but since constructors
+        // are lightweight, the real optimization is deferring heavy initFunction() calls
+        // ============================================
+        ChangeNotifierProvider(create: (_) => ChatProvider()),
+        ChangeNotifierProvider(create: (_) => EditProfileProvider()),
+        ChangeNotifierProvider(create: (_) => MartEditProfileProvider()),
         ChangeNotifierProvider(create: (_) => LiveTrackingProvider()),
         ChangeNotifierProvider(create: (_) => OrderDetailsProvider()),
-        ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => MyProfileProvider()),
         ChangeNotifierProvider(create: (_) => RateProductProvider()),
         ChangeNotifierProvider(create: (_) => RestaurantDetailsProvider()),
         ChangeNotifierProvider(create: (_) => ReviewListProvider()),
-        ChangeNotifierProvider(create: (_) => SearchScreenProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryDetailsProvider()),
-        ChangeNotifierProvider(create: (_) => MapViewProvider()),
-        ChangeNotifierProvider(create: (_) => GlobalSettingsProvider()),
         ChangeNotifierProvider(create: (_) => SwiggySearchProvider()),
         ChangeNotifierProvider(create: (_) => MartSearchProvider()),
         ChangeNotifierProvider(create: (_) => OrderPlacingProvider()),
         ChangeNotifierProvider(create: (_) => SignupProvider()),
-        ChangeNotifierProvider(create: (_) => SplashProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryViewProvider()),
-        ChangeNotifierProvider(create: (_) => BestRestaurantProvider()),
-        ChangeNotifierProvider(create: (_) => ViewAllCategoryProvider()),
       ],
       child: GetMaterialApp(
         navigatorKey: GlobalDeeplinkHandler.navigatorKey,
@@ -342,9 +379,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         builder: (context, child) {
           return EasyLoading.init()(
             context,
-            SafeArea(
-              child: child ?? const SizedBox.shrink(),
-            ),
+            SafeArea(child: child ?? const SizedBox.shrink()),
           );
         },
         home: Consumer<GlobalSettingsProvider>(
