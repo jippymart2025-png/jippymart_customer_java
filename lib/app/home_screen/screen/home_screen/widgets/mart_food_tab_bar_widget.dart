@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
@@ -18,6 +20,18 @@ Widget martFoodTabBarWidgetHome({
 }) {
   MartZoneUtils.prefetchMartVendors();
 
+  /// Load mart data in background after navigation
+  /// This allows the screen to show immediately while data loads
+  Future<void> _loadMartDataInBackground(MartProvider martProvider) async {
+    try {
+      await martProvider.initFunction();
+      debugPrint("✅ Mart data loaded successfully");
+    } catch (e) {
+      debugPrint("⚠️ Error loading mart data in background: $e");
+      // Screen will handle error state
+    }
+  }
+
   Future<void> checkMartAvailability(
     MartProvider martProvider,
     MartNavigationProvider martNavigationProvider,
@@ -31,9 +45,54 @@ Widget martFoodTabBarWidgetHome({
 
     _isMartChecking = true;
 
-    // Delay loader so quick loads (e.g. cache hit) feel instant
+    // OPTIMIZATION: Early synchronous validation (no async needed)
+    final location = Constant.selectedLocation.location;
+    final currentZoneId = Constant.selectedZone?.id;
+
+    // Fast path: Validate location synchronously
+    if (location?.latitude == null ||
+        location?.longitude == null ||
+        location!.latitude == 0.0 ||
+        location.longitude == 0.0) {
+      debugPrint("❌ No valid location - cannot check mart availability");
+      _isMartChecking = false;
+      ComingSoonDialogHelper.show(
+        title: "LOCATION REQUIRED".tr,
+        message: "Please set your location to check mart availability in your area.",
+      );
+      return;
+    }
+
+    // Fast path: Validate zone synchronously
+    if (currentZoneId == null || currentZoneId.isEmpty) {
+      debugPrint("❌ No zone selected - cannot check mart availability");
+      _isMartChecking = false;
+      ComingSoonDialogHelper.show(
+        title: "COMING SOON".tr,
+        message: "We're working hard to bring Jippy Mart to your area. Stay tuned!",
+      );
+      return;
+    }
+
+    // Fast path: Validate zone match synchronously
+    if (Constant.selectedLocation.zoneId != null &&
+        Constant.selectedLocation.zoneId!.isNotEmpty &&
+        Constant.selectedLocation.zoneId != currentZoneId) {
+      debugPrint(
+        "❌ Zone mismatch: location zone (${Constant.selectedLocation.zoneId}) != selected zone ($currentZoneId)",
+      );
+      _isMartChecking = false;
+      ComingSoonDialogHelper.show(
+        title: "ZONE MISMATCH".tr,
+        message: "Location and zone don't match. Please update your location.",
+      );
+      return;
+    }
+
+    // OPTIMIZATION: Delay loader only if check takes time (cache hits feel instant)
     bool loaderShown = false;
-    Future.delayed(const Duration(milliseconds: 150), () {
+    Timer? loaderTimer;
+    loaderTimer = Timer(const Duration(milliseconds: 100), () {
       if (_isMartChecking && !loaderShown) {
         loaderShown = true;
         ShowToastDialog.showLoader("Checking mart availability...".tr);
@@ -41,120 +100,59 @@ Widget martFoodTabBarWidgetHome({
     });
 
     try {
-      // CRITICAL: First verify we have a valid location
-      // Without location, we cannot determine the correct zone
-      if (Constant.selectedLocation.location?.latitude == null ||
-          Constant.selectedLocation.location?.longitude == null ||
-          Constant.selectedLocation.location!.latitude == 0.0 ||
-          Constant.selectedLocation.location!.longitude == 0.0) {
-        debugPrint("❌ No valid location - cannot check mart availability");
-        ShowToastDialog.closeLoader();
-        ComingSoonDialogHelper.show(
-          title: "LOCATION REQUIRED".tr,
-          message:
-              "Please set your location to check mart availability in your area.",
-        );
-        _isMartChecking = false;
-        return;
-      }
-
-      // CRITICAL: Verify zone is available and matches location
-      final currentZoneId = Constant.selectedZone?.id;
-
-      if (currentZoneId == null || currentZoneId.isEmpty) {
-        debugPrint("❌ No zone selected - cannot check mart availability");
-        ShowToastDialog.closeLoader();
-        ComingSoonDialogHelper.show(
-          title: "COMING SOON".tr,
-          message:
-              "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-        );
-        _isMartChecking = false;
-        return;
-      }
-
-      // CRITICAL: Validate zone matches location's zoneId if available
-      // This ensures zone and location are in sync (prevents wrong zone from being used)
-      if (Constant.selectedLocation.zoneId != null &&
-          Constant.selectedLocation.zoneId!.isNotEmpty &&
-          Constant.selectedLocation.zoneId != currentZoneId) {
-        debugPrint(
-          "❌ Zone mismatch: location zone (${Constant.selectedLocation.zoneId}) != selected zone ($currentZoneId)",
-        );
-        ShowToastDialog.closeLoader();
-        ComingSoonDialogHelper.show(
-          title: "ZONE MISMATCH".tr,
-          message:
-              "Location and zone don't match. Please update your location.",
-        );
-        _isMartChecking = false;
-        return;
-      }
-
       debugPrint(
-        "✅ Zone ID: $currentZoneId, Location: (${Constant.selectedLocation.location!.latitude}, ${Constant.selectedLocation.location!.longitude}) - checking mart availability",
+        "✅ Zone ID: $currentZoneId, Location: (${location.latitude}, ${location.longitude}) - checking mart availability",
       );
 
-      // Check if mart is available in the current zone
-      // isMartAvailableInCurrentZone() will handle cache clearing and validation
-      final isMartAvailable =
-          await MartZoneUtils.isMartAvailableInCurrentZone();
+      // OPTIMIZED: Check availability (uses cache when available)
+      final isMartAvailable = await MartZoneUtils.isMartAvailableInCurrentZone();
+
+      // Cancel loader if check was fast
+      loaderTimer?.cancel();
+      if (loaderShown) {
+        ShowToastDialog.closeLoader();
+      }
 
       if (!isMartAvailable) {
         debugPrint("❌ Mart not available in zone: $currentZoneId");
-        ShowToastDialog.closeLoader();
+        _isMartChecking = false;
         ComingSoonDialogHelper.show(
           title: "COMING SOON".tr,
-          message:
-              "We're working hard to bring Jippy Mart to your area. Stay tuned!",
+          message: "We're working hard to bring Jippy Mart to your area. Stay tuned!",
         );
-        _isMartChecking = false;
         return;
       }
 
-      debugPrint(
-        "✅ Mart available in zone: $currentZoneId - proceeding to Mart",
-      );
+      debugPrint("✅ Mart available in zone: $currentZoneId - proceeding to Mart");
 
-      // Close checking loader before showing loading
-      ShowToastDialog.closeLoader();
+      // OPTIMIZATION: Initialize navigation provider synchronously (it's just getting providers)
+      martNavigationProvider.initFunction(context: context);
 
-      // Delay "Loading mart..." so quick inits feel instant
-      bool loadingLoaderShown = false;
-      Future.delayed(const Duration(milliseconds: 200), () {
-        if (_isMartChecking && !loadingLoaderShown) {
-          loadingLoaderShown = true;
-          ShowToastDialog.showLoader("Loading mart...".tr);
-        }
-      });
+      // OPTIMIZATION: Navigate immediately, let screen handle loading state
+      // This makes the UI feel instant - user sees mart screen right away
+      Get.to(() => const MartNavigationScreen());
 
-      try {
-        // Initialize providers – must await so Mart content loads before navigation
-        martNavigationProvider.initFunction(context: context);
-        await martProvider.initFunction();
-
-        // Navigate to mart screen after data is loaded
-        Get.to(() => const MartNavigationScreen());
-
-        // Close loader immediately after navigation starts
-        // Use multiple safety measures to ensure loader is closed
-        ShowToastDialog.closeLoader();
-
-        // Additional safety: Close loader after a delay to handle any edge cases
-        Future.delayed(const Duration(milliseconds: 300), () {
-          ShowToastDialog.closeLoader();
-        });
-      } catch (e) {
-        // Ensure loader is closed if anything fails
-        ShowToastDialog.closeLoader();
-        rethrow;
-      }
+      // OPTIMIZATION: Load data in background after navigation
+      // Screen will show its own loading indicators
+      _loadMartDataInBackground(martProvider);
     } catch (e) {
-      debugPrint("❌ Mart load failed: $e");
+      debugPrint("❌ Mart check failed: $e");
+      loaderTimer?.cancel();
       ShowToastDialog.closeLoader();
-      // Don't show Coming Soon on load errors - may be temporary (network, etc.)
+      
+      // OPTIMIZATION: Try to proceed with cached data if available
+      try {
+        final cachedVendors = await MartZoneUtils.getCachedMartVendors();
+        if (cachedVendors.isNotEmpty) {
+          debugPrint("✅ Using cached vendors despite error - proceeding to Mart");
+          martNavigationProvider.initFunction(context: context);
+          Get.to(() => const MartNavigationScreen());
+          _loadMartDataInBackground(martProvider);
+        }
+      } catch (e2) {
+        debugPrint("❌ Failed to use cached vendors: $e2");
+      }
     } finally {
-      // Ensure loader is always closed, even if navigation fails
       ShowToastDialog.closeLoader();
       _isMartChecking = false;
     }

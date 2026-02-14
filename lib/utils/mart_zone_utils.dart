@@ -138,11 +138,9 @@ class MartZoneUtils {
         return false;
       }
       
-      // Clear cache to ensure fresh check (prevents stale data from wrong zone)
-      // This ensures we always check the current zone, not a cached previous zone
-      clearMartVendorCache();
-      
-      // Fetch fresh vendors for current zone (no cache to prevent stale data)
+      // OPTIMIZATION: Use cached data if available and valid for current zone
+      // Only fetch fresh if cache is invalid or zone changed
+      // This makes the check much faster on subsequent clicks
       final martVendors = await getCachedMartVendors();
       
       // CRITICAL: Double-check that vendors actually belong to current zone
@@ -164,6 +162,13 @@ class MartZoneUtils {
       return isAvailable;
     } catch (e) {
       debugPrint('❌ [MART_ZONE_UTILS] Error checking mart availability: $e');
+      // On error, try to use cached data as fallback (don't show "coming soon" on network errors)
+      if (_cachedMartVendors != null && 
+          _cachedZoneId == Constant.selectedZone?.id &&
+          _cachedMartVendors!.isNotEmpty) {
+        debugPrint('⚠️ [MART_ZONE_UTILS] Using cached vendors as fallback after error');
+        return true; // If we have cached vendors, assume available
+      }
       return false;
     }
   }

@@ -316,15 +316,21 @@ class OrderPlacingScreen extends StatelessWidget {
                               textColor: AppThemeData.grey50,
                               fontSizes: 16,
                               onPress: () async {
-                                // Refresh order data first
-                                await orderProvider.initFunction();
+                                // 🔑 CRITICAL: Force refresh orders before navigation
+                                await orderProvider.getOrder(forceRefresh: true);
 
-                                // Force refresh dashboard if needed
-                                dashBoardProvider.selectedIndex =
-                                    Constant.walletSetting == false ? 3 : 3;
+                                // Set orders tab as selected
+                                dashBoardProvider.selectedIndex = 3;
+                                dashBoardProvider.notifyListeners();
 
-                                // Use Get.offAll with a callback to ensure refresh
+                                // Navigate to dashboard and ensure orders tab is initialized
                                 Get.offAll(() => const DashBoardScreen());
+                                
+                                // 🔑 CRITICAL: Ensure orders are refreshed after navigation
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  // Refresh orders again after dashboard is built to ensure latest data
+                                  orderProvider.getOrder(forceRefresh: true);
+                                });
                               },
                             )
                           : RoundedButtonFill(
@@ -333,15 +339,21 @@ class OrderPlacingScreen extends StatelessWidget {
                               textColor: AppThemeData.grey50,
                               fontSizes: 16,
                               onPress: () async {
-                                // Refresh order data first
-                                await orderProvider.initFunction();
+                                // 🔑 CRITICAL: Force refresh orders before navigation
+                                await orderProvider.getOrder(forceRefresh: true);
 
-                                // Force refresh dashboard if needed
-                                dashBoardProvider.selectedIndex =
-                                    Constant.walletSetting == false ? 3 : 3;
+                                // Set orders tab as selected
+                                dashBoardProvider.selectedIndex = 3;
+                                dashBoardProvider.notifyListeners();
 
-                                // Use Get.offAll with a callback to ensure refresh
+                                // Navigate to dashboard and ensure orders tab is initialized
                                 Get.offAll(() => const DashBoardScreen());
+                                
+                                // 🔑 CRITICAL: Ensure orders are refreshed after navigation
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  // Refresh orders again after dashboard is built to ensure latest data
+                                  orderProvider.getOrder(forceRefresh: true);
+                                });
                               },
                             ),
                     ),

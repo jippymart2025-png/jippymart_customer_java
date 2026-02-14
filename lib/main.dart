@@ -107,11 +107,25 @@ void main() async {
     NativeLockPrevention.startLockContentionMonitoring();
     TextProcessingANRFix.startTextProcessingMonitoring();
     ANRStatusLogger.logANRPreventionStatus();
-  } catch (e) {}
+  } catch (e) {
+    if (kDebugMode) {
+      print('⚠️ Firebase initialization error: $e');
+    }
+    // Continue app startup even if Firebase fails
+  }
   await GetStorage.init();
   await Preferences.initPref();
   DatabaseHelper.instance;
-  Get.put(MartFirestoreService(), permanent: true);
+  
+  // Register MartFirestoreService - critical for mart features
+  try {
+    Get.put(MartFirestoreService(), permanent: true);
+  } catch (e) {
+    if (kDebugMode) {
+      print('❌ Failed to register MartFirestoreService: $e');
+    }
+    // App can continue but mart features won't work
+  }
   final cartProvider = CartProvider();
   await cartProvider.checkCartPersistence();
 
@@ -162,10 +176,10 @@ void main() async {
 void _initializeHeavyServicesInBackground() {
   Future.microtask(() async {
     try {
+      // Initialize the already registered MartFirestoreService instance
+      final martService = Get.find<MartFirestoreService>();
       await Future.wait([
-        Get.putAsync(
-          () => MartFirestoreService().init(),
-        ).timeout(const Duration(seconds: 5)),
+        martService.init().timeout(const Duration(seconds: 5)),
         CacheManager.initialize().timeout(const Duration(seconds: 3)),
         ProductionLogger.initialize().timeout(const Duration(seconds: 2)),
         AppLifecycleLogger.initialize().timeout(const Duration(seconds: 2)),
@@ -178,7 +192,17 @@ void _initializeHeavyServicesInBackground() {
           const Duration(seconds: 3),
         ),
       ]);
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Background service initialization error: $e');
+      }
+      // Log to production logger if available
+      try {
+        ProductionLogger.error('MAIN', 'Background services init failed', e);
+      } catch (_) {
+        // Logger might not be initialized yet
+      }
+    }
   });
 }
 
@@ -189,7 +213,11 @@ void _initializeDeepLinkServicesInBackground(BuildContext context) {
       await FinalDeepLinkService()
           .init(GlobalDeeplinkHandler.navigatorKey, context)
           .timeout(const Duration(seconds: 5));
-    } catch (e) {}
+    } catch (e) {
+      if (kDebugMode) {
+        print('⚠️ Deep link service initialization error: $e');
+      }
+    }
   });
 }
 
@@ -308,6 +336,23 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // Notify deep link service that app has resumed
       FinalDeepLinkService().onAppResumed();
+      
+      // 🔑 CRITICAL: Check for pending Razorpay payments and auto-place orders
+      // This handles the case where user closes app immediately after payment
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          final navigatorContext = GlobalDeeplinkHandler.navigatorKey.currentContext;
+          if (navigatorContext != null) {
+            final cartController = Provider.of<CartControllerProvider>(
+              navigatorContext,
+              listen: false,
+            );
+            cartController.checkPendingPaymentAndPlaceOrder();
+          }
+        } catch (e) {
+          print('⚠️ [APP_LIFECYCLE] Error checking pending payment: $e');
+        }
+      });
     } else if (state == AppLifecycleState.paused) {
       // Notify deep link service that app has paused
       FinalDeepLinkService().onAppPaused();
