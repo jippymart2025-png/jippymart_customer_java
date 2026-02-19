@@ -29,7 +29,7 @@ class ProductListView extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 360;
     final isLargeScreen = screenWidth > 600;
-    
+
     return Consumer<RestaurantDetailsProvider>(
       builder: (context, controller, _) {
         // NO LOADING INDICATOR - Show UI immediately
@@ -57,11 +57,12 @@ class ProductListView extends StatelessWidget {
                   itemBuilder: (context, index) {
                     VendorCategoryModel vendorCategoryModel =
                         controller.vendorCategoryList[index];
-                    final categoryKey = controller.returnKeyCategories(
-                      index: index,
-                    ) ?? 'category_$index';
+                    final categoryKey =
+                        controller.returnKeyCategories(index: index) ??
+                        'category_$index';
                     return KeyedSubtree(
-                      key: controller.categoryKeys[categoryKey] ??
+                      key:
+                          controller.categoryKeys[categoryKey] ??
                           ValueKey(categoryKey),
                       child: _buildCategoryExpansionTile(
                         context,
@@ -86,7 +87,7 @@ class ProductListView extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
     final fontSize = isSmallScreen ? 16.0 : (screenWidth > 600 ? 20.0 : 18.0);
-    
+
     return ExpansionTile(
       childrenPadding: EdgeInsets.zero,
       tilePadding: EdgeInsets.zero,
@@ -130,7 +131,7 @@ class ProductListView extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 360;
     final isLargeScreen = screenWidth > 600;
-    
+
     // Calculate responsive aspect ratio based on screen size
     // Smaller screens need taller items, larger screens can be shorter
     double aspectRatio = 0.60;
@@ -141,7 +142,7 @@ class ProductListView extends StatelessWidget {
     } else if (screenHeight < 700) {
       aspectRatio = 0.58; // Medium-small screens
     }
-    
+
     return Consumer<HomeProvider>(
       builder: (context, homeProvider, _) {
         return GridView.builder(
@@ -180,7 +181,7 @@ class ProductListView extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 360;
     final isLargeScreen = screenWidth > 600;
-    
+
     bool isItemAvailable = productModel.isAvailable ?? true;
 
     // Calculate base prices first
@@ -265,7 +266,7 @@ class ProductListView extends StatelessWidget {
                           ),
                     child: NetworkImageWidget(
                       imageUrl: productModel.photo.toString(),
-                      fit: BoxFit.cover,
+                      fit: BoxFit.fill,
                       width: double.infinity,
                       height: double.infinity,
                     ),
@@ -321,7 +322,9 @@ class ProductListView extends StatelessWidget {
           Expanded(
             flex: 4,
             child: Padding(
-              padding: EdgeInsets.all(isSmallScreen ? 5 : (isLargeScreen ? 8 : 6)),
+              padding: EdgeInsets.all(
+                isSmallScreen ? 5 : (isLargeScreen ? 8 : 6),
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,7 +341,9 @@ class ProductListView extends StatelessWidget {
                               ? "Non Veg.".tr
                               : "Pure veg.".tr,
                           style: TextStyle(
-                            fontSize: isSmallScreen ? 8 : (isLargeScreen ? 10 : 9),
+                            fontSize: isSmallScreen
+                                ? 8
+                                : (isLargeScreen ? 10 : 9),
                             color: productModel.nonveg == true
                                 ? AppThemeData.danger300
                                 : AppThemeData.success400,
@@ -372,7 +377,9 @@ class ProductListView extends StatelessWidget {
                         return Text(
                           Constant.amountShow(amount: basePrice),
                           style: TextStyle(
-                            fontSize: isSmallScreen ? 11 : (isLargeScreen ? 13 : 12),
+                            fontSize: isSmallScreen
+                                ? 11
+                                : (isLargeScreen ? 13 : 12),
                             color: AppThemeData.grey900,
                             fontFamily: AppThemeData.semiBold,
                             fontWeight: FontWeight.w600,
@@ -413,7 +420,9 @@ class ProductListView extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: isSmallScreen ? 11 : (isLargeScreen ? 13 : 12),
+                                      fontSize: isSmallScreen
+                                          ? 11
+                                          : (isLargeScreen ? 13 : 12),
                                       color: Colors.red,
                                       fontFamily: AppThemeData.semiBold,
                                       fontWeight: FontWeight.w600,
@@ -427,7 +436,9 @@ class ProductListView extends StatelessWidget {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: isSmallScreen ? 9 : (isLargeScreen ? 11 : 10),
+                                      fontSize: isSmallScreen
+                                          ? 9
+                                          : (isLargeScreen ? 11 : 10),
                                       decoration: TextDecoration.lineThrough,
                                       decorationColor: AppThemeData.grey300,
                                       color: AppThemeData.grey300,
@@ -464,7 +475,9 @@ class ProductListView extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: isSmallScreen ? 11 : (isLargeScreen ? 13 : 12),
+                                  fontSize: isSmallScreen
+                                      ? 11
+                                      : (isLargeScreen ? 13 : 12),
                                   color: AppThemeData.grey900,
                                   fontFamily: AppThemeData.semiBold,
                                   fontWeight: FontWeight.w600,
@@ -478,7 +491,9 @@ class ProductListView extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: isSmallScreen ? 9 : (isLargeScreen ? 11 : 10),
+                                  fontSize: isSmallScreen
+                                      ? 9
+                                      : (isLargeScreen ? 11 : 10),
                                   decoration: TextDecoration.lineThrough,
                                   decorationColor: AppThemeData.grey300,
                                   color: AppThemeData.grey300,
@@ -495,7 +510,9 @@ class ProductListView extends StatelessWidget {
                         return Text(
                           Constant.amountShow(amount: basePrice),
                           style: TextStyle(
-                            fontSize: isSmallScreen ? 11 : (isLargeScreen ? 13 : 12),
+                            fontSize: isSmallScreen
+                                ? 11
+                                : (isLargeScreen ? 13 : 12),
                             color: AppThemeData.grey900,
                             fontFamily: AppThemeData.semiBold,
                             fontWeight: FontWeight.w600,
@@ -506,14 +523,20 @@ class ProductListView extends StatelessWidget {
                   ),
                   SizedBox(height: isSmallScreen ? 3 : 4),
                   // Rating display
-                  _buildRatingWidget(productModel, isSmallScreen, isLargeScreen),
+                  _buildRatingWidget(
+                    productModel,
+                    isSmallScreen,
+                    isLargeScreen,
+                  ),
                   if (!isItemAvailable)
                     Padding(
                       padding: EdgeInsets.only(top: isSmallScreen ? 1 : 2),
                       child: Text(
                         "Not Available",
                         style: TextStyle(
-                          fontSize: isSmallScreen ? 9 : (isLargeScreen ? 11 : 10),
+                          fontSize: isSmallScreen
+                              ? 9
+                              : (isLargeScreen ? 11 : 10),
                           color: Colors.red,
                           fontFamily: AppThemeData.medium,
                         ),
@@ -537,7 +560,11 @@ class ProductListView extends StatelessWidget {
     );
   }
 
-  Widget _buildRatingWidget(ProductModel productModel, bool isSmallScreen, bool isLargeScreen) {
+  Widget _buildRatingWidget(
+    ProductModel productModel,
+    bool isSmallScreen,
+    bool isLargeScreen,
+  ) {
     // Generate consistent random rating based on product ID
     final productId = productModel.id?.toString() ?? '0';
     final random = Random(productId.hashCode);
@@ -546,7 +573,7 @@ class ProductListView extends StatelessWidget {
     final ratingText = rating.toStringAsFixed(1);
     final fullStars = rating.floor();
     final hasHalfStar = (rating - fullStars) >= 0.5;
-    
+
     final iconSize = isSmallScreen ? 13.0 : (isLargeScreen ? 17.0 : 15.0);
     final fontSize = isSmallScreen ? 11.0 : (isLargeScreen ? 13.0 : 12.0);
 
@@ -594,7 +621,7 @@ class ProductListView extends StatelessWidget {
     final buttonHeight = isSmallScreen ? 28.0 : (isLargeScreen ? 36.0 : 32.0);
     final fontSize = isSmallScreen ? 12.0 : (isLargeScreen ? 14.0 : 13.0);
     final iconSize = isSmallScreen ? 14.0 : (isLargeScreen ? 18.0 : 16.0);
-    
+
     final productId = productModel.id?.toString() ?? '';
     final hasVariantsOrAddons =
         controller.selectedVariants.isNotEmpty ||
@@ -984,7 +1011,7 @@ Widget _buildNoProductsMessage(BuildContext context) {
   final screenWidth = MediaQuery.of(context).size.width;
   final isSmallScreen = screenWidth < 360;
   final isLargeScreen = screenWidth > 600;
-  
+
   return Container(
     padding: EdgeInsets.symmetric(
       vertical: isSmallScreen ? 40 : (isLargeScreen ? 80 : 60),

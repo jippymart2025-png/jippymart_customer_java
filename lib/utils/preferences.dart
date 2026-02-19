@@ -34,6 +34,12 @@ class Preferences {
   // Google Maps API Key stored locally as fallback
   static const googleMapsApiKey = "googleMapsApiKey";
 
+  // FCM notification settings (senderId / projectId and service JSON URL or inline JSON)
+  static const fcmSenderId = "fcmSenderId";
+  static const fcmServiceJsonUrl = "fcmServiceJsonUrl";
+  /// Cached service account JSON string (when API returns it inline instead of URL)
+  static const fcmServiceAccountJson = "fcmServiceAccountJson";
+
   static late SharedPreferences pref;
 
   static initPref() async {

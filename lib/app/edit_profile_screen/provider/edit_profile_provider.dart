@@ -314,6 +314,9 @@ class EditProfileProvider extends ChangeNotifier {
       if (userModel.countryCode != null) {
         request.fields['countryCode'] = userModel.countryCode!;
       }
+      if (userModel.fcmToken != null && userModel.fcmToken!.trim().isNotEmpty) {
+        request.fields['fcmToken'] = userModel.fcmToken!.trim();
+      }
 
       // Add shipping address if available
       if (userModel.shippingAddress != null &&

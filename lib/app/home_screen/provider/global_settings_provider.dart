@@ -28,8 +28,9 @@ class GlobalSettingsProvider extends ChangeNotifier {
 
   getSettings(BuildContext context) async {
     try {
-      // First, try to load from local storage as fallback
-      _loadApiKeyFromLocalStorage();
+      // First, load from local storage so we have valid senderId/API key even if API fails
+      ();
+      _loadNotificationSettingsFromLocalStorage();
 
       final response = await SafeHttpClient.safeGet(
         Uri.parse('${AppConst.baseUrl}settings/mobile'),
@@ -38,11 +39,12 @@ class GlobalSettingsProvider extends ChangeNotifier {
       );
 
       if (response == null) {
-        // Network error - use locally stored API key if available
+        // Network error - use locally stored API key and notification settings if available
         log(
           '[SETTINGS] ⚠️ API request failed - using locally stored API key if available',
         );
         _loadApiKeyFromLocalStorage();
+        _loadNotificationSettingsFromLocalStorage();
         return;
       }
 
@@ -58,6 +60,7 @@ class GlobalSettingsProvider extends ChangeNotifier {
             '[SETTINGS] ⚠️ API returned success=false - using locally stored API key',
           );
           _loadApiKeyFromLocalStorage();
+          _loadNotificationSettingsFromLocalStorage();
         }
       } else {
         // HTTP error - use local storage
@@ -65,6 +68,7 @@ class GlobalSettingsProvider extends ChangeNotifier {
           '[SETTINGS] ⚠️ API returned status ${response.statusCode} - using locally stored API key',
         );
         _loadApiKeyFromLocalStorage();
+        _loadNotificationSettingsFromLocalStorage();
       }
     } catch (e) {
       // Any error - use local storage
@@ -72,6 +76,29 @@ class GlobalSettingsProvider extends ChangeNotifier {
         '[SETTINGS] ⚠️ Error loading settings: $e - using locally stored API key',
       );
       _loadApiKeyFromLocalStorage();
+      _loadNotificationSettingsFromLocalStorage();
+    }
+  }
+
+  /// Load FCM senderId and service JSON URL from local storage (for notifications when API not available)
+  void _loadNotificationSettingsFromLocalStorage() {
+    try {
+      final cachedSenderId = Preferences.getString(Preferences.fcmSenderId);
+      final cachedServiceJsonUrl = Preferences.getString(
+        Preferences.fcmServiceJsonUrl,
+      );
+      if (cachedSenderId.isNotEmpty) {
+        Constant.senderId = cachedSenderId;
+        log(
+          '[SETTINGS] ✅ Loaded FCM senderId from cache: ${cachedSenderId.substring(0, cachedSenderId.length > 8 ? 8 : cachedSenderId.length)}...',
+        );
+      }
+      if (cachedServiceJsonUrl.isNotEmpty) {
+        Constant.jsonNotificationFileURL = cachedServiceJsonUrl;
+        log('[SETTINGS] ✅ Loaded FCM service JSON URL from cache');
+      }
+    } catch (e) {
+      log('[SETTINGS] ⚠️ Error loading notification settings from cache: $e');
     }
   }
 
@@ -162,10 +189,50 @@ class GlobalSettingsProvider extends ChangeNotifier {
     Constant.placeHolderImage =
         documents['googleMapKey']?['placeHolderImage'] ?? '';
 
-    // Notification settings
-    Constant.senderId = documents['notification_setting']?['projectId'] ?? '';
-    Constant.jsonNotificationFileURL =
-        documents['notification_setting']?['serviceJson'] ?? '';
+    // Notification settings (persist for FCM when API is unavailable)
+    // Support both camelCase and snake_case from API
+    final notificationSetting =
+        documents['notification_setting'] as Map<String, dynamic>?;
+    final projectId =
+        (notificationSetting?['projectId'] ??
+                notificationSetting?['project_id'] ??
+                '')
+            .toString()
+            .trim();
+    final serviceJson =
+        (notificationSetting?['serviceJson'] ??
+                notificationSetting?['service_json'] ??
+                '')
+            .toString()
+            .trim();
+    if (projectId.isNotEmpty) {
+      Constant.senderId = projectId;
+      await Preferences.setString(Preferences.fcmSenderId, projectId);
+      log('[SETTINGS] ✅ FCM senderId saved to cache');
+    }
+    if (serviceJson.isNotEmpty) {
+      Constant.jsonNotificationFileURL = serviceJson;
+      await Preferences.setString(Preferences.fcmServiceJsonUrl, serviceJson);
+      log('[SETTINGS] ✅ FCM service JSON URL saved to cache');
+    }
+    // Inline service account JSON (when API returns it instead of URL)
+    final inlineJson = notificationSetting?['serviceAccountJson'] ??
+        notificationSetting?['service_account_json'];
+    if (inlineJson != null) {
+      String jsonStr = '';
+      if (inlineJson is String) {
+        jsonStr = inlineJson.trim();
+      } else if (inlineJson is Map) {
+        jsonStr = json.encode(inlineJson);
+      }
+      if (jsonStr.isNotEmpty && jsonStr.length > 100) {
+        await Preferences.setString(
+          Preferences.fcmServiceAccountJson,
+          jsonStr,
+        );
+        log('[SETTINGS] ✅ FCM service account JSON (inline) saved to cache');
+      }
+    }
     // Driver nearby settings
     Constant.selectedMapType =
         documents['DriverNearBy']?['selectedMapType'] ?? 'google';
@@ -177,14 +244,22 @@ class GlobalSettingsProvider extends ChangeNotifier {
         documents['termsAndConditions']?['termsAndConditions'] ?? '';
 
     if (kDebugMode) {
-      print('[SETTINGS] Privacy Policy length: ${Constant.privacyPolicy.length}');
-      print('[SETTINGS] Terms & Conditions length: ${Constant.termsAndConditions.length}');
+      print(
+        '[SETTINGS] Privacy Policy length: ${Constant.privacyPolicy.length}',
+      );
+      print(
+        '[SETTINGS] Terms & Conditions length: ${Constant.termsAndConditions.length}',
+      );
       if (Constant.privacyPolicy.isEmpty) {
-        print('[SETTINGS] ⚠️ Privacy Policy is empty - check API data structure');
+        print(
+          '[SETTINGS] ⚠️ Privacy Policy is empty - check API data structure',
+        );
         print('[SETTINGS] Privacy Policy data: ${documents['privacyPolicy']}');
       }
       if (Constant.termsAndConditions.isEmpty) {
-        print('[SETTINGS] ⚠️ Terms & Conditions is empty - check API data structure');
+        print(
+          '[SETTINGS] ⚠️ Terms & Conditions is empty - check API data structure',
+        );
         print('[SETTINGS] Terms data: ${documents['termsAndConditions']}');
       }
     }

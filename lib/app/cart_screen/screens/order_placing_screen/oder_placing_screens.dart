@@ -271,14 +271,19 @@ class OrderPlacingScreen extends StatelessWidget {
                                               fontWeight: FontWeight.w400,
                                             ),
                                           ),
-                                          Text(
-                                            "${cartProductModel.name}".tr,
-                                            textAlign: TextAlign.start,
-                                            style: TextStyle(
-                                              color: AppThemeData.grey900,
-                                              fontSize: 14,
-                                              fontFamily: AppThemeData.regular,
-                                              fontWeight: FontWeight.w400,
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              "${cartProductModel.name}".tr,
+                                              textAlign: TextAlign.start,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: AppThemeData.grey900,
+                                                fontSize: 14,
+                                                fontFamily: AppThemeData.regular,
+                                                fontWeight: FontWeight.w400,
+                                              ),
                                             ),
                                           ),
                                         ],

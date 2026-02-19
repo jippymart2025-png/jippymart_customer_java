@@ -51,6 +51,7 @@ import 'package:jippymart_customer/widgets/delivery_zone_alert_dialog.dart'
     show DeliveryZoneAlertDialog;
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
@@ -5503,26 +5504,33 @@ class CartControllerProvider extends ChangeNotifier {
                             width: 30,
                             height: 30,
                           ),
-                          SizedBox(
-                            width: 150,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Online Payment",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 8),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    "Online Payment",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
-                                ),
-                                Text(
-                                  "Pay securely with Razorpay",
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: Colors.grey[600],
+                                  Text(
+                                    "Pay securely with Razorpay",
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey[600],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1,
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -6682,27 +6690,58 @@ class CartControllerProvider extends ChangeNotifier {
         ),
       );
 
-      if (vendorModel.id != null && vendorModel.author != null) {
+      if (vendorModel.id == null || vendorModel.author == null) {
+        if (kDebugMode) {
+          log('[CART] Skipping order notification: vendor id or author null');
+        }
+      } else {
+        final authorIdForNotify = vendorModel.author.toString();
+        final orderIdForNotify = orderModel.id ?? '';
         additionalTasks.add(
-          AddressListProvider.getUserProfile(
-            vendorModel.author.toString(),
-          ).then((value) {
-            if (value != null) {
-              if (scheduleDateTime.isAfter(DateTime.now())) {
-                SendNotification.sendFcmMessage(
-                  Constant.scheduleOrder,
-                  value.fcmToken ?? '',
-                  {},
-                );
-              } else {
-                SendNotification.sendFcmMessage(
-                  Constant.newOrderPlaced,
-                  value.fcmToken ?? '',
-                  {},
-                );
+          () async {
+            try {
+              final authorId = authorIdForNotify;
+              // Prefer token from vendor model (restaurant/vendor doc); fallback to user profile
+              String fcmToken =
+                  vendorModel.fcmToken?.trim() ?? '';
+              if (fcmToken.isEmpty) {
+                final value = await AddressListProvider.getUserProfile(authorId);
+                if (value == null) {
+                  if (kDebugMode) {
+                    log('[CART] Order notification: vendor profile not found');
+                  }
+                  return;
+                }
+                fcmToken = value.fcmToken?.trim() ?? '';
+              }
+              if (fcmToken.isEmpty) {
+                if (kDebugMode) {
+                  log('[CART] Order notification: vendor FCM token empty');
+                }
+                return;
+              }
+              final type = scheduleDateTime.isAfter(DateTime.now())
+                  ? Constant.scheduleOrder
+                  : Constant.newOrderPlaced;
+              final payload = <String, dynamic>{
+                'type': type,
+                'order_id': orderIdForNotify,
+              };
+              final sent = await SendNotification.sendFcmMessage(
+                type,
+                fcmToken,
+                payload,
+              );
+              if (kDebugMode && !sent) {
+                log('[CART] Order notification send failed (vendor token may be stale)');
+              }
+            } catch (e, stack) {
+              if (kDebugMode) {
+                log('[CART] Order notification error: $e');
+                log('[CART] $stack');
               }
             }
-          }),
+          }(),
         );
       }
 
