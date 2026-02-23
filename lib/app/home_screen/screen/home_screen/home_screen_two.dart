@@ -11,9 +11,7 @@ import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/h
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/banner_view_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/bottom_banner_view_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/best_restaurant_section_widget.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/home_profile_widget.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/home_screen_search_widget.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/mart_food_tab_bar_widget.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/home_header_widget.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
@@ -42,6 +40,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
 import 'widgets/category_view_widget.dart';
 
@@ -65,26 +64,34 @@ class HomeScreenTwo extends StatelessWidget {
             bestRestaurantProvider,
             _,
           ) {
-            return Scaffold(
-              body: Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: AssetImage(ImageConst.backgroundImage),
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                child: RefreshIndicator(
-                  onRefresh: () async {
-                    await controller.getRefresh(context);
-                  },
-                  child: _buildContent(
-                    controller,
-                    bestRestaurantProvider,
-                    context,
-                  ),
-                ),
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.dark,
+                statusBarBrightness: Brightness.light,
+                systemStatusBarContrastEnforced: false,
               ),
-              floatingActionButton: _buildWhatsAppFAB(),
+              child: Scaffold(
+                body: Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: AssetImage(ImageConst.backgroundImage),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  child: RefreshIndicator(
+                    onRefresh: () async {
+                      await controller.getRefresh(context);
+                    },
+                    child: _buildContent(
+                      controller,
+                      bestRestaurantProvider,
+                      context,
+                    ),
+                  ),
+                ),
+                floatingActionButton: _buildWhatsAppFAB(),
+              ),
             );
           },
     );
@@ -163,65 +170,36 @@ class HomeScreenTwo extends StatelessWidget {
     BestRestaurantProvider bestRestaurantProvider,
     BuildContext context,
   ) {
-    return Padding(
-      padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+    return Column(
+      children: [
+        HomeHeaderWidget(
+          key: ValueKey(Constant.selectedZone?.id ?? 'nozone'),
+          homeProvider: controller,
+          context: context,
+        ),
+        Expanded(
+          child: SingleChildScrollView(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildMartFoodTabBar(context),
-                homeProfileAddressWidget(
-                  homeProvider: controller,
-                  context: context,
-                ),
+                _buildBannerSection(controller),
                 const SizedBox(height: 20),
-                homeScreenSearchWidget(),
+                _buildDealsBanner(context),
+                BestRestaurantsSection(
+                  restaurantList: bestRestaurantProvider.bestRestaurantList,
+                ),
+                _buildAdvertisementSection(bestRestaurantProvider, controller),
+                _buildBottomBannerSection(controller),
                 const SizedBox(height: 10),
+                _buildAllRestaurantsSection(
+                  bestRestaurantProvider,
+                  controller,
+                  context,
+                ),
               ],
             ),
           ),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildBannerSection(controller),
-                  const SizedBox(height: 20),
-                  _buildDealsBanner(context),
-                  BestRestaurantsSection(
-                    restaurantList: bestRestaurantProvider.bestRestaurantList,
-                  ),
-                  _buildAdvertisementSection(
-                    bestRestaurantProvider,
-                    controller,
-                  ),
-                  _buildBottomBannerSection(controller),
-                  const SizedBox(height: 20),
-                  _buildAllRestaurantsSection(
-                    bestRestaurantProvider,
-                    controller,
-                    context,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMartFoodTabBar(BuildContext context) {
-    return Consumer2<MartProvider, MartNavigationProvider>(
-      builder: (context, martProvider, martNavigationProvider, _) {
-        return martFoodTabBarWidgetHome(
-          martProvider: martProvider,
-          martNavigationProvider: martNavigationProvider,
-          context: context,
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -627,8 +605,10 @@ class HomeScreenTwo extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  const Spacer(),
+                  const SizedBox(height: 1),
+                  _buildDeliveryTimeAndFastRow(vendorModel),
+                  const SizedBox(height: 1),
+                  // const Spacer(),
                   _buildBottomInfoRow(vendorModel),
                 ],
               ),
@@ -710,6 +690,14 @@ class HomeScreenTwo extends StatelessWidget {
     );
   }
 
+  Widget _buildDeliveryTimeAndFastRow(VendorModel vendorModel) {
+    final deliveryTime = Constant.getDeliveryTimeText(vendorModel);
+    return SizedBox(
+      height: 13,
+      child: _TimeThenFastDeliveryWidget(deliveryTime: deliveryTime),
+    );
+  }
+
   Widget _buildBottomInfoRow(VendorModel vendorModel) {
     return Row(
       children: [
@@ -717,10 +705,10 @@ class HomeScreenTwo extends StatelessWidget {
           child: Row(
             children: [
               Icon(Icons.star, size: 12, color: AppThemeData.primary300),
-              const SizedBox(width: 2),
+              const SizedBox(width: 1),
               Expanded(
                 child: Text(
-                  "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount?.toStringAsFixed(0) ?? '0'})",
+                  "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())}",
                   style: TextStyle(
                     fontSize: 10,
                     fontFamily: AppThemeData.medium,
@@ -822,6 +810,89 @@ class HomeScreenTwo extends StatelessWidget {
     } catch (e) {
       print('Error launching WhatsApp: $e');
     }
+  }
+}
+
+/// First shows delivery time; after 2 seconds replaces it with "Fast delivery" in the same place (animated).
+class _TimeThenFastDeliveryWidget extends StatefulWidget {
+  final String deliveryTime;
+
+  const _TimeThenFastDeliveryWidget({required this.deliveryTime});
+
+  @override
+  State<_TimeThenFastDeliveryWidget> createState() =>
+      _TimeThenFastDeliveryWidgetState();
+}
+
+class _TimeThenFastDeliveryWidgetState
+    extends State<_TimeThenFastDeliveryWidget> {
+  bool _showFastDelivery = false;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Loop: show time first, then "Fast delivery" after 2s, then time again, etc.
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) {
+        setState(() => _showFastDelivery = !_showFastDelivery);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        switchInCurve: Curves.easeIn,
+        switchOutCurve: Curves.easeOut,
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        child: _showFastDelivery
+            ? Row(
+                key: const ValueKey<String>('fast'),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.delivery_dining,
+                    size: 10,
+                    color: AppThemeData.primary300,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    'Fast delivery',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontFamily: AppThemeData.medium,
+                      color: AppThemeData.primary300,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              )
+            : Text(
+                key: const ValueKey<String>('time'),
+                widget.deliveryTime,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontFamily: AppThemeData.medium,
+                  color: AppThemeData.primary300,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+      ),
+    );
   }
 }
 

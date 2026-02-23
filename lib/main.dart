@@ -69,6 +69,7 @@ import 'app/order_list_screen/screens/live_tracking_screen/provider/live_trackin
 import 'app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
 import 'app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'app/profile_screen/provider/my_profile_provider.dart';
+import 'app/wallet_screen/provider/wallet_provider.dart';
 import 'app/rate_us_screen/provider/rate_product_provider.dart';
 import 'app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'app/review_list_screen/provider/review_list_provider.dart';
@@ -91,6 +92,15 @@ import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Transparent status bar app-wide so no gray bar at top
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemStatusBarContrastEnforced: false,
+    ),
+  );
   GlobalDeeplinkHandler.init();
   Get.put(GlobalDeeplinkHandler.instance, permanent: true);
   CrashPrevention();
@@ -415,16 +425,35 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => MartSearchProvider()),
         ChangeNotifierProvider(create: (_) => OrderPlacingProvider()),
         ChangeNotifierProvider(create: (_) => SignupProvider()),
+        ChangeNotifierProvider(create: (_) => WalletProvider()),
       ],
       child: GetMaterialApp(
         navigatorKey: GlobalDeeplinkHandler.navigatorKey,
         title: 'JippyMart Customer'.tr,
         debugShowCheckedModeBanner: false,
+        // Reduce GetX route/dialog log noise (CLOSE DIALOG, REPLACE ROUTE, NEW ROUTE)
+        logWriterCallback: (String text, {bool isError = false}) {
+          if (isError) {
+            debugPrint(text);
+            return;
+          }
+          final t = text.toUpperCase();
+          if (t.contains('[GETX]') &&
+              (t.contains('CLOSE DIALOG') ||
+                  t.contains('REPLACE ROUTE') ||
+                  t.contains('NEW ROUTE'))) {
+            return; // skip verbose GetX nav logs
+          }
+          debugPrint(text);
+        },
         localizationsDelegates: const [CountryLocalizations.delegate],
         builder: (context, child) {
           return EasyLoading.init()(
             context,
-            SafeArea(child: child ?? const SizedBox.shrink()),
+            SafeArea(
+              top: false,
+              child: child ?? const SizedBox.shrink(),
+            ),
           );
         },
         home: Consumer<GlobalSettingsProvider>(

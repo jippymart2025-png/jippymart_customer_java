@@ -270,7 +270,7 @@ class RestaurantListScreen extends StatelessWidget {
                                                     ),
                                                     const SizedBox(width: 5),
                                                     Text(
-                                                      "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
+                                                      "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())}",
                                                       style: TextStyle(
                                                         fontSize: 14,
                                                         color: AppThemeData
@@ -362,6 +362,17 @@ class RestaurantListScreen extends StatelessWidget {
                                               fontFamily: AppThemeData.medium,
                                               fontWeight: FontWeight.w500,
                                               color: AppThemeData.grey400,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            Constant.getDeliveryTimeText(
+                                              vendorModel,
+                                            ),
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontFamily: AppThemeData.medium,
+                                              color: AppThemeData.primary300,
                                             ),
                                           ),
                                         ],

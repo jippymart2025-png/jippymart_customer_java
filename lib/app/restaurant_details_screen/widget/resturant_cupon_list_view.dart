@@ -1,3 +1,185 @@
+// import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
+// import 'package:jippymart_customer/models/coupon_model.dart';
+// import 'package:jippymart_customer/themes/app_them_data.dart';
+// import 'package:flutter/material.dart';
+// import 'package:flutter/services.dart';
+// import 'package:flutter_svg/svg.dart';
+// import 'package:get/get.dart';
+//
+// import '../../../constant/constant.dart';
+// import '../../../constant/show_toast_dialog.dart';
+// import '../../../themes/responsive.dart';
+//
+// class CouponListView extends StatelessWidget {
+//   final RestaurantDetailsProvider controller;
+//
+//   const CouponListView({super.key, required this.controller});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return SizedBox(
+//       height: Responsive.height(9, context),
+//       child: ListView.builder(
+//         scrollDirection: Axis.horizontal,
+//         itemCount: controller.couponList.length,
+//         itemBuilder: (BuildContext context, int index) {
+//           CouponModel offerModel = controller.couponList[index];
+//           return Padding(
+//             padding: const EdgeInsets.only(right: 10),
+//             child: Container(
+//               width: 300, // fixed width for coupon card
+//               clipBehavior: Clip.antiAlias,
+//               decoration: ShapeDecoration(
+//                 color: AppThemeData.grey50,
+//                 shape: RoundedRectangleBorder(
+//                   side: BorderSide(width: 1, color: AppThemeData.grey100),
+//                   borderRadius: BorderRadius.circular(16),
+//                 ),
+//               ),
+//               child: Padding(
+//                 padding: const EdgeInsets.symmetric(
+//                   horizontal: 10,
+//                   vertical: 5,
+//                 ),
+//                 child: Row(
+//                   crossAxisAlignment: CrossAxisAlignment.center,
+//                   children: [
+//                     Container(
+//                       width: 60,
+//                       height: 60,
+//                       decoration: const BoxDecoration(
+//                         image: DecorationImage(
+//                           image: AssetImage("assets/images/offer_gif.gif"),
+//                           fit: BoxFit.fill,
+//                         ),
+//                       ),
+//                       child: Center(
+//                         child: Text(
+//                           offerModel.discountType == "Fix Price"
+//                               ? Constant.amountShow(
+//                                   amount: offerModel.discount.toString(),
+//                                 )
+//                               : "${offerModel.discount}%",
+//                           style: TextStyle(
+//                             color: AppThemeData.grey50,
+//                             fontFamily: AppThemeData.semiBold,
+//                             fontWeight: FontWeight.w600,
+//                             fontSize: 12,
+//                           ),
+//                         ),
+//                       ),
+//                     ),
+//                     const SizedBox(width: 10),
+//                     Expanded(
+//                       child: Column(
+//                         crossAxisAlignment: CrossAxisAlignment.start,
+//                         children: [
+//                           Text(
+//                             offerModel.description ?? "Discount Coupon",
+//                             maxLines: 1,
+//                             overflow: TextOverflow.ellipsis,
+//                             style: TextStyle(
+//                               fontSize: 16,
+//                               color: AppThemeData.grey900,
+//                               fontFamily: AppThemeData.semiBold,
+//                               fontWeight: FontWeight.w600,
+//                             ),
+//                           ),
+//                           offerModel.isEnabled == false
+//                               ? Padding(
+//                                   padding: const EdgeInsets.only(top: 4.0),
+//                                   child: Text(
+//                                     "Used",
+//                                     style: TextStyle(
+//                                       fontFamily: AppThemeData.medium,
+//                                       color: AppThemeData.grey400,
+//                                       fontSize: 14,
+//                                     ),
+//                                   ),
+//                                 )
+//                               : InkWell(
+//                                   onTap: () {
+//                                     Clipboard.setData(
+//                                       ClipboardData(
+//                                         text: offerModel.code.toString(),
+//                                       ),
+//                                     ).then((value) {
+//                                       ShowToastDialog.showToast("Copied".tr);
+//                                     });
+//                                   },
+//                                   child: Row(
+//                                     children: [
+//                                       Expanded(
+//                                         child: Text(
+//                                           offerModel.code.toString(),
+//                                           maxLines: 1,
+//                                           overflow: TextOverflow.ellipsis,
+//                                           style: TextStyle(
+//                                             fontSize: 12,
+//                                             color: AppThemeData.grey500,
+//                                             fontFamily: AppThemeData.semiBold,
+//                                             fontWeight: FontWeight.w600,
+//                                           ),
+//                                         ),
+//                                       ),
+//                                       const SizedBox(width: 5),
+//                                       SvgPicture.asset(
+//                                         "assets/icons/ic_copy.svg",
+//                                       ),
+//                                       const SizedBox(
+//                                         height: 10,
+//                                         child: VerticalDivider(),
+//                                       ),
+//                                       const SizedBox(width: 5),
+//                                       Expanded(
+//                                         child: Text(
+//                                           _formatExpiryDate(
+//                                             offerModel.expiresAt,
+//                                           ),
+//                                           maxLines: 1,
+//                                           overflow: TextOverflow.ellipsis,
+//                                           style: TextStyle(
+//                                             fontSize: 12,
+//                                             color: AppThemeData.grey500,
+//                                             fontFamily: AppThemeData.semiBold,
+//                                             fontWeight: FontWeight.w600,
+//                                           ),
+//                                         ),
+//                                       ),
+//                                     ],
+//                                   ),
+//                                 ),
+//                         ],
+//                       ),
+//                     ),
+//                   ],
+//                 ),
+//               ),
+//             ),
+//           );
+//         },
+//       ),
+//     );
+//   }
+//
+//   String _formatExpiryDate(dynamic expiresAt) {
+//     if (expiresAt == null) return "No expiry";
+//
+//     if (expiresAt is String) {
+//       try {
+//         DateTime date = DateTime.parse(expiresAt);
+//         return "${date.day}/${date.month}/${date.year}";
+//       } catch (e) {
+//         return expiresAt.toString();
+//       }
+//     } else if (expiresAt is DateTime) {
+//       return "${expiresAt.day}/${expiresAt.month}/${expiresAt.year}";
+//     }
+//
+//     return "No expiry";
+//   }
+// }
+
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -8,7 +190,6 @@ import 'package:get/get.dart';
 
 import '../../../constant/constant.dart';
 import '../../../constant/show_toast_dialog.dart';
-import '../../../themes/responsive.dart';
 
 class CouponListView extends StatelessWidget {
   final RestaurantDetailsProvider controller;
@@ -17,8 +198,17 @@ class CouponListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Single MediaQuery call
+    final sw = MediaQuery.sizeOf(context).width;
+    // Card width: 80% of screen, min 240, max 320
+    final cardWidth = (sw * 0.80).clamp(240.0, 320.0);
+    // Card height: responsive
+    final cardHeight = (sw * 0.22).clamp(72.0, 90.0);
+    // GIF box size
+    final gifSize = (sw * 0.14).clamp(48.0, 64.0);
+
     return SizedBox(
-      height: Responsive.height(9, context),
+      height: cardHeight,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: controller.couponList.length,
@@ -27,7 +217,7 @@ class CouponListView extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.only(right: 10),
             child: Container(
-              width: 300, // fixed width for coupon card
+              width: cardWidth,
               clipBehavior: Clip.antiAlias,
               decoration: ShapeDecoration(
                 color: AppThemeData.grey50,
@@ -44,27 +234,31 @@ class CouponListView extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: const BoxDecoration(
-                        image: DecorationImage(
-                          image: AssetImage("assets/images/offer_gif.gif"),
-                          fit: BoxFit.fill,
+                    // GIF box — responsive size
+                    SizedBox(
+                      width: gifSize,
+                      height: gifSize,
+                      child: DecoratedBox(
+                        decoration: const BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage("assets/images/offer_gif.gif"),
+                            fit: BoxFit.fill,
+                          ),
                         ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          offerModel.discountType == "Fix Price"
-                              ? Constant.amountShow(
-                                  amount: offerModel.discount.toString(),
-                                )
-                              : "${offerModel.discount}%",
-                          style: TextStyle(
-                            color: AppThemeData.grey50,
-                            fontFamily: AppThemeData.semiBold,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
+                        child: Center(
+                          child: Text(
+                            offerModel.discountType == "Fix Price"
+                                ? Constant.amountShow(
+                                    amount: offerModel.discount.toString(),
+                                  )
+                                : "${offerModel.discount}%",
+                            style: TextStyle(
+                              color: AppThemeData.grey50,
+                              fontFamily: AppThemeData.semiBold,
+                              fontWeight: FontWeight.w600,
+                              // Scale font inside GIF box
+                              fontSize: (gifSize * 0.2).clamp(10.0, 13.0),
+                            ),
                           ),
                         ),
                       ),
@@ -73,13 +267,15 @@ class CouponListView extends StatelessWidget {
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
                             offerModel.description ?? "Discount Coupon",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 16,
+                              // Clamp between 13–16
+                              fontSize: (sw * 0.04).clamp(13.0, 16.0),
                               color: AppThemeData.grey900,
                               fontFamily: AppThemeData.semiBold,
                               fontWeight: FontWeight.w600,
@@ -87,13 +283,13 @@ class CouponListView extends StatelessWidget {
                           ),
                           offerModel.isEnabled == false
                               ? Padding(
-                                  padding: const EdgeInsets.only(top: 4.0),
+                                  padding: const EdgeInsets.only(top: 4),
                                   child: Text(
                                     "Used",
                                     style: TextStyle(
                                       fontFamily: AppThemeData.medium,
                                       color: AppThemeData.grey400,
-                                      fontSize: 14,
+                                      fontSize: (sw * 0.035).clamp(12.0, 14.0),
                                     ),
                                   ),
                                 )
@@ -103,7 +299,7 @@ class CouponListView extends StatelessWidget {
                                       ClipboardData(
                                         text: offerModel.code.toString(),
                                       ),
-                                    ).then((value) {
+                                    ).then((_) {
                                       ShowToastDialog.showToast("Copied".tr);
                                     });
                                   },
@@ -115,14 +311,17 @@ class CouponListView extends StatelessWidget {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: (sw * 0.03).clamp(
+                                              10.0,
+                                              12.0,
+                                            ),
                                             color: AppThemeData.grey500,
                                             fontFamily: AppThemeData.semiBold,
                                             fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 5),
+                                      const SizedBox(width: 4),
                                       SvgPicture.asset(
                                         "assets/icons/ic_copy.svg",
                                       ),
@@ -130,7 +329,7 @@ class CouponListView extends StatelessWidget {
                                         height: 10,
                                         child: VerticalDivider(),
                                       ),
-                                      const SizedBox(width: 5),
+                                      const SizedBox(width: 4),
                                       Expanded(
                                         child: Text(
                                           _formatExpiryDate(
@@ -139,7 +338,10 @@ class CouponListView extends StatelessWidget {
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                           style: TextStyle(
-                                            fontSize: 12,
+                                            fontSize: (sw * 0.03).clamp(
+                                              10.0,
+                                              12.0,
+                                            ),
                                             color: AppThemeData.grey500,
                                             fontFamily: AppThemeData.semiBold,
                                             fontWeight: FontWeight.w600,
@@ -164,18 +366,16 @@ class CouponListView extends StatelessWidget {
 
   String _formatExpiryDate(dynamic expiresAt) {
     if (expiresAt == null) return "No expiry";
-
     if (expiresAt is String) {
       try {
-        DateTime date = DateTime.parse(expiresAt);
+        final date = DateTime.parse(expiresAt);
         return "${date.day}/${date.month}/${date.year}";
-      } catch (e) {
+      } catch (_) {
         return expiresAt.toString();
       }
     } else if (expiresAt is DateTime) {
       return "${expiresAt.day}/${expiresAt.month}/${expiresAt.year}";
     }
-
     return "No expiry";
   }
 }

@@ -3,9 +3,11 @@ import 'package:jippymart_customer/app/cart_screen/coupon_list_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_bill_details_widget.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui.dart';
+import 'package:jippymart_customer/app/cart_screen/select_payment_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_navigation_bar_widget.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_product_details_image_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -61,6 +63,16 @@ class _CartScreenState extends State<CartScreen> {
       print(
         '[CART_SCREEN] 🚀 Initialized in ${_performanceStopwatch.elapsedMilliseconds}ms',
       );
+    });
+
+    // Sync wallet balance from WalletProvider (same as wallet screen) so cart shows same value
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final wp = Provider.of<WalletProvider>(context, listen: false);
+      final cartController = Provider.of<CartControllerProvider>(context, listen: false);
+      wp.refreshWallet().then((_) {
+        if (mounted) cartController.syncWalletBalanceFromWallet(wp.moneyBalanceRupees);
+      });
     });
 
     // Start performance monitoring
@@ -301,6 +313,7 @@ class _CartScreenState extends State<CartScreen> {
                   const SizedBox(height: 20),
                   _buildOffersSection(controller),
                   _buildBillDetails(controller),
+                  _buildPaymentMethodRow(controller),
                   _buildDeliveryTips(controller),
                   const SizedBox(height: 20),
                   _buildRemarks(controller),
@@ -386,6 +399,7 @@ class _CartScreenState extends State<CartScreen> {
   }
 
   Widget _buildOffersSection(CartControllerProvider controller) {
+    final couponDisabled = controller.isCouponDisabledByWallet;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -401,59 +415,80 @@ class _CartScreenState extends State<CartScreen> {
             ),
           ),
           const SizedBox(height: 10),
-          InkWell(
-            onTap: () async {
-              ShowToastDialog.showLoader("Loading coupons...".tr);
-              unawaited(
-                controller
-                    .getCartData()
-                    .then((_) {
-                      ShowToastDialog.closeLoader();
-                      Get.to(const CouponListScreen());
-                    })
-                    .catchError((e) {
-                      ShowToastDialog.closeLoader();
-                      ShowToastDialog.showToast("Error loading coupons");
-                    }),
-              );
-            },
-            child: Container(
-              width: Responsive.width(100, context),
-              decoration: ShapeDecoration(
-                color: AppThemeData.grey50,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                shadows: const [
-                  BoxShadow(
-                    color: Color(0x14000000),
-                    blurRadius: 52,
-                    offset: Offset(0, 0),
-                    spreadRadius: 0,
+          Opacity(
+            opacity: couponDisabled ? 0.5 : 1,
+            child: InkWell(
+              onTap: couponDisabled
+                  ? null
+                  : () async {
+                      ShowToastDialog.showLoader("Loading coupons...".tr);
+                      unawaited(
+                        controller
+                            .getCartData()
+                            .then((_) {
+                              ShowToastDialog.closeLoader();
+                              Get.to(const CouponListScreen());
+                            })
+                            .catchError((e) {
+                              ShowToastDialog.closeLoader();
+                              ShowToastDialog.showToast("Error loading coupons");
+                            }),
+                      );
+                    },
+              child: Container(
+                width: Responsive.width(100, context),
+                decoration: ShapeDecoration(
+                  color: AppThemeData.grey50,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 14,
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "Apply Coupons".tr,
-                        textAlign: TextAlign.start,
-                        style: TextStyle(
-                          fontFamily: AppThemeData.semiBold,
-                          color: AppThemeData.grey900,
-                          fontSize: 16,
-                        ),
-                      ),
+                  shadows: const [
+                    BoxShadow(
+                      color: Color(0x14000000),
+                      blurRadius: 52,
+                      offset: Offset(0, 0),
+                      spreadRadius: 0,
                     ),
-                    const Icon(Icons.keyboard_arrow_right),
                   ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 14,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Apply Coupons".tr,
+                              textAlign: TextAlign.start,
+                              style: TextStyle(
+                                fontFamily: AppThemeData.semiBold,
+                                color: AppThemeData.grey900,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.keyboard_arrow_right),
+                        ],
+                      ),
+                      if (couponDisabled) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          "Coupons cannot be applied when wallet is used.".tr,
+                          style: TextStyle(
+                            fontFamily: AppThemeData.regular,
+                            fontSize: 12,
+                            color: AppThemeData.grey600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -465,6 +500,81 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildBillDetails(CartControllerProvider controller) {
     return billCartWidget(controller, context);
+  }
+
+  Widget _buildPaymentMethodRow(CartControllerProvider controller) {
+    final moneyRupees = controller.walletBalanceRupees;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: InkWell(
+        onTap: () {
+          unawaited(controller.refreshWalletBalance());
+          Get.to(const SelectPaymentScreen());
+        },
+        child: Container(
+          width: Responsive.width(100, context),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: AppThemeData.primary50,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppThemeData.primary200),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.account_balance_wallet, color: AppThemeData.primary300, size: 28),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Wallet balance".tr,
+                      style: TextStyle(
+                        fontFamily: AppThemeData.medium,
+                        fontSize: 14,
+                        color: AppThemeData.grey600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      Constant.amountShow(amount: moneyRupees.toStringAsFixed(2)),
+                      style: TextStyle(
+                        fontFamily: AppThemeData.semiBold,
+                        fontSize: 22,
+                        color: AppThemeData.primary300,
+                      ),
+                    ),
+                    if (controller.useWalletBalance && controller.walletToUse > 0) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        "${'Using'.tr} ${Constant.amountShow(amount: controller.walletToUse.toStringAsFixed(2))} ${'from wallet'.tr}",
+                        style: TextStyle(
+                          fontFamily: AppThemeData.medium,
+                          fontSize: 12,
+                          color: AppThemeData.grey600,
+                        ),
+                      ),
+                    ] else
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          "Tap to use wallet or change payment".tr,
+                          style: TextStyle(
+                            fontFamily: AppThemeData.regular,
+                            fontSize: 12,
+                            color: AppThemeData.grey600,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppThemeData.grey500),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildDeliveryTips(CartControllerProvider controller) {

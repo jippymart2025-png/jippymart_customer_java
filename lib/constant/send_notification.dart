@@ -180,6 +180,7 @@ class SendNotification {
       );
       final ok = response.statusCode == 200;
       if (!ok && kDebugMode) {
+        // 404/UNREGISTERED = vendor token stale (e.g. restaurant app reinstalled). Fix: restaurant app must re-upload FCM token. See RESTAURANT_APP_FCM_TOKEN_FIX.md.
         final isUnregistered = response.statusCode == 404 || response.body.contains('UNREGISTERED');
         dev.log(
           'FCM rejected: ${response.statusCode}${isUnregistered ? " (token stale/unregistered)" : ""}',

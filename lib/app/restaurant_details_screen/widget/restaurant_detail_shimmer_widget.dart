@@ -1,130 +1,203 @@
+// import 'package:jippymart_customer/widget/shimmer/box_shimmer.dart';
+// import 'package:flutter/material.dart';
+//
+// Widget resturantDetailsShimmer() {
+//   return Padding(
+//     padding: const EdgeInsets.all(
+//       16,
+//     ),
+//     child: Column(
+//       mainAxisAlignment: MainAxisAlignment.start,
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         Row(
+//           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//           children: [
+//             boxShimmer(
+//               height: 25,
+//               width: 100,
+//             ),
+//             boxShimmer(
+//               height: 25,
+//               width: 80,
+//             ),
+//           ],
+//         ),
+//         SizedBox(
+//           height: 20,
+//         ),
+//         Row(
+//           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+//           children: [
+//             boxShimmer(
+//               height: 15,
+//               width: 200,
+//             ),
+//             boxShimmer(
+//               height: 15,
+//               width: 100,
+//             ),
+//           ],
+//         ),
+//         SizedBox(
+//           height: 20,
+//         ),
+//         Row(
+//           children: [
+//             boxShimmer(
+//               height: 30,
+//               width: 100,
+//               borderRadius: 20,
+//             ),
+//             SizedBox(
+//               width: 5,
+//             ),
+//             boxShimmer(
+//               height: 10,
+//               width: 10,
+//               borderRadius: 100,
+//             ),
+//             SizedBox(
+//               width: 5,
+//             ),
+//             boxShimmer(
+//               height: 15,
+//               width: 100,
+//             ),
+//           ],
+//         ),
+//         SizedBox(
+//           height: 20,
+//         ),
+//         boxShimmer(
+//           height: 25,
+//           width: 50,
+//         ),
+//         SizedBox(
+//           height: 10,
+//         ),
+//         boxShimmer(
+//           height: 45,
+//           width: double.infinity,
+//           borderRadius: 5,
+//         ),
+//         SizedBox(
+//           height: 20,
+//         ),
+//         Row(
+//           children: [
+//             boxShimmer(
+//               height: 25,
+//               width: 50,
+//             ),
+//             SizedBox(
+//               width: 10,
+//             ),
+//             boxShimmer(
+//               height: 25,
+//               width: 50,
+//             ),
+//             SizedBox(
+//               width: 10,
+//             ),
+//             boxShimmer(
+//               height: 35,
+//               width: 60,
+//             ),
+//           ],
+//         ),
+//         SizedBox(height: 10,),
+//         Expanded(
+//           child: ListView.builder(
+//             padding: EdgeInsets.zero,
+//             itemCount: 5,
+//             itemBuilder: (context, index) {
+//               return Padding(
+//                 padding: const EdgeInsets.only(
+//                   bottom: 8.0,
+//                 ),
+//                 child: boxShimmer(
+//                   height: 80,
+//                   width: 100,
+//                 ),
+//               );
+//             },
+//           ),
+//         )
+//       ],
+//     ),
+//   );
+// }
+
 import 'package:jippymart_customer/widget/shimmer/box_shimmer.dart';
 import 'package:flutter/material.dart';
 
 Widget resturantDetailsShimmer() {
-  return Padding(
-    padding: const EdgeInsets.all(
-      16,
-    ),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  return LayoutBuilder(
+    builder: (context, constraints) {
+      final sw = constraints.maxWidth;
+      // Responsive width helpers
+      final w = (double pct) => sw * pct;
+
+      return Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            boxShimmer(
-              height: 25,
-              width: 100,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                boxShimmer(height: 25, width: w(0.35)),
+                boxShimmer(height: 25, width: w(0.25)),
+              ],
             ),
-            boxShimmer(
-              height: 25,
-              width: 80,
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                boxShimmer(height: 15, width: w(0.55)),
+                boxShimmer(height: 15, width: w(0.25)),
+              ],
             ),
-          ],
-        ),
-        SizedBox(
-          height: 20,
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            boxShimmer(
-              height: 15,
-              width: 200,
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                boxShimmer(height: 30, width: w(0.28), borderRadius: 20),
+                const SizedBox(width: 5),
+                boxShimmer(height: 10, width: 10, borderRadius: 100),
+                const SizedBox(width: 5),
+                boxShimmer(height: 15, width: w(0.25)),
+              ],
             ),
-            boxShimmer(
-              height: 15,
-              width: 100,
+            const SizedBox(height: 20),
+            boxShimmer(height: 25, width: w(0.18)),
+            const SizedBox(height: 10),
+            boxShimmer(height: 45, width: double.infinity, borderRadius: 5),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                boxShimmer(height: 25, width: w(0.14)),
+                const SizedBox(width: 10),
+                boxShimmer(height: 25, width: w(0.18)),
+                const SizedBox(width: 10),
+                boxShimmer(height: 35, width: w(0.18)),
+              ],
             ),
-          ],
-        ),
-        SizedBox(
-          height: 20,
-        ),
-        Row(
-          children: [
-            boxShimmer(
-              height: 30,
-              width: 100,
-              borderRadius: 20,
-            ),
-            SizedBox(
-              width: 5,
-            ),
-            boxShimmer(
-              height: 10,
-              width: 10,
-              borderRadius: 100,
-            ),
-            SizedBox(
-              width: 5,
-            ),
-            boxShimmer(
-              height: 15,
-              width: 100,
-            ),
-          ],
-        ),
-        SizedBox(
-          height: 20,
-        ),
-        boxShimmer(
-          height: 25,
-          width: 50,
-        ),
-        SizedBox(
-          height: 10,
-        ),
-        boxShimmer(
-          height: 45,
-          width: double.infinity,
-          borderRadius: 5,
-        ),
-        SizedBox(
-          height: 20,
-        ),
-        Row(
-          children: [
-            boxShimmer(
-              height: 25,
-              width: 50,
-            ),
-            SizedBox(
-              width: 10,
-            ),
-            boxShimmer(
-              height: 25,
-              width: 50,
-            ),
-            SizedBox(
-              width: 10,
-            ),
-            boxShimmer(
-              height: 35,
-              width: 60,
-            ),
-          ],
-        ),
-        SizedBox(height: 10,),
-        Expanded(
-          child: ListView.builder(
-            padding: EdgeInsets.zero,
-            itemCount: 5,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(
-                  bottom: 8.0,
+            const SizedBox(height: 10),
+            Expanded(
+              child: ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: 5,
+                itemBuilder: (context, index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: boxShimmer(height: 80, width: double.infinity),
                 ),
-                child: boxShimmer(
-                  height: 80,
-                  width: 100,
-                ),
-              );
-            },
-          ),
-        )
-      ],
-    ),
+              ),
+            ),
+          ],
+        ),
+      );
+    },
   );
 }

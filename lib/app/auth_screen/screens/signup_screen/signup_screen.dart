@@ -61,6 +61,8 @@ class _SignupScreenState extends State<SignupScreen> {
               _buildEmailField(),
               const SizedBox(height: 16),
               _buildPhoneField(),
+              const SizedBox(height: 16),
+              _buildReferralCodeField(),
               const SizedBox(height: 24),
               _buildSignupButton(context),
             ],
@@ -178,6 +180,20 @@ class _SignupScreenState extends State<SignupScreen> {
               ],
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReferralCodeField() {
+    return Consumer<SignupProvider>(
+      builder: (context, controller, _) {
+        return TextFieldWidget(
+          title: 'Referral code (optional)'.tr,
+          controller: controller.referralCodeEditingController,
+          hintText: 'Enter referral code'.tr,
+          textInputAction: TextInputAction.done,
+          prefix: _buildIcon("assets/icons/ic_gift_code.svg"),
         );
       },
     );

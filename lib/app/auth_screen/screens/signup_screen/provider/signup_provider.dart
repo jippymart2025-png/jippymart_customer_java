@@ -2,6 +2,7 @@ import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -24,6 +25,7 @@ class SignupProvider extends ChangeNotifier {
   TextEditingController countryCodeEditingController = TextEditingController(
     text: "+91",
   );
+  TextEditingController referralCodeEditingController = TextEditingController();
 
   // State variables
   String type = "";
@@ -256,6 +258,23 @@ class SignupProvider extends ChangeNotifier {
       await SqlStorageConst.storeUserData(newUser);
       Constant.userModel = newUser;
 
+      // Optional: apply referral code after signup (user is now authenticated)
+      final referralCode = referralCodeEditingController.text.trim();
+      if (referralCode.isNotEmpty && context.mounted) {
+        try {
+          final walletProvider =
+              Provider.of<WalletProvider>(context, listen: false);
+          final err = await walletProvider.applyReferralCode(code: referralCode);
+          if (err == null) {
+            ShowToastDialog.showToast("Referral code applied successfully".tr);
+          } else {
+            ShowToastDialog.showToast(err);
+          }
+        } catch (_) {
+          // Non-blocking; account is already created
+        }
+      }
+
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast("Account created successfully".tr);
 
@@ -340,6 +359,7 @@ class SignupProvider extends ChangeNotifier {
     emailEditingController.dispose();
     phoneNUmberEditingController.dispose();
     countryCodeEditingController.dispose();
+    referralCodeEditingController.dispose();
     super.dispose();
   }
 }

@@ -13,26 +13,211 @@ import 'package:jippymart_customer/widgets/coming_soon_dialog.dart';
 // Static flag to prevent multiple simultaneous clicks
 bool _isMartChecking = false;
 
+Future<void> _loadMartDataInBackground(MartProvider martProvider) async {
+  try {
+    await martProvider.initFunction();
+    debugPrint("✅ Mart data loaded successfully");
+  } catch (e) {
+    debugPrint("⚠️ Error loading mart data in background: $e");
+  }
+}
+
 Widget martFoodTabBarWidgetHome({
+  Key? key,
   required MartProvider martProvider,
   required MartNavigationProvider martNavigationProvider,
   required BuildContext context,
+  VoidCallback? onAddressTap,
 }) {
-  MartZoneUtils.prefetchMartVendors();
+  return _MartFoodTabBarContent(
+    key: key,
+    martProvider: martProvider,
+    martNavigationProvider: martNavigationProvider,
+    context: context,
+    onAddressTap: onAddressTap,
+  );
+}
 
-  /// Load mart data in background after navigation
-  /// This allows the screen to show immediately while data loads
-  Future<void> _loadMartDataInBackground(MartProvider martProvider) async {
-    try {
-      await martProvider.initFunction();
-      debugPrint("✅ Mart data loaded successfully");
-    } catch (e) {
-      debugPrint("⚠️ Error loading mart data in background: $e");
-      // Screen will handle error state
+/// Stateful wrapper: shows MART button only when mart is available in current zone.
+/// When bar is hidden, shows a compact delivery address strip.
+class _MartFoodTabBarContent extends StatefulWidget {
+  final MartProvider martProvider;
+  final MartNavigationProvider martNavigationProvider;
+  final BuildContext context;
+  final VoidCallback? onAddressTap;
+
+  const _MartFoodTabBarContent({
+    super.key,
+    required this.martProvider,
+    required this.martNavigationProvider,
+    required this.context,
+    this.onAddressTap,
+  });
+
+  @override
+  State<_MartFoodTabBarContent> createState() => _MartFoodTabBarContentState();
+}
+
+class _MartFoodTabBarContentState extends State<_MartFoodTabBarContent> {
+  bool? _martAvailableInZone;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkMartAvailability();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MartFoodTabBarContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-check when widget is updated (e.g. after zone/location change)
+    if (oldWidget.context != widget.context) {
+      setState(() => _martAvailableInZone = null);
+      _checkMartAvailability();
     }
   }
 
-  Future<void> checkMartAvailability(
+  Future<void> _checkMartAvailability() async {
+    MartZoneUtils.prefetchMartVendors();
+    final available = await MartZoneUtils.isMartAvailableInCurrentZone();
+    if (mounted) {
+      setState(() => _martAvailableInZone = available);
+    }
+  }
+
+  Widget _buildSafeAddressStrip(BuildContext context) {
+    final address = Constant.selectedLocation.getFullAddress();
+    final hasAddress = address.isNotEmpty;
+    final label = hasAddress ? address : "Set delivery address".tr;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16, bottom: 16),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: widget.onAddressTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.08),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 20,
+                  color: hasAddress ? Colors.orange : Colors.grey,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: hasAddress ? Colors.grey[800] : Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (widget.onAddressTap != null)
+                  Icon(Icons.chevron_right, size: 20, color: Colors.grey[500]),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // When mart is not available, show compact delivery address strip instead of bar
+    if (_martAvailableInZone != true) {
+      return _buildSafeAddressStrip(context);
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16, bottom: 16),
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.orange,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Center(
+                child: Text(
+                  'FOOD',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                checkMartAvailability(
+                  widget.martProvider,
+                  widget.martNavigationProvider,
+                  widget.context,
+                );
+              },
+              child: Container(
+                margin: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Center(
+                  child: Text(
+                    'MART',
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> checkMartAvailability(
     MartProvider martProvider,
     MartNavigationProvider martNavigationProvider,
     BuildContext context,
@@ -157,71 +342,3 @@ Widget martFoodTabBarWidgetHome({
       _isMartChecking = false;
     }
   }
-
-  return Container(
-    margin: const EdgeInsets.only(top: 16, bottom: 16),
-    height: 48,
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.1),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
-        ),
-      ],
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: Colors.orange,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Center(
-              child: Text(
-                'FOOD',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-        ),
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              checkMartAvailability(
-                martProvider,
-                martNavigationProvider,
-                context,
-              );
-            },
-            child: Container(
-              margin: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Center(
-                child: Text(
-                  'MART',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-}

@@ -4,6 +4,7 @@ import 'package:jippymart_customer/app/cart_screen/screens/order_placing_screen/
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
+import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -13,8 +14,29 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
-class OrderPlacingScreen extends StatelessWidget {
+class OrderPlacingScreen extends StatefulWidget {
   const OrderPlacingScreen({super.key});
+
+  @override
+  State<OrderPlacingScreen> createState() => _OrderPlacingScreenState();
+}
+
+class _OrderPlacingScreenState extends State<OrderPlacingScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // After order placed: single GET /wallet via WalletProvider, then sync cart balance
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      try {
+        final wp = context.read<WalletProvider>();
+        final cart = context.read<CartControllerProvider>();
+        await wp.refreshWallet(force: true);
+        if (!mounted) return;
+        cart.syncWalletBalanceFromWallet(wp.moneyBalanceRupees);
+      } catch (_) {}
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -372,3 +394,4 @@ class OrderPlacingScreen extends StatelessWidget {
     );
   }
 }
+

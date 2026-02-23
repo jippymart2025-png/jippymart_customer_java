@@ -181,56 +181,77 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                 MySeparator(color: AppThemeData.grey200),
                 const SizedBox(height: 10),
                 // COUPON DISCOUNT SECTION
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        "Coupon Discount".tr,
-                        textAlign: TextAlign.start,
-                        style: TextStyle(
-                          fontFamily: AppThemeData.regular,
-                          color: AppThemeData.grey600,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Text(
-                          "- (${Constant.amountShow(amount: controller.couponAmount.toString())})",
-                          textAlign: TextAlign.start,
-                          style: TextStyle(
-                            fontFamily: AppThemeData.regular,
-                            color: AppThemeData.danger300,
-                            fontSize: 16,
-                          ),
-                        ),
-                        if (controller.selectedCouponModel.id != null &&
-                            controller.selectedCouponModel.id!.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 8.0),
-                            child: InkWell(
-                              onTap: () {
-                                controller.selectedCouponModel = CouponModel();
-                                controller.couponCodeController.text = '';
-                                controller.couponAmount = 0.0;
-                                controller.calculatePrice();
-                              },
-                              child: Text(
-                                "Remove".tr,
-                                style: TextStyle(
-                                  color: AppThemeData.danger300,
-                                  fontFamily: AppThemeData.medium,
-                                  fontSize: 14,
-                                  decoration: TextDecoration.underline,
-                                ),
+                Opacity(
+                  opacity: controller.isCouponDisabledByWallet ? 0.6 : 1,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Coupon Discount".tr,
+                              textAlign: TextAlign.start,
+                              style: TextStyle(
+                                fontFamily: AppThemeData.regular,
+                                color: AppThemeData.grey600,
+                                fontSize: 16,
                               ),
                             ),
                           ),
-                      ],
-                    ),
-                  ],
+                          Row(
+                            children: [
+                              Text(
+                                "- (${Constant.amountShow(amount: controller.couponAmount.toString())})",
+                                textAlign: TextAlign.start,
+                                style: TextStyle(
+                                  fontFamily: AppThemeData.regular,
+                                  color: AppThemeData.danger300,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              if (controller.selectedCouponModel.id != null &&
+                                  controller.selectedCouponModel.id!.isNotEmpty &&
+                                  !controller.isCouponDisabledByWallet)
+                                Padding(
+                                  padding: const EdgeInsets.only(left: 8.0),
+                                  child: InkWell(
+                                    onTap: () {
+                                      controller.selectedCouponModel = CouponModel();
+                                      controller.couponCodeController.text = '';
+                                      controller.couponAmount = 0.0;
+                                      controller.calculatePrice();
+                                    },
+                                    child: Text(
+                                      "Remove".tr,
+                                      style: TextStyle(
+                                        color: AppThemeData.danger300,
+                                        fontFamily: AppThemeData.medium,
+                                        fontSize: 14,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      if (controller.isCouponDisabledByWallet)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            "Coupons cannot be applied when wallet is used.".tr,
+                            style: TextStyle(
+                              fontFamily: AppThemeData.regular,
+                              fontSize: 12,
+                              color: AppThemeData.grey600,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 // SPECIAL DISCOUNT SECTION
                 if (controller.specialDiscountAmount > 0) ...[
@@ -373,6 +394,62 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                     ),
                   ],
                 ),
+                if (controller.useWalletBalance && controller.walletToUse > 0) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Wallet deduction".tr,
+                          textAlign: TextAlign.start,
+                          style: TextStyle(
+                            fontFamily: AppThemeData.regular,
+                            color: AppThemeData.grey600,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        "-${Constant.amountShow(amount: controller.walletToUse.toStringAsFixed(2))}",
+                        textAlign: TextAlign.start,
+                        style: TextStyle(
+                          fontFamily: AppThemeData.regular,
+                          color: AppThemeData.danger300,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          "Remaining".tr,
+                          textAlign: TextAlign.start,
+                          style: TextStyle(
+                            fontFamily: AppThemeData.semiBold,
+                            color: AppThemeData.grey900,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        Constant.amountShow(
+                          amount: controller.paymentGatewayAmount.toStringAsFixed(2),
+                        ),
+                        textAlign: TextAlign.start,
+                        style: TextStyle(
+                          fontFamily: AppThemeData.semiBold,
+                          color: AppThemeData.grey900,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),

@@ -110,6 +110,22 @@ class Constant {
   static bool? isEnabledForCustomer = true;
   static bool isEnableAdsFeature = true;
 
+  // Wallet & Coin system: 1000 coins = ₹100; min redeem 1000 coins
+  static const int coinsPer100Rupees = 1000;
+  static const int minRedeemCoins = 1000;
+
+  /// Optional daily redeem cap in rupees (backend may enforce e.g. ₹500)
+  static const double dailyRedeemCapRupees = 500.0;
+
+  // Daily check-in: 25 coins/day; streak bonuses +100 / +250 / +500 on 10th / 20th / 30th day
+  static const int checkinCoinsPerDay = 25;
+  static const int streakBonusDay10 = 100;
+  static const int streakBonusDay20 = 250;
+  static const int streakBonusDay30 = 500;
+
+  /// Coins credited to referee (referred user) on their first order. Backend must apply in createOrder.
+  static const int refereeFirstOrderCoins = 100;
+
   static String amountShow({required String? amount}) {
     // Provide default values when currencyModel is null
     final symbol = currencyModel?.symbol ?? '₹';
@@ -1010,6 +1026,15 @@ class Constant {
     );
 
     return distance;
+  }
+
+  /// Returns estimated delivery time: "15-20 mins" if under 3 km, else "25-30 mins".
+  static String getDeliveryTimeText(VendorModel vendor) {
+    double? km = vendor.distance;
+    if (km == null) {
+      km = double.tryParse(getDistanceFromVendor(vendor));
+    }
+    return (km != null && km < 2) ? "15-20 mins" : "25-30 mins";
   }
 
   String getTimeInTheMinutes({required double distance}) {
