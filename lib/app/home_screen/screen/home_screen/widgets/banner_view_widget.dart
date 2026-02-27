@@ -153,8 +153,8 @@ class _BannerViewState extends State<BannerView> {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 160,
-      child: Consumer2<RestaurantDetailsProvider, HomeProvider>(
-        builder: (context, restaurantDetailsProvider, homeProvider, _) {
+      child: Consumer<HomeProvider>(
+        builder: (context, homeProvider, _) {
           // This should be inside the builder function, not outside
           if (!_timerStarted && homeProvider.bannerModel.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -201,6 +201,8 @@ class _BannerViewState extends State<BannerView> {
                 final isLastItem = index == homeProvider.bannerModel.length - 1;
                 return InkWell(
                   onTap: () async {
+                    final restaurantDetailsProvider =
+                        context.read<RestaurantDetailsProvider>();
                     homeProvider.bannerOnTapFunction(
                       bannerModel,
                       restaurantDetailsProvider,

@@ -39,6 +39,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:path/path.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
 import 'package:url_launcher/url_launcher.dart';
@@ -49,70 +50,61 @@ class HomeScreenTwo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer4<
-      HomeProvider,
-      MartProvider,
-      MartNavigationProvider,
-      BestRestaurantProvider
-    >(
-      builder:
-          (
-            context,
-            controller,
-            martProvider,
-            martNavigationProvider,
-            bestRestaurantProvider,
-            _,
-          ) {
-            return AnnotatedRegion<SystemUiOverlayStyle>(
-              value: const SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness: Brightness.dark,
-                statusBarBrightness: Brightness.light,
-                systemStatusBarContrastEnforced: false,
-              ),
-              child: Scaffold(
-                body: Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage(ImageConst.backgroundImage),
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  child: RefreshIndicator(
-                    onRefresh: () async {
-                      await controller.getRefresh(context);
-                    },
-                    child: _buildContent(
-                      controller,
-                      bestRestaurantProvider,
-                      context,
-                    ),
-                  ),
+    return Consumer<HomeProvider>(
+      builder: (context, controller, _) {
+        return AnnotatedRegion<SystemUiOverlayStyle>(
+          value: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+            systemStatusBarContrastEnforced: false,
+          ),
+          child: Scaffold(
+            body: Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(ImageConst.backgroundImage),
+                  fit: BoxFit.cover,
                 ),
-                floatingActionButton: _buildWhatsAppFAB(),
               ),
-            );
-          },
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  await controller.getRefresh(context);
+                },
+                child: _buildContent(controller, context),
+              ),
+            ),
+            floatingActionButton: _buildWhatsAppFAB(),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildContent(
-    HomeProvider controller,
-    BestRestaurantProvider bestRestaurantProvider,
-    BuildContext context,
-  ) {
+  Widget _buildContent(HomeProvider controller, BuildContext context) {
     if (controller.isLoading || !controller.zoneCheckCompleted) {
       return const RestaurantLoadingWidget();
     }
 
-    if (controller.hasActuallyCheckedZone &&
-        Constant.isZoneAvailable == false &&
-        bestRestaurantProvider.allNearestRestaurant.isEmpty) {
-      return _buildNoServiceWidget(context);
-    }
+    return Selector<BestRestaurantProvider, (bool, bool)>(
+      selector: (_, p) => (p.isLoading, p.allNearestRestaurant.isEmpty),
+      builder: (context, data, _) {
+        final isBestLoading = data.$1;
+        final isAllNearestEmpty = data.$2;
 
-    return _buildMainContent(controller, bestRestaurantProvider, context);
+        if (isBestLoading) {
+          return const RestaurantLoadingWidget();
+        }
+
+        if (controller.hasActuallyCheckedZone &&
+            Constant.isZoneAvailable == false &&
+            isAllNearestEmpty) {
+          return _buildNoServiceWidget(context);
+        }
+
+        return _buildMainContent(controller, context);
+      },
+    );
   }
 
   Widget _buildNoServiceWidget(BuildContext context) {
@@ -165,11 +157,7 @@ class HomeScreenTwo extends StatelessWidget {
     );
   }
 
-  Widget _buildMainContent(
-    HomeProvider controller,
-    BestRestaurantProvider bestRestaurantProvider,
-    BuildContext context,
-  ) {
+  Widget _buildMainContent(HomeProvider controller, BuildContext context) {
     return Column(
       children: [
         HomeHeaderWidget(
@@ -185,10 +173,8 @@ class HomeScreenTwo extends StatelessWidget {
                 _buildCategoryViewSection(controller),
                 const SizedBox(height: 5),
                 // _buildDealsBanner(context),
-                BestRestaurantsSection(
-                  restaurantList: bestRestaurantProvider.bestRestaurantList,
-                ),
-                _buildAdvertisementSection(bestRestaurantProvider, controller),
+                const BestRestaurantsSection(restaurantList: []),
+                _buildAdvertisementSection(controller, context),
                 _buildBottomBannerSection(controller),
                 const SizedBox(height: 10),
                 _buildAllRestaurantsSection(context),
@@ -219,11 +205,21 @@ class HomeScreenTwo extends StatelessWidget {
   }
 
   Widget _buildAdvertisementSection(
-    BestRestaurantProvider bestRestaurantProvider,
     HomeProvider controller,
+    BuildContext context,
   ) {
-    if (Constant.isEnableAdsFeature != true ||
+    final bestRestaurantProvider = context.read<BestRestaurantProvider>();
+
+    if (Constant.isEnableAdsFeature != true) {
+      return const SizedBox();
+    }
+
+    if (bestRestaurantProvider.isLoading &&
         bestRestaurantProvider.advertisementList.isEmpty) {
+      return const RestaurantLoadingWidget();
+    }
+
+    if (bestRestaurantProvider.advertisementList.isEmpty) {
       return const SizedBox();
     }
 
@@ -283,9 +279,11 @@ class HomeScreenTwo extends StatelessWidget {
                       : bestRestaurantProvider.advertisementList.length,
                   padding: EdgeInsets.zero,
                   itemBuilder: (BuildContext context, int index) {
-                    return AdvertisementHomeCard(
-                      controller: controller,
-                      model: bestRestaurantProvider.advertisementList[index],
+                    return RepaintBoundary(
+                      child: AdvertisementHomeCard(
+                        controller: controller,
+                        model: bestRestaurantProvider.advertisementList[index],
+                      ),
                     );
                   },
                 ),
@@ -463,69 +461,60 @@ class HomeScreenTwo extends StatelessWidget {
           return const SizedBox.shrink();
         }
         final bestRestaurantProvider = context.read<BestRestaurantProvider>();
-        return Consumer<RestaurantDetailsProvider>(
-          builder: (context, restaurantDetailsProvider, __) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
-                  child: Text(
-                    "All Restaurants",
-                    style: TextStyle(
-                      fontFamily: AppThemeData.medium,
-                      color: AppThemeData.grey900,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+              child: Text(
+                "All Restaurants",
+                style: TextStyle(
+                  fontFamily: AppThemeData.medium,
+                  color: AppThemeData.grey900,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16.0,
-                    vertical: 8.0,
-                  ),
-                  child: FilterBar(
-                    selectedFilters: {},
-                    onFilterToggled: (filter) => _handleFilterToggle(
-                      filter,
-                      bestRestaurantProvider,
-                      context,
-                    ),
-                    availableFilters: data.$5,
-                    currentFilter: data.$4,
-                  ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              child: FilterBar(
+                selectedFilters: {},
+                onFilterToggled: (filter) => _handleFilterToggle(
+                  filter,
+                  bestRestaurantProvider,
+                  context,
                 ),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: GridView.builder(
-                    shrinkWrap: true,
-                    primary: false,
-                    padding: EdgeInsets.zero,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: allRestaurants.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 3,
-                          crossAxisSpacing: 6,
-                          mainAxisSpacing: 8,
-                          childAspectRatio: 0.65,
-                        ),
-                    itemBuilder: (BuildContext context, int index) {
-                      return RepaintBoundary(
-                        child: _buildRestaurantCard(
-                          allRestaurants[index],
-                          restaurantDetailsProvider,
-                          context,
-                        ),
-                      );
-                    },
-                  ),
+                availableFilters: data.$5,
+                currentFilter: data.$4,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: GridView.builder(
+                shrinkWrap: true,
+                primary: false,
+                padding: EdgeInsets.zero,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: allRestaurants.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 6,
+                  mainAxisSpacing: 8,
+                  childAspectRatio: 0.65,
                 ),
-              ],
-            );
-          },
+                itemBuilder: (BuildContext context, int index) {
+                  return RepaintBoundary(
+                    child: _buildRestaurantCard(allRestaurants[index], context),
+                  );
+                },
+              ),
+            ),
+          ],
         );
       },
     );
@@ -557,11 +546,8 @@ class HomeScreenTwo extends StatelessWidget {
     bestRestaurantProvider.applyFilter(apiFilter);
   }
 
-  Widget _buildRestaurantCard(
-    VendorModel vendorModel,
-    RestaurantDetailsProvider restaurantDetailsProvider,
-    BuildContext context,
-  ) {
+  Widget _buildRestaurantCard(VendorModel vendorModel, BuildContext context) {
+    final restaurantDetailsProvider = context.read<RestaurantDetailsProvider>();
     final isClosed = !RestaurantStatusUtils.canAcceptOrders(vendorModel);
 
     return InkWell(
@@ -927,7 +913,7 @@ class _TimeThenFastDeliveryWidgetState
   }
 }
 
-class AdvertisementHomeCard extends StatelessWidget {
+class AdvertisementHomeCard extends StatefulWidget {
   final AdvertisementModel model;
   final HomeProvider controller;
 
@@ -938,108 +924,106 @@ class AdvertisementHomeCard extends StatelessWidget {
   });
 
   @override
+  State<AdvertisementHomeCard> createState() => _AdvertisementHomeCardState();
+}
+
+class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
+  VendorModel? _cachedVendor;
+
+  @override
   Widget build(BuildContext context) {
-    return Consumer<RestaurantDetailsProvider>(
-      builder: (context, restaurantDetailsProvider, _) {
-        return InkWell(
-          onTap: () => _onAdvertisementTap(restaurantDetailsProvider),
-          child: Container(
-            margin: const EdgeInsets.only(right: 16),
-            width: Responsive.width(70, context),
-            decoration: BoxDecoration(
-              color: AppThemeData.surface,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 2,
-                  spreadRadius: 0,
-                  offset: const Offset(0, 1),
-                ),
-              ],
+    return InkWell(
+      onTap: () =>
+          _onAdvertisementTap(context.read<RestaurantDetailsProvider>()),
+      child: Container(
+        margin: const EdgeInsets.only(right: 16),
+        width: Responsive.width(70, context),
+        decoration: BoxDecoration(
+          color: AppThemeData.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 2,
+              spreadRadius: 0,
+              offset: const Offset(0, 1),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [_buildImageSection(), _buildContentSection()],
-            ),
-          ),
-        );
-      },
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [_buildImageSection(), _buildContentSection()],
+        ),
+      ),
     );
   }
 
   Widget _buildImageSection() {
     return Stack(
       children: [
-        model.type == 'restaurant_promotion'
+        widget.model.type == 'restaurant_promotion'
             ? ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
                 child: NetworkImageWidget(
-                  imageUrl: model.coverImage ?? '',
+                  imageUrl: widget.model.coverImage ?? '',
                   height: 135,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               )
             : VideoAdvWidget(
-                url: model.video ?? '',
+                url: widget.model.video ?? '',
                 height: 135,
                 width: double.infinity,
               ),
-        if (model.type != 'video_promotion' &&
-            model.vendorId != null &&
-            (model.showRating == true || model.showReview == true))
+        if (widget.model.type != 'video_promotion' &&
+            widget.model.vendorId != null &&
+            (widget.model.showRating == true ||
+                widget.model.showReview == true))
           Positioned(bottom: 8, right: 8, child: _buildRatingWidget()),
       ],
     );
   }
 
   Widget _buildRatingWidget() {
-    return FutureBuilder(
-      future: FireStoreUtils.getVendorById(model.vendorId!),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting ||
-            snapshot.hasError ||
-            snapshot.data == null) {
-          return const SizedBox();
-        }
+    if (_cachedVendor == null) {
+      return const SizedBox();
+    }
 
-        final vendorModel = snapshot.data!;
-        return Container(
-          decoration: ShapeDecoration(
-            color: AppThemeData.primary50,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(120),
+    final vendorModel = _cachedVendor!;
+    return Container(
+      decoration: ShapeDecoration(
+        color: AppThemeData.primary50,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(120),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            SvgPicture.asset(
+              "assets/icons/ic_star.svg",
+              colorFilter: ColorFilter.mode(
+                AppThemeData.primary300,
+                BlendMode.srcIn,
+              ),
             ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              children: [
-                SvgPicture.asset(
-                  "assets/icons/ic_star.svg",
-                  colorFilter: ColorFilter.mode(
-                    AppThemeData.primary300,
-                    BlendMode.srcIn,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  "${model.showRating == true ? Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString()) : ''} ${model.showReview == true ? '(${vendorModel.reviewsCount!.toStringAsFixed(0)})' : ''}",
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: AppThemeData.primary300,
-                    fontFamily: AppThemeData.semiBold,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
+            const SizedBox(width: 5),
+            Text(
+              "${widget.model.showRating == true ? Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString()) : ''} ${widget.model.showReview == true ? '(${vendorModel.reviewsCount!.toStringAsFixed(0)})' : ''}",
+              style: TextStyle(
+                fontSize: 14,
+                color: AppThemeData.primary300,
+                fontFamily: AppThemeData.semiBold,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
@@ -1049,11 +1033,11 @@ class AdvertisementHomeCard extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (model.type == 'restaurant_promotion')
+          if (widget.model.type == 'restaurant_promotion')
             ClipRRect(
               borderRadius: BorderRadius.circular(30),
               child: NetworkImageWidget(
-                imageUrl: model.profileImage ?? '',
+                imageUrl: widget.model.profileImage ?? '',
                 height: 50,
                 width: 50,
                 fit: BoxFit.cover,
@@ -1065,7 +1049,7 @@ class AdvertisementHomeCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  model.title ?? '',
+                  widget.model.title ?? '',
                   style: TextStyle(
                     color: AppThemeData.grey900,
                     fontSize: 14,
@@ -1074,7 +1058,7 @@ class AdvertisementHomeCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  model.description ?? '',
+                  widget.model.description ?? '',
                   style: TextStyle(
                     fontSize: 12,
                     fontFamily: AppThemeData.medium,
@@ -1112,9 +1096,13 @@ class AdvertisementHomeCard extends StatelessWidget {
   ) async {
     ShowToastDialog.showLoader("Please wait".tr);
     try {
-      VendorModel? vendorModel = await FireStoreUtils.getVendorById(
-        model.vendorId!,
-      );
+      VendorModel? vendorModel = _cachedVendor;
+      if (vendorModel == null && widget.model.vendorId != null) {
+        vendorModel = await FireStoreUtils.getVendorById(
+          widget.model.vendorId!,
+        );
+        _cachedVendor = vendorModel;
+      }
       ShowToastDialog.closeLoader();
 
       if (vendorModel != null) {

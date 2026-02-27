@@ -13,10 +13,11 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/services/cache_manager.dart';
 
+import '../../../../../utils/restaurant_status_utils.dart';
 import '../../../../restaurant_details_screen/provider/restaurant_details_provider.dart';
 
 class BestRestaurantProvider extends ChangeNotifier {
-  static const Duration _networkTimeout = Duration(seconds: 15);
+  static const Duration _networkTimeout = Duration(seconds: 30);
   static const Duration _debounceMs = Duration(milliseconds: 16);
   Timer? _notifyTimer;
   Future<void>? _storiesLoadingTask;
@@ -46,6 +47,22 @@ class BestRestaurantProvider extends ChangeNotifier {
   List<CouponModel> couponList = <CouponModel>[];
   List<VendorModel> couponRestaurantList = <VendorModel>[];
   List<StoryModel> storyList = <StoryModel>[];
+  List<VendorModel> filteredRestaurantList = <VendorModel>[];
+  List<VendorModel> displayList = <VendorModel>[];
+
+  void _updateBestRestaurantDerivedLists() {
+    final filtered = bestRestaurantList
+        .where(
+          (restaurant) => RestaurantStatusUtils.canAcceptOrders(restaurant),
+        )
+        .toList();
+    filteredRestaurantList = filtered;
+    if (filtered.length <= 9) {
+      displayList = filtered;
+    } else {
+      displayList = filtered.sublist(0, 9);
+    }
+  }
 
   Future<void> loadRestaurantsAndRelatedData({String? filter}) async {
     print('[DEBUG] Loading restaurants from API with filter: $filter');
@@ -67,21 +84,21 @@ class BestRestaurantProvider extends ChangeNotifier {
         bestRestaurantsKey,
         () => getBestRestaurants(zoneId: zoneId),
       );
-      final nearestFuture =
-          CacheManager().getOrSetRestaurants<List<VendorModel>>(
-        nearestKey,
-        () => getNearestRestaurants(
-          zoneId: zoneId,
-          latitude: latitude,
-          longitude: longitude,
-          radius: double.parse(Constant.radius),
-          filter: filter,
-          onFiltersReceived: (availableFilters, currentFilter) {
-            this.availableFilters = availableFilters;
-            this.currentFilter = currentFilter;
-          },
-        ),
-      );
+      final nearestFuture = CacheManager()
+          .getOrSetRestaurants<List<VendorModel>>(
+            nearestKey,
+            () => getNearestRestaurants(
+              zoneId: zoneId,
+              latitude: latitude,
+              longitude: longitude,
+              radius: double.parse(Constant.radius),
+              filter: filter,
+              onFiltersReceived: (availableFilters, currentFilter) {
+                this.availableFilters = availableFilters;
+                this.currentFilter = currentFilter;
+              },
+            ),
+          );
 
       final results = await Future.wait([bestFuture, nearestFuture]);
       final bestRestaurants = results[0] as List<VendorModel>;
@@ -94,6 +111,7 @@ class BestRestaurantProvider extends ChangeNotifier {
       allNearestRestaurant.clear();
       advertisementList.clear();
       storyList.clear();
+      _updateBestRestaurantDerivedLists();
       allNearestRestaurant.addAll(restaurants);
       newArrivalRestaurantList.addAll(restaurants);
       popularRestaurantList.addAll(restaurants);
@@ -103,13 +121,15 @@ class BestRestaurantProvider extends ChangeNotifier {
       _scheduleNotify();
 
       // Distance calc in background, then notify
-      _processRestaurantData(allNearestRestaurant).then((_) {
-        logRestaurantDiagnostics();
-        _scheduleNotify();
-      }).catchError((e) {
-        print('[DEBUG] Error in distance processing: $e');
-        _scheduleNotify();
-      });
+      _processRestaurantData(allNearestRestaurant)
+          .then((_) {
+            logRestaurantDiagnostics();
+            _scheduleNotify();
+          })
+          .catchError((e) {
+            print('[DEBUG] Error in distance processing: $e');
+            _scheduleNotify();
+          });
 
       _storiesLoadingTask = _loadStoriesFromAPI(zoneId).then((_) {
         _scheduleNotify();
@@ -118,10 +138,10 @@ class BestRestaurantProvider extends ChangeNotifier {
         print('[DEBUG] Error in background story load: $e');
       });
 
-      _relatedDataLoadingTask =
-          _loadRelatedDataInParallel(allNearestRestaurant).then((_) {
-        _scheduleNotify();
-      });
+      _relatedDataLoadingTask = _loadRelatedDataInParallel(allNearestRestaurant)
+          .then((_) {
+            _scheduleNotify();
+          });
       _relatedDataLoadingTask?.catchError((e) {
         print('[DEBUG] Error in background related-data load: $e');
       });
@@ -206,46 +226,52 @@ class BestRestaurantProvider extends ChangeNotifier {
     final futures = <Future<void>>[];
     final couponsKey = 'restaurant_coupons_all';
     futures.add(
-      CacheManager().getOrSet<List<CouponModel>>(
-        couponsKey,
-        () => RestaurantApiHelper.getRestaurantCoupons(restaurantId: ''),
-        type: CacheType.general,
-      ).then((value) {
-        couponRestaurantList.clear();
-        couponList.clear();
-        final now = DateTime.now();
-        for (var coupon in value) {
-          if (coupon.resturantId == null) continue;
-          final restaurant = restaurantById[coupon.resturantId!];
-          if (restaurant != null &&
-              coupon.expiresAt != null &&
-              coupon.expiresAt!.toDate().isAfter(now)) {
-            couponList.add(coupon);
-            couponRestaurantList.add(restaurant);
-          }
-        }
-        print('[DEBUG] Coupons loaded: ${couponList.length}');
-      }),
+      CacheManager()
+          .getOrSet<List<CouponModel>>(
+            couponsKey,
+            () => RestaurantApiHelper.getRestaurantCoupons(restaurantId: ''),
+            type: CacheType.general,
+          )
+          .then((value) {
+            couponRestaurantList.clear();
+            couponList.clear();
+            final now = DateTime.now();
+            for (var coupon in value) {
+              if (coupon.resturantId == null) continue;
+              final restaurant = restaurantById[coupon.resturantId!];
+              if (restaurant != null &&
+                  coupon.expiresAt != null &&
+                  coupon.expiresAt!.toDate().isAfter(now)) {
+                couponList.add(coupon);
+                couponRestaurantList.add(restaurant);
+              }
+            }
+            print('[DEBUG] Coupons loaded: ${couponList.length}');
+          }),
     );
 
     if (Constant.isEnableAdsFeature == true) {
       final adsKey = 'advertisements_all';
       futures.add(
-        CacheManager().getOrSet<List<AdvertisementModel>>(
-          adsKey,
-          () => FireStoreUtils.getAllAdvertisement(),
-          type: CacheType.banners,
-        ).then((value) {
-          advertisementList.clear();
-          for (var ad in value) {
-            if (ad.vendorId == null) continue;
-            final restaurant = restaurantById[ad.vendorId!];
-            if (restaurant != null) {
-              advertisementList.add(ad);
-            }
-          }
-          print('[DEBUG] Advertisements loaded: ${advertisementList.length}');
-        }),
+        CacheManager()
+            .getOrSet<List<AdvertisementModel>>(
+              adsKey,
+              () => FireStoreUtils.getAllAdvertisement(),
+              type: CacheType.banners,
+            )
+            .then((value) {
+              advertisementList.clear();
+              for (var ad in value) {
+                if (ad.vendorId == null) continue;
+                final restaurant = restaurantById[ad.vendorId!];
+                if (restaurant != null) {
+                  advertisementList.add(ad);
+                }
+              }
+              print(
+                '[DEBUG] Advertisements loaded: ${advertisementList.length}',
+              );
+            }),
       );
     }
 
@@ -394,8 +420,12 @@ class BestRestaurantProvider extends ChangeNotifier {
       final batch = vendors.sublist(i, end);
       for (var vendor in batch) {
         if (vendor.latitude != null && vendor.longitude != null) {
-          vendor.distance =
-              Constant.calculateDistance(lat, lng, vendor.latitude!, vendor.longitude!);
+          vendor.distance = Constant.calculateDistance(
+            lat,
+            lng,
+            vendor.latitude!,
+            vendor.longitude!,
+          );
         } else {
           vendor.distance = null;
         }

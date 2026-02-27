@@ -213,8 +213,8 @@ class HomeProvider extends ChangeNotifier {
 
       await Future.wait([
         locationFuture.timeout(const Duration(seconds: 8)),
-        bannersFuture.timeout(const Duration(seconds: 5)),
-        categoryFuture.timeout(const Duration(seconds: 5)),
+        bannersFuture.timeout(const Duration(seconds: 15)),
+        categoryFuture.timeout(const Duration(seconds: 15)),
       ], eagerError: true).catchError((_) {
         // Continue even if some requests fail
       });

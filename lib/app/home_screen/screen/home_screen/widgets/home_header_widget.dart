@@ -21,6 +21,7 @@ import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/widgets/coming_soon_dialog.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
+import 'package:jippymart_customer/utils/network_image_widget.dart';
 
 /// Reference-style home header: location (pin + name + address), profile, wallet, optional FOOD|MART bar, search.
 class HomeHeaderWidget extends StatefulWidget {
@@ -288,10 +289,15 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
         user.profilePictureURL!.isNotEmpty &&
         user.profilePictureURL!.toLowerCase() != 'null';
     if (hasImage) {
-      return CircleAvatar(
-        radius: 20,
-        backgroundColor: AppThemeData.primary300,
-        backgroundImage: NetworkImage(user.profilePictureURL!),
+      return ClipOval(
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: NetworkImageWidget(
+            imageUrl: user.profilePictureURL!,
+            fit: BoxFit.cover,
+          ),
+        ),
       );
     }
     return InitialsAvatar(

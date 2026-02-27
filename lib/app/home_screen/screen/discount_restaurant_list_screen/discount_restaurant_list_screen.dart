@@ -38,250 +38,241 @@ class DiscountRestaurantListScreen extends StatelessWidget {
           ),
           body: controller.isLoading
               ? Constant.loader()
-              : Consumer<RestaurantDetailsProvider>(
-                  builder: (context, restaurantDetailsProvider, _) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: controller.vendorList.length,
-                        itemBuilder: (context, index) {
-                          VendorModel vendorModel =
-                              controller.vendorList[index];
-                          CouponModel offerModel = controller.couponList[index];
-                          return InkWell(
-                            onTap: () {
-                              restaurantDetailsProvider.initFunction(
+              : Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: controller.vendorList.length,
+                    itemBuilder: (context, index) {
+                      VendorModel vendorModel = controller.vendorList[index];
+                      CouponModel offerModel = controller.couponList[index];
+                      return InkWell(
+                        onTap: () {
+                          context
+                              .read<RestaurantDetailsProvider>()
+                              .initFunction(
                                 vendorModels: vendorModel,
                               );
-                              Get.to(
-                                const RestaurantDetailsScreen(),
-                                arguments: {"vendorModel": vendorModel},
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.only(bottom: 20),
-                              child: Container(
-                                decoration: ShapeDecoration(
-                                  color: AppThemeData.grey50,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                          Get.to(
+                            const RestaurantDetailsScreen(),
+                            arguments: {"vendorModel": vendorModel},
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 20),
+                          child: Container(
+                            decoration: ShapeDecoration(
+                              color: AppThemeData.grey50,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                ClipRRect(
+                                  borderRadius: const BorderRadius.only(
+                                    topLeft: Radius.circular(16),
+                                    bottomLeft: Radius.circular(16),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      NetworkImageWidget(
+                                        imageUrl:
+                                            vendorModel.photo.toString(),
+                                        fit: BoxFit.cover,
+                                        height: Responsive.height(
+                                          16,
+                                          context,
+                                        ),
+                                        width: Responsive.width(
+                                          28,
+                                          context,
+                                        ),
+                                      ),
+                                      Container(
+                                        height: Responsive.height(
+                                          16,
+                                          context,
+                                        ),
+                                        width: Responsive.width(
+                                          28,
+                                          context,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: const Alignment(
+                                              -0.00,
+                                              -1.00,
+                                            ),
+                                            end: const Alignment(0, 1),
+                                            colors: [
+                                              Colors.black.withOpacity(0),
+                                              const Color(0xFF111827),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 10,
+                                        left: 10,
+                                        child: Container(
+                                          decoration: ShapeDecoration(
+                                            color: AppThemeData.secondary300,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                120,
+                                              ),
+                                            ),
+                                          ),
+                                          child: Padding(
+                                            padding:
+                                                const EdgeInsets.symmetric(
+                                                  horizontal: 10,
+                                                  vertical: 4,
+                                                ),
+                                            child: Text(
+                                              "${offerModel.discountType == "Fix Price" ? "${Constant.currencyModel!.symbol}" : ""}${offerModel.discount}${offerModel.discountType == "Percentage" ? "% off".toUpperCase().tr : " off".toUpperCase().tr}",
+                                              textAlign: TextAlign.start,
+                                              maxLines: 1,
+                                              style: TextStyle(
+                                                overflow: TextOverflow.ellipsis,
+                                                fontFamily:
+                                                    AppThemeData.semiBold,
+                                                color: AppThemeData.grey50,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                child: Row(
-                                  children: [
-                                    ClipRRect(
-                                      borderRadius: const BorderRadius.only(
-                                        topLeft: Radius.circular(16),
-                                        bottomLeft: Radius.circular(16),
-                                      ),
-                                      child: Stack(
-                                        children: [
-                                          NetworkImageWidget(
-                                            imageUrl: vendorModel.photo
-                                                .toString(),
-                                            fit: BoxFit.cover,
-                                            height: Responsive.height(
-                                              16,
-                                              context,
-                                            ),
-                                            width: Responsive.width(
-                                              28,
-                                              context,
-                                            ),
-                                          ),
-                                          Container(
-                                            height: Responsive.height(
-                                              16,
-                                              context,
-                                            ),
-                                            width: Responsive.width(
-                                              28,
-                                              context,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                begin: const Alignment(
-                                                  -0.00,
-                                                  -1.00,
-                                                ),
-                                                end: const Alignment(0, 1),
-                                                colors: [
-                                                  Colors.black.withOpacity(0),
-                                                  const Color(0xFF111827),
-                                                ],
-                                              ),
-                                            ),
-                                          ),
-                                          Positioned(
-                                            top: 10,
-                                            left: 10,
-                                            child: Container(
-                                              decoration: ShapeDecoration(
-                                                color:
-                                                    AppThemeData.secondary300,
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(
-                                                        120,
-                                                      ),
+                                Expanded(
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                vendorModel.title.toString(),
+                                                textAlign: TextAlign.start,
+                                                maxLines: 1,
+                                                style: TextStyle(
+                                                  fontSize: 18,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  fontFamily:
+                                                      AppThemeData.semiBold,
+                                                  color:
+                                                      AppThemeData.grey900,
                                                 ),
                                               ),
-                                              child: Padding(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 10,
-                                                      vertical: 4,
-                                                    ),
-                                                child: Text(
-                                                  "${offerModel.discountType == "Fix Price" ? "${Constant.currencyModel!.symbol}" : ""}${offerModel.discount}${offerModel.discountType == "Percentage" ? "% off".toUpperCase().tr : " off".toUpperCase().tr}",
-                                                  textAlign: TextAlign.start,
-                                                  maxLines: 1,
-                                                  style: TextStyle(
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                    fontFamily:
-                                                        AppThemeData.semiBold,
-                                                    color: AppThemeData.grey50,
+                                            ),
+                                            Row(
+                                              children: [
+                                                SvgPicture.asset(
+                                                  "assets/icons/ic_star.svg",
+                                                  colorFilter:
+                                                      ColorFilter.mode(
+                                                    AppThemeData.primary300,
+                                                    BlendMode.srcIn,
                                                   ),
                                                 ),
-                                              ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
+                                                  style: TextStyle(
+                                                    color: AppThemeData
+                                                        .primary300,
+                                                    fontFamily: AppThemeData
+                                                        .semiBold,
+                                                    fontWeight:
+                                                        FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
+                                          ],
                                         ),
-                                        child: Column(
+                                        const SizedBox(height: 5),
+                                        Row(
                                           crossAxisAlignment:
                                               CrossAxisAlignment.start,
                                           children: [
-                                            Row(
-                                              children: [
-                                                Expanded(
-                                                  child: Text(
-                                                    vendorModel.title
-                                                        .toString(),
-                                                    textAlign: TextAlign.start,
-                                                    maxLines: 1,
-                                                    style: TextStyle(
-                                                      fontSize: 18,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      fontFamily:
-                                                          AppThemeData.semiBold,
-                                                      color:
-                                                          AppThemeData.grey900,
-                                                    ),
-                                                  ),
-                                                ),
-                                                Row(
-                                                  children: [
-                                                    SvgPicture.asset(
-                                                      "assets/icons/ic_star.svg",
-                                                      colorFilter:
-                                                          ColorFilter.mode(
-                                                            AppThemeData
-                                                                .primary300,
-                                                            BlendMode.srcIn,
-                                                          ),
-                                                    ),
-                                                    const SizedBox(width: 5),
-                                                    Text(
-                                                      "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
-                                                      style: TextStyle(
-                                                        color: AppThemeData
-                                                            .primary300,
-                                                        fontFamily: AppThemeData
-                                                            .semiBold,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ],
+                                            Icon(
+                                              Icons.location_on,
+                                              size: 18,
+                                              color: AppThemeData.grey600,
                                             ),
-                                            const SizedBox(height: 5),
-                                            Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Icon(
-                                                  Icons.location_on,
-                                                  size: 18,
-                                                  color: AppThemeData.grey600,
-                                                ),
-                                                const SizedBox(width: 5),
-                                                Expanded(
-                                                  child: Text(
-                                                    vendorModel.location
-                                                        .toString(),
-                                                    style: TextStyle(
-                                                      fontFamily:
-                                                          AppThemeData.medium,
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      fontSize: 12,
-                                                      color:
-                                                          AppThemeData.grey400,
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                            const SizedBox(height: 5),
-                                            Container(
-                                              color: AppThemeData.primary50,
-                                              child: DottedBorder(
-                                                options:
-                                                    RoundedRectDottedBorderOptions(
-                                                      color: AppThemeData
-                                                          .primary300,
-                                                      strokeWidth: 1,
-                                                      radius:
-                                                          const Radius.circular(
-                                                            12,
-                                                          ),
-                                                      dashPattern: const [6, 6],
-                                                    ),
-                                                child: Padding(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 2,
-                                                      ),
-                                                  child: Text(
-                                                    "${offerModel.code}",
-                                                    textAlign: TextAlign.start,
-                                                    style: TextStyle(
-                                                      fontFamily:
-                                                          AppThemeData.semiBold,
-                                                      fontSize: 16,
-                                                      color: AppThemeData
-                                                          .primary300,
-                                                    ),
-                                                  ),
+                                            const SizedBox(width: 5),
+                                            Expanded(
+                                              child: Text(
+                                                vendorModel.location
+                                                    .toString(),
+                                                style: TextStyle(
+                                                  fontFamily:
+                                                      AppThemeData.medium,
+                                                  fontWeight: FontWeight.w500,
+                                                  fontSize: 12,
+                                                  color: AppThemeData.grey400,
                                                 ),
                                               ),
                                             ),
                                           ],
                                         ),
-                                      ),
+                                        const SizedBox(height: 5),
+                                        Container(
+                                          color: AppThemeData.primary50,
+                                          child: DottedBorder(
+                                            options:
+                                                RoundedRectDottedBorderOptions(
+                                                  color: AppThemeData
+                                                      .primary300,
+                                                  strokeWidth: 1,
+                                                  radius:
+                                                      const Radius.circular(
+                                                        12,
+                                                      ),
+                                                  dashPattern: const [6, 6],
+                                                ),
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 2,
+                                                  ),
+                                              child: Text(
+                                                "${offerModel.code}",
+                                                textAlign: TextAlign.start,
+                                                style: TextStyle(
+                                                  fontFamily:
+                                                      AppThemeData.semiBold,
+                                                  fontSize: 16,
+                                                  color: AppThemeData
+                                                      .primary300,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
+                              ],
                             ),
-                          );
-                        },
-                      ),
-                    );
-                  },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
                 ),
         );
       },

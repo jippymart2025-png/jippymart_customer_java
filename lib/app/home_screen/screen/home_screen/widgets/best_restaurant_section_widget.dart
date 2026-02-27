@@ -463,6 +463,8 @@ import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
 import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../../widgets/app_loading_widget.dart';
+
 class BestRestaurantsSection extends StatelessWidget {
   final List restaurantList;
 
@@ -483,14 +485,12 @@ class BestRestaurantsSection extends StatelessWidget {
             restaurantDetailsProvider,
             _,
           ) {
-            final filteredRestaurantList = provider.bestRestaurantList
-                .where(
-                  (restaurant) =>
-                      RestaurantStatusUtils.canAcceptOrders(restaurant),
-                )
-                .toList();
+            final filteredRestaurantList = provider.filteredRestaurantList;
+            final displayList = provider.displayList;
 
-            final displayList = filteredRestaurantList.take(9).toList();
+            if (provider.isLoading && displayList.isEmpty) {
+              return const RestaurantLoadingWidget();
+            }
             final allRestaurantsList = filteredRestaurantList;
 
             if (displayList.isEmpty) {
@@ -557,131 +557,136 @@ class BestRestaurantsSection extends StatelessWidget {
                       final cardWidth =
                           (MediaQuery.of(context).size.width - 32 - 12) / 3;
 
-                      return SizedBox(
-                        width: cardWidth,
-                        child: InkWell(
-                          onTap: isClosed
-                              ? null
-                              : () {
-                                  restaurantDetailsProvider.initFunction(
-                                    vendorModels: vendorModel,
-                                  );
-                                  Get.to(const RestaurantDetailsScreen());
-                                },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: AppThemeData.grey50,
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Stack(
-                              children: [
-                                // Main Content
-                                Padding(
-                                  padding: const EdgeInsets.all(8),
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      // 🖼 Image Section
-                                      AspectRatio(
-                                        aspectRatio: 1,
-                                        child: Container(
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            color: AppThemeData.grey200
-                                                .withOpacity(0.5),
-                                          ),
-                                          child: Stack(
-                                            children: [
-                                              // Restaurant Image
-                                              ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(12),
-                                                child:
-                                                    RestaurantImageWithStatus(
-                                                      vendorModel: vendorModel,
-                                                      height: double.infinity,
-                                                      width: double.infinity,
-                                                    ),
-                                              ),
-                                              // Status Badge
-                                              Positioned(
-                                                top: 6,
-                                                left: 6,
-                                                child:
-                                                    _buildEnhancedStatusBadge(
-                                                      vendorModel,
-                                                    ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Text(
-                                        vendorModel.title ?? 'Restaurant',
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          fontFamily: AppThemeData.semiBold,
-                                          color: AppThemeData.grey900,
-                                          height: 1.2,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 2),
-                                      _buildDeliveryTimeAndFastRow(vendorModel),
-                                      const SizedBox(height: 1),
-                                      _buildBottomInfoRow(vendorModel),
-                                    ],
+                      return RepaintBoundary(
+                        child: SizedBox(
+                          width: cardWidth,
+                          child: InkWell(
+                            onTap: isClosed
+                                ? null
+                                : () {
+                                    restaurantDetailsProvider.initFunction(
+                                      vendorModels: vendorModel,
+                                    );
+                                    Get.to(const RestaurantDetailsScreen());
+                                  },
+                            borderRadius: BorderRadius.circular(16),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppThemeData.grey50,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
                                   ),
-                                ),
-                                if (isClosed) ...[
-                                  Positioned.fill(
-                                    child: Container(
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.4),
-                                        borderRadius: BorderRadius.circular(16),
-                                      ),
-                                      child: Center(
-                                        child: Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.black.withOpacity(
-                                              0.7,
+                                ],
+                              ),
+                              child: Stack(
+                                children: [
+                                  // Main Content
+                                  Padding(
+                                    padding: const EdgeInsets.all(8),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        // 🖼 Image Section
+                                        AspectRatio(
+                                          aspectRatio: 1,
+                                          child: Container(
+                                            decoration: BoxDecoration(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                              color: AppThemeData.grey200
+                                                  .withOpacity(0.5),
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                            child: Stack(
+                                              children: [
+                                                // Restaurant Image
+                                                ClipRRect(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                  child:
+                                                      RestaurantImageWithStatus(
+                                                        vendorModel:
+                                                            vendorModel,
+                                                        height: double.infinity,
+                                                        width: double.infinity,
+                                                      ),
+                                                ),
+                                                // Status Badge
+                                                Positioned(
+                                                  top: 6,
+                                                  left: 6,
+                                                  child:
+                                                      _buildEnhancedStatusBadge(
+                                                        vendorModel,
+                                                      ),
+                                                ),
+                                              ],
                                             ),
                                           ),
-                                          child: Text(
-                                            'CLOSED',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontFamily: AppThemeData.bold,
-                                              letterSpacing: 0.5,
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Text(
+                                          vendorModel.title ?? 'Restaurant',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontFamily: AppThemeData.semiBold,
+                                            color: AppThemeData.grey900,
+                                            height: 1.2,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 2),
+                                        _buildDeliveryTimeAndFastRow(
+                                          vendorModel,
+                                        ),
+                                        const SizedBox(height: 1),
+                                        _buildBottomInfoRow(vendorModel),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isClosed) ...[
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.4),
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.black.withOpacity(
+                                                0.7,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              'CLOSED',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 10,
+                                                fontFamily: AppThemeData.bold,
+                                                letterSpacing: 0.5,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                  ),
+                                  ],
                                 ],
-                              ],
+                              ),
                             ),
                           ),
                         ),
