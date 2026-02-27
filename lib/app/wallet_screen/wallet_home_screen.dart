@@ -300,6 +300,7 @@ import 'package:jippymart_customer/app/wallet_screen/coin_ledger_screen.dart';
 import 'package:jippymart_customer/app/wallet_screen/redeem_coins_sheet.dart';
 import 'package:jippymart_customer/app/wallet_screen/referral_screen.dart';
 import 'package:jippymart_customer/app/wallet_screen/checkin_section.dart';
+import 'package:jippymart_customer/utils/coin_sound.dart';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
 class _W {
@@ -341,6 +342,10 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
+  bool _isCheckinInProgress = false;
+  bool _isRedeemSheetOpen = false;
+   DateTime? _lastSnackAt;
+   String? _lastSnackKey;
 
   @override
   void initState() {
@@ -412,12 +417,16 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
                         const SizedBox(height: 20),
                         _QuickActionsRow(
                           wp: wp,
+                          onRedeem: () => _openRedeemSheet(wp),
                           onCheckin: () => _doCheckin(wp),
                         ),
                         const SizedBox(height: 24),
                         _SectionHeader(title: 'Daily Rewards'),
                         const SizedBox(height: 12),
-                        CheckinSection(wp: wp),
+                        CheckinSection(
+                          wp: wp,
+                          onCheckin: () => _doCheckin(wp),
+                        ),
                         const SizedBox(height: 24),
                         _SectionHeader(title: 'Activity'),
                         const SizedBox(height: 12),
@@ -489,43 +498,100 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
     );
   }
 
+  void _showSnackOnce({
+    required String key,
+    required String title,
+    required String message,
+    required Color backgroundColor,
+    required Color textColor,
+  }) {
+    final now = DateTime.now();
+    if (_lastSnackKey == key &&
+        _lastSnackAt != null &&
+        now.difference(_lastSnackAt!) < const Duration(seconds: 2)) {
+      return;
+    }
+    _lastSnackKey = key;
+    _lastSnackAt = now;
+    Get.snackbar(
+      title,
+      message,
+      snackPosition: SnackPosition.BOTTOM,
+      backgroundColor: backgroundColor,
+      colorText: textColor,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+    );
+  }
+
   // ─── Check-in handler ───────────────────────────────────────────────────────
   Future<void> _doCheckin(WalletProvider wp) async {
+    if (_isCheckinInProgress) {
+      return;
+    }
     if (wp.checkedInToday) {
-      Get.snackbar(
-        'Already Checked In',
-        'Come back tomorrow for more coins!',
-        snackPosition: SnackPosition.BOTTOM,
+      _showSnackOnce(
+        key: 'already_checked_in',
+        title: 'Already Checked In',
+        message: 'Come back tomorrow for more coins!',
         backgroundColor: _W.card,
-        colorText: _W.text1,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
+        textColor: _W.text1,
       );
       return;
     }
+    _isCheckinInProgress = true;
     final err = await wp.doCheckin();
-    if (!mounted) return;
+    if (!mounted) {
+      _isCheckinInProgress = false;
+      return;
+    }
+    _isCheckinInProgress = false;
     if (err != null) {
-      Get.snackbar(
-        'Check-in Failed',
-        err,
-        snackPosition: SnackPosition.BOTTOM,
+      _showSnackOnce(
+        key: 'checkin_failed',
+        title: 'Check-in Failed',
+        message: err,
         backgroundColor: _W.redLight,
-        colorText: _W.red,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
+        textColor: _W.red,
       );
     } else {
-      Get.snackbar(
-        '🎉 Checked In!',
-        'You earned ${wp.checkinStatus?.coinsAwarded ?? Constant.checkinCoinsPerDay} coins!',
-        snackPosition: SnackPosition.BOTTOM,
+      playCoinSound();
+      _showSnackOnce(
+        key: 'checkin_success',
+        title: '🎉 Checked In!',
+        message:
+            'You earned ${wp.checkinStatus?.coinsAwarded ?? Constant.checkinCoinsPerDay} coins!',
         backgroundColor: _W.goldLight,
-        colorText: _W.goldDark,
-        margin: const EdgeInsets.all(16),
-        borderRadius: 12,
+        textColor: _W.goldDark,
       );
     }
+  }
+
+  // ─── Redeem handler ────────────────────────────────────────────────────────
+  void _openRedeemSheet(WalletProvider wp) {
+    if (wp.coinBalance < Constant.minRedeemCoins) {
+      _showSnackOnce(
+        key: 'not_enough_coins',
+        title: 'Not enough coins',
+        message: 'Minimum ${Constant.minRedeemCoins} coins required.',
+        backgroundColor: _W.redLight,
+        textColor: _W.red,
+      );
+      return;
+    }
+    if (_isRedeemSheetOpen) return;
+    _isRedeemSheetOpen = true;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => RedeemCoinsSheet(
+        currentCoins: wp.coinBalance,
+        onRedeemed: () => wp.refreshWallet(force: true),
+      ),
+    ).whenComplete(() {
+      _isRedeemSheetOpen = false;
+    });
   }
 }
 
@@ -702,9 +768,14 @@ class _BalancePill extends StatelessWidget {
 
 // ─── Quick Actions Row ────────────────────────────────────────────────────────
 class _QuickActionsRow extends StatelessWidget {
-  const _QuickActionsRow({required this.wp, required this.onCheckin});
+  const _QuickActionsRow({
+    required this.wp,
+    required this.onRedeem,
+    required this.onCheckin,
+  });
 
   final WalletProvider wp;
+  final VoidCallback onRedeem;
   final VoidCallback onCheckin;
 
   @override
@@ -717,29 +788,7 @@ class _QuickActionsRow extends StatelessWidget {
             label: 'Redeem',
             iconColor: _W.red,
             bgColor: _W.redLight,
-            onTap: () {
-              if (wp.coinBalance < Constant.minRedeemCoins) {
-                Get.snackbar(
-                  'Not enough coins',
-                  'Minimum ${Constant.minRedeemCoins} coins required.',
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: _W.redLight,
-                  colorText: _W.red,
-                  margin: const EdgeInsets.all(16),
-                  borderRadius: 12,
-                );
-                return;
-              }
-              showModalBottomSheet<void>(
-                context: context,
-                isScrollControlled: true,
-                backgroundColor: Colors.transparent,
-                builder: (_) => RedeemCoinsSheet(
-                  currentCoins: wp.coinBalance,
-                  onRedeemed: () => wp.refreshWallet(force: true),
-                ),
-              );
-            },
+            onTap: onRedeem,
           ),
         ),
         const SizedBox(width: 12),

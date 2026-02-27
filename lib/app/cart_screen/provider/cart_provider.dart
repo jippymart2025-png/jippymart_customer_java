@@ -258,6 +258,13 @@ class CartControllerProvider extends ChangeNotifier {
   List<CouponModel> allCouponList = <CouponModel>[];
   String selectedFoodType = "Delivery";
   String selectedPaymentMethod = '';
+  /// Call after changing [selectedPaymentMethod] from UI so listeners rebuild.
+  void setSelectedPaymentMethod(String value) {
+    if (selectedPaymentMethod == value) return;
+    selectedPaymentMethod = value;
+    notifyListeners();
+  }
+
   String deliveryType = "instant";
   DateTime scheduleDateTime = DateTime.now();
   double totalDistance = 0.0;
@@ -350,15 +357,19 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Amount to debit from wallet (single source of truth).
-  double get walletToUse => useWalletBalance
-      ? (walletBalanceRupees <= 0
-            ? 0.0
-            : (totalAmount <= 0
-                  ? 0.0
-                  : (walletBalanceRupees >= totalAmount
-                        ? totalAmount
-                        : walletBalanceRupees)))
-      : 0.0;
+  /// Returns 0 when cart has promotional items (wallet not allowed for promos).
+  double get walletToUse {
+    if (isWalletDisabledByPromotions) return 0.0;
+    return useWalletBalance
+        ? (walletBalanceRupees <= 0
+              ? 0.0
+              : (totalAmount <= 0
+                    ? 0.0
+                    : (walletBalanceRupees >= totalAmount
+                          ? totalAmount
+                          : walletBalanceRupees)))
+        : 0.0;
+  }
 
   /// Amount to charge via payment gateway (COD or Razorpay). Single source of truth.
   double get paymentGatewayAmount =>
@@ -375,8 +386,18 @@ class CartControllerProvider extends ChangeNotifier {
   /// True when coupons are disabled because "Use Wallet" is on.
   bool get isCouponDisabledByWallet => useWalletBalance;
 
+  /// True when wallet cannot be used (e.g. cart contains promotional items).
+  bool get isWalletDisabledByPromotions => hasPromotionalItems();
+
   /// Sets [useWalletBalance]. When turning on, clears coupon and recalculates (no change to other price logic).
+  /// Does nothing if [value] is true and cart has promotional items (wallet not allowed for promos).
   Future<void> setUseWalletBalance(bool value) async {
+    if (value && isWalletDisabledByPromotions) {
+      ShowToastDialog.showToast(
+        "Wallet cannot be used for orders with promotional items.".tr,
+      );
+      return;
+    }
     if (value && !useWalletBalance) {
       selectedCouponModel = CouponModel();
       couponCodeController.text = '';
@@ -1821,7 +1842,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // ============ PAYMENT HANDLER METHODS ============
 
-  void handlePaymentSuccess(PaymentSuccessResponse response) {
+  void handlePaymentSuccess(PaymentSuccessResponse response) async {
     try {
       final paymentId = response.paymentId;
       final signature = response.signature;
@@ -1887,9 +1908,23 @@ class CartControllerProvider extends ChangeNotifier {
         );
       }
 
-      // 🔑 CRITICAL: Place order IMMEDIATELY in background without waiting for UI
-      // Start order placement immediately without any delays or UI dependencies
-      // This ensures order placement happens even if app goes to background
+      // 🔑 CRITICAL: Try to place order once in foreground so success is reliable.
+      // If first attempt fails (e.g. network), fall back to background retries.
+      try {
+        await placeOrderAfterPayment();
+        // Success: setOrder() already closed loader and navigated to OrderPlacingScreen
+        notifyListeners();
+        return;
+      } catch (firstError) {
+        print(
+          '⚠️ [PAYMENT_SUCCESS] First order placement failed, starting background retries: $firstError',
+        );
+        try {
+          ShowToastDialog.closeLoader();
+        } catch (_) {}
+      }
+
+      // First attempt failed: run retries in background (same as before)
       _placeOrderInBackgroundImmediately(paymentId, signature);
 
       notifyListeners();
@@ -1908,6 +1943,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       try {
+        ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
           "Payment processing failed. Please try again.".tr,
         );
@@ -1922,12 +1958,14 @@ class CartControllerProvider extends ChangeNotifier {
 
   void handlePaymentError(PaymentFailureResponse response) {
     try {
+      ShowToastDialog.closeLoader();
       isPaymentInProgress = false;
       endOrderProcessing();
 
       ShowToastDialog.showToast("Payment failed: ${response.message}".tr);
       notifyListeners();
     } catch (e) {
+      ShowToastDialog.closeLoader();
       isPaymentInProgress = false;
       endOrderProcessing();
       ShowToastDialog.showToast("Payment failed. Please try again.".tr);
@@ -2065,7 +2103,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       if (e.toString().contains('Delivery zone validation failed') ||
           e.toString().contains('Delivery distance validation failed')) {
-        // Specific error already shown
+        DeliveryZoneAlertDialog.showZoneMismatchError();
       } else {
         ShowToastDialog.showToast(
           "An error occurred while placing your order. Please try again.".tr,
@@ -2297,7 +2335,7 @@ class CartControllerProvider extends ChangeNotifier {
         ShowToastDialog.closeLoader();
         if (e.toString().contains('Delivery zone validation failed') ||
             e.toString().contains('Delivery distance validation failed')) {
-          // Specific error already shown by validation
+          DeliveryZoneAlertDialog.showZoneMismatchError();
         } else {
           ShowToastDialog.showToast(
             "An error occurred while placing your order. Your payment is safe. Please try again."
@@ -3992,6 +4030,7 @@ class CartControllerProvider extends ChangeNotifier {
           _startPendingOrderRetryTimer();
 
           try {
+            ShowToastDialog.closeLoader();
             ShowToastDialog.showToast(
               "Order placement failed after $maxRetries attempts. Your payment is safe. Order will be placed automatically when you reopen the app or within 30 seconds."
                   .tr,
@@ -5166,10 +5205,7 @@ class CartControllerProvider extends ChangeNotifier {
       final lng = address.location!.longitude!;
 
       if (lat < 6.0 || lat > 37.0 || lng < 68.0 || lng > 97.0) {
-        ShowToastDialog.showToast(
-          "Please select a delivery address within our service area.".tr,
-        );
-        Get.to(() => const AddressListScreen());
+        DeliveryZoneAlertDialog.showZoneMismatchError();
         return false;
       }
 
@@ -5194,11 +5230,7 @@ class CartControllerProvider extends ChangeNotifier {
           address.zoneId = detectedZoneId;
           Constant.selectedLocation.zoneId = detectedZoneId;
         } else {
-          ShowToastDialog.showToast(
-            "Address zone not detected. Please update your address or contact support."
-                .tr,
-          );
-          Get.to(() => const AddressListScreen());
+          DeliveryZoneAlertDialog.showZoneValidationWarning();
           return false;
         }
       }
@@ -5451,6 +5483,10 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   void checkAndUpdatePaymentMethod() {
+    // Wallet not allowed when cart has promotional items
+    if (hasPromotionalItems()) {
+      useWalletBalance = false;
+    }
     if (useWalletBalance && isFullyPaidByWallet) {
       selectedPaymentMethod = PaymentGateway.wallet.name;
       if (!_isCalculatingPrice) notifyListeners();
@@ -5560,71 +5596,96 @@ class CartControllerProvider extends ChangeNotifier {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Wallet section - so user can see balance and turn on "Use Wallet"
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.account_balance_wallet,
-                          color: Colors.orange.shade700,
-                          size: 28,
-                        ),
-                        SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                "Wallet balance: ${Constant.amountShow(amount: walletBalanceRupees.toStringAsFixed(2))}",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                  color: Colors.grey[800],
-                                ),
-                              ),
-                              if (useWalletBalance &&
-                                  walletToUse > 0 &&
-                                  paymentGatewayAmount > 0)
-                                Padding(
-                                  padding: EdgeInsets.only(top: 2),
-                                  child: Text(
-                                    "₹${walletToUse.toStringAsFixed(2)} from wallet, ₹${paymentGatewayAmount.toStringAsFixed(2)} via payment",
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.orange.shade800,
-                                    ),
-                                  ),
-                                ),
-                            ],
+                  Builder(
+                    builder: (context) {
+                      final walletDisabledByPromos =
+                          isWalletDisabledByPromotions;
+                      return Container(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: walletDisabledByPromos
+                              ? Colors.grey.shade100
+                              : Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: walletDisabledByPromos
+                                ? Colors.grey.shade300
+                                : Colors.orange.shade200,
                           ),
                         ),
-                        StatefulBuilder(
-                          builder: (context, setSwitchState) {
-                            return Switch(
-                              value: useWalletBalance,
-                              onChanged: (value) async {
-                                await setUseWalletBalance(value);
-                                setSwitchState(() {});
-                                setState(() {});
-                                if (value && isFullyPaidByWallet) {
-                                  selectedPaymentMethod =
-                                      PaymentGateway.wallet.name;
-                                  notifyListeners();
-                                  Get.back(result: true);
-                                }
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.account_balance_wallet,
+                              color: walletDisabledByPromos
+                                  ? Colors.grey
+                                  : Colors.orange.shade700,
+                              size: 28,
+                            ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    walletDisabledByPromos
+                                        ? "Wallet cannot be used for orders with promotional items"
+                                        : "Wallet balance: ${Constant.amountShow(amount: walletBalanceRupees.toStringAsFixed(2))}",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                      color: walletDisabledByPromos
+                                          ? Colors.grey[600]
+                                          : Colors.grey[800],
+                                    ),
+                                  ),
+                                  if (!walletDisabledByPromos &&
+                                      useWalletBalance &&
+                                      walletToUse > 0 &&
+                                      paymentGatewayAmount > 0)
+                                    Padding(
+                                      padding: EdgeInsets.only(top: 2),
+                                      child: Text(
+                                        "₹${walletToUse.toStringAsFixed(2)} from wallet, ₹${paymentGatewayAmount.toStringAsFixed(2)} via payment",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.orange.shade800,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            StatefulBuilder(
+                              builder: (context, setSwitchState) {
+                                return Switch(
+                                  value: walletDisabledByPromos
+                                      ? false
+                                      : useWalletBalance,
+                                  onChanged: walletDisabledByPromos
+                                      ? null
+                                      : (value) async {
+                                          await setUseWalletBalance(value);
+                                          setSwitchState(() {});
+                                          setState(() {});
+                                          if (value &&
+                                              isFullyPaidByWallet) {
+                                            selectedPaymentMethod =
+                                                PaymentGateway.wallet.name;
+                                            notifyListeners();
+                                            Get.back(result: true);
+                                          }
+                                        },
+                                  activeColor: Colors.orange,
+                                );
                               },
-                              activeColor: Colors.orange,
-                            );
-                          },
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
                   SizedBox(height: 16),
                   Text(
@@ -6356,9 +6417,10 @@ class CartControllerProvider extends ChangeNotifier {
       '🔑 [RAZORPAY] Starting payment flow for amount: ${controller.totalAmount}',
     );
 
-    // 🔑 OPTIMIZATION: Show loader immediately, don't wait (non-blocking)
+    // 🔑 OPTIMIZATION: Show loader immediately, then yield so it can paint before async work
     try {
       ShowToastDialog.showLoader("Opening payment gateway...".tr);
+      await Future.delayed(const Duration(milliseconds: 100));
     } catch (e) {
       print(
         '⚠️ [RAZORPAY] Could not show loader (app may be backgrounded): $e',
@@ -6465,7 +6527,14 @@ class CartControllerProvider extends ChangeNotifier {
 
     print('✅ [RAZORPAY] Order created successfully: ${orderResult.id}');
 
-    // 🔑 OPTIMIZATION: Close loader immediately before opening checkout for faster UX
+    // Keep loader visible until checkout is opened so user sees feedback; close only after openCheckout returns.
+    // 🔑 OPTIMIZATION: Open checkout immediately without delays
+    print('🚀 [RAZORPAY] Opening checkout immediately...');
+    final checkoutOpened = await controller.openCheckout(
+      amount: orderResult.amount / 100.0,
+      orderId: orderResult.id,
+    );
+
     try {
       ShowToastDialog.closeLoader();
     } catch (e) {
@@ -6473,13 +6542,6 @@ class CartControllerProvider extends ChangeNotifier {
         '⚠️ [RAZORPAY] Could not close loader (app may be backgrounded): $e',
       );
     }
-
-    // 🔑 OPTIMIZATION: Open checkout immediately without delays
-    print('🚀 [RAZORPAY] Opening checkout immediately...');
-    final checkoutOpened = await controller.openCheckout(
-      amount: orderResult.amount / 100.0,
-      orderId: orderResult.id,
-    );
 
     if (!checkoutOpened) {
       print('❌ [RAZORPAY] Checkout failed to open');

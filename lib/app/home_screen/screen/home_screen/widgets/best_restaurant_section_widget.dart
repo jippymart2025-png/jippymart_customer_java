@@ -744,6 +744,16 @@ class BestRestaurantsSection extends StatelessWidget {
   }
 
   Widget _buildBottomInfoRow(VendorModel vendorModel) {
+    // Prefer precomputed/API distance when available; fall back to live calculation
+    String distanceText;
+    if (vendorModel.distance != null && vendorModel.distance! > 0) {
+      distanceText =
+          '${vendorModel.distance!.toStringAsFixed(1)} ${Constant.distanceType}';
+    } else {
+      distanceText =
+          '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
+    }
+
     return Row(
       children: [
         Expanded(
@@ -766,33 +776,31 @@ class BestRestaurantsSection extends StatelessWidget {
             ],
           ),
         ),
-        if (vendorModel.distance != null) ...[
-          const SizedBox(width: 4),
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 10,
-                  color: AppThemeData.grey400,
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Text(
-                    "${(vendorModel.distance ?? 0).toStringAsFixed(1)} km",
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontFamily: AppThemeData.medium,
-                      color: AppThemeData.grey500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        const SizedBox(width: 4),
+        Expanded(
+          child: Row(
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 10,
+                color: AppThemeData.grey400,
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  distanceText,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontFamily: AppThemeData.medium,
+                    color: AppThemeData.grey500,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ],
     );
   }

@@ -182,19 +182,16 @@ class HomeScreenTwo extends StatelessWidget {
             child: Column(
               children: [
                 _buildBannerSection(controller),
-                const SizedBox(height: 20),
-                _buildDealsBanner(context),
+                _buildCategoryViewSection(controller),
+                const SizedBox(height: 5),
+                // _buildDealsBanner(context),
                 BestRestaurantsSection(
                   restaurantList: bestRestaurantProvider.bestRestaurantList,
                 ),
                 _buildAdvertisementSection(bestRestaurantProvider, controller),
                 _buildBottomBannerSection(controller),
                 const SizedBox(height: 10),
-                _buildAllRestaurantsSection(
-                  bestRestaurantProvider,
-                  controller,
-                  context,
-                ),
+                _buildAllRestaurantsSection(context),
               ],
             ),
           ),
@@ -209,6 +206,15 @@ class HomeScreenTwo extends StatelessWidget {
         : Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: BannerView(),
+          );
+  }
+
+  Widget _buildCategoryViewSection(HomeProvider controller) {
+    return controller.bannerModel.isEmpty
+        ? const SizedBox()
+        : Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: CategoryView(),
           );
   }
 
@@ -434,74 +440,92 @@ class HomeScreenTwo extends StatelessWidget {
     );
   }
 
-  Widget _buildAllRestaurantsSection(
-    BestRestaurantProvider bestRestaurantProvider,
-    HomeProvider controller,
-    BuildContext context,
-  ) {
-    final allRestaurants = bestRestaurantProvider.allNearestRestaurant;
-    if (allRestaurants.isEmpty) {
-      return const SizedBox();
-    }
-
-    return Consumer<RestaurantDetailsProvider>(
-      builder: (context, restaurantDetailsProvider, _) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
-              child: Text(
-                "All Restaurants",
-                style: TextStyle(
-                  fontFamily: AppThemeData.medium,
-                  color: AppThemeData.grey900,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+  Widget _buildAllRestaurantsSection(BuildContext context) {
+    return Selector<
+      BestRestaurantProvider,
+      (List<VendorModel>, int, bool, String?, List<String>)
+    >(
+      selector: (_, p) => (
+        p.allNearestRestaurant,
+        p.allNearestRestaurant.length,
+        p.isLoading,
+        p.currentFilter,
+        p.availableFilters,
+      ),
+      shouldRebuild: (prev, next) =>
+          prev.$2 != next.$2 ||
+          prev.$3 != next.$3 ||
+          prev.$4 != next.$4 ||
+          prev.$5 != next.$5,
+      builder: (context, data, _) {
+        final allRestaurants = data.$1;
+        if (allRestaurants.isEmpty) {
+          return const SizedBox.shrink();
+        }
+        final bestRestaurantProvider = context.read<BestRestaurantProvider>();
+        return Consumer<RestaurantDetailsProvider>(
+          builder: (context, restaurantDetailsProvider, __) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+                  child: Text(
+                    "All Restaurants",
+                    style: TextStyle(
+                      fontFamily: AppThemeData.medium,
+                      color: AppThemeData.grey900,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              child: FilterBar(
-                selectedFilters: {},
-                onFilterToggled: (filter) => _handleFilterToggle(
-                  filter,
-                  bestRestaurantProvider,
-                  context,
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                    vertical: 8.0,
+                  ),
+                  child: FilterBar(
+                    selectedFilters: {},
+                    onFilterToggled: (filter) => _handleFilterToggle(
+                      filter,
+                      bestRestaurantProvider,
+                      context,
+                    ),
+                    availableFilters: data.$5,
+                    currentFilter: data.$4,
+                  ),
                 ),
-                availableFilters: bestRestaurantProvider.availableFilters,
-                currentFilter: bestRestaurantProvider.currentFilter,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: GridView.builder(
-                shrinkWrap: true,
-                primary: false,
-                padding: EdgeInsets.zero,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: allRestaurants.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 6,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 0.65,
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: GridView.builder(
+                    shrinkWrap: true,
+                    primary: false,
+                    padding: EdgeInsets.zero,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: allRestaurants.length,
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          crossAxisSpacing: 6,
+                          mainAxisSpacing: 8,
+                          childAspectRatio: 0.65,
+                        ),
+                    itemBuilder: (BuildContext context, int index) {
+                      return RepaintBoundary(
+                        child: _buildRestaurantCard(
+                          allRestaurants[index],
+                          restaurantDetailsProvider,
+                          context,
+                        ),
+                      );
+                    },
+                  ),
                 ),
-                itemBuilder: (BuildContext context, int index) {
-                  return _buildRestaurantCard(
-                    allRestaurants[index],
-                    restaurantDetailsProvider,
-                    context,
-                  );
-                },
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
@@ -699,6 +723,15 @@ class HomeScreenTwo extends StatelessWidget {
   }
 
   Widget _buildBottomInfoRow(VendorModel vendorModel) {
+    // Prefer backend/client-computed distance when available, fall back to live calculation
+    String distanceText;
+    if (vendorModel.distance != null && vendorModel.distance! > 0) {
+      distanceText =
+          '${vendorModel.distance!.toStringAsFixed(1)} ${Constant.distanceType}';
+    } else {
+      distanceText =
+          '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
+    }
     return Row(
       children: [
         Expanded(
@@ -721,33 +754,31 @@ class HomeScreenTwo extends StatelessWidget {
             ],
           ),
         ),
-        if (vendorModel.distance != null) ...[
-          const SizedBox(width: 4),
-          Expanded(
-            child: Row(
-              children: [
-                Icon(
-                  Icons.location_on_outlined,
-                  size: 10,
-                  color: AppThemeData.grey400,
-                ),
-                const SizedBox(width: 2),
-                Expanded(
-                  child: Text(
-                    "${(vendorModel.distance ?? 0).toStringAsFixed(1)} km",
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontFamily: AppThemeData.medium,
-                      color: AppThemeData.grey500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+        const SizedBox(width: 4),
+        Expanded(
+          child: Row(
+            children: [
+              Icon(
+                Icons.location_on_outlined,
+                size: 10,
+                color: AppThemeData.grey400,
+              ),
+              const SizedBox(width: 2),
+              Expanded(
+                child: Text(
+                  distanceText,
+                  style: TextStyle(
+                    fontSize: 9,
+                    fontFamily: AppThemeData.medium,
+                    color: AppThemeData.grey500,
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ],
     );
   }

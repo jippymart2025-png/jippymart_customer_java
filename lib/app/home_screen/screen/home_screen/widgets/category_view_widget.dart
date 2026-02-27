@@ -135,8 +135,8 @@ class CategoryView extends StatelessWidget {
                                   padding: const EdgeInsets.all(3),
                                   child: ClipOval(
                                     child: SizedBox(
-                                      width: 55,
-                                      height: 55,
+                                      width: 65,
+                                      height: 65,
                                       child: NetworkImageWidget(
                                         imageUrl: vendorCategoryModel.photo
                                             .toString(),

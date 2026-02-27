@@ -192,7 +192,7 @@ class CategoryRestaurantScreen extends StatelessWidget {
                                                       ),
                                                       const SizedBox(width: 5),
                                                       Text(
-                                                        "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
+                                                        "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} ",
                                                         style: TextStyle(
                                                           fontSize: 14,
                                                           color: AppThemeData
@@ -280,17 +280,17 @@ class CategoryRestaurantScreen extends StatelessWidget {
                                               color: AppThemeData.grey900,
                                             ),
                                           ),
-                                          Text(
-                                            vendorModel.location.toString(),
-                                            textAlign: TextAlign.start,
-                                            maxLines: 1,
-                                            style: TextStyle(
-                                              overflow: TextOverflow.ellipsis,
-                                              fontFamily: AppThemeData.medium,
-                                              fontWeight: FontWeight.w500,
-                                              color: AppThemeData.grey400,
-                                            ),
-                                          ),
+                                          // Text(
+                                          //   vendorModel.location.toString(),
+                                          //   textAlign: TextAlign.start,
+                                          //   maxLines: 1,
+                                          //   style: TextStyle(
+                                          //     overflow: TextOverflow.ellipsis,
+                                          //     fontFamily: AppThemeData.medium,
+                                          //     fontWeight: FontWeight.w500,
+                                          //     color: AppThemeData.grey400,
+                                          //   ),
+                                          // ),
                                         ],
                                       ),
                                     ),

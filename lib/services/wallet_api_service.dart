@@ -20,6 +20,41 @@ class WalletApiService {
 
   Future<Map<String, String>> _headers() => getHeaders();
 
+  /// GET /wallet/config — runtime wallet configuration (coins, check-in, referral).
+  ///
+  /// Supported response shapes:
+  /// 1) { "success": true, "data": { "version": 1, "wallet_config": { ... } } }
+  /// 2) { "version": 1, "wallet_config": { ... } }
+  Future<Map<String, dynamic>?> getWalletConfig() async {
+    try {
+      final uri = Uri.parse('${_base}wallet/config');
+      final response = await http
+          .get(uri, headers: await _headers())
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) return null;
+      final map = json.decode(response.body) as Map<String, dynamic>?;
+      if (map == null) return null;
+
+      // If backend sends { success, data }, prefer data node.
+      if (map.containsKey('data')) {
+        if (map.containsKey('success') && map['success'] != true) {
+          return null;
+        }
+        final data = map['data'];
+        if (data is Map<String, dynamic>) {
+          return data;
+        }
+        return Map<String, dynamic>.from(data as Map);
+      }
+
+      // Otherwise treat the whole JSON as config root
+      return map;
+    } catch (e) {
+      print('[WalletApiService] getWalletConfig error: $e');
+      return null;
+    }
+  }
+
   /// GET /wallet — returns wallet data (coin balance, money balance).
   /// Sends firebase_id as query param for backend. Response: { "success": true, "data": { "coin_wallet": {...}, "money_balance_paise": int?, ... } }
   Future<Map<String, dynamic>?> getWallet() async {
@@ -90,8 +125,7 @@ class WalletApiService {
         body: json.encode(body),
       ).timeout(const Duration(seconds: 15));
       final map = json.decode(response.body) as Map<String, dynamic>?;
-      if (response.statusCode != 200 && response.statusCode != 201) return null;
-      if (map?['success'] != true) return null;
+      // Always return parsed JSON (even on 4xx) so caller can read `message`.
       return map;
     } catch (e) {
       print('[WalletApiService] redeemCoins error: $e');

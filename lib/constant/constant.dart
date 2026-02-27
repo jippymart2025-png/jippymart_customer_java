@@ -14,6 +14,7 @@ import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/currency_model.dart';
 import 'package:jippymart_customer/models/email_template_model.dart';
 import 'package:jippymart_customer/models/language_model.dart';
+import 'package:jippymart_customer/models/wallet_config.dart';
 import 'package:jippymart_customer/models/mail_setting.dart';
 import 'package:jippymart_customer/models/order_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
@@ -111,20 +112,60 @@ class Constant {
   static bool isEnableAdsFeature = true;
 
   // Wallet & Coin system: 1000 coins = ₹100; min redeem 1000 coins
-  static const int coinsPer100Rupees = 1000;
-  static const int minRedeemCoins = 1000;
+  static const int _defaultCoinsPer100Rupees = 1000;
+  static const int _defaultMinRedeemCoins = 1000;
+  static const double _defaultDailyRedeemCapRupees = 100.0;
+  static const int _defaultCheckinCoinsPerDay = 25;
+  static const int _defaultStreakBonusDay10 = 100;
+  static const int _defaultStreakBonusDay20 = 250;
+  static const int _defaultStreakBonusDay30 = 500;
+  static const int _defaultRefereeFirstOrderCoins = 100;
 
-  /// Optional daily redeem cap in rupees (backend may enforce e.g. ₹500)
-  static const double dailyRedeemCapRupees = 500.0;
+  static int? _coinsPer100Rupees;
+  static int? _minRedeemCoins;
+  static double? _dailyRedeemCapRupees;
+  static int? _checkinCoinsPerDay;
+  static int? _streakBonusDay10;
+  static int? _streakBonusDay20;
+  static int? _streakBonusDay30;
+  static int? _refereeFirstOrderCoins;
 
-  // Daily check-in: 25 coins/day; streak bonuses +100 / +250 / +500 on 10th / 20th / 30th day
-  static const int checkinCoinsPerDay = 25;
-  static const int streakBonusDay10 = 100;
-  static const int streakBonusDay20 = 250;
-  static const int streakBonusDay30 = 500;
+  /// Public getters used across the app. If backend config is not loaded yet,
+  /// they fall back to safe defaults.
+  static int get coinsPer100Rupees =>
+      _coinsPer100Rupees ?? _defaultCoinsPer100Rupees;
 
-  /// Coins credited to referee (referred user) on their first order. Backend must apply in createOrder.
-  static const int refereeFirstOrderCoins = 100;
+  static int get minRedeemCoins => _minRedeemCoins ?? _defaultMinRedeemCoins;
+
+  static double get dailyRedeemCapRupees =>
+      _dailyRedeemCapRupees ?? _defaultDailyRedeemCapRupees;
+
+  static int get checkinCoinsPerDay =>
+      _checkinCoinsPerDay ?? _defaultCheckinCoinsPerDay;
+
+  static int get streakBonusDay10 =>
+      _streakBonusDay10 ?? _defaultStreakBonusDay10;
+
+  static int get streakBonusDay20 =>
+      _streakBonusDay20 ?? _defaultStreakBonusDay20;
+
+  static int get streakBonusDay30 =>
+      _streakBonusDay30 ?? _defaultStreakBonusDay30;
+
+  static int get refereeFirstOrderCoins =>
+      _refereeFirstOrderCoins ?? _defaultRefereeFirstOrderCoins;
+
+  /// Apply values from backend wallet config.
+  static void applyWalletConfig(WalletConfig config) {
+    _coinsPer100Rupees = config.coinsPer100Rupees;
+    _minRedeemCoins = config.minRedeemCoins;
+    _dailyRedeemCapRupees = config.dailyRedeemCapRupees;
+    _checkinCoinsPerDay = config.checkinCoinsPerDay;
+    _streakBonusDay10 = config.streakBonusDay10;
+    _streakBonusDay20 = config.streakBonusDay20;
+    _streakBonusDay30 = config.streakBonusDay30;
+    _refereeFirstOrderCoins = config.refereeFirstOrderCoins;
+  }
 
   static String amountShow({required String? amount}) {
     // Provide default values when currencyModel is null

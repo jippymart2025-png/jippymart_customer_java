@@ -1,8 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import 'package:jippymart_customer/constant/show_toast_dialog.dart';
+
 class DeliveryZoneAlertDialog {
+  /// Ensures loader is dismissed and dialog is shown in next frame so it is visible.
+  static void _showNextFrame(void Function() showDialog) {
+    ShowToastDialog.closeLoader();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showDialog();
+    });
+  }
+
   static void showZoneMismatchError() {
+    _showNextFrame(() => _showZoneMismatchErrorImpl());
+  }
+
+  static void _showZoneMismatchErrorImpl() {
     Get.dialog(
       Dialog(
         backgroundColor: Colors.transparent,
@@ -136,6 +150,10 @@ class DeliveryZoneAlertDialog {
   }
 
   static void showDistanceTooFarError() {
+    _showNextFrame(() => _showDistanceTooFarErrorImpl());
+  }
+
+  static void _showDistanceTooFarErrorImpl() {
     Get.dialog(
       Dialog(
         backgroundColor: Colors.transparent,
@@ -269,6 +287,10 @@ class DeliveryZoneAlertDialog {
   }
 
   static void showZoneValidationWarning() {
+    _showNextFrame(() => _showZoneValidationWarningImpl());
+  }
+
+  static void _showZoneValidationWarningImpl() {
     Get.dialog(
       Dialog(
         backgroundColor: Colors.transparent,
@@ -402,6 +424,10 @@ class DeliveryZoneAlertDialog {
   }
 
   static void showRepeatedAttemptError(int attemptCount) {
+    _showNextFrame(() => _showRepeatedAttemptErrorImpl(attemptCount));
+  }
+
+  static void _showRepeatedAttemptErrorImpl(int attemptCount) {
     Get.dialog(
       Dialog(
         backgroundColor: Colors.transparent,

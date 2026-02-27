@@ -1072,7 +1072,6 @@ import '../../../constant/show_toast_dialog.dart';
 import '../provider/PromotionIndicator.dart';
 
 // ── Responsive sizing helper ───────────────────────────────────────
-// Computed ONCE in build(), passed down — zero extra MediaQuery calls
 class _RS {
   final double sw;
   final double sh;
@@ -1083,41 +1082,48 @@ class _RS {
 
   bool get isLarge => sw >= 600;
 
-  // Grid
-  int get gridCols => isLarge ? 3 : 2;
+  // ── Grid ──────────────────────────────────────────────────────
+  // FIXED: Always 2 columns for phones (< 600), 3 for tablets (>= 600)
+  int get gridCols {
+    if (sw >= 600) return 3; // tablets
+    return 2; // ALL phones — 2 columns always
+  }
 
-  double get gridSpacing => isSmall ? 6.0 : 8.0;
+  double get gridSpacing => isSmall ? 8.0 : 10.0;
 
+  // FIXED: Lower ratio = taller card = no overflow
+  // Width of each card = (screenWidth - hPad*2 - spacing) / 2
+  // We need enough height for: image(1.2 ratio) + veg label + name + price + rating + button + padding
+  // Using 0.72 gives ~40% more height than width → plenty of room
   double get gridAspectRatio {
-    if (isSmall) return 0.55;
-    if (isLarge) return 0.65;
-    if (sh < 700) return 0.58;
-    return 0.60;
+    if (sw >= 600) return 0.78; // tablets
+    if (sw < 360) return 0.68; // small phones — extra tall
+    return 0.68; // all normal phones (Android + iPhone)
   }
 
   // Padding
-  double get hPad => isSmall ? 12.0 : (isLarge ? 20.0 : 16.0);
+  double get hPad => isSmall ? 10.0 : (isLarge ? 16.0 : 12.0);
 
-  double get itemPad => isSmall ? 5.0 : (isLarge ? 8.0 : 6.0);
+  double get itemPad => isSmall ? 6.0 : (isLarge ? 10.0 : 8.0);
 
-  // Font sizes
+  // Font sizes — slightly larger now that we have 2 cols
   double get categoryFontSize => isSmall ? 16.0 : (isLarge ? 20.0 : 18.0);
 
-  double get labelFontSize => isSmall ? 8.0 : (isLarge ? 10.0 : 9.0);
+  double get labelFontSize => isSmall ? 9.0 : (isLarge ? 11.0 : 10.0);
 
-  double get nameFontSize => isSmall ? 11.0 : (isLarge ? 13.0 : 12.0);
+  double get nameFontSize => isSmall ? 12.0 : (isLarge ? 14.0 : 13.0);
 
-  double get priceFontSize => isSmall ? 11.0 : (isLarge ? 13.0 : 12.0);
+  double get priceFontSize => isSmall ? 12.0 : (isLarge ? 14.0 : 13.0);
 
-  double get strikethroughFontSize => isSmall ? 9.0 : (isLarge ? 11.0 : 10.0);
+  double get strikethroughFontSize => isSmall ? 10.0 : (isLarge ? 12.0 : 11.0);
 
   double get ratingFontSize => isSmall ? 11.0 : (isLarge ? 13.0 : 12.0);
 
   double get unavailableFontSize => isSmall ? 9.0 : (isLarge ? 11.0 : 10.0);
 
-  double get btnFontSize => isSmall ? 12.0 : (isLarge ? 14.0 : 13.0);
+  double get btnFontSize => isSmall ? 13.0 : (isLarge ? 15.0 : 14.0);
 
-  double get btnIconSize => isSmall ? 14.0 : (isLarge ? 18.0 : 16.0);
+  double get btnIconSize => isSmall ? 15.0 : (isLarge ? 19.0 : 17.0);
 
   double get qtyFontSize => isSmall ? 13.0 : (isLarge ? 15.0 : 14.0);
 
@@ -1128,23 +1134,23 @@ class _RS {
 
   double get nameGap => isSmall ? 1.0 : 2.0;
 
-  double get ratingGap => isSmall ? 3.0 : 4.0;
+  double get ratingGap => isSmall ? 2.0 : 3.0;
 
   double get unavailableTopPad => isSmall ? 1.0 : 2.0;
 
-  // Button
-  double get btnHeight => isSmall ? 28.0 : (isLarge ? 36.0 : 32.0);
+  // Button — taller now we have room
+  double get btnHeight => isSmall ? 30.0 : (isLarge ? 36.0 : 32.0);
 
-  double get btnRadius => isSmall ? 6.0 : 8.0;
+  double get btnRadius => isSmall ? 8.0 : 10.0;
 
   double get btnInnerPad => isSmall ? 6.0 : 8.0;
 
-  double get qtyHPad => isSmall ? 8.0 : 12.0;
+  double get qtyHPad => isSmall ? 10.0 : 14.0;
 
-  // Favorite icon position
+  // Favorite icon
   double get favIconPos => isSmall ? 6.0 : 8.0;
 
-  // No-products message
+  // No-products
   double get emptyVPad => isSmall ? 40.0 : (isLarge ? 80.0 : 60.0);
 
   double get emptyHPad => isSmall ? 16.0 : (isLarge ? 24.0 : 20.0);
@@ -1167,7 +1173,6 @@ class ProductListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ── Single MediaQuery call — compute rs once, pass everywhere ──
     final size = MediaQuery.sizeOf(context);
     final rs = _RS(sw: size.width, sh: size.height);
 
@@ -1196,17 +1201,18 @@ class ProductListView extends StatelessWidget {
                     final categoryKey =
                         controller.returnKeyCategories(index: index) ??
                         'category_$index';
+                    final stableKey = ValueKey<String>(
+                      vendorCategoryModel.id?.toString() ?? categoryKey,
+                    );
                     return KeyedSubtree(
-                      key:
-                          controller.categoryKeys[categoryKey] ??
-                          ValueKey(categoryKey),
-                      // Pass rs — no MediaQuery inside itemBuilder
+                      key: stableKey,
                       child: _buildCategoryExpansionTile(
                         context,
                         vendorCategoryModel,
                         index,
                         controller,
                         rs,
+                        categoryKey,
                       ),
                     );
                   },
@@ -1216,15 +1222,17 @@ class ProductListView extends StatelessWidget {
     );
   }
 
-  // ── Category tile ─────────────────────────────────────────────────
   Widget _buildCategoryExpansionTile(
     BuildContext context,
     VendorCategoryModel vendorCategoryModel,
     int index,
     RestaurantDetailsProvider controller,
     _RS rs,
+    String categoryKey,
   ) {
+    final globalKey = controller.categoryKeys[categoryKey];
     return ExpansionTile(
+      key: globalKey,
       childrenPadding: EdgeInsets.zero,
       tilePadding: EdgeInsets.zero,
       shape: const Border(),
@@ -1240,7 +1248,6 @@ class ProductListView extends StatelessWidget {
         ),
       ),
       children: [
-        // Inner Consumer is fine — only rebuilds when provider changes
         Consumer<RestaurantDetailsProvider>(
           builder: (context, ctrl, _) =>
               _buildProductsForCategory(vendorCategoryModel, context, ctrl, rs),
@@ -1249,7 +1256,6 @@ class ProductListView extends StatelessWidget {
     );
   }
 
-  // ── Products grid for a category ─────────────────────────────────
   Widget _buildProductsForCategory(
     VendorCategoryModel vendorCategoryModel,
     BuildContext context,
@@ -1266,7 +1272,7 @@ class ProductListView extends StatelessWidget {
           itemCount: products.length,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.zero,
+          padding: EdgeInsets.only(bottom: rs.gridSpacing),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: rs.gridCols,
             crossAxisSpacing: rs.gridSpacing,
@@ -1275,7 +1281,6 @@ class ProductListView extends StatelessWidget {
           ),
           itemBuilder: (context, productIndex) {
             final productModel = products[productIndex];
-            // RepaintBoundary isolates each card repaint
             return RepaintBoundary(
               child: _buildProductItem(
                 productModel,
@@ -1292,7 +1297,6 @@ class ProductListView extends StatelessWidget {
     );
   }
 
-  // ── Product card ─────────────────────────────────────────────────
   Widget _buildProductItem(
     ProductModel productModel,
     BuildContext context,
@@ -1303,7 +1307,6 @@ class ProductListView extends StatelessWidget {
   ) {
     final isItemAvailable = productModel.isAvailable ?? true;
 
-    // ── Price computation (done once per card, not per rebuild) ──
     String basePrice = '0.0';
     String baseDisPrice = '0.0';
 
@@ -1334,6 +1337,8 @@ class ProductListView extends StatelessWidget {
             );
     }
 
+    // FIXED: Use Column with mainAxisSize.max so it fills the grid cell
+    // and never overflows — content is constrained within the cell
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1346,252 +1351,257 @@ class ProductListView extends StatelessWidget {
           ),
         ],
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Image ──────────────────────────────────────────────
-          Expanded(
-            flex: 3,
-            child: Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(12),
-                    topRight: Radius.circular(12),
-                  ),
-                  child: ColorFiltered(
-                    colorFilter: isItemAvailable
-                        ? const ColorFilter.mode(
-                            Colors.transparent,
-                            BlendMode.multiply,
-                          )
-                        : const ColorFilter.mode(
-                            Colors.grey,
-                            BlendMode.saturation,
-                          ),
-                    child: NetworkImageWidget(
-                      imageUrl: productModel.photo.toString(),
-                      fit: BoxFit.fill,
-                      width: double.infinity,
-                      height: double.infinity,
+      // FIXED: ClipRect prevents any child from painting outside bounds
+      child: ClipRRect(
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ── Image: fixed fraction of card height ──────────────
+            // Use Flexible so image takes proportional space, not fixed AspectRatio
+            Flexible(
+              flex: 5, // image gets 5 parts
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
                     ),
-                  ),
-                ),
-
-                // Promotion badge
-                if (productModel.id != null && productModel.vendorID != null)
-                  PromotionIndicator(
-                    productId: productModel.id!.toString(),
-                    restaurantId: productModel.vendorID!,
-                    child: Container(),
-                  ),
-
-                // Unavailable overlay
-                if (!isItemAvailable)
-                  Positioned.fill(
-                    child: Container(
-                      decoration: const BoxDecoration(
-                        color: Color(0x66000000),
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(12),
-                          topRight: Radius.circular(12),
-                        ),
+                    child: ColorFiltered(
+                      colorFilter: isItemAvailable
+                          ? const ColorFilter.mode(
+                              Colors.transparent,
+                              BlendMode.multiply,
+                            )
+                          : const ColorFilter.mode(
+                              Colors.grey,
+                              BlendMode.saturation,
+                            ),
+                      child: NetworkImageWidget(
+                        imageUrl: productModel.photo.toString(),
+                        fit: BoxFit.fill,
+                        width: double.infinity,
+                        height: double.infinity,
                       ),
                     ),
                   ),
 
-                // Favorite button
-                Positioned(
-                  right: rs.favIconPos,
-                  top: rs.favIconPos,
-                  child: InkWell(
-                    onTap: () async {
-                      if (productModel.id == null ||
-                          productModel.id.toString().isEmpty) {
-                        ShowToastDialog.showToast('Invalid product data');
-                        return;
-                      }
-                      try {
-                        await controller.toggleProductFavorite(
-                          productModel.id!.toString(),
-                        );
-                      } catch (_) {
-                        ShowToastDialog.showToast('Failed to update favorites');
-                      }
-                    },
-                    child:
-                        controller.isProductFavorite(productModel.id.toString())
-                        ? SvgPicture.asset('assets/icons/ic_like_fill.svg')
-                        : SvgPicture.asset('assets/icons/ic_like.svg'),
-                  ),
-                ),
-              ],
-            ),
-          ),
+                  // Promotion badge
+                  if (productModel.id != null && productModel.vendorID != null)
+                    PromotionIndicator(
+                      productId: productModel.id!.toString(),
+                      restaurantId: productModel.vendorID!,
+                      child: Container(),
+                    ),
 
-          // ── Details ────────────────────────────────────────────
-          Expanded(
-            flex: 4,
-            child: Padding(
-              // Reduce outer padding — was rs.itemPad (5–8px), now tighter
-              padding: EdgeInsets.fromLTRB(
-                rs.itemPad,
-                rs.itemPad - 1,
-                rs.itemPad,
-                rs.itemPad - 1,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                // replaces Spacer()
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // ── Top group: veg label + name + price + rating ──
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Veg / Non-veg label
-                      Row(
-                        children: [
-                          SizedBox(
-                            // constrain SVG size so it doesn't eat row space
-                            width: rs.labelFontSize + 2,
-                            height: rs.labelFontSize + 2,
-                            child: productModel.nonveg == true
-                                ? SvgPicture.asset(
-                                    'assets/icons/ic_nonveg.svg',
-                                    fit: BoxFit.contain,
-                                  )
-                                : SvgPicture.asset(
-                                    'assets/icons/ic_veg.svg',
-                                    fit: BoxFit.contain,
-                                  ),
+                  // Unavailable overlay
+                  if (!isItemAvailable)
+                    Positioned.fill(
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Color(0x66000000),
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(12),
+                            topRight: Radius.circular(12),
                           ),
-                          SizedBox(width: rs.labelGap - 1),
-                          Expanded(
-                            child: Text(
-                              productModel.nonveg == true
-                                  ? 'Non Veg.'.tr
-                                  : 'Pure veg.'.tr,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: rs.labelFontSize,
-                                color: productModel.nonveg == true
-                                    ? AppThemeData.danger300
-                                    : AppThemeData.success400,
-                                fontFamily: AppThemeData.semiBold,
-                                fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+
+                  // Favorite button
+                  Positioned(
+                    right: rs.favIconPos,
+                    top: rs.favIconPos,
+                    child: InkWell(
+                      onTap: () async {
+                        if (productModel.id == null ||
+                            productModel.id.toString().isEmpty) {
+                          ShowToastDialog.showToast('Invalid product data');
+                          return;
+                        }
+                        try {
+                          await controller.toggleProductFavorite(
+                            productModel.id!.toString(),
+                          );
+                        } catch (_) {
+                          ShowToastDialog.showToast(
+                            'Failed to update favorites',
+                          );
+                        }
+                      },
+                      child:
+                          controller.isProductFavorite(
+                            productModel.id.toString(),
+                          )
+                          ? SvgPicture.asset('assets/icons/ic_like_fill.svg')
+                          : SvgPicture.asset('assets/icons/ic_like.svg'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Details: fills remaining space, never overflows ───
+            Flexible(
+              flex: 4, // details get 4 parts
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: rs.itemPad,
+                  vertical: 4,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // ── Top: veg + name + price + rating ──────────
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Veg / Non-veg label
+                        Row(
+                          children: [
+                            SizedBox(
+                              width: rs.labelFontSize + 2,
+                              height: rs.labelFontSize + 2,
+                              child: productModel.nonveg == true
+                                  ? SvgPicture.asset(
+                                      'assets/icons/ic_nonveg.svg',
+                                      fit: BoxFit.contain,
+                                    )
+                                  : SvgPicture.asset(
+                                      'assets/icons/ic_veg.svg',
+                                      fit: BoxFit.contain,
+                                    ),
+                            ),
+                            SizedBox(width: rs.labelGap),
+                            Expanded(
+                              child: Text(
+                                productModel.nonveg == true
+                                    ? 'Non Veg.'.tr
+                                    : 'Pure veg.'.tr,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: rs.labelFontSize,
+                                  color: productModel.nonveg == true
+                                      ? AppThemeData.danger300
+                                      : AppThemeData.success400,
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-
-                      // No gap between label and name — they sit close
-                      const SizedBox(height: 1),
-
-                      // Product name — 1 line max to save space
-                      Text(
-                        productModel.name.toString(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: rs.nameFontSize,
-                          color: AppThemeData.grey900,
-                          fontFamily: AppThemeData.semiBold,
-                          fontWeight: FontWeight.w600,
-                          height: 1.1, // tighter line height
+                          ],
                         ),
-                      ),
 
-                      const SizedBox(height: 1),
+                        const SizedBox(height: 1),
 
-                      // Price
-                      Consumer<RestaurantDetailsProvider>(
-                        builder: (context, ctrl, _) {
-                          final productId = productModel.id?.toString() ?? '';
-                          final restaurantId = productModel.vendorID ?? '';
+                        // Product name
+                        Text(
+                          productModel.name.toString(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: rs.nameFontSize,
+                            color: AppThemeData.grey900,
+                            fontFamily: AppThemeData.semiBold,
+                            fontWeight: FontWeight.w600,
+                            height: 1.1,
+                          ),
+                        ),
 
-                          if (productId.isEmpty || restaurantId.isEmpty) {
+                        const SizedBox(height: 1),
+
+                        // Price
+                        Consumer<RestaurantDetailsProvider>(
+                          builder: (context, ctrl, _) {
+                            final productId = productModel.id?.toString() ?? '';
+                            final restaurantId = productModel.vendorID ?? '';
+
+                            if (productId.isEmpty || restaurantId.isEmpty) {
+                              return _PriceText(
+                                amount: basePrice,
+                                fontSize: rs.priceFontSize,
+                              );
+                            }
+
+                            final currentPromo =
+                                ctrl.hasActivePromotion(productId, restaurantId)
+                                ? ctrl.getActivePromotionForProduct(
+                                    productId: productId,
+                                    restaurantId: restaurantId,
+                                  )
+                                : null;
+
+                            if (currentPromo != null) {
+                              final promoPrice =
+                                  (currentPromo['special_price'] as num)
+                                      .toString();
+                              return _PromoPriceRow(
+                                promoPrice: promoPrice,
+                                originalPrice: basePrice,
+                                rs: rs,
+                              );
+                            }
+
+                            if (double.parse(baseDisPrice) > 0) {
+                              return _DiscountPriceRow(
+                                discountPrice: baseDisPrice,
+                                originalPrice: basePrice,
+                                rs: rs,
+                              );
+                            }
+
                             return _PriceText(
                               amount: basePrice,
                               fontSize: rs.priceFontSize,
                             );
-                          }
-
-                          final currentPromo =
-                              ctrl.hasActivePromotion(productId, restaurantId)
-                              ? ctrl.getActivePromotionForProduct(
-                                  productId: productId,
-                                  restaurantId: restaurantId,
-                                )
-                              : null;
-
-                          if (currentPromo != null) {
-                            final promoPrice =
-                                (currentPromo['special_price'] as num)
-                                    .toString();
-                            return _PromoPriceRow(
-                              promoPrice: promoPrice,
-                              originalPrice: basePrice,
-                              rs: rs,
-                            );
-                          }
-
-                          if (double.parse(baseDisPrice) > 0) {
-                            return _DiscountPriceRow(
-                              discountPrice: baseDisPrice,
-                              originalPrice: basePrice,
-                              rs: rs,
-                            );
-                          }
-
-                          return _PriceText(
-                            amount: basePrice,
-                            fontSize: rs.priceFontSize,
-                          );
-                        },
-                      ),
-
-                      // Rating — no gap above, sits right under price
-                      _RatingWidget(productModel: productModel, rs: rs),
-
-                      // Not available — only shown when needed
-                      if (!isItemAvailable)
-                        Text(
-                          'Not Available',
-                          style: TextStyle(
-                            fontSize: rs.unavailableFontSize,
-                            color: Colors.red,
-                            fontFamily: AppThemeData.medium,
-                            height: 1.1,
-                          ),
+                          },
                         ),
-                    ],
-                  ),
 
-                  // ── Bottom: Add to cart button — pinned to bottom ──
-                  if (controller.canAcceptOrders() && isItemAvailable)
-                    _AddToCartButton(
-                      controller: controller,
-                      productModel: productModel,
-                      basePrice: basePrice,
-                      baseDisPrice: baseDisPrice,
-                      rs: rs,
+                        // Rating
+                        _RatingWidget(productModel: productModel, rs: rs),
+
+                        // Not available
+                        if (!isItemAvailable)
+                          Text(
+                            'Not Available',
+                            style: TextStyle(
+                              fontSize: rs.unavailableFontSize,
+                              color: Colors.red,
+                              fontFamily: AppThemeData.medium,
+                              height: 1.1,
+                            ),
+                          ),
+                      ],
                     ),
-                ],
+
+                    // ── Bottom: Add button (spaceBetween pushes it down) ──
+                    if (controller.canAcceptOrders() && isItemAvailable)
+                      _AddToCartButton(
+                        controller: controller,
+                        productModel: productModel,
+                        basePrice: basePrice,
+                        baseDisPrice: baseDisPrice,
+                        rs: rs,
+                      ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
 
-// ── Small price widgets — extracted to avoid rebuilding parent ─────
+// ── Price widgets ──────────────────────────────────────────────────
 
 class _PriceText extends StatelessWidget {
   final String amount;
@@ -1711,7 +1721,7 @@ class _DiscountPriceRow extends StatelessWidget {
   }
 }
 
-// ── Rating widget — extracted so Random() runs once per widget ─────
+// ── Rating widget ──────────────────────────────────────────────────
 
 class _RatingWidget extends StatelessWidget {
   final ProductModel productModel;
@@ -1721,7 +1731,6 @@ class _RatingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Random seeded by product ID — stable across rebuilds for same product
     final productId = productModel.id?.toString() ?? '0';
     final random = Random(productId.hashCode);
     final rating = 3.0 + (random.nextDouble() * 2.0);
@@ -1731,7 +1740,6 @@ class _RatingWidget extends StatelessWidget {
 
     return Row(
       children: [
-        // Only 1 star shown (as per original)
         Row(
           mainAxisSize: MainAxisSize.min,
           children: List.generate(1, (index) {
@@ -1770,8 +1778,7 @@ class _RatingWidget extends StatelessWidget {
   }
 }
 
-// ── Add to cart button — extracted widget, uses passed context ─────
-// Eliminates Get.context! usage entirely
+// ── Add to cart button ─────────────────────────────────────────────
 
 class _AddToCartButton extends StatelessWidget {
   final RestaurantDetailsProvider controller;
@@ -1830,7 +1837,6 @@ class _AddToCartButton extends StatelessWidget {
     return baseDisPrice;
   }
 
-  // Shared button container decoration
   BoxDecoration get _btnDecoration => BoxDecoration(
     color: AppThemeData.primary300,
     borderRadius: BorderRadius.circular(rs.btnRadius),
@@ -1854,7 +1860,6 @@ class _AddToCartButton extends StatelessWidget {
     }
   }
 
-  // ── Has variants: open bottom sheet ────────────────────────────
   Widget _buildVariantButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -1896,7 +1901,6 @@ class _AddToCartButton extends StatelessWidget {
     );
   }
 
-  // ── Already in cart: show - qty + ──────────────────────────────
   Widget _buildInCartButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -1906,7 +1910,6 @@ class _AddToCartButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Decrement
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -1938,8 +1941,6 @@ class _AddToCartButton extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Quantity
             Padding(
               padding: EdgeInsets.symmetric(horizontal: rs.qtyHPad),
               child: Text(
@@ -1952,8 +1953,6 @@ class _AddToCartButton extends StatelessWidget {
                 ),
               ),
             ),
-
-            // Increment
             Material(
               color: Colors.transparent,
               child: InkWell(
@@ -2023,7 +2022,6 @@ class _AddToCartButton extends StatelessWidget {
     );
   }
 
-  // ── Not in cart: simple Add button ─────────────────────────────
   Widget _buildAddButton(BuildContext context) {
     return SizedBox(
       width: double.infinity,
@@ -2087,7 +2085,7 @@ class _AddToCartButton extends StatelessWidget {
   }
 }
 
-// ── Helpers (keep as top-level, no closures needed) ───────────────
+// ── Helpers ────────────────────────────────────────────────────────
 
 productDetailsBottomSheet(BuildContext context, ProductModel productModel) {
   return showModalBottomSheet(
@@ -2158,7 +2156,7 @@ infoDialog(RestaurantDetailsProvider controller, ProductModel productModel) {
   );
 }
 
-// ── No products empty state ───────────────────────────────────────
+// ── No products empty state ────────────────────────────────────────
 
 Widget _buildNoProductsMessage(BuildContext context, _RS rs) {
   return Container(

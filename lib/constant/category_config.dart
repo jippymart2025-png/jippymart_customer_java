@@ -52,7 +52,7 @@ class CategoryConfig {
   ];
 
   // Set this to true to enable category filtering
-  static const bool enableCategoryFiltering = true;
+  static const bool enableCategoryFiltering = false;
 
   // Set this to true to use title-based filtering instead of ID-based filtering
   static const bool useTitleFiltering = true; // Enable title-based filtering

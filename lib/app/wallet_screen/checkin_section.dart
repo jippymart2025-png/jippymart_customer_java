@@ -1056,9 +1056,14 @@ int _coinsForStreakDay(int day) {
 bool _isStreakBonusDay(int day) => day == 10 || day == 20 || day == 30;
 
 class CheckinSection extends StatelessWidget {
-  const CheckinSection({super.key, required this.wp});
+  const CheckinSection({
+    super.key,
+    required this.wp,
+    required this.onCheckin,
+  });
 
   final WalletProvider wp;
+  final VoidCallback onCheckin;
 
   static const int _visibleDays = 30;
   static const double _dayBoxWidth = 52;
@@ -1218,7 +1223,7 @@ class CheckinSection extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
                   child: _CheckinButton(
                     checkedInToday: checkedInToday,
-                    onTap: () => _doCheckin(context),
+                    onTap: onCheckin,
                   ),
                 ),
             ],
@@ -1292,20 +1297,6 @@ class CheckinSection extends StatelessWidget {
     );
   }
 
-  Future<void> _doCheckin(BuildContext context) async {
-    final wp = context.read<WalletProvider>();
-    final err = await wp.doCheckin();
-    if (!context.mounted) return;
-    if (err != null) {
-      Get.snackbar('Check-in'.tr, err);
-    } else {
-      Get.snackbar(
-        'Check-in'.tr,
-        'You earned ${wp.checkinStatus?.coinsAwarded ?? Constant.checkinCoinsPerDay} coins!'
-            .tr,
-      );
-    }
-  }
 }
 
 // ── Sub-widgets ───────────────────────────────────────────────────────────────

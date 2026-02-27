@@ -110,6 +110,8 @@ dependencies:
   facebook_app_events: ^0.19.2
   # Network connectivity checking
   connectivity_plus: ^6.1.1
+  # Coin / reward sound (check-in, etc.)
+  audioplayers: ^6.4.0
 
 dependency_overrides:
   webview_flutter: ^4.7.0
@@ -193,4 +195,5 @@ flutter:
     - assets/fonts/
     - assets/videos/
     - assets/svg/
+    - assets/sounds/
     - assets/

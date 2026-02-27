@@ -46,6 +46,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   // Cache for theme colors to avoid recalculating
   CartThemeColors? _cachedThemeColors;
   CartTheme? _lastTheme;
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -54,13 +55,23 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     _dashboardProvider = Provider.of<DashBoardProvider>(context, listen: false);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       _initializeScreen();
     });
   }
 
+  @override
+  void deactivate() {
+    super.deactivate();
+    // Prevent async callbacks from touching provider/UI after route is torn down
+    _isDisposed = true;
+  }
+
   Future<void> _initializeScreen() async {
+    if (_isDisposed || !mounted) return;
     // Initial setup without heavy API calls
     controller.initFunction(context);
+    if (_isDisposed || !mounted) return;
 
     // Only do full refresh if cart is empty or hasn't been loaded recently
     if (HomeProvider.cartItem.isEmpty ||
@@ -69,6 +80,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
             const Duration(minutes: 5)) {
       await _refreshCartData(context);
     } else {
+      if (_isDisposed || !mounted) return;
       // Just update UI state without API calls
       controller.checkAndUpdatePaymentMethod();
     }
@@ -82,6 +94,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     if (_lastRefreshTime == null ||
         now.difference(_lastRefreshTime!) > const Duration(minutes: 2)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_isDisposed || !mounted) return;
         _refreshCartDataIfNeeded(context);
       });
     }
@@ -103,7 +116,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   }
 
   Future<void> _refreshCartData(BuildContext context) async {
-    if (_isRefreshing) {
+    if (_isRefreshing || _isDisposed || !mounted) {
       return;
     }
 
@@ -116,6 +129,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
       // Only force refresh if cart has items
       if (HomeProvider.cartItem.isNotEmpty) {
         await controller.forceRefreshCart();
+        if (_isDisposed || !mounted) return;
       }
 
       // Initialize address only if needed
@@ -123,11 +137,13 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
           controller.selectedAddress!.location?.latitude == null ||
           controller.selectedAddress!.location?.longitude == null) {
         await controller.initializeAddress(context);
+        if (_isDisposed || !mounted) return;
       } else {
         // Sync address but don't wait for completion
         unawaited(controller.syncAddressWithHomeLocation(context));
       }
 
+      if (_isDisposed || !mounted) return;
       // Check payment method
       controller.checkAndUpdatePaymentMethod();
 
@@ -138,7 +154,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     } catch (e) {
       print('[CART_CHECKOUT] ❌ Error refreshing cart: $e');
     } finally {
-      _isRefreshing = false;
+      if (!_isDisposed) _isRefreshing = false;
       print('[CART_CHECKOUT] ✅ Cart refresh complete');
     }
   }
@@ -169,7 +185,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
 
       // Use a slight delay to allow UI to settle
       Future.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) {
+        if (!_isDisposed && mounted) {
           _refreshCartDataIfNeeded(context);
         }
       });
@@ -352,8 +368,11 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
       ),
       child: Column(
         children: [
-          // Use a memoized or cached version of this widget if possible
-          cartProductDetailsImageWidget(controller),
+          Expanded(
+            child: SingleChildScrollView(
+              child: cartProductDetailsImageWidget(controller),
+            ),
+          ),
         ],
       ),
     );

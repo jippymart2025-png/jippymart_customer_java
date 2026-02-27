@@ -31,6 +31,10 @@ class Preferences {
   static const orangeMoneySettings = "orangeMoneySettings";
   static const xenditSettings = "xenditSettings";
   
+  // Wallet & coin runtime config cache
+  static const walletConfigJson = "walletConfigJson";
+  static const walletConfigLastUpdatedMillis = "walletConfigLastUpdatedMillis";
+  
   // Google Maps API Key stored locally as fallback
   static const googleMapsApiKey = "googleMapsApiKey";
 
@@ -56,6 +60,14 @@ class Preferences {
 
   static Future<void> setString(String key, String value) async {
     await pref.setString(key, value);
+  }
+
+  static int getInt(String key, {int defaultValue = 0}) {
+    return pref.getInt(key) ?? defaultValue;
+  }
+
+  static Future<void> setInt(String key, int value) async {
+    await pref.setInt(key, value);
   }
 
   static Future<void> clearSharPreference() async {

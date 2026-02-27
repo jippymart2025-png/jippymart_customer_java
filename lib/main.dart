@@ -12,7 +12,6 @@ import 'package:jippymart_customer/config/smartlook_config.dart';
 import 'package:jippymart_customer/firebase_options.dart';
 import 'package:jippymart_customer/models/language_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
-import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:jippymart_customer/services/global_deeplink_handler.dart';
 import 'package:jippymart_customer/services/facebook_app_events_service.dart';
@@ -34,6 +33,7 @@ import 'package:jippymart_customer/utils/smartlook_anr_fix.dart';
 import 'package:jippymart_customer/utils/system_call_optimizer.dart';
 import 'package:jippymart_customer/utils/text_processing_anr_fix.dart';
 import 'package:jippymart_customer/services/network_connectivity_service.dart';
+import 'package:jippymart_customer/services/wallet_config_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
@@ -104,83 +104,95 @@ void main() async {
   GlobalDeeplinkHandler.init();
   Get.put(GlobalDeeplinkHandler.instance, permanent: true);
   CrashPrevention();
-  await SmartlookANRFix.configureSmartlook();
-  await PlatformANRPrevention.preventMIUIANR();
-  await PlatformANRPrevention.preventCiscoANR();
+
+  // Firebase only; Remote Config runs after first frame (AppConst.baseUrl stays defaultBaseUrl until then)
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     ).timeout(const Duration(seconds: 3));
-    await RemoteConfigService.instance.initialize();
-    ANRMonitor.startMonitoring();
-    MemoryMonitor.startMemoryMonitoring();
-    NativeLockPrevention.startLockContentionMonitoring();
-    TextProcessingANRFix.startTextProcessingMonitoring();
-    ANRStatusLogger.logANRPreventionStatus();
   } catch (e) {
     if (kDebugMode) {
       print('⚠️ Firebase initialization error: $e');
     }
-    // Continue app startup even if Firebase fails
   }
   await GetStorage.init();
   await Preferences.initPref();
-  DatabaseHelper.instance;
-  
-  // Register MartFirestoreService - critical for mart features
+
+  // MartFirestoreService: register here (cheap); heavy init is in _initializeHeavyServicesInBackground
   try {
     Get.put(MartFirestoreService(), permanent: true);
   } catch (e) {
     if (kDebugMode) {
       print('❌ Failed to register MartFirestoreService: $e');
     }
-    // App can continue but mart features won't work
   }
-  final cartProvider = CartProvider();
-  await cartProvider.checkCartPersistence();
 
-  // 🔑 Initialize delivery charge cache on app launch (non-blocking)
-  try {
-    DeliveryChargeCache.instance.initializeOnAppLaunch();
-    if (kDebugMode) {
-      print('✅ Delivery charge cache initialized');
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      print('⚠️ Delivery charge cache initialization failed: $e');
-    }
-  }
-  // Initialize network connectivity service
-  try {
-    await NetworkConnectivityService().initialize();
-    if (kDebugMode) {
-      print('✅ Network connectivity service initialized');
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      print('⚠️ Network connectivity service initialization failed: $e');
-    }
-  }
-  // Initialize Facebook App Events
-  try {
-    await FacebookAppEventsService().initialize();
-    if (kDebugMode) {
-      print('✅ Facebook App Events initialized successfully');
-    }
-  } catch (e) {
-    if (kDebugMode) {
-      print('⚠️ Facebook App Events initialization failed: $e');
-    }
-  }
-  // Run Facebook App Events tests in debug mode
-  if (kDebugMode) {
-    _runFacebookAppEventsTests();
-  }
   PaintingBinding.instance.imageCache.maximumSizeBytes =
       1024 * 1024 * 80; // 80 MB
   PaintingBinding.instance.imageCache.maximumSize = 200;
 
   runApp(MyApp());
+}
+
+/// Runs all initialization deferred from main() so first frame paints sooner.
+/// Called once after first frame from _DeferredInitRunner (context has Provider).
+void _runDeferredInits(BuildContext context) {
+  Future.microtask(() async {
+    try {
+      // Remote Config: app uses AppConst.defaultBaseUrl until this completes
+      await RemoteConfigService.instance.initialize();
+    } catch (e) {
+      if (kDebugMode) print('⚠️ RemoteConfig init error: $e');
+    }
+    try {
+      await WalletConfigService.instance.initialize();
+      if (kDebugMode) print('✅ Wallet config initialized');
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Wallet config init error: $e');
+    }
+    try {
+      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      cartProvider.checkCartPersistence();
+    } catch (e) {
+      if (kDebugMode) print('⚠️ CartProvider checkCartPersistence error: $e');
+    }
+    try {
+      await NetworkConnectivityService().initialize();
+      if (kDebugMode) print('✅ Network connectivity service initialized');
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Network connectivity init failed: $e');
+    }
+    try {
+      await FacebookAppEventsService().initialize();
+      if (kDebugMode) print('✅ Facebook App Events initialized');
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Facebook App Events init failed: $e');
+    }
+    try {
+      DeliveryChargeCache.instance.initializeOnAppLaunch();
+      if (kDebugMode) print('✅ Delivery charge cache initialized');
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Delivery charge cache init failed: $e');
+    }
+    // ANR / monitoring (non-blocking)
+    try {
+      ANRMonitor.startMonitoring();
+      MemoryMonitor.startMemoryMonitoring();
+      NativeLockPrevention.startLockContentionMonitoring();
+      TextProcessingANRFix.startTextProcessingMonitoring();
+      ANRStatusLogger.logANRPreventionStatus();
+    } catch (e) {
+      if (kDebugMode) print('⚠️ ANR/monitor init error: $e');
+    }
+    try {
+      await SmartlookANRFix.configureSmartlook();
+      await PlatformANRPrevention.preventMIUIANR();
+      await PlatformANRPrevention.preventCiscoANR();
+    } catch (e) {
+      if (kDebugMode) print('⚠️ Smartlook/Platform ANR init error: $e');
+    }
+    if (kDebugMode) _runFacebookAppEventsTests();
+  });
 }
 
 void _initializeHeavyServicesInBackground() {
@@ -282,6 +294,35 @@ void _initializeSmartLookInBackground() {
   });
 }
 
+/// Runs deferred inits after first frame so launch is not blocked.
+/// Must be a descendant of MultiProvider so CartProvider is available.
+class _DeferredInitRunner extends StatefulWidget {
+  const _DeferredInitRunner({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_DeferredInitRunner> createState() => _DeferredInitRunnerState();
+}
+
+class _DeferredInitRunnerState extends State<_DeferredInitRunner> {
+  static bool _didRun = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_didRun) {
+        _didRun = true;
+        _runDeferredInits(context);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 Future<bool> onWillPop(BuildContext context) async {
   bool? shouldExit = await showDialog(
     context: context,
@@ -321,12 +362,12 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void initState() {
+    super.initState();
     _initializeHeavyServicesInBackground();
-    _initializeDeepLinkServicesInBackground(context);
     _initializeSmartLookInBackground();
     WidgetsBinding.instance.addObserver(this);
-    super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeDeepLinkServicesInBackground(context);
       LanguageModel languageModel = LanguageModel(
         slug: "en",
         isRtl: false,
@@ -337,7 +378,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         jsonEncode(languageModel.toJson()),
       );
     });
-    super.initState();
   }
 
   @override
@@ -427,7 +467,8 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ChangeNotifierProvider(create: (_) => SignupProvider()),
         ChangeNotifierProvider(create: (_) => WalletProvider()),
       ],
-      child: GetMaterialApp(
+      child: _DeferredInitRunner(
+        child: GetMaterialApp(
         navigatorKey: GlobalDeeplinkHandler.navigatorKey,
         title: 'JippyMart Customer'.tr,
         debugShowCheckedModeBanner: false,
@@ -447,6 +488,10 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           debugPrint(text);
         },
         localizationsDelegates: const [CountryLocalizations.delegate],
+        // Global SafeArea: wraps the Navigator so all routes get insets. Keep top: false
+        // so app bar/status bar are unchanged; bottom/sides respect notches. Rely on
+        // deactivate guards (e.g. cart_check_out_screen, restaurant_details_screen)
+        // so provider notify during route transitions doesn't cause tree assertions.
         builder: (context, child) {
           return EasyLoading.init()(
             context,
@@ -460,6 +505,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           builder: (context, controller, _) {
             return const VideoSplashScreen();
           },
+        ),
         ),
       ),
     );

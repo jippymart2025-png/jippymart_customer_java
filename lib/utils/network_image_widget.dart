@@ -151,24 +151,10 @@ class NetworkImageWidget extends StatelessWidget {
       cleanImageUrl = cleanImageUrl.substring(1, cleanImageUrl.length - 1);
     }
 
-    // Handle URLs with spaces - encode them properly
-    if (cleanImageUrl.contains(' ')) {
-      try {
-        final uri = Uri.parse(cleanImageUrl);
-        // Re-encode the path segments to handle spaces
-        cleanImageUrl = uri.replace(
-          pathSegments: uri.pathSegments.map((s) => Uri.encodeComponent(s)).toList(),
-        ).toString();
-      } catch (e) {
-        // If parsing fails, try simple space replacement
-        cleanImageUrl = cleanImageUrl.replaceAll(' ', '%20');
-      }
-    }
-
-    // Check if URL is valid
+    // Normalize path encoding and validate URL. Re-serializing from parsed path
+    // fixes double-encoding (e.g. %2520 -> %20) so image URLs load correctly.
     try {
       final uri = Uri.parse(cleanImageUrl);
-      // Ensure the URL has a valid host
       if (uri.host.isEmpty) {
         if (kDebugMode) {
           print('[NETWORK_IMAGE] Invalid URL - no host: $imageUrl');
@@ -181,6 +167,7 @@ class NetworkImageWidget extends StatelessWidget {
               fit: fit,
             );
       }
+      cleanImageUrl = uri.replace(path: uri.path).toString();
     } catch (e) {
       if (kDebugMode) {
         print('[NETWORK_IMAGE] Invalid URL format: $imageUrl');

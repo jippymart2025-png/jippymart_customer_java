@@ -1689,8 +1689,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   Future<void> getArgument({required VendorModel vendorModels}) async {
-    // Clear previous state
+    // Clear previous state and immediately mark as loading so UI shows shimmer
     _clearState();
+    isLoading = true;
+    notifyListeners();
 
     vendorModel = vendorModels;
 
@@ -2040,7 +2042,16 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   /// CATEGORY-PRODUCT MAPPING - OPTIMIZED
   void _buildCategoryProductMapping() {
     _categoryProductsMap.clear();
-    categoryKeys.clear();
+    // Do NOT clear categoryKeys - replacing GlobalKeys causes duplicate key
+    // errors and detached ExpansionTile paint (referenceBox.attached). Only
+    // add keys for new indices and remove keys for indices no longer in list.
+    final maxIndex = vendorCategoryList.length - 1;
+    categoryKeys.removeWhere((key, _) {
+      final match = RegExp(r'category_(\d+)').firstMatch(key);
+      if (match == null) return false;
+      final i = int.tryParse(match.group(1)!);
+      return i != null && i > maxIndex;
+    });
 
     // Build map in single pass
     for (var product in productList) {
@@ -2062,10 +2073,13 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       });
     }
 
-    // Create keys only for visible categories
+    // Create keys only for indices that don't have one (stable keys avoid
+    // reparenting and InkFeature/referenceBox.attached crashes)
     for (int i = 0; i < vendorCategoryList.length; i++) {
       final categoryKey = _getCategoryKey(i);
-      categoryKeys[categoryKey] = GlobalKey();
+      if (!categoryKeys.containsKey(categoryKey)) {
+        categoryKeys[categoryKey] = GlobalKey();
+      }
     }
   }
 

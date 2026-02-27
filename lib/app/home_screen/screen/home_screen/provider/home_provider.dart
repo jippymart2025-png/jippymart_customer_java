@@ -272,7 +272,11 @@ class HomeProvider extends ChangeNotifier {
       cartItem
         ..clear()
         ..addAll(event);
-      notifyListeners();
+      // Defer notify to next frame to avoid "dependent is not a descendant"
+      // when tree is updating (e.g. route transition or list rebuild).
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_cartSubscription != null) notifyListeners();
+      });
     });
   }
 
