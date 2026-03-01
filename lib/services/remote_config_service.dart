@@ -35,8 +35,8 @@ class RemoteConfigService {
       if (fetchedUrl.isNotEmpty && !fetchedUrl.contains('{{')) {
         // AppConst.baseUrl = "https://admin.jippymart.in/api/";
 
-        AppConst.baseUrl = "http://192.168.88.8:8000/api/";
-        // AppConst.baseUrl = _normalizeUrl(fetchedUrl);
+        // AppConst.baseUrl = "http://192.168.88.8:8000/api/";
+        AppConst.baseUrl = _normalizeUrl(fetchedUrl);
         if (kDebugMode) {
           print('[RemoteConfig] base_url fetched: $fetchedUrl');
           print('[RemoteConfig] base_url applied: ${AppConst.baseUrl}');

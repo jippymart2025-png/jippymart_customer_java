@@ -23,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 4, // ✅ Bumped version (important!)
+      version: 5, // ✅ Bumped version to add merchant_price
       onCreate: _createDB,
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 2) {
@@ -52,6 +52,13 @@ class DatabaseHelper {
 
           await db.execute('DROP TABLE cart_products_old');
         }
+
+        // 🔁 v5 migration: add merchant_price column to existing table
+        if (oldVersion < 5) {
+          await db.execute(
+            'ALTER TABLE cart_products ADD COLUMN merchant_price TEXT',
+          );
+        }
       },
     );
   }
@@ -69,6 +76,7 @@ class DatabaseHelper {
       photo $textType,
       price $textType,
       discountPrice $textType,
+      merchant_price $textType,
       vendorID $textType,
       vendorName $textType,       -- ✅ now nullable
       quantity $intType,

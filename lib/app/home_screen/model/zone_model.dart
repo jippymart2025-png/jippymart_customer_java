@@ -1,7 +1,3 @@
-// To parse this JSON data, do
-//
-//     final zoneModel = zoneModelFromJson(jsonString);
-
 import 'dart:convert';
 
 ZoneModel zoneModelFromJson(String str) => ZoneModel.fromJson(json.decode(str));
@@ -14,12 +10,7 @@ class ZoneModel {
   bool? isZoneAvailable;
   String? message;
 
-  ZoneModel({
-    this.success,
-    this.zone,
-    this.isZoneAvailable,
-    this.message,
-  });
+  ZoneModel({this.success, this.zone, this.isZoneAvailable, this.message});
 
   factory ZoneModel.fromJson(Map<String, dynamic> json) => ZoneModel(
     success: json["success"],
@@ -59,7 +50,9 @@ class Zone {
     latitude: json["latitude"],
     longitude: json["longitude"],
     publish: json["publish"],
-    area: json["area"] == null ? [] : List<Area>.from(json["area"]!.map((x) => Area.fromJson(x))),
+    area: json["area"] == null
+        ? []
+        : List<Area>.from(json["area"]!.map((x) => Area.fromJson(x))),
   );
 
   Map<String, dynamic> toJson() => {
@@ -68,7 +61,9 @@ class Zone {
     "latitude": latitude,
     "longitude": longitude,
     "publish": publish,
-    "area": area == null ? [] : List<dynamic>.from(area!.map((x) => x.toJson())),
+    "area": area == null
+        ? []
+        : List<dynamic>.from(area!.map((x) => x.toJson())),
   };
 }
 
@@ -76,10 +71,7 @@ class Area {
   double? latitude;
   double? longitude;
 
-  Area({
-    this.latitude,
-    this.longitude,
-  });
+  Area({this.latitude, this.longitude});
 
   factory Area.fromJson(Map<String, dynamic> json) => Area(
     latitude: json["latitude"]?.toDouble(),

@@ -24,11 +24,13 @@ class ProductModel {
   bool? nonveg;
   String? photo;
   String? price;
+  String? merchantPrice;
   String? categoryID;
   String? description;
   DateTime? createdAt;
   bool? isAvailable;
   String? categoryTitle;
+  List<ProductOption>? options;
 
   ProductModel({
     this.fats,
@@ -54,11 +56,13 @@ class ProductModel {
     this.nonveg,
     this.photo,
     this.price,
+    this.merchantPrice,
     this.categoryID,
     this.description,
     this.createdAt,
     this.isAvailable,
     this.categoryTitle,
+    this.options,
   });
 
   // Factory constructor for API JSON
@@ -85,8 +89,12 @@ class ProductModel {
         reviewsSum: _parseNum(json['reviews_sum']),
         quantity: _parseInt(json['quantity']) ?? -1,
         price: _parsePrice(json['original_price']) ?? '0',
+        merchantPrice: _parsePrice(json['merchant_price']) ??
+            _parsePrice(json['original_price']) ??
+            '0',
         disPrice: _parsePrice(json['discount_price']) ?? '0',
         vendorID: _parseString(json['vendorID']),
+        options: _parseOptions(json['options']),
       );
     } catch (e) {
       print('❌ Error parsing product JSON: $e');
@@ -150,6 +158,31 @@ class ProductModel {
     if (value is int) return value.toString();
     if (value is double) return value.toString();
     if (value is num) return value.toString();
+    return null;
+  }
+
+  /// Parse `options` field from API / JSON into a strongly-typed list.
+  static List<ProductOption>? _parseOptions(dynamic value) {
+    if (value == null) return null;
+    try {
+      if (value is List) {
+        return value
+            .whereType<Map<String, dynamic>>()
+            .map((e) => ProductOption.fromJson(e))
+            .toList();
+      }
+      if (value is String) {
+        final decoded = json.decode(value);
+        if (decoded is List) {
+          return decoded
+              .whereType<Map<String, dynamic>>()
+              .map((e) => ProductOption.fromJson(e))
+              .toList();
+        }
+      }
+    } catch (e) {
+      print('⚠️ Failed to parse product options: $e');
+    }
     return null;
   }
 
@@ -244,6 +277,8 @@ class ProductModel {
           json['isAvailable'] == true ||
           json['isAvailable'] == "1" ||
           json['isAvailable'] == "true";
+      // Parse simple options list if present (defensive - works with both Map and List)
+      options = _parseOptions(json['options']);
     } catch (e, stackTrace) {
       print('❌ Error parsing ProductModel from JSON: $e');
       print('❌ Stack trace: $stackTrace');
@@ -346,12 +381,65 @@ class ProductModel {
     data['nonveg'] = nonveg;
     data['photo'] = photo;
     data['price'] = price;
+    data['merchant_price'] = merchantPrice;
     data['categoryID'] = categoryID;
     data['description'] = description;
     data['createdAt'] = createdAt;
     data['isAvailable'] = isAvailable;
 
+    if (options != null) {
+      data['options'] = options!.map((e) => e.toJson()).toList();
+    }
+
     return data;
+  }
+}
+
+class ProductOption {
+  String? id;
+  String? title;
+  String? subtitle;
+  String? price;
+  bool? isAvailable;
+  String? originalPrice;
+  bool? isFeatured;
+
+  ProductOption({
+    this.id,
+    this.title,
+    this.subtitle,
+    this.price,
+    this.isAvailable,
+    this.originalPrice,
+    this.isFeatured,
+  });
+
+  factory ProductOption.fromJson(Map<String, dynamic> json) {
+    return ProductOption(
+      id: ProductModel._parseString(json['id']),
+      title: ProductModel._parseString(json['title']),
+      subtitle: ProductModel._parseString(json['subtitle']),
+      price: ProductModel._parsePrice(json['price']) ?? '0',
+      isAvailable:
+          json['is_available'] == true || json['is_available'] == 1,
+      originalPrice: ProductModel._parsePrice(json['original_price']) ??
+          ProductModel._parsePrice(json['price']) ??
+          '0',
+      isFeatured:
+          json['is_featured'] == true || json['is_featured'] == 1,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'subtitle': subtitle,
+      'price': price,
+      'is_available': isAvailable,
+      'original_price': originalPrice,
+      'is_featured': isFeatured,
+    };
   }
 }
 

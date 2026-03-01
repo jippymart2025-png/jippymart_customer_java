@@ -51,8 +51,10 @@ class Constant {
   static String driverRadios = "50";
   static String distanceType = "km";
   static String placeholderImage = "assets/images/food_delivery.jpeg";
-  static String googlePlayLink = "";
-  static String appStoreLink = "";
+  static String googlePlayLink =
+      "https://play.google.com/store/apps/details?id=com.jippymart.customer";
+  static String appStoreLink =
+      "https://apps.apple.com/in/app/jippy-mart/id6755069616";
   static String appVersion = "";
   static String websiteUrl = "";
   static String termsAndConditions = "";

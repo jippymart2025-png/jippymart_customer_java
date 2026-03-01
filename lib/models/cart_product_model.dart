@@ -7,6 +7,7 @@ class CartProductModel {
   String? photo;
   String? price;
   String? discountPrice;
+  String? merchantPrice;
   String? vendorID;
   String? vendorName;
   int? quantity;
@@ -22,6 +23,7 @@ class CartProductModel {
     this.photo,
     this.price,
     this.discountPrice,
+    this.merchantPrice,
     this.vendorID,
     this.vendorName,
     this.quantity,
@@ -38,6 +40,7 @@ class CartProductModel {
     photo = json['photo'];
     price = json['price'] ?? "0.0";
     discountPrice = json['discountPrice'] ?? "0.0";
+    merchantPrice = json['merchant_price'];
     vendorID = json['vendorID'];
     vendorName = json['vendorName'];
     quantity = json['quantity'];
@@ -65,6 +68,7 @@ class CartProductModel {
     data['photo'] = photo;
     data['price'] = price;
     data['discountPrice'] = discountPrice;
+    data['merchant_price'] = merchantPrice;
     data['vendorID'] = vendorID;
     data['vendorName'] = vendorName;
     data['quantity'] = quantity;

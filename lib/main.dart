@@ -488,15 +488,16 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           debugPrint(text);
         },
         localizationsDelegates: const [CountryLocalizations.delegate],
-        // Global SafeArea: wraps the Navigator so all routes get insets. Keep top: false
-        // so app bar/status bar are unchanged; bottom/sides respect notches. Rely on
-        // deactivate guards (e.g. cart_check_out_screen, restaurant_details_screen)
-        // so provider notify during route transitions doesn't cause tree assertions.
+        // Global SafeArea: wraps the Navigator so all routes respect device safe areas
+        // (notch, status bar, home indicator, rounded corners).
         builder: (context, child) {
           return EasyLoading.init()(
             context,
             SafeArea(
-              top: false,
+              top: true,
+              bottom: true,
+              left: true,
+              right: true,
               child: child ?? const SizedBox.shrink(),
             ),
           );

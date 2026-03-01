@@ -155,18 +155,18 @@ Widget _buildProductItem(
           originalPriceForComparison > finalPrice;
 
       return InkWell(
-        onTap: () async {
-          if (productModel != null) {
-            await FireStoreUtils.getVendorById(
-              productModel.vendorID.toString(),
-            ).then((value) {
-              if (value != null) {
-                restaurantDetailsProvider.initFunction(vendorModels: value);
-                Get.to(const RestaurantDetailsScreen());
-              }
-            });
-          }
-        },
+        // onTap: () async {
+        //   if (productModel != null) {
+        //     await FireStoreUtils.getVendorById(
+        //       productModel.vendorID.toString(),
+        //     ).then((value) {
+        //       if (value != null) {
+        //         restaurantDetailsProvider.initFunction(vendorModels: value);
+        //         Get.to(const RestaurantDetailsScreen());
+        //       }
+        //     });
+        //   }
+        // },
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           child: Row(
@@ -486,7 +486,19 @@ Widget _buildProductItem(
                       Padding(
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
-                          'Add-ons: ${cartProductModel.extras!.map((e) => e.title ?? '').where((title) => title.isNotEmpty).join(', ')}',
+                          'Add-ons: ${cartProductModel.extras!.map((e) {
+                            try {
+                              if (e is Map && e['title'] != null) {
+                                return e['title'].toString();
+                              }
+                              if (e is String) {
+                                return e;
+                              }
+                              return (e.title ?? '').toString();
+                            } catch (_) {
+                              return '';
+                            }
+                          }).where((title) => title.isNotEmpty).join(', ')}',
                           style: TextStyle(
                             fontSize: 11,
                             fontFamily: AppThemeData.regular,

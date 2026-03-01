@@ -186,12 +186,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                Constant.selectedLocation
-                                        .getFullAddress()
-                                        .isEmpty
-                                    ? "Set delivery address".tr
-                                    : Constant.selectedLocation
-                                          .getFullAddress(),
+                                "Delivering to address ⬆️",
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
