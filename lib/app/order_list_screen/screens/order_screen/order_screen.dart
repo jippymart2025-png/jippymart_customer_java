@@ -44,12 +44,31 @@ class _OrderScreenState extends State<OrderScreen>
   final _scrollController = ScrollController();
   bool _isRefreshing = false;
   Timer? _debounceTimer;
+  static const double _loadMoreTriggerOffset = 200;
 
   @override
   bool get wantKeepAlive => true;
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!mounted || !_scrollController.hasClients) return;
+    final pos = _scrollController.position;
+    if (pos.pixels >= pos.maxScrollExtent - _loadMoreTriggerOffset) {
+      final orderProvider = context.read<OrderProvider>();
+      if (orderProvider.hasNextPage && !orderProvider.isLoadingMore) {
+        orderProvider.loadMoreOrders();
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _debounceTimer?.cancel();
     super.dispose();
@@ -285,21 +304,55 @@ class _OrderScreenState extends State<OrderScreen>
     OrderProvider controller,
     String emptyMessage,
   ) {
-    if (orderList.isEmpty) {
+    if (orderList.isEmpty && !controller.isLoading) {
       return Constant.showEmptyView(message: emptyMessage);
     }
+
+    final hasMore = controller.hasNextPage;
+    final itemCount = orderList.length + (hasMore ? 1 : 0);
 
     return RefreshIndicator(
       onRefresh: () => _refreshOrders(controller),
       child: ListView.builder(
         controller: _scrollController,
-        itemCount: orderList.length,
+        itemCount: itemCount,
         physics: const AlwaysScrollableScrollPhysics(),
-        shrinkWrap: true,
         padding: EdgeInsets.zero,
+        cacheExtent: 600,
+        addAutomaticKeepAlives: true,
+        addRepaintBoundaries: true,
         itemBuilder: (context, index) {
-          return _buildItemView(context, orderList[index], controller);
+          if (index == orderList.length) {
+            return _buildLoadMoreFooter(controller);
+          }
+          final order = orderList[index];
+          return RepaintBoundary(
+            key: ValueKey(order.id ?? index),
+            child: _buildItemView(context, order, controller),
+          );
         },
+      ),
+    );
+  }
+
+  Widget _buildLoadMoreFooter(OrderProvider controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Center(
+        child: controller.isLoadingMore
+            ? const SizedBox(
+                height: 32,
+                width: 32,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : Text(
+                'Scroll for more'.tr,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppThemeData.grey500,
+                  fontFamily: AppThemeData.medium,
+                ),
+              ),
       ),
     );
   }
@@ -309,44 +362,38 @@ class _OrderScreenState extends State<OrderScreen>
     OrderModel orderModel,
     OrderProvider controller,
   ) {
-    return Consumer<OrderDetailsProvider>(
-      builder: (context, orderDetailsProvider, _) {
-        return GestureDetector(
-          onTap: () =>
-              _navigateToOrderDetails(orderModel, orderDetailsProvider),
+    return GestureDetector(
+      onTap: () {
+        final orderDetailsProvider = context.read<OrderDetailsProvider>();
+        _navigateToOrderDetails(orderModel, orderDetailsProvider);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 5),
+        child: Card(
+          elevation: 4,
+          color: ColorConst.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 5),
-            child: Card(
-              elevation: 4,
-              color: ColorConst.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Column(
-                  children: [
-                    _buildOrderHeader(orderModel, context),
-                    const SizedBox(height: 10),
-                    _buildOrderTotal(orderModel),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      child: MySeparator(color: AppThemeData.grey200),
-                    ),
-                    _buildOrderActions(
-                      context,
-                      orderModel,
-                      controller,
-                      orderDetailsProvider,
-                    ),
-                    const SizedBox(height: 10),
-                  ],
+            padding: const EdgeInsets.all(8.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildOrderHeader(orderModel, context),
+                const SizedBox(height: 10),
+                _buildOrderTotal(orderModel),
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: MySeparator(color: AppThemeData.grey200),
                 ),
-              ),
+                _buildOrderActions(context, orderModel, controller),
+                const SizedBox(height: 10),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -479,7 +526,6 @@ class _OrderScreenState extends State<OrderScreen>
     BuildContext context,
     OrderModel orderModel,
     OrderProvider controller,
-    OrderDetailsProvider orderDetailsProvider,
   ) {
     return Row(
       children: [
@@ -502,25 +548,23 @@ class _OrderScreenState extends State<OrderScreen>
         else if (orderModel.status == Constant.orderShipped ||
             orderModel.status == Constant.orderInTransit)
           Expanded(
-            child: Consumer<LiveTrackingProvider>(
-              builder: (context, liveTrackingProvider, _) {
-                return InkWell(
-                  onTap: () {
-                    liveTrackingProvider.initFunction(orderModel: orderModel);
-                    Get.to(const LiveTrackingScreen());
-                  },
-                  child: Text(
-                    "Track Order".tr,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: AppThemeData.primary300,
-                      fontFamily: AppThemeData.semiBold,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
-                    ),
-                  ),
+            child: InkWell(
+              onTap: () {
+                context.read<LiveTrackingProvider>().initFunction(
+                  orderModel: orderModel,
                 );
+                Get.to(const LiveTrackingScreen());
               },
+              child: Text(
+                "Track Order".tr,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: AppThemeData.primary300,
+                  fontFamily: AppThemeData.semiBold,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
             ),
           )
         else
@@ -528,8 +572,10 @@ class _OrderScreenState extends State<OrderScreen>
 
         Expanded(
           child: InkWell(
-            onTap: () =>
-                _navigateToOrderDetails(orderModel, orderDetailsProvider),
+            onTap: () {
+              final orderDetailsProvider = context.read<OrderDetailsProvider>();
+              _navigateToOrderDetails(orderModel, orderDetailsProvider);
+            },
             child: Text(
               "View Details".tr,
               textAlign: TextAlign.center,

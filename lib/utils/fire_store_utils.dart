@@ -50,6 +50,66 @@ class ProductPriceInfo {
   });
 }
 
+/// Pagination meta from firestore/orders API (aligns with backend buildPagination).
+class OrdersPagination {
+  final int total;
+  final int perPage;
+  final int currentPage;
+  final int totalPages;
+  final bool hasNext;
+  final bool hasPrev;
+
+  const OrdersPagination({
+    required this.total,
+    required this.perPage,
+    required this.currentPage,
+    required this.totalPages,
+    required this.hasNext,
+    required this.hasPrev,
+  });
+
+  factory OrdersPagination.fromJson(Map<String, dynamic>? json) {
+    if (json == null) {
+      return const OrdersPagination(
+        total: 0,
+        perPage: 10,
+        currentPage: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrev: false,
+      );
+    }
+    final total = (json['total'] is int)
+        ? json['total'] as int
+        : int.tryParse(json['total']?.toString() ?? '0') ?? 0;
+    final perPage = (json['per_page'] is int)
+        ? json['per_page'] as int
+        : int.tryParse(json['per_page']?.toString() ?? '10') ?? 10;
+    final currentPage = (json['current_page'] is int)
+        ? json['current_page'] as int
+        : int.tryParse(json['current_page']?.toString() ?? '1') ?? 1;
+    final totalPages = (json['total_pages'] is int)
+        ? json['total_pages'] as int
+        : int.tryParse(json['total_pages']?.toString() ?? '1') ?? 1;
+    return OrdersPagination(
+      total: total,
+      perPage: perPage,
+      currentPage: currentPage,
+      totalPages: totalPages,
+      hasNext: json['has_next'] == true,
+      hasPrev: json['has_prev'] == true,
+    );
+  }
+}
+
+/// Result of a single paginated orders request.
+class OrdersPageResult {
+  final List<OrderModel> orders;
+  final OrdersPagination pagination;
+
+  const OrdersPageResult({required this.orders, required this.pagination});
+}
+
 class FireStoreUtils {
   // static FirebaseFirestore fireStore = FirebaseFirestore.instance;
   static final bool _isDatabaseHealthy = true;
@@ -907,95 +967,178 @@ class FireStoreUtils {
     }
   }
 
-  static Future<List<OrderModel>> getAllOrder() async {
-    List<OrderModel> list = [];
-    var currentUid = await SqlStorageConst.getFirebaseId();
-    if (currentUid == null || currentUid.isEmpty) {
-      currentUid = Constant.userModel?.firebaseId;
-    }
-    if (kDebugMode) {
-      print('getAllOrder: userId=$currentUid');
-    }
-    if (currentUid == null || currentUid.isEmpty) {
-      if (kDebugMode) {
-        print('getAllOrder: No user ID found, returning empty list');
-      }
-      return list;
-    }
+  // static Future<List<OrderModel>> getAllOrder() async {
+  //   List<OrderModel> list = [];
+  //   // Backend user id only (e.g. "user_26c52283-..."). API does not accept Firebase UID for author_id.
+  //   var currentUid = Constant.userModel?.id;
+  //   if (currentUid == null || currentUid.isEmpty) {
+  //     currentUid = await SqlStorageConst.getUserId();
+  //   }
+  //   if (currentUid == null || currentUid.isEmpty) {
+  //     currentUid = Constant.userModel?.firebaseId;
+  //   }
+  //   if (currentUid == null || currentUid.isEmpty) {
+  //     currentUid = await SqlStorageConst.getFirebaseId();
+  //   }
+  //   if (kDebugMode) {
+  //     print('getAllOrder: userId=$currentUid');
+  //   }
+  //   if (currentUid == null || currentUid.isEmpty) {
+  //     if (kDebugMode) {
+  //       print('getAllOrder: No user ID found, returning empty list');
+  //     }
+  //     return list;
+  //   }
+  //
+  //   try {
+  //     // Try mobile/orders first (uses auth header; returns data.orders structure)
+  //     list = await _fetchOrdersFromMobile();
+  //     if (list.isEmpty &&
+  //         currentUid.isNotEmpty &&
+  //         currentUid.startsWith('user_')) {
+  //       // firestore/orders expects backend user id only, not Firebase UID
+  //       list = await _fetchOrdersFromFirestore(currentUid);
+  //     }
+  //   } catch (e, st) {
+  //     if (kDebugMode) {
+  //       print('getAllOrder error: $e');
+  //       dev.log('getAllOrder stack: $st');
+  //     }
+  //   }
+  //
+  //   if (kDebugMode) {
+  //     print('getAllOrder: Returning ${list.length} orders');
+  //   }
+  //   return list;
+  // }
 
-    try {
-      list = await _fetchOrdersFromFirestore(currentUid);
-      if (list.isEmpty) {
-        list = await _fetchOrdersFromMobile();
-      }
-    } catch (e, st) {
-      if (kDebugMode) {
-        print('getAllOrder error: $e');
-        dev.log('getAllOrder stack: $st');
-      }
-    }
-
-    if (kDebugMode) {
-      print('getAllOrder: Returning ${list.length} orders');
-    }
-    return list;
+  /// Resolves author_id for firestore/orders: backend user id preferred, then Firebase UID.
+  static Future<String> _resolveOrdersAuthorId() async {
+    var id = Constant.userModel?.id;
+    if (id == null || id.isEmpty) id = await SqlStorageConst.getUserId();
+    if (id == null || id.isEmpty) id = Constant.userModel?.firebaseId;
+    if (id == null || id.isEmpty) id = await SqlStorageConst.getFirebaseId();
+    return id ?? '';
   }
 
-  static Future<List<OrderModel>> _fetchOrdersFromFirestore(
-    String authorId,
-  ) async {
-    var list = <OrderModel>[];
-    final uri = Uri.parse(
-      '${AppConst.baseUrl}firestore/orders',
-    ).replace(queryParameters: {'author_id': authorId});
-    if (kDebugMode) {
-      print('getAllOrder: API URL: $uri');
+  /// Fetches one page of orders from firestore/orders API (paginated, scalable).
+  /// Uses page/limit query params; returns orders and pagination meta.
+  static Future<OrdersPageResult> fetchOrdersFromFirestorePage({
+    int page = 1,
+    int limit = 10,
+  }) async {
+    const defaultLimit = 20;
+    const maxLimit = 200;
+    final effectiveLimit = limit.clamp(1, maxLimit);
+    final effectivePage = page < 1 ? 1 : page;
+
+    final authorId = await _resolveOrdersAuthorId();
+    if (authorId.isEmpty) {
+      if (kDebugMode) dev.log('fetchOrdersFromFirestorePage: no author_id');
+      return OrdersPageResult(
+        orders: [],
+        pagination: const OrdersPagination(
+          total: 0,
+          perPage: defaultLimit,
+          currentPage: 1,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        ),
+      );
     }
+
+    final uri = Uri.parse('${AppConst.baseUrl}firestore/orders').replace(
+      queryParameters: {
+        'author_id': await SqlStorageConst.getFirebaseId(),
+        'page': effectivePage.toString(),
+        'limit': effectiveLimit.toString(),
+      },
+    );
+    if (kDebugMode) {
+      dev.log('fetchOrdersFromFirestorePage: $uri');
+    }
+
     final response = await http.get(uri, headers: await getHeaders());
-    if (kDebugMode) {
-      print('getAllOrder: Response status: ${response.statusCode}');
-      dev.log('getAllOrder body: ${response.body}');
+    if (response.statusCode != 200) {
+      if (kDebugMode)
+        dev.log('fetchOrdersFromFirestorePage: status ${response.statusCode}');
+      return OrdersPageResult(
+        orders: [],
+        pagination: OrdersPagination(
+          total: 0,
+          perPage: effectiveLimit,
+          currentPage: effectivePage,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        ),
+      );
     }
-    if (response.statusCode != 200) return list;
 
     final responseData = json.decode(response.body) as Map<String, dynamic>?;
     if (responseData == null || responseData['success'] != true) {
-      if (kDebugMode) {
-        print('getAllOrder: success=false or null');
-      }
-      return list;
+      return OrdersPageResult(
+        orders: [],
+        pagination: OrdersPagination(
+          total: 0,
+          perPage: effectiveLimit,
+          currentPage: effectivePage,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        ),
+      );
     }
 
     final data = responseData['data'];
     List<dynamic> ordersData = [];
-    if (data is List) {
-      ordersData = data;
-    } else if (data is Map && data['orders'] != null) {
-      final orders = data['orders'];
+    Map<String, dynamic>? paginationJson;
+    if (data is Map) {
+      final d = data as Map<String, dynamic>;
+      final orders = d['orders'];
       ordersData = orders is List ? orders : [];
+      paginationJson = d['pagination'] is Map
+          ? Map<String, dynamic>.from(d['pagination'] as Map)
+          : null;
+    } else if (data is List) {
+      ordersData = data;
     }
 
-    if (kDebugMode) {
-      print('getAllOrder: Found ${ordersData.length} orders in response');
-    }
-
+    final list = <OrderModel>[];
     for (var raw in ordersData) {
       try {
         final orderData = raw is Map<String, dynamic>
             ? raw
             : Map<String, dynamic>.from(raw as Map);
         final orderModel = OrderModel.fromJson(_normalizeOrderJson(orderData));
-        list.add(orderModel);
+        if (orderModel.createdAt != null) list.add(orderModel);
       } catch (e) {
-        if (kDebugMode) {
-          print('getAllOrder: Skip order parse error: $e');
-        }
+        if (kDebugMode) dev.log('fetchOrdersFromFirestorePage: skip order $e');
       }
     }
-
-    list = list.where((o) => o.createdAt != null).toList();
     list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
-    return list;
+
+    OrdersPagination pagination = OrdersPagination.fromJson(paginationJson);
+    if (paginationJson == null && list.isNotEmpty) {
+      // Backend may not return pagination; infer from page size
+      final inferredHasNext = list.length >= effectiveLimit;
+      pagination = OrdersPagination(
+        total: list.length,
+        perPage: effectiveLimit,
+        currentPage: effectivePage,
+        totalPages: inferredHasNext ? effectivePage + 1 : effectivePage,
+        hasNext: inferredHasNext,
+        hasPrev: effectivePage > 1,
+      );
+    }
+    return OrdersPageResult(orders: list, pagination: pagination);
+  }
+
+  /// Fetches first page of orders (backward compatible). Prefer fetchOrdersFromFirestorePage for pagination.
+  static Future<List<OrderModel>> fetchOrdersFromFirestore() async {
+    final result = await fetchOrdersFromFirestorePage(page: 1, limit: 20);
+    return result.orders;
   }
 
   static Future<List<OrderModel>> _fetchOrdersFromMobile() async {
@@ -1003,9 +1146,12 @@ class FireStoreUtils {
     try {
       final uri = Uri.parse('${AppConst.baseUrl}mobile/orders');
       if (kDebugMode) {
-        print('getAllOrder: Fallback mobile/orders URL: $uri');
+        print('getAllOrder: mobile/orders URL: $uri');
       }
       final response = await http.get(uri, headers: await getHeaders());
+      if (kDebugMode) {
+        print('getAllOrder: mobile/orders status: ${response.statusCode}');
+      }
       if (response.statusCode != 200) return list;
 
       final responseData = json.decode(response.body) as Map<String, dynamic>?;
@@ -1020,6 +1166,10 @@ class FireStoreUtils {
         ordersData = orders is List ? orders : [];
       }
 
+      if (kDebugMode) {
+        print('getAllOrder: mobile/orders raw count: ${ordersData.length}');
+      }
+
       for (var raw in ordersData) {
         try {
           final orderData = raw is Map<String, dynamic>
@@ -1029,21 +1179,33 @@ class FireStoreUtils {
             _normalizeOrderJson(orderData),
           );
           list.add(orderModel);
-        } catch (_) {}
+        } catch (e) {
+          if (kDebugMode) {
+            print('getAllOrder: Skip order parse error: $e');
+          }
+        }
       }
 
       list = list.where((o) => o.createdAt != null).toList();
       list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
     } catch (e) {
       if (kDebugMode) {
-        print('getAllOrder: mobile/orders fallback error: $e');
+        print('getAllOrder: mobile/orders error: $e');
       }
     }
     return list;
   }
 
   static Map<String, dynamic> _normalizeOrderJson(Map<String, dynamic> json) {
-    final out = Map<String, dynamic>.from(json);
+    var out = Map<String, dynamic>.from(json);
+    // Unwrap if API returns { "order": { ... }, "status": "Order Rejected" }
+    if (out['order'] is Map) {
+      final inner = Map<String, dynamic>.from(out['order'] as Map);
+      for (final key in ['status', 'id', 'createdAt', 'created_at']) {
+        if (out[key] != null && inner[key] == null) inner[key] = out[key];
+      }
+      out = inner;
+    }
     if (out['createdAt'] == null && out['created_at'] != null) {
       out['createdAt'] = out['created_at'];
     }
@@ -1052,6 +1214,15 @@ class FireStoreUtils {
     }
     if (out['id'] == null && out['order_id'] != null) {
       out['id'] = out['order_id'];
+    }
+    // Ensure status is set from API (some list endpoints use order_status or status_label)
+    if (out['status'] == null ||
+        (out['status'] is String && (out['status'] as String).trim().isEmpty)) {
+      if (out['order_status'] != null) {
+        out['status'] = out['order_status'];
+      } else if (out['status_label'] != null) {
+        out['status'] = out['status_label'];
+      }
     }
     return out;
   }

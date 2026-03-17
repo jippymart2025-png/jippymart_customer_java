@@ -139,7 +139,12 @@ class VendorModel {
     }
     location = json['location'];
     fcmToken = json['fcmToken'];
-    g = json['g'] != null ? G.fromJson(json['g']) : null;
+    // g can be Map (Firebase) or null; API sometimes sends non-Map, guard to avoid String->Map error
+    if (json['g'] != null && json['g'] is Map) {
+      g = G.fromJson(json['g'] as Map<String, dynamic>);
+    } else {
+      g = null;
+    }
     hidephotos = _parseBool(json['hidephotos']);
     reststatus = _parseBool(json['reststatus']);
 
@@ -285,9 +290,22 @@ class VendorModel {
     // Handle subscriptionExpiryDate
     subscriptionExpiryDate = _parseTimestamp(json['subscriptionExpiryDate']);
 
-    subscriptionPlan = json['subscription_plan'] != null
-        ? SubscriptionPlanModel.fromJson(json['subscription_plan'])
-        : null;
+    // subscription_plan can be Map (Firebase) or JSON String (firestore/orders API)
+    if (json['subscription_plan'] != null) {
+      final raw = json['subscription_plan'];
+      if (raw is Map<String, dynamic>) {
+        subscriptionPlan = SubscriptionPlanModel.fromJson(raw);
+      } else if (raw is String) {
+        try {
+          final decoded = jsons.json.decode(raw);
+          if (decoded is Map<String, dynamic>) {
+            subscriptionPlan = SubscriptionPlanModel.fromJson(decoded);
+          }
+        } catch (e) {
+          // ignore malformed subscription_plan
+        }
+      }
+    }
 
     subscriptionTotalOrders = json['subscriptionTotalOrders'];
     isSelfDelivery = _parseBool(json['isSelfDelivery']);

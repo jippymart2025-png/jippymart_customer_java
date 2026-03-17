@@ -53,11 +53,23 @@ class CartProductModel {
         ? List<dynamic>.from(jsonDecode(json['extras']))
         : List<dynamic>.from(json['extras']);
 
-    variantInfo = json['variant_info'] == "null" || json['variant_info'] == null
-        ? null
-        : "String" == json['variant_info'].runtimeType.toString()
-        ? VariantInfo.fromJson(jsonDecode(json['variant_info']))
-        : VariantInfo.fromJson(json['variant_info']);
+    try {
+      final vi = json['variant_info'];
+      if (vi == null || vi == "null") {
+        variantInfo = null;
+      } else if (vi is String) {
+        variantInfo = VariantInfo.fromJson(
+            Map<String, dynamic>.from(jsonDecode(vi) as Map));
+      } else if (vi is Map<String, dynamic>) {
+        variantInfo = VariantInfo.fromJson(vi);
+      } else if (vi is Map) {
+        variantInfo = VariantInfo.fromJson(Map<String, dynamic>.from(vi));
+      } else {
+        variantInfo = null;
+      }
+    } catch (_) {
+      variantInfo = null;
+    }
   }
 
   Map<String, dynamic> toJson() {

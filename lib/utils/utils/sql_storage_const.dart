@@ -20,6 +20,12 @@ class SqlStorageConst {
     return await storage.read(key: 'firebase_id');
   }
 
+  /// Backend user id (e.g. user_26c52283-...) used by firestore/orders API.
+  static Future<String?> getUserId() async {
+    final storage = FlutterSecureStorage();
+    return await storage.read(key: 'user_id');
+  }
+
   // Store user data locally
   static Future<void> storeUserData(
     UserModel user, {
