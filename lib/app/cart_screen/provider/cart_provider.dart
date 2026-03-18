@@ -33,6 +33,8 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
 
 import 'package:jippymart_customer/services/cart_provider.dart';
+import 'package:jippymart_customer/services/paytm_service.dart';
+import 'package:jippymart_customer/services/smartlook_service.dart';
 import 'package:jippymart_customer/services/coupon_filter_service.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/services/wallet_api_service.dart';
@@ -2190,6 +2192,29 @@ class CartControllerProvider extends ChangeNotifier {
       await placeOrderAfterPayment();
     } catch (e) {
       print('❌ [RAZORPAY_ORDER] Error: $e');
+      ShowToastDialog.closeLoader();
+      endOrderProcessing();
+      ShowToastDialog.showToast(
+        "Failed to process order. Please try again.".tr,
+      );
+    }
+  }
+
+  Future<void> _processPaytmOrder() async {
+    try {
+      if (!isPaymentCompleted || _lastPaymentId == null) {
+        ShowToastDialog.showToast(
+          "Payment not completed. Please complete payment before placing order."
+              .tr,
+        );
+        endOrderProcessing();
+        return;
+      }
+
+      ShowToastDialog.showLoader("Processing your order...".tr);
+      await placeOrderAfterPayment();
+    } catch (e) {
+      print('❌ [PAYTM_ORDER] Error: $e');
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       ShowToastDialog.showToast(
@@ -6374,6 +6399,9 @@ class CartControllerProvider extends ChangeNotifier {
       } else if (controller.selectedPaymentMethod ==
           PaymentGateway.razorpay.name) {
         await _processRazorpayPayment(controller);
+      } else if (controller.selectedPaymentMethod ==
+          PaymentGateway.paytm.name) {
+        await _processPaytmPayment(controller, context);
       }
     } catch (e, stackTrace) {
       print('❌ [PROCESS_PAYMENT] Error: $e');
@@ -6555,6 +6583,202 @@ class CartControllerProvider extends ChangeNotifier {
       controller.endOrderProcessing();
     } else {
       print('✅ [RAZORPAY] Checkout opened successfully');
+    }
+  }
+
+  Future<void> _processPaytmPayment(
+    CartControllerProvider controller,
+    BuildContext context,
+  ) async {
+    try {
+      await startPaytmPaymentFlow(context);
+    } catch (e, stackTrace) {
+      print('❌ [PAYTM_PAYMENT] Error: $e');
+      print('❌ [PAYTM_PAYMENT] Stack trace: $stackTrace');
+      ShowToastDialog.showToast(
+        "Paytm payment failed. Please try again.".tr,
+      );
+      controller.endOrderProcessing();
+    }
+  }
+
+  Future<void> startPaytmPaymentFlow(BuildContext context) async {
+    try {
+      final userId = Constant.userModel?.id ?? '';
+      if (userId.isEmpty) {
+        ShowToastDialog.showToast(
+          "Please login again to continue payment.".tr,
+        );
+        return;
+      }
+
+      final double amountToPay =
+          useWalletBalance ? paymentGatewayAmount : totalAmount;
+      if (amountToPay <= 0) {
+        ShowToastDialog.showToast(
+          "Order total is invalid. Please refresh and try again.".tr,
+        );
+        return;
+      }
+
+      final String amountStr = amountToPay.toStringAsFixed(2);
+
+      ShowToastDialog.showLoader("Connecting to Paytm...".tr);
+
+      final initResponse = await PaytmService.initiatePayment(
+        userId: userId,
+        amount: amountStr,
+      );
+
+      if (initResponse == null ||
+          initResponse['orderId'] == null ||
+          initResponse['txnToken'] == null) {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast(
+          "Unable to initiate Paytm payment. Please try again.".tr,
+        );
+        return;
+      }
+
+      final String orderId = initResponse['orderId'].toString();
+      final String txnToken = initResponse['txnToken'].toString();
+      final String paytmMid =
+          (initResponse['mid'] ?? initResponse['MID'] ?? '').toString().trim();
+      if (paytmMid.isEmpty) {
+        ShowToastDialog.showToast(
+          "Paytm configuration error (missing mid).".tr,
+        );
+        return;
+      }
+      final dynamic rawIsStaging =
+          (initResponse['isStaging'] ?? initResponse['is_staging'] ?? true);
+      final bool isStagingEnv = rawIsStaging == true ||
+          rawIsStaging.toString().toLowerCase() == 'true' ||
+          rawIsStaging.toString() == '1';
+
+      String callbackUrl = (initResponse['callbackUrl'] ??
+              initResponse['callback_url'] ??
+              '')
+          .toString();
+
+      // Fallback: if backend doesn't return callbackUrl, build the official Paytm callback.
+      if (callbackUrl.trim().isEmpty) {
+        final host = isStagingEnv
+            ? "https://securestage.paytmpayments.com"
+            : "https://secure.paytmpayments.com";
+        callbackUrl = "$host/theia/paytmCallback?ORDER_ID=$orderId";
+      }
+
+      ShowToastDialog.closeLoader();
+
+      // Smartlook recording can cause ANR/crashes when Paytm opens its WebView.
+      // Pause it during payment flow for smooth gateway launch.
+      try {
+        SmartlookService().stopRecording();
+      } catch (_) {}
+
+      final sdkResult = await PaytmService.startTransaction(
+        mid: paytmMid,
+        orderId: orderId,
+        txnToken: txnToken,
+        amount: amountStr,
+        callbackUrl: callbackUrl,
+        isStaging: isStagingEnv,
+      );
+
+      try {
+        SmartlookService().startRecording();
+      } catch (_) {}
+
+      if (sdkResult == null) {
+        ShowToastDialog.showToast(
+          "Unable to open Paytm. Please try again.".tr,
+        );
+        return;
+      }
+
+      if (sdkResult['error'] == true) {
+        final msg = (sdkResult['message'] ?? sdkResult['details'] ?? '')
+            .toString()
+            .trim();
+        ShowToastDialog.showToast(
+          msg.isNotEmpty ? msg : "Unable to open Paytm. Please try again.".tr,
+        );
+        return;
+      }
+
+      final status =
+          (sdkResult['STATUS'] ?? sdkResult['resultStatus'] ?? "").toString();
+
+      if (!status.toUpperCase().contains("SUCCESS")) {
+        ShowToastDialog.showToast("Payment failed or cancelled.".tr);
+        return;
+      }
+
+      final statusResponse = await PaytmService.checkOrderStatus(orderId);
+      // Paytm status API returns: { head: {...}, body: { resultInfo: { resultStatus }, txnId, ... } }
+      String? finalStatus;
+      String? paytmTxnId;
+
+      Map<String, dynamic>? latestStatusResponse = statusResponse;
+      for (var attempt = 0; attempt < 6; attempt++) {
+        if (latestStatusResponse != null) {
+          final body = latestStatusResponse['body'];
+          if (body is Map) {
+            final resultInfo = body['resultInfo'];
+            if (resultInfo is Map) {
+              finalStatus = resultInfo['resultStatus']?.toString();
+            }
+            paytmTxnId = body['txnId']?.toString();
+          }
+        }
+
+        if (finalStatus == "TXN_SUCCESS" || finalStatus == "SUCCESS") {
+          break;
+        }
+
+        if (finalStatus == "TXN_FAILURE" || finalStatus == "FAILURE") {
+          ShowToastDialog.showToast("Payment failed or cancelled.".tr);
+          return;
+        }
+
+        // PENDING / unknown -> wait & re-check
+        if (attempt < 5) {
+          ShowToastDialog.showLoader("Confirming payment status...".tr);
+          await Future.delayed(Duration(seconds: 2 + attempt * 2));
+          latestStatusResponse = await PaytmService.checkOrderStatus(orderId);
+        }
+      }
+
+      if (finalStatus != "TXN_SUCCESS" && finalStatus != "SUCCESS") {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast(
+          "Payment is pending. Please wait and check again in Orders."
+              .tr,
+        );
+        return;
+      }
+
+      final String finalTxnId =
+          (paytmTxnId ?? sdkResult['TXNID'] ?? "").toString();
+
+      _lockGlobal();
+      isPaymentCompleted = true;
+      _lastPaymentId = finalTxnId.isNotEmpty ? finalTxnId : orderId;
+      _lastPaymentTime = DateTime.now();
+      selectedPaymentMethod = PaymentGateway.paytm.name;
+
+      await _processPaytmOrder();
+    } catch (e, st) {
+      print("❌ [PAYTM_FLOW] $e");
+      print(st);
+      try {
+        ShowToastDialog.closeLoader();
+      } catch (_) {}
+      endOrderProcessing();
+      ShowToastDialog.showToast(
+        "Something went wrong while processing Paytm payment.".tr,
+      );
     }
   }
 
@@ -7460,7 +7684,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 }
 
-enum PaymentGateway { razorpay, cod, wallet }
+enum PaymentGateway { razorpay, paytm, cod, wallet }
 
 // Helper for unawaited futures
 void unawaited(Future<void> future) {

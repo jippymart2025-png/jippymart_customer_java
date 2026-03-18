@@ -1,0 +1,22 @@
+PODS:
+  - Flutter (1.0.0)
+  - paytm_allinonesdk (1.2.3):
+    - Flutter
+
+DEPENDENCIES:
+  - Flutter (from `Flutter`)
+  - paytm_allinonesdk (from `.symlinks/plugins/paytm_allinonesdk/ios`)
+
+EXTERNAL SOURCES:
+  Flutter:
+    :path: Flutter
+  paytm_allinonesdk:
+    :path: ".symlinks/plugins/paytm_allinonesdk/ios"
+
+SPEC CHECKSUMS:
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
+  paytm_allinonesdk: a1b94aca5388e70c6d8679b858d69932cda53698
+
+PODFILE CHECKSUM: aafe91acc616949ddb318b77800a7f51bffa2a4c
+
+COCOAPODS: 1.14.3

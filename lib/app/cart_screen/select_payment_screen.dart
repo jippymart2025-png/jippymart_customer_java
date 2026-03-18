@@ -592,19 +592,32 @@ class _PaymentMethodsCard extends StatelessWidget {
             const _WarningBanner(
               message: 'COD unavailable for promotional items',
             ),
-          if (_hasOnline)
+          if (_hasOnline) ...[
+            _PaymentTile(
+              controller: controller,
+              value: PaymentGateway.paytm,
+              icon: Icons.account_balance_wallet_rounded,
+              iconBgColor: const Color(0xFFE8EAF6),
+              iconColor: const Color(0xFF3F51B5),
+              title: 'Pay via Paytm',
+              subtitle: 'UPI · Wallet · Cards',
+              roundTop: !_isCodVisible,
+              roundBottom: false,
+              showDivider: true,
+            ),
             _PaymentTile(
               controller: controller,
               value: PaymentGateway.razorpay,
               icon: Icons.credit_card_rounded,
               iconBgColor: const Color(0xFFE3F2FD),
               iconColor: const Color(0xFF1565C0),
-              title: 'Pay Online',
-              subtitle: 'UPI · Cards · Net Banking & more',
-              roundTop: !_isCodVisible,
+              title: 'Pay Online (Razorpay)',
+              subtitle: 'UPI · Cards · Net Banking',
+              roundTop: false,
               roundBottom: true,
               showDivider: false,
             ),
+          ],
         ],
       ),
     );
