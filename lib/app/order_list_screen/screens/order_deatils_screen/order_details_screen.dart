@@ -1304,8 +1304,9 @@ class OrderDetailsScreen extends StatelessWidget {
           const SizedBox(width: 5),
           Expanded(
             child: Text(
-              "${'Your Order has been Preparing and assign to the driver'.tr}\n${'Preparation Time'.tr} ${order.estimatedTimeToPrepare}"
-                  .tr,
+              "${'Your Order has been Preparing and assign to the driver'.tr}\n"
+              "${'Preparation Time'.tr} "
+              "${order.estimatedTimeToPrepare != null ? '${order.estimatedTimeToPrepare} mins' : 'N/A'}",
               style: TextStyle(
                 color: AppThemeData.warning400,
                 fontFamily: AppThemeData.semiBold,

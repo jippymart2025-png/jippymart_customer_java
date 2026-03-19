@@ -212,7 +212,7 @@ class AppUpdateService {
       print('[UPDATE DEBUG] Endpoint: {{baseURL}}mobile/app/version');
 
       final response = await SafeHttpClient.safeGet(
-        Uri.parse('${AppConst.baseUrl}mobile/app/version?app_type=customer'),
+        Uri.parse('${AppConst.baseUrl}mobile/app/version'),
         headers: await getHeaders(),
         timeout: const Duration(seconds: 10),
       );

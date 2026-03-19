@@ -55,7 +55,7 @@ class Constant {
       "https://play.google.com/store/apps/details?id=com.jippymart.customer";
   static String appStoreLink =
       "https://apps.apple.com/in/app/jippy-mart/id6755069616";
-  static String appVersion = "";
+  static String appVersion = "2.2.5";
   static String websiteUrl = "";
   static String termsAndConditions = "";
   static String privacyPolicy = "";

@@ -774,10 +774,20 @@ class _WarningBanner extends StatelessWidget {
 
 // ─── CONFIRM PAY BAR ─────────────────────────────────────────────────────────
 
-class _ConfirmPayBar extends StatelessWidget {
+class _ConfirmPayBar extends StatefulWidget {
   const _ConfirmPayBar({required this.controller});
 
   final CartControllerProvider controller;
+
+  @override
+  State<_ConfirmPayBar> createState() => _ConfirmPayBarState();
+}
+
+class _ConfirmPayBarState extends State<_ConfirmPayBar> {
+  bool _tapLocked = false;
+  String _lastPaymentConfigKey = '';
+
+  CartControllerProvider get controller => widget.controller;
 
   String get _btnLabel {
     if (controller.isFullyPaidByWallet) {
@@ -795,10 +805,41 @@ class _ConfirmPayBar extends StatelessWidget {
       controller.isFullyPaidByWallet ||
       controller.selectedPaymentMethod.isNotEmpty;
 
+  String _paymentConfigKey() {
+    return [
+      controller.selectedPaymentMethod,
+      controller.useWalletBalance.toString(),
+      controller.walletToUse.toStringAsFixed(2),
+      controller.isFullyPaidByWallet.toString(),
+      controller.paymentGatewayAmount.toStringAsFixed(2),
+      controller.totalAmount.toStringAsFixed(2),
+    ].join('|');
+  }
+
+  void _syncTapLockWithPaymentConfig() {
+    final currentKey = _paymentConfigKey();
+    if (_lastPaymentConfigKey.isEmpty) {
+      _lastPaymentConfigKey = currentKey;
+      return;
+    }
+
+    // Unlock only when user changes payment setup.
+    if (currentKey != _lastPaymentConfigKey) {
+      _tapLocked = false;
+      _lastPaymentConfigKey = currentKey;
+    }
+  }
+
   Future<void> _handleConfirmPay(
     BuildContext context,
     CartControllerProvider controller,
   ) async {
+    if (_tapLocked || _isProcessing) return;
+    setState(() {
+      _tapLocked = true;
+      _lastPaymentConfigKey = _paymentConfigKey();
+    });
+
     try {
       if (controller.isFullyPaidByWallet) {
         controller.setSelectedPaymentMethod(PaymentGateway.wallet.name);
@@ -810,11 +851,8 @@ class _ConfirmPayBar extends StatelessWidget {
       controller.startOrderProcessing();
       controller.providerInitializer(context: context);
       await controller.processPayment(controller, context);
-      // Don't pop when Razorpay: keep this screen so Razorpay native UI can show on top.
-      // User will return here after pay/cancel; success path navigates via Get.off in provider.
-      if (controller.selectedPaymentMethod != PaymentGateway.razorpay.name) {
-        if (context.mounted) Get.back();
-      }
+      // Do not pop this screen after starting a gateway flow.
+      // Success path navigates to OrderPlacingScreen; popping here can cause route jank/races.
     } catch (e) {
       controller.endOrderProcessing();
       if (context.mounted) {
@@ -828,6 +866,7 @@ class _ConfirmPayBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    _syncTapLockWithPaymentConfig();
     final bottom = MediaQuery.of(context).padding.bottom;
     final showSplit =
         controller.useWalletBalance &&
@@ -885,30 +924,24 @@ class _ConfirmPayBar extends StatelessWidget {
             ),
             const SizedBox(height: 12),
           ],
-          GestureDetector(
-            onTap: _canPay && !_isProcessing
-                ? () async {
-                    await _handleConfirmPay(context, controller);
-                  }
-                : null,
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              height: 54,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: (_canPay && !_isProcessing)
-                    ? AppThemeData.primary300
-                    : AppThemeData.grey200,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: (_canPay && !_isProcessing)
-                    ? [
-                        BoxShadow(
-                          color: AppThemeData.primary300.withOpacity(0.4),
-                          blurRadius: 14,
-                          offset: const Offset(0, 5),
-                        ),
-                      ]
-                    : [],
+          SizedBox(
+            height: 54,
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: (_canPay && !_isProcessing && !_tapLocked)
+                  ? () async => _handleConfirmPay(context, controller)
+                  : null,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppThemeData.primary300,
+                disabledBackgroundColor: AppThemeData.grey200,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ).copyWith(
+                elevation: WidgetStateProperty.resolveWith<double>(
+                  (states) =>
+                      states.contains(WidgetState.disabled) ? 0 : 1.5,
+                ),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -932,17 +965,25 @@ class _ConfirmPayBar extends StatelessWidget {
                       size: 16,
                     ),
                   const SizedBox(width: 8),
-                  Text(
-                    _isProcessing
-                        ? 'Processing...'
-                        : (_canPay ? _btnLabel : 'Select a payment method'),
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: (_canPay || _isProcessing)
-                          ? Colors.white
-                          : AppThemeData.grey400,
-                      letterSpacing: 0.2,
+                  Flexible(
+                    child: Text(
+                      _isProcessing
+                          ? 'Processing...'
+                          : (_tapLocked && _canPay)
+                          ? 'Payment started - change method to retry'
+                          : (_canPay
+                                ? _btnLabel
+                                : 'Select a payment method'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: (_canPay || _isProcessing)
+                            ? Colors.white
+                            : AppThemeData.grey400,
+                        letterSpacing: 0.2,
+                      ),
                     ),
                   ),
                 ],

@@ -590,6 +590,7 @@ class OrderProvider extends ChangeNotifier {
   bool hasNextPage = false;
   int _currentPage = 0;
   bool _isFetching = false;
+  bool _hasQueuedForceRefresh = false;
   DateTime? _lastFetchTime;
   final Duration _cacheDuration = const Duration(minutes: 5);
 
@@ -631,8 +632,13 @@ class OrderProvider extends ChangeNotifier {
       return;
     }
 
-    // Prevent concurrent fetches
-    if (_isFetching) return;
+    // Prevent concurrent fetches, but preserve explicit refresh intent.
+    if (_isFetching) {
+      if (forceRefresh) {
+        _hasQueuedForceRefresh = true;
+      }
+      return;
+    }
     _isFetching = true;
 
     if (Constant.userModel == null) {
@@ -668,6 +674,7 @@ class OrderProvider extends ChangeNotifier {
           await FireStoreUtils.fetchOrdersFromFirestorePage(
             page: 1,
             limit: kOrdersPageSize,
+            isRefresh: forceRefresh, // 🔥 THIS IS THE FIX
           ).timeout(
             const Duration(seconds: 30),
             onTimeout: () {
@@ -707,6 +714,12 @@ class OrderProvider extends ChangeNotifier {
       _isFetching = false;
       isLoading = false;
       notifyListeners();
+
+      // If user requested refresh while a fetch was running, execute it now.
+      if (_hasQueuedForceRefresh) {
+        _hasQueuedForceRefresh = false;
+        await getOrder(forceRefresh: true);
+      }
     }
   }
 

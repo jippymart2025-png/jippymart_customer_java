@@ -310,7 +310,7 @@ class OrderModel {
   String? driverID;
   num? discount;
   String? authorID;
-  String? estimatedTimeToPrepare;
+  int? estimatedTimeToPrepare;
   Timestamp? createdAt;
   Timestamp? triggerDelivery;
   List<TaxModel>? taxSetting;
@@ -398,8 +398,15 @@ class OrderModel {
         ? (num.tryParse(json['discount'].toString()) ?? 0)
         : 0;
     authorID = json['authorID'];
-    estimatedTimeToPrepare = json['estimatedTimeToPrepare'];
+    final rawTime = json['estimatedTimeToPrepare'];
 
+    if (rawTime is int) {
+      estimatedTimeToPrepare = rawTime;
+    } else if (rawTime is String) {
+      estimatedTimeToPrepare = int.tryParse(rawTime);
+    } else {
+      estimatedTimeToPrepare = null;
+    }
     // Handle createdAt - could be String or Timestamp
     createdAt = _parseTimestamp(json['createdAt']);
 

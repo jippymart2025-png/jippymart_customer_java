@@ -1026,6 +1026,7 @@ class FireStoreUtils {
   static Future<OrdersPageResult> fetchOrdersFromFirestorePage({
     int page = 1,
     int limit = 10,
+    bool isRefresh = false, // ✅ ADD THIS
   }) async {
     const defaultLimit = 20;
     const maxLimit = 200;
@@ -1053,6 +1054,7 @@ class FireStoreUtils {
         'author_id': await SqlStorageConst.getFirebaseId(),
         'page': effectivePage.toString(),
         'limit': effectiveLimit.toString(),
+        if (isRefresh) 'refresh': 'true', // ✅ ADD THIS
       },
     );
     if (kDebugMode) {
