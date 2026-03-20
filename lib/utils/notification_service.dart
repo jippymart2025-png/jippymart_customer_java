@@ -9,6 +9,7 @@ Future<void> firebaseMessageBackgroundHandle(RemoteMessage message) async {
 }
 
 class NotificationService {
+  static const int _orderTimerNotificationId = 3001;
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -105,5 +106,48 @@ class NotificationService {
     } on Exception catch (e) {
       log(e.toString());
     }
+  }
+
+  Future<void> showOrUpdateOrderTimerNotification(Duration remaining) async {
+    final totalSeconds = remaining.inSeconds < 0 ? 0 : remaining.inSeconds;
+    final minutes = totalSeconds ~/ 60;
+    final seconds = totalSeconds % 60;
+    final mm = minutes.toString().padLeft(2, '0');
+    final ss = seconds.toString().padLeft(2, '0');
+    final value = '$mm:$ss';
+
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      'order_timer_channel',
+      'Order Timer',
+      channelDescription: 'Shows active order countdown timer',
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      onlyAlertOnce: true,
+      showWhen: false,
+    );
+
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: false,
+    );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      _orderTimerNotificationId,
+      'Order in progress',
+      'Time left: $value',
+      details,
+    );
+  }
+
+  Future<void> cancelOrderTimerNotification() async {
+    await flutterLocalNotificationsPlugin.cancel(_orderTimerNotificationId);
   }
 }

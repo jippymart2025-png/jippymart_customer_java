@@ -74,7 +74,7 @@ class HomeScreenTwo extends StatelessWidget {
                 child: _buildContent(controller, context),
               ),
             ),
-            floatingActionButton: _buildWhatsAppFAB(),
+            // floatingActionButton: _buildWhatsAppFAB(),
           ),
         );
       },
@@ -996,9 +996,7 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
     return Container(
       decoration: ShapeDecoration(
         color: AppThemeData.primary50,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(120),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(120)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

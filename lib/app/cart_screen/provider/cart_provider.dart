@@ -220,6 +220,7 @@ class CartControllerProvider extends ChangeNotifier {
   bool? _cachedHasMartItems;
   int _lastCartItemCount = 0;
   String? _lastCartItemHash; // Simple hash to detect cart changes
+  String? _lastObservedProductSetHash;
 
   // 🔑 OPTIMIZATION: Cache distance calculation to avoid repeated calculations
   double? _cachedDistance;
@@ -410,6 +411,30 @@ class CartControllerProvider extends ChangeNotifier {
     useWalletBalance = value;
     checkAndUpdatePaymentMethod();
     notifyListeners();
+  }
+
+  bool _hasActiveCouponApplied() {
+    return (selectedCouponModel.id != null &&
+            selectedCouponModel.id!.isNotEmpty) ||
+        couponCodeController.text.trim().isNotEmpty ||
+        couponAmount > 0;
+  }
+
+  String _generateProductSetHashFromItems(List<CartProductModel> items) {
+    if (items.isEmpty) return 'empty';
+    final ids =
+        items.map((item) => item.id ?? '').where((id) => id.isNotEmpty).toList()
+          ..sort();
+    return ids.join('|');
+  }
+
+  void _clearAppliedCouponState({bool showMessage = false}) {
+    selectedCouponModel = CouponModel();
+    couponCodeController.clear();
+    couponAmount = 0.0;
+    if (showMessage) {
+      ShowToastDialog.showToast("Coupon removed because cart items changed".tr);
+    }
   }
 
   // ============ INITIALIZATION ============
@@ -952,6 +977,37 @@ class CartControllerProvider extends ChangeNotifier {
     _invalidateCartTypeCache();
   }
 
+  double _calculateCouponBaseAmount() {
+    double baseAmount = 0.0;
+
+    for (var element in HomeProvider.cartItem) {
+      final hasPromo = element.promoId != null && element.promoId!.isNotEmpty;
+      final priceValue = double.tryParse(element.price.toString()) ?? 0.0;
+      final discountPriceValue =
+          double.tryParse(element.discountPrice.toString()) ?? 0.0;
+
+      double itemPrice;
+      if (hasPromo) {
+        itemPrice = priceValue;
+      } else if (discountPriceValue <= 0) {
+        itemPrice = priceValue;
+      } else {
+        itemPrice = discountPriceValue;
+      }
+
+      final quantity = double.tryParse(element.quantity.toString()) ?? 0.0;
+      baseAmount += itemPrice * quantity;
+    }
+
+    return baseAmount;
+  }
+
+  bool _isPercentageDiscountType(String? discountType) {
+    final normalizedDiscountType = (discountType ?? '').trim().toLowerCase();
+    return normalizedDiscountType == "percentage" ||
+        normalizedDiscountType.contains("percent");
+  }
+
   Future<void> _calculateDeliveryCharges() async {
     if (selectedAddress?.location?.latitude != null &&
         selectedAddress?.location?.longitude != null &&
@@ -1006,11 +1062,16 @@ class CartControllerProvider extends ChangeNotifier {
 
     if (selectedCouponModel.id != null && selectedCouponModel.id!.isNotEmpty) {
       activeCoupon = selectedCouponModel;
-    } else if (couponCodeController.text.isNotEmpty) {
+    } else if (couponCodeController.text.trim().isNotEmpty) {
       // 🔑 OPTIMIZATION: Cache coupon lookup
-      activeCoupon = couponList
-          .where((element) => element.code == couponCodeController.text)
-          .firstOrNull;
+      final enteredCode = couponCodeController.text.trim().toLowerCase();
+      activeCoupon = couponList.firstWhere(
+        (element) => (element.code ?? '').trim().toLowerCase() == enteredCode,
+        orElse: CouponModel.new,
+      );
+      if ((activeCoupon.id ?? '').isEmpty && (activeCoupon.code ?? '').isEmpty) {
+        activeCoupon = null;
+      }
     }
 
     // 🔑 OPTIMIZATION: Use cached promotional items check
@@ -1024,9 +1085,10 @@ class CartControllerProvider extends ChangeNotifier {
       selectedCouponModel = CouponModel();
       couponAmount = 0.0;
     } else if (activeCoupon != null) {
+      final couponBaseAmount = _calculateCouponBaseAmount();
       final minimumValue =
           double.tryParse(activeCoupon.itemValue ?? '0') ?? 0.0;
-      if (subTotal < minimumValue) {
+      if (couponBaseAmount < minimumValue) {
         ShowToastDialog.showToast(
           "Minimum order value for this coupon is ${Constant.amountShow(amount: activeCoupon.itemValue ?? '0')}"
               .tr,
@@ -1035,11 +1097,15 @@ class CartControllerProvider extends ChangeNotifier {
         selectedCouponModel = CouponModel();
         couponAmount = 0.0;
       } else {
-        if (activeCoupon.discountType == "percentage") {
-          couponAmount =
-              (subTotal * double.parse(activeCoupon.discount.toString())) / 100;
+        final discountValue =
+            double.tryParse(activeCoupon.discount.toString()) ?? 0.0;
+        final isPercentageDiscount =
+            _isPercentageDiscountType(activeCoupon.discountType);
+
+        if (isPercentageDiscount) {
+          couponAmount = (couponBaseAmount * discountValue) / 100;
         } else {
-          couponAmount = double.parse(activeCoupon.discount.toString());
+          couponAmount = discountValue;
         }
       }
     } else {
@@ -2820,6 +2886,16 @@ class CartControllerProvider extends ChangeNotifier {
     _startOperation('getCartData');
 
     cartProvider.cartStream.listen((event) async {
+      final newProductSetHash = _generateProductSetHashFromItems(event);
+      final productSetChanged =
+          _lastObservedProductSetHash != null &&
+          _lastObservedProductSetHash != newProductSetHash;
+      _lastObservedProductSetHash = newProductSetHash;
+
+      if (productSetChanged && _hasActiveCouponApplied()) {
+        _clearAppliedCouponState(showMessage: true);
+      }
+
       // Smart cache: cart DB changed → invalidate so next load reflects changes
       _invalidateCartRelatedCaches();
 
@@ -3047,6 +3123,7 @@ class CartControllerProvider extends ChangeNotifier {
       taxAmount = 0.0;
       deliveryTips = 0.0;
       selectedPaymentMethod = '';
+      _clearAppliedCouponState();
 
       // 🔑 CRITICAL: Reset payment state when clearing cart
       _resetPaymentState();
@@ -3312,6 +3389,7 @@ class CartControllerProvider extends ChangeNotifier {
             )
           : await RestaurantApiHelper.getRestaurantCoupons(
               restaurantId: restaurantId,
+              zoneId: Constant.selectedZone!.id.toString(),
             ).timeout(
               const Duration(seconds: 10),
               onTimeout: () {
@@ -3467,6 +3545,7 @@ class CartControllerProvider extends ChangeNotifier {
             )
           : await RestaurantApiHelper.getRestaurantCoupons(
               restaurantId: '',
+              zoneId: Constant.selectedZone!.id.toString(),
             ).timeout(
               const Duration(seconds: 10),
               onTimeout: () {
@@ -3601,8 +3680,10 @@ class CartControllerProvider extends ChangeNotifier {
         '[COUPON_LOAD] 🔍 Fallback: Loading coupons for vendor: $restaurantId, Context: $_currentContext',
       );
 
-      final allCoupons = _currentContext == "mart"
-          ? await RestaurantApiHelper.getMartCoupons(
+      final List<CouponModel> allCoupons;
+      if (_currentContext == "mart") {
+        allCoupons =
+            await RestaurantApiHelper.getMartCoupons(
               restaurantId: restaurantId,
             ).timeout(
               const Duration(seconds: 10),
@@ -3612,9 +3693,12 @@ class CartControllerProvider extends ChangeNotifier {
                 );
                 return <CouponModel>[];
               },
-            )
-          : await RestaurantApiHelper.getRestaurantCoupons(
+            );
+      } else {
+        allCoupons =
+            await RestaurantApiHelper.getRestaurantCoupons(
               restaurantId: restaurantId,
+              zoneId: Constant.selectedZone!.id.toString(),
             ).timeout(
               const Duration(seconds: 10),
               onTimeout: () {
@@ -3624,6 +3708,7 @@ class CartControllerProvider extends ChangeNotifier {
                 return <CouponModel>[];
               },
             );
+      }
 
       print(
         '[COUPON_LOAD] ✅ Fallback: Received ${allCoupons.length} coupons from ${_currentContext} API',
@@ -6837,7 +6922,8 @@ class CartControllerProvider extends ChangeNotifier {
         if (confirmResp.statusCode == 200 &&
             confirmJson != null &&
             confirmJson['success'] == true) {
-          finalStatus = (confirmJson['resultStatus'] ?? 'TXN_SUCCESS').toString();
+          finalStatus = (confirmJson['resultStatus'] ?? 'TXN_SUCCESS')
+              .toString();
           break;
         }
 

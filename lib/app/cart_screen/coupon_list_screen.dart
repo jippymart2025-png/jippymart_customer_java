@@ -24,6 +24,11 @@ class CouponListScreen extends StatefulWidget {
 class _CouponListScreenState extends State<CouponListScreen> {
   bool _hasInitialized = false;
   final TextEditingController _couponCodeController = TextEditingController();
+  static const String _fixPriceType = 'fix price';
+
+  bool _isFixPriceDiscount(String? discountType) {
+    return (discountType ?? '').trim().toLowerCase() == _fixPriceType;
+  }
 
   @override
   void initState() {
@@ -76,19 +81,20 @@ class _CouponListScreenState extends State<CouponListScreen> {
   }
 
   void _applyManualCoupon(CartControllerProvider controller) {
-    final enteredCode = _couponCodeController.text.trim();
+    final enteredCode = _couponCodeController.text.trim().toLowerCase();
     if (enteredCode.isEmpty) {
       ShowToastDialog.showToast('Please enter a coupon code'.tr);
       return;
     }
-    final found = controller.allCouponList
-        .where((c) => c.code?.toLowerCase() == enteredCode.toLowerCase())
-        .toList();
-    if (found.isEmpty) {
+    final matchedCoupon = controller.allCouponList.firstWhere(
+      (c) => (c.code ?? '').trim().toLowerCase() == enteredCode,
+      orElse: CouponModel.new,
+    );
+    if ((matchedCoupon.id ?? '').isEmpty && (matchedCoupon.code ?? '').isEmpty) {
       ShowToastDialog.showToast('Invalid coupon code'.tr);
       return;
     }
-    _applyCoupon(controller, found.first);
+    _applyCoupon(controller, matchedCoupon);
   }
 
   @override
@@ -267,9 +273,11 @@ class _CouponListScreenState extends State<CouponListScreen> {
     CouponModel coupon,
   ) {
     final isUsed = coupon.isEnabled == false;
-    final discountLabel = coupon.discountType == 'Fix Price'
-        ? Constant.amountShow(amount: coupon.discount)
-        : '${coupon.discount}% OFF';
+    final isFixPrice = _isFixPriceDiscount(coupon.discountType);
+    final discountText = (coupon.discount ?? '0').trim();
+    final discountBadgeText = isFixPrice
+        ? Constant.amountShow(amount: discountText)
+        : '$discountText%';
 
     return GestureDetector(
       onTap: isUsed
@@ -308,7 +316,7 @@ class _CouponListScreenState extends State<CouponListScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      isUsed ? 'USED' : discountLabel.split(' ').first,
+                      isUsed ? 'USED' : discountBadgeText,
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
@@ -316,7 +324,7 @@ class _CouponListScreenState extends State<CouponListScreen> {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    if (!isUsed && coupon.discountType != 'Fix Price') ...[
+                    if (!isUsed && !isFixPrice) ...[
                       const SizedBox(height: 2),
                       const Text(
                         'OFF',

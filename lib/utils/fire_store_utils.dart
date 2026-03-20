@@ -1054,7 +1054,7 @@ class FireStoreUtils {
         'author_id': await SqlStorageConst.getFirebaseId(),
         'page': effectivePage.toString(),
         'limit': effectiveLimit.toString(),
-        if (isRefresh) 'refresh': 'true', // ✅ ADD THIS
+        if (isRefresh) 'refresh': 'true',
       },
     );
     if (kDebugMode) {

@@ -25,30 +25,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:timelines_plus/timelines_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class OrderBillDetails {
-  final double subTotal;
-  final double deliveryCharges;
-  final double originalDeliveryFee;
-  final double couponAmount;
-  final double specialDiscountAmount;
-  final double taxAmount;
-  final double deliveryTips;
-  final double totalAmount;
-  final bool isFreeDelivery;
-
-  OrderBillDetails({
-    required this.subTotal,
-    required this.deliveryCharges,
-    required this.originalDeliveryFee,
-    required this.couponAmount,
-    required this.specialDiscountAmount,
-    required this.taxAmount,
-    required this.deliveryTips,
-    required this.totalAmount,
-    required this.isFreeDelivery,
-  });
-}
+import '../../../../models/order_deatils_model.dart';
 
 class OrderDetailsScreen extends StatelessWidget {
   const OrderDetailsScreen({super.key, this.surgeFee});
@@ -1834,15 +1813,23 @@ class OrderDetailsScreen extends StatelessWidget {
   ) {
     if (order.status == Constant.orderShipped ||
         order.status == Constant.orderInTransit ||
-        order.status == Constant.orderCompleted) {
+        order.status == Constant.orderCompleted ||
+        _shouldShowSupportButton(order)) {
       return Container(
         color: AppThemeData.grey50,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: Padding(
           padding: const EdgeInsets.only(bottom: 20),
-          child:
-              order.status == Constant.orderShipped ||
-                  order.status == Constant.orderInTransit
+          child: _shouldShowSupportButton(order)
+              ? RoundedButtonFill(
+                  title: "Contact Support".tr,
+                  height: 5.5,
+                  color: Colors.green,
+                  textColor: AppThemeData.grey50,
+                  onPress: () => _launchWhatsApp(order),
+                )
+              : order.status == Constant.orderShipped ||
+                    order.status == Constant.orderInTransit
               ? Consumer<LiveTrackingProvider>(
                   builder: (context, liveTrackingProvider, _) {
                     return RoundedButtonFill(
@@ -1874,6 +1861,40 @@ class OrderDetailsScreen extends StatelessWidget {
       );
     }
     return const SizedBox();
+  }
+
+  bool _shouldShowSupportButton(OrderModel order) {
+    final status = order.status?.toString().trim().toLowerCase() ?? '';
+    if (status.isEmpty) return false;
+    return status != 'order completed' &&
+        status != 'completed' &&
+        status != 'delivered' &&
+        status != 'order cancelled' &&
+        status != 'cancelled' &&
+        status != 'order rejected' &&
+        status != 'rejected';
+  }
+
+  Future<void> _launchWhatsApp(OrderModel order) async {
+    const String phoneNumber = '+919390579864';
+    final String message =
+        'Hello! I need help with my order ${Constant.orderId(orderId: order.id.toString())}.';
+    final Uri whatsappUrl = Uri.parse(
+      'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}',
+    );
+
+    try {
+      if (await canLaunchUrl(whatsappUrl)) {
+        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
+      } else {
+        final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
+        if (await canLaunchUrl(phoneUrl)) {
+          await launchUrl(phoneUrl, mode: LaunchMode.externalApplication);
+        }
+      }
+    } catch (e) {
+      ShowToastDialog.showToast('Unable to open support contact right now.'.tr);
+    }
   }
 
   VendorModel _createDefaultMartVendor() {

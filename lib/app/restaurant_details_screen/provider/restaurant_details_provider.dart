@@ -28,18 +28,32 @@ import 'package:http/http.dart' as http;
 class RestaurantApiHelper {
   static Future<List<CouponModel>> getRestaurantCoupons({
     required String restaurantId,
+    required String zoneId,
   }) async {
     try {
-      String url =
-          "${AppConst.baseUrl}coupons/restaurant${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
+      String baseUrl = "${AppConst.baseUrl}coupons/restaurant";
+
+      Map<String, String> queryParams = {'zone_id': zoneId};
+
+      if (restaurantId.isNotEmpty) {
+        queryParams['resturant_id'] = restaurantId;
+      }
+
+      String url = Uri.parse(
+        baseUrl,
+      ).replace(queryParameters: queryParams).toString();
+
       final response = await http.get(
         Uri.parse(url),
         headers: await getHeaders(),
       );
-      print("getRestaurantCoupons ${url}");
-      print("getRestaurantCoupons ${response.body} ");
+
+      print("getRestaurantCoupons $url");
+      print("getRestaurantCoupons ${response.body}");
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
+
         if (responseData['success'] == true) {
           List<dynamic> data = responseData['data'];
           return data.map((json) => CouponModel.fromJson(json)).toList();
@@ -56,6 +70,37 @@ class RestaurantApiHelper {
       rethrow;
     }
   }
+
+  // static Future<List<CouponModel>> getRestaurantCoupons({
+  //   required String restaurantId,
+  // }) async {
+  //   try {
+  //     String url =
+  //         "${AppConst.baseUrl}coupons/restaurant${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
+  //     final response = await http.get(
+  //       Uri.parse(url),
+  //       headers: await getHeaders(),
+  //     );
+  //     print("getRestaurantCoupons ${url}");
+  //     print("getRestaurantCoupons ${response.body} ");
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //       if (responseData['success'] == true) {
+  //         List<dynamic> data = responseData['data'];
+  //         return data.map((json) => CouponModel.fromJson(json)).toList();
+  //       } else {
+  //         throw Exception('Failed to load coupons: ${responseData['message']}');
+  //       }
+  //     } else {
+  //       throw Exception(
+  //         'Failed to load coupons. Status code: ${response.statusCode}',
+  //       );
+  //     }
+  //   } catch (e) {
+  //     print('Error fetching coupons: $e');
+  //     rethrow;
+  //   }
+  // }
 
   static Future<List<CouponModel>> getMartCoupons({
     required String restaurantId,
@@ -515,6 +560,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     try {
       final coupons = await RestaurantApiHelper.getRestaurantCoupons(
         restaurantId: restaurantId,
+        zoneId: Constant.selectedZone!.id.toString(),
       );
 
       return coupons

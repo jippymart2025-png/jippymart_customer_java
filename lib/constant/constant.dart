@@ -398,8 +398,13 @@ class Constant {
   static double calculateDiscount({String? amount, CouponModel? offerModel}) {
     double taxAmount = 0.0;
     if (offerModel != null) {
-      if (offerModel.discountType == "Percentage" ||
-          offerModel.discountType == "percentage") {
+      final normalizedDiscountType =
+          (offerModel.discountType ?? '').trim().toLowerCase();
+      final isPercentageDiscount =
+          normalizedDiscountType == "percentage" ||
+          normalizedDiscountType.contains("percent");
+
+      if (isPercentageDiscount) {
         taxAmount =
             (double.parse(amount.toString()) *
                 double.parse(offerModel.discount.toString())) /

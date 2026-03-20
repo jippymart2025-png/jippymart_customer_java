@@ -229,7 +229,10 @@ class BestRestaurantProvider extends ChangeNotifier {
       CacheManager()
           .getOrSet<List<CouponModel>>(
             couponsKey,
-            () => RestaurantApiHelper.getRestaurantCoupons(restaurantId: ''),
+            () => RestaurantApiHelper.getRestaurantCoupons(
+              restaurantId: '',
+              zoneId: Constant.selectedZone!.id.toString(),
+            ),
             type: CacheType.general,
           )
           .then((value) {
