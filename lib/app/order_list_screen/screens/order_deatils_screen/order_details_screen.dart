@@ -36,6 +36,7 @@ class OrderDetailsScreen extends StatelessWidget {
 
   // Cache for promotional details to avoid repeated Firestore calls
   static final Map<String, Map<String, dynamic>> _promoDetailsCache = {};
+  static final Map<String, Future<OrderBillDetails>> _orderBillFutureCache = {};
 
   // Cached delivery charge fetched from backend (mirrors cart provider behaviour)
   static DeliveryCharge? _cachedMartDeliveryCharge;
@@ -54,6 +55,7 @@ class OrderDetailsScreen extends StatelessWidget {
     VendorModel? vendor,
     DeliveryCharge deliveryCharge,
     double totalDistance,
+    Map<String, dynamic>? precomputedSubTotal,
   ) async {
     final DeliveryCharge resolvedDeliveryCharge = await _resolveDeliveryCharge(
       deliveryCharge,
@@ -61,7 +63,7 @@ class OrderDetailsScreen extends StatelessWidget {
     );
 
     // Calculate subtotal first (local calculation)
-    final subTotalResult = _calculateSubTotal(order);
+    final subTotalResult = precomputedSubTotal ?? _calculateSubTotal(order);
     final double subTotal = subTotalResult['subTotal'] as double;
     final bool hasPromotionalItems =
         subTotalResult['hasPromotionalItems'] as bool;
@@ -141,6 +143,27 @@ class OrderDetailsScreen extends StatelessWidget {
       deliveryTips: deliveryTips,
       totalAmount: totalAmount,
       isFreeDelivery: isFreeDelivery,
+    );
+  }
+
+  Future<OrderBillDetails> _getMemoizedOrderBill(
+    OrderModel order,
+    VendorModel? vendor,
+    DeliveryCharge deliveryCharge,
+    double totalDistance,
+    Map<String, dynamic> subTotalResult,
+  ) {
+    final cacheKey =
+        '${order.id}_${order.status}_${order.createdAt?.millisecondsSinceEpoch}_${order.products?.length ?? 0}_${order.discount}_${order.deliveryCharge}';
+    return _orderBillFutureCache.putIfAbsent(
+      cacheKey,
+      () => _calculateOrderBillDetails(
+        order,
+        vendor,
+        deliveryCharge,
+        totalDistance,
+        subTotalResult,
+      ),
     );
   }
 
@@ -888,6 +911,9 @@ class OrderDetailsScreen extends StatelessWidget {
 
         final vendor = order.vendor ?? _createDefaultMartVendor();
         final deliveryCharge = vendor.deliveryCharge ?? DeliveryCharge();
+        final subTotalResult = _calculateSubTotal(order);
+        final hasPromotionalItems =
+            subTotalResult['hasPromotionalItems'] as bool;
         final totalDistance = order.vendor != null
             ? Constant.calculateDistance(
                 vendor.latitude ?? 0.0,
@@ -898,11 +924,12 @@ class OrderDetailsScreen extends StatelessWidget {
             : 0.0;
 
         return FutureBuilder<OrderBillDetails>(
-          future: _calculateOrderBillDetails(
+          future: _getMemoizedOrderBill(
             order,
             vendor,
             deliveryCharge,
             totalDistance,
+            subTotalResult,
           ),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -914,9 +941,6 @@ class OrderDetailsScreen extends StatelessWidget {
             }
 
             final bill = snapshot.data!;
-            final hasPromotionalItems =
-                _calculateSubTotal(order)['hasPromotionalItems'] as bool;
-
             return Scaffold(
               backgroundColor: AppThemeData.surface,
               appBar: AppBar(

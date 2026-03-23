@@ -35,10 +35,14 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   Duration _remainingOrderTime = _orderCountdownDuration;
+  final ValueNotifier<Duration> _remainingOrderTimeNotifier = ValueNotifier(
+    _orderCountdownDuration,
+  );
   DateTime? _activeOrderStartTime;
   String? _activeOrderId;
   Timer? _countdownTimer;
   Timer? _orderStatusRefreshTimer;
+  bool _isOrderRefreshInFlight = false;
   final NotificationService _notificationService = NotificationService();
   int _lastCartItemCount = 0;
   int _lastSelectedIndex = -1;
@@ -73,6 +77,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeDashboard();
+      _syncActiveOrderCountdown(context.read<OrderProvider>());
       _animationController.forward();
     });
   }
@@ -82,6 +87,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     unawaited(_notificationService.cancelOrderTimerNotification());
     _countdownTimer?.cancel();
     _orderStatusRefreshTimer?.cancel();
+    _remainingOrderTimeNotifier.dispose();
     _animationController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
@@ -89,11 +95,18 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   void _startOrderStatusRefreshTicker() {
     _orderStatusRefreshTimer?.cancel();
-    _orderStatusRefreshTimer = Timer.periodic(_orderStatusRefreshInterval, (_) {
+    _orderStatusRefreshTimer = Timer.periodic(_orderStatusRefreshInterval, (_) async {
       if (!mounted) return;
       if (_activeOrderStartTime == null) return;
+      if (_isOrderRefreshInFlight) return;
       final orderProvider = context.read<OrderProvider>();
-      unawaited(orderProvider.getOrder(forceRefresh: true));
+      _isOrderRefreshInFlight = true;
+      try {
+        await orderProvider.getOrder(forceRefresh: true);
+        if (mounted) _syncActiveOrderCountdown(orderProvider);
+      } finally {
+        _isOrderRefreshInFlight = false;
+      }
     });
   }
 
@@ -104,10 +117,19 @@ class _DashBoardScreenState extends State<DashBoardScreen>
       final endTime = _activeOrderStartTime!.add(_orderCountdownDuration);
       final remaining = endTime.difference(DateTime.now());
       final nextDuration = remaining.isNegative ? Duration.zero : remaining;
-      if (nextDuration != _remainingOrderTime) {
+      if (nextDuration == Duration.zero) {
         setState(() {
-          _remainingOrderTime = nextDuration;
+          _activeOrderId = null;
+          _activeOrderStartTime = null;
+          _remainingOrderTime = Duration.zero;
         });
+        _remainingOrderTimeNotifier.value = Duration.zero;
+        unawaited(_notificationService.cancelOrderTimerNotification());
+        return;
+      }
+      if (nextDuration != _remainingOrderTime) {
+        _remainingOrderTime = nextDuration;
+        _remainingOrderTimeNotifier.value = nextDuration;
         unawaited(
           _notificationService.showOrUpdateOrderTimerNotification(nextDuration),
         );
@@ -124,6 +146,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
           _activeOrderStartTime = null;
           _remainingOrderTime = _orderCountdownDuration;
         });
+        _remainingOrderTimeNotifier.value = _orderCountdownDuration;
       }
       unawaited(_notificationService.cancelOrderTimerNotification());
       return;
@@ -138,11 +161,24 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
     final endTime = nextStart.add(_orderCountdownDuration);
     final remaining = endTime.difference(DateTime.now());
+    if (remaining.isNegative || remaining == Duration.zero) {
+      if (_activeOrderId != null || _activeOrderStartTime != null) {
+        setState(() {
+          _activeOrderId = null;
+          _activeOrderStartTime = null;
+          _remainingOrderTime = Duration.zero;
+        });
+      }
+      _remainingOrderTimeNotifier.value = Duration.zero;
+      unawaited(_notificationService.cancelOrderTimerNotification());
+      return;
+    }
     setState(() {
       _activeOrderId = orderId;
       _activeOrderStartTime = nextStart;
       _remainingOrderTime = remaining.isNegative ? Duration.zero : remaining;
     });
+    _remainingOrderTimeNotifier.value = _remainingOrderTime;
     unawaited(
       _notificationService.showOrUpdateOrderTimerNotification(
         _remainingOrderTime,
@@ -151,9 +187,10 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   }
 
   OrderModel? _getLatestActiveOrder(OrderProvider orderProvider) {
-    final activeOrders = [...orderProvider.newOrderList, ...orderProvider.inProgressList]
-        .where((order) => (order.status?.toString().trim().toLowerCase() ?? '') != 'pending')
-        .toList();
+    final activeOrders = orderProvider.allList.where((order) {
+      final status = _normalizedStatus(order.status);
+      return _isTimerEligibleStatus(status);
+    }).toList();
     if (activeOrders.isEmpty) return null;
     activeOrders.sort((a, b) {
       final aTime = a.createdAt?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
@@ -161,6 +198,48 @@ class _DashBoardScreenState extends State<DashBoardScreen>
       return bTime.compareTo(aTime);
     });
     return activeOrders.first;
+  }
+
+  String _normalizedStatus(String? status) {
+    return status
+            ?.toString()
+            .trim()
+            .toLowerCase()
+            .replaceAll('_', ' ')
+            .replaceAll(RegExp(r'\s+'), ' ') ??
+        '';
+  }
+
+  bool _isTerminalOrderStatus(String status) {
+    return status == 'order completed' ||
+        status == 'completed' ||
+        status == 'delivered' ||
+        status == 'order rejected' ||
+        status == 'rejected' ||
+        status == 'order_rejected' ||
+        status == 'order cancelled' ||
+        status == 'cancelled';
+  }
+
+  bool _isTimerEligibleStatus(String status) {
+    if (status.isEmpty || _isTerminalOrderStatus(status)) {
+      return false;
+    }
+
+    // Do not start timer on pending/new. Start from order placed onwards.
+    if (status == 'pending' || status == 'new') {
+      return false;
+    }
+
+    return status == 'order placed' ||
+        status == 'order accepted' ||
+        status == 'driver accepted' ||
+        status == 'accepted' ||
+        status == 'driver pending' ||
+        status == 'order shipped' ||
+        status == 'shipped' ||
+        status == 'order in transit' ||
+        status == 'in transit';
   }
 
   String _formatDuration(Duration duration) {
@@ -177,7 +256,11 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     // Only reload when coming from background, not on every state change
     if (state == AppLifecycleState.resumed) {
       final orderProvider = context.read<OrderProvider>();
-      unawaited(orderProvider.getOrder(forceRefresh: true));
+      unawaited(
+        orderProvider.getOrder(forceRefresh: true).then((_) {
+          if (mounted) _syncActiveOrderCountdown(orderProvider);
+        }),
+      );
       final now = DateTime.now();
       if (_lastBackPressTime == null ||
           now.difference(_lastBackPressTime!) > const Duration(seconds: 5)) {
@@ -244,11 +327,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
             favouriteProvider,
             _,
           ) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              if (mounted) {
-                _syncActiveOrderCountdown(orderProvider);
-              }
-            });
             final hasActiveOrder = _activeOrderStartTime != null;
             return PopScope(
               canPop: dashBoardProvider.canPopNow,
@@ -304,21 +382,26 @@ class _DashBoardScreenState extends State<DashBoardScreen>
               ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppThemeData.primary300,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              _formatDuration(_remainingOrderTime),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              ),
-            ),
+          ValueListenableBuilder<Duration>(
+            valueListenable: _remainingOrderTimeNotifier,
+            builder: (_, remaining, __) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppThemeData.primary300,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  _formatDuration(remaining),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

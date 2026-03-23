@@ -111,6 +111,9 @@ class OrdersPageResult {
 }
 
 class FireStoreUtils {
+  static Future<void>? _paymentSettingsInFlight;
+  static DateTime? _lastPaymentSettingsFetchAt;
+  static const Duration _paymentSettingsCacheTtl = Duration(minutes: 2);
   // static FirebaseFirestore fireStore = FirebaseFirestore.instance;
   static final bool _isDatabaseHealthy = true;
   static String?
@@ -151,46 +154,63 @@ class FireStoreUtils {
   }
 
   static Future getPaymentSettingsData() async {
-    try {
-      // Get RazorPay settings from API
-      final razorpayResponse = await http.get(
-        Uri.parse('${AppConst.baseUrl}firestore/settings/razorpay'),
-        headers: await getHeaders(),
-      );
-
-      print("getPaymentSettingsData ${razorpayResponse.body} ");
-      if (razorpayResponse.statusCode == 200) {
-        final responseData = jsonDecode(razorpayResponse.body);
-        if (responseData['success'] == true) {
-          final razorpayData = responseData['data']['fields'];
-          RazorPayModel razorPayModel = RazorPayModel.fromJson(razorpayData);
-          await Preferences.setString(
-            Preferences.razorpaySettings,
-            jsonEncode(razorPayModel.toJson()),
-          );
-        }
-      }
-
-      final codResponse = await http.get(
-        Uri.parse('${AppConst.baseUrl}firestore/settings/cod'),
-        headers: await getHeaders(),
-      );
-
-      if (codResponse.statusCode == 200) {
-        final responseData = jsonDecode(codResponse.body);
-        if (responseData['success'] == true) {
-          final codData = responseData['data']['fields'];
-          CodSettingModel codSettingModel = CodSettingModel.fromJson(codData);
-          await Preferences.setString(
-            Preferences.codSettings,
-            jsonEncode(codSettingModel.toJson()),
-          );
-        }
-      }
-    } catch (e) {
-      print('Error fetching payment settings: $e');
-      // Handle error appropriately
+    if (_paymentSettingsInFlight != null) {
+      return _paymentSettingsInFlight!;
     }
+    final canUseRecentFetch =
+        _lastPaymentSettingsFetchAt != null &&
+        DateTime.now().difference(_lastPaymentSettingsFetchAt!) <
+            _paymentSettingsCacheTtl;
+    if (canUseRecentFetch) return;
+
+    _paymentSettingsInFlight = () async {
+      try {
+        final headers = await getHeaders();
+        final responses = await Future.wait([
+          http.get(
+            Uri.parse('${AppConst.baseUrl}firestore/settings/razorpay'),
+            headers: headers,
+          ),
+          http.get(
+            Uri.parse('${AppConst.baseUrl}firestore/settings/cod'),
+            headers: headers,
+          ),
+        ]);
+        final razorpayResponse = responses[0];
+        final codResponse = responses[1];
+
+        if (razorpayResponse.statusCode == 200) {
+          final responseData = jsonDecode(razorpayResponse.body);
+          if (responseData['success'] == true) {
+            final razorpayData = responseData['data']['fields'];
+            final razorPayModel = RazorPayModel.fromJson(razorpayData);
+            await Preferences.setString(
+              Preferences.razorpaySettings,
+              jsonEncode(razorPayModel.toJson()),
+            );
+          }
+        }
+
+        if (codResponse.statusCode == 200) {
+          final responseData = jsonDecode(codResponse.body);
+          if (responseData['success'] == true) {
+            final codData = responseData['data']['fields'];
+            final codSettingModel = CodSettingModel.fromJson(codData);
+            await Preferences.setString(
+              Preferences.codSettings,
+              jsonEncode(codSettingModel.toJson()),
+            );
+          }
+        }
+        _lastPaymentSettingsFetchAt = DateTime.now();
+      } catch (e) {
+        print('Error fetching payment settings: $e');
+      } finally {
+        _paymentSettingsInFlight = null;
+      }
+    }();
+
+    return _paymentSettingsInFlight!;
   }
 
   // static Future<VendorModel?> getVendorById(String vendorId) async {
@@ -666,13 +686,14 @@ class FireStoreUtils {
     bool forceRefresh = false,
   }) async {
     final results = <String, ProductModel?>{};
+    final uniqueProductIds = productIds.toSet().toList();
 
     // Group IDs by status
     final cachedProducts = <String, ProductModel>{};
     final pendingRequests = <String, Future<ProductModel?>>{};
     final idsToFetch = <String>[];
 
-    for (final id in productIds) {
+    for (final id in uniqueProductIds) {
       if (!_isValidProductId(id)) continue;
 
       final normalizedId = id.trim();
@@ -2111,6 +2132,9 @@ class FireStoreUtils {
       final String baseUrl =
           '${AppConst.baseUrl}products'; // Replace with your actual base URL
       final Map<String, String> queryParams = {'page': page.toString()};
+      if (limit != null && limit > 0) {
+        queryParams['limit'] = limit.toString();
+      }
       final Uri uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
       print('🌐 Fetching products from API: $uri');
       // Make API request

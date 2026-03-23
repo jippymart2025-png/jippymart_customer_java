@@ -529,7 +529,8 @@ class _OrderScreenState extends State<OrderScreen>
   ) {
     return Row(
       children: [
-        if (orderModel.status == Constant.orderCompleted)
+        if (orderModel.status == Constant.orderCompleted ||
+            orderModel.status == Constant.pending)
           Expanded(
             child: InkWell(
               onTap: () => _reorderItems(context, orderModel, controller),
@@ -553,7 +554,7 @@ class _OrderScreenState extends State<OrderScreen>
                 context.read<LiveTrackingProvider>().initFunction(
                   orderModel: orderModel,
                 );
-                Get.to(const LiveTrackingScreen());
+                Get.to(const OrderDetailsScreen());
               },
               child: Text(
                 "Track Order".tr,

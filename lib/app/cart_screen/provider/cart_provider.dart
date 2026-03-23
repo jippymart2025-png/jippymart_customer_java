@@ -232,6 +232,11 @@ class CartControllerProvider extends ChangeNotifier {
   // 🔑 COUPON LOADING
   bool _isLoadingCoupons = false;
   String _currentContext = "restaurant";
+  Future<void>? _couponLoadInFlight;
+  Future<void>? _markUsedCouponsInFlight;
+  DateTime? _lastUsedCouponsFetchAt;
+  static const Duration _usedCouponsCacheExpiry = Duration(minutes: 2);
+  Set<String> _cachedUsedCouponIds = <String>{};
 
   // 🔑 RAZORPAY
   final RazorpayCrashPrevention _razorpayCrashPrevention =
@@ -1069,7 +1074,8 @@ class CartControllerProvider extends ChangeNotifier {
         (element) => (element.code ?? '').trim().toLowerCase() == enteredCode,
         orElse: CouponModel.new,
       );
-      if ((activeCoupon.id ?? '').isEmpty && (activeCoupon.code ?? '').isEmpty) {
+      if ((activeCoupon.id ?? '').isEmpty &&
+          (activeCoupon.code ?? '').isEmpty) {
         activeCoupon = null;
       }
     }
@@ -1099,8 +1105,9 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         final discountValue =
             double.tryParse(activeCoupon.discount.toString()) ?? 0.0;
-        final isPercentageDiscount =
-            _isPercentageDiscountType(activeCoupon.discountType);
+        final isPercentageDiscount = _isPercentageDiscountType(
+          activeCoupon.discountType,
+        );
 
         if (isPercentageDiscount) {
           couponAmount = (couponBaseAmount * discountValue) / 100;
@@ -3024,6 +3031,11 @@ class CartControllerProvider extends ChangeNotifier {
       final Set<String> productsToLoad = forceRefresh
           ? productIds
           : productIds.where((id) => !_productCache.containsKey(id)).toSet();
+      final Map<String, CartProductModel> cartItemsByProductId = {
+        for (final item in HomeProvider.cartItem)
+          if (item.id != null && item.id!.isNotEmpty)
+            item.id!.split('~').first: item,
+      };
 
       if (productsToLoad.isEmpty) {
         _productsLoaded = true;
@@ -3035,11 +3047,8 @@ class CartControllerProvider extends ChangeNotifier {
         productId,
       ) async {
         try {
-          final cartItem = HomeProvider.cartItem.firstWhere((item) {
-            if (item.id == null || item.id!.isEmpty) return false;
-            final parts = item.id!.split('~');
-            return parts.isNotEmpty && parts.first == productId;
-          }, orElse: () => CartProductModel());
+          final cartItem =
+              cartItemsByProductId[productId] ?? CartProductModel();
 
           final isMartItem = _isMartItem(cartItem);
 
@@ -3359,6 +3368,9 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _loadCoupons({required String restaurantId}) async {
     if (_isLoadingCoupons) {
       print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
+      if (_couponLoadInFlight != null) {
+        await _couponLoadInFlight;
+      }
       return;
     }
 
@@ -3370,6 +3382,8 @@ class CartControllerProvider extends ChangeNotifier {
 
     _isLoadingCoupons = true;
     _startOperation('loadCoupons');
+    final couponLoadCompleter = Completer<void>();
+    _couponLoadInFlight = couponLoadCompleter.future;
 
     try {
       _detectCurrentContext();
@@ -3496,6 +3510,10 @@ class CartControllerProvider extends ChangeNotifier {
     } finally {
       _isLoadingCoupons = false;
       _endOperation('loadCoupons');
+      if (!couponLoadCompleter.isCompleted) {
+        couponLoadCompleter.complete();
+      }
+      _couponLoadInFlight = null;
     }
   }
 
@@ -3514,6 +3532,9 @@ class CartControllerProvider extends ChangeNotifier {
       print(
         '[COUPON_LOAD] ⚠️ Global coupon load already in progress, skipping...',
       );
+      if (_couponLoadInFlight != null) {
+        await _couponLoadInFlight;
+      }
       return;
     }
 
@@ -3530,6 +3551,8 @@ class CartControllerProvider extends ChangeNotifier {
 
     _isLoadingCoupons = true;
     _startOperation('loadGlobalCoupons');
+    final globalCouponLoadCompleter = Completer<void>();
+    _couponLoadInFlight = globalCouponLoadCompleter.future;
 
     try {
       _detectCurrentContext();
@@ -3644,6 +3667,10 @@ class CartControllerProvider extends ChangeNotifier {
     } finally {
       _isLoadingCoupons = false;
       _endOperation('loadGlobalCoupons');
+      if (!globalCouponLoadCompleter.isCompleted) {
+        globalCouponLoadCompleter.complete();
+      }
+      _couponLoadInFlight = null;
     }
   }
 
@@ -3804,35 +3831,60 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _markUsedCoupons() async {
-    try {
-      final userId = await SqlStorageConst.getFirebaseId();
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}mobile/coupons/used?userId=$userId'),
-        headers: await getHeaders(),
-      );
+  Future<void> _markUsedCoupons({bool notify = true}) async {
+    if (_markUsedCouponsInFlight != null) {
+      await _markUsedCouponsInFlight!;
+      if (notify) notifyListeners();
+      return;
+    }
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          final List<dynamic> usedCoupons = responseData['data']['coupons'];
-          final usedCouponIds = usedCoupons
-              .map((coupon) => coupon['couponId'] as String)
-              .toSet();
+    final canUseCache =
+        _lastUsedCouponsFetchAt != null &&
+        DateTime.now().difference(_lastUsedCouponsFetchAt!) <
+            _usedCouponsCacheExpiry;
+    if (canUseCache) {
+      _applyUsedCouponIds(_cachedUsedCouponIds);
+      if (notify) notifyListeners();
+      return;
+    }
 
-          for (var coupon in couponList) {
-            coupon.isEnabled = !usedCouponIds.contains(coupon.id);
+    _markUsedCouponsInFlight = () async {
+      try {
+        final userId = await SqlStorageConst.getFirebaseId();
+        final response = await http.get(
+          Uri.parse('${AppConst.baseUrl}mobile/coupons/used?userId=$userId'),
+          headers: await getHeaders(),
+        );
+
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseData = json.decode(response.body);
+          if (responseData['success'] == true) {
+            final List<dynamic> usedCoupons = responseData['data']['coupons'];
+            _cachedUsedCouponIds = usedCoupons
+                .map((coupon) => coupon['couponId']?.toString() ?? '')
+                .where((id) => id.isNotEmpty)
+                .toSet();
+            _lastUsedCouponsFetchAt = DateTime.now();
           }
-
-          for (var coupon in allCouponList) {
-            coupon.isEnabled = !usedCouponIds.contains(coupon.id);
-          }
-
-          notifyListeners();
         }
+      } catch (e) {
+        print('[MARK_USED_COUPONS] ❌ Error: $e');
+      } finally {
+        _markUsedCouponsInFlight = null;
       }
-    } catch (e) {
-      print('[MARK_USED_COUPONS] ❌ Error: $e');
+    }();
+
+    await _markUsedCouponsInFlight!;
+    _applyUsedCouponIds(_cachedUsedCouponIds);
+    if (notify) notifyListeners();
+  }
+
+  void _applyUsedCouponIds(Set<String> usedCouponIds) {
+    for (final coupon in couponList) {
+      coupon.isEnabled = !usedCouponIds.contains(coupon.id);
+    }
+    for (final coupon in allCouponList) {
+      coupon.isEnabled = !usedCouponIds.contains(coupon.id);
     }
   }
 
@@ -6687,296 +6739,529 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
+  // Future<void> startPaytmPaymentFlow(BuildContext context) async {
+  //   bool smartlookStopped = false;
+  //   try {
+  //     // Paytm flow must create the order ONCE (same as COD/Razorpay UX).
+  //     // We use backend Paytm initiate in "legacy payload" mode, which first creates
+  //     // the Jippy3... order using the same payload as `mobile/orders`.
+  //     selectedPaymentMethod = PaymentGateway.paytm.name;
+  //
+  //     final authorId = await SqlStorageConst.getFirebaseId();
+  //     if (authorId!.isEmpty) {
+  //       ShowToastDialog.showToast("Please login again to continue payment.".tr);
+  //       endOrderProcessing();
+  //       return;
+  //     }
+  //
+  //     final double amountToPay = useWalletBalance
+  //         ? paymentGatewayAmount
+  //         : totalAmount;
+  //     if (amountToPay <= 0) {
+  //       // Wallet covers everything -> normal order placement (no gateway).
+  //       await placeOrder(context);
+  //       return;
+  //     }
+  //
+  //     final String amountStr = amountToPay.toStringAsFixed(2);
+  //
+  //     // Build payload identical to order creation so backend can create ONE orderId.
+  //     final cartItems = HomeProvider.cartItem;
+  //     if (cartItems.isEmpty) {
+  //       ShowToastDialog.showToast(
+  //         "Cart is empty. Please add items to cart.".tr,
+  //       );
+  //       endOrderProcessing();
+  //       return;
+  //     }
+  //
+  //     final orderPayload = <String, dynamic>{
+  //       "author_id": authorId,
+  //       "cart_items": cartItems.map((item) => item.toJson()).toList(),
+  //       "selected_address": {
+  //         "isDefault": selectedAddress?.isDefault,
+  //         "address": selectedAddress?.address,
+  //         "addressAs": selectedAddress?.addressAs,
+  //         "locality": selectedAddress?.locality,
+  //         "location": {
+  //           "latitude": selectedAddress?.location?.latitude,
+  //           "longitude": selectedAddress?.location?.longitude,
+  //         },
+  //         "id": selectedAddress?.id,
+  //         "landmark": selectedAddress?.landmark,
+  //       },
+  //       "payment_method": PaymentGateway.paytm.name,
+  //       "total_amount": totalAmount,
+  //       "delivery_charges": deliveryCharges.toString(),
+  //       "tip_amount": deliveryTips.toString(),
+  //       "coupon_id": selectedCouponModel.id ?? '',
+  //       "coupon_code": selectedCouponModel.code ?? '',
+  //       "discount": couponAmount,
+  //       "schedule_time": scheduleDateTime.toIso8601String(),
+  //       "surge_percent": surgePercent,
+  //       "admin_surge_fee": surgePercent > 0 ? await getAdminSurgeFee() : "0",
+  //       "special_discount": {
+  //         "special_discount": specialDiscountAmount,
+  //         "special_discount_label": specialDiscount,
+  //         "specialType": specialType,
+  //       },
+  //       "vendor_id": _getVendorIdForOrder(),
+  //       "v_type":
+  //           vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
+  //       // For Paytm (gateway), order should be created as pending first,
+  //       // then backend will update it to Order Placed after TXN_SUCCESS.
+  //       "status": paymentGatewayAmount > 0 ? "PENDING" : Constant.orderPlaced,
+  //       "created_at": DateTime.now().toIso8601String(),
+  //       "wallet_amount": walletToUse,
+  //       "payment_gateway_amount": paymentGatewayAmount,
+  //     };
+  //
+  //     ShowToastDialog.showLoader("Creating your order...".tr);
+  //
+  //     final initUri = Uri.parse('${AppConst.baseUrl}paytm/initiate');
+  //     final initHeaders = await getHeaders();
+  //     final initHttpResp = await http
+  //         .post(initUri, headers: initHeaders, body: jsonEncode(orderPayload))
+  //         .timeout(const Duration(seconds: 30));
+  //
+  //     final initResponse =
+  //         jsonDecode(initHttpResp.body) as Map<String, dynamic>?;
+  //
+  //     if (initHttpResp.statusCode != 200 ||
+  //         initResponse == null ||
+  //         initResponse['success'] != true ||
+  //         initResponse['orderId'] == null) {
+  //       ShowToastDialog.closeLoader();
+  //       ShowToastDialog.showToast(
+  //         "Unable to initiate Paytm payment. Please try again.".tr,
+  //       );
+  //       endOrderProcessing();
+  //       return;
+  //     }
+  //
+  //     final String orderId = initResponse['orderId'].toString();
+  //     final String? txnTokenRaw = initResponse['txnToken']?.toString();
+  //     final String paytmMid = (initResponse['mid'] ?? initResponse['MID'] ?? '')
+  //         .toString()
+  //         .trim();
+  //     if (paytmMid.isEmpty) {
+  //       ShowToastDialog.closeLoader();
+  //       ShowToastDialog.showToast(
+  //         "Paytm configuration error (missing mid).".tr,
+  //       );
+  //       endOrderProcessing();
+  //       return;
+  //     }
+  //     final dynamic rawIsStaging =
+  //         (initResponse['isStaging'] ?? initResponse['is_staging'] ?? true);
+  //     final bool isStagingEnv =
+  //         rawIsStaging == true ||
+  //         rawIsStaging.toString().toLowerCase() == 'true' ||
+  //         rawIsStaging.toString() == '1';
+  //
+  //     String callbackUrl =
+  //         (initResponse['callbackUrl'] ?? initResponse['callback_url'] ?? '')
+  //             .toString();
+  //
+  //     // Fallback: if backend doesn't return callbackUrl, build the official Paytm callback.
+  //     if (callbackUrl.trim().isEmpty) {
+  //       final host = isStagingEnv
+  //           ? "https://securestage.paytmpayments.com"
+  //           : "https://secure.paytmpayments.com";
+  //       callbackUrl = "$host/theia/paytmCallback?ORDER_ID=$orderId";
+  //     }
+  //
+  //     // If gateway payment is not required (wallet covers it), txnToken can be null.
+  //     if (txnTokenRaw == null || txnTokenRaw.trim().isEmpty) {
+  //       final m = OrderModel()..id = orderId;
+  //       try {
+  //         // Prefer reading provider from context to avoid late-init issues.
+  //         final op = Provider.of<OrderPlacingProvider>(context, listen: false);
+  //         op.initFunction(orderModels: m);
+  //       } catch (e) {
+  //         print('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
+  //       }
+  //       try {
+  //         ShowToastDialog.closeLoader();
+  //       } catch (_) {}
+  //       endOrderProcessing();
+  //       // Always navigate even if provider init fails.
+  //       Get.off(() => const OrderPlacingScreen());
+  //       return;
+  //     }
+  //
+  //     final String txnToken = txnTokenRaw.trim();
+  //
+  //     ShowToastDialog.closeLoader();
+  //
+  //     // Smartlook recording can cause ANR/crashes when Paytm opens its WebView.
+  //     // Pause it during payment flow for smooth gateway launch.
+  //     try {
+  //       SmartlookService().stopRecording();
+  //       smartlookStopped = true;
+  //     } catch (_) {}
+  //
+  //     // Keep UI responsive: do not keep any loader open while the Paytm SDK launches.
+  //     try {
+  //       ShowToastDialog.closeLoader();
+  //     } catch (_) {}
+  //
+  //     final sdkResult = await PaytmService.startTransaction(
+  //       mid: paytmMid,
+  //       orderId: orderId,
+  //       txnToken: txnToken,
+  //       amount: amountStr,
+  //       callbackUrl: callbackUrl,
+  //       isStaging: isStagingEnv,
+  //     );
+  //
+  //     if (smartlookStopped) {
+  //       try {
+  //         SmartlookService().startRecording();
+  //       } catch (_) {}
+  //     }
+  //
+  //     if (sdkResult == null) {
+  //       ShowToastDialog.showToast("Unable to open Paytm. Please try again.".tr);
+  //       endOrderProcessing();
+  //       return;
+  //     }
+  //
+  //     if (sdkResult['error'] == true) {
+  //       final msg = (sdkResult['message'] ?? sdkResult['details'] ?? '')
+  //           .toString()
+  //           .trim();
+  //       ShowToastDialog.showToast(
+  //         msg.isNotEmpty ? msg : "Unable to open Paytm. Please try again.".tr,
+  //       );
+  //       endOrderProcessing();
+  //       return;
+  //     }
+  //
+  //     final status = (sdkResult['STATUS'] ?? sdkResult['resultStatus'] ?? "")
+  //         .toString();
+  //
+  //     if (!status.toUpperCase().contains("SUCCESS")) {
+  //       ShowToastDialog.showToast("Payment failed or cancelled.".tr);
+  //       endOrderProcessing();
+  //       return;
+  //     }
+  //
+  //     // Confirm on backend (server-side verification + update same orderId).
+  //     // Endpoint: POST /paytm/confirm { orderId }
+  //     final confirmUri = Uri.parse('${AppConst.baseUrl}paytm/confirm');
+  //     final confirmHeaders = await getHeaders();
+  //     String? finalStatus;
+  //
+  //     // Show loader once (avoid flicker) while confirming status.
+  //     ShowToastDialog.showLoader("Confirming payment status...".tr);
+  //     for (var attempt = 0; attempt < 6; attempt++) {
+  //       final confirmResp = await http
+  //           .post(
+  //             confirmUri,
+  //             headers: confirmHeaders,
+  //             body: jsonEncode(<String, dynamic>{"orderId": orderId}),
+  //           )
+  //           .timeout(const Duration(seconds: 30));
+  //
+  //       Map<String, dynamic>? confirmJson;
+  //       try {
+  //         confirmJson = jsonDecode(confirmResp.body) as Map<String, dynamic>?;
+  //       } catch (_) {
+  //         confirmJson = null;
+  //       }
+  //
+  //       if (confirmResp.statusCode == 200 &&
+  //           confirmJson != null &&
+  //           confirmJson['success'] == true) {
+  //         finalStatus = (confirmJson['resultStatus'] ?? 'TXN_SUCCESS')
+  //             .toString();
+  //         break;
+  //       }
+  //
+  //       // 409 / pending or other -> wait and retry a few times
+  //       if (attempt < 5) {
+  //         await Future.delayed(Duration(seconds: 2 + attempt));
+  //       }
+  //     }
+  //
+  //     if (finalStatus == null ||
+  //         (!finalStatus.toUpperCase().contains('SUCCESS') &&
+  //             finalStatus != 'TXN_SUCCESS')) {
+  //       ShowToastDialog.closeLoader();
+  //       ShowToastDialog.showToast(
+  //         "Payment is pending. Please wait and check again in Orders.".tr,
+  //       );
+  //       endOrderProcessing();
+  //       return;
+  //     }
+  //
+  //     // Payment confirmed. Do NOT create a second order via `mobile/orders`.
+  //     // Navigate to the order placed screen for the SAME orderId created above.
+  //     final m = OrderModel()..id = orderId;
+  //     try {
+  //       final op = Provider.of<OrderPlacingProvider>(context, listen: false);
+  //       op.initFunction(orderModels: m);
+  //     } catch (e) {
+  //       print('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
+  //     }
+  //     try {
+  //       ShowToastDialog.closeLoader();
+  //     } catch (_) {}
+  //     endOrderProcessing();
+  //     // Use offAll to avoid any stuck payment routes on back-stack.
+  //     Get.offAll(() => const OrderPlacingScreen());
+  //   } catch (e, st) {
+  //     print("❌ [PAYTM_FLOW] $e");
+  //     print(st);
+  //     try {
+  //       ShowToastDialog.closeLoader();
+  //     } catch (_) {}
+  //     endOrderProcessing();
+  //     ShowToastDialog.showToast(
+  //       "Something went wrong while processing Paytm payment.".tr,
+  //     );
+  //   } finally {
+  //     // Always restore Smartlook if we paused it.
+  //     if (smartlookStopped) {
+  //       try {
+  //         SmartlookService().startRecording();
+  //       } catch (_) {}
+  //     }
+  //   }
+  // }
+
   Future<void> startPaytmPaymentFlow(BuildContext context) async {
     bool smartlookStopped = false;
+
     try {
-      // Paytm flow must create the order ONCE (same as COD/Razorpay UX).
-      // We use backend Paytm initiate in "legacy payload" mode, which first creates
-      // the Jippy3... order using the same payload as `mobile/orders`.
       selectedPaymentMethod = PaymentGateway.paytm.name;
 
       final authorId = await SqlStorageConst.getFirebaseId();
-      if (authorId!.isEmpty) {
-        ShowToastDialog.showToast("Please login again to continue payment.".tr);
-        endOrderProcessing();
+      if (authorId == null || authorId.isEmpty) {
+        ShowToastDialog.showToast("Please login again".tr);
         return;
       }
 
       final double amountToPay = useWalletBalance
           ? paymentGatewayAmount
           : totalAmount;
+
       if (amountToPay <= 0) {
-        // Wallet covers everything -> normal order placement (no gateway).
         await placeOrder(context);
         return;
       }
 
-      final String amountStr = amountToPay.toStringAsFixed(2);
-
-      // Build payload identical to order creation so backend can create ONE orderId.
-      final cartItems = HomeProvider.cartItem;
-      if (cartItems.isEmpty) {
-        ShowToastDialog.showToast(
-          "Cart is empty. Please add items to cart.".tr,
-        );
-        endOrderProcessing();
+      if (HomeProvider.cartItem.isEmpty) {
+        ShowToastDialog.showToast("Cart is empty".tr);
         return;
       }
 
-      final orderPayload = <String, dynamic>{
-        "author_id": authorId,
-        "cart_items": cartItems.map((item) => item.toJson()).toList(),
-        "selected_address": {
-          "isDefault": selectedAddress?.isDefault,
-          "address": selectedAddress?.address,
-          "addressAs": selectedAddress?.addressAs,
-          "locality": selectedAddress?.locality,
-          "location": {
-            "latitude": selectedAddress?.location?.latitude,
-            "longitude": selectedAddress?.location?.longitude,
-          },
-          "id": selectedAddress?.id,
-          "landmark": selectedAddress?.landmark,
-        },
-        "payment_method": PaymentGateway.paytm.name,
-        "total_amount": totalAmount,
-        "delivery_charges": deliveryCharges.toString(),
-        "tip_amount": deliveryTips.toString(),
-        "coupon_id": selectedCouponModel.id ?? '',
-        "coupon_code": selectedCouponModel.code ?? '',
-        "discount": couponAmount,
-        "schedule_time": scheduleDateTime.toIso8601String(),
-        "surge_percent": surgePercent,
-        "admin_surge_fee": surgePercent > 0 ? await getAdminSurgeFee() : "0",
-        "special_discount": {
-          "special_discount": specialDiscountAmount,
-          "special_discount_label": specialDiscount,
-          "specialType": specialType,
-        },
-        "vendor_id": _getVendorIdForOrder(),
-        "v_type":
-            vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
-        // For Paytm (gateway), order should be created as pending first,
-        // then backend will update it to Order Placed after TXN_SUCCESS.
-        "status": paymentGatewayAmount > 0 ? "PENDING" : Constant.orderPlaced,
-        "created_at": DateTime.now().toIso8601String(),
-        "wallet_amount": walletToUse,
-        "payment_gateway_amount": paymentGatewayAmount,
-      };
+      final payload = _buildOrderPayload(authorId);
 
-      ShowToastDialog.showLoader("Creating your order...".tr);
+      // ✅ Single loader start
+      ShowToastDialog.showLoader("Processing payment...".tr);
 
-      final initUri = Uri.parse('${AppConst.baseUrl}paytm/initiate');
-      final initHeaders = await getHeaders();
-      final initHttpResp = await http
-          .post(initUri, headers: initHeaders, body: jsonEncode(orderPayload))
-          .timeout(const Duration(seconds: 30));
+      final response = await http
+          .post(
+            Uri.parse('${AppConst.baseUrl}paytm/initiate'),
+            headers: await getHeaders(),
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 25));
 
-      final initResponse =
-          jsonDecode(initHttpResp.body) as Map<String, dynamic>?;
+      final json = jsonDecode(response.body);
 
-      if (initHttpResp.statusCode != 200 ||
-          initResponse == null ||
-          initResponse['success'] != true ||
-          initResponse['orderId'] == null) {
-        ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast(
-          "Unable to initiate Paytm payment. Please try again.".tr,
-        );
-        endOrderProcessing();
+      if (response.statusCode != 200 || json['success'] != true) {
+        throw "INIT_FAILED";
+      }
+
+      final String orderId = json['orderId'];
+      final String mid = json['mid'] ?? json['MID'] ?? '';
+      final String txnToken = json['txnToken'] ?? '';
+
+      if (mid.isEmpty) throw "MID_MISSING";
+
+      final bool isStaging =
+          json['isStaging'] == true || json['is_staging'] == true;
+
+      final callbackUrl =
+          json['callbackUrl'] ??
+          (isStaging
+              ? "https://securestage.paytmpayments.com/theia/paytmCallback?ORDER_ID=$orderId"
+              : "https://secure.paytmpayments.com/theia/paytmCallback?ORDER_ID=$orderId");
+
+      // ✅ Wallet-only case
+      if (txnToken.isEmpty) {
+        _navigateToOrderScreen(context, orderId);
         return;
       }
 
-      final String orderId = initResponse['orderId'].toString();
-      final String? txnTokenRaw = initResponse['txnToken']?.toString();
-      final String paytmMid = (initResponse['mid'] ?? initResponse['MID'] ?? '')
-          .toString()
-          .trim();
-      if (paytmMid.isEmpty) {
-        ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast(
-          "Paytm configuration error (missing mid).".tr,
-        );
-        endOrderProcessing();
-        return;
-      }
-      final dynamic rawIsStaging =
-          (initResponse['isStaging'] ?? initResponse['is_staging'] ?? true);
-      final bool isStagingEnv =
-          rawIsStaging == true ||
-          rawIsStaging.toString().toLowerCase() == 'true' ||
-          rawIsStaging.toString() == '1';
+      // ✅ Stop recording BEFORE SDK
+      SmartlookService().stopRecording();
+      smartlookStopped = true;
 
-      String callbackUrl =
-          (initResponse['callbackUrl'] ?? initResponse['callback_url'] ?? '')
-              .toString();
-
-      // Fallback: if backend doesn't return callbackUrl, build the official Paytm callback.
-      if (callbackUrl.trim().isEmpty) {
-        final host = isStagingEnv
-            ? "https://securestage.paytmpayments.com"
-            : "https://secure.paytmpayments.com";
-        callbackUrl = "$host/theia/paytmCallback?ORDER_ID=$orderId";
-      }
-
-      // If gateway payment is not required (wallet covers it), txnToken can be null.
-      if (txnTokenRaw == null || txnTokenRaw.trim().isEmpty) {
-        final m = OrderModel()..id = orderId;
-        try {
-          // Prefer reading provider from context to avoid late-init issues.
-          final op = Provider.of<OrderPlacingProvider>(context, listen: false);
-          op.initFunction(orderModels: m);
-        } catch (e) {
-          print('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
-        }
-        try {
-          ShowToastDialog.closeLoader();
-        } catch (_) {}
-        endOrderProcessing();
-        // Always navigate even if provider init fails.
-        Get.off(() => const OrderPlacingScreen());
-        return;
-      }
-
-      final String txnToken = txnTokenRaw.trim();
-
+      // ✅ Close loader BEFORE opening SDK (IMPORTANT)
       ShowToastDialog.closeLoader();
 
-      // Smartlook recording can cause ANR/crashes when Paytm opens its WebView.
-      // Pause it during payment flow for smooth gateway launch.
-      try {
-        SmartlookService().stopRecording();
-        smartlookStopped = true;
-      } catch (_) {}
-
-      // Keep UI responsive: do not keep any loader open while the Paytm SDK launches.
-      try {
-        ShowToastDialog.closeLoader();
-      } catch (_) {}
-
-      final sdkResult = await PaytmService.startTransaction(
-        mid: paytmMid,
+      final result = await PaytmService.startTransaction(
+        mid: mid,
         orderId: orderId,
         txnToken: txnToken,
-        amount: amountStr,
+        amount: amountToPay.toStringAsFixed(2),
         callbackUrl: callbackUrl,
-        isStaging: isStagingEnv,
+        isStaging: isStaging,
       );
 
+      // ✅ Restart Smartlook
       if (smartlookStopped) {
-        try {
-          SmartlookService().startRecording();
-        } catch (_) {}
+        SmartlookService().startRecording();
       }
 
-      if (sdkResult == null) {
-        ShowToastDialog.showToast("Unable to open Paytm. Please try again.".tr);
-        endOrderProcessing();
+      if (result == null || result['error'] == true) {
+        ShowToastDialog.showToast("Payment failed".tr);
         return;
       }
 
-      if (sdkResult['error'] == true) {
-        final msg = (sdkResult['message'] ?? sdkResult['details'] ?? '')
-            .toString()
-            .trim();
-        ShowToastDialog.showToast(
-          msg.isNotEmpty ? msg : "Unable to open Paytm. Please try again.".tr,
-        );
-        endOrderProcessing();
-        return;
-      }
-
-      final status = (sdkResult['STATUS'] ?? sdkResult['resultStatus'] ?? "")
+      final status = (result['STATUS'] ?? result['resultStatus'] ?? "")
           .toString();
 
       if (!status.toUpperCase().contains("SUCCESS")) {
-        ShowToastDialog.showToast("Payment failed or cancelled.".tr);
-        endOrderProcessing();
+        ShowToastDialog.showToast("Payment cancelled".tr);
         return;
       }
 
-      // Confirm on backend (server-side verification + update same orderId).
-      // Endpoint: POST /paytm/confirm { orderId }
-      final confirmUri = Uri.parse('${AppConst.baseUrl}paytm/confirm');
-      final confirmHeaders = await getHeaders();
-      String? finalStatus;
+      // ✅ Confirm Payment (Optimized Retry)
+      final confirmed = await _confirmPayment(orderId);
 
-      // Show loader once (avoid flicker) while confirming status.
-      ShowToastDialog.showLoader("Confirming payment status...".tr);
-      for (var attempt = 0; attempt < 6; attempt++) {
-        final confirmResp = await http
-            .post(
-              confirmUri,
-              headers: confirmHeaders,
-              body: jsonEncode(<String, dynamic>{"orderId": orderId}),
-            )
-            .timeout(const Duration(seconds: 30));
-
-        Map<String, dynamic>? confirmJson;
-        try {
-          confirmJson = jsonDecode(confirmResp.body) as Map<String, dynamic>?;
-        } catch (_) {
-          confirmJson = null;
-        }
-
-        if (confirmResp.statusCode == 200 &&
-            confirmJson != null &&
-            confirmJson['success'] == true) {
-          finalStatus = (confirmJson['resultStatus'] ?? 'TXN_SUCCESS')
-              .toString();
-          break;
-        }
-
-        // 409 / pending or other -> wait and retry a few times
-        if (attempt < 5) {
-          await Future.delayed(Duration(seconds: 2 + attempt));
-        }
-      }
-
-      if (finalStatus == null ||
-          (!finalStatus.toUpperCase().contains('SUCCESS') &&
-              finalStatus != 'TXN_SUCCESS')) {
-        ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast(
-          "Payment is pending. Please wait and check again in Orders.".tr,
-        );
-        endOrderProcessing();
+      if (!confirmed) {
+        ShowToastDialog.showToast("Payment pending".tr);
         return;
       }
 
-      // Payment confirmed. Do NOT create a second order via `mobile/orders`.
-      // Navigate to the order placed screen for the SAME orderId created above.
-      final m = OrderModel()..id = orderId;
-      try {
-        final op = Provider.of<OrderPlacingProvider>(context, listen: false);
-        op.initFunction(orderModels: m);
-      } catch (e) {
-        print('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
-      }
-      try {
-        ShowToastDialog.closeLoader();
-      } catch (_) {}
-      endOrderProcessing();
-      // Use offAll to avoid any stuck payment routes on back-stack.
-      Get.offAll(() => const OrderPlacingScreen());
-    } catch (e, st) {
-      print("❌ [PAYTM_FLOW] $e");
-      print(st);
-      try {
-        ShowToastDialog.closeLoader();
-      } catch (_) {}
-      endOrderProcessing();
-      ShowToastDialog.showToast(
-        "Something went wrong while processing Paytm payment.".tr,
-      );
+      _sendOrderNotification(orderId);
+
+      _navigateToOrderScreen(context, orderId);
+    } catch (e) {
+      ShowToastDialog.showToast("Payment error. Try again.".tr);
     } finally {
-      // Always restore Smartlook if we paused it.
+      ShowToastDialog.closeLoader();
+
       if (smartlookStopped) {
-        try {
-          SmartlookService().startRecording();
-        } catch (_) {}
+        SmartlookService().startRecording();
       }
     }
+  }
+
+  Map<String, dynamic> _buildOrderPayload(String authorId) {
+    return {
+      "author_id": authorId,
+      "cart_items": HomeProvider.cartItem.map((e) => e.toJson()).toList(),
+      "selected_address": selectedAddress?.toJson(),
+      "payment_method": PaymentGateway.paytm.name,
+      "total_amount": totalAmount,
+      "delivery_charges": deliveryCharges.toString(),
+      "tip_amount": deliveryTips.toString(),
+      "coupon_id": selectedCouponModel.id ?? '',
+      "coupon_code": selectedCouponModel.code ?? '',
+      "discount": couponAmount,
+      "schedule_time": scheduleDateTime.toIso8601String(),
+      "vendor_id": _getVendorIdForOrder(),
+      "status": paymentGatewayAmount > 0 ? "PENDING" : Constant.orderPlaced,
+      "wallet_amount": walletToUse,
+      "payment_gateway_amount": paymentGatewayAmount,
+    };
+  }
+
+  Future<bool> _confirmPayment(String orderId) async {
+    for (int i = 0; i < 4; i++) {
+      final res = await http.post(
+        Uri.parse('${AppConst.baseUrl}paytm/confirm'),
+        headers: await getHeaders(),
+        body: jsonEncode({"orderId": orderId}),
+      );
+
+      final data = jsonDecode(res.body);
+
+      if (res.statusCode == 200 && data['success'] == true) {
+        return true;
+      }
+
+      await Future.delayed(Duration(seconds: 2));
+    }
+    return false;
+  }
+
+  void _navigateToOrderScreen(BuildContext context, String orderId) {
+    try {
+      Provider.of<OrderPlacingProvider>(
+        context,
+        listen: false,
+      ).initFunction(orderModels: OrderModel()..id = orderId);
+    } catch (_) {}
+
+    Get.offAll(() => const OrderPlacingScreen());
+  }
+
+  void _sendOrderNotification(String orderId) {
+    Future.microtask(() async {
+      try {
+        if (vendorModel.id == null || vendorModel.author == null) {
+          if (kDebugMode) {
+            log('[CART] Skipping notification: vendor null');
+          }
+          return;
+        }
+
+        final authorId = vendorModel.author.toString();
+
+        // ✅ Step 1: Get FCM Token (fast path first)
+        String fcmToken = vendorModel.fcmToken?.trim() ?? '';
+
+        if (fcmToken.isEmpty) {
+          final user = await AddressListProvider.getUserProfile(authorId);
+
+          if (user == null) {
+            if (kDebugMode) {
+              log('[CART] Vendor profile not found');
+            }
+            return;
+          }
+
+          fcmToken = user.fcmToken?.trim() ?? '';
+        }
+
+        if (fcmToken.isEmpty) {
+          if (kDebugMode) {
+            log('[CART] Empty FCM token');
+          }
+          return;
+        }
+
+        // ✅ Step 2: Build payload
+        final type = scheduleDateTime.isAfter(DateTime.now())
+            ? Constant.scheduleOrder
+            : Constant.newOrderPlaced;
+
+        final payload = {'type': type, 'order_id': orderId};
+
+        // ✅ Step 3: Send notification
+        final sent = await SendNotification.sendFcmMessage(
+          type,
+          fcmToken,
+          payload,
+        );
+
+        if (kDebugMode && !sent) {
+          log('[CART] Notification failed (stale token)');
+        }
+      } catch (e, stack) {
+        if (kDebugMode) {
+          log('[CART] Notification error: $e');
+          log('$stack');
+        }
+      }
+    });
   }
 
   Future<void> _setOrderInternal() async {
