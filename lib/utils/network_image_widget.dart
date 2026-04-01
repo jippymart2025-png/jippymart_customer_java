@@ -212,17 +212,36 @@ class NetworkImageWidget extends StatelessWidget {
       );
     }
 
+    final displayHeight = height ?? Responsive.height(8, context);
+    final displayWidth = width ?? Responsive.width(15, context);
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+
+    int? targetCacheWidth;
+    int? targetCacheHeight;
+
+    if (displayWidth.isFinite && displayWidth > 0) {
+      targetCacheWidth = (displayWidth * devicePixelRatio)
+          .round()
+          .clamp(300, 3000);
+    }
+
+    if (displayHeight.isFinite && displayHeight > 0) {
+      targetCacheHeight = (displayHeight * devicePixelRatio)
+          .round()
+          .clamp(300, 3000);
+    }
+
     return CachedNetworkImage(
       imageUrl: cleanImageUrl,
       fit: fit ?? BoxFit.fitWidth,
-      height: height ?? Responsive.height(8, context),
-      width: width ?? Responsive.width(15, context),
+      height: displayHeight,
+      width: displayWidth,
       color: color,
-      // Enhanced caching configuration
-      maxWidthDiskCache: 1000,
-      maxHeightDiskCache: 1000,
-      memCacheWidth: 300,
-      memCacheHeight: 300,
+      // Cache at near-rendered pixel size to avoid blurry upscaling.
+      maxWidthDiskCache: targetCacheWidth,
+      maxHeightDiskCache: targetCacheHeight,
+      memCacheWidth: targetCacheWidth,
+      memCacheHeight: targetCacheHeight,
       // Keep images in cache longer
       cacheKey: cleanImageUrl,
       // Use URL as cache key for consistency
