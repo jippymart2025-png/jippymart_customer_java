@@ -1329,6 +1329,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       bool hasUpdates = false;
+      bool variantMetaChanged = false;
       List<PriceUpdateResult> allUpdates = [];
 
       // Process batches in parallel but with rate limiting
@@ -1337,10 +1338,23 @@ class CartControllerProvider extends ChangeNotifier {
         print('[PRICE_SYNC] 📦 Processing batch ${i + 1}/${batches.length}');
 
         try {
-          final batchUpdates = await validateAndUpdateCartPricesForBatch(batch);
+          final batchOutcome = await validateAndUpdateCartPricesForBatch(batch);
+          final batchUpdates = batchOutcome.results;
+          final foodByCatalogId = batchOutcome.foodByCatalogId;
+          final martByLineId = batchOutcome.martByLineId;
 
           for (var entry in batchUpdates.entries) {
             final result = entry.value;
+
+            if (result.status == PriceStatus.error ||
+                result.status == PriceStatus.productNotFound) {
+              continue;
+            }
+
+            final catalogId = _catalogProductIdForFetch(result.productId);
+            final prefetchedFood =
+                catalogId.isNotEmpty ? foodByCatalogId[catalogId] : null;
+            final prefetchedMart = martByLineId[result.productId];
 
             if (result.hasPriceChange &&
                 result.oldPrice != null &&
@@ -1348,22 +1362,34 @@ class CartControllerProvider extends ChangeNotifier {
               hasUpdates = true;
               allUpdates.add(result);
 
-              // Update immediately
-              await _updateCartItemPrice(result);
-
-              // Update sync timestamp
-              _operationTimestamps['sync_${result.productId}'] = DateTime.now();
-              _recentlySyncedItems.add(result.productId);
+              await _updateCartItemPrice(
+                result,
+                prefetchedFood: prefetchedFood,
+                prefetchedMart: prefetchedMart,
+              );
 
               print(
                 '[PRICE_SYNC] ✅ Updated ${result.productName}: ₹${result.oldPrice} → ₹${result.newPrice}',
               );
+            } else {
+              final persisted = await _persistVariantInfoSyncForProductId(
+                result.productId,
+                prefetchedFood: prefetchedFood,
+              );
+              if (persisted) {
+                variantMetaChanged = true;
+                print(
+                  '[PRICE_SYNC] ✅ Synced variant/option fields for ${result.productId}',
+                );
+              }
             }
+
+            _operationTimestamps['sync_${result.productId}'] = DateTime.now();
+            _recentlySyncedItems.add(result.productId);
           }
 
-          // Small delay between batches to avoid rate limiting
           if (i < batches.length - 1) {
-            await Future.delayed(Duration(milliseconds: 100));
+            await Future.delayed(const Duration(milliseconds: 60));
           }
         } catch (e) {
           print('[PRICE_SYNC] ❌ Error in batch ${i + 1}: $e');
@@ -1373,14 +1399,22 @@ class CartControllerProvider extends ChangeNotifier {
       // Update timestamp
       _operationTimestamps[lastSyncKey] = DateTime.now();
 
-      if (hasUpdates) {
-        print('[PRICE_SYNC] ✅ Sync complete with ${allUpdates.length} updates');
+      if (hasUpdates || variantMetaChanged) {
+        if (hasUpdates) {
+          print(
+            '[PRICE_SYNC] ✅ Sync complete with ${allUpdates.length} line updates',
+          );
+        }
+        if (variantMetaChanged && !hasUpdates) {
+          print('[PRICE_SYNC] ✅ Sync complete (variant/option metadata only)');
+        }
 
-        // Force UI update
         _priceSyncVersion++;
         notifyListeners();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(calculatePrice());
+        });
 
-        // Show notification if app is in foreground
         if (allUpdates.isNotEmpty) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             _showEnhancedPriceUpdateDialog(allUpdates);
@@ -1714,23 +1748,163 @@ class CartControllerProvider extends ChangeNotifier {
     );
   }
 
-  Future<Map<String, PriceUpdateResult>> validateAndUpdateCartPricesForBatch(
+  /// Compares [cartItem] with already-fetched catalog [currentProduct] (no I/O).
+  PriceUpdateResult _priceUpdateResultFromFetchedProduct(
+    CartProductModel cartItem,
+    dynamic currentProduct,
+  ) {
+    if (currentProduct == null) {
+      return PriceUpdateResult(
+        productId: cartItem.id!,
+        status: PriceStatus.productNotFound,
+        oldPrice: cartItem.price,
+        productName: cartItem.name,
+      );
+    }
+
+    final currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
+
+    final storedDiscountPrice =
+        double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
+    final storedRegularPrice = double.tryParse(cartItem.price ?? "0") ?? 0.0;
+    final storedDisplayPrice =
+        storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
+        ? storedDiscountPrice
+        : storedRegularPrice;
+
+    if ((currentPrice - storedDisplayPrice).abs() > 0.01) {
+      return PriceUpdateResult(
+        productId: cartItem.id!,
+        status: PriceStatus.priceChanged,
+        oldPrice: storedDisplayPrice.toStringAsFixed(2),
+        newPrice: currentPrice.toStringAsFixed(2),
+        productName: cartItem.name,
+      );
+    }
+    return PriceUpdateResult(
+      productId: cartItem.id!,
+      status: PriceStatus.noChange,
+      oldPrice: storedDisplayPrice.toStringAsFixed(2),
+      newPrice: currentPrice.toStringAsFixed(2),
+    );
+  }
+
+  /// One HTTP round-trip per unique catalog id + parallel mart reads.
+  /// Returns maps so callers can apply updates without re-fetching each product.
+  Future<
+      ({
+        Map<String, PriceUpdateResult> results,
+        Map<String, ProductModel?> foodByCatalogId,
+        Map<String, MartItemModel?> martByLineId,
+      })> validateAndUpdateCartPricesForBatch(
     List<CartProductModel> batch,
   ) async {
     final Map<String, PriceUpdateResult> results = {};
 
-    // 🔑 PARALLEL FETCHING
-    final fetchFutures = batch.map((cartItem) async {
-      try {
-        return await _validateSingleItemPrice(cartItem);
-      } catch (e) {
-        print('[BATCH_VALIDATE] ❌ Error validating ${cartItem.id}: $e');
-        return null;
+    final foodCatalogIds = <String>{};
+    final martLineIds = <String>{};
+
+    for (final cartItem in batch) {
+      if (cartItem.id == null || cartItem.id!.isEmpty) continue;
+      if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
+      if (_isMartItem(cartItem)) {
+        martLineIds.add(cartItem.id!);
+      } else {
+        final cid = _catalogProductIdForFetch(cartItem.id!);
+        if (cid.isNotEmpty) foodCatalogIds.add(cid);
       }
-    }).toList();
+    }
+
+    var foodByCatalogId = <String, ProductModel?>{};
+    var martByLineId = <String, MartItemModel?>{};
 
     try {
-      final batchResults = await Future.wait(fetchFutures, eagerError: false);
+      await Future.wait([
+        Future(() async {
+          if (foodCatalogIds.isEmpty) return;
+          final fetched = await FireStoreUtils.getProductsByIds(
+            foodCatalogIds.toList(),
+            forceRefresh: true,
+          );
+          foodByCatalogId.addAll(fetched);
+        }),
+        Future(() async {
+          if (martLineIds.isEmpty) return;
+          final martService = Get.find<MartFirestoreService>();
+          await Future.wait(
+            martLineIds.map((lineId) async {
+              try {
+                martByLineId[lineId] = await martService.getItemById(lineId);
+              } catch (_) {
+                martByLineId[lineId] = null;
+              }
+            }),
+          );
+        }),
+      ]);
+    } catch (e) {
+      print('[BATCH_VALIDATE] ❌ Prefetch failed: $e');
+      foodByCatalogId = {};
+      martByLineId = {};
+    }
+
+    Future<PriceUpdateResult?> validateOne(CartProductModel cartItem) async {
+      try {
+        if (cartItem.id == null || cartItem.id!.isEmpty) {
+          return PriceUpdateResult(
+            productId: cartItem.id ?? 'unknown',
+            status: PriceStatus.error,
+            error: 'Invalid product ID',
+          );
+        }
+
+        if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) {
+          return PriceUpdateResult(
+            productId: cartItem.id!,
+            status: PriceStatus.noChange,
+            oldPrice: cartItem.price,
+            newPrice: cartItem.price,
+            productName: cartItem.name,
+          );
+        }
+
+        if (_isMartItem(cartItem)) {
+          return _priceUpdateResultFromFetchedProduct(
+            cartItem,
+            martByLineId[cartItem.id!],
+          );
+        }
+
+        final catalogId = _catalogProductIdForFetch(cartItem.id!);
+        if (catalogId.isEmpty) {
+          return PriceUpdateResult(
+            productId: cartItem.id!,
+            status: PriceStatus.error,
+            oldPrice: cartItem.price,
+            productName: cartItem.name,
+            error: 'Invalid catalog product id',
+          );
+        }
+        return _priceUpdateResultFromFetchedProduct(
+          cartItem,
+          foodByCatalogId[catalogId],
+        );
+      } catch (e) {
+        print('[BATCH_VALIDATE] ❌ Error validating ${cartItem.id}: $e');
+        return PriceUpdateResult(
+          productId: cartItem.id!,
+          status: PriceStatus.error,
+          oldPrice: cartItem.price,
+          error: e.toString(),
+        );
+      }
+    }
+
+    try {
+      final batchResults = await Future.wait(
+        batch.map(validateOne),
+        eagerError: false,
+      );
 
       for (var result in batchResults) {
         if (result != null) {
@@ -1741,87 +1915,11 @@ class CartControllerProvider extends ChangeNotifier {
       print('[BATCH_VALIDATE] ❌ Batch validation failed: $e');
     }
 
-    return results;
-  }
-
-  Future<PriceUpdateResult> _validateSingleItemPrice(
-    CartProductModel cartItem,
-  ) async {
-    if (cartItem.id == null || cartItem.id!.isEmpty) {
-      return PriceUpdateResult(
-        productId: cartItem.id ?? 'unknown',
-        status: PriceStatus.error,
-        error: 'Invalid product ID',
-      );
-    }
-
-    final isPromotionalItem =
-        cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
-
-    if (isPromotionalItem) {
-      return PriceUpdateResult(
-        productId: cartItem.id!,
-        status: PriceStatus.noChange,
-        oldPrice: cartItem.price,
-        newPrice: cartItem.price,
-        productName: cartItem.name,
-      );
-    }
-
-    try {
-      dynamic currentProduct;
-      final isMart = _isMartItem(cartItem);
-
-      if (isMart) {
-        final martService = Get.find<MartFirestoreService>();
-        currentProduct = await martService.getItemById(cartItem.id!);
-      } else {
-        currentProduct = await FireStoreUtils.getProductById(cartItem.id!);
-      }
-
-      if (currentProduct == null) {
-        return PriceUpdateResult(
-          productId: cartItem.id!,
-          status: PriceStatus.productNotFound,
-          oldPrice: cartItem.price,
-          productName: cartItem.name,
-        );
-      }
-
-      final currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
-
-      final storedDiscountPrice =
-          double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
-      final storedRegularPrice = double.tryParse(cartItem.price ?? "0") ?? 0.0;
-      final storedDisplayPrice =
-          storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
-          ? storedDiscountPrice
-          : storedRegularPrice;
-
-      if ((currentPrice - storedDisplayPrice).abs() > 0.01) {
-        return PriceUpdateResult(
-          productId: cartItem.id!,
-          status: PriceStatus.priceChanged,
-          oldPrice: storedDisplayPrice.toStringAsFixed(2),
-          newPrice: currentPrice.toStringAsFixed(2),
-          productName: cartItem.name,
-        );
-      } else {
-        return PriceUpdateResult(
-          productId: cartItem.id!,
-          status: PriceStatus.noChange,
-          oldPrice: storedDisplayPrice.toStringAsFixed(2),
-          newPrice: currentPrice.toStringAsFixed(2),
-        );
-      }
-    } catch (e) {
-      return PriceUpdateResult(
-        productId: cartItem.id!,
-        status: PriceStatus.error,
-        oldPrice: cartItem.price,
-        error: e.toString(),
-      );
-    }
+    return (
+      results: results,
+      foodByCatalogId: foodByCatalogId,
+      martByLineId: martByLineId,
+    );
   }
 
   // ============ PROFILE VALIDATION METHODS ============
@@ -2694,22 +2792,203 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
+  /// Cart rows use `baseId~variantId`; product APIs only accept [baseId].
+  String _catalogProductIdForFetch(String? cartRowId) {
+    if (cartRowId == null || cartRowId.isEmpty) return '';
+    final t = cartRowId.trim();
+    if (t.toLowerCase() == 'null') return '';
+    final tilde = t.indexOf('~');
+    if (tilde <= 0) return t;
+    return t.substring(0, tilde).trim();
+  }
+
+  double _storedCartUnitDisplayPrice(CartProductModel cartItem) {
+    final d = double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
+    final p = double.tryParse(cartItem.price ?? '0') ?? 0.0;
+    if (d > 0 && d < p) return d;
+    return p;
+  }
+
+  bool _idsLooselyEqual(String? a, String? b) {
+    if (a == null || b == null) return false;
+    final as = a.trim();
+    final bs = b.trim();
+    if (as.isEmpty || bs.isEmpty) return false;
+    if (as == bs) return true;
+    final ai = int.tryParse(as);
+    final bi = int.tryParse(bs);
+    if (ai != null && bi != null && ai == bi) return true;
+    return false;
+  }
+
+  ProductOption? _matchProductOption(
+    ProductModel product,
+    VariantInfo? vi,
+  ) {
+    if (vi == null || product.options == null || product.options!.isEmpty) {
+      return null;
+    }
+    final vid = vi.variantId?.trim();
+    if (vid != null && vid.isNotEmpty && vid != '0') {
+      for (final o in product.options!) {
+        if (_idsLooselyEqual(o.id, vid)) return o;
+      }
+    }
+    final sku = vi.variantSku?.trim();
+    if (sku != null && sku.isNotEmpty) {
+      for (final o in product.options!) {
+        if (o.subtitle == sku || o.title == sku) return o;
+      }
+    }
+    return null;
+  }
+
+  Variants? _matchItemAttributeVariant(
+    ProductModel product,
+    VariantInfo? vi,
+  ) {
+    if (vi == null || product.itemAttribute?.variants == null) return null;
+    final vars = product.itemAttribute!.variants!;
+    final vid = vi.variantId?.trim();
+    if (vid != null && vid.isNotEmpty && vid != '0') {
+      for (final v in vars) {
+        if (_idsLooselyEqual(v.variantId, vid)) return v;
+      }
+    }
+    final sku = vi.variantSku?.trim();
+    if (sku != null && sku.isNotEmpty) {
+      try {
+        return vars.firstWhere((v) => v.variantSku == sku);
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  /// Updates [vi] from live [product] (option / attribute variant prices and
+  /// `variant_options` merchant_price when applicable). Returns true if any field changed.
+  bool _syncVariantInfoFieldsFromProduct(VariantInfo vi, ProductModel product) {
+    bool changed = false;
+    final opt = _matchProductOption(product, vi);
+    if (opt != null) {
+      final newVp = opt.price ?? '0';
+      if (vi.variantPrice != newVp) {
+        vi.variantPrice = newVp;
+        changed = true;
+      }
+      final merchantVal =
+          (opt.originalPrice != null && opt.originalPrice!.trim().isNotEmpty)
+          ? opt.originalPrice!
+          : newVp;
+      if (vi.variantOptions is Map) {
+        final m = Map<String, dynamic>.from(vi.variantOptions as Map);
+        final prevMerchant = m['merchant_price']?.toString();
+        if (prevMerchant != merchantVal) {
+          m['merchant_price'] = merchantVal;
+          vi.variantOptions = m;
+          changed = true;
+        }
+      } else if (merchantVal.isNotEmpty) {
+        vi.variantOptions = <String, dynamic>{
+          if (vi.variantOptions is Map)
+            ...Map<String, dynamic>.from(vi.variantOptions as Map),
+          'merchant_price': merchantVal,
+        };
+        changed = true;
+      }
+      return changed;
+    }
+
+    final variant = _matchItemAttributeVariant(product, vi);
+    if (variant != null) {
+      final newVp = variant.variantPrice ?? '0';
+      if (vi.variantPrice != newVp) {
+        vi.variantPrice = newVp;
+        changed = true;
+      }
+      final img = variant.variantImage;
+      if (img != null &&
+          img.isNotEmpty &&
+          vi.variantImage != img) {
+        vi.variantImage = img;
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  /// Persists `variant_info` (option price, merchant_price in variant_options map, etc.)
+  /// for all cart rows with [productId], when line price was already correct.
+  Future<bool> _persistVariantInfoSyncForProductId(
+    String productId, {
+    ProductModel? prefetchedFood,
+  }) async {
+    bool anyChanged = false;
+    for (int i = 0; i < HomeProvider.cartItem.length; i++) {
+      final cartItem = HomeProvider.cartItem[i];
+      if (cartItem.id != productId) continue;
+      if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
+      if (cartItem.variantInfo == null) continue;
+      if (_isMartItem(cartItem)) continue;
+      if (cartItem.id == null || cartItem.id!.isEmpty) continue;
+
+      try {
+        final catalogId = _catalogProductIdForFetch(cartItem.id!);
+        if (catalogId.isEmpty) continue;
+        ProductModel? currentProduct = prefetchedFood;
+        currentProduct ??= await FireStoreUtils.getProductById(
+          catalogId,
+          forceRefresh: true,
+        );
+        if (currentProduct is! ProductModel) continue;
+        bool rowChanged = _syncVariantInfoFieldsFromProduct(
+          cartItem.variantInfo!,
+          currentProduct,
+        );
+        final live = _getCurrentProductPrice(currentProduct, cartItem);
+        final storedDiscount =
+            double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
+        final storedReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
+        final storedDisplay =
+            storedDiscount > 0 && storedDiscount < storedReg
+            ? storedDiscount
+            : storedReg;
+        if ((live - storedDisplay).abs() > 0.01) {
+          cartItem.price = live.toStringAsFixed(2);
+          cartItem.discountPrice = '0';
+          rowChanged = true;
+        }
+        if (rowChanged) {
+          anyChanged = true;
+          await DatabaseHelper.instance.updateCartProduct(cartItem);
+          HomeProvider.cartItem[i] = cartItem;
+        }
+      } catch (e) {
+        print('[PRICE_SYNC] variant metadata sync error: $e');
+      }
+    }
+    return anyChanged;
+  }
+
   double _getCurrentProductPrice(dynamic product, CartProductModel cartItem) {
     try {
-      if (cartItem.variantInfo != null &&
-          product is ProductModel &&
-          product.itemAttribute != null) {
-        final variantSku = cartItem.variantInfo!.variantSku;
-        Variants? variant;
-
-        try {
-          variant = product.itemAttribute!.variants?.firstWhere(
-            (v) => v.variantSku == variantSku,
-          );
-        } catch (e) {
-          variant = null;
+      if (cartItem.variantInfo != null && product is ProductModel) {
+        final opt = _matchProductOption(product, cartItem.variantInfo);
+        if (opt != null && opt.price != null) {
+          if (vendorModel.id != null) {
+            return double.parse(
+              Constant.productCommissionPrice(
+                vendorModel,
+                opt.price ?? '0',
+              ),
+            );
+          }
+          return double.tryParse(opt.price ?? '0') ?? 0.0;
         }
 
+        final variant = _matchItemAttributeVariant(
+          product,
+          cartItem.variantInfo,
+        );
         if (variant != null && variant.variantPrice != null) {
           if (vendorModel.id != null) {
             return double.parse(
@@ -2721,6 +3000,19 @@ class CartControllerProvider extends ChangeNotifier {
           }
           return double.tryParse(variant.variantPrice ?? "0") ?? 0.0;
         }
+
+        final rawVp = cartItem.variantInfo?.variantPrice?.trim();
+        final rawParsed = rawVp != null ? double.tryParse(rawVp) : null;
+        if (rawParsed != null && rawParsed > 0) {
+          if (vendorModel.id != null) {
+            return double.parse(
+              Constant.productCommissionPrice(vendorModel, rawVp),
+            );
+          }
+          return rawParsed;
+        }
+
+        return _storedCartUnitDisplayPrice(cartItem);
       }
 
       if (product is MartItemModel) {
@@ -2772,7 +3064,11 @@ class CartControllerProvider extends ChangeNotifier {
     return 0.0;
   }
 
-  Future<void> _updateCartItemPrice(PriceUpdateResult result) async {
+  Future<void> _updateCartItemPrice(
+    PriceUpdateResult result, {
+    ProductModel? prefetchedFood,
+    MartItemModel? prefetchedMart,
+  }) async {
     try {
       final cartItemIndex = HomeProvider.cartItem.indexWhere(
         (item) => item.id == result.productId,
@@ -2786,10 +3082,20 @@ class CartControllerProvider extends ChangeNotifier {
       dynamic currentProduct;
 
       if (isMart) {
-        final martService = Get.find<MartFirestoreService>();
-        currentProduct = await martService.getItemById(cartItem.id!);
+        currentProduct = prefetchedMart;
+        if (currentProduct == null) {
+          final martService = Get.find<MartFirestoreService>();
+          currentProduct = await martService.getItemById(cartItem.id!);
+        }
       } else {
-        currentProduct = await FireStoreUtils.getProductById(cartItem.id!);
+        final catalogId = _catalogProductIdForFetch(cartItem.id!);
+        currentProduct = prefetchedFood;
+        if (currentProduct == null && catalogId.isNotEmpty) {
+          currentProduct = await FireStoreUtils.getProductById(
+            catalogId,
+            forceRefresh: true,
+          );
+        }
       }
 
       if (currentProduct != null) {
@@ -2806,7 +3112,9 @@ class CartControllerProvider extends ChangeNotifier {
           }
         } else if (currentProduct is ProductModel) {
           cartItem.price = result.newPrice;
-          if (currentProduct.disPrice != null &&
+          if (cartItem.variantInfo != null) {
+            cartItem.discountPrice = "0";
+          } else if (currentProduct.disPrice != null &&
               double.tryParse(currentProduct.disPrice!) != null &&
               double.tryParse(currentProduct.price ?? "0") != null) {
             final disPrice = double.parse(currentProduct.disPrice!);
@@ -2829,6 +3137,13 @@ class CartControllerProvider extends ChangeNotifier {
         }
       } else {
         cartItem.price = result.newPrice;
+      }
+
+      if (cartItem.variantInfo != null && currentProduct is ProductModel) {
+        _syncVariantInfoFieldsFromProduct(
+          cartItem.variantInfo!,
+          currentProduct,
+        );
       }
 
       await DatabaseHelper.instance.updateCartProduct(cartItem);
@@ -7964,16 +8279,60 @@ class CartControllerProvider extends ChangeNotifier {
     return _productCache[productId];
   }
 
-  // Add this method to CartControllerProvider class
-  // Replace the validateAndUpdateCartPrices() method with this improved version:
   Future<Map<String, PriceUpdateResult>> validateAndUpdateCartPrices() async {
     final Map<String, PriceUpdateResult> results = {};
+    final items = List<CartProductModel>.from(HomeProvider.cartItem);
 
     print(
-      '[PRICE_SYNC] 🔍 Starting IMMEDIATE price validation for ${HomeProvider.cartItem.length} items',
+      '[PRICE_SYNC] 🔍 Starting IMMEDIATE price validation for ${items.length} items',
     );
 
-    for (var cartItem in HomeProvider.cartItem) {
+    final foodCatalogIds = <String>{};
+    final martLineIds = <String>{};
+    for (final cartItem in items) {
+      if (cartItem.id == null || cartItem.id!.isEmpty) continue;
+      if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
+      if (_isMartItem(cartItem)) {
+        martLineIds.add(cartItem.id!);
+      } else {
+        final cid = _catalogProductIdForFetch(cartItem.id!);
+        if (cid.isNotEmpty) foodCatalogIds.add(cid);
+      }
+    }
+
+    var foodByCatalogId = <String, ProductModel?>{};
+    var martByLineId = <String, MartItemModel?>{};
+
+    try {
+      await Future.wait([
+        Future(() async {
+          if (foodCatalogIds.isEmpty) return;
+          foodByCatalogId.addAll(
+            await FireStoreUtils.getProductsByIds(
+              foodCatalogIds.toList(),
+              forceRefresh: true,
+            ),
+          );
+        }),
+        Future(() async {
+          if (martLineIds.isEmpty) return;
+          final martService = Get.find<MartFirestoreService>();
+          await Future.wait(martLineIds.map((lineId) async {
+            try {
+              martByLineId[lineId] = await martService.getItemById(lineId);
+            } catch (_) {
+              martByLineId[lineId] = null;
+            }
+          }));
+        }),
+      ]);
+    } catch (e) {
+      print('[PRICE_SYNC] ❌ Prefetch failed: $e');
+    }
+
+    var cartDirty = false;
+
+    for (var cartItem in items) {
       try {
         if (cartItem.id == null || cartItem.id!.isEmpty) {
           continue;
@@ -7982,7 +8341,6 @@ class CartControllerProvider extends ChangeNotifier {
         final isPromotionalItem =
             cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
 
-        // 🔑 CRITICAL: Skip promotional items - their prices are fixed
         if (isPromotionalItem) {
           print('[PRICE_SYNC] 🎯 Skipping promotional item: ${cartItem.name}');
           continue;
@@ -7991,55 +8349,35 @@ class CartControllerProvider extends ChangeNotifier {
         final isMart = _isMartItem(cartItem);
         final itemType = isMart ? 'MART' : 'FOOD';
 
-        // Get current stored price from cart item
-        double storedPrice;
-        try {
-          // Try to parse the price - handle both string and double
-          if (cartItem.price is String) {
-            storedPrice = double.parse(cartItem.price.toString());
-          } else if (cartItem.price is double) {
-            storedPrice = cartItem.price as double;
-          } else if (cartItem.price is int) {
-            storedPrice = (cartItem.price as int).toDouble();
-          } else {
-            storedPrice = 0.0;
-          }
-        } catch (e) {
-          storedPrice = 0.0;
-        }
+        final storedDiscountPrice =
+            double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
+        final storedRegularPrice =
+            double.tryParse(cartItem.price ?? "0") ?? 0.0;
+        final storedPrice =
+            storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
+            ? storedDiscountPrice
+            : storedRegularPrice;
 
         print(
           '[PRICE_SYNC] [$itemType] Checking ${cartItem.name}: Stored price in cart = ₹$storedPrice',
         );
 
-        // Fetch current price from database
         dynamic currentProduct;
         double currentPrice = 0.0;
 
         try {
           if (isMart) {
-            // For mart items
-            final martService = Get.find<MartFirestoreService>();
-            currentProduct = await martService.getItemById(cartItem.id!);
+            currentProduct = martByLineId[cartItem.id!];
             if (currentProduct != null && currentProduct is MartItemModel) {
               currentPrice = currentProduct.finalPrice;
             }
           } else {
-            // For restaurant items
-            currentProduct = await FireStoreUtils.getProductById(cartItem.id!);
+            final catalogId = _catalogProductIdForFetch(cartItem.id!);
+            currentProduct =
+                catalogId.isEmpty ? null : foodByCatalogId[catalogId];
             if (currentProduct != null && currentProduct is ProductModel) {
-              // Calculate price with commission
-              if (vendorModel.id != null) {
-                currentPrice = double.parse(
-                  Constant.productCommissionPrice(
-                    vendorModel,
-                    currentProduct.price ?? "0",
-                  ),
-                );
-              } else {
-                currentPrice =
-                    double.tryParse(currentProduct.price ?? "0") ?? 0.0;
-              }
+              currentPrice =
+                  _getCurrentProductPrice(currentProduct, cartItem);
             }
           }
 
@@ -8047,12 +8385,10 @@ class CartControllerProvider extends ChangeNotifier {
             '[PRICE_SYNC] [$itemType] Current price from DB = ₹$currentPrice',
           );
 
-          // 🔑 CRITICAL: Compare prices with better tolerance
           final priceDifference = (currentPrice - storedPrice).abs();
-          final tolerance = 0.01; // 1 paisa tolerance
+          const tolerance = 0.01;
 
           if (priceDifference > tolerance) {
-            // Price has changed significantly
             print(
               '[PRICE_SYNC] ✅✅✅ PRICE CHANGE DETECTED for ${cartItem.name}: ₹$storedPrice → ₹$currentPrice (difference: ₹$priceDifference)',
             );
@@ -8065,16 +8401,17 @@ class CartControllerProvider extends ChangeNotifier {
               productName: cartItem.name,
             );
 
-            // 🔑 Update the cart item immediately
             cartItem.price = currentPrice.toStringAsFixed(2);
-            // Clear any discount price since the base price changed
             cartItem.discountPrice = "0";
+            if (currentProduct is ProductModel && cartItem.variantInfo != null) {
+              _syncVariantInfoFieldsFromProduct(
+                cartItem.variantInfo!,
+                currentProduct,
+              );
+            }
 
-            // Save to database immediately
             await DatabaseHelper.instance.updateCartProduct(cartItem);
-
-            // Force UI update
-            notifyListeners();
+            cartDirty = true;
           } else {
             print(
               '[PRICE_SYNC] ℹ️ No significant price change for ${cartItem.name} (difference: ₹$priceDifference)',
@@ -8086,6 +8423,32 @@ class CartControllerProvider extends ChangeNotifier {
               oldPrice: storedPrice.toStringAsFixed(2),
               newPrice: currentPrice.toStringAsFixed(2),
             );
+
+            if (!isMart &&
+                currentProduct is ProductModel &&
+                cartItem.variantInfo != null) {
+              bool needSave = _syncVariantInfoFieldsFromProduct(
+                cartItem.variantInfo!,
+                currentProduct,
+              );
+              final liveLine =
+                  _getCurrentProductPrice(currentProduct, cartItem);
+              final sdDisc =
+                  double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
+              final sdReg =
+                  double.tryParse(cartItem.price ?? '0') ?? 0.0;
+              final sdDisplay =
+                  sdDisc > 0 && sdDisc < sdReg ? sdDisc : sdReg;
+              if ((liveLine - sdDisplay).abs() > 0.01) {
+                cartItem.price = liveLine.toStringAsFixed(2);
+                cartItem.discountPrice = '0';
+                needSave = true;
+              }
+              if (needSave) {
+                await DatabaseHelper.instance.updateCartProduct(cartItem);
+                cartDirty = true;
+              }
+            }
           }
         } catch (e) {
           print(
@@ -8101,6 +8464,14 @@ class CartControllerProvider extends ChangeNotifier {
       } catch (e) {
         print('[PRICE_SYNC] ❌ General error for item ${cartItem.id}: $e');
       }
+    }
+
+    if (cartDirty) {
+      _priceSyncVersion++;
+      notifyListeners();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(calculatePrice());
+      });
     }
 
     return results;

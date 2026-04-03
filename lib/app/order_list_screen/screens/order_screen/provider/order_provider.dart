@@ -7,6 +7,8 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/order_model.dart';
+import 'package:jippymart_customer/models/product_model.dart';
+import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:get/get.dart';
@@ -407,23 +409,29 @@ class OrderProvider extends ChangeNotifier {
     try {
       final cartProvider = CartProvider();
 
-      final currentProduct = await FireStoreUtils.getCurrentProductPrice(
+      final live = await FireStoreUtils.getCurrentProductPrice(
         productId: cartProductModel.id ?? '',
         vendorId: cartProductModel.vendorID ?? '',
+        variantInfo: cartProductModel.variantInfo,
+        vendorModel: VendorModel(id: cartProductModel.vendorID),
+        fallbackPrice: cartProductModel.price,
+        fallbackDiscountPrice: cartProductModel.discountPrice,
+        forceRefresh: true,
       );
 
       CartProductModel productToAdd;
-      if (currentProduct != null) {
+      if (live != null) {
         productToAdd = CartProductModel(
           id: cartProductModel.id,
           name: cartProductModel.name,
           photo: cartProductModel.photo,
-          price: currentProduct.currentPrice.toString(),
-          discountPrice: currentProduct.discountPrice.toString(),
-          promoId: currentProduct.promoId,
+          price: live.currentPrice.toStringAsFixed(2),
+          discountPrice: live.discountPrice.toStringAsFixed(2),
+          promoId: live.promoId ?? cartProductModel.promoId,
           quantity: cartProductModel.quantity,
           vendorID: cartProductModel.vendorID,
           categoryId: cartProductModel.categoryId,
+          merchantPrice: cartProductModel.merchantPrice,
           extrasPrice: cartProductModel.extrasPrice,
           extras: cartProductModel.extras,
           variantInfo: cartProductModel.variantInfo,
@@ -450,7 +458,14 @@ class OrderProvider extends ChangeNotifier {
     }
   }
 
-  /// Reorder all items from an order (fetches live prices, fallback to order prices)
+  bool _isMartOrderLine(CartProductModel element) {
+    final vid = element.vendorID ?? '';
+    return vid.startsWith('demo_') ||
+        vid.contains('mart') ||
+        vid.contains('vendor');
+  }
+
+  /// Reorder all items from an order (batched live catalog fetch, variant-aware prices).
   Future<void> reorderOrder(OrderModel order, BuildContext context) async {
     if (order.products == null || order.products!.isEmpty) {
       ShowToastDialog.showToast("No items to reorder".tr);
@@ -462,46 +477,63 @@ class OrderProvider extends ChangeNotifier {
     try {
       int addedCount = 0;
       int failedCount = 0;
+      final vendor = order.vendor;
+      final lines = order.products!;
 
-      for (var element in order.products!) {
+      final foodCatalogIds = <String>{};
+      for (final e in lines) {
+        if (_isMartOrderLine(e)) continue;
+        final cid = FireStoreUtils.catalogIdFromOrderLine(e.id);
+        if (cid.isNotEmpty) foodCatalogIds.add(cid);
+      }
+
+      var foodByCatalogId = <String, ProductModel?>{};
+      if (foodCatalogIds.isNotEmpty) {
+        foodByCatalogId = await FireStoreUtils.getProductsByIds(
+          foodCatalogIds.toList(),
+          forceRefresh: true,
+        );
+      }
+
+      for (final element in lines) {
         try {
-          final currentProduct = await FireStoreUtils.getCurrentProductPrice(
-            productId: element.id ?? '',
-            vendorId: element.vendorID ?? '',
+          ProductModel? p;
+          if (!_isMartOrderLine(element)) {
+            final cid = FireStoreUtils.catalogIdFromOrderLine(element.id);
+            p = cid.isEmpty ? null : foodByCatalogId[cid];
+          }
+
+          var info = FireStoreUtils.priceInfoForReorderLine(
+            product: p,
+            element: element,
+            vendor: vendor,
+          );
+          info ??= FireStoreUtils.priceInfoForReorderLine(
+            product: null,
+            element: element,
+            vendor: vendor,
           );
 
-          final CartProductModel productToAdd;
-          if (currentProduct != null) {
-            productToAdd = CartProductModel(
-              id: element.id,
-              name: element.name,
-              photo: element.photo,
-              price: currentProduct.currentPrice.toString(),
-              discountPrice: currentProduct.discountPrice.toString(),
-              promoId: currentProduct.promoId,
-              quantity: element.quantity ?? 1,
-              vendorID: element.vendorID,
-              categoryId: element.categoryId,
-              extrasPrice: element.extrasPrice,
-              extras: element.extras,
-              variantInfo: element.variantInfo,
-            );
-          } else {
-            productToAdd = CartProductModel(
-              id: element.id,
-              name: element.name,
-              photo: element.photo,
-              price: element.price?.toString() ?? '0',
-              discountPrice: element.discountPrice?.toString() ?? '0',
-              promoId: element.promoId,
-              quantity: element.quantity ?? 1,
-              vendorID: element.vendorID,
-              categoryId: element.categoryId,
-              extrasPrice: element.extrasPrice,
-              extras: element.extras,
-              variantInfo: element.variantInfo,
-            );
+          if (info == null) {
+            failedCount++;
+            continue;
           }
+
+          final productToAdd = CartProductModel(
+            id: element.id,
+            name: element.name,
+            photo: element.photo,
+            price: info.currentPrice.toStringAsFixed(2),
+            discountPrice: info.discountPrice.toStringAsFixed(2),
+            promoId: info.promoId ?? element.promoId,
+            quantity: element.quantity ?? 1,
+            vendorID: element.vendorID,
+            categoryId: element.categoryId,
+            merchantPrice: element.merchantPrice,
+            extrasPrice: element.extrasPrice,
+            extras: element.extras,
+            variantInfo: element.variantInfo,
+          );
 
           await addToCartWithLivePrices(
             cartProductModel: productToAdd,

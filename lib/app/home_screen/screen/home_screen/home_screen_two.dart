@@ -506,10 +506,10 @@ class HomeScreenTwo extends StatelessWidget {
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: allRestaurants.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
+                  crossAxisCount: 2,
                   crossAxisSpacing: 6,
                   mainAxisSpacing: 8,
-                  childAspectRatio: 0.65,
+                  childAspectRatio: 0.72,
                 ),
                 itemBuilder: (BuildContext context, int index) {
                   return RepaintBoundary(

@@ -17,6 +17,7 @@ import 'package:jippymart_customer/models/notification_model.dart';
 import 'package:jippymart_customer/models/order_model.dart';
 import 'package:jippymart_customer/models/payment_model/cod_setting_model.dart';
 import 'package:jippymart_customer/models/payment_model/razorpay_model.dart';
+import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/rating_model.dart';
 import 'package:jippymart_customer/models/review_attribute_model.dart';
@@ -1250,28 +1251,217 @@ class FireStoreUtils {
     return out;
   }
 
-  /// Fetch current product price from API for reorder (live prices)
-  static Future<ProductPriceInfo?> getCurrentProductPrice({
-    required String productId,
-    required String vendorId,
-  }) async {
+  static String _catalogIdFromCartOrOrderRow(String? productId) {
+    if (productId == null || productId.isEmpty) return '';
+    final t = productId.trim();
+    if (t.toLowerCase() == 'null') return '';
+    final tilde = t.indexOf('~');
+    if (tilde <= 0) return t;
+    return t.substring(0, tilde).trim();
+  }
+
+  /// Base product id for API calls when line id is `productId~variantId`.
+  static String catalogIdFromOrderLine(String? productId) =>
+      _catalogIdFromCartOrOrderRow(productId);
+
+  static bool _idsLooselyEqual(String? a, String? b) {
+    if (a == null || b == null) return false;
+    final as = a.trim();
+    final bs = b.trim();
+    if (as.isEmpty || bs.isEmpty) return false;
+    if (as == bs) return true;
+    final ai = int.tryParse(as);
+    final bi = int.tryParse(bs);
+    if (ai != null && bi != null && ai == bi) return true;
+    return false;
+  }
+
+  static ProductOption? _matchProductOptionForReorder(
+    ProductModel product,
+    VariantInfo? vi,
+  ) {
+    if (vi == null || product.options == null || product.options!.isEmpty) {
+      return null;
+    }
+    final vid = vi.variantId?.trim();
+    if (vid != null && vid.isNotEmpty && vid != '0') {
+      for (final o in product.options!) {
+        if (_idsLooselyEqual(o.id, vid)) return o;
+      }
+    }
+    final sku = vi.variantSku?.trim();
+    if (sku != null && sku.isNotEmpty) {
+      for (final o in product.options!) {
+        if (o.subtitle == sku || o.title == sku) return o;
+      }
+    }
+    return null;
+  }
+
+  static Variants? _matchItemAttributeVariantForReorder(
+    ProductModel product,
+    VariantInfo? vi,
+  ) {
+    if (vi == null || product.itemAttribute?.variants == null) return null;
+    final vars = product.itemAttribute!.variants!;
+    final vid = vi.variantId?.trim();
+    if (vid != null && vid.isNotEmpty && vid != '0') {
+      for (final v in vars) {
+        if (_idsLooselyEqual(v.variantId, vid)) return v;
+      }
+    }
+    final sku = vi.variantSku?.trim();
+    if (sku != null && sku.isNotEmpty) {
+      for (final v in vars) {
+        if (v.variantSku == sku) return v;
+      }
+    }
+    return null;
+  }
+
+  static double _commissionUnitPrice(VendorModel v, String? raw) {
+    return double.parse(
+      Constant.productCommissionPrice(v, raw ?? '0'),
+    );
+  }
+
+  static ProductPriceInfo _reorderVariantPriceInfo({
+    required double unit,
+    String? promoId,
+  }) {
+    return ProductPriceInfo(
+      currentPrice: unit,
+      discountPrice: 0.0,
+      promoId: promoId,
+    );
+  }
+
+  static double _fallbackUnitFromOrderSnapshot(
+    String? price,
+    String? discountPrice,
+  ) {
+    final d = double.tryParse(discountPrice ?? '0') ?? 0.0;
+    final p = double.tryParse(price ?? '0') ?? 0.0;
+    if (d > 0 && d < p) return d;
+    return p;
+  }
+
+  /// Resolves per-unit display prices for a food line (variants/options + discounts), aligned with cart pricing.
+  static ProductPriceInfo? priceInfoForReorderLine({
+    required ProductModel? product,
+    required CartProductModel element,
+    VendorModel? vendor,
+  }) {
     try {
-      final product = await getProductById(productId, forceRefresh: false);
-      if (product == null) return null;
+      final vendorId = element.vendorID ?? '';
+      final v = vendor ?? VendorModel(id: vendorId);
+
+      if (product == null) {
+        final unit = _fallbackUnitFromOrderSnapshot(
+          element.price,
+          element.discountPrice,
+        );
+        final hasVariant = element.variantInfo != null;
+        return ProductPriceInfo(
+          currentPrice: unit,
+          discountPrice: hasVariant ? 0.0 : unit,
+          promoId: element.promoId,
+        );
+      }
 
       final productVendorId = product.vendorID ?? '';
-      if (productVendorId.isNotEmpty && productVendorId != vendorId) {
+      if (productVendorId.isNotEmpty && vendorId.isNotEmpty &&
+          productVendorId != vendorId) {
         return null;
       }
 
-      final price = double.tryParse(product.price ?? '0') ?? 0.0;
-      final discountPrice =
-          double.tryParse(product.disPrice ?? product.price ?? '0') ?? 0.0;
+      final variantInfo = element.variantInfo;
+      final promoId = element.promoId;
+      if (variantInfo != null) {
+        final opt = _matchProductOptionForReorder(product, variantInfo);
+        if (opt != null && opt.price != null) {
+          return _reorderVariantPriceInfo(
+            unit: _commissionUnitPrice(v, opt.price),
+            promoId: promoId,
+          );
+        }
 
+        final varRow =
+            _matchItemAttributeVariantForReorder(product, variantInfo);
+        if (varRow != null && varRow.variantPrice != null) {
+          return _reorderVariantPriceInfo(
+            unit: _commissionUnitPrice(
+              v,
+              varRow.variantPrice ?? product.price ?? '0',
+            ),
+            promoId: promoId,
+          );
+        }
+
+        final rawVp = variantInfo.variantPrice?.trim();
+        final rawParsed = rawVp != null ? double.tryParse(rawVp) : null;
+        if (rawParsed != null && rawParsed > 0) {
+          return _reorderVariantPriceInfo(
+            unit: _commissionUnitPrice(v, rawVp),
+            promoId: promoId,
+          );
+        }
+
+        final fb = _fallbackUnitFromOrderSnapshot(
+          element.price,
+          element.discountPrice,
+        );
+        return _reorderVariantPriceInfo(unit: fb, promoId: promoId);
+      }
+
+      final reg = double.tryParse(product.price ?? '0') ?? 0.0;
+      final dis = double.tryParse(product.disPrice ?? '0') ?? 0.0;
+      if (dis > 0 && dis < reg) {
+        return ProductPriceInfo(
+          currentPrice: _commissionUnitPrice(v, product.price),
+          discountPrice: _commissionUnitPrice(v, product.disPrice),
+          promoId: promoId,
+        );
+      }
+
+      final unit = _commissionUnitPrice(v, product.price);
       return ProductPriceInfo(
-        currentPrice: price,
-        discountPrice: discountPrice > 0 ? discountPrice : price,
-        promoId: null,
+        currentPrice: unit,
+        discountPrice: unit,
+        promoId: promoId,
+      );
+    } catch (e) {
+      dev.log('Error building price info for reorder: $e');
+      return null;
+    }
+  }
+
+  /// Fetch current product price from API for reorder / add flows (live, variant-aware).
+  static Future<ProductPriceInfo?> getCurrentProductPrice({
+    required String productId,
+    required String vendorId,
+    VariantInfo? variantInfo,
+    VendorModel? vendorModel,
+    String? fallbackPrice,
+    String? fallbackDiscountPrice,
+    bool forceRefresh = true,
+  }) async {
+    try {
+      final catalogId = _catalogIdFromCartOrOrderRow(productId);
+      if (catalogId.isEmpty) return null;
+
+      final product = await getProductById(catalogId, forceRefresh: forceRefresh);
+      final synthetic = CartProductModel(
+        id: productId,
+        vendorID: vendorId,
+        variantInfo: variantInfo,
+        price: fallbackPrice,
+        discountPrice: fallbackDiscountPrice,
+      );
+      return priceInfoForReorderLine(
+        product: product,
+        element: synthetic,
+        vendor: vendorModel,
       );
     } catch (e) {
       dev.log('Error fetching current product price: $e');

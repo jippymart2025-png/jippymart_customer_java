@@ -50,6 +50,7 @@ class VendorModel {
   String? vType; // Vendor type: 'restaurant' or 'mart'
   double? distance; // Used for sorting/filtering, not from backend
   bool? isActive;
+  String? offer_lable;
 
   VendorModel({
     this.author,
@@ -98,10 +99,12 @@ class VendorModel {
     this.vType,
     this.distance,
     this.isActive,
+    this.offer_lable,
   });
 
   VendorModel.fromJson(Map<String, dynamic> json) {
     author = json['author'];
+    offer_lable = _parseOfferLabel(json);
     dineInActive = _parseBool(json['dine_in_active']);
     openDineTime = json['openDineTime'];
     if (json['categoryID'] != null) {
@@ -360,6 +363,25 @@ class VendorModel {
     );
   }
 
+  /// API may send `offer_lable` (typo), `offer_label`, or camelCase.
+  static String? _parseOfferLabel(Map<String, dynamic> json) {
+    const keys = [
+      'offer_lable',
+      'offer_label',
+      'offerLabel',
+      'offer',
+      'promo_label',
+      'promoLabel',
+    ];
+    for (final key in keys) {
+      final val = json[key];
+      if (val == null) continue;
+      final s = val.toString().trim();
+      if (s.isNotEmpty && s.toLowerCase() != 'null') return s;
+    }
+    return null;
+  }
+
   bool? _parseBool(dynamic value) {
     if (value == null) return null;
     if (value is bool) return value;
@@ -446,6 +468,7 @@ class VendorModel {
     data['vType'] = vType;
     data['distance'] = distance;
     data['isActive'] = isActive;
+    data['offer_lable'] = offer_lable;
     return data;
   }
 }

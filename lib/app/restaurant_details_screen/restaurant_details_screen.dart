@@ -629,13 +629,25 @@ class _RestaurantHeader extends StatelessWidget {
                 const SizedBox(height: 4),
                 SizedBox(
                   width: Responsive.width(78, context),
-                  child: Text(
-                    controller.vendorModel.location ?? "",
-                    style: TextStyle(
-                      fontFamily: AppThemeData.medium,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.75),
-                    ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on, color: Colors.white70, size: 16),
+                      const SizedBox(width: 4),
+
+                      Expanded(
+                        child: Text(
+                          (Constant.selectedZone?.name?.isNotEmpty == true)
+                              ? "${Constant.selectedZone!.name}, Locality"
+                              : "Select Zone",
+                          style: TextStyle(
+                            fontFamily: AppThemeData.medium,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white.withOpacity(0.75),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],

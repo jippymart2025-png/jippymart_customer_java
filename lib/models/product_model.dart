@@ -234,10 +234,17 @@ class ProductModel {
           if (json['item_attribute'] is Map<String, dynamic>) {
             itemAttribute = ItemAttribute.fromJson(json['item_attribute']);
           } else if (json['item_attribute'] is List) {
-            print(
-              '⚠️ Product ${json['id']}: item_attribute is List, skipping...',
-            );
             itemAttribute = null;
+            for (final e in json['item_attribute'] as List) {
+              if (e is Map) {
+                try {
+                  itemAttribute = ItemAttribute.fromJson(
+                    Map<String, dynamic>.from(e),
+                  );
+                  break;
+                } catch (_) {}
+              }
+            }
           } else {
             itemAttribute = null;
           }

@@ -335,18 +335,18 @@ class _CodeExpiryRow extends StatelessWidget {
         const SizedBox(width: 6),
 
         // Expiry date
-        Flexible(
-          child: Text(
-            _formatExpiryDate(coupon.expiresAt),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: subSize,
-              color: AppThemeData.grey400,
-              fontFamily: AppThemeData.medium,
-            ),
-          ),
-        ),
+        // Flexible(
+        //   child: Text(
+        //     _formatExpiryDate(coupon.expiresAt),
+        //     maxLines: 1,
+        //     overflow: TextOverflow.ellipsis,
+        //     style: TextStyle(
+        //       fontSize: subSize,
+        //       color: AppThemeData.grey400,
+        //       fontFamily: AppThemeData.medium,
+        //     ),
+        //   ),
+        // ),
       ],
     );
   }

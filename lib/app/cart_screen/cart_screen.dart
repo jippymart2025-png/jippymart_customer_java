@@ -530,7 +530,7 @@ class _CartScreenState extends State<CartScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Colors.green.withOpacity(1),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -594,8 +594,8 @@ class _CartScreenState extends State<CartScreen> {
                         fontSize: 14,
                         fontFamily: AppThemeData.semiBold,
                         color: hasCoupon
-                            ? const Color(0xFF43A047)
-                            : AppThemeData.grey900,
+                            ? AppThemeData.homeScreenBackground
+                            : AppThemeData.homeScreenBackground,
                       ),
                     ),
                     if (hasCoupon) ...[
@@ -605,7 +605,7 @@ class _CartScreenState extends State<CartScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontFamily: AppThemeData.medium,
-                          color: AppThemeData.grey600,
+                          color: AppThemeData.homeScreenBackground,
                         ),
                       ),
                     ] else if (couponDisabled) ...[
@@ -615,7 +615,7 @@ class _CartScreenState extends State<CartScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontFamily: AppThemeData.regular,
-                          color: AppThemeData.grey500,
+                          color: AppThemeData.homeScreenBackground,
                         ),
                       ),
                     ] else ...[
@@ -625,7 +625,7 @@ class _CartScreenState extends State<CartScreen> {
                         style: TextStyle(
                           fontSize: 12,
                           fontFamily: AppThemeData.regular,
-                          color: AppThemeData.grey500,
+                          color: AppThemeData.homeScreenBackground,
                         ),
                       ),
                     ],
