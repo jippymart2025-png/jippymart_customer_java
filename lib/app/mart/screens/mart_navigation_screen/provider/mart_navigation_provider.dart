@@ -15,6 +15,19 @@ class MartNavigationProvider extends ChangeNotifier {
   late MartCategoryProvider martCategoryProvider;
   late MartProvider martProvider;
 
+  int get currentPageIndex {
+    switch (selectedIndex) {
+      case 2:
+        return 1; // Cart page in pageList
+      case 3:
+        return 2; // Profile page in pageList
+      case 1:
+        return 1; // Backward-compatible mapping
+      default:
+        return 0; // Home page
+    }
+  }
+
   void initFunction({required BuildContext context}) {
     martCategoryProvider = Provider.of<MartCategoryProvider>(
       context,
@@ -22,12 +35,13 @@ class MartNavigationProvider extends ChangeNotifier {
     );
     martProvider = Provider.of<MartProvider>(context, listen: false);
     _initializePages();
+    selectedIndex = 0;
   }
 
   void _initializePages() {
     pageList = [
       const MartHomeScreen(),
-      const MartCategoriesScreen(),
+      // const MartCategoriesScreen(),
       const CartScreen(
         hideBackButton: false,
         source: 'mart',
@@ -44,7 +58,7 @@ class MartNavigationProvider extends ChangeNotifier {
       // Use loadCategoriesStreaming (with full fallback chain) for Categories tab,
       // not loadVendorCategories which can overwrite with empty/failed result
       if (martProvider.martCategories.isEmpty) {
-        martProvider.loadCategoriesStreaming(skipSubcategories: true);
+        // martProvider.loadCategoriesStreaming(skipSubcategories: true);
       }
     }
     notifyListeners();
@@ -53,7 +67,7 @@ class MartNavigationProvider extends ChangeNotifier {
   // Navigation methods
   void goToHome() => changeIndex(0);
 
-  void goToCategories() => changeIndex(1);
+  // void goToCategories() => changeIndex(1);
 
   void goToCart() => changeIndex(2);
 

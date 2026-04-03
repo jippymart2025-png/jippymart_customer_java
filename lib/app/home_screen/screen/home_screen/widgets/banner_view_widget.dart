@@ -107,8 +107,8 @@ class _BannerViewState extends State<BannerView> {
                 final isLastItem = index == homeProvider.bannerModel.length - 1;
                 return InkWell(
                   onTap: () async {
-                    final restaurantDetailsProvider =
-                        context.read<RestaurantDetailsProvider>();
+                    final restaurantDetailsProvider = context
+                        .read<RestaurantDetailsProvider>();
                     homeProvider.bannerOnTapFunction(
                       bannerModel,
                       restaurantDetailsProvider,
@@ -122,7 +122,7 @@ class _BannerViewState extends State<BannerView> {
                         imageUrl: bannerModel.photo.toString(),
                         width: MediaQuery.of(context).size.width,
                         height: 160,
-                        fit: BoxFit.cover,
+                        fit: BoxFit.fill,
                       ),
                     ),
                   ),

@@ -1,3 +1,2061 @@
+// import 'dart:async';
+// import 'dart:convert';
+//
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:jippymart_customer/constant/constant.dart';
+// import 'package:jippymart_customer/models/mart_banner_model.dart';
+// import 'package:jippymart_customer/models/mart_category_model.dart';
+// import 'package:jippymart_customer/models/mart_delivery_settings_model.dart';
+// import 'package:jippymart_customer/models/mart_item_model.dart';
+// import 'package:jippymart_customer/models/mart_subcategory_model.dart';
+// import 'package:jippymart_customer/models/mart_vendor_model.dart';
+// import 'package:jippymart_customer/services/mart_firestore_service.dart';
+// import 'package:jippymart_customer/services/api_queue_manager.dart';
+// import 'package:jippymart_customer/services/cache_manager.dart';
+// import 'package:flutter/material.dart';
+// import 'package:get/get.dart';
+// import 'package:jippymart_customer/utils/utils/app_constant.dart';
+// import 'package:jippymart_customer/utils/utils/common.dart';
+// import 'package:http/http.dart' as http;
+//
+// class MartProvider extends ChangeNotifier {
+//   //NEW SECTION
+//   Map<String, List<MartItemModel>> categoryProductsMap =
+//       <String, List<MartItemModel>>{};
+//   List<String> uniqueCategoryTitles = <String>[];
+//
+//   /// Loads category section titles from getHomepageCategories/getCategories (cached)
+//   /// and sample products via getItemsByCategoryOnly per category with limit=10.
+//   /// Avoids heavy getMartItems() full-catalog fetch.
+//   Future<void> loadCategoryProductsForSections() async {
+//     try {
+//       // 1. Get category list from cached/lightweight APIs (no full catalog)
+//       var categories = await _firestoreService.getHomepageCategories(limit: 50);
+//       // Fallback: if homepage returns fewer than 5, use getCategories for more
+//       if (categories.length < 5) {
+//         final moreCategories =
+//             await _firestoreService.getCategories(limit: 50);
+//         if (moreCategories.isNotEmpty) {
+//           categories = moreCategories;
+//         }
+//       }
+//       if (categories.isEmpty) {
+//         categories = await _firestoreService.getCategories(limit: 50);
+//       }
+//       if (categories.isEmpty) {
+//         print(
+//           '[MART CONTROLLER] ⚠️ No categories for sections, skipping category products',
+//         );
+//         categoryProductsMap.clear();
+//         uniqueCategoryTitles.clear();
+//         notifyListeners();
+//         return;
+//       }
+//
+//       // 2. Build category titles list (preserve API order)
+//       final List<String> titles = [];
+//       for (final cat in categories) {
+//         final title = cat.title?.trim();
+//         if (title != null && title.isNotEmpty && !titles.contains(title)) {
+//           titles.add(title);
+//         }
+//       }
+//
+//       // 3. Apply same special ordering as before
+//       _applyCategorySectionOrder(titles);
+//
+//       // 4. Set section titles immediately so UI can show headers
+//       uniqueCategoryTitles.clear();
+//       uniqueCategoryTitles.addAll(titles);
+//       categoryProductsMap.clear();
+//       for (final t in titles) {
+//         categoryProductsMap[t] = [];
+//       }
+//       notifyListeners();
+//
+//       // 5. Fetch sample products per category (limit=10) in parallel
+//       final categoryById = {
+//         for (final c in categories) (c.title?.trim() ?? ''): c,
+//       };
+//       final futures = <Future<void>>[];
+//       for (final title in titles) {
+//         final cat = categoryById[title];
+//         if (cat?.id == null || cat!.id!.isEmpty) continue;
+//         futures.add(_loadSectionProductsForCategory(cat.id!, title, 10));
+//       }
+//       await Future.wait(futures);
+//
+//       print(
+//         '[MART CONTROLLER] ✅ Loaded ${uniqueCategoryTitles.length} unique categories (sections):',
+//       );
+//       for (final category in uniqueCategoryTitles) {
+//         print(
+//           '  - $category: ${categoryProductsMap[category]?.length ?? 0} products',
+//         );
+//       }
+//       notifyListeners();
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading products by category: $e');
+//     }
+//   }
+//
+//   void _applyCategorySectionOrder(List<String> titles) {
+//     if (titles.contains('Pet Care')) {
+//       titles.remove('Pet Care');
+//       titles.insert(_safeInsertIndex(titles.length, 7), 'Pet Care');
+//     }
+//     if (titles.contains('Fruits & Vegetables')) {
+//       titles.remove('Fruits & Vegetables');
+//       titles.insert(_safeInsertIndex(titles.length, 0), 'Fruits & Vegetables');
+//     }
+//     if (titles.contains('Cooking Essentials')) {
+//       titles.remove('Cooking Essentials');
+//       titles.insert(_safeInsertIndex(titles.length, 1), 'Cooking Essentials');
+//     }
+//   }
+//
+//   Future<void> _loadSectionProductsForCategory(
+//     String categoryId,
+//     String categoryTitle,
+//     int limit,
+//   ) async {
+//     try {
+//       final products = await _firestoreService.getItemsByCategoryOnly(
+//         categoryId: categoryId,
+//         isAvailable: true,
+//         limit: limit,
+//       );
+//       if (products.isNotEmpty &&
+//           categoryProductsMap.containsKey(categoryTitle)) {
+//         categoryProductsMap[categoryTitle] = products.take(limit).toList();
+//       }
+//     } catch (e) {
+//       print(
+//         '[MART CONTROLLER] ⚠️ Error loading section products for "$categoryTitle": $e',
+//       );
+//     }
+//   }
+//
+//   int _safeInsertIndex(int currentLength, int desiredIndex) {
+//     if (desiredIndex <= 0) {
+//       return 0;
+//     }
+//     if (desiredIndex >= currentLength) {
+//       return currentLength;
+//     }
+//     return desiredIndex;
+//   }
+//
+//   /// Build MartCategoryModel list from product-derived category data (fallback when API returns empty)
+//   List<MartCategoryModel> _deriveCategoriesFromProducts() {
+//     final result = <MartCategoryModel>[];
+//     for (var i = 0; i < uniqueCategoryTitles.length; i++) {
+//       final title = uniqueCategoryTitles[i];
+//       final products = categoryProductsMap[title];
+//       if (products == null || products.isEmpty) continue;
+//       final firstProduct = products.first;
+//       result.add(
+//         MartCategoryModel(
+//           id: firstProduct.categoryID ?? 'cat_$i',
+//           title: title,
+//           photo: firstProduct.photo.isNotEmpty ? firstProduct.photo : null,
+//           categoryOrder: i,
+//           section: 'Other',
+//           sectionOrder: 0,
+//           itemCount: products.length,
+//         ),
+//       );
+//     }
+//     return result;
+//   }
+//
+//   // Service injection
+//   final MartFirestoreService _firestoreService =
+//       Get.find<MartFirestoreService>();
+//
+//   // Observable variables
+//   bool isLoading = true;
+//   bool isCategoryLoading = false;
+//   bool isProductLoading = false;
+//   bool isVendorLoading = false;
+//   bool isHomepageCategoriesLoaded = false;
+//   String selectedCategoryId = "";
+//   String selectedVendorId = "";
+//   String selectedVendorName = "";
+//   String searchQuery = "";
+//   String errorMessage = "";
+//
+//   // Data lists
+//   List<MartVendorModel> martVendors = <MartVendorModel>[];
+//   List<MartCategoryModel> martCategories = <MartCategoryModel>[];
+//   Map<String, List<MartSubcategoryModel>> subcategoriesMap =
+//       <String, List<MartSubcategoryModel>>{};
+//   List<MartItemModel> martItems = <MartItemModel>[];
+//   List<MartItemModel> filteredItems = <MartItemModel>[];
+//   List<MartItemModel> featuredItems = <MartItemModel>[];
+//   List<MartItemModel> itemsOnSale = <MartItemModel>[];
+//   List<MartCategoryModel> featuredCategories = <MartCategoryModel>[];
+//   List<MartItemModel> cartItems = <MartItemModel>[];
+//   List<Map<String, dynamic>> spotlightItems = <Map<String, dynamic>>[];
+//   List<Map<String, dynamic>> stealsItems = <Map<String, dynamic>>[];
+//   List<MartItemModel> trendingItems = <MartItemModel>[];
+//   bool isTrendingLoading = false;
+//   bool isSubcategoryLoading = false;
+//
+//   // Sections data
+//   List<String> availableSections = <String>[];
+//   Map<String, List<MartItemModel>> sectionProducts =
+//       <String, List<MartItemModel>>{};
+//   bool isSectionsLoading = false;
+//   bool _sectionsLoadingTriggered =
+//       false; // Flag to prevent multiple loading attempts
+//   List<MartSubcategoryModel> subcategories = <MartSubcategoryModel>[];
+//
+//   // Delivery settings
+//   MartDeliverySettingsModel? deliverySettings;
+//
+//   // Banner functionality
+//   List<MartBannerModel> martTopBanners = <MartBannerModel>[];
+//   List<MartBannerModel> martBottomBanners = <MartBannerModel>[];
+//   PageController martTopBannerController = PageController(
+//     viewportFraction: 1.0,
+//   );
+//   PageController martBottomBannerController = PageController(
+//     viewportFraction: 1.0,
+//   );
+//   ValueNotifier<int> currentTopBannerPage = ValueNotifier<int>(0);
+//   int currentBottomBannerPage = 0;
+//   Timer? _martBannerTimer;
+//
+//   // Current data
+//   MartVendorModel? currentVendor = MartVendorModel();
+//   MartCategoryModel? currentCategory = MartCategoryModel();
+//
+//   // Pagination
+//   bool hasMoreItems = true;
+//   bool hasMoreVendors = true;
+//   int currentPage = 1;
+//   int currentVendorPage = 1;
+//   static const int itemsPerPage = 20;
+//   static const int vendorsPerPage = 10;
+//
+//   // Search and filter
+//   Timer? _searchDebouncer;
+//   String selectedSortBy = "name";
+//   bool sortAscending = true;
+//   bool filterVegOnly = false;
+//   bool filterNonVegOnly = false;
+//   bool filterAvailableOnly = true;
+//
+//   /// Staggered init: critical path first (banners + vendors + categories), then
+//   /// loadCategoryProductsForSections in background. Uses ApiQueueManager and
+//   /// CacheManager for banners (30 min), homepage categories (15 min).
+//   Future<void> initFunction() async {
+//     // Phase 1: Critical – banners, vendors, then categories
+//     await loadMartBanners();
+//     await loadMartVendors(); // Must run before loadVendorCategories (needs selectedVendorId)
+//     await loadHomepageCategoriesStreaming(limit: 24); // Homepage categories for MartDynamicCategoriesSection
+//     await loadVendorCategories();
+//
+//     if (martTopBanners.isNotEmpty) {
+//       startMartBannerTimer();
+//     }
+//     notifyListeners();
+//
+//     // Phase 2: Background – section products (no await)
+//     loadCategoryProductsForSections();
+//   }
+//
+//   Future<void> refreshData() async {
+//     try {
+//       isLoading = true;
+//       errorMessage = "";
+//       isHomepageCategoriesLoaded = false;
+//       _sectionsLoadingTriggered = false;
+//
+//       // Load independent data in parallel (no duplicate API calls)
+//       await Future.wait([
+//         loadMartVendors(refresh: true),
+//         loadHomepageCategoriesStreaming(limit: 24),
+//         loadFeaturedCategories(),
+//         loadCategoryProductsForSections(),
+//       ]);
+//
+//       // Load vendor-dependent data (spotlight/steals derive from featured/onSale)
+//       await _loadVendorDependentData();
+//     } catch (e) {
+//       errorMessage = "Failed to refresh data: $e";
+//     } finally {
+//       isLoading = false;
+//       notifyListeners();
+//     }
+//   }
+//
+//   /// Load featured/onSale once, then derive spotlight and steals - reduces API calls by 50%
+//   Future<void> _loadVendorDependentData() async {
+//     if (selectedVendorId.isEmpty) return;
+//     await Future.wait([loadFeaturedItems(), loadItemsOnSale()]);
+//     _updateSpotlightAndStealsFromLoadedData();
+//   }
+//
+//   void _updateSpotlightAndStealsFromLoadedData() {
+//     spotlightItems.clear();
+//     spotlightItems.addAll(
+//       featuredItems.map(
+//         (item) => {
+//           'id': item.id,
+//           'name': item.displayName,
+//           'image': item.mainImage,
+//           'price': item.currentPrice,
+//           'description': item.displayDescription,
+//         },
+//       ),
+//     );
+//     stealsItems.clear();
+//     stealsItems.addAll(
+//       itemsOnSale.map(
+//         (item) => {
+//           'id': item.id,
+//           'name': item.displayName,
+//           'image': item.mainImage,
+//           'price': item.currentPrice,
+//           'originalPrice': item.originalPrice,
+//           'discount': item.calculatedDiscountPercentage,
+//           'description': item.displayDescription,
+//         },
+//       ),
+//     );
+//   }
+//
+//   //
+//   // void initFunction() {
+//   //   loadMartBannersStream();
+//   //   loadCategoryProductsForSections();
+//   //   _preloadSections();
+//   //   _initializeServices();
+//   //   setupSearchListener();
+//   //   if (martTopBanners.isNotEmpty) {
+//   //     startMartBannerTimer();
+//   //   }
+//   //   notifyListeners();
+//   // }
+//
+//   void onClose() {
+//     _searchDebouncer?.cancel();
+//     _martBannerTimer?.cancel();
+//     try {
+//       if (martTopBannerController.hasClients) {
+//         martTopBannerController.dispose();
+//       }
+//       if (martBottomBannerController.hasClients) {
+//         martBottomBannerController.dispose();
+//       }
+//     } catch (e) {}
+//   }
+//
+//   /// Start mart banner auto-scroll timer
+//   void startMartBannerTimer() {
+//     _martBannerTimer?.cancel();
+//     _martBannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+//       if (!martTopBannerController.hasClients) {
+//         timer.cancel();
+//         return;
+//       }
+//       if (martTopBanners.isNotEmpty) {
+//         try {
+//           if (martTopBannerController.hasClients) {
+//             int currentPage = martTopBannerController.page?.round() ?? 0;
+//             int nextPage = currentPage + 1;
+//
+//             // Update the current page indicator (modulo for actual banner index)
+//             currentTopBannerPage.value = nextPage % martTopBanners.length;
+//
+//             martTopBannerController.animateToPage(
+//               nextPage,
+//               duration: const Duration(milliseconds: 500),
+//               curve: Curves.easeInOut,
+//             );
+//           }
+//         } catch (e) {
+//           // If any error occurs, cancel the timer
+//           timer.cancel();
+//         }
+//       }
+//     });
+//   }
+//
+//   /// Stop mart banner auto-scroll timer
+//   void stopMartBannerTimer() {
+//     _martBannerTimer?.cancel();
+//   }
+//
+//   /// Load mart banners using lazy loading streams (legacy; init uses loadMartBanners)
+//   void loadMartBannersStream() {
+//     _initializeBannerStreams();
+//   }
+//
+//   /// Load mart banners with cache (30 min) and ApiQueueManager. Used by initFunction.
+//   Future<void> loadMartBanners() async {
+//     final zoneId = Constant.selectedZone?.id ?? 'default';
+//     final cacheKey = 'mart_banners_$zoneId';
+//
+//     final cached =
+//         CacheManager().getBanners<List<MartBannerModel>>(cacheKey);
+//     if (cached != null && cached.isNotEmpty) {
+//       martTopBanners = cached;
+//       notifyListeners();
+//       return;
+//     }
+//
+//     try {
+//       final list = await ApiQueueManager().enqueue<List<MartBannerModel>>(
+//         priority: RequestPriority.high,
+//         key: cacheKey,
+//         request: () async {
+//           final result = await _fetchMartBannersApi();
+//           if (result.isNotEmpty) {
+//             CacheManager().setBanners(cacheKey, result);
+//           }
+//           return result;
+//         },
+//       );
+//       martTopBanners = list;
+//       notifyListeners();
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading banners: $e');
+//     }
+//   }
+//
+//   Future<List<MartBannerModel>> _fetchMartBannersApi() async {
+//     try {
+//       final response = await http.get(
+//         Uri.parse('${AppConst.baseUrl}banners/top'),
+//         headers: await getHeaders(),
+//       );
+//       if (response.statusCode != 200) return [];
+//       final responseData = json.decode(response.body);
+//       if (responseData['success'] != true) return [];
+//       final data = responseData['data'] as List? ?? [];
+//       final bannerList = <MartBannerModel>[];
+//       final customerZoneId = Constant.selectedZone?.id;
+//       for (final bannerData in data) {
+//         final banner = MartBannerModel.fromJson(
+//           Map<String, dynamic>.from(bannerData as Map),
+//         );
+//         final show = banner.zoneId == null ||
+//             banner.zoneId!.isEmpty ||
+//             customerZoneId == null ||
+//             customerZoneId.isEmpty ||
+//             banner.zoneId == customerZoneId;
+//         if (show) bannerList.add(banner);
+//       }
+//       bannerList.sort(
+//         (a, b) => (a.setOrder ?? 0).compareTo(b.setOrder ?? 0),
+//       );
+//       return bannerList;
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error fetching banners: $e');
+//       return [];
+//     }
+//   }
+//
+//   static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
+//     final StreamController<List<MartBannerModel>> controller =
+//         StreamController<List<MartBannerModel>>();
+//
+//     Future<void> fetchBanners() async {
+//       try {
+//         final zoneId = Constant.selectedZone?.id ?? 'default';
+//         final cacheKey = 'mart_banners_stream_$zoneId';
+//         final list = await CacheManager().getOrSetBanners<List<MartBannerModel>>(
+//           cacheKey,
+//           () async {
+//             final response = await http.get(
+//               Uri.parse('${AppConst.baseUrl}banners/top'),
+//               headers: await getHeaders(),
+//             );
+//             if (response.statusCode != 200) return <MartBannerModel>[];
+//             final responseData = json.decode(response.body);
+//             if (responseData['success'] != true) return <MartBannerModel>[];
+//             final data = responseData['data'] as List? ?? [];
+//             final filteredBannerList = <MartBannerModel>[];
+//             for (var bannerData in data) {
+//               final banner = MartBannerModel.fromJson(
+//                 Map<String, dynamic>.from(bannerData as Map),
+//               );
+//               final show = banner.zoneId == null ||
+//                   banner.zoneId!.isEmpty ||
+//                   zoneId == 'default' ||
+//                   banner.zoneId == zoneId;
+//               if (show) filteredBannerList.add(banner);
+//             }
+//             filteredBannerList.sort(
+//               (a, b) => (a.setOrder ?? 0).compareTo(b.setOrder ?? 0),
+//             );
+//             return filteredBannerList;
+//           },
+//         );
+//         controller.add(list);
+//       } catch (error) {
+//         print("Error fetching banners: $error");
+//         controller.add(<MartBannerModel>[]);
+//       }
+//     }
+//
+//     fetchBanners();
+//     return controller.stream;
+//   }
+//
+//   //finded
+//   // static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
+//   //   final StreamController<List<MartBannerModel>> controller =
+//   //       StreamController<List<MartBannerModel>>();
+//   //   String? customerZoneId = Constant.selectedZone?.id;
+//   //   Future<void> fetchBanners() async {
+//   //     try {
+//   //       final response = await http.get(
+//   //         Uri.parse('${AppConst.baseUrl}banners/top'),
+//   //         headers: await getHeaders(),
+//   //       );
+//   //       print("getMartBottomBannersStream ${response.body}");
+//   //       if (response.statusCode == 200) {
+//   //         final Map<String, dynamic> responseData = json.decode(response.body);
+//   //         if (responseData['success'] == true) {
+//   //           List<MartBannerModel> bannerList = [];
+//   //           List<MartBannerModel> filteredBannerList = [];
+//   //           for (var bannerData in responseData['data']) {
+//   //             MartBannerModel banner = MartBannerModel.fromJson({
+//   //               ...bannerData,
+//   //               'id': bannerData['id'].toString(),
+//   //             });
+//   //             bannerList.add(banner);
+//   //             print(
+//   //               "getMartBottomBannersStream ${banner.id} ${banner.categoryId} ${banner.zoneId} ",
+//   //             );
+//   //             bool shouldShowBanner = false;
+//   //             if (banner.zoneId == null || banner.zoneId!.isEmpty) {
+//   //               shouldShowBanner = true;
+//   //             } else if (customerZoneId == null || customerZoneId.isEmpty) {
+//   //               shouldShowBanner = true;
+//   //             } else if (banner.zoneId == customerZoneId) {
+//   //               shouldShowBanner = true;
+//   //             }
+//   //
+//   //             if (shouldShowBanner) {
+//   //               filteredBannerList.add(banner);
+//   //             }
+//   //           }
+//   //
+//   //           // Sort by set_order in memory
+//   //           filteredBannerList.sort((a, b) {
+//   //             int orderA = a.setOrder ?? 0;
+//   //             int orderB = b.setOrder ?? 0;
+//   //             return orderA.compareTo(orderB);
+//   //           });
+//   //
+//   //           controller.add(filteredBannerList);
+//   //         } else {
+//   //           controller.add(<MartBannerModel>[]);
+//   //         }
+//   //       } else {
+//   //         controller.add(<MartBannerModel>[]);
+//   //       }
+//   //     } catch (error) {
+//   //       controller.add(<MartBannerModel>[]);
+//   //     }
+//   //   }
+//   //
+//   //   // Initial fetch
+//   //   fetchBanners();
+//   //
+//   //   return controller.stream;
+//   // }
+//
+//   /// Initialize banner streams with lazy loading
+//   void _initializeBannerStreams() {
+//     getMartBottomBannersStream().listen(
+//       (banners) {
+//         martTopBanners = banners;
+//         notifyListeners();
+//         if (banners.isNotEmpty) {
+//           _initializeBannerControllers();
+//         }
+//       },
+//       onError: (error) {
+//         martTopBanners.clear();
+//       },
+//     );
+//   }
+//
+//   void _initializeBannerControllers() {
+//     if (martTopBanners.isNotEmpty && martTopBanners.length > 1) {
+//       int middlePosition =
+//           (martTopBanners.length * 1000) ~/
+//           2; // Start at middle of infinite list
+//       martTopBannerController = PageController(initialPage: middlePosition);
+//       currentTopBannerPage.value = 0; // Set indicator to first banner
+//     } else {
+//       martTopBannerController = PageController(initialPage: 0);
+//       currentTopBannerPage.value = 0;
+//     }
+//     if (martBottomBanners.isNotEmpty && martBottomBanners.length > 1) {
+//       int middlePosition =
+//           (martBottomBanners.length * 1000) ~/
+//           2; // Start at middle of infinite list
+//       martBottomBannerController = PageController(initialPage: middlePosition);
+//       currentBottomBannerPage = 0; // Set indicator to first banner
+//     } else {
+//       martBottomBannerController = PageController(initialPage: 0);
+//       currentBottomBannerPage = 0;
+//     }
+//     notifyListeners();
+//   }
+//
+//   // Setup search debouncer
+//   void setupSearchListener() {
+//     _searchDebouncer?.cancel();
+//     _searchDebouncer = Timer(const Duration(milliseconds: 500), () {
+//       if (searchQuery.isNotEmpty) {
+//         performSearch();
+//       } else {
+//         clearSearch();
+//       }
+//     });
+//   }
+//
+//   /// Load mart vendors
+//   Future<void> loadMartVendors({bool refresh = false}) async {
+//     try {
+//       if (refresh) {
+//         martVendors.clear();
+//       }
+//       // Set loading state with timeout
+//       isVendorLoading = true;
+//       errorMessage = "";
+//       // Add timeout to prevent infinite loading
+//       bool timeoutReached = false;
+//       Timer? timeoutTimer;
+//
+//       timeoutTimer = Timer(const Duration(seconds: 15), () {
+//         timeoutReached = true;
+//         isVendorLoading = false;
+//         errorMessage = "Vendor loading timed out. Please try again.";
+//       });
+//
+//       try {
+//         if (timeoutReached) return;
+//
+//         final vendors = await _firestoreService.getMartVendors();
+//         if (timeoutReached) return;
+//         print(
+//           '[MART CONTROLLER] ✅ Vendors loaded successfully: ${vendors.length} vendors',
+//         );
+//
+//         if (refresh) {
+//           martVendors.clear();
+//         }
+//         martVendors.addAll(vendors);
+//
+//         if (selectedVendorId.isEmpty && vendors.isNotEmpty) {
+//           final firstVendor = vendors.first;
+//           selectedVendorId = firstVendor.id!;
+//           print(
+//             '[MART CONTROLLER] 🎯 Auto-selected first vendor: ${firstVendor.name} (${firstVendor.id})',
+//           );
+//         }
+//
+//         print('[MART CONTROLLER] ✅ Vendor loading completed successfully');
+//       } catch (e) {
+//         if (timeoutReached) return;
+//
+//         print('[MART CONTROLLER] ❌ Error loading vendors: $e');
+//         errorMessage =
+//             "Unable to load stores. Please check your connection and try again.";
+//
+//         // If no vendors loaded, try to continue with empty state
+//         if (martVendors.isEmpty) {
+//           print(
+//             '[MART CONTROLLER] ⚠️ No vendors available, continuing with empty state',
+//           );
+//         }
+//       } finally {
+//         timeoutTimer.cancel();
+//         if (!timeoutReached) {
+//           isVendorLoading = false;
+//         }
+//       }
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Unexpected error in loadMartVendors: $e');
+//       isVendorLoading = false;
+//       errorMessage = "Something went wrong. Please try again later.";
+//     }
+//   }
+//
+//   /// Load more vendors (pagination)
+//
+//   /// Select a vendor
+//   void selectVendor(String vendorId) {
+//     selectedVendorId = vendorId;
+//     final vendor = martVendors.firstWhereOrNull((v) => v.id == vendorId);
+//     currentVendor = vendor;
+//     selectedVendorName = vendor?.name ?? "Unknown Vendor";
+//
+//     // Load vendor-specific data
+//     loadVendorCategories(vendorId: vendorId);
+//     loadVendorItems(vendorId);
+//   }
+//
+//   // ==================== MART CATEGORIES ====================
+//
+//   /// Load mart categories (Firebase only)
+//
+//   /// Load all homepage subcategories directly from Firestore
+//   Future<void> loadAllHomepageSubcategories() async {
+//     print('loadAllHomepageSubcategories');
+//     try {
+//       print(
+//         '[MART CONTROLLER] 🔄 Loading all homepage subcategories directly from Firestore...',
+//       );
+//       isSubcategoryLoading = true;
+//
+//       // Clear existing subcategories
+//       subcategoriesMap.clear();
+//
+//       // Get all homepage subcategories directly
+//       final allSubcategories = await _firestoreService
+//           .getAllHomepageSubcategories();
+//
+//       if (allSubcategories.isNotEmpty) {
+//         // Group subcategories by parent category for the map
+//         final Map<String, List<MartSubcategoryModel>> groupedSubcategories = {};
+//
+//         for (final subcategory in allSubcategories) {
+//           final parentId = subcategory.parentCategoryId ?? 'unknown';
+//           if (!groupedSubcategories.containsKey(parentId)) {
+//             groupedSubcategories[parentId] = [];
+//           }
+//           groupedSubcategories[parentId]!.add(subcategory);
+//         }
+//
+//         // Update the subcategories map
+//         subcategoriesMap.addAll(groupedSubcategories);
+//
+//         print(
+//           '[MART CONTROLLER] ✅ Loaded ${allSubcategories.length} homepage subcategories from ${groupedSubcategories.length} parent categories',
+//         );
+//         print(
+//           '[MART CONTROLLER] 📊 Subcategories map contains: ${subcategoriesMap.length} category entries',
+//         );
+//         subcategoriesMap.forEach((categoryId, subcategoryList) {
+//           print(
+//             '[MART CONTROLLER] 📊 Category $categoryId: ${subcategoryList.length} subcategories',
+//           );
+//         });
+//
+//         notifyListeners();
+//       } else {
+//         print('[MART CONTROLLER] ⚠️ No homepage subcategories found');
+//       }
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading homepage subcategories: $e');
+//     } finally {
+//       isSubcategoryLoading = false;
+//     }
+//   }
+//
+//   /// Debug method to load ALL subcategories (no filters)
+//
+//   /// Load sub-categories for a specific category
+//   Future<void> loadSubcategoriesForCategory(String categoryId) async {
+//     try {
+//       print(
+//         '[MART CONTROLLER] 🔄 Loading sub-categories for category: $categoryId',
+//       );
+//
+//       final subcategories = await _firestoreService.getSubcategoriesByParent(
+//         parentCategoryId: categoryId,
+//         publish: true,
+//         sortBy: 'subcategory_order',
+//         sortOrder: 'asc',
+//       );
+//
+//       subcategoriesMap[categoryId] = subcategories;
+//       print(
+//         '[MART CONTROLLER] ✅ Loaded ${subcategories.length} sub-categories for category: $categoryId',
+//       );
+//     } catch (e) {
+//       print(
+//         '[MART CONTROLLER] ❌ Error loading sub-categories for category $categoryId: $e',
+//       );
+//       subcategoriesMap[categoryId] = [];
+//     }
+//   }
+//
+//   /// Load vendor-specific categories (used for Home category filter)
+//   /// Does NOT overwrite martCategories if API returns empty - prevents wiping valid data
+//   Future<void> loadVendorCategories({String? vendorId}) async {
+//     try {
+//       isCategoryLoading = true;
+//       errorMessage = "";
+//       final categories = await _firestoreService.getFeaturedCategories(
+//         martId: vendorId,
+//       );
+//       // Only overwrite if we got data; empty response keeps existing categories
+//       if (categories.isNotEmpty) {
+//         martCategories.clear();
+//         martCategories.addAll(categories);
+//       }
+//       notifyListeners();
+//       if (categories.isNotEmpty) {
+//         final firstCategory = categories.first;
+//         notifyListeners();
+//         if (firstCategory.id != null) {
+//           selectCategory(firstCategory.id ?? "");
+//           notifyListeners();
+//         }
+//         notifyListeners();
+//       } else {
+//         selectedCategoryId = "";
+//         currentCategory = null;
+//         notifyListeners();
+//       }
+//     } catch (e) {
+//       print('[MART] Error loading vendor categories: $e');
+//       errorMessage = "Failed to load vendor categories: $e";
+//     } finally {
+//       isCategoryLoading = false;
+//       notifyListeners();
+//     }
+//   }
+//
+//   /// Select a category
+//   void selectCategory(String categoryId) {
+//     selectedCategoryId = categoryId;
+//     currentCategory = martCategories.firstWhereOrNull(
+//       (c) => c.id == categoryId,
+//     );
+//
+//     // Load category items
+//     loadCategoryItems(categoryId);
+//   }
+//
+//   /// Load featured categories
+//   Future<void> loadFeaturedCategories() async {
+//     try {
+//       final categories = await _firestoreService.getFeaturedCategories(
+//         martId: selectedVendorId.isNotEmpty ? selectedVendorId : "",
+//       );
+//       featuredCategories.clear();
+//       featuredCategories.addAll(categories);
+//     } catch (e) {
+//       print('[MART] Error loading featured categories: $e');
+//     }
+//   }
+//
+//   // ==================== MART ITEMS ====================
+//
+//   /// Load mart items
+//   Future<void> loadMartItems({bool refresh = false}) async {
+//     try {
+//       isProductLoading = true;
+//       errorMessage = "";
+//
+//       if (refresh) {
+//         martItems.clear();
+//         filteredItems.clear();
+//         currentPage = 1;
+//         hasMoreItems = true;
+//       }
+//
+//       print('[MART] Loading mart items...');
+//
+//       if (selectedVendorId.isEmpty) {
+//         print('[MART] No vendor selected, skipping item load');
+//         return;
+//       }
+//
+//       final items = await _firestoreService.getMartItems();
+//
+//       if (refresh) {
+//         martItems.clear();
+//         filteredItems.clear();
+//       }
+//
+//       martItems.addAll(items);
+//       filteredItems.addAll(items);
+//       hasMoreItems = items.length == itemsPerPage;
+//
+//       print('[MART] Loaded ${items.length} items');
+//     } catch (e) {
+//       print('[MART] Error loading items: $e');
+//       errorMessage = "Failed to load items: $e";
+//     } finally {
+//       isProductLoading = false;
+//     }
+//   }
+//
+//   /// Load vendor-specific items
+//   Future<void> loadVendorItems(String vendorId) async {
+//     try {
+//       isProductLoading = true;
+//       errorMessage = "";
+//
+//       final items = await _firestoreService.getItemsByVendor(
+//         vendorId: vendorId,
+//         categoryId: selectedCategoryId.isNotEmpty ? selectedCategoryId : null,
+//         limit: itemsPerPage,
+//       );
+//
+//       martItems.clear();
+//       filteredItems.clear();
+//       martItems.addAll(items);
+//       filteredItems.addAll(items);
+//       hasMoreItems = items.length == itemsPerPage;
+//       currentPage = 1;
+//     } catch (e) {
+//       print('[MART] Error loading vendor items: $e');
+//       errorMessage = "Failed to load vendor items: $e";
+//     } finally {
+//       isProductLoading = false;
+//     }
+//   }
+//
+//   /// Load category-specific items
+//   Future<void> loadCategoryItems(String categoryId) async {
+//     try {
+//       isProductLoading = true;
+//       errorMessage = "";
+//
+//       print(
+//         '[MART CONTROLLER] 📂 loadCategoryItems() called for category: $categoryId',
+//       );
+//
+//       // Load items for the category without requiring a specific vendor
+//       final items = await _firestoreService.getItemsByCategoryOnly(
+//         categoryId: categoryId,
+//         isAvailable: true,
+//         limit: 50,
+//       );
+//
+//       print(
+//         '[MART CONTROLLER] ✅ Loaded ${items.length} items for category $categoryId',
+//       );
+//
+//       // Clear existing items and add new ones
+//       martItems.clear();
+//       filteredItems.clear();
+//       martItems.addAll(items);
+//       filteredItems.addAll(items);
+//
+//       // Update selected category
+//       selectedCategoryId = categoryId;
+//       currentCategory = martCategories.firstWhereOrNull(
+//         (c) => c.id == categoryId,
+//       );
+//
+//       print(
+//         '[MART CONTROLLER] ✅ Category items loading completed successfully',
+//       );
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading category items: $e');
+//       errorMessage = "Unable to load products. Please try again later.";
+//     } finally {
+//       isProductLoading = false;
+//     }
+//   }
+//
+//   /// Load more items (pagination)
+//   Future<void> loadMoreItems() async {
+//     if (!hasMoreItems || isProductLoading) return;
+//
+//     currentPage++;
+//     await loadMartItems();
+//   }
+//
+//   /// Load featured items
+//   Future<void> loadFeaturedItems() async {
+//     try {
+//       if (selectedVendorId.isEmpty) {
+//         print('[MART] No vendor selected, skipping featured items load');
+//         return;
+//       }
+//
+//       final items = await _firestoreService.getFeaturedItems(limit: 20);
+//       featuredItems.clear();
+//       featuredItems.addAll(items);
+//     } catch (e) {
+//       print('[MART] Error loading featured items: $e');
+//     }
+//   }
+//
+//   /// Load items on sale
+//   Future<void> loadItemsOnSale() async {
+//     try {
+//       if (selectedVendorId.isEmpty) {
+//         print('[MART] No vendor selected, skipping items on sale load');
+//         return;
+//       }
+//
+//       final items = await _firestoreService.getItemsOnSale(limit: 20);
+//       itemsOnSale.clear();
+//       itemsOnSale.addAll(items);
+//     } catch (e) {
+//       print('[MART] Error loading items on sale: $e');
+//     }
+//   }
+//
+//   // ==================== LEGACY METHODS (for backward compatibility) ====================
+//
+//   /// Load products by category (legacy method)
+//   Future<void> loadProductsByCategory(
+//     String categoryId, {
+//     bool refresh = false,
+//   }) async {
+//     selectCategory(categoryId);
+//   }
+//
+//   /// Load spotlight items - fetches featured then updates spotlight
+//   Future<void> loadSpotlightItems() async {
+//     try {
+//       await loadFeaturedItems();
+//       spotlightItems.clear();
+//       spotlightItems.addAll(
+//         featuredItems.map(
+//           (item) => {
+//             'id': item.id,
+//             'name': item.displayName,
+//             'image': item.mainImage,
+//             'price': item.currentPrice,
+//             'description': item.displayDescription,
+//           },
+//         ),
+//       );
+//     } catch (e) {
+//       // Error handled in loadFeaturedItems
+//     }
+//   }
+//
+//   /// Load steals items - fetches onSale then updates steals
+//   Future<void> loadStealsItems() async {
+//     try {
+//       await loadItemsOnSale();
+//       stealsItems.clear();
+//       stealsItems.addAll(
+//         itemsOnSale.map(
+//           (item) => {
+//             'id': item.id,
+//             'name': item.displayName,
+//             'image': item.mainImage,
+//             'price': item.currentPrice,
+//             'originalPrice': item.originalPrice,
+//             'discount': item.calculatedDiscountPercentage,
+//             'description': item.displayDescription,
+//           },
+//         ),
+//       );
+//     } catch (e) {
+//       // Error handled in loadItemsOnSale
+//     }
+//   }
+//
+//   // ==================== SEARCH AND FILTERS ====================
+//
+//   /// Perform search
+//   Future<void> performSearch() async {
+//     if (searchQuery.isEmpty) return;
+//
+//     try {
+//       isProductLoading = true;
+//       errorMessage = "";
+//
+//       if (selectedVendorId.isEmpty) {
+//         print('[MART] No vendor selected, cannot search items');
+//         errorMessage = "Please select a vendor first";
+//         return;
+//       }
+//
+//       final items = await _firestoreService.searchItems(
+//         searchQuery: searchQuery,
+//         limit: itemsPerPage,
+//       );
+//
+//       filteredItems.clear();
+//       filteredItems.addAll(items);
+//     } catch (e) {
+//       print('[MART] Error searching items: $e');
+//       errorMessage = "Failed to search items: $e";
+//     } finally {
+//       isProductLoading = false;
+//     }
+//   }
+//
+//   /// Clear search
+//   void clearSearch() {
+//     searchQuery = "";
+//     filteredItems.clear();
+//     filteredItems.addAll(martItems);
+//   }
+//
+//   /// Update search query
+//   void updateSearchQuery(String query) {
+//     searchQuery = query;
+//     _searchDebouncer?.cancel();
+//     setupSearchListener();
+//   }
+//
+//   /// Apply filters
+//   void applyFilters({
+//     bool? vegOnly,
+//     bool? nonVegOnly,
+//     bool? availableOnly,
+//     String? sortBy,
+//     bool? sortAscending,
+//   }) {
+//     if (vegOnly != null) filterVegOnly = vegOnly;
+//     if (nonVegOnly != null) filterNonVegOnly = nonVegOnly;
+//     if (availableOnly != null) filterAvailableOnly = availableOnly;
+//     if (sortBy != null) selectedSortBy = sortBy;
+//     if (sortAscending != null) this.sortAscending = sortAscending;
+//
+//     // Reload items with new filters
+//     loadMartItems(refresh: true);
+//   }
+//
+//   /// Clear all filters
+//   void clearFilters() {
+//     filterVegOnly = false;
+//     filterNonVegOnly = false;
+//     filterAvailableOnly = true;
+//     selectedSortBy = "name";
+//     sortAscending = true;
+//     loadMartItems(refresh: true);
+//   }
+//
+//   // ==================== UTILITY METHODS ====================
+//
+//   /// Refresh all data
+//
+//   /// Get item by ID
+//   Future<MartItemModel?> getItemById(String itemId) async {
+//     try {
+//       return await _firestoreService.getItemById(itemId);
+//     } catch (e) {
+//       print('[MART] Error getting item by ID: $e');
+//       return null;
+//     }
+//   }
+//
+//   /// Get vendor details
+//
+//   // ==================== LEGACY COMPATIBILITY METHODS ====================
+//
+//   /// Add to cart (legacy method)
+//
+//   /// Remove from cart (legacy method)
+//   void removeFromCart(String itemId) {
+//     cartItems.removeWhere((item) => item.id == itemId);
+//     print(
+//       '[MART] Removed item $itemId from cart. Total items: ${cartItems.length}',
+//     );
+//   }
+//
+//   // ==================== GETTERS ====================
+//
+//   /// Get current vendor name
+//   String get currentVendorName => currentVendor?.displayName ?? 'All Marts';
+//
+//   /// Get current category name
+//   String get currentCategoryName =>
+//       currentCategory?.displayName ?? 'All Categories';
+//
+//   /// Get total items count
+//   int get totalItemsCount => filteredItems.length;
+//
+//   /// Get total vendors count
+//   int get totalVendorsCount => martVendors.length;
+//
+//   /// Get total categories count
+//   int get totalCategoriesCount => martCategories.length;
+//
+//   // ==================== LEGACY COMPATIBILITY GETTERS ====================
+//
+//   /// Legacy: filteredProducts (maps to filteredItems)
+//   List<MartItemModel> get filteredProducts => filteredItems;
+//
+//   /// Legacy: hasMoreProducts (maps to hasMoreItems)
+//   bool get hasMoreProducts => hasMoreItems;
+//
+//   /// Legacy: loadMoreProducts (maps to loadMoreItems)
+//   Future<void> loadMoreProducts() => loadMoreItems();
+//
+//   /// Legacy: cartItemCount
+//   int get cartItemCount => cartItems.length;
+//
+//   /// Legacy: cartTotal
+//   double get cartTotal {
+//     return cartItems.fold(0.0, (total, item) {
+//       return total + item.currentPrice;
+//     });
+//   }
+//
+//   /// Legacy: getProductById (maps to getItemById)
+//   Future<MartItemModel?> getProductById(String productId) async {
+//     return await getItemById(productId);
+//   }
+//
+//   /// Load trending items from API
+//
+//   /// Comprehensive search across categories, items, and subcategories
+//
+//   /// Search categories with debouncing
+//
+//   // ==================== STREAMING DATA LOADING METHODS ====================
+//   Future<void> loadHomepageCategoriesStreaming({int limit = 24}) async {
+//     try {
+//       isCategoryLoading = true;
+//       errorMessage = '';
+//       notifyListeners();
+//       var categories = await _firestoreService.getHomepageCategories(
+//         limit: limit,
+//       );
+//       // Fallback: if homepage returns fewer than 5, use getCategories for more
+//       if (categories.length < 5) {
+//         final moreCategories =
+//             await _firestoreService.getCategories(limit: limit);
+//         if (moreCategories.isNotEmpty) {
+//           categories = moreCategories;
+//         }
+//       }
+//       if (categories.isEmpty) {
+//         categories = await _firestoreService.getFeaturedCategories(
+//           martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
+//         );
+//       }
+//       if (categories.isEmpty && martCategories.isNotEmpty) {
+//         categories = martCategories.take(limit).toList();
+//       }
+//       if (categories.isEmpty && categoryProductsMap.isNotEmpty) {
+//         categories = _deriveCategoriesFromProducts().take(limit).toList();
+//       }
+//       if (categories.isNotEmpty) {
+//         featuredCategories.clear();
+//         featuredCategories.addAll(categories);
+//         errorMessage = '';
+//         isHomepageCategoriesLoaded = true;
+//         isCategoryLoading = false;
+//         notifyListeners();
+//         return;
+//       }
+//       errorMessage = 'Unable to load categories. Please check your connection.';
+//       isCategoryLoading = false;
+//       isHomepageCategoriesLoaded = false;
+//       notifyListeners();
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading homepage categories: $e');
+//       errorMessage = 'Unable to load categories. Please try again.';
+//       isCategoryLoading = false;
+//       notifyListeners();
+//     }
+//   }
+//
+//   /// Load trending items with streaming updates using Firestore
+//   Future<void> loadTrendingItemsStreaming() async {
+//     try {
+//       print(
+//         '[MART CONTROLLER] 🔥 Streaming: Loading trending items from Firestore...',
+//       );
+//       isTrendingLoading = true;
+//
+//       // Try to get trending items from existing data first (fastest)
+//       if (martItems.isNotEmpty) {
+//         print(
+//           '[MART CONTROLLER] 🚀 Fast path: Filtering trending items from existing data',
+//         );
+//         final trendingFromExisting = martItems
+//             .where((item) => item.isTrending == true)
+//             .toList();
+//         if (trendingFromExisting.isNotEmpty) {
+//           trendingItems.clear();
+//           trendingItems.addAll(trendingFromExisting);
+//           print(
+//             '[MART CONTROLLER] ✅ Fast path: Found ${trendingFromExisting.length} trending items from existing data',
+//           );
+//           isTrendingLoading = false;
+//           return;
+//         }
+//       }
+//
+//       // Load trending items from Firestore (primary method)
+//       print('[MART CONTROLLER] 🔥 Firestore: Fetching trending items...');
+//       try {
+//         final items = await _firestoreService.getTrendingItems(limit: 20);
+//         if (items.isNotEmpty) {
+//           // Stream the data as it becomes available
+//           trendingItems.clear();
+//           trendingItems.addAll(items);
+//           print(
+//             '[MART CONTROLLER] ✅ Firestore: Trending items loaded (${items.length})',
+//           );
+//         } else {
+//           // Fallback: Load all items and filter for trending
+//           print(
+//             '[MART CONTROLLER] 🔄 Fallback: Loading all items and filtering for trending...',
+//           );
+//           await _loadAllItemsAndFilterTrending();
+//         }
+//       } catch (e) {
+//         print('[MART CONTROLLER] ❌ Firestore failed: $e');
+//         // No API fallback - Firestore only
+//         print(
+//           '[MART CONTROLLER] ❌ No API fallback available for trending items',
+//         );
+//         trendingItems.clear();
+//       }
+//
+//       isTrendingLoading = false;
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Streaming: Error loading trending items: $e');
+//       // No API fallback - Firestore only
+//       print('[MART CONTROLLER] ❌ No API fallback available for trending items');
+//       trendingItems.clear();
+//       isTrendingLoading = false;
+//     }
+//   }
+//
+//   /// Fast fallback: Load all items and filter for trending
+//   Future<void> _loadAllItemsAndFilterTrending() async {
+//     try {
+//       print('[MART CONTROLLER] 🔄 Fallback: Loading all items...');
+//
+//       // Load items with API-compliant limit to avoid validation errors
+//       final allItems = await _firestoreService.getMartItems();
+//
+//       // Filter for trending items
+//       final trendingFromAll = allItems
+//           .where((item) => item.isTrending == true)
+//           .toList();
+//
+//       // Update trending items
+//       trendingItems.clear();
+//       trendingItems.addAll(trendingFromAll);
+//
+//       print(
+//         '[MART CONTROLLER] ✅ Fallback: Found ${trendingFromAll.length} trending items from all items',
+//       );
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Fallback: Error loading all items: $e');
+//       trendingItems.clear();
+//     }
+//   }
+//
+//   /// Load featured items with streaming updates using Firestore
+//   Future<void> loadFeaturedItemsStreaming() async {
+//     try {
+//       print(
+//         '[MART CONTROLLER] ⭐ Streaming: Loading featured items from Firestore...',
+//       );
+//       isProductLoading = true;
+//
+//       // Load featured items from Firestore
+//       final items = await _firestoreService.getFeaturedItems(limit: 20);
+//
+//       // Stream the data as it becomes available
+//       featuredItems.clear();
+//       featuredItems.addAll(items);
+//
+//       print(
+//         '[MART CONTROLLER] ✅ Streaming: Featured items loaded from Firestore (${items.length})',
+//       );
+//       isProductLoading = false;
+//     } catch (e) {
+//       print(
+//         '[MART CONTROLLER] ❌ Streaming: Error loading featured items from Firestore: $e',
+//       );
+//       // No API fallback - Firestore only
+//       print('[MART CONTROLLER] ❌ No API fallback available for featured items');
+//       featuredItems.clear();
+//       isProductLoading = false;
+//     }
+//   }
+//
+//   /// Load categories with streaming updates using Firestore
+//   Future<void> loadCategoriesStreaming({bool skipSubcategories = false}) async {
+//     try {
+//       isCategoryLoading = true;
+//       errorMessage = '';
+//       notifyListeners();
+//
+//       print(
+//         '[MART CONTROLLER] 📂 Streaming: Loading all categories from Firestore...',
+//       );
+//       // Try Firestore first (fastest path)
+//       try {
+//         var categories = await _firestoreService.getCategories(limit: 100);
+//         if (categories.isEmpty) {
+//           print(
+//             '[MART CONTROLLER] ⚠️ getCategories empty, trying getHomepageCategories...',
+//           );
+//           categories = await _firestoreService.getHomepageCategories(
+//             limit: 100,
+//           );
+//         }
+//         if (categories.isEmpty) {
+//           print(
+//             '[MART CONTROLLER] ⚠️ getHomepageCategories empty, trying getFeaturedCategories...',
+//           );
+//           categories = await _firestoreService.getFeaturedCategories(
+//             martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
+//           );
+//         }
+//         if (categories.isEmpty) {
+//           print(
+//             '[MART CONTROLLER] ⚠️ All API sources empty, trying product-derived categories...',
+//           );
+//           if (categoryProductsMap.isEmpty) {
+//             await loadCategoryProductsForSections();
+//           }
+//           if (categoryProductsMap.isNotEmpty) {
+//             categories = _deriveCategoriesFromProducts();
+//             print(
+//               '[MART CONTROLLER] ✅ Derived ${categories.length} categories from products',
+//             );
+//           }
+//         }
+//         if (categories.isNotEmpty) {
+//           martCategories.clear();
+//           martCategories.addAll(categories);
+//           errorMessage = '';
+//
+//           print('[MART CONTROLLER] ✅ Categories loaded (${categories.length})');
+//
+//           if (!skipSubcategories) {
+//             await loadFirstPageHomepageSubcategories();
+//           }
+//
+//           isCategoryLoading = false;
+//           notifyListeners();
+//           return;
+//         }
+//       } catch (e) {
+//         print('[MART CONTROLLER] ❌ Error loading categories: $e');
+//       }
+//
+//       errorMessage =
+//           'Unable to load categories. Please check your connection and try again.';
+//       isCategoryLoading = false;
+//       notifyListeners();
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Streaming: Error loading categories: $e');
+//       errorMessage = 'Unable to load categories. Please try again later.';
+//       isCategoryLoading = false;
+//       notifyListeners();
+//     }
+//   }
+//
+//   //changed here _loadSubcategoriesStreaming
+//   /// Load subcategories with streaming updates
+//
+//   /// Load subcategories for a specific category with streaming
+//   Future<void> loadSubcategoriesStreaming(String categoryId) async {
+//     try {
+//       print(
+//         '[MART CONTROLLER] 📋 Loading subcategories for category: $categoryId',
+//       );
+//       isSubcategoryLoading = true;
+//
+//       final subcategories = await _firestoreService.getSubcategoriesByParent(
+//         parentCategoryId: categoryId,
+//         publish: true,
+//         sortBy: 'subcategory_order',
+//         sortOrder: 'asc',
+//       );
+//
+//       this.subcategories = subcategories;
+//       print(
+//         '[MART CONTROLLER] ✅ Loaded ${subcategories.length} subcategories for category: $categoryId',
+//       );
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading subcategories: $e');
+//       errorMessage = 'Unable to load subcategories. Please try again later.';
+//     } finally {
+//       isSubcategoryLoading = false;
+//     }
+//   }
+//
+//   /// Load vendors with streaming updates
+//   Future<void> _loadVendorsStreaming() async {
+//     try {
+//       print('[MART CONTROLLER] 🏪 Streaming: Loading vendors...');
+//       // Load vendors
+//       final vendors = await _firestoreService.getMartVendors();
+//       if (vendors.isNotEmpty) {
+//         martVendors.clear();
+//         martVendors.addAll(vendors);
+//         if (selectedVendorId.isEmpty) {
+//           selectVendor(vendors.first.id!);
+//           print(
+//             '[MART CONTROLLER] 🎯 Streaming: Auto-selected first vendor: ${vendors.first.name}',
+//           );
+//
+//           // Load additional data now that we have a vendor
+//           await _loadAdditionalDataStreaming();
+//         }
+//
+//         print(
+//           '[MART CONTROLLER] ✅ Streaming: Vendors loaded (${vendors.length})',
+//         );
+//       } else {
+//         print('[MART CONTROLLER] ⚠️ Streaming: No vendors found');
+//         // Still try to load additional data with dummy vendor
+//         await _loadAdditionalDataStreaming();
+//       }
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Streaming: Error loading vendors: $e');
+//       // Still try to load additional data
+//       await _loadAdditionalDataStreaming();
+//     }
+//   }
+//
+//   /// Load additional data with streaming updates
+//   Future<void> _loadAdditionalDataStreaming() async {
+//     try {
+//       print('[MART CONTROLLER] 📦 Streaming: Loading additional data...');
+//
+//       // Load items on sale if we have a vendor
+//       if (selectedVendorId.isNotEmpty) {
+//         await _loadItemsOnSaleStreaming();
+//       }
+//
+//       print('[MART CONTROLLER] ✅ Streaming: Additional data loaded');
+//     } catch (e) {
+//       print(
+//         '[MART CONTROLLER] ⚠️ Streaming: Error loading additional data: $e',
+//       );
+//     }
+//   }
+//
+//   /// Load items on sale with streaming updates
+//   Future<void> _loadItemsOnSaleStreaming() async {
+//     try {
+//       print('[MART CONTROLLER] 🏷️ Streaming: Loading items on sale...');
+//
+//       final items = await _firestoreService.getMartItems();
+//
+//       final saleItems = items.where((item) => item.isOnSale == true).toList();
+//
+//       // Stream the data as it becomes available
+//       itemsOnSale.clear();
+//       itemsOnSale.addAll(saleItems);
+//       print(
+//         '[MART CONTROLLER] ✅ Streaming: Items on sale loaded (${saleItems.length})',
+//       );
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Streaming: Error loading items on sale: $e');
+//     }
+//   }
+//
+//   /// Manually trigger streaming data refresh
+//   Future<void> refreshStreamingData() async {
+//     try {
+//       print('[MART CONTROLLER] 🔄 Manual streaming refresh triggered...');
+//       await Future.wait([
+//         loadHomepageCategoriesStreaming(limit: 24),
+//         loadTrendingItemsStreaming(),
+//         loadFeaturedItemsStreaming(),
+//         loadCategoriesStreaming(),
+//         _loadVendorsStreaming(),
+//       ]);
+//
+//       print('[MART CONTROLLER] ✅ Manual streaming refresh completed');
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error in manual streaming refresh: $e');
+//     }
+//   }
+//
+//   // ==================== SIMILAR PRODUCTS STREAM ====================
+//
+//   /// Stream all products from mart_items collection (one-time fetch, no polling)
+//   Stream<List<MartItemModel>> streamAllProducts({
+//     String? excludeProductId,
+//     bool? isAvailable,
+//     int limit = 10,
+//   }) {
+//     try {
+//       print('[MART CONTROLLER] 📡 Starting all products stream (one-time)');
+//       if (excludeProductId != null) {
+//         print('[MART CONTROLLER] 📡 Excluding product: $excludeProductId');
+//       }
+//       return _firestoreService.streamAllProducts(
+//         excludeProductId: excludeProductId,
+//         isAvailable: isAvailable,
+//         limit: limit,
+//       );
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error creating all products stream: $e');
+//       return Stream<List<MartItemModel>>.empty();
+//     }
+//   }
+//
+//   /// Stream similar products by category (one-time fetch, lighter than full catalog)
+//   Stream<List<MartItemModel>> streamSimilarProducts({
+//     required String categoryId,
+//     String? subcategoryId,
+//     String? excludeProductId,
+//     bool? isAvailable,
+//     int limit = 10,
+//   }) {
+//     try {
+//       print(
+//         '[MART CONTROLLER] 📡 Starting similar products stream (one-time) - category: $categoryId',
+//       );
+//       return _firestoreService.streamSimilarProducts(
+//         categoryId: categoryId,
+//         subcategoryId: subcategoryId,
+//         excludeProductId: excludeProductId,
+//         isAvailable: isAvailable,
+//         limit: limit,
+//       );
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error creating similar products stream: $e');
+//       return Stream<List<MartItemModel>>.empty();
+//     }
+//   }
+//
+//   // ==================== SECTION-SPECIFIC PRODUCT STREAMS ====================
+//
+//   // ==================== BANNER METHODS ====================
+//
+//   /// Handle banner tap based on redirect type
+//
+//   /// Fetch delivery settings from Firestore (DEPRECATED - Use settings/martDeliveryCharge instead)
+//   Future<void> fetchDeliverySettings() async {
+//     try {
+//       print('[MART CONTROLLER] 🚚 Fetching delivery settings from API');
+//       final response = await http.get(
+//         Uri.parse('${AppConst.baseUrl}mobile/settings/mart-delivery-charge'),
+//         headers: await getHeaders(),
+//       );
+//       if (response.statusCode == 200) {
+//         final Map<String, dynamic> responseData = json.decode(response.body);
+//         if (responseData['success'] == true) {
+//           final data = responseData['data'];
+//           deliverySettings = MartDeliverySettingsModel(
+//             freeDeliveryThreshold:
+//                 (data['item_total_threshold'] as num?)?.toDouble() ?? 299.0,
+//             deliveryPromotionText: data['delivery_promotion_text'] ?? 'Daily',
+//             isActive: data['is_active'] ?? true,
+//             minOrderValue:
+//                 (data['min_order_value'] as num?)?.toDouble() ?? 99.0,
+//             minOrderMessage:
+//                 data['min_order_message'] ?? 'Min Item value is ₹99',
+//           );
+//
+//           print('[MART CONTROLLER] ✅ Delivery settings fetched successfully');
+//         } else {
+//           throw Exception("API returned unsuccessful response");
+//         }
+//       } else {
+//         throw Exception(
+//           "Failed to fetch delivery settings: ${response.statusCode}",
+//         );
+//       }
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error fetching delivery settings: $e');
+//
+//       // Fallback to default values
+//       deliverySettings = MartDeliverySettingsModel(
+//         freeDeliveryThreshold: 199.0,
+//         deliveryPromotionText: 'Daily',
+//         isActive: true,
+//         minOrderValue: 99.0,
+//         minOrderMessage: 'Min Item value is ₹99',
+//       );
+//     }
+//   }
+//
+//   /// Get formatted delivery message
+//   String get deliveryMessage {
+//     final threshold = deliverySettings?.freeDeliveryThreshold ?? 299.0;
+//     return 'Spend ₹${threshold.toInt()} to unlock FREE delivery';
+//   }
+//
+//   /// Get delivery promotion text
+//   String get deliveryPromotionText {
+//     return deliverySettings?.deliveryPromotionText ?? 'daily';
+//   }
+//
+//   /// Check if delivery settings are active
+//   bool get isDeliverySettingsActive {
+//     return deliverySettings?.isActive ?? true;
+//   }
+//
+//   /// Get minimum order value for mart items
+//   double get minOrderValue {
+//     return deliverySettings?.minOrderValue ?? 99.0;
+//   }
+//
+//   /// Check if minimum order is enabled
+//   bool get isMinOrderEnabled {
+//     return deliverySettings?.minOrderEnabled ?? true;
+//   }
+//
+//   /// Get minimum order message
+//   String get minOrderMessage {
+//     return deliverySettings?.minOrderMessage ??
+//         'Minimum order value is ₹99. Please add more items to your cart.';
+//   }
+//
+//   /// Check if app is in maintenance mode
+//   bool get isMaintenanceMode {
+//     return deliverySettings?.maintenanceMode ?? false;
+//   }
+//
+//   /// Get maintenance message
+//   String get maintenanceMessage {
+//     return deliverySettings?.maintenanceMessage ??
+//         'App is under maintenance. Please try again later.';
+//   }
+//
+//   // ==================== SECTIONS LOADING ====================
+//
+//   /// Load sections in true parallel (immediate and fast)
+//   Future<void> _loadSectionsInParallel() async {
+//     try {
+//       print('[MART CONTROLLER] ==========================================');
+//       print(
+//         '[MART CONTROLLER] 📂 _loadSectionsInParallel() called - TRUE PARALLEL LOADING',
+//       );
+//       print('[MART CONTROLLER] ==========================================');
+//
+//       // Start loading sections and products in parallel immediately
+//       final sectionsFuture = _firestoreService.getUniqueSections();
+//       // Get sections first
+//       final sections = await sectionsFuture;
+//       print(
+//         '[MART CONTROLLER] 📂 Found ${sections.length} unique sections: $sections',
+//       );
+//       if (sections.isNotEmpty) {
+//         // Clear and add sections immediately
+//         availableSections.clear();
+//         availableSections.addAll(sections);
+//
+//         // Safely trigger UI update
+//         Future.microtask(() {
+//           notifyListeners();
+//         });
+//
+//         // Load products for ALL sections in parallel simultaneously
+//         final productFutures = sections.map(
+//           (section) => _loadProductsForSectionAsync(section),
+//         );
+//
+//         // Don't wait for all products - let them load in background
+//         Future.wait(productFutures)
+//             .then((_) {
+//               print(
+//                 '[MART CONTROLLER] ✅ All section products loaded in parallel: ${sections.length} sections',
+//               );
+//               // Trigger UI update when products are loaded
+//               Future.microtask(() {
+//                 notifyListeners();
+//               });
+//             })
+//             .catchError((e) {
+//               print(
+//                 '[MART CONTROLLER] ❌ Error loading some section products: $e',
+//               );
+//             });
+//
+//         print(
+//           '[MART CONTROLLER] ✅ Sections loaded immediately: ${sections.length} sections',
+//         );
+//       } else {
+//         print('[MART CONTROLLER] ⚠️ No sections found');
+//       }
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading sections in parallel: $e');
+//     }
+//   }
+//
+//   /// Load sections progressively (silent streaming - no loading state)
+//   Future<void> _loadSectionsProgressively() async {
+//     try {
+//       print('[MART CONTROLLER] ==========================================');
+//       print(
+//         '[MART CONTROLLER] 📂 _loadSectionsProgressively() called - SILENT STREAMING',
+//       );
+//       print('[MART CONTROLLER] ==========================================');
+//
+//       // Get all unique sections from mart_items collection
+//       final sections = await _firestoreService.getUniqueSections();
+//       print(
+//         '[MART CONTROLLER] 📂 Found ${sections.length} unique sections: $sections',
+//       );
+//
+//       if (sections.isNotEmpty) {
+//         availableSections.clear();
+//         availableSections.addAll(sections);
+//
+//         // Load products for each section in parallel (silent streaming)
+//         final futures = sections.map(
+//           (section) => _loadProductsForSectionAsync(section),
+//         );
+//         await Future.wait(futures);
+//
+//         print(
+//           '[MART CONTROLLER] ✅ Sections loaded silently: ${sections.length} sections',
+//         );
+//       } else {
+//         print('[MART CONTROLLER] ⚠️ No sections found');
+//       }
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading sections silently: $e');
+//     }
+//   }
+//
+//   /// Load products for a specific section (async, non-blocking)
+//   Future<void> _loadProductsForSectionAsync(String section) async {
+//     try {
+//       print('[MART CONTROLLER] 📂 Loading products for section: $section');
+//
+//       final products = await _firestoreService.getItemsBySection(
+//         section: section,
+//       );
+//
+//       sectionProducts[section] = products;
+//       print(
+//         '[MART CONTROLLER] ✅ Loaded ${products.length} products for section: $section',
+//       );
+//     } catch (e) {
+//       print(
+//         '[MART CONTROLLER] ❌ Error loading products for section $section: $e',
+//       );
+//       sectionProducts[section] = [];
+//     }
+//   }
+//
+//   /// Get products for a specific section
+//   List<MartItemModel> getProductsForSection(String section) {
+//     return sectionProducts[section] ?? [];
+//   }
+//
+//   /// Stream products by brand ID
+//   Stream<List<MartItemModel>> streamProductsByBrand(String brandID) {
+//     try {
+//       print('[MART CONTROLLER] 🔍 Streaming products for brand: $brandID');
+//
+//       return _firestoreService.streamItemsByBrand(brandID).map((products) {
+//         print(
+//           '[MART CONTROLLER] 📦 Received ${products.length} products for brand: $brandID',
+//         );
+//         return products;
+//       });
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error streaming products by brand: $e');
+//       return Stream<List<MartItemModel>>.empty();
+//     }
+//   }
+//
+//   /// Load sections from Firebase (public method for manual refresh)
+//   Future<void> loadSectionsFromFirebase() async {
+//     await _loadSectionsProgressively();
+//   }
+//
+//   /// Load sections immediately (true parallel loading - no loading state)
+//   Future<void> loadSectionsImmediately() async {
+//     try {
+//       // Prevent multiple loading attempts
+//       if (_sectionsLoadingTriggered) {
+//         print(
+//           '[MART CONTROLLER] ⚠️ Sections loading already triggered, skipping...',
+//         );
+//         return;
+//       }
+//
+//       _sectionsLoadingTriggered = true;
+//       print('[MART CONTROLLER] 🚀 Loading sections in true parallel...');
+//
+//       // Use the new parallel loading method
+//       await _loadSectionsInParallel();
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error loading sections in parallel: $e');
+//       _sectionsLoadingTriggered = false; // Reset flag on error
+//     }
+//   }
+//
+//   /// Force load sections (silent fallback method)
+//   Future<void> forceLoadSections() async {
+//     try {
+//       print('[MART CONTROLLER] 🔄 Force loading sections silently...');
+//       availableSections.clear();
+//       sectionProducts.clear();
+//
+//       await loadSectionsImmediately();
+//     } catch (e) {
+//       print('[MART CONTROLLER] ❌ Error force loading sections: $e');
+//     }
+//   }
+//
+//   /// Test method to manually add some sections for debugging
+//   void addTestSections() {
+//     // Only add test sections if no sections are loaded yet
+//     if (availableSections.isNotEmpty) {
+//       print(
+//         '[MART CONTROLLER] 🧪 Sections already loaded, skipping test sections',
+//       );
+//       return;
+//     }
+//
+//     print('[MART CONTROLLER] 🧪 Adding test sections for debugging...');
+//     availableSections.clear();
+//     availableSections.addAll([
+//       'Pet Care',
+//       'General',
+//       'Essentials & Daily Needs',
+//     ]);
+//     print(
+//       '[MART CONTROLLER] 🧪 Test sections added: ${availableSections.length} sections',
+//     );
+//
+//     // Use Future.microtask to safely trigger UI update
+//     Future.microtask(() {
+//       notifyListeners();
+//     });
+//   }
+//
+//   //////[MART SUB CATEGORY CONTROLLER]
+//   // New pagination properties
+//   final List<DocumentSnapshot> _lastDocuments = <DocumentSnapshot>[];
+//   bool _hasMoreSubcategories = true;
+//   int _currentPage = 0;
+//
+//   bool get hasMoreSubcategories => _hasMoreSubcategories;
+//
+//   int get currentPageAll => _currentPage;
+//
+//   int get loadedSubcategoriesCount {
+//     int total = 0;
+//     subcategoriesMap.forEach((key, value) {
+//       total += value.length;
+//     });
+//     return total;
+//   }
+//
+//   /// Load first page of homepage subcategories
+//   Future<void> loadFirstPageHomepageSubcategories() async {
+//     try {
+//       print('[MART] 🔄 Loading first page of subcategories...');
+//       _lastDocuments.clear();
+//       _currentPage = 0;
+//       _hasMoreSubcategories = true;
+//       final result = await _firestoreService.getHomepageSubcategoriesPaginated(
+//         limit: 10,
+//       );
+//       final subcategories =
+//           result['subcategories'] as List<MartSubcategoryModel>;
+//       final lastDoc = result['lastDocument'] as DocumentSnapshot?;
+//
+//       if (subcategories.isNotEmpty) {
+//         _groupAndAddSubcategories(subcategories);
+//
+//         // 🔧 Store last document for pagination
+//         if (lastDoc != null) _lastDocuments.add(lastDoc);
+//
+//         _currentPage = 1;
+//         _hasMoreSubcategories = (subcategories.length == 10);
+//
+//         print('[MART] ✅ Loaded first ${subcategories.length} subcategories.');
+//       } else {
+//         _hasMoreSubcategories = false;
+//         print('[MART] ⚠️ No subcategories found.');
+//       }
+//     } catch (e) {
+//       print('[MART] ❌ Error loading first page: $e');
+//     }
+//   }
+//
+//   /// Load next page
+//   Future<void> loadMoreHomepageSubcategories() async {
+//     if (!_hasMoreSubcategories) {
+//       print('[MART] ⚠️ No more pages left.');
+//       return;
+//     }
+//
+//     try {
+//       print('[MART] 🔄 Loading page ${_currentPage + 1}...');
+//
+//       final result = await _firestoreService.getHomepageSubcategoriesPaginated(
+//         limit: 10,
+//       );
+//
+//       final nextPageSubcategories =
+//           result['subcategories'] as List<MartSubcategoryModel>;
+//       final lastDoc = result['lastDocument'] as DocumentSnapshot?;
+//
+//       if (nextPageSubcategories.isNotEmpty) {
+//         _groupAndAddSubcategories(nextPageSubcategories);
+//
+//         // 🔧 Update last document for next page
+//         if (lastDoc != null) _lastDocuments.add(lastDoc);
+//
+//         _currentPage += 1;
+//         _hasMoreSubcategories = (nextPageSubcategories.length == 10);
+//
+//         print('[MART] ✅ Page ${_currentPage} loaded.');
+//       } else {
+//         _hasMoreSubcategories = false;
+//         print('[MART] ⚠️ No more subcategories to load.');
+//       }
+//     } catch (e) {
+//       print('[MART] ❌ Error loading next page: $e');
+//     }
+//   }
+//
+//   /// Grouping function (example)
+//   void _groupAndAddSubcategories(List<MartSubcategoryModel> subcategories) {
+//     for (final subcategory in subcategories) {
+//       // Use the correct field from your model:
+//       final parentId = subcategory.parentCategoryId ?? 'unknown';
+//
+//       // Ensure list exists for this parent
+//       subcategoriesMap.putIfAbsent(parentId, () => <MartSubcategoryModel>[]);
+//       // Avoid duplicates (by id)
+//       final exists = subcategoriesMap[parentId]!.any(
+//         (existing) => existing.id == subcategory.id,
+//       );
+//       if (!exists) {
+//         subcategoriesMap[parentId]!.add(subcategory);
+//       }
+//     }
+//     // If subcategoriesMap is an RxMap, force update
+//     notifyListeners();
+//   }
+//
+//   /// Get all homepage subcategories from the map (for UI display)
+//   List<MartSubcategoryModel> get allHomepageSubcategories {
+//     final allSubcategories = <MartSubcategoryModel>[];
+//     subcategoriesMap.forEach((parentId, subcategoryList) {
+//       allSubcategories.addAll(subcategoryList);
+//     });
+//
+//     // Sort by order to maintain consistency
+//     allSubcategories.sort(
+//       (a, b) => (a.subcategoryOrder ?? 0).compareTo(b.subcategoryOrder ?? 0),
+//     );
+//
+//     return allSubcategories;
+//   }
+//
+//   /// Get homepage subcategories filtered by show_in_homepage flag
+//   List<MartSubcategoryModel> get homepageSubcategories {
+//     return allHomepageSubcategories
+//         .where((subcategory) => subcategory.showInHomepage == true)
+//         .toList();
+//   }
+//
+//   // Keep your existing method for backward compatibility, but mark as deprecated
+// }
+
 import 'dart:async';
 import 'dart:convert';
 
@@ -19,1650 +2077,385 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 
 class MartProvider extends ChangeNotifier {
-  //NEW SECTION
-  Map<String, List<MartItemModel>> categoryProductsMap =
-      <String, List<MartItemModel>>{};
-  List<String> uniqueCategoryTitles = <String>[];
-
-  /// Loads category section titles from getHomepageCategories/getCategories (cached)
-  /// and sample products via getItemsByCategoryOnly per category with limit=10.
-  /// Avoids heavy getMartItems() full-catalog fetch.
-  Future<void> loadCategoryProductsForSections() async {
-    try {
-      // 1. Get category list from cached/lightweight APIs (no full catalog)
-      var categories = await _firestoreService.getHomepageCategories(limit: 50);
-      // Fallback: if homepage returns fewer than 5, use getCategories for more
-      if (categories.length < 5) {
-        final moreCategories =
-            await _firestoreService.getCategories(limit: 50);
-        if (moreCategories.isNotEmpty) {
-          categories = moreCategories;
-        }
-      }
-      if (categories.isEmpty) {
-        categories = await _firestoreService.getCategories(limit: 50);
-      }
-      if (categories.isEmpty) {
-        print(
-          '[MART CONTROLLER] ⚠️ No categories for sections, skipping category products',
-        );
-        categoryProductsMap.clear();
-        uniqueCategoryTitles.clear();
-        notifyListeners();
-        return;
-      }
-
-      // 2. Build category titles list (preserve API order)
-      final List<String> titles = [];
-      for (final cat in categories) {
-        final title = cat.title?.trim();
-        if (title != null && title.isNotEmpty && !titles.contains(title)) {
-          titles.add(title);
-        }
-      }
-
-      // 3. Apply same special ordering as before
-      _applyCategorySectionOrder(titles);
-
-      // 4. Set section titles immediately so UI can show headers
-      uniqueCategoryTitles.clear();
-      uniqueCategoryTitles.addAll(titles);
-      categoryProductsMap.clear();
-      for (final t in titles) {
-        categoryProductsMap[t] = [];
-      }
-      notifyListeners();
-
-      // 5. Fetch sample products per category (limit=10) in parallel
-      final categoryById = {
-        for (final c in categories) (c.title?.trim() ?? ''): c,
-      };
-      final futures = <Future<void>>[];
-      for (final title in titles) {
-        final cat = categoryById[title];
-        if (cat?.id == null || cat!.id!.isEmpty) continue;
-        futures.add(_loadSectionProductsForCategory(cat.id!, title, 10));
-      }
-      await Future.wait(futures);
-
-      print(
-        '[MART CONTROLLER] ✅ Loaded ${uniqueCategoryTitles.length} unique categories (sections):',
-      );
-      for (final category in uniqueCategoryTitles) {
-        print(
-          '  - $category: ${categoryProductsMap[category]?.length ?? 0} products',
-        );
-      }
-      notifyListeners();
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading products by category: $e');
-    }
-  }
-
-  void _applyCategorySectionOrder(List<String> titles) {
-    if (titles.contains('Pet Care')) {
-      titles.remove('Pet Care');
-      titles.insert(_safeInsertIndex(titles.length, 7), 'Pet Care');
-    }
-    if (titles.contains('Fruits & Vegetables')) {
-      titles.remove('Fruits & Vegetables');
-      titles.insert(_safeInsertIndex(titles.length, 0), 'Fruits & Vegetables');
-    }
-    if (titles.contains('Cooking Essentials')) {
-      titles.remove('Cooking Essentials');
-      titles.insert(_safeInsertIndex(titles.length, 1), 'Cooking Essentials');
-    }
-  }
-
-  Future<void> _loadSectionProductsForCategory(
-    String categoryId,
-    String categoryTitle,
-    int limit,
-  ) async {
-    try {
-      final products = await _firestoreService.getItemsByCategoryOnly(
-        categoryId: categoryId,
-        isAvailable: true,
-        limit: limit,
-      );
-      if (products.isNotEmpty &&
-          categoryProductsMap.containsKey(categoryTitle)) {
-        categoryProductsMap[categoryTitle] = products.take(limit).toList();
-      }
-    } catch (e) {
-      print(
-        '[MART CONTROLLER] ⚠️ Error loading section products for "$categoryTitle": $e',
-      );
-    }
-  }
-
-  int _safeInsertIndex(int currentLength, int desiredIndex) {
-    if (desiredIndex <= 0) {
-      return 0;
-    }
-    if (desiredIndex >= currentLength) {
-      return currentLength;
-    }
-    return desiredIndex;
-  }
-
-  /// Build MartCategoryModel list from product-derived category data (fallback when API returns empty)
-  List<MartCategoryModel> _deriveCategoriesFromProducts() {
-    final result = <MartCategoryModel>[];
-    for (var i = 0; i < uniqueCategoryTitles.length; i++) {
-      final title = uniqueCategoryTitles[i];
-      final products = categoryProductsMap[title];
-      if (products == null || products.isEmpty) continue;
-      final firstProduct = products.first;
-      result.add(
-        MartCategoryModel(
-          id: firstProduct.categoryID ?? 'cat_$i',
-          title: title,
-          photo: firstProduct.photo.isNotEmpty ? firstProduct.photo : null,
-          categoryOrder: i,
-          section: 'Other',
-          sectionOrder: 0,
-          itemCount: products.length,
-        ),
-      );
-    }
-    return result;
-  }
-
-  // Service injection
+  // ── Services ────────────────────────────────────────────────────────────────
   final MartFirestoreService _firestoreService =
       Get.find<MartFirestoreService>();
 
-  // Observable variables
-  bool isLoading = true;
-  bool isCategoryLoading = false;
+  // ── State ────────────────────────────────────────────────────────────────────
+  bool isLoading = false;
   bool isProductLoading = false;
+  bool isCategoryLoading = false;
   bool isVendorLoading = false;
-  bool isHomepageCategoriesLoaded = false;
-  String selectedCategoryId = "";
-  String selectedVendorId = "";
-  String selectedVendorName = "";
-  String searchQuery = "";
-  String errorMessage = "";
+  bool isPaginating = false;
+  String errorMessage = '';
 
-  // Data lists
-  List<MartVendorModel> martVendors = <MartVendorModel>[];
-  List<MartCategoryModel> martCategories = <MartCategoryModel>[];
-  Map<String, List<MartSubcategoryModel>> subcategoriesMap =
-      <String, List<MartSubcategoryModel>>{};
-  List<MartItemModel> martItems = <MartItemModel>[];
-  List<MartItemModel> filteredItems = <MartItemModel>[];
-  List<MartItemModel> featuredItems = <MartItemModel>[];
-  List<MartItemModel> itemsOnSale = <MartItemModel>[];
-  List<MartCategoryModel> featuredCategories = <MartCategoryModel>[];
-  List<MartItemModel> cartItems = <MartItemModel>[];
-  List<Map<String, dynamic>> spotlightItems = <Map<String, dynamic>>[];
-  List<Map<String, dynamic>> stealsItems = <Map<String, dynamic>>[];
-  List<MartItemModel> trendingItems = <MartItemModel>[];
-  bool isTrendingLoading = false;
-  bool isSubcategoryLoading = false;
-
-  // Sections data
-  List<String> availableSections = <String>[];
-  Map<String, List<MartItemModel>> sectionProducts =
-      <String, List<MartItemModel>>{};
-  bool isSectionsLoading = false;
-  bool _sectionsLoadingTriggered =
-      false; // Flag to prevent multiple loading attempts
-  List<MartSubcategoryModel> subcategories = <MartSubcategoryModel>[];
-
-  // Delivery settings
+  // ── Core data ────────────────────────────────────────────────────────────────
+  String selectedVendorId = '';
+  List<MartVendorModel> martVendors = [];
+  List<MartCategoryModel> martCategories = [];
+  List<MartCategoryModel> featuredCategories = [];
+  Map<String, List<MartSubcategoryModel>> subcategoriesMap = {};
+  List<MartSubcategoryModel> subcategories = [];
   MartDeliverySettingsModel? deliverySettings;
 
-  // Banner functionality
-  List<MartBannerModel> martTopBanners = <MartBannerModel>[];
-  List<MartBannerModel> martBottomBanners = <MartBannerModel>[];
-  PageController martTopBannerController = PageController(
-    viewportFraction: 1.0,
-  );
-  PageController martBottomBannerController = PageController(
-    viewportFraction: 1.0,
-  );
-  ValueNotifier<int> currentTopBannerPage = ValueNotifier<int>(0);
-  int currentBottomBannerPage = 0;
-  Timer? _martBannerTimer;
-
-  // Current data
-  MartVendorModel? currentVendor = MartVendorModel();
-  MartCategoryModel? currentCategory = MartCategoryModel();
+  // ── Products — single source of truth ───────────────────────────────────────
+  // All loaded products, flattened and deduped across categories.
+  final List<MartItemModel> _allProducts = [];
 
   // Pagination
-  bool hasMoreItems = true;
-  bool hasMoreVendors = true;
-  int currentPage = 1;
-  int currentVendorPage = 1;
-  static const int itemsPerPage = 20;
-  static const int vendorsPerPage = 10;
+  static const int _pageSize = 20;
+  int _currentPage = 0;
+  bool _hasMore = true;
 
-  // Search and filter
-  Timer? _searchDebouncer;
-  String selectedSortBy = "name";
-  bool sortAscending = true;
-  bool filterVegOnly = false;
-  bool filterNonVegOnly = false;
-  bool filterAvailableOnly = true;
-
-  /// Staggered init: critical path first (banners + vendors + categories), then
-  /// loadCategoryProductsForSections in background. Uses ApiQueueManager and
-  /// CacheManager for banners (30 min), homepage categories (15 min).
-  Future<void> initFunction() async {
-    // Phase 1: Critical – banners, vendors, then categories
-    await loadMartBanners();
-    await loadMartVendors(); // Must run before loadVendorCategories (needs selectedVendorId)
-    await loadHomepageCategoriesStreaming(limit: 24); // Homepage categories for MartDynamicCategoriesSection
-    await loadVendorCategories();
-
-    if (martTopBanners.isNotEmpty) {
-      startMartBannerTimer();
-    }
-    notifyListeners();
-
-    // Phase 2: Background – section products (no await)
-    loadCategoryProductsForSections();
+  /// Products visible in the current page window (0 … (_currentPage+1)*_pageSize)
+  List<MartItemModel> get pagedProducts {
+    final end = ((_currentPage + 1) * _pageSize).clamp(0, _allProducts.length);
+    return _allProducts.sublist(0, end);
   }
 
-  Future<void> refreshData() async {
+  bool get hasMore => _hasMore;
+
+  // ── Legacy compat ─────────────────────────────────────────────────────────────
+  // Keep these so other screens still compile without changes.
+  Map<String, List<MartItemModel>> get categoryProductsMap {
+    final map = <String, List<MartItemModel>>{};
+    for (final c in martCategories) {
+      if (c.title != null) map[c.title!] = _allProducts;
+    }
+    return map;
+  }
+
+  List<String> get uniqueCategoryTitles => martCategories
+      .map((c) => c.title ?? '')
+      .where((t) => t.isNotEmpty)
+      .toList();
+
+  List<MartItemModel> get filteredItems => _allProducts;
+
+  List<MartItemModel> get filteredProducts => _allProducts;
+  List<MartItemModel> cartItems = [];
+  List<MartItemModel> martItems = [];
+  List<MartItemModel> featuredItems = [];
+  List<MartItemModel> itemsOnSale = [];
+  List<MartItemModel> trendingItems = [];
+  List<Map<String, dynamic>> spotlightItems = [];
+  List<Map<String, dynamic>> stealsItems = [];
+  bool isTrendingLoading = false;
+  bool isSubcategoryLoading = false;
+  bool isHomepageCategoriesLoaded = false;
+  bool hasMoreItems = true;
+  String selectedCategoryId = '';
+  String searchQuery = '';
+  MartVendorModel? currentVendor;
+  MartCategoryModel? currentCategory;
+
+  // ── Banners ──────────────────────────────────────────────────────────────────
+  // List<MartBannerModel> martTopBanners = [];
+  // List<MartBannerModel> martBottomBanners = [];
+  // PageController martTopBannerController = PageController();
+  // PageController martBottomBannerController = PageController();
+  // ValueNotifier<int> currentTopBannerPage = ValueNotifier(0);
+  // int currentBottomBannerPage = 0;
+  // Timer? _bannerTimer;
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  Future<void>? _initInFlight;
+
+  /// Single entry point. Three sequential phases:
+  /// 1. Vendors (needed for category resolution)
+  /// 2. Categories (needed to know which category IDs to query)
+  /// 3. Products (parallel per category, page-0 only)
+  Future<void> initFunction() async {
+    if (_initInFlight != null) return _initInFlight!;
+
+    _initInFlight = _runInitFunction();
     try {
-      isLoading = true;
-      errorMessage = "";
-      isHomepageCategoriesLoaded = false;
-      _sectionsLoadingTriggered = false;
+      await _initInFlight;
+    } finally {
+      _initInFlight = null;
+    }
+  }
 
-      // Load independent data in parallel (no duplicate API calls)
-      await Future.wait([
-        loadMartVendors(refresh: true),
-        loadHomepageCategoriesStreaming(limit: 24),
-        loadFeaturedCategories(),
-        loadCategoryProductsForSections(),
-      ]);
-
-      // Load vendor-dependent data (spotlight/steals derive from featured/onSale)
-      await _loadVendorDependentData();
-    } catch (e) {
-      errorMessage = "Failed to refresh data: $e";
+  Future<void> _runInitFunction() async {
+    isLoading = true;
+    notifyListeners();
+    try {
+      await _loadVendors();
+      await _loadCategories();
+      await _loadProductsPage0();
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Load featured/onSale once, then derive spotlight and steals - reduces API calls by 50%
-  Future<void> _loadVendorDependentData() async {
-    if (selectedVendorId.isEmpty) return;
-    await Future.wait([loadFeaturedItems(), loadItemsOnSale()]);
-    _updateSpotlightAndStealsFromLoadedData();
+  // ── Refresh ──────────────────────────────────────────────────────────────────
+  Future<void> refreshData() async {
+    _allProducts.clear();
+    _currentPage = 0;
+    _hasMore = true;
+    isHomepageCategoriesLoaded = false;
+    await initFunction();
   }
 
-  void _updateSpotlightAndStealsFromLoadedData() {
-    spotlightItems.clear();
-    spotlightItems.addAll(
-      featuredItems.map(
-        (item) => {
-          'id': item.id,
-          'name': item.displayName,
-          'image': item.mainImage,
-          'price': item.currentPrice,
-          'description': item.displayDescription,
-        },
-      ),
-    );
-    stealsItems.clear();
-    stealsItems.addAll(
-      itemsOnSale.map(
-        (item) => {
-          'id': item.id,
-          'name': item.displayName,
-          'image': item.mainImage,
-          'price': item.currentPrice,
-          'originalPrice': item.originalPrice,
-          'discount': item.calculatedDiscountPercentage,
-          'description': item.displayDescription,
-        },
-      ),
-    );
-  }
-
-  //
-  // void initFunction() {
-  //   loadMartBannersStream();
-  //   loadCategoryProductsForSections();
-  //   _preloadSections();
-  //   _initializeServices();
-  //   setupSearchListener();
-  //   if (martTopBanners.isNotEmpty) {
-  //     startMartBannerTimer();
-  //   }
-  //   notifyListeners();
-  // }
-
-  void onClose() {
-    _searchDebouncer?.cancel();
-    _martBannerTimer?.cancel();
+  // ── Vendors ──────────────────────────────────────────────────────────────────
+  Future<void> _loadVendors() async {
     try {
-      if (martTopBannerController.hasClients) {
-        martTopBannerController.dispose();
+      isVendorLoading = true;
+      final vendors = await _firestoreService.getMartVendors().timeout(
+        const Duration(seconds: 12),
+      );
+      martVendors = vendors;
+      if (selectedVendorId.isEmpty && vendors.isNotEmpty) {
+        selectedVendorId = vendors.first.id ?? '';
+        currentVendor = vendors.first;
       }
-      if (martBottomBannerController.hasClients) {
-        martBottomBannerController.dispose();
-      }
-    } catch (e) {}
+    } catch (e) {
+      debugPrint('[MART] vendors error: $e');
+    } finally {
+      isVendorLoading = false;
+    }
   }
 
-  /// Start mart banner auto-scroll timer
-  void startMartBannerTimer() {
-    _martBannerTimer?.cancel();
-    _martBannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (!martTopBannerController.hasClients) {
-        timer.cancel();
-        return;
+  // ── Categories ───────────────────────────────────────────────────────────────
+  Future<void> _loadCategories() async {
+    try {
+      isCategoryLoading = true;
+      notifyListeners();
+
+      // Try homepage categories first (cheapest query)
+      var cats = await _firestoreService.getHomepageCategories(limit: 50);
+      if (cats.length < 5) {
+        cats = await _firestoreService.getCategories(limit: 50);
       }
-      if (martTopBanners.isNotEmpty) {
-        try {
-          if (martTopBannerController.hasClients) {
-            int currentPage = martTopBannerController.page?.round() ?? 0;
-            int nextPage = currentPage + 1;
+      if (cats.isEmpty) {
+        cats = await _firestoreService.getFeaturedCategories(
+          martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
+        );
+      }
 
-            // Update the current page indicator (modulo for actual banner index)
-            currentTopBannerPage.value = nextPage % martTopBanners.length;
+      if (cats.isNotEmpty) {
+        _applyCategoryOrder(cats);
+        martCategories = cats;
+        featuredCategories = cats;
+        isHomepageCategoriesLoaded = true;
+      }
+    } catch (e) {
+      debugPrint('[MART] categories error: $e');
+    } finally {
+      isCategoryLoading = false;
+    }
+  }
 
-            martTopBannerController.animateToPage(
-              nextPage,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeInOut,
-            );
-          }
-        } catch (e) {
-          // If any error occurs, cancel the timer
-          timer.cancel();
+  void _applyCategoryOrder(List<MartCategoryModel> cats) {
+    void move(String title, int to) {
+      final idx = cats.indexWhere((c) => c.title == title);
+      if (idx < 0) return;
+      final item = cats.removeAt(idx);
+      cats.insert(to.clamp(0, cats.length), item);
+    }
+
+    move('Fruits & Vegetables', 0);
+    move('Cooking Essentials', 1);
+    move('Pet Care', 7);
+  }
+
+  // ── Products — page 0 ────────────────────────────────────────────────────────
+  Future<void> _loadProductsPage0() async {
+    if (martCategories.isEmpty) return;
+    try {
+      isProductLoading = true;
+      notifyListeners();
+
+      final seen = <String>{};
+      final batch = <MartItemModel>[];
+
+      // Parallel fetch across all categories, limit 10 each
+      final results = await Future.wait(
+        martCategories.map(
+          (cat) => _firestoreService
+              .getItemsByCategoryOnly(
+                categoryId: cat.id ?? '',
+                isAvailable: true,
+                limit: 10,
+              )
+              .catchError((_) => <MartItemModel>[]),
+        ),
+      );
+
+      for (final list in results) {
+        for (final item in list) {
+          if (seen.add(item.id ?? item.name)) batch.add(item);
         }
       }
-    });
+
+      _allProducts.clear();
+      _allProducts.addAll(batch);
+      _currentPage = 0;
+      _hasMore = batch.isNotEmpty;
+    } catch (e) {
+      debugPrint('[MART] products page 0 error: $e');
+    } finally {
+      isProductLoading = false;
+      notifyListeners();
+    }
   }
 
-  /// Stop mart banner auto-scroll timer
-  void stopMartBannerTimer() {
-    _martBannerTimer?.cancel();
-  }
+  // ── Pagination ────────────────────────────────────────────────────────────────
+  Future<void> loadNextPage() async {
+    if (!_hasMore || isPaginating || isProductLoading) return;
 
-  /// Load mart banners using lazy loading streams (legacy; init uses loadMartBanners)
-  void loadMartBannersStream() {
-    _initializeBannerStreams();
-  }
-
-  /// Load mart banners with cache (30 min) and ApiQueueManager. Used by initFunction.
-  Future<void> loadMartBanners() async {
-    final zoneId = Constant.selectedZone?.id ?? 'default';
-    final cacheKey = 'mart_banners_$zoneId';
-
-    final cached =
-        CacheManager().getBanners<List<MartBannerModel>>(cacheKey);
-    if (cached != null && cached.isNotEmpty) {
-      martTopBanners = cached;
+    final nextEnd = (_currentPage + 2) * _pageSize;
+    if (nextEnd <= _allProducts.length) {
+      // Already have enough data in memory — just advance the page cursor
+      _currentPage++;
       notifyListeners();
       return;
     }
 
+    // Need to fetch more from Firestore
     try {
-      final list = await ApiQueueManager().enqueue<List<MartBannerModel>>(
-        priority: RequestPriority.high,
-        key: cacheKey,
-        request: () async {
-          final result = await _fetchMartBannersApi();
-          if (result.isNotEmpty) {
-            CacheManager().setBanners(cacheKey, result);
-          }
-          return result;
-        },
-      );
-      martTopBanners = list;
+      isPaginating = true;
       notifyListeners();
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading banners: $e');
-    }
-  }
 
-  Future<List<MartBannerModel>> _fetchMartBannersApi() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}banners/top'),
-        headers: await getHeaders(),
+      final seen = _allProducts.map((p) => p.id ?? p.name).toSet();
+      final batch = <MartItemModel>[];
+
+      final results = await Future.wait(
+        martCategories.map(
+          (cat) => _firestoreService
+              .getItemsByCategoryOnly(
+                categoryId: cat.id ?? '',
+                isAvailable: true,
+                limit: 20,
+              )
+              .catchError((_) => <MartItemModel>[]),
+        ),
       );
-      if (response.statusCode != 200) return [];
-      final responseData = json.decode(response.body);
-      if (responseData['success'] != true) return [];
-      final data = responseData['data'] as List? ?? [];
-      final bannerList = <MartBannerModel>[];
-      final customerZoneId = Constant.selectedZone?.id;
-      for (final bannerData in data) {
-        final banner = MartBannerModel.fromJson(
-          Map<String, dynamic>.from(bannerData as Map),
-        );
-        final show = banner.zoneId == null ||
-            banner.zoneId!.isEmpty ||
-            customerZoneId == null ||
-            customerZoneId.isEmpty ||
-            banner.zoneId == customerZoneId;
-        if (show) bannerList.add(banner);
+
+      for (final list in results) {
+        for (final item in list) {
+          if (seen.add(item.id ?? item.name)) batch.add(item);
+        }
       }
-      bannerList.sort(
-        (a, b) => (a.setOrder ?? 0).compareTo(b.setOrder ?? 0),
-      );
-      return bannerList;
+
+      if (batch.isEmpty) {
+        _hasMore = false;
+      } else {
+        _allProducts.addAll(batch);
+        _currentPage++;
+      }
     } catch (e) {
-      print('[MART CONTROLLER] ❌ Error fetching banners: $e');
-      return [];
+      debugPrint('[MART] pagination error: $e');
+    } finally {
+      isPaginating = false;
+      notifyListeners();
     }
   }
 
-  static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
-    final StreamController<List<MartBannerModel>> controller =
-        StreamController<List<MartBannerModel>>();
-
-    Future<void> fetchBanners() async {
-      try {
-        final zoneId = Constant.selectedZone?.id ?? 'default';
-        final cacheKey = 'mart_banners_stream_$zoneId';
-        final list = await CacheManager().getOrSetBanners<List<MartBannerModel>>(
-          cacheKey,
-          () async {
-            final response = await http.get(
-              Uri.parse('${AppConst.baseUrl}banners/top'),
-              headers: await getHeaders(),
-            );
-            if (response.statusCode != 200) return <MartBannerModel>[];
-            final responseData = json.decode(response.body);
-            if (responseData['success'] != true) return <MartBannerModel>[];
-            final data = responseData['data'] as List? ?? [];
-            final filteredBannerList = <MartBannerModel>[];
-            for (var bannerData in data) {
-              final banner = MartBannerModel.fromJson(
-                Map<String, dynamic>.from(bannerData as Map),
-              );
-              final show = banner.zoneId == null ||
-                  banner.zoneId!.isEmpty ||
-                  zoneId == 'default' ||
-                  banner.zoneId == zoneId;
-              if (show) filteredBannerList.add(banner);
-            }
-            filteredBannerList.sort(
-              (a, b) => (a.setOrder ?? 0).compareTo(b.setOrder ?? 0),
-            );
-            return filteredBannerList;
-          },
-        );
-        controller.add(list);
-      } catch (error) {
-        print("Error fetching banners: $error");
-        controller.add(<MartBannerModel>[]);
-      }
-    }
-
-    fetchBanners();
-    return controller.stream;
-  }
-
-  //finded
-  // static Stream<List<MartBannerModel>> getMartBottomBannersStream() {
-  //   final StreamController<List<MartBannerModel>> controller =
-  //       StreamController<List<MartBannerModel>>();
-  //   String? customerZoneId = Constant.selectedZone?.id;
-  //   Future<void> fetchBanners() async {
-  //     try {
-  //       final response = await http.get(
-  //         Uri.parse('${AppConst.baseUrl}banners/top'),
-  //         headers: await getHeaders(),
-  //       );
-  //       print("getMartBottomBannersStream ${response.body}");
-  //       if (response.statusCode == 200) {
-  //         final Map<String, dynamic> responseData = json.decode(response.body);
-  //         if (responseData['success'] == true) {
-  //           List<MartBannerModel> bannerList = [];
-  //           List<MartBannerModel> filteredBannerList = [];
-  //           for (var bannerData in responseData['data']) {
-  //             MartBannerModel banner = MartBannerModel.fromJson({
-  //               ...bannerData,
-  //               'id': bannerData['id'].toString(),
-  //             });
-  //             bannerList.add(banner);
-  //             print(
-  //               "getMartBottomBannersStream ${banner.id} ${banner.categoryId} ${banner.zoneId} ",
-  //             );
-  //             bool shouldShowBanner = false;
-  //             if (banner.zoneId == null || banner.zoneId!.isEmpty) {
-  //               shouldShowBanner = true;
-  //             } else if (customerZoneId == null || customerZoneId.isEmpty) {
-  //               shouldShowBanner = true;
-  //             } else if (banner.zoneId == customerZoneId) {
-  //               shouldShowBanner = true;
-  //             }
-  //
-  //             if (shouldShowBanner) {
-  //               filteredBannerList.add(banner);
-  //             }
-  //           }
-  //
-  //           // Sort by set_order in memory
-  //           filteredBannerList.sort((a, b) {
-  //             int orderA = a.setOrder ?? 0;
-  //             int orderB = b.setOrder ?? 0;
-  //             return orderA.compareTo(orderB);
-  //           });
-  //
-  //           controller.add(filteredBannerList);
-  //         } else {
-  //           controller.add(<MartBannerModel>[]);
-  //         }
-  //       } else {
-  //         controller.add(<MartBannerModel>[]);
-  //       }
-  //     } catch (error) {
-  //       controller.add(<MartBannerModel>[]);
-  //     }
+  // ── Banners ──────────────────────────────────────────────────────────────────
+  // Future<void> loadMartBanners() async {
+  //   final zoneId = Constant.selectedZone?.id ?? 'default';
+  //   final cacheKey = 'mart_banners_$zoneId';
+  //   final cached = CacheManager().getBanners<List<MartBannerModel>>(cacheKey);
+  //   if (cached != null && cached.isNotEmpty) {
+  //     martTopBanners = cached;
+  //     notifyListeners();
+  //     return;
   //   }
-  //
-  //   // Initial fetch
-  //   fetchBanners();
-  //
-  //   return controller.stream;
+  //   try {
+  //     final list = await ApiQueueManager().enqueue<List<MartBannerModel>>(
+  //       priority: RequestPriority.high,
+  //       key: cacheKey,
+  //       request: () async {
+  //         final result = await _fetchBannersFromApi();
+  //         if (result.isNotEmpty) CacheManager().setBanners(cacheKey, result);
+  //         return result;
+  //       },
+  //     );
+  //     martTopBanners = list;
+  //     notifyListeners();
+  //   } catch (e) {
+  //     debugPrint('[MART] banners error: $e');
+  //   }
   // }
 
-  /// Initialize banner streams with lazy loading
-  void _initializeBannerStreams() {
-    getMartBottomBannersStream().listen(
-      (banners) {
-        martTopBanners = banners;
-        notifyListeners();
-        if (banners.isNotEmpty) {
-          _initializeBannerControllers();
-        }
-      },
-      onError: (error) {
-        martTopBanners.clear();
-      },
-    );
-  }
-
-  void _initializeBannerControllers() {
-    if (martTopBanners.isNotEmpty && martTopBanners.length > 1) {
-      int middlePosition =
-          (martTopBanners.length * 1000) ~/
-          2; // Start at middle of infinite list
-      martTopBannerController = PageController(initialPage: middlePosition);
-      currentTopBannerPage.value = 0; // Set indicator to first banner
-    } else {
-      martTopBannerController = PageController(initialPage: 0);
-      currentTopBannerPage.value = 0;
-    }
-    if (martBottomBanners.isNotEmpty && martBottomBanners.length > 1) {
-      int middlePosition =
-          (martBottomBanners.length * 1000) ~/
-          2; // Start at middle of infinite list
-      martBottomBannerController = PageController(initialPage: middlePosition);
-      currentBottomBannerPage = 0; // Set indicator to first banner
-    } else {
-      martBottomBannerController = PageController(initialPage: 0);
-      currentBottomBannerPage = 0;
-    }
-    notifyListeners();
-  }
-
-  // Setup search debouncer
-  void setupSearchListener() {
-    _searchDebouncer?.cancel();
-    _searchDebouncer = Timer(const Duration(milliseconds: 500), () {
-      if (searchQuery.isNotEmpty) {
-        performSearch();
-      } else {
-        clearSearch();
-      }
-    });
-  }
-
-  /// Load mart vendors
-  Future<void> loadMartVendors({bool refresh = false}) async {
-    try {
-      if (refresh) {
-        martVendors.clear();
-      }
-      // Set loading state with timeout
-      isVendorLoading = true;
-      errorMessage = "";
-      // Add timeout to prevent infinite loading
-      bool timeoutReached = false;
-      Timer? timeoutTimer;
-
-      timeoutTimer = Timer(const Duration(seconds: 15), () {
-        timeoutReached = true;
-        isVendorLoading = false;
-        errorMessage = "Vendor loading timed out. Please try again.";
-      });
-
-      try {
-        if (timeoutReached) return;
-
-        final vendors = await _firestoreService.getMartVendors();
-        if (timeoutReached) return;
-        print(
-          '[MART CONTROLLER] ✅ Vendors loaded successfully: ${vendors.length} vendors',
-        );
-
-        if (refresh) {
-          martVendors.clear();
-        }
-        martVendors.addAll(vendors);
-
-        if (selectedVendorId.isEmpty && vendors.isNotEmpty) {
-          final firstVendor = vendors.first;
-          selectedVendorId = firstVendor.id!;
-          print(
-            '[MART CONTROLLER] 🎯 Auto-selected first vendor: ${firstVendor.name} (${firstVendor.id})',
-          );
-        }
-
-        print('[MART CONTROLLER] ✅ Vendor loading completed successfully');
-      } catch (e) {
-        if (timeoutReached) return;
-
-        print('[MART CONTROLLER] ❌ Error loading vendors: $e');
-        errorMessage =
-            "Unable to load stores. Please check your connection and try again.";
-
-        // If no vendors loaded, try to continue with empty state
-        if (martVendors.isEmpty) {
-          print(
-            '[MART CONTROLLER] ⚠️ No vendors available, continuing with empty state',
-          );
-        }
-      } finally {
-        timeoutTimer.cancel();
-        if (!timeoutReached) {
-          isVendorLoading = false;
-        }
-      }
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Unexpected error in loadMartVendors: $e');
-      isVendorLoading = false;
-      errorMessage = "Something went wrong. Please try again later.";
-    }
-  }
-
-  /// Load more vendors (pagination)
-
-  /// Select a vendor
-  void selectVendor(String vendorId) {
-    selectedVendorId = vendorId;
-    final vendor = martVendors.firstWhereOrNull((v) => v.id == vendorId);
-    currentVendor = vendor;
-    selectedVendorName = vendor?.name ?? "Unknown Vendor";
-
-    // Load vendor-specific data
-    loadVendorCategories(vendorId: vendorId);
-    loadVendorItems(vendorId);
-  }
-
-  // ==================== MART CATEGORIES ====================
-
-  /// Load mart categories (Firebase only)
-
-  /// Load all homepage subcategories directly from Firestore
-  Future<void> loadAllHomepageSubcategories() async {
-    print('loadAllHomepageSubcategories');
-    try {
-      print(
-        '[MART CONTROLLER] 🔄 Loading all homepage subcategories directly from Firestore...',
-      );
-      isSubcategoryLoading = true;
-
-      // Clear existing subcategories
-      subcategoriesMap.clear();
-
-      // Get all homepage subcategories directly
-      final allSubcategories = await _firestoreService
-          .getAllHomepageSubcategories();
-
-      if (allSubcategories.isNotEmpty) {
-        // Group subcategories by parent category for the map
-        final Map<String, List<MartSubcategoryModel>> groupedSubcategories = {};
-
-        for (final subcategory in allSubcategories) {
-          final parentId = subcategory.parentCategoryId ?? 'unknown';
-          if (!groupedSubcategories.containsKey(parentId)) {
-            groupedSubcategories[parentId] = [];
-          }
-          groupedSubcategories[parentId]!.add(subcategory);
-        }
-
-        // Update the subcategories map
-        subcategoriesMap.addAll(groupedSubcategories);
-
-        print(
-          '[MART CONTROLLER] ✅ Loaded ${allSubcategories.length} homepage subcategories from ${groupedSubcategories.length} parent categories',
-        );
-        print(
-          '[MART CONTROLLER] 📊 Subcategories map contains: ${subcategoriesMap.length} category entries',
-        );
-        subcategoriesMap.forEach((categoryId, subcategoryList) {
-          print(
-            '[MART CONTROLLER] 📊 Category $categoryId: ${subcategoryList.length} subcategories',
-          );
-        });
-
-        notifyListeners();
-      } else {
-        print('[MART CONTROLLER] ⚠️ No homepage subcategories found');
-      }
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading homepage subcategories: $e');
-    } finally {
-      isSubcategoryLoading = false;
-    }
-  }
-
-  /// Debug method to load ALL subcategories (no filters)
-
-  /// Load sub-categories for a specific category
-  Future<void> loadSubcategoriesForCategory(String categoryId) async {
-    try {
-      print(
-        '[MART CONTROLLER] 🔄 Loading sub-categories for category: $categoryId',
-      );
-
-      final subcategories = await _firestoreService.getSubcategoriesByParent(
-        parentCategoryId: categoryId,
-        publish: true,
-        sortBy: 'subcategory_order',
-        sortOrder: 'asc',
-      );
-
-      subcategoriesMap[categoryId] = subcategories;
-      print(
-        '[MART CONTROLLER] ✅ Loaded ${subcategories.length} sub-categories for category: $categoryId',
-      );
-    } catch (e) {
-      print(
-        '[MART CONTROLLER] ❌ Error loading sub-categories for category $categoryId: $e',
-      );
-      subcategoriesMap[categoryId] = [];
-    }
-  }
-
-  /// Load vendor-specific categories (used for Home category filter)
-  /// Does NOT overwrite martCategories if API returns empty - prevents wiping valid data
-  Future<void> loadVendorCategories({String? vendorId}) async {
-    try {
-      isCategoryLoading = true;
-      errorMessage = "";
-      final categories = await _firestoreService.getFeaturedCategories(
-        martId: vendorId,
-      );
-      // Only overwrite if we got data; empty response keeps existing categories
-      if (categories.isNotEmpty) {
-        martCategories.clear();
-        martCategories.addAll(categories);
-      }
-      notifyListeners();
-      if (categories.isNotEmpty) {
-        final firstCategory = categories.first;
-        notifyListeners();
-        if (firstCategory.id != null) {
-          selectCategory(firstCategory.id ?? "");
-          notifyListeners();
-        }
-        notifyListeners();
-      } else {
-        selectedCategoryId = "";
-        currentCategory = null;
-        notifyListeners();
-      }
-    } catch (e) {
-      print('[MART] Error loading vendor categories: $e');
-      errorMessage = "Failed to load vendor categories: $e";
-    } finally {
-      isCategoryLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Select a category
-  void selectCategory(String categoryId) {
-    selectedCategoryId = categoryId;
-    currentCategory = martCategories.firstWhereOrNull(
-      (c) => c.id == categoryId,
-    );
-
-    // Load category items
-    loadCategoryItems(categoryId);
-  }
-
-  /// Load featured categories
-  Future<void> loadFeaturedCategories() async {
-    try {
-      final categories = await _firestoreService.getFeaturedCategories(
-        martId: selectedVendorId.isNotEmpty ? selectedVendorId : "",
-      );
-      featuredCategories.clear();
-      featuredCategories.addAll(categories);
-    } catch (e) {
-      print('[MART] Error loading featured categories: $e');
-    }
-  }
-
-  // ==================== MART ITEMS ====================
-
-  /// Load mart items
-  Future<void> loadMartItems({bool refresh = false}) async {
-    try {
-      isProductLoading = true;
-      errorMessage = "";
-
-      if (refresh) {
-        martItems.clear();
-        filteredItems.clear();
-        currentPage = 1;
-        hasMoreItems = true;
-      }
-
-      print('[MART] Loading mart items...');
-
-      if (selectedVendorId.isEmpty) {
-        print('[MART] No vendor selected, skipping item load');
-        return;
-      }
-
-      final items = await _firestoreService.getMartItems();
-
-      if (refresh) {
-        martItems.clear();
-        filteredItems.clear();
-      }
-
-      martItems.addAll(items);
-      filteredItems.addAll(items);
-      hasMoreItems = items.length == itemsPerPage;
-
-      print('[MART] Loaded ${items.length} items');
-    } catch (e) {
-      print('[MART] Error loading items: $e');
-      errorMessage = "Failed to load items: $e";
-    } finally {
-      isProductLoading = false;
-    }
-  }
-
-  /// Load vendor-specific items
-  Future<void> loadVendorItems(String vendorId) async {
-    try {
-      isProductLoading = true;
-      errorMessage = "";
-
-      final items = await _firestoreService.getItemsByVendor(
-        vendorId: vendorId,
-        categoryId: selectedCategoryId.isNotEmpty ? selectedCategoryId : null,
-        limit: itemsPerPage,
-      );
-
-      martItems.clear();
-      filteredItems.clear();
-      martItems.addAll(items);
-      filteredItems.addAll(items);
-      hasMoreItems = items.length == itemsPerPage;
-      currentPage = 1;
-    } catch (e) {
-      print('[MART] Error loading vendor items: $e');
-      errorMessage = "Failed to load vendor items: $e";
-    } finally {
-      isProductLoading = false;
-    }
-  }
-
-  /// Load category-specific items
-  Future<void> loadCategoryItems(String categoryId) async {
-    try {
-      isProductLoading = true;
-      errorMessage = "";
-
-      print(
-        '[MART CONTROLLER] 📂 loadCategoryItems() called for category: $categoryId',
-      );
-
-      // Load items for the category without requiring a specific vendor
-      final items = await _firestoreService.getItemsByCategoryOnly(
-        categoryId: categoryId,
-        isAvailable: true,
-        limit: 50,
-      );
-
-      print(
-        '[MART CONTROLLER] ✅ Loaded ${items.length} items for category $categoryId',
-      );
-
-      // Clear existing items and add new ones
-      martItems.clear();
-      filteredItems.clear();
-      martItems.addAll(items);
-      filteredItems.addAll(items);
-
-      // Update selected category
-      selectedCategoryId = categoryId;
-      currentCategory = martCategories.firstWhereOrNull(
-        (c) => c.id == categoryId,
-      );
-
-      print(
-        '[MART CONTROLLER] ✅ Category items loading completed successfully',
-      );
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading category items: $e');
-      errorMessage = "Unable to load products. Please try again later.";
-    } finally {
-      isProductLoading = false;
-    }
-  }
-
-  /// Load more items (pagination)
-  Future<void> loadMoreItems() async {
-    if (!hasMoreItems || isProductLoading) return;
-
-    currentPage++;
-    await loadMartItems();
-  }
-
-  /// Load featured items
-  Future<void> loadFeaturedItems() async {
-    try {
-      if (selectedVendorId.isEmpty) {
-        print('[MART] No vendor selected, skipping featured items load');
-        return;
-      }
-
-      final items = await _firestoreService.getFeaturedItems(limit: 20);
-      featuredItems.clear();
-      featuredItems.addAll(items);
-    } catch (e) {
-      print('[MART] Error loading featured items: $e');
-    }
-  }
-
-  /// Load items on sale
-  Future<void> loadItemsOnSale() async {
-    try {
-      if (selectedVendorId.isEmpty) {
-        print('[MART] No vendor selected, skipping items on sale load');
-        return;
-      }
-
-      final items = await _firestoreService.getItemsOnSale(limit: 20);
-      itemsOnSale.clear();
-      itemsOnSale.addAll(items);
-    } catch (e) {
-      print('[MART] Error loading items on sale: $e');
-    }
-  }
-
-  // ==================== LEGACY METHODS (for backward compatibility) ====================
-
-  /// Load products by category (legacy method)
-  Future<void> loadProductsByCategory(
-    String categoryId, {
-    bool refresh = false,
-  }) async {
-    selectCategory(categoryId);
-  }
-
-  /// Load spotlight items - fetches featured then updates spotlight
-  Future<void> loadSpotlightItems() async {
-    try {
-      await loadFeaturedItems();
-      spotlightItems.clear();
-      spotlightItems.addAll(
-        featuredItems.map(
-          (item) => {
-            'id': item.id,
-            'name': item.displayName,
-            'image': item.mainImage,
-            'price': item.currentPrice,
-            'description': item.displayDescription,
-          },
-        ),
-      );
-    } catch (e) {
-      // Error handled in loadFeaturedItems
-    }
-  }
-
-  /// Load steals items - fetches onSale then updates steals
-  Future<void> loadStealsItems() async {
-    try {
-      await loadItemsOnSale();
-      stealsItems.clear();
-      stealsItems.addAll(
-        itemsOnSale.map(
-          (item) => {
-            'id': item.id,
-            'name': item.displayName,
-            'image': item.mainImage,
-            'price': item.currentPrice,
-            'originalPrice': item.originalPrice,
-            'discount': item.calculatedDiscountPercentage,
-            'description': item.displayDescription,
-          },
-        ),
-      );
-    } catch (e) {
-      // Error handled in loadItemsOnSale
-    }
-  }
-
-  // ==================== SEARCH AND FILTERS ====================
-
-  /// Perform search
-  Future<void> performSearch() async {
-    if (searchQuery.isEmpty) return;
-
-    try {
-      isProductLoading = true;
-      errorMessage = "";
-
-      if (selectedVendorId.isEmpty) {
-        print('[MART] No vendor selected, cannot search items');
-        errorMessage = "Please select a vendor first";
-        return;
-      }
-
-      final items = await _firestoreService.searchItems(
-        searchQuery: searchQuery,
-        limit: itemsPerPage,
-      );
-
-      filteredItems.clear();
-      filteredItems.addAll(items);
-    } catch (e) {
-      print('[MART] Error searching items: $e');
-      errorMessage = "Failed to search items: $e";
-    } finally {
-      isProductLoading = false;
-    }
-  }
-
-  /// Clear search
-  void clearSearch() {
-    searchQuery = "";
-    filteredItems.clear();
-    filteredItems.addAll(martItems);
-  }
-
-  /// Update search query
-  void updateSearchQuery(String query) {
-    searchQuery = query;
-    _searchDebouncer?.cancel();
-    setupSearchListener();
-  }
-
-  /// Apply filters
-  void applyFilters({
-    bool? vegOnly,
-    bool? nonVegOnly,
-    bool? availableOnly,
-    String? sortBy,
-    bool? sortAscending,
-  }) {
-    if (vegOnly != null) filterVegOnly = vegOnly;
-    if (nonVegOnly != null) filterNonVegOnly = nonVegOnly;
-    if (availableOnly != null) filterAvailableOnly = availableOnly;
-    if (sortBy != null) selectedSortBy = sortBy;
-    if (sortAscending != null) this.sortAscending = sortAscending;
-
-    // Reload items with new filters
-    loadMartItems(refresh: true);
-  }
-
-  /// Clear all filters
-  void clearFilters() {
-    filterVegOnly = false;
-    filterNonVegOnly = false;
-    filterAvailableOnly = true;
-    selectedSortBy = "name";
-    sortAscending = true;
-    loadMartItems(refresh: true);
-  }
-
-  // ==================== UTILITY METHODS ====================
-
-  /// Refresh all data
-
-  /// Get item by ID
-  Future<MartItemModel?> getItemById(String itemId) async {
-    try {
-      return await _firestoreService.getItemById(itemId);
-    } catch (e) {
-      print('[MART] Error getting item by ID: $e');
-      return null;
-    }
-  }
-
-  /// Get vendor details
-
-  // ==================== LEGACY COMPATIBILITY METHODS ====================
-
-  /// Add to cart (legacy method)
-
-  /// Remove from cart (legacy method)
-  void removeFromCart(String itemId) {
-    cartItems.removeWhere((item) => item.id == itemId);
-    print(
-      '[MART] Removed item $itemId from cart. Total items: ${cartItems.length}',
-    );
-  }
-
-  // ==================== GETTERS ====================
-
-  /// Get current vendor name
-  String get currentVendorName => currentVendor?.displayName ?? 'All Marts';
-
-  /// Get current category name
-  String get currentCategoryName =>
-      currentCategory?.displayName ?? 'All Categories';
-
-  /// Get total items count
-  int get totalItemsCount => filteredItems.length;
-
-  /// Get total vendors count
-  int get totalVendorsCount => martVendors.length;
-
-  /// Get total categories count
-  int get totalCategoriesCount => martCategories.length;
-
-  // ==================== LEGACY COMPATIBILITY GETTERS ====================
-
-  /// Legacy: filteredProducts (maps to filteredItems)
-  List<MartItemModel> get filteredProducts => filteredItems;
-
-  /// Legacy: hasMoreProducts (maps to hasMoreItems)
-  bool get hasMoreProducts => hasMoreItems;
-
-  /// Legacy: loadMoreProducts (maps to loadMoreItems)
-  Future<void> loadMoreProducts() => loadMoreItems();
-
-  /// Legacy: cartItemCount
-  int get cartItemCount => cartItems.length;
-
-  /// Legacy: cartTotal
-  double get cartTotal {
-    return cartItems.fold(0.0, (total, item) {
-      return total + item.currentPrice;
-    });
-  }
-
-  /// Legacy: getProductById (maps to getItemById)
-  Future<MartItemModel?> getProductById(String productId) async {
-    return await getItemById(productId);
-  }
-
-  /// Load trending items from API
-
-  /// Comprehensive search across categories, items, and subcategories
-
-  /// Search categories with debouncing
-
-  // ==================== STREAMING DATA LOADING METHODS ====================
-  Future<void> loadHomepageCategoriesStreaming({int limit = 24}) async {
-    try {
-      isCategoryLoading = true;
-      errorMessage = '';
-      notifyListeners();
-      var categories = await _firestoreService.getHomepageCategories(
-        limit: limit,
-      );
-      // Fallback: if homepage returns fewer than 5, use getCategories for more
-      if (categories.length < 5) {
-        final moreCategories =
-            await _firestoreService.getCategories(limit: limit);
-        if (moreCategories.isNotEmpty) {
-          categories = moreCategories;
-        }
-      }
-      if (categories.isEmpty) {
-        categories = await _firestoreService.getFeaturedCategories(
-          martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
-        );
-      }
-      if (categories.isEmpty && martCategories.isNotEmpty) {
-        categories = martCategories.take(limit).toList();
-      }
-      if (categories.isEmpty && categoryProductsMap.isNotEmpty) {
-        categories = _deriveCategoriesFromProducts().take(limit).toList();
-      }
-      if (categories.isNotEmpty) {
-        featuredCategories.clear();
-        featuredCategories.addAll(categories);
-        errorMessage = '';
-        isHomepageCategoriesLoaded = true;
-        isCategoryLoading = false;
-        notifyListeners();
-        return;
-      }
-      errorMessage = 'Unable to load categories. Please check your connection.';
-      isCategoryLoading = false;
-      isHomepageCategoriesLoaded = false;
-      notifyListeners();
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading homepage categories: $e');
-      errorMessage = 'Unable to load categories. Please try again.';
-      isCategoryLoading = false;
-      notifyListeners();
-    }
-  }
-
-  /// Load trending items with streaming updates using Firestore
-  Future<void> loadTrendingItemsStreaming() async {
-    try {
-      print(
-        '[MART CONTROLLER] 🔥 Streaming: Loading trending items from Firestore...',
-      );
-      isTrendingLoading = true;
-
-      // Try to get trending items from existing data first (fastest)
-      if (martItems.isNotEmpty) {
-        print(
-          '[MART CONTROLLER] 🚀 Fast path: Filtering trending items from existing data',
-        );
-        final trendingFromExisting = martItems
-            .where((item) => item.isTrending == true)
-            .toList();
-        if (trendingFromExisting.isNotEmpty) {
-          trendingItems.clear();
-          trendingItems.addAll(trendingFromExisting);
-          print(
-            '[MART CONTROLLER] ✅ Fast path: Found ${trendingFromExisting.length} trending items from existing data',
-          );
-          isTrendingLoading = false;
-          return;
-        }
-      }
-
-      // Load trending items from Firestore (primary method)
-      print('[MART CONTROLLER] 🔥 Firestore: Fetching trending items...');
-      try {
-        final items = await _firestoreService.getTrendingItems(limit: 20);
-        if (items.isNotEmpty) {
-          // Stream the data as it becomes available
-          trendingItems.clear();
-          trendingItems.addAll(items);
-          print(
-            '[MART CONTROLLER] ✅ Firestore: Trending items loaded (${items.length})',
-          );
-        } else {
-          // Fallback: Load all items and filter for trending
-          print(
-            '[MART CONTROLLER] 🔄 Fallback: Loading all items and filtering for trending...',
-          );
-          await _loadAllItemsAndFilterTrending();
-        }
-      } catch (e) {
-        print('[MART CONTROLLER] ❌ Firestore failed: $e');
-        // No API fallback - Firestore only
-        print(
-          '[MART CONTROLLER] ❌ No API fallback available for trending items',
-        );
-        trendingItems.clear();
-      }
-
-      isTrendingLoading = false;
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Streaming: Error loading trending items: $e');
-      // No API fallback - Firestore only
-      print('[MART CONTROLLER] ❌ No API fallback available for trending items');
-      trendingItems.clear();
-      isTrendingLoading = false;
-    }
-  }
-
-  /// Fast fallback: Load all items and filter for trending
-  Future<void> _loadAllItemsAndFilterTrending() async {
-    try {
-      print('[MART CONTROLLER] 🔄 Fallback: Loading all items...');
-
-      // Load items with API-compliant limit to avoid validation errors
-      final allItems = await _firestoreService.getMartItems();
-
-      // Filter for trending items
-      final trendingFromAll = allItems
-          .where((item) => item.isTrending == true)
-          .toList();
-
-      // Update trending items
-      trendingItems.clear();
-      trendingItems.addAll(trendingFromAll);
-
-      print(
-        '[MART CONTROLLER] ✅ Fallback: Found ${trendingFromAll.length} trending items from all items',
-      );
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Fallback: Error loading all items: $e');
-      trendingItems.clear();
-    }
-  }
-
-  /// Load featured items with streaming updates using Firestore
-  Future<void> loadFeaturedItemsStreaming() async {
-    try {
-      print(
-        '[MART CONTROLLER] ⭐ Streaming: Loading featured items from Firestore...',
-      );
-      isProductLoading = true;
-
-      // Load featured items from Firestore
-      final items = await _firestoreService.getFeaturedItems(limit: 20);
-
-      // Stream the data as it becomes available
-      featuredItems.clear();
-      featuredItems.addAll(items);
-
-      print(
-        '[MART CONTROLLER] ✅ Streaming: Featured items loaded from Firestore (${items.length})',
-      );
-      isProductLoading = false;
-    } catch (e) {
-      print(
-        '[MART CONTROLLER] ❌ Streaming: Error loading featured items from Firestore: $e',
-      );
-      // No API fallback - Firestore only
-      print('[MART CONTROLLER] ❌ No API fallback available for featured items');
-      featuredItems.clear();
-      isProductLoading = false;
-    }
-  }
-
-  /// Load categories with streaming updates using Firestore
-  Future<void> loadCategoriesStreaming({bool skipSubcategories = false}) async {
-    try {
-      isCategoryLoading = true;
-      errorMessage = '';
-      notifyListeners();
-
-      print(
-        '[MART CONTROLLER] 📂 Streaming: Loading all categories from Firestore...',
-      );
-      // Try Firestore first (fastest path)
-      try {
-        var categories = await _firestoreService.getCategories(limit: 100);
-        if (categories.isEmpty) {
-          print(
-            '[MART CONTROLLER] ⚠️ getCategories empty, trying getHomepageCategories...',
-          );
-          categories = await _firestoreService.getHomepageCategories(
-            limit: 100,
-          );
-        }
-        if (categories.isEmpty) {
-          print(
-            '[MART CONTROLLER] ⚠️ getHomepageCategories empty, trying getFeaturedCategories...',
-          );
-          categories = await _firestoreService.getFeaturedCategories(
-            martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
-          );
-        }
-        if (categories.isEmpty) {
-          print(
-            '[MART CONTROLLER] ⚠️ All API sources empty, trying product-derived categories...',
-          );
-          if (categoryProductsMap.isEmpty) {
-            await loadCategoryProductsForSections();
-          }
-          if (categoryProductsMap.isNotEmpty) {
-            categories = _deriveCategoriesFromProducts();
-            print(
-              '[MART CONTROLLER] ✅ Derived ${categories.length} categories from products',
-            );
-          }
-        }
-        if (categories.isNotEmpty) {
-          martCategories.clear();
-          martCategories.addAll(categories);
-          errorMessage = '';
-
-          print('[MART CONTROLLER] ✅ Categories loaded (${categories.length})');
-
-          if (!skipSubcategories) {
-            await loadFirstPageHomepageSubcategories();
-          }
-
-          isCategoryLoading = false;
-          notifyListeners();
-          return;
-        }
-      } catch (e) {
-        print('[MART CONTROLLER] ❌ Error loading categories: $e');
-      }
-
-      errorMessage =
-          'Unable to load categories. Please check your connection and try again.';
-      isCategoryLoading = false;
-      notifyListeners();
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Streaming: Error loading categories: $e');
-      errorMessage = 'Unable to load categories. Please try again later.';
-      isCategoryLoading = false;
-      notifyListeners();
-    }
-  }
-
-  //changed here _loadSubcategoriesStreaming
-  /// Load subcategories with streaming updates
-
-  /// Load subcategories for a specific category with streaming
-  Future<void> loadSubcategoriesStreaming(String categoryId) async {
-    try {
-      print(
-        '[MART CONTROLLER] 📋 Loading subcategories for category: $categoryId',
-      );
-      isSubcategoryLoading = true;
-
-      final subcategories = await _firestoreService.getSubcategoriesByParent(
-        parentCategoryId: categoryId,
-        publish: true,
-        sortBy: 'subcategory_order',
-        sortOrder: 'asc',
-      );
-
-      this.subcategories = subcategories;
-      print(
-        '[MART CONTROLLER] ✅ Loaded ${subcategories.length} subcategories for category: $categoryId',
-      );
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading subcategories: $e');
-      errorMessage = 'Unable to load subcategories. Please try again later.';
-    } finally {
-      isSubcategoryLoading = false;
-    }
-  }
-
-  /// Load vendors with streaming updates
-  Future<void> _loadVendorsStreaming() async {
-    try {
-      print('[MART CONTROLLER] 🏪 Streaming: Loading vendors...');
-      // Load vendors
-      final vendors = await _firestoreService.getMartVendors();
-      if (vendors.isNotEmpty) {
-        martVendors.clear();
-        martVendors.addAll(vendors);
-        if (selectedVendorId.isEmpty) {
-          selectVendor(vendors.first.id!);
-          print(
-            '[MART CONTROLLER] 🎯 Streaming: Auto-selected first vendor: ${vendors.first.name}',
-          );
-
-          // Load additional data now that we have a vendor
-          await _loadAdditionalDataStreaming();
-        }
-
-        print(
-          '[MART CONTROLLER] ✅ Streaming: Vendors loaded (${vendors.length})',
-        );
-      } else {
-        print('[MART CONTROLLER] ⚠️ Streaming: No vendors found');
-        // Still try to load additional data with dummy vendor
-        await _loadAdditionalDataStreaming();
-      }
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Streaming: Error loading vendors: $e');
-      // Still try to load additional data
-      await _loadAdditionalDataStreaming();
-    }
-  }
-
-  /// Load additional data with streaming updates
-  Future<void> _loadAdditionalDataStreaming() async {
-    try {
-      print('[MART CONTROLLER] 📦 Streaming: Loading additional data...');
-
-      // Load items on sale if we have a vendor
-      if (selectedVendorId.isNotEmpty) {
-        await _loadItemsOnSaleStreaming();
-      }
-
-      print('[MART CONTROLLER] ✅ Streaming: Additional data loaded');
-    } catch (e) {
-      print(
-        '[MART CONTROLLER] ⚠️ Streaming: Error loading additional data: $e',
-      );
-    }
-  }
-
-  /// Load items on sale with streaming updates
-  Future<void> _loadItemsOnSaleStreaming() async {
-    try {
-      print('[MART CONTROLLER] 🏷️ Streaming: Loading items on sale...');
-
-      final items = await _firestoreService.getMartItems();
-
-      final saleItems = items.where((item) => item.isOnSale == true).toList();
-
-      // Stream the data as it becomes available
-      itemsOnSale.clear();
-      itemsOnSale.addAll(saleItems);
-      print(
-        '[MART CONTROLLER] ✅ Streaming: Items on sale loaded (${saleItems.length})',
-      );
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Streaming: Error loading items on sale: $e');
-    }
-  }
-
-  /// Manually trigger streaming data refresh
-  Future<void> refreshStreamingData() async {
-    try {
-      print('[MART CONTROLLER] 🔄 Manual streaming refresh triggered...');
-      await Future.wait([
-        loadHomepageCategoriesStreaming(limit: 24),
-        loadTrendingItemsStreaming(),
-        loadFeaturedItemsStreaming(),
-        loadCategoriesStreaming(),
-        _loadVendorsStreaming(),
-      ]);
-
-      print('[MART CONTROLLER] ✅ Manual streaming refresh completed');
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error in manual streaming refresh: $e');
-    }
-  }
-
-  // ==================== SIMILAR PRODUCTS STREAM ====================
-
-  /// Stream all products from mart_items collection (one-time fetch, no polling)
-  Stream<List<MartItemModel>> streamAllProducts({
-    String? excludeProductId,
-    bool? isAvailable,
-    int limit = 10,
-  }) {
-    try {
-      print('[MART CONTROLLER] 📡 Starting all products stream (one-time)');
-      if (excludeProductId != null) {
-        print('[MART CONTROLLER] 📡 Excluding product: $excludeProductId');
-      }
-      return _firestoreService.streamAllProducts(
-        excludeProductId: excludeProductId,
-        isAvailable: isAvailable,
-        limit: limit,
-      );
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating all products stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
-
-  /// Stream similar products by category (one-time fetch, lighter than full catalog)
-  Stream<List<MartItemModel>> streamSimilarProducts({
-    required String categoryId,
-    String? subcategoryId,
-    String? excludeProductId,
-    bool? isAvailable,
-    int limit = 10,
-  }) {
-    try {
-      print(
-        '[MART CONTROLLER] 📡 Starting similar products stream (one-time) - category: $categoryId',
-      );
-      return _firestoreService.streamSimilarProducts(
-        categoryId: categoryId,
-        subcategoryId: subcategoryId,
-        excludeProductId: excludeProductId,
-        isAvailable: isAvailable,
-        limit: limit,
-      );
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error creating similar products stream: $e');
-      return Stream<List<MartItemModel>>.empty();
-    }
-  }
-
-  // ==================== SECTION-SPECIFIC PRODUCT STREAMS ====================
-
-  // ==================== BANNER METHODS ====================
-
-  /// Handle banner tap based on redirect type
-
-  /// Fetch delivery settings from Firestore (DEPRECATED - Use settings/martDeliveryCharge instead)
+  // Future<List<MartBannerModel>> _fetchBannersFromApi() async {
+  //   try {
+  //     final response = await http.get(
+  //       Uri.parse('${AppConst.baseUrl}banners/top'),
+  //       headers: await getHeaders(),
+  //     );
+  //     if (response.statusCode != 200) return [];
+  //     final body = json.decode(response.body);
+  //     if (body['success'] != true) return [];
+  //     final customerZoneId = Constant.selectedZone?.id;
+  //     final list =
+  //         (body['data'] as List? ?? [])
+  //             .map(
+  //               (d) => MartBannerModel.fromJson(
+  //                 Map<String, dynamic>.from(d as Map),
+  //               ),
+  //             )
+  //             .where(
+  //               (b) =>
+  //                   b.zoneId == null ||
+  //                   b.zoneId!.isEmpty ||
+  //                   customerZoneId == null ||
+  //                   customerZoneId.isEmpty ||
+  //                   b.zoneId == customerZoneId,
+  //             )
+  //             .toList()
+  //           ..sort((a, b) => (a.setOrder ?? 0).compareTo(b.setOrder ?? 0));
+  //     return list;
+  //   } catch (e) {
+  //     debugPrint('[MART] banner api error: $e');
+  //     return [];
+  //   }
+  // }
+
+  // void startMartBannerTimer() {
+  //   _bannerTimer?.cancel();
+  //   _bannerTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+  //     if (!martTopBannerController.hasClients || martTopBanners.isEmpty) return;
+  //     try {
+  //       final next = (martTopBannerController.page?.round() ?? 0) + 1;
+  //       currentTopBannerPage.value = next % martTopBanners.length;
+  //       martTopBannerController.animateToPage(
+  //         next,
+  //         duration: const Duration(milliseconds: 500),
+  //         curve: Curves.easeInOut,
+  //       );
+  //     } catch (_) {
+  //       _bannerTimer?.cancel();
+  //     }
+  //   });
+  // }
+  //
+  // void stopMartBannerTimer() => _bannerTimer?.cancel();
+
+  // ── Delivery settings ─────────────────────────────────────────────────────────
   Future<void> fetchDeliverySettings() async {
     try {
-      print('[MART CONTROLLER] 🚚 Fetching delivery settings from API');
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}mobile/settings/mart-delivery-charge'),
         headers: await getHeaders(),
       );
       if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          final data = responseData['data'];
+        final body = json.decode(response.body);
+        if (body['success'] == true) {
+          final d = body['data'];
           deliverySettings = MartDeliverySettingsModel(
             freeDeliveryThreshold:
-                (data['item_total_threshold'] as num?)?.toDouble() ?? 299.0,
-            deliveryPromotionText: data['delivery_promotion_text'] ?? 'Daily',
-            isActive: data['is_active'] ?? true,
-            minOrderValue:
-                (data['min_order_value'] as num?)?.toDouble() ?? 99.0,
-            minOrderMessage:
-                data['min_order_message'] ?? 'Min Item value is ₹99',
+                (d['item_total_threshold'] as num?)?.toDouble() ?? 299.0,
+            deliveryPromotionText: d['delivery_promotion_text'] ?? 'Daily',
+            isActive: d['is_active'] ?? true,
+            minOrderValue: (d['min_order_value'] as num?)?.toDouble() ?? 99.0,
+            minOrderMessage: d['min_order_message'] ?? 'Min Item value is ₹99',
           );
-
-          print('[MART CONTROLLER] ✅ Delivery settings fetched successfully');
-        } else {
-          throw Exception("API returned unsuccessful response");
         }
-      } else {
-        throw Exception(
-          "Failed to fetch delivery settings: ${response.statusCode}",
-        );
       }
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error fetching delivery settings: $e');
-
-      // Fallback to default values
+    } catch (_) {
       deliverySettings = MartDeliverySettingsModel(
         freeDeliveryThreshold: 199.0,
         deliveryPromotionText: 'Daily',
@@ -1673,385 +2466,283 @@ class MartProvider extends ChangeNotifier {
     }
   }
 
-  /// Get formatted delivery message
-  String get deliveryMessage {
-    final threshold = deliverySettings?.freeDeliveryThreshold ?? 299.0;
-    return 'Spend ₹${threshold.toInt()} to unlock FREE delivery';
-  }
+  // ── Getters ───────────────────────────────────────────────────────────────────
+  String get currentVendorName => currentVendor?.displayName ?? 'All Marts';
 
-  /// Get delivery promotion text
-  String get deliveryPromotionText {
-    return deliverySettings?.deliveryPromotionText ?? 'daily';
-  }
+  String get currentCategoryName =>
+      currentCategory?.displayName ?? 'All Categories';
 
-  /// Check if delivery settings are active
-  bool get isDeliverySettingsActive {
-    return deliverySettings?.isActive ?? true;
-  }
+  String get deliveryMessage =>
+      'Spend ₹${(deliverySettings?.freeDeliveryThreshold ?? 299).toInt()} to unlock FREE delivery';
 
-  /// Get minimum order value for mart items
-  double get minOrderValue {
-    return deliverySettings?.minOrderValue ?? 99.0;
-  }
+  String get deliveryPromotionText =>
+      deliverySettings?.deliveryPromotionText ?? 'daily';
 
-  /// Check if minimum order is enabled
-  bool get isMinOrderEnabled {
-    return deliverySettings?.minOrderEnabled ?? true;
-  }
+  bool get isDeliverySettingsActive => deliverySettings?.isActive ?? true;
 
-  /// Get minimum order message
-  String get minOrderMessage {
-    return deliverySettings?.minOrderMessage ??
-        'Minimum order value is ₹99. Please add more items to your cart.';
-  }
+  double get minOrderValue => deliverySettings?.minOrderValue ?? 99.0;
 
-  /// Check if app is in maintenance mode
-  bool get isMaintenanceMode {
-    return deliverySettings?.maintenanceMode ?? false;
-  }
+  bool get isMinOrderEnabled => deliverySettings?.minOrderEnabled ?? true;
 
-  /// Get maintenance message
-  String get maintenanceMessage {
-    return deliverySettings?.maintenanceMessage ??
-        'App is under maintenance. Please try again later.';
-  }
+  String get minOrderMessage =>
+      deliverySettings?.minOrderMessage ?? 'Minimum order value is ₹99.';
 
-  // ==================== SECTIONS LOADING ====================
+  bool get isMaintenanceMode => deliverySettings?.maintenanceMode ?? false;
 
-  /// Load sections in true parallel (immediate and fast)
-  Future<void> _loadSectionsInParallel() async {
+  String get maintenanceMessage =>
+      deliverySettings?.maintenanceMessage ?? 'App is under maintenance.';
+
+  int get cartItemCount => cartItems.length;
+
+  double get cartTotal => cartItems.fold(0.0, (t, i) => t + i.currentPrice);
+
+  bool get hasMoreProducts => hasMoreItems;
+
+  int get totalItemsCount => _allProducts.length;
+
+  int get totalVendorsCount => martVendors.length;
+
+  int get totalCategoriesCount => martCategories.length;
+
+  // ── Subcategory helpers (used by category detail screen) ──────────────────────
+  // Future<void> loadSubcategoriesStreaming(String categoryId) async {
+  //   try {
+  //     isSubcategoryLoading = true;
+  //     subcategories = await _firestoreService.getSubcategoriesByParent(
+  //       parentCategoryId: categoryId,
+  //       publish: true,
+  //       sortBy: 'subcategory_order',
+  //       sortOrder: 'asc',
+  //     );
+  //   } catch (e) {
+  //     debugPrint('[MART] subcategories error: $e');
+  //   } finally {
+  //     isSubcategoryLoading = false;
+  //     notifyListeners();
+  //   }
+  // }
+
+  // Future<void> loadSubcategoriesForCategory(String categoryId) =>
+  //     loadSubcategoriesStreaming(categoryId);
+  //
+  // Future<void> loadAllHomepageSubcategories() async {
+  //   try {
+  //     isSubcategoryLoading = true;
+  //     subcategoriesMap.clear();
+  //     final all = await _firestoreService.getAllHomepageSubcategories();
+  //     for (final s in all) {
+  //       final pid = s.parentCategoryId ?? 'unknown';
+  //       subcategoriesMap.putIfAbsent(pid, () => []).add(s);
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[MART] all subcategories error: $e');
+  //   } finally {
+  //     isSubcategoryLoading = false;
+  //     notifyListeners();
+  //   }
+  // }
+  //
+  // void _groupAndAddSubcategories(List<MartSubcategoryModel> list) {
+  //   for (final s in list) {
+  //     final pid = s.parentCategoryId ?? 'unknown';
+  //     final bucket = subcategoriesMap.putIfAbsent(pid, () => []);
+  //     if (!bucket.any((e) => e.id == s.id)) bucket.add(s);
+  //   }
+  //   notifyListeners();
+  // }
+  //
+  // List<MartSubcategoryModel> get allHomepageSubcategories {
+  //   return subcategoriesMap.values.expand((l) => l).toList()..sort(
+  //     (a, b) => (a.subcategoryOrder ?? 0).compareTo(b.subcategoryOrder ?? 0),
+  //   );
+  // }
+  //
+  // List<MartSubcategoryModel> get homepageSubcategories =>
+  //     allHomepageSubcategories.where((s) => s.showInHomepage == true).toList();
+
+  // ── Product streams (used by detail/similar screens) ─────────────────────────
+  Stream<List<MartItemModel>> streamAllProducts({
+    String? excludeProductId,
+    bool? isAvailable,
+    int limit = 10,
+  }) {
     try {
-      print('[MART CONTROLLER] ==========================================');
-      print(
-        '[MART CONTROLLER] 📂 _loadSectionsInParallel() called - TRUE PARALLEL LOADING',
+      return _firestoreService.streamAllProducts(
+        excludeProductId: excludeProductId,
+        isAvailable: isAvailable,
+        limit: limit,
       );
-      print('[MART CONTROLLER] ==========================================');
-
-      // Start loading sections and products in parallel immediately
-      final sectionsFuture = _firestoreService.getUniqueSections();
-      // Get sections first
-      final sections = await sectionsFuture;
-      print(
-        '[MART CONTROLLER] 📂 Found ${sections.length} unique sections: $sections',
-      );
-      if (sections.isNotEmpty) {
-        // Clear and add sections immediately
-        availableSections.clear();
-        availableSections.addAll(sections);
-
-        // Safely trigger UI update
-        Future.microtask(() {
-          notifyListeners();
-        });
-
-        // Load products for ALL sections in parallel simultaneously
-        final productFutures = sections.map(
-          (section) => _loadProductsForSectionAsync(section),
-        );
-
-        // Don't wait for all products - let them load in background
-        Future.wait(productFutures)
-            .then((_) {
-              print(
-                '[MART CONTROLLER] ✅ All section products loaded in parallel: ${sections.length} sections',
-              );
-              // Trigger UI update when products are loaded
-              Future.microtask(() {
-                notifyListeners();
-              });
-            })
-            .catchError((e) {
-              print(
-                '[MART CONTROLLER] ❌ Error loading some section products: $e',
-              );
-            });
-
-        print(
-          '[MART CONTROLLER] ✅ Sections loaded immediately: ${sections.length} sections',
-        );
-      } else {
-        print('[MART CONTROLLER] ⚠️ No sections found');
-      }
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading sections in parallel: $e');
+    } catch (_) {
+      return const Stream.empty();
     }
   }
 
-  /// Load sections progressively (silent streaming - no loading state)
-  Future<void> _loadSectionsProgressively() async {
+  Stream<List<MartItemModel>> streamSimilarProducts({
+    required String categoryId,
+    String? subcategoryId,
+    String? excludeProductId,
+    bool? isAvailable,
+    int limit = 10,
+  }) {
     try {
-      print('[MART CONTROLLER] ==========================================');
-      print(
-        '[MART CONTROLLER] 📂 _loadSectionsProgressively() called - SILENT STREAMING',
+      return _firestoreService.streamSimilarProducts(
+        categoryId: categoryId,
+        subcategoryId: subcategoryId,
+        excludeProductId: excludeProductId,
+        isAvailable: isAvailable,
+        limit: limit,
       );
-      print('[MART CONTROLLER] ==========================================');
-
-      // Get all unique sections from mart_items collection
-      final sections = await _firestoreService.getUniqueSections();
-      print(
-        '[MART CONTROLLER] 📂 Found ${sections.length} unique sections: $sections',
-      );
-
-      if (sections.isNotEmpty) {
-        availableSections.clear();
-        availableSections.addAll(sections);
-
-        // Load products for each section in parallel (silent streaming)
-        final futures = sections.map(
-          (section) => _loadProductsForSectionAsync(section),
-        );
-        await Future.wait(futures);
-
-        print(
-          '[MART CONTROLLER] ✅ Sections loaded silently: ${sections.length} sections',
-        );
-      } else {
-        print('[MART CONTROLLER] ⚠️ No sections found');
-      }
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading sections silently: $e');
+    } catch (_) {
+      return const Stream.empty();
     }
   }
 
-  /// Load products for a specific section (async, non-blocking)
-  Future<void> _loadProductsForSectionAsync(String section) async {
-    try {
-      print('[MART CONTROLLER] 📂 Loading products for section: $section');
-
-      final products = await _firestoreService.getItemsBySection(
-        section: section,
-      );
-
-      sectionProducts[section] = products;
-      print(
-        '[MART CONTROLLER] ✅ Loaded ${products.length} products for section: $section',
-      );
-    } catch (e) {
-      print(
-        '[MART CONTROLLER] ❌ Error loading products for section $section: $e',
-      );
-      sectionProducts[section] = [];
-    }
-  }
-
-  /// Get products for a specific section
-  List<MartItemModel> getProductsForSection(String section) {
-    return sectionProducts[section] ?? [];
-  }
-
-  /// Stream products by brand ID
   Stream<List<MartItemModel>> streamProductsByBrand(String brandID) {
     try {
-      print('[MART CONTROLLER] 🔍 Streaming products for brand: $brandID');
-
-      return _firestoreService.streamItemsByBrand(brandID).map((products) {
-        print(
-          '[MART CONTROLLER] 📦 Received ${products.length} products for brand: $brandID',
-        );
-        return products;
-      });
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error streaming products by brand: $e');
-      return Stream<List<MartItemModel>>.empty();
+      return _firestoreService.streamItemsByBrand(brandID);
+    } catch (_) {
+      return const Stream.empty();
     }
   }
 
-  /// Load sections from Firebase (public method for manual refresh)
-  Future<void> loadSectionsFromFirebase() async {
-    await _loadSectionsProgressively();
-  }
-
-  /// Load sections immediately (true parallel loading - no loading state)
-  Future<void> loadSectionsImmediately() async {
+  // ── Item lookups ──────────────────────────────────────────────────────────────
+  Future<MartItemModel?> getItemById(String itemId) async {
     try {
-      // Prevent multiple loading attempts
-      if (_sectionsLoadingTriggered) {
-        print(
-          '[MART CONTROLLER] ⚠️ Sections loading already triggered, skipping...',
-        );
-        return;
-      }
-
-      _sectionsLoadingTriggered = true;
-      print('[MART CONTROLLER] 🚀 Loading sections in true parallel...');
-
-      // Use the new parallel loading method
-      await _loadSectionsInParallel();
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error loading sections in parallel: $e');
-      _sectionsLoadingTriggered = false; // Reset flag on error
+      return await _firestoreService.getItemById(itemId);
+    } catch (_) {
+      return null;
     }
   }
 
-  /// Force load sections (silent fallback method)
-  Future<void> forceLoadSections() async {
-    try {
-      print('[MART CONTROLLER] 🔄 Force loading sections silently...');
-      availableSections.clear();
-      sectionProducts.clear();
+  Future<MartItemModel?> getProductById(String id) => getItemById(id);
 
-      await loadSectionsImmediately();
-    } catch (e) {
-      print('[MART CONTROLLER] ❌ Error force loading sections: $e');
-    }
-  }
-
-  /// Test method to manually add some sections for debugging
-  void addTestSections() {
-    // Only add test sections if no sections are loaded yet
-    if (availableSections.isNotEmpty) {
-      print(
-        '[MART CONTROLLER] 🧪 Sections already loaded, skipping test sections',
-      );
-      return;
-    }
-
-    print('[MART CONTROLLER] 🧪 Adding test sections for debugging...');
-    availableSections.clear();
-    availableSections.addAll([
-      'Pet Care',
-      'General',
-      'Essentials & Daily Needs',
-    ]);
-    print(
-      '[MART CONTROLLER] 🧪 Test sections added: ${availableSections.length} sections',
-    );
-
-    // Use Future.microtask to safely trigger UI update
-    Future.microtask(() {
-      notifyListeners();
-    });
-  }
-
-  //////[MART SUB CATEGORY CONTROLLER]
-  // New pagination properties
-  final List<DocumentSnapshot> _lastDocuments = <DocumentSnapshot>[];
-  bool _hasMoreSubcategories = true;
-  int _currentPage = 0;
-
-  bool get hasMoreSubcategories => _hasMoreSubcategories;
-
-  int get currentPageAll => _currentPage;
-
-  int get loadedSubcategoriesCount {
-    int total = 0;
-    subcategoriesMap.forEach((key, value) {
-      total += value.length;
-    });
-    return total;
-  }
-
-  /// Load first page of homepage subcategories
-  Future<void> loadFirstPageHomepageSubcategories() async {
-    try {
-      print('[MART] 🔄 Loading first page of subcategories...');
-      _lastDocuments.clear();
-      _currentPage = 0;
-      _hasMoreSubcategories = true;
-      final result = await _firestoreService.getHomepageSubcategoriesPaginated(
-        limit: 10,
-      );
-      final subcategories =
-          result['subcategories'] as List<MartSubcategoryModel>;
-      final lastDoc = result['lastDocument'] as DocumentSnapshot?;
-
-      if (subcategories.isNotEmpty) {
-        _groupAndAddSubcategories(subcategories);
-
-        // 🔧 Store last document for pagination
-        if (lastDoc != null) _lastDocuments.add(lastDoc);
-
-        _currentPage = 1;
-        _hasMoreSubcategories = (subcategories.length == 10);
-
-        print('[MART] ✅ Loaded first ${subcategories.length} subcategories.');
-      } else {
-        _hasMoreSubcategories = false;
-        print('[MART] ⚠️ No subcategories found.');
-      }
-    } catch (e) {
-      print('[MART] ❌ Error loading first page: $e');
-    }
-  }
-
-  /// Load next page
-  Future<void> loadMoreHomepageSubcategories() async {
-    if (!_hasMoreSubcategories) {
-      print('[MART] ⚠️ No more pages left.');
-      return;
-    }
-
-    try {
-      print('[MART] 🔄 Loading page ${_currentPage + 1}...');
-
-      final result = await _firestoreService.getHomepageSubcategoriesPaginated(
-        limit: 10,
-      );
-
-      final nextPageSubcategories =
-          result['subcategories'] as List<MartSubcategoryModel>;
-      final lastDoc = result['lastDocument'] as DocumentSnapshot?;
-
-      if (nextPageSubcategories.isNotEmpty) {
-        _groupAndAddSubcategories(nextPageSubcategories);
-
-        // 🔧 Update last document for next page
-        if (lastDoc != null) _lastDocuments.add(lastDoc);
-
-        _currentPage += 1;
-        _hasMoreSubcategories = (nextPageSubcategories.length == 10);
-
-        print('[MART] ✅ Page ${_currentPage} loaded.');
-      } else {
-        _hasMoreSubcategories = false;
-        print('[MART] ⚠️ No more subcategories to load.');
-      }
-    } catch (e) {
-      print('[MART] ❌ Error loading next page: $e');
-    }
-  }
-
-  /// Grouping function (example)
-  void _groupAndAddSubcategories(List<MartSubcategoryModel> subcategories) {
-    for (final subcategory in subcategories) {
-      // Use the correct field from your model:
-      final parentId = subcategory.parentCategoryId ?? 'unknown';
-
-      // Ensure list exists for this parent
-      subcategoriesMap.putIfAbsent(parentId, () => <MartSubcategoryModel>[]);
-      // Avoid duplicates (by id)
-      final exists = subcategoriesMap[parentId]!.any(
-        (existing) => existing.id == subcategory.id,
-      );
-      if (!exists) {
-        subcategoriesMap[parentId]!.add(subcategory);
-      }
-    }
-    // If subcategoriesMap is an RxMap, force update
+  void removeFromCart(String itemId) {
+    cartItems.removeWhere((i) => i.id == itemId);
     notifyListeners();
   }
 
-  /// Get all homepage subcategories from the map (for UI display)
-  List<MartSubcategoryModel> get allHomepageSubcategories {
-    final allSubcategories = <MartSubcategoryModel>[];
-    subcategoriesMap.forEach((parentId, subcategoryList) {
-      allSubcategories.addAll(subcategoryList);
-    });
+  // ── Search ────────────────────────────────────────────────────────────────────
+  Timer? _searchDebouncer;
 
-    // Sort by order to maintain consistency
-    allSubcategories.sort(
-      (a, b) => (a.subcategoryOrder ?? 0).compareTo(b.subcategoryOrder ?? 0),
+  List<MartItemModel> get filteredItemsSearch => searchQuery.isEmpty
+      ? _allProducts
+      : _allProducts
+            .where(
+              (p) => p.name.toLowerCase().contains(searchQuery.toLowerCase()),
+            )
+            .toList();
+
+  void updateSearchQuery(String query) {
+    searchQuery = query;
+    _searchDebouncer?.cancel();
+    _searchDebouncer = Timer(
+      const Duration(milliseconds: 400),
+      notifyListeners,
     );
-
-    return allSubcategories;
   }
 
-  /// Get homepage subcategories filtered by show_in_homepage flag
-  List<MartSubcategoryModel> get homepageSubcategories {
-    return allHomepageSubcategories
-        .where((subcategory) => subcategory.showInHomepage == true)
-        .toList();
+  void clearSearch() {
+    searchQuery = '';
+    notifyListeners();
   }
 
-  // Keep your existing method for backward compatibility, but mark as deprecated
+  // ── Lifecycle ─────────────────────────────────────────────────────────────────
+  // void onClose() {
+  //   _searchDebouncer?.cancel();
+  //   _bannerTimer?.cancel();
+  //   try {
+  //     if (martTopBannerController.hasClients) martTopBannerController.dispose();
+  //     if (martBottomBannerController.hasClients)
+  //       martBottomBannerController.dispose();
+  //   } catch (_) {}
+  // }
+
+  // ── Pagination subcategory (kept for category detail screen) ──────────────────
+  final List<DocumentSnapshot> _lastDocuments = [];
+  bool _hasMoreSubcategories = true;
+  int _subPage = 0;
+
+  bool get hasMoreSubcategories => _hasMoreSubcategories;
+
+  int get currentPageAll => _subPage;
+
+  int get loadedSubcategoriesCount =>
+      subcategoriesMap.values.fold(0, (t, l) => t + l.length);
+
+  // Future<void> loadFirstPageHomepageSubcategories() async {
+  //   try {
+  //     _lastDocuments.clear();
+  //     _subPage = 0;
+  //     _hasMoreSubcategories = true;
+  //     final result = await _firestoreService.getHomepageSubcategoriesPaginated(
+  //       limit: 10,
+  //     );
+  //     final list = result['subcategories'] as List<MartSubcategoryModel>;
+  //     final last = result['lastDocument'] as DocumentSnapshot?;
+  //     if (list.isNotEmpty) {
+  //       _groupAndAddSubcategories(list);
+  //       if (last != null) _lastDocuments.add(last);
+  //       _subPage = 1;
+  //       _hasMoreSubcategories = list.length == 10;
+  //     } else {
+  //       _hasMoreSubcategories = false;
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[MART] subcat page 1 error: $e');
+  //   }
+  // }
+  //
+  // Future<void> loadMoreHomepageSubcategories() async {
+  //   if (!_hasMoreSubcategories) return;
+  //   try {
+  //     final result = await _firestoreService.getHomepageSubcategoriesPaginated(
+  //       limit: 10,
+  //     );
+  //     final list = result['subcategories'] as List<MartSubcategoryModel>;
+  //     final last = result['lastDocument'] as DocumentSnapshot?;
+  //     if (list.isNotEmpty) {
+  //       _groupAndAddSubcategories(list);
+  //       if (last != null) _lastDocuments.add(last);
+  //       _subPage++;
+  //       _hasMoreSubcategories = list.length == 10;
+  //     } else {
+  //       _hasMoreSubcategories = false;
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[MART] subcat next page error: $e');
+  //   }
+  // }
+
+  // ── Stubs kept for compatibility with other screens ───────────────────────────
+  Future<void> loadMartVendors({bool refresh = false}) => _loadVendors();
+
+  Future<void> loadFeaturedCategories() => _loadCategories();
+
+  Future<void> loadHomepageCategoriesStreaming({int limit = 24}) =>
+      _loadCategories();
+
+  Future<void> loadCategoryProductsForSections() => _loadProductsPage0();
+
+  Future<void> loadSectionsImmediately() async {}
+
+  Future<void> loadMoreProducts() => loadNextPage();
+
+  Future<void> loadMoreItems() => loadNextPage();
+  List<String> availableSections = [];
+  Map<String, List<MartItemModel>> sectionProducts = {};
+
+  List<MartItemModel> getProductsForSection(String s) =>
+      sectionProducts[s] ?? [];
+
+  void selectVendor(String vendorId) {
+    selectedVendorId = vendorId;
+    currentVendor = martVendors.firstWhereOrNull((v) => v.id == vendorId);
+  }
+
+  void selectCategory(String categoryId) {
+    selectedCategoryId = categoryId;
+    currentCategory = martCategories.firstWhereOrNull(
+      (c) => c.id == categoryId,
+    );
+  }
 }

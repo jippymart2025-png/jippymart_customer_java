@@ -36,10 +36,10 @@ class MartNavigationScreen extends StatelessWidget {
               child: Scaffold(
                 backgroundColor: const Color(0xFFF6F6FF),
                 body: IndexedStack(
-                  index: navController.selectedIndex,
+                  index: navController.currentPageIndex,
                   children: navController.pageList,
                 ),
-                bottomNavigationBar: navController.selectedIndex != 2
+                bottomNavigationBar: navController.selectedIndex != 3
                     ? _buildEnhancedNavigationBar(navController)
                     : const SizedBox.shrink(),
               ),
@@ -64,13 +64,13 @@ class MartNavigationScreen extends StatelessWidget {
               index: 0,
               controller: controller,
             ),
-            _buildEnhancedNavItem(
-              icon: ImageConst.categoriesOne,
-              activeIcon: ImageConst.categoriesOne,
-              label: 'Categories',
-              index: 1,
-              controller: controller,
-            ),
+            // _buildEnhancedNavItem(
+            //   icon: ImageConst.categoriesOne,
+            //   activeIcon: ImageConst.categoriesOne,
+            //   label: 'Categories',
+            //   index: 1,
+            //   controller: controller,
+            // ),
             _buildEnhancedNavItem(
               icon: ImageConst.cartOne,
               activeIcon: ImageConst.cartOne,

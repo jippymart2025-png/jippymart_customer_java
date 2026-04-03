@@ -6,7 +6,7 @@ import 'package:jippymart_customer/widget/animated_search_hint.dart';
 
 Widget homeSearchWidget() {
   return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 16),
+    padding: const EdgeInsets.symmetric(horizontal: 161),
     child: InkWell(
       onTap: () {
         Get.to(() => const MartSearchScreen());

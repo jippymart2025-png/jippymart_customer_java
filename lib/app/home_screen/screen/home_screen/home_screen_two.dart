@@ -7,6 +7,7 @@ import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/pr
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart'
     show BestRestaurantProvider;
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/banner_view_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/bottom_banner_view_widget.dart';
@@ -170,7 +171,7 @@ class HomeScreenTwo extends StatelessWidget {
             child: Column(
               children: [
                 _buildBannerSection(controller),
-                _buildCategoryViewSection(controller),
+                _buildCategoryViewSection(context),
                 const SizedBox(height: 5),
                 // _buildDealsBanner(context),
                 const BestRestaurantsSection(restaurantList: []),
@@ -195,13 +196,16 @@ class HomeScreenTwo extends StatelessWidget {
           );
   }
 
-  Widget _buildCategoryViewSection(HomeProvider controller) {
-    return controller.bannerModel.isEmpty
-        ? const SizedBox()
-        : Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: CategoryView(),
-          );
+  Widget _buildCategoryViewSection(BuildContext context) {
+    final categoryViewProvider = context.watch<CategoryViewProvider>();
+    if (categoryViewProvider.vendorCategoryModel.isEmpty) {
+      return const SizedBox();
+    }
+
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 16),
+      child: CategoryView(),
+    );
   }
 
   Widget _buildAdvertisementSection(

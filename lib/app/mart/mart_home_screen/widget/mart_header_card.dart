@@ -24,20 +24,19 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
       Get.back();
     }
   }
+
   void _selectMart() {
     print('JippyMart button tapped!');
     // Already in mart screen, so just stay here
     // Could add some visual feedback if needed
   }
 
-
-
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity, // Use full width instead of fixed 412
-      height: 180, // Back to original height - only toggle and address
-      color:   Colors.transparent,
+      height: 150, // Back to original height - only toggle and address
+      color: Colors.transparent,
 
       child: Padding(
         padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
@@ -70,16 +69,17 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
                         child: Container(
                           margin: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: const Color(
-                                0xFFFAF9EE), // Jippy Food is not selected in mart screen
+                            color: const Color(0xFFFAF9EE),
+                            // Jippy Food is not selected in mart screen
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: const Center(
                             child: Text(
                               'FOOD',
                               style: TextStyle(
-                                color:
-                                Color(0xFF666666), // Consistent grey color
+                                color: Color(
+                                  0xFF666666,
+                                ), // Consistent grey color
                                 fontWeight: FontWeight.w600,
                                 fontSize: 14,
                               ),
@@ -129,7 +129,7 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
                     Container(
                       width: 40,
                       height: 40,
-                      decoration:  BoxDecoration(
+                      decoration: BoxDecoration(
                         color: ColorConst.orangeLight,
                         shape: BoxShape.circle,
                       ),
@@ -155,26 +155,27 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
                         children: [
                           Text(
                             'Delivery to ${Constant.selectedLocation.addressAs ?? 'Current Location'}',
-                            style:  TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
-                              height:
-                              1.2, // Reduced from 20/16 to 1.2 to save space
-                              color:ColorConst.white,
+                              height: 1.2,
+                              // Reduced from 20/16 to 1.2 to save space
+                              color: ColorConst.white,
                             ),
                           ),
                           const SizedBox(
-                              height: 1), // Reduced from 2 to 1 to save space
+                            height: 1,
+                          ), // Reduced from 2 to 1 to save space
                           Text(
                             Constant.selectedLocation.getFullAddress(),
-                            style:  TextStyle(
+                            style: TextStyle(
                               fontFamily: 'Montserrat',
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              height:
-                              1.2, // Reduced from 15/12 to 1.2 to save space
-                              color:ColorConst.white,
+                              height: 1.2,
+                              // Reduced from 15/12 to 1.2 to save space
+                              color: ColorConst.white,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -193,6 +194,7 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
     );
   }
 }
+
 String _getUserInitials() {
   final userModel = Constant.userModel;
   if (userModel == null) return 'U';

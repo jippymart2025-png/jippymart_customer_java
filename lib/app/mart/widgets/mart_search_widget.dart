@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/mart/provider/mart_search_provider.dart';
@@ -35,6 +36,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
   late final MartSearchProvider searchController;
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  Timer? _searchDebounce;
 
   // Real-time trending searches data
   List<Map<String, dynamic>> _trendingSearches = <Map<String, dynamic>>[];
@@ -457,16 +459,27 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
     _textController.removeListener(_onSearchChanged);
     _textController.dispose();
     _focusNode.dispose();
+    _searchDebounce?.cancel();
     super.dispose();
   }
 
   void _onSearchChanged() {
     final query = _textController.text.trim();
-    if (query.isNotEmpty) {
-      searchController.searchAll(query);
-    } else {
+    // Wait for the user to finish typing before firing search.
+    _searchDebounce?.cancel();
+
+    if (query.isEmpty) {
       searchController.clearResults();
+      return;
     }
+
+    _searchDebounce = Timer(const Duration(seconds: 2), () {
+      if (!mounted) return;
+      // Avoid firing outdated queries if the user keeps typing.
+      if (_textController.text.trim() == query) {
+        searchController.searchAll(query);
+      }
+    });
   }
 
   void _onCategoryTap(
@@ -566,6 +579,7 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
         ),
         onSubmitted: (value) {
           if (value.trim().isNotEmpty) {
+            _searchDebounce?.cancel();
             searchController.searchAll(value.trim());
           }
         },
@@ -706,12 +720,12 @@ class _MartSearchWidgetState extends State<MartSearchWidget> {
           // const SizedBox(height: 24),
 
           // Trending searches
-          _buildTrendingSearches(),
+          // _buildTrendingSearches(),
           const SizedBox(height: 24),
 
           // Popular categories
-          _buildPopularCategories(),
-          const SizedBox(height: 24),
+          // _buildPopularCategories(),
+          // const SizedBox(height: 24),
 
           // Search history
           if (widget.showHistory) _buildSearchHistory(),

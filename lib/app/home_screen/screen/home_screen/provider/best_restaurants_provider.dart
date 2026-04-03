@@ -57,10 +57,10 @@ class BestRestaurantProvider extends ChangeNotifier {
         )
         .toList();
     filteredRestaurantList = filtered;
-    if (filtered.length <= 9) {
+    if (filtered.length <= 12) {
       displayList = filtered;
     } else {
-      displayList = filtered.sublist(0, 9);
+      displayList = filtered.sublist(0, 12);
     }
   }
 

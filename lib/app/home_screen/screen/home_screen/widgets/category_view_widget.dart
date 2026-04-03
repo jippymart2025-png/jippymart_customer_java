@@ -90,14 +90,14 @@ class CategoryView extends StatelessWidget {
                             ),
                           ],
                         ),
-                        Text(
-                          "Best Serving Food".tr,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontFamily: AppThemeData.montserrat,
-                            // fontWeight: FontWeight.w800,
-                          ),
-                        ),
+                        // Text(
+                        //   "Best Serving Food".tr,
+                        //   style: TextStyle(
+                        //     fontSize: 16,
+                        //     fontFamily: AppThemeData.montserrat,
+                        //     // fontWeight: FontWeight.w800,
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
