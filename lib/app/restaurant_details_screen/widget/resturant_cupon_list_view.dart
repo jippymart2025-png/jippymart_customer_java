@@ -34,11 +34,11 @@ class CouponListView extends StatelessWidget {
         final cardWidth =
             (available *
                     (available < 480
-                        ? 0.62
+                        ? 0.12
                         : available < 840
-                        ? 0.45
-                        : 0.35))
-                .clamp(200.0, 320.0);
+                        ? 0.15
+                        : 0.15))
+                .clamp(150.0, 250.0);
 
         // Card height scales with width but stays within a tight range
         final cardHeight = (cardWidth * 0.29).clamp(68.0, 88.0);
@@ -129,7 +129,7 @@ class _CouponCard extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppThemeData.grey100, width: 1),
+                border: Border.all(color: AppThemeData.primary600, width: 1),
               ),
               padding: EdgeInsets.symmetric(
                 horizontal: (cardWidth * 0.04).clamp(6.0, 12.0),
@@ -187,25 +187,12 @@ class _DiscountBadge extends StatelessWidget {
       width: gifSize,
       height: gifSize,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage("assets/images/offer_gif.gif"),
-            fit: BoxFit.fill,
-          ),
-        ),
+        decoration: const BoxDecoration(),
         child: Center(
-          child: Text(
-            coupon.discountType == "Fix Price"
-                ? Constant.amountShow(amount: coupon.discount.toString())
-                : "${coupon.discount}%",
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppThemeData.grey50,
-              fontFamily: AppThemeData.semiBold,
-              fontWeight: FontWeight.w600,
-              fontSize: labelSize,
-              height: 1.1,
-            ),
+          child: Icon(
+            Icons.percent_sharp,
+            size: labelSize * 2, // make it bigger
+            color: AppThemeData.primary600,
           ),
         ),
       ),

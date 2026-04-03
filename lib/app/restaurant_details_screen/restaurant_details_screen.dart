@@ -251,7 +251,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
       floating: false,
       pinned: true,
       automaticallyImplyLeading: false,
-      backgroundColor: AppThemeData.primary300,
+      backgroundColor: Color(0xFFff5201),
       // Show elevation once user has scrolled past the header card
       elevation: _showStickySearch ? 0 : 0,
       // handled by sticky delegate shadow
@@ -336,7 +336,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
         key: _headerCardKey,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: AppThemeData.primary300,
+          color: Color(0xFFff5201),
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(28),
             bottomRight: Radius.circular(28),
@@ -350,21 +350,36 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
           ],
         ),
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _RestaurantHeader(
-              controller: controller,
-              disableHero: widget.disableHero,
-            ),
-            const SizedBox(height: 12),
-            _StatusTimingRow(controller: controller),
-            if (controller.couponList.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _CouponsSection(controller: controller),
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: AppThemeData.grey50,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
             ],
-            const SizedBox(height: 4),
-          ],
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _RestaurantHeader(
+                controller: controller,
+                disableHero: widget.disableHero,
+              ),
+              const SizedBox(height: 12),
+              _StatusTimingRow(controller: controller),
+              if (controller.couponList.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _CouponsSection(controller: controller),
+              ],
+              const SizedBox(height: 4),
+            ],
+          ),
         ),
       ),
     );
@@ -620,10 +635,10 @@ class _RestaurantHeader extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 22,
-                    fontFamily: AppThemeData.semiBold,
+                    fontSize: 17,
+                    fontFamily: AppThemeData.bold,
                     fontWeight: FontWeight.w600,
-                    color: Colors.white,
+                    color: AppThemeData.grey900,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -631,7 +646,11 @@ class _RestaurantHeader extends StatelessWidget {
                   width: Responsive.width(78, context),
                   child: Row(
                     children: [
-                      Icon(Icons.location_on, color: Colors.white70, size: 16),
+                      const Icon(
+                        Icons.location_on,
+                        color: AppThemeData.grey500,
+                        size: 14,
+                      ),
                       const SizedBox(width: 4),
 
                       Expanded(
@@ -639,10 +658,10 @@ class _RestaurantHeader extends StatelessWidget {
                           (Constant.selectedZone?.name?.isNotEmpty == true)
                               ? "${Constant.selectedZone!.name}, Locality"
                               : "Select Zone",
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontFamily: AppThemeData.medium,
                             fontWeight: FontWeight.w500,
-                            color: Colors.white.withOpacity(0.75),
+                            color: AppThemeData.grey600,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -679,7 +698,7 @@ class _RatingSection extends StatelessWidget {
       children: [
         Container(
           decoration: ShapeDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: AppThemeData.primary50,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(120),
             ),
@@ -689,8 +708,8 @@ class _RatingSection extends StatelessWidget {
             children: [
               SvgPicture.asset(
                 "assets/icons/ic_star.svg",
-                colorFilter: const ColorFilter.mode(
-                  Colors.white,
+                colorFilter: ColorFilter.mode(
+                  AppThemeData.primary300,
                   BlendMode.srcIn,
                 ),
               ),
@@ -704,7 +723,7 @@ class _RatingSection extends StatelessWidget {
                       controller.vendorModel.reviewsSum?.toString() ?? "0",
                 ),
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppThemeData.grey900,
                   fontFamily: AppThemeData.semiBold,
                   fontWeight: FontWeight.w600,
                 ),
@@ -722,10 +741,10 @@ class _RatingSection extends StatelessWidget {
             },
             child: Text(
               "${controller.vendorModel.reviewsCount ?? 0} ${'Ratings'.tr}",
-              style: TextStyle(
+              style: const TextStyle(
                 decoration: TextDecoration.underline,
-                decorationColor: Colors.white.withOpacity(0.7),
-                color: Colors.white.withOpacity(0.85),
+                decorationColor: AppThemeData.grey500,
+                color: AppThemeData.grey600,
                 fontFamily: AppThemeData.regular,
               ),
             ),
@@ -749,63 +768,68 @@ class _StatusTimingRow extends StatelessWidget {
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: AppThemeData.grey100,
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withOpacity(0.3)),
+            border: Border.all(color: AppThemeData.grey200),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(statusInfo['statusIcon'], color: Colors.white, size: 16),
+              Icon(
+                statusInfo['statusIcon'],
+                color: AppThemeData.grey800,
+                size: 16,
+              ),
               const SizedBox(width: 6),
               Text(
                 statusInfo['statusText'],
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: AppThemeData.grey900,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ],
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Icon(
-            Icons.circle,
-            size: 5,
-            color: Colors.white.withOpacity(0.5),
-          ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 6),
+          child: Icon(Icons.circle, size: 5, color: AppThemeData.grey400),
         ),
-        Text(
-          Constant.getDeliveryTimeText(controller.vendorModel),
-          style: const TextStyle(
-            fontSize: 14,
-            fontFamily: AppThemeData.semiBold,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
-          child: Icon(
-            Icons.circle,
-            size: 5,
-            color: Colors.white.withOpacity(0.5),
-          ),
-        ),
-        InkWell(
-          onTap: () => _handleViewTimings(context),
+        Expanded(
           child: Text(
-            "View Timings".tr,
-            style: TextStyle(
+            Constant.getDeliveryTimeText(controller.vendorModel),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
               fontSize: 14,
-              decoration: TextDecoration.underline,
-              decorationColor: Colors.white.withOpacity(0.8),
               fontFamily: AppThemeData.semiBold,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: AppThemeData.grey900,
+            ),
+          ),
+        ),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 6),
+          child: Icon(Icons.circle, size: 5, color: AppThemeData.grey400),
+        ),
+        Flexible(
+          child: InkWell(
+            onTap: () => _handleViewTimings(context),
+            child: Text(
+              "View Timings".tr,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 14,
+                decoration: TextDecoration.underline,
+                decorationColor: AppThemeData.primary300,
+                fontFamily: AppThemeData.semiBold,
+                fontWeight: FontWeight.w600,
+                color: AppThemeData.primary300,
+              ),
             ),
           ),
         ),
@@ -833,16 +857,15 @@ class _CouponsSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Additional Offers",
-          style: TextStyle(
-            fontSize: 16,
-            fontFamily: AppThemeData.semiBold,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        const SizedBox(height: 10),
+        // const Text(
+        //   "Additional Offers",
+        //   style: TextStyle(
+        //     fontSize: 16,
+        //     fontFamily: AppThemeData.semiBold,
+        //     fontWeight: FontWeight.w600,
+        //     color: AppThemeData.grey900,
+        //   ),
+        // ),
         CouponListView(controller: controller),
       ],
     );

@@ -157,15 +157,21 @@ class CartProvider with ChangeNotifier {
         _cartItems.add(product);
       } else {
         if (isMartItem && cartHasFoodItems) {
-          ShowToastDialog.showToast(
-            "You can't add mart items when you have food items in cart".tr,
+          _showMartFoodReplaceDialog(
+            context,
+            product,
+            quantity,
+            isAddingMartItem: true,
           );
         } else if (!isMartItem && cartHasFoodItems) {
           _showRestaurantConflictDialog(context, product, quantity);
           return false;
         } else {
-          ShowToastDialog.showToast(
-            "You can't add food items when you have mart items in cart".tr,
+          _showMartFoodReplaceDialog(
+            context,
+            product,
+            quantity,
+            isAddingMartItem: false,
           );
         }
         return false;
@@ -387,6 +393,50 @@ class CartProvider with ChangeNotifier {
           },
           negativeClick: () {
             Get.back(); // Close dialog
+          },
+          img: null,
+        );
+      },
+    );
+  }
+
+  /// Mart vs food cart: offer to clear cart and add the new item (like restaurant replace).
+  void _showMartFoodReplaceDialog(
+    BuildContext context,
+    CartProductModel product,
+    int quantity, {
+    required bool isAddingMartItem,
+  }) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return CustomDialogBox(
+          title: isAddingMartItem
+              ? "Food items in cart".tr
+              : "Mart items in cart".tr,
+          descriptions: isAddingMartItem
+              ? "You have food items in your cart. Do you want to replace them with items from the mart?"
+                  .tr
+              : "You have mart items in your cart. Do you want to replace them with food from this restaurant?"
+                  .tr,
+          positiveString: "Replace".tr,
+          negativeString: "Cancel".tr,
+          positiveClick: () async {
+            await DatabaseHelper.instance.deleteAllCartProducts();
+            _cartItems.clear();
+            product.quantity = quantity;
+            await DatabaseHelper.instance.insertCartProduct(product);
+            _cartItems.add(product);
+            await initCart();
+            Get.back();
+            ShowToastDialog.showToast(
+              isAddingMartItem
+                  ? "Cart updated with mart items".tr
+                  : "Cart updated with food items".tr,
+            );
+          },
+          negativeClick: () {
+            Get.back();
           },
           img: null,
         );

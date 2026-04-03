@@ -530,7 +530,7 @@ class _CartScreenState extends State<CartScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.green.withOpacity(1),
+        color: Colors.green.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -635,7 +635,7 @@ class _CartScreenState extends State<CartScreen> {
               if (!couponDisabled)
                 Icon(
                   Icons.keyboard_arrow_right_rounded,
-                  color: AppThemeData.grey400,
+                  color: AppThemeData.homeScreenBackground,
                   size: 22,
                 ),
             ],
