@@ -1,23 +1,24 @@
 import 'dart:async';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:jippymart_customer/core/riverpod/global_settings_notifier.dart';
 import 'package:jippymart_customer/app/home_screen/provider/global_settings_provider.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
-import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
 import 'package:jippymart_customer/app/auth_screen/phone_number_screen.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as prv;
 import 'package:get/get.dart';
 import 'package:geolocator/geolocator.dart';
 
-class VideoSplashScreen extends StatefulWidget {
+class VideoSplashScreen extends ConsumerStatefulWidget {
   const VideoSplashScreen({super.key});
 
   @override
-  State<VideoSplashScreen> createState() => _VideoSplashScreenState();
+  ConsumerState<VideoSplashScreen> createState() => _VideoSplashScreenState();
 }
 
-class _VideoSplashScreenState extends State<VideoSplashScreen> {
+class _VideoSplashScreenState extends ConsumerState<VideoSplashScreen> {
   late SplashProvider splashProvider;
   late GlobalSettingsProvider globalSettingsProvider;
   Timer? _timeoutTimer;
@@ -26,11 +27,8 @@ class _VideoSplashScreenState extends State<VideoSplashScreen> {
   @override
   void initState() {
     super.initState();
-    splashProvider = Provider.of<SplashProvider>(context, listen: false);
-    globalSettingsProvider = Provider.of<GlobalSettingsProvider>(
-      context,
-      listen: false,
-    );
+    splashProvider = prv.Provider.of<SplashProvider>(context, listen: false);
+    globalSettingsProvider = ref.read(globalSettingsNotifierProvider);
     
     // Start initialization
     splashProvider.initFunction(context);

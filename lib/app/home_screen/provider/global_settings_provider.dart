@@ -29,7 +29,6 @@ class GlobalSettingsProvider extends ChangeNotifier {
   getSettings(BuildContext context) async {
     try {
       // First, load from local storage so we have valid senderId/API key even if API fails
-      ();
       _loadNotificationSettingsFromLocalStorage();
 
       final response = await SafeHttpClient.safeGet(

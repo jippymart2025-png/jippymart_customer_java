@@ -3,6 +3,7 @@ import 'package:jippymart_customer/app/cart_screen/widget/cart_build_delivery_ui
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/utils/currency_display.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/widget/my_separator.dart';
 import 'package:flutter/material.dart';
@@ -152,8 +153,12 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: AppThemeData.grey50,
+                  color: AppThemeData.primary50,
                   borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: AppThemeData.primary300.withValues(alpha: 0.35),
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -167,14 +172,24 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                         ),
                       ),
                     ),
-                    Text(
-                      Constant.amountShow(
-                        amount: controller.totalAmount.toString(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
                       ),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontFamily: AppThemeData.semiBold,
-                        color: AppThemeData.grey900,
+                      decoration: BoxDecoration(
+                        color: AppThemeData.primary300.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        payableAmountDisplay(controller.totalAmount),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontFamily: AppThemeData.bold,
+                          fontWeight: FontWeight.w800,
+                          color: AppThemeData.primary300,
+                          letterSpacing: 0.2,
+                        ),
                       ),
                     ),
                   ],

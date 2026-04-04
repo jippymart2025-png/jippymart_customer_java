@@ -35,7 +35,7 @@ import 'package:get/get.dart';
 import 'package:uuid/uuid.dart';
 import 'package:video_compress/video_compress.dart';
 import 'package:http/http.dart' as http;
-import 'package:jippymart_customer/utils/safe_http_client.dart';
+import 'package:jippymart_customer/data/repositories/chat_repository.dart';
 import 'package:jippymart_customer/services/api_queue_manager.dart';
 
 /// Current product price info from Firestore (for reorder with live prices)
@@ -121,37 +121,16 @@ class FireStoreUtils {
   backendUserId; // Set this from LoginController after OTP verification
   static bool get isDatabaseHealthy => _isDatabaseHealthy;
 
-  // Add this method to your FireStoreUtils class
   static Future<Map<String, dynamic>> getChatMessages({
     required String orderId,
     required String chatType,
     required int page,
-  }) async {
-    try {
-      final response = await SafeHttpClient.safeGet(
-        Uri.parse(
-          '${AppConst.baseUrl}chat/$orderId/messages?chat_type=$chatType&page=$page',
-        ),
-        headers: await getHeaders(),
-        timeout: const Duration(seconds: 15),
-      );
-
-      if (response == null) {
-        throw SocketException('No internet connection');
-      }
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Failed to load messages');
-      }
-    } on SocketException {
-      throw Exception(
-        'No internet connection. Please check your network and try again.',
-      );
-    } catch (e) {
-      throw Exception('Failed to load messages: $e');
-    }
+  }) {
+    return const ChatRepository().getChatMessages(
+      orderId: orderId,
+      chatType: chatType,
+      page: page,
+    );
   }
 
   static Future getPaymentSettingsData() async {

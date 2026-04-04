@@ -61,13 +61,14 @@ class HomeScreenTwo extends StatelessWidget {
             systemStatusBarContrastEnforced: false,
           ),
           child: Scaffold(
+            backgroundColor: Colors.white,
             body: Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(ImageConst.backgroundImage),
-                  fit: BoxFit.cover,
-                ),
-              ),
+              // decoration: BoxDecoration(
+              //   image: DecorationImage(
+              //     image: AssetImage(ImageConst.backgroundImage),
+              //     fit: BoxFit.cover,
+              //   ),
+              // ),
               child: RefreshIndicator(
                 onRefresh: () async {
                   await controller.getRefresh(context);
@@ -159,27 +160,49 @@ class HomeScreenTwo extends StatelessWidget {
   }
 
   Widget _buildMainContent(HomeProvider controller, BuildContext context) {
+    const Color mainFeedBackground = Colors.white;
+    final Color headerStripBackground = const Color(0xFFFFF3E0);
     return Column(
       children: [
-        HomeHeaderWidget(
-          key: ValueKey(Constant.selectedZone?.id ?? 'nozone'),
-          homeProvider: controller,
-          context: context,
+        // Header Section
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: headerStripBackground,
+            border: Border(
+              bottom: BorderSide(color: AppThemeData.grey100, width: 1),
+            ),
+          ),
+          child: HomeHeaderWidget(
+            key: ValueKey(Constant.selectedZone?.id ?? 'nozone'),
+            homeProvider: controller,
+            context: context,
+          ),
         ),
+
+        // Main Scrollable Content
         Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                _buildBannerSection(controller),
-                _buildCategoryViewSection(context),
-                const SizedBox(height: 5),
-                // _buildDealsBanner(context),
-                const BestRestaurantsSection(restaurantList: []),
-                _buildAdvertisementSection(controller, context),
-                _buildBottomBannerSection(controller),
-                const SizedBox(height: 10),
-                _buildAllRestaurantsSection(context),
-              ],
+          child: ColoredBox(
+            color: mainFeedBackground,
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(), // smoother scroll
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildBannerSection(controller),
+                  _buildCategoryViewSection(context),
+
+                  const SizedBox(height: 5),
+
+                  const BestRestaurantsSection(restaurantList: []),
+
+                  _buildAdvertisementSection(controller, context),
+                  _buildBottomBannerSection(controller),
+
+                  const SizedBox(height: 10),
+
+                  _buildAllRestaurantsSection(context),
+                ],
+              ),
             ),
           ),
         ),
@@ -999,7 +1022,7 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
     final vendorModel = _cachedVendor!;
     return Container(
       decoration: ShapeDecoration(
-        color: AppThemeData.primary50,
+        color: AppThemeData.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(120)),
       ),
       child: Padding(

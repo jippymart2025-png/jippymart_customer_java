@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provider/signup_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
-import 'package:jippymart_customer/app/home_screen/provider/global_settings_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/restaurant_list_screen/provider/restaurant_list_provider.dart';
 import 'package:jippymart_customer/config/smartlook_config.dart';
@@ -15,6 +14,7 @@ import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/final_deep_link_service.dart';
 import 'package:jippymart_customer/services/global_deeplink_handler.dart';
 import 'package:jippymart_customer/services/facebook_app_events_service.dart';
+import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/facebook_app_events_test.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
 import 'package:jippymart_customer/services/mobile_deep_link_service.dart';
@@ -37,9 +37,10 @@ import 'package:jippymart_customer/services/wallet_config_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get/get.dart';
 import 'package:get_storage/get_storage.dart';
-import 'package:provider/provider.dart';
+import 'package:provider/provider.dart' as prv;
 import 'app/address_screens/provider/address_list_provider.dart'
     show AddressListProvider;
 import 'app/advertisement_screens/provider/all_advertisement_provider.dart';
@@ -76,7 +77,7 @@ import 'app/review_list_screen/provider/review_list_provider.dart';
 import 'app/search_screen/provider/search_provider.dart';
 import 'app/splash_screen/provider/splash_provider.dart';
 import 'app/swiggy_search_screen/provider/swiggy_search_provider.dart';
-import 'app/splash_screen/video_splash_screen.dart';
+import 'app/splash_screen/splash_home.dart';
 import 'dart:io';
 import 'package:flutter/services.dart';
 
@@ -92,13 +93,17 @@ import 'package:flutter/services.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Transparent status bar app-wide so no gray bar at top
+  // Light status bar by default (matches white home / dashboard). Screens with
+  // colored AppBars set their own [systemOverlayStyle] to override (e.g. cart).
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
+      statusBarColor: Colors.white,
       statusBarIconBrightness: Brightness.dark,
       statusBarBrightness: Brightness.light,
-      systemStatusBarContrastEnforced: false,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+      systemStatusBarContrastEnforced: true,
+      systemNavigationBarContrastEnforced: true,
     ),
   );
   GlobalDeeplinkHandler.init();
@@ -131,7 +136,7 @@ void main() async {
       1024 * 1024 * 80; // 80 MB
   PaintingBinding.instance.imageCache.maximumSize = 200;
 
-  runApp(MyApp());
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 /// Runs all initialization deferred from main() so first frame paints sooner.
@@ -151,7 +156,10 @@ void _runDeferredInits(BuildContext context) {
       if (kDebugMode) print('⚠️ Wallet config init error: $e');
     }
     try {
-      final cartProvider = Provider.of<CartProvider>(context, listen: false);
+      final cartProvider = prv.Provider.of<CartProvider>(
+        context,
+        listen: false,
+      );
       cartProvider.checkCartPersistence();
     } catch (e) {
       if (kDebugMode) print('⚠️ CartProvider checkCartPersistence error: $e');
@@ -386,14 +394,15 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     if (state == AppLifecycleState.resumed) {
       // Notify deep link service that app has resumed
       FinalDeepLinkService().onAppResumed();
-      
+
       // 🔑 CRITICAL: Check for pending Razorpay payments and auto-place orders
       // This handles the case where user closes app immediately after payment
       WidgetsBinding.instance.addPostFrameCallback((_) {
         try {
-          final navigatorContext = GlobalDeeplinkHandler.navigatorKey.currentContext;
+          final navigatorContext =
+              GlobalDeeplinkHandler.navigatorKey.currentContext;
           if (navigatorContext != null) {
-            final cartController = Provider.of<CartControllerProvider>(
+            final cartController = prv.Provider.of<CartControllerProvider>(
               navigatorContext,
               listen: false,
             );
@@ -411,102 +420,100 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
+    return prv.MultiProvider(
       providers: [
         // ============================================
         // EAGER PROVIDERS - Used immediately at startup
         // ============================================
-        ChangeNotifierProvider(create: (_) => GlobalSettingsProvider()),
-        ChangeNotifierProvider(create: (_) => SplashProvider()),
-        ChangeNotifierProvider(create: (_) => CartProvider()),
-        ChangeNotifierProvider(create: (_) => HomeProvider()),
-        ChangeNotifierProvider(create: (_) => LoginProvider()),
-        ChangeNotifierProvider(create: (_) => LocationPermissionProvider()),
-        ChangeNotifierProvider(create: (_) => DashBoardProvider()),
-        ChangeNotifierProvider(create: (_) => AddressListProvider()),
-        ChangeNotifierProvider(create: (_) => CartControllerProvider()),
+        // GlobalSettingsProvider: Riverpod globalSettingsNotifierProvider
+        prv.ChangeNotifierProvider(create: (_) => SplashProvider()),
+        prv.ChangeNotifierProvider(create: (_) => CartProvider()),
+        prv.ChangeNotifierProvider(create: (_) => HomeProvider()),
+        prv.ChangeNotifierProvider(create: (_) => LoginProvider()),
+        prv.ChangeNotifierProvider(create: (_) => LocationPermissionProvider()),
+        prv.ChangeNotifierProvider(create: (_) => DashBoardProvider()),
+        prv.ChangeNotifierProvider(create: (_) => AddressListProvider()),
+        prv.ChangeNotifierProvider(create: (_) => CartControllerProvider()),
 
         // ============================================
         // EAGER PROVIDERS - Used early in app flow
         // ============================================
-        ChangeNotifierProvider(create: (_) => CategoryRestaurantProvider()),
-        ChangeNotifierProvider(create: (_) => DiscountRestaurantListProvider()),
-        ChangeNotifierProvider(create: (_) => RestaurantListProvider()),
-        ChangeNotifierProvider(create: (_) => StoryProvider()),
-        ChangeNotifierProvider(create: (_) => AllAdvertisementProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryServiceProvider()),
-        ChangeNotifierProvider(create: (_) => FavouriteProvider()),
-        ChangeNotifierProvider(create: (_) => MartProvider()),
-        ChangeNotifierProvider(create: (_) => MartCategoryProvider()),
-        ChangeNotifierProvider(create: (_) => MartNavigationProvider()),
-        ChangeNotifierProvider(create: (_) => OrderProvider()),
-        ChangeNotifierProvider(create: (_) => SearchScreenProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryDetailsProvider()),
-        ChangeNotifierProvider(create: (_) => MapViewProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryViewProvider()),
-        ChangeNotifierProvider(create: (_) => BestRestaurantProvider()),
-        ChangeNotifierProvider(create: (_) => ViewAllCategoryProvider()),
+        prv.ChangeNotifierProvider(create: (_) => CategoryRestaurantProvider()),
+        prv.ChangeNotifierProvider(
+          create: (_) => DiscountRestaurantListProvider(),
+        ),
+        prv.ChangeNotifierProvider(create: (_) => RestaurantListProvider()),
+        prv.ChangeNotifierProvider(create: (_) => StoryProvider()),
+        prv.ChangeNotifierProvider(create: (_) => AllAdvertisementProvider()),
+        prv.ChangeNotifierProvider(create: (_) => CategoryServiceProvider()),
+        prv.ChangeNotifierProvider(create: (_) => FavouriteProvider()),
+        prv.ChangeNotifierProvider(create: (_) => MartProvider()),
+        prv.ChangeNotifierProvider(create: (_) => MartCategoryProvider()),
+        prv.ChangeNotifierProvider(create: (_) => MartNavigationProvider()),
+        prv.ChangeNotifierProvider(create: (_) => OrderProvider()),
+        prv.ChangeNotifierProvider(create: (_) => SearchScreenProvider()),
+        prv.ChangeNotifierProvider(create: (_) => CategoryDetailsProvider()),
+        prv.ChangeNotifierProvider(create: (_) => MapViewProvider()),
+        prv.ChangeNotifierProvider(create: (_) => CategoryViewProvider()),
+        prv.ChangeNotifierProvider(create: (_) => BestRestaurantProvider()),
+        prv.ChangeNotifierProvider(create: (_) => ViewAllCategoryProvider()),
 
         // ============================================
         // LAZY PROVIDERS - Screen-specific, only created when accessed
         // Note: Provider package creates these eagerly, but since constructors
         // are lightweight, the real optimization is deferring heavy initFunction() calls
         // ============================================
-        ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => EditProfileProvider()),
-        ChangeNotifierProvider(create: (_) => MartEditProfileProvider()),
-        ChangeNotifierProvider(create: (_) => LiveTrackingProvider()),
-        ChangeNotifierProvider(create: (_) => OrderDetailsProvider()),
-        ChangeNotifierProvider(create: (_) => MyProfileProvider()),
-        ChangeNotifierProvider(create: (_) => RateProductProvider()),
-        ChangeNotifierProvider(create: (_) => RestaurantDetailsProvider()),
-        ChangeNotifierProvider(create: (_) => ReviewListProvider()),
-        ChangeNotifierProvider(create: (_) => SwiggySearchProvider()),
-        ChangeNotifierProvider(create: (_) => MartSearchProvider()),
-        ChangeNotifierProvider(create: (_) => OrderPlacingProvider()),
-        ChangeNotifierProvider(create: (_) => SignupProvider()),
-        ChangeNotifierProvider(create: (_) => WalletProvider()),
+        prv.ChangeNotifierProvider(create: (_) => ChatProvider()),
+        prv.ChangeNotifierProvider(create: (_) => EditProfileProvider()),
+        prv.ChangeNotifierProvider(create: (_) => MartEditProfileProvider()),
+        prv.ChangeNotifierProvider(create: (_) => LiveTrackingProvider()),
+        prv.ChangeNotifierProvider(create: (_) => OrderDetailsProvider()),
+        prv.ChangeNotifierProvider(create: (_) => MyProfileProvider()),
+        prv.ChangeNotifierProvider(create: (_) => RateProductProvider()),
+        prv.ChangeNotifierProvider(create: (_) => RestaurantDetailsProvider()),
+        prv.ChangeNotifierProvider(create: (_) => ReviewListProvider()),
+        prv.ChangeNotifierProvider(create: (_) => SwiggySearchProvider()),
+        prv.ChangeNotifierProvider(create: (_) => MartSearchProvider()),
+        prv.ChangeNotifierProvider(create: (_) => OrderPlacingProvider()),
+        prv.ChangeNotifierProvider(create: (_) => SignupProvider()),
+        prv.ChangeNotifierProvider(create: (_) => WalletProvider()),
       ],
       child: _DeferredInitRunner(
         child: GetMaterialApp(
-        navigatorKey: GlobalDeeplinkHandler.navigatorKey,
-        title: 'JippyMart Customer'.tr,
-        debugShowCheckedModeBanner: false,
-        // Reduce GetX route/dialog log noise (CLOSE DIALOG, REPLACE ROUTE, NEW ROUTE)
-        logWriterCallback: (String text, {bool isError = false}) {
-          if (isError) {
+          navigatorKey: GlobalDeeplinkHandler.navigatorKey,
+          title: 'JippyMart Customer'.tr,
+          debugShowCheckedModeBanner: false,
+          // Reduce GetX route/dialog log noise (CLOSE DIALOG, REPLACE ROUTE, NEW ROUTE)
+          logWriterCallback: (String text, {bool isError = false}) {
+            if (isError) {
+              debugPrint(text);
+              return;
+            }
+            final t = text.toUpperCase();
+            if (t.contains('[GETX]') &&
+                (t.contains('CLOSE DIALOG') ||
+                    t.contains('REPLACE ROUTE') ||
+                    t.contains('NEW ROUTE'))) {
+              return; // skip verbose GetX nav logs
+            }
             debugPrint(text);
-            return;
-          }
-          final t = text.toUpperCase();
-          if (t.contains('[GETX]') &&
-              (t.contains('CLOSE DIALOG') ||
-                  t.contains('REPLACE ROUTE') ||
-                  t.contains('NEW ROUTE'))) {
-            return; // skip verbose GetX nav logs
-          }
-          debugPrint(text);
-        },
-        localizationsDelegates: const [CountryLocalizations.delegate],
-        // Global SafeArea: wraps the Navigator so all routes respect device safe areas
-        // (notch, status bar, home indicator, rounded corners).
-        builder: (context, child) {
-          return EasyLoading.init()(
-            context,
-            SafeArea(
-              top: true,
-              bottom: true,
-              left: true,
-              right: true,
-              child: child ?? const SizedBox.shrink(),
-            ),
-          );
-        },
-        home: Consumer<GlobalSettingsProvider>(
-          builder: (context, controller, _) {
-            return const VideoSplashScreen();
           },
-        ),
+          localizationsDelegates: const [CountryLocalizations.delegate],
+          // Global SafeArea: wraps the Navigator so all routes respect device safe areas
+          // (notch, status bar, home indicator, rounded corners).
+          builder: (context, child) {
+            return EasyLoading.init()(
+              context,
+              SafeArea(
+                top: true,
+                bottom: true,
+                left: true,
+                right: true,
+                child: child ?? const SizedBox.shrink(),
+              ),
+            );
+          },
+          home: const SplashHome(),
         ),
       ),
     );

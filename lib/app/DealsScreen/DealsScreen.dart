@@ -1742,6 +1742,7 @@ class _DealsScreenState extends State<DealsScreen>
   List<PromotionModel> _promotionsList = [];
   List<BannerModel> _dealsBanners = [];
   String? _currentZoneId;
+  HomeProvider? _homeProvider;
   int _selectedCategoryIndex = 0;
 
   static const Duration _networkTimeout = Duration(seconds: 10);
@@ -1770,11 +1771,28 @@ class _DealsScreenState extends State<DealsScreen>
   //   'Offers',
   // ];
 
+  /// Prefer [Constant.selectedZone], fall back to [Constant.selectedLocation.zoneId]
+  /// so deals refresh when zone is updated either way (e.g. automatic GPS/zone API).
+  String? _effectiveZoneId() {
+    final fromZone = Constant.selectedZone?.id?.trim();
+    if (fromZone != null && fromZone.isNotEmpty) return fromZone;
+    final fromLocation = Constant.selectedLocation.zoneId?.trim();
+    if (fromLocation != null && fromLocation.isNotEmpty) return fromLocation;
+    return null;
+  }
+
+  void _onHomeProviderNotify() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _checkAndReloadIfZoneChanged();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _currentZoneId = Constant.selectedZone?.id;
+    _currentZoneId = _effectiveZoneId();
 
     _headerAnim = AnimationController(
       duration: const Duration(milliseconds: 900),
@@ -1794,10 +1812,17 @@ class _DealsScreenState extends State<DealsScreen>
 
     _loadAllDataWithCache();
     _headerAnim.forward();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _homeProvider = Provider.of<HomeProvider>(context, listen: false);
+      _homeProvider!.addListener(_onHomeProviderNotify);
+    });
   }
 
   @override
   void dispose() {
+    _homeProvider?.removeListener(_onHomeProviderNotify);
     WidgetsBinding.instance.removeObserver(this);
     _zoneDebounce?.cancel();
     _headerAnim.dispose();
@@ -1818,14 +1843,26 @@ class _DealsScreenState extends State<DealsScreen>
   }
 
   void _checkAndReloadIfZoneChanged() {
-    final newZoneId = Constant.selectedZone?.id;
+    final newZoneId = _effectiveZoneId();
     if (newZoneId != null &&
         newZoneId.isNotEmpty &&
         newZoneId != _currentZoneId) {
       _zoneDebounce?.cancel();
       _zoneDebounce = Timer(const Duration(milliseconds: 500), () {
-        if (mounted && newZoneId == Constant.selectedZone?.id) {
+        if (!mounted) return;
+        final confirmed = _effectiveZoneId();
+        if (confirmed != null &&
+            confirmed.isNotEmpty &&
+            confirmed == newZoneId) {
+          final previousZoneId = _currentZoneId;
           _currentZoneId = newZoneId;
+          _lastLoadTime = null;
+          if (previousZoneId != null &&
+              previousZoneId.isNotEmpty &&
+              previousZoneId != newZoneId) {
+            CacheManager().remove('deals_banners_$previousZoneId');
+            CacheManager().remove('promotions_$previousZoneId');
+          }
           _productCache.clear();
           _vendorCache.clear();
           _restaurantStatusCache.clear();
@@ -2019,7 +2056,7 @@ class _DealsScreenState extends State<DealsScreen>
       } catch (_) {}
       await Future.delayed(const Duration(milliseconds: 500));
     }
-    return Constant.selectedZone?.id;
+    return _effectiveZoneId();
   }
 
   Future<String?> _getCurrentZoneId() async {
@@ -2056,7 +2093,7 @@ class _DealsScreenState extends State<DealsScreen>
         }
       }
     } catch (_) {}
-    return Constant.selectedZone?.id;
+    return _effectiveZoneId();
   }
 
   Future<Map<String, String>> _getHeaders() async => {

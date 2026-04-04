@@ -3,6 +3,7 @@ import 'package:jippymart_customer/app/cart_screen/select_payment_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/utils/currency_display.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -46,9 +47,7 @@ Widget cartNavigationBarWidget(BuildContext context) {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      Constant.amountShow(
-                        amount: totalAmount.toStringAsFixed(2),
-                      ),
+                      payableAmountDisplay(totalAmount),
                       style: TextStyle(
                         fontSize: 16,
                         fontFamily: AppThemeData.semiBold,
