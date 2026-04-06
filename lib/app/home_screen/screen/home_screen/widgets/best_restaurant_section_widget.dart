@@ -1958,7 +1958,6 @@
 // }
 
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
@@ -2299,12 +2298,7 @@ class _RestaurantCardState extends State<_RestaurantCard>
 
   // Cached values — computed once, not on every build
   late final bool _isClosed;
-
-  final random = Random();
-
-  // random rating between 4.0 and 5.0
-  late double _rating = 4.0 + random.nextDouble();
-
+  late final double _rating;
   late final String _distanceText;
   late final String _deliveryTime;
   late final String? _offerLabel;
@@ -2315,11 +2309,10 @@ class _RestaurantCardState extends State<_RestaurantCard>
     final v = widget.vendorModel;
 
     _isClosed = !RestaurantStatusUtils.canAcceptOrders(v);
+    _rating = _parseRating(v);
     _distanceText = _buildDistanceText(v);
     _deliveryTime = Constant.getDeliveryTimeText(v);
 
-    // Offer label comes from backend via authorName field.
-    // Only show badge if backend sent a non-empty string.
     final raw = v.offer_lable?.trim() ?? '';
     _offerLabel = raw.isNotEmpty ? raw : null;
 
@@ -2524,46 +2517,18 @@ class _PromoBadge extends StatelessWidget {
 
   const _PromoBadge({required this.label});
 
-  Color get _badgeColor {
-    final l = label.toUpperCase();
-    if (l.contains('BEST') || l.contains('TOP')) return Colors.amber.shade700;
-    if (l.contains('HOT') || l.contains('LIMITED')) return Colors.red.shade600;
-    if (l.contains('TREND') || l.contains('POPULAR'))
-      return Colors.purple.shade600;
-    if (l.contains('NEW')) return Colors.blue.shade600;
-    return Colors.transparent; // fallback to brand color
-  }
-
-  IconData get _badgeIcon {
-    final l = label.toUpperCase();
-    if (l.contains('BEST') || l.contains('TOP')) return Icons.emoji_events;
-    if (l.contains('HOT')) return Icons.local_fire_department;
-    if (l.contains('TREND')) return Icons.trending_up;
-    if (l.contains('NEW')) return Icons.new_releases;
-    return Icons.local_offer;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [_badgeColor, _badgeColor.withOpacity(0.8)],
-        ),
+        color: Colors.black.withOpacity(0.72),
         borderRadius: BorderRadius.circular(6),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(_badgeIcon, size: 10, color: Colors.white),
+          const Icon(Icons.local_offer, size: 10, color: Colors.white),
           const SizedBox(width: 4),
           Text(
             label,
@@ -2727,14 +2692,14 @@ class _DeliveryToggleBadgeState extends State<_DeliveryToggleBadge> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 12, color: Colors.green),
+          Icon(icon, size: 12, color: color),
           const SizedBox(width: 4),
           Text(
             label,
             style: TextStyle(
               fontSize: 9,
               fontWeight: FontWeight.w600,
-              color: Colors.green,
+              color: color,
             ),
           ),
         ],

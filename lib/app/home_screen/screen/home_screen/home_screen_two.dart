@@ -1,50 +1,51 @@
-import 'dart:math' show cos, sin;
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:get/get.dart';
+import 'package:provider/provider.dart';
+
 import 'package:jippymart_customer/app/advertisement_screens/all_advertisement_screen.dart';
-import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
-import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
-import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
-import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
-import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart'
     show BestRestaurantProvider;
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/banner_view_widget.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/bottom_banner_view_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/best_restaurant_section_widget.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/bottom_banner_view_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/home_header_widget.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
-import 'package:jippymart_customer/app/DealsScreen/DealsScreen.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
-import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:jippymart_customer/widget/filter_bar.dart';
-import 'package:jippymart_customer/widget/mini_cart_bar.dart';
 import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
 import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:get/get.dart';
-import 'package:path/path.dart';
-import 'package:provider/provider.dart';
-import 'dart:async';
-import 'package:url_launcher/url_launcher.dart';
+
 import 'widgets/category_view_widget.dart';
+
+// ─── Design tokens ────────────────────────────────────────────────────────────
+
+const _kGradStart = Color(0xFFFF2D2D);
+const _kGradEnd = Color(0xFFFF8C42);
+
+/// How far the banner overlaps INTO the gradient (peeks above gradient bottom).
+const double _kBannerPeekAbove = 80.0;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HomeScreenTwo
+// ─────────────────────────────────────────────────────────────────────────────
 
 class HomeScreenTwo extends StatelessWidget {
   const HomeScreenTwo({super.key});
@@ -55,35 +56,37 @@ class HomeScreenTwo extends StatelessWidget {
       builder: (context, controller, _) {
         return AnnotatedRegion<SystemUiOverlayStyle>(
           value: const SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            statusBarIconBrightness: Brightness.dark,
-            statusBarBrightness: Brightness.light,
+            statusBarColor: _kGradStart,
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
             systemStatusBarContrastEnforced: false,
           ),
           child: Scaffold(
             backgroundColor: Colors.white,
-            body: Container(
-              // decoration: BoxDecoration(
-              //   image: DecorationImage(
-              //     image: AssetImage(ImageConst.backgroundImage),
-              //     fit: BoxFit.cover,
-              //   ),
-              // ),
-              child: RefreshIndicator(
-                onRefresh: () async {
-                  await controller.getRefresh(context);
-                },
-                child: _buildContent(controller, context),
-              ),
+            body: RefreshIndicator(
+              color: _kGradStart,
+              onRefresh: () async => controller.getRefresh(context),
+              child: _HomeBody(controller: controller),
             ),
-            // floatingActionButton: _buildWhatsAppFAB(),
           ),
         );
       },
     );
   }
+}
 
-  Widget _buildContent(HomeProvider controller, BuildContext context) {
+// ─────────────────────────────────────────────────────────────────────────────
+// _HomeBody — decides which top-level view to show
+// Extracted to avoid rebuilding the entire Scaffold on provider changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HomeBody extends StatelessWidget {
+  final HomeProvider controller;
+
+  const _HomeBody({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
     if (controller.isLoading || !controller.zoneCheckCompleted) {
       return const RestaurantLoadingWidget();
     }
@@ -91,25 +94,47 @@ class HomeScreenTwo extends StatelessWidget {
     return Selector<BestRestaurantProvider, (bool, bool)>(
       selector: (_, p) => (p.isLoading, p.allNearestRestaurant.isEmpty),
       builder: (context, data, _) {
-        final isBestLoading = data.$1;
-        final isAllNearestEmpty = data.$2;
+        final isLoading = data.$1;
+        final isEmpty = data.$2;
 
-        if (isBestLoading) {
-          return const RestaurantLoadingWidget();
-        }
+        if (isLoading) return const RestaurantLoadingWidget();
 
         if (controller.hasActuallyCheckedZone &&
             Constant.isZoneAvailable == false &&
-            isAllNearestEmpty) {
-          return _buildNoServiceWidget(context);
+            isEmpty) {
+          return _NoServiceView(
+            isZoneUnavailable: Constant.isZoneAvailable == false,
+          );
         }
 
-        return _buildMainContent(controller, context);
+        return _HomeMainContent(controller: controller);
       },
     );
   }
+}
 
-  Widget _buildNoServiceWidget(BuildContext context) {
+// ─────────────────────────────────────────────────────────────────────────────
+// _NoServiceView
+// Extracted from HomeScreenTwo for reusability and testability.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _NoServiceView extends StatelessWidget {
+  final bool isZoneUnavailable;
+
+  const _NoServiceView({required this.isZoneUnavailable});
+
+  @override
+  Widget build(BuildContext context) {
+    final title = isZoneUnavailable
+        ? "Service Not Available in Your Area".tr
+        : "No Restaurants Found in Your Area".tr;
+
+    final body = isZoneUnavailable
+        ? "We don't currently deliver to your location. Please try a different address within our service area."
+              .tr
+        : "Currently, there are no available restaurants in your zone. Try changing your location to find nearby options."
+              .tr;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -119,9 +144,7 @@ class HomeScreenTwo extends StatelessWidget {
           Image.asset("assets/images/location.gif", height: 120),
           const SizedBox(height: 12),
           Text(
-            Constant.isZoneAvailable == false
-                ? "Service Not Available in Your Area".tr
-                : "No Restaurants Found in Your Area".tr,
+            title,
             style: TextStyle(
               color: AppThemeData.grey800,
               fontSize: 22,
@@ -131,11 +154,7 @@ class HomeScreenTwo extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            Constant.isZoneAvailable == false
-                ? "We don't currently deliver to your location. Please try a different address within our service area."
-                      .tr
-                : "Currently, there are no available restaurants in your zone. Try changing your location to find nearby options."
-                      .tr,
+            body,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: AppThemeData.grey500,
@@ -150,105 +169,159 @@ class HomeScreenTwo extends StatelessWidget {
             height: 5.5,
             color: AppThemeData.primary300,
             textColor: AppThemeData.grey50,
-            onPress: () {
-              Get.offAll(() => const LocationPermissionScreen());
-            },
+            onPress: () => Get.offAll(() => const LocationPermissionScreen()),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildMainContent(HomeProvider controller, BuildContext context) {
-    const Color mainFeedBackground = Colors.white;
-    final Color headerStripBackground = const Color(0xFFFFF3E0);
-    return Column(
-      children: [
-        // Header Section
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: headerStripBackground,
-            border: Border(
-              bottom: BorderSide(color: AppThemeData.grey100, width: 1),
-            ),
-          ),
-          child: HomeHeaderWidget(
-            key: ValueKey(Constant.selectedZone?.id ?? 'nozone'),
-            homeProvider: controller,
-            context: context,
-          ),
+// ─────────────────────────────────────────────────────────────────────────────
+// _HomeMainContent
+//
+// CustomScrollView with two slivers:
+//   1. _GradientHeroSliver — gradient hero (header + optional banner)
+//   2. White content card  — categories, restaurants, ads, etc.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HomeMainContent extends StatefulWidget {
+  final HomeProvider controller;
+
+  const _HomeMainContent({required this.controller});
+
+  @override
+  State<_HomeMainContent> createState() => _HomeMainContentState();
+}
+
+class _HomeMainContentState extends State<_HomeMainContent> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      controller: _scroll,
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: _GradientHeroSliver(controller: widget.controller),
         ),
-
-        // Main Scrollable Content
-        Expanded(
-          child: ColoredBox(
-            color: mainFeedBackground,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(), // smoother scroll
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildBannerSection(controller),
-                  _buildCategoryViewSection(context),
-
-                  const SizedBox(height: 5),
-
-                  const BestRestaurantsSection(restaurantList: []),
-
-                  _buildAdvertisementSection(controller, context),
-                  _buildBottomBannerSection(controller),
-
-                  const SizedBox(height: 10),
-
-                  _buildAllRestaurantsSection(context),
-                ],
-              ),
-            ),
-          ),
+        SliverToBoxAdapter(
+          child: _HomeContentCard(controller: widget.controller),
         ),
       ],
     );
   }
+}
 
-  Widget _buildBannerSection(HomeProvider controller) {
-    return controller.bannerModel.isEmpty
-        ? const SizedBox()
-        : Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: BannerView(),
-          );
+// ─────────────────────────────────────────────────────────────────────────────
+// _HomeContentCard
+//
+// The white rounded card below the gradient hero. Extracted to keep
+// _HomeMainContentState lean and each section independently maintainable.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HomeContentCard extends StatelessWidget {
+  final HomeProvider controller;
+
+  const _HomeContentCard({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasBanner = controller.bannerModel.isNotEmpty;
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Color(0xFFF5F5F5),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (hasBanner) const SizedBox(height: _kBannerPeekAbove + 8),
+          _CategorySection(),
+          const SizedBox(height: 8),
+          const BestRestaurantsSection(restaurantList: []),
+          _AdvertisementSection(controller: controller),
+          _BottomBannerSection(controller: controller),
+          const SizedBox(height: 12),
+          _AllRestaurantsSection(),
+          const SizedBox(height: 25),
+        ],
+      ),
+    );
   }
+}
 
-  Widget _buildCategoryViewSection(BuildContext context) {
-    final categoryViewProvider = context.watch<CategoryViewProvider>();
-    if (categoryViewProvider.vendorCategoryModel.isEmpty) {
-      return const SizedBox();
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// _CategorySection
+// ─────────────────────────────────────────────────────────────────────────────
 
+class _CategorySection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prov = context.watch<CategoryViewProvider>();
+    if (prov.vendorCategoryModel.isEmpty) return const SizedBox.shrink();
     return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: 10),
       child: CategoryView(),
     );
   }
+}
 
-  Widget _buildAdvertisementSection(
-    HomeProvider controller,
-    BuildContext context,
-  ) {
-    final bestRestaurantProvider = context.read<BestRestaurantProvider>();
+// ─────────────────────────────────────────────────────────────────────────────
+// _AdvertisementSection
+// ─────────────────────────────────────────────────────────────────────────────
 
-    if (Constant.isEnableAdsFeature != true) {
-      return const SizedBox();
-    }
+class _AdvertisementSection extends StatelessWidget {
+  final HomeProvider controller;
 
-    if (bestRestaurantProvider.isLoading &&
-        bestRestaurantProvider.advertisementList.isEmpty) {
-      return const RestaurantLoadingWidget();
-    }
+  const _AdvertisementSection({required this.controller});
 
-    if (bestRestaurantProvider.advertisementList.isEmpty) {
-      return const SizedBox();
-    }
+  @override
+  Widget build(BuildContext context) {
+    if (Constant.isEnableAdsFeature != true) return const SizedBox.shrink();
+
+    return Selector<BestRestaurantProvider, (bool, List<AdvertisementModel>)>(
+      selector: (_, p) => (p.isLoading, p.advertisementList),
+      builder: (context, data, _) {
+        final isLoading = data.$1;
+        final ads = data.$2;
+
+        if (isLoading && ads.isEmpty) return const RestaurantLoadingWidget();
+        if (ads.isEmpty) return const SizedBox.shrink();
+
+        return _AdvertisementCard(ads: ads, controller: controller);
+      },
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _AdvertisementCard — pure display; no provider reads inside list builder
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AdvertisementCard extends StatelessWidget {
+  final List<AdvertisementModel> ads;
+  final HomeProvider controller;
+
+  /// Caps the visible ad count to avoid rendering off-screen items.
+  static const int _maxVisibleAds = 6;
+
+  const _AdvertisementCard({required this.ads, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    final visibleAds = ads.length > _maxVisibleAds
+        ? ads.sublist(0, _maxVisibleAds)
+        : ads;
 
     return Column(
       children: [
@@ -261,7 +334,6 @@ class HomeScreenTwo extends StatelessWidget {
             color: AppThemeData.primary300.withAlpha(40),
           ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -269,7 +341,6 @@ class HomeScreenTwo extends StatelessWidget {
                   Expanded(
                     child: Text(
                       "Highlights for you".tr,
-                      textAlign: TextAlign.start,
                       style: TextStyle(
                         fontFamily: AppThemeData.semiBold,
                         fontSize: 16,
@@ -279,13 +350,12 @@ class HomeScreenTwo extends StatelessWidget {
                   ),
                   InkWell(
                     onTap: () {
-                      Get.to(() => AllAdvertisementScreen())?.then((value) {
-                        controller.getFavouriteRestaurant();
-                      });
+                      Get.to(
+                        () => AllAdvertisementScreen(),
+                      )?.then((_) => controller.getFavouriteRestaurant());
                     },
                     child: Text(
                       "See all".tr,
-                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontFamily: AppThemeData.regular,
                         color: AppThemeData.primary300,
@@ -300,19 +370,14 @@ class HomeScreenTwo extends StatelessWidget {
                 child: ListView.builder(
                   physics: const BouncingScrollPhysics(),
                   scrollDirection: Axis.horizontal,
-                  itemCount:
-                      bestRestaurantProvider.advertisementList.length >= 6
-                      ? 6
-                      : bestRestaurantProvider.advertisementList.length,
                   padding: EdgeInsets.zero,
-                  itemBuilder: (BuildContext context, int index) {
-                    return RepaintBoundary(
-                      child: AdvertisementHomeCard(
-                        controller: controller,
-                        model: bestRestaurantProvider.advertisementList[index],
-                      ),
-                    );
-                  },
+                  itemCount: visibleAds.length,
+                  itemBuilder: (ctx, i) => RepaintBoundary(
+                    child: AdvertisementHomeCard(
+                      controller: controller,
+                      model: visibleAds[i],
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -321,151 +386,36 @@ class HomeScreenTwo extends StatelessWidget {
       ],
     );
   }
+}
 
-  Widget _buildBottomBannerSection(HomeProvider controller) {
-    return controller.bannerBottomModel.isEmpty
-        ? const SizedBox()
-        : Padding(
-            padding: const EdgeInsets.only(
-              top: 20,
-              left: 16,
-              right: 16,
-              bottom: 0,
-            ),
-            child: BottomBannerView(),
-          );
-  }
+// ─────────────────────────────────────────────────────────────────────────────
+// _BottomBannerSection
+// ─────────────────────────────────────────────────────────────────────────────
 
-  Widget _buildDealsBanner(BuildContext context) {
+class _BottomBannerSection extends StatelessWidget {
+  final HomeProvider controller;
+
+  const _BottomBannerSection({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    if (controller.bannerBottomModel.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: InkWell(
-        onTap: () => _navigateToDealsScreen(context),
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          height: 70,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: [Colors.purple, AppThemeData.primary300.withOpacity(0.8)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppThemeData.primary300.withOpacity(0.3),
-                blurRadius: 12,
-                spreadRadius: 2,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Add background and decorative elements here if needed
-              Positioned(
-                left: 0,
-                top: 0,
-                bottom: 0,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    bottomLeft: Radius.circular(20),
-                  ),
-                  child: Image.asset(
-                    'assets/images/deals_banner.gif',
-                    width: 60,
-                    height: 70,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return SizedBox(width: 60);
-                    },
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 0,
-                top: 0,
-                bottom: 0,
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                  child: Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.rotationY(3.14159),
-                    child: Image.asset(
-                      'assets/images/deals_banner.gif',
-                      width: 60,
-                      height: 70,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return SizedBox(width: 60);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 70),
-                  child: Text(
-                    "Grab The DEALS",
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      letterSpacing: 1.2,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withOpacity(0.3),
-                          offset: const Offset(0, 2),
-                          blurRadius: 4,
-                        ),
-                      ],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
+      padding: const EdgeInsets.only(top: 20, left: 16, right: 16),
+      child: BottomBannerView(),
     );
   }
+}
 
-  void _navigateToDealsScreen(BuildContext context) {
-    final dashBoardProvider = Provider.of<DashBoardProvider>(
-      context,
-      listen: false,
-    );
-    final homeProvider = Provider.of<HomeProvider>(context, listen: false);
-    final splashProvider = Provider.of<SplashProvider>(context, listen: false);
-    final cartControllerProvider = Provider.of<CartControllerProvider>(
-      context,
-      listen: false,
-    );
-    final orderProvider = Provider.of<OrderProvider>(context, listen: false);
-    final favouriteProvider = Provider.of<FavouriteProvider>(
-      context,
-      listen: false,
-    );
+// ─────────────────────────────────────────────────────────────────────────────
+// _AllRestaurantsSection
+// ─────────────────────────────────────────────────────────────────────────────
 
-    dashBoardProvider.changeNavbar(
-      2,
-      // Deals screen index
-      homeProvider,
-      splashProvider,
-      cartControllerProvider,
-      orderProvider,
-      context,
-      favouriteProvider,
-    );
-  }
+class _AllRestaurantsSection extends StatelessWidget {
+  const _AllRestaurantsSection();
 
-  Widget _buildAllRestaurantsSection(BuildContext context) {
+  @override
+  Widget build(BuildContext context) {
     return Selector<
       BestRestaurantProvider,
       (List<VendorModel>, int, bool, String?, List<String>)
@@ -483,16 +433,16 @@ class HomeScreenTwo extends StatelessWidget {
           prev.$4 != next.$4 ||
           prev.$5 != next.$5,
       builder: (context, data, _) {
-        final allRestaurants = data.$1;
-        if (allRestaurants.isEmpty) {
-          return const SizedBox.shrink();
-        }
-        final bestRestaurantProvider = context.read<BestRestaurantProvider>();
+        final all = data.$1;
+        if (all.isEmpty) return const SizedBox.shrink();
+
+        final prov = context.read<BestRestaurantProvider>();
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(left: 16, right: 16, top: 16),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Text(
                 "All Restaurants",
                 style: TextStyle(
@@ -504,22 +454,14 @@ class HomeScreenTwo extends StatelessWidget {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
               child: FilterBar(
                 selectedFilters: {},
-                onFilterToggled: (filter) => _handleFilterToggle(
-                  filter,
-                  bestRestaurantProvider,
-                  context,
-                ),
+                onFilterToggled: (f) => _handleFilterToggle(f, prov, context),
                 availableFilters: data.$5,
                 currentFilter: data.$4,
               ),
             ),
-            const SizedBox(height: 8),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GridView.builder(
@@ -527,18 +469,16 @@ class HomeScreenTwo extends StatelessWidget {
                 primary: false,
                 padding: EdgeInsets.zero,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: allRestaurants.length,
+                itemCount: all.length,
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 6,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 0.72,
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 0.62,
                 ),
-                itemBuilder: (BuildContext context, int index) {
-                  return RepaintBoundary(
-                    child: _buildRestaurantCard(allRestaurants[index], context),
-                  );
-                },
+                itemBuilder: (ctx, i) => RepaintBoundary(
+                  child: _RestaurantCard(vendorModel: all[i]),
+                ),
               ),
             ),
           ],
@@ -549,16 +489,15 @@ class HomeScreenTwo extends StatelessWidget {
 
   void _handleFilterToggle(
     FilterType filter,
-    BestRestaurantProvider bestRestaurantProvider,
+    BestRestaurantProvider prov,
     BuildContext context,
   ) {
-    String? apiFilter;
     switch (filter) {
       case FilterType.distance:
-        apiFilter = 'distance';
+        prov.applyFilter('distance');
         break;
       case FilterType.rating:
-        apiFilter = 'rating';
+        prov.applyFilter('rating');
         break;
       case FilterType.priceLowToHigh:
       case FilterType.priceHighToLow:
@@ -568,20 +507,32 @@ class HomeScreenTwo extends StatelessWidget {
             duration: Duration(seconds: 2),
           ),
         );
-        return;
     }
-    bestRestaurantProvider.applyFilter(apiFilter);
   }
+}
 
-  Widget _buildRestaurantCard(VendorModel vendorModel, BuildContext context) {
-    final restaurantDetailsProvider = context.read<RestaurantDetailsProvider>();
+// ─────────────────────────────────────────────────────────────────────────────
+// _RestaurantCard
+//
+// Extracted from _HomeMainContentState so the GridView itemBuilder creates
+// a true standalone widget — enabling widget-level rebuild isolation.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _RestaurantCard extends StatelessWidget {
+  final VendorModel vendorModel;
+
+  const _RestaurantCard({required this.vendorModel});
+
+  @override
+  Widget build(BuildContext context) {
+    final rdp = context.read<RestaurantDetailsProvider>();
     final isClosed = !RestaurantStatusUtils.canAcceptOrders(vendorModel);
 
     return InkWell(
       onTap: isClosed
           ? null
           : () {
-              restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+              rdp.initFunction(vendorModels: vendorModel);
               Get.to(() => const RestaurantDetailsScreen());
             },
       borderRadius: BorderRadius.circular(16),
@@ -589,11 +540,12 @@ class HomeScreenTwo extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppThemeData.grey50,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
+          boxShadow: const [
+            // Using const BoxShadow avoids object allocation on each build.
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Color(0x0D000000), // Colors.black @ 5%
               blurRadius: 8,
-              offset: const Offset(0, 2),
+              offset: Offset(0, 2),
             ),
           ],
         ),
@@ -624,13 +576,13 @@ class HomeScreenTwo extends StatelessWidget {
                           Positioned(
                             top: 6,
                             left: 6,
-                            child: _buildEnhancedStatusBadge(vendorModel),
+                            child: _StatusBadge(vendorModel: vendorModel),
                           ),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   Text(
                     vendorModel.title ?? 'Restaurant',
                     style: TextStyle(
@@ -642,22 +594,35 @@ class HomeScreenTwo extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 1),
-                  _buildDeliveryTimeAndFastRow(vendorModel),
-                  const SizedBox(height: 1),
-                  // const Spacer(),
-                  _buildBottomInfoRow(vendorModel),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    height: 13,
+                    child: _TimeThenFastDeliveryWidget(
+                      deliveryTime: Constant.getDeliveryTimeText(vendorModel),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  _BottomInfoRow(vendorModel: vendorModel),
                 ],
               ),
             ),
-            if (isClosed) _buildClosedOverlay(),
+            if (isClosed) const _ClosedOverlay(),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildClosedOverlay() {
+// ─────────────────────────────────────────────────────────────────────────────
+// _ClosedOverlay — const-constructible for maximum reuse
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ClosedOverlay extends StatelessWidget {
+  const _ClosedOverlay();
+
+  @override
+  Widget build(BuildContext context) {
     return Positioned.fill(
       child: Container(
         decoration: BoxDecoration(
@@ -685,10 +650,20 @@ class HomeScreenTwo extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildEnhancedStatusBadge(VendorModel vendorModel) {
+// ─────────────────────────────────────────────────────────────────────────────
+// _StatusBadge
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StatusBadge extends StatelessWidget {
+  final VendorModel vendorModel;
+
+  const _StatusBadge({required this.vendorModel});
+
+  @override
+  Widget build(BuildContext context) {
     final isOpen = RestaurantStatusUtils.canAcceptOrders(vendorModel);
-
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
@@ -696,11 +671,11 @@ class HomeScreenTwo extends StatelessWidget {
             ? Colors.green.withOpacity(0.9)
             : Colors.red.withOpacity(0.9),
         borderRadius: BorderRadius.circular(6),
-        boxShadow: [
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Color(0x1A000000),
             blurRadius: 4,
-            offset: const Offset(0, 1),
+            offset: Offset(0, 1),
           ),
         ],
       ),
@@ -726,25 +701,31 @@ class HomeScreenTwo extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildDeliveryTimeAndFastRow(VendorModel vendorModel) {
-    final deliveryTime = Constant.getDeliveryTimeText(vendorModel);
-    return SizedBox(
-      height: 13,
-      child: _TimeThenFastDeliveryWidget(deliveryTime: deliveryTime),
-    );
+// ─────────────────────────────────────────────────────────────────────────────
+// _BottomInfoRow
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _BottomInfoRow extends StatelessWidget {
+  final VendorModel vendorModel;
+
+  const _BottomInfoRow({required this.vendorModel});
+
+  String get _distanceText {
+    if (vendorModel.distance != null && vendorModel.distance! > 0) {
+      return '${vendorModel.distance!.toStringAsFixed(1)} ${Constant.distanceType}';
+    }
+    return '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
   }
 
-  Widget _buildBottomInfoRow(VendorModel vendorModel) {
-    // Prefer backend/client-computed distance when available, fall back to live calculation
-    String distanceText;
-    if (vendorModel.distance != null && vendorModel.distance! > 0) {
-      distanceText =
-          '${vendorModel.distance!.toStringAsFixed(1)} ${Constant.distanceType}';
-    } else {
-      distanceText =
-          '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
-    }
+  String get _ratingText => Constant.calculateReview(
+    reviewCount: vendorModel.reviewsCount.toString(),
+    reviewSum: vendorModel.reviewsSum.toString(),
+  );
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -754,7 +735,7 @@ class HomeScreenTwo extends StatelessWidget {
               const SizedBox(width: 1),
               Expanded(
                 child: Text(
-                  "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum.toString())}",
+                  _ratingText,
                   style: TextStyle(
                     fontSize: 10,
                     fontFamily: AppThemeData.medium,
@@ -779,7 +760,7 @@ class HomeScreenTwo extends StatelessWidget {
               const SizedBox(width: 2),
               Expanded(
                 child: Text(
-                  distanceText,
+                  _distanceText,
                   style: TextStyle(
                     fontSize: 9,
                     fontFamily: AppThemeData.medium,
@@ -795,69 +776,174 @@ class HomeScreenTwo extends StatelessWidget {
       ],
     );
   }
+}
 
-  Widget _buildWhatsAppFAB() {
-    return Consumer3<CartProvider, CartControllerProvider, HomeProvider>(
-      builder:
-          (context, cartProvider, cartControllerProvider, homeProvider, _) {
-            final showMiniCart = HomeProvider.cartItem.isNotEmpty;
-            return Stack(
-              children: [
-                Positioned(
-                  bottom: 0,
-                  left: 16,
-                  right: 0,
-                  child: const MiniCartBar(),
-                ),
-                Positioned(
-                  bottom: showMiniCart ? 100 : 16,
-                  right: 0,
-                  child: FloatingActionButton(
-                    onPressed: _launchWhatsApp,
-                    backgroundColor: Colors.green,
-                    child: Padding(
-                      padding: const EdgeInsets.all(0.0),
-                      child: SvgPicture.asset(
-                        'assets/images/whatsapp.svg',
-                        width: 44,
-                        height: 44,
-                        colorFilter: const ColorFilter.mode(
-                          Colors.white,
-                          BlendMode.srcIn,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            );
-          },
-    );
+// ─────────────────────────────────────────────────────────────────────────────
+// _GradientHeroSliver
+//
+// Paints the red→orange gradient as its own background using CustomPaint
+// so it auto-sizes to exactly its content — header only or header + banner.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GradientHeroSliver extends StatefulWidget {
+  final HomeProvider controller;
+
+  const _GradientHeroSliver({required this.controller});
+
+  @override
+  State<_GradientHeroSliver> createState() => _GradientHeroSliverState();
+}
+
+class _GradientHeroSliverState extends State<_GradientHeroSliver> {
+  double _bannerHeight = 160.0;
+  final GlobalKey _bannerKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.controller.bannerModel.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measureBanner());
+    }
   }
 
-  Future<void> _launchWhatsApp() async {
-    const String phoneNumber = '+919390579864';
-    const String message = 'Hello! I need help with my order.';
-    final Uri whatsappUrl = Uri.parse(
-      'https://wa.me/$phoneNumber?text=${Uri.encodeComponent(message)}',
-    );
-
-    try {
-      if (await canLaunchUrl(whatsappUrl)) {
-        await launchUrl(whatsappUrl, mode: LaunchMode.externalApplication);
-      } else {
-        final Uri phoneUrl = Uri.parse('tel:$phoneNumber');
-        if (await canLaunchUrl(phoneUrl)) {
-          await launchUrl(phoneUrl, mode: LaunchMode.externalApplication);
-        }
-      }
-    } catch (e) {
-      print('Error launching WhatsApp: $e');
+  @override
+  void didUpdateWidget(covariant _GradientHeroSliver oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Only measure when banners transition from absent → present.
+    if (oldWidget.controller.bannerModel.isEmpty &&
+        widget.controller.bannerModel.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measureBanner());
     }
+  }
+
+  void _measureBanner() {
+    final ctx = _bannerKey.currentContext;
+    if (ctx == null) return;
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final h = box.size.height;
+    if (h > 0 && h != _bannerHeight) {
+      setState(() => _bannerHeight = h);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasBanner = widget.controller.bannerModel.isNotEmpty;
+
+    // Schedule measurement after layout only when a banner is present.
+    if (hasBanner) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _measureBanner());
+    }
+
+    return CustomPaint(
+      painter: const _GradientPainter(),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HomeHeaderWidget(
+            key: ValueKey(Constant.selectedZone?.id ?? 'nozone'),
+            homeProvider: widget.controller,
+            context: context,
+          ),
+          if (hasBanner)
+            _OverlapBannerRow(
+              bannerKey: _bannerKey,
+              bannerHeight: _bannerHeight,
+            ),
+        ],
+      ),
+    );
   }
 }
 
-/// First shows delivery time; after 2 seconds replaces it with "Fast delivery" in the same place (animated).
+// ─────────────────────────────────────────────────────────────────────────────
+// _OverlapBannerRow
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _OverlapBannerRow extends StatelessWidget {
+  final GlobalKey bannerKey;
+  final double bannerHeight;
+
+  const _OverlapBannerRow({
+    required this.bannerKey,
+    required this.bannerHeight,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final belowHeight = (bannerHeight - _kBannerPeekAbove).clamp(
+      0.0,
+      double.infinity,
+    );
+
+    return SizedBox(
+      width: double.infinity,
+      height: belowHeight,
+      child: OverflowBox(
+        alignment: Alignment.topCenter,
+        maxHeight: bannerHeight,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: BannerView(key: bannerKey),
+        ),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _GradientPainter
+//
+// Renamed from _SvgHeroBackgroundPainter for clarity.
+// Made const-constructible — one shared instance across all rebuilds.
+// shouldRepaint returns false: gradient is static, no need to ever repaint.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _GradientPainter extends CustomPainter {
+  const _GradientPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [_kGradStart, _kGradEnd],
+      ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
+
+    // Ratios derived from original SVG viewBox (400×220).
+    final cornerStartY = size.height * (180.0 / 220.0);
+    final cornerInsetX = size.width * (40.0 / 400.0);
+
+    final path = Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, cornerStartY)
+      ..quadraticBezierTo(
+        size.width,
+        size.height,
+        size.width - cornerInsetX,
+        size.height,
+      )
+      ..lineTo(cornerInsetX, size.height)
+      ..quadraticBezierTo(0, size.height, 0, cornerStartY)
+      ..close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _TimeThenFastDeliveryWidget
+//
+// Alternates between delivery time and "Fast delivery" text every 4 seconds.
+// Timer is safely cancelled in dispose().
+// ─────────────────────────────────────────────────────────────────────────────
+
 class _TimeThenFastDeliveryWidget extends StatefulWidget {
   final String deliveryTime;
 
@@ -873,14 +959,14 @@ class _TimeThenFastDeliveryWidgetState
   bool _showFastDelivery = false;
   Timer? _timer;
 
+  static const _switchDuration = Duration(seconds: 4);
+  static const _animDuration = Duration(milliseconds: 400);
+
   @override
   void initState() {
     super.initState();
-    // Loop: show time first, then "Fast delivery" after 2s, then time again, etc.
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) {
-        setState(() => _showFastDelivery = !_showFastDelivery);
-      }
+    _timer = Timer.periodic(_switchDuration, (_) {
+      if (mounted) setState(() => _showFastDelivery = !_showFastDelivery);
     });
   }
 
@@ -895,50 +981,56 @@ class _TimeThenFastDeliveryWidgetState
     return SizedBox(
       width: double.infinity,
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
+        duration: _animDuration,
         switchInCurve: Curves.easeIn,
         switchOutCurve: Curves.easeOut,
-        transitionBuilder: (Widget child, Animation<double> animation) {
-          return FadeTransition(opacity: animation, child: child);
-        },
-        child: _showFastDelivery
-            ? Row(
-                key: const ValueKey<String>('fast'),
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.delivery_dining,
-                    size: 10,
-                    color: AppThemeData.primary300,
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    'Fast delivery',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontFamily: AppThemeData.medium,
-                      color: AppThemeData.primary300,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              )
-            : Text(
-                key: const ValueKey<String>('time'),
-                widget.deliveryTime,
-                style: TextStyle(
-                  fontSize: 10,
-                  fontFamily: AppThemeData.medium,
-                  color: AppThemeData.primary300,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(opacity: animation, child: child),
+        child: _showFastDelivery ? _fastDeliveryRow : _timeText,
       ),
     );
   }
+
+  Widget get _fastDeliveryRow => Row(
+    key: const ValueKey<String>('fast'),
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.delivery_dining, size: 10, color: AppThemeData.primary300),
+      const SizedBox(width: 2),
+      Expanded(
+        child: Text(
+          'Fast delivery',
+          style: TextStyle(
+            fontSize: 10,
+            fontFamily: AppThemeData.medium,
+            color: AppThemeData.primary300,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
+
+  Widget get _timeText => Text(
+    key: const ValueKey<String>('time'),
+    widget.deliveryTime,
+    style: TextStyle(
+      fontSize: 10,
+      fontFamily: AppThemeData.medium,
+      color: AppThemeData.primary300,
+    ),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AdvertisementHomeCard
+//
+// Caches VendorModel after the first Firestore fetch so subsequent taps
+// on the same card don't trigger redundant network calls.
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AdvertisementHomeCard extends StatefulWidget {
   final AdvertisementModel model;
@@ -968,58 +1060,118 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
         decoration: BoxDecoration(
           color: AppThemeData.surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Color(0x1A000000),
               blurRadius: 2,
               spreadRadius: 0,
-              offset: const Offset(0, 1),
+              offset: Offset(0, 1),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          children: [_buildImageSection(), _buildContentSection()],
+          children: [
+            _AdvImageSection(model: widget.model, cachedVendor: _cachedVendor),
+            _AdvContentSection(
+              model: widget.model,
+              controller: widget.controller,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildImageSection() {
+  Future<void> _onAdvertisementTap(RestaurantDetailsProvider rdp) async {
+    ShowToastDialog.showLoader("Please wait".tr);
+    try {
+      VendorModel? v = _cachedVendor;
+      if (v == null && widget.model.vendorId != null) {
+        v = await FireStoreUtils.getVendorById(widget.model.vendorId!);
+        if (mounted) _cachedVendor = v;
+      }
+      ShowToastDialog.closeLoader();
+      if (v != null) {
+        rdp.initFunction(vendorModels: v);
+        Get.to(() => const RestaurantDetailsScreen());
+      }
+    } catch (_) {
+      ShowToastDialog.closeLoader();
+      ShowToastDialog.showToast("Failed to load restaurant details".tr);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// _AdvImageSection — extracted from AdvertisementHomeCard._buildImageSection
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AdvImageSection extends StatelessWidget {
+  final AdvertisementModel model;
+  final VendorModel? cachedVendor;
+
+  const _AdvImageSection({required this.model, required this.cachedVendor});
+
+  bool get _showRatingOverlay =>
+      model.type != 'video_promotion' &&
+      model.vendorId != null &&
+      (model.showRating == true || model.showReview == true);
+
+  @override
+  Widget build(BuildContext context) {
     return Stack(
       children: [
-        widget.model.type == 'restaurant_promotion'
+        model.type == 'restaurant_promotion'
             ? ClipRRect(
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(16),
                 ),
                 child: NetworkImageWidget(
-                  imageUrl: widget.model.coverImage ?? '',
+                  imageUrl: model.coverImage ?? '',
                   height: 135,
                   width: double.infinity,
                   fit: BoxFit.cover,
                 ),
               )
             : VideoAdvWidget(
-                url: widget.model.video ?? '',
+                url: model.video ?? '',
                 height: 135,
                 width: double.infinity,
               ),
-        if (widget.model.type != 'video_promotion' &&
-            widget.model.vendorId != null &&
-            (widget.model.showRating == true ||
-                widget.model.showReview == true))
-          Positioned(bottom: 8, right: 8, child: _buildRatingWidget()),
+        if (_showRatingOverlay && cachedVendor != null)
+          Positioned(
+            bottom: 8,
+            right: 8,
+            child: _RatingBadge(model: model, vendor: cachedVendor!),
+          ),
       ],
     );
   }
+}
 
-  Widget _buildRatingWidget() {
-    if (_cachedVendor == null) {
-      return const SizedBox();
-    }
+// ─────────────────────────────────────────────────────────────────────────────
+// _RatingBadge
+// ─────────────────────────────────────────────────────────────────────────────
 
-    final vendorModel = _cachedVendor!;
+class _RatingBadge extends StatelessWidget {
+  final AdvertisementModel model;
+  final VendorModel vendor;
+
+  const _RatingBadge({required this.model, required this.vendor});
+
+  @override
+  Widget build(BuildContext context) {
+    final rating = model.showRating == true
+        ? Constant.calculateReview(
+            reviewCount: vendor.reviewsCount!.toStringAsFixed(0),
+            reviewSum: vendor.reviewsSum.toString(),
+          )
+        : '';
+    final review = model.showReview == true
+        ? '(${vendor.reviewsCount!.toStringAsFixed(0)})'
+        : '';
+
     return Container(
       decoration: ShapeDecoration(
         color: AppThemeData.surface,
@@ -1038,7 +1190,7 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
             ),
             const SizedBox(width: 5),
             Text(
-              "${widget.model.showRating == true ? Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString()) : ''} ${widget.model.showReview == true ? '(${vendorModel.reviewsCount!.toStringAsFixed(0)})' : ''}",
+              '$rating $review'.trim(),
               style: TextStyle(
                 fontSize: 14,
                 color: AppThemeData.primary300,
@@ -1051,18 +1203,30 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
       ),
     );
   }
+}
 
-  Widget _buildContentSection() {
+// ─────────────────────────────────────────────────────────────────────────────
+// _AdvContentSection — extracted from AdvertisementHomeCard._buildContentSection
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AdvContentSection extends StatelessWidget {
+  final AdvertisementModel model;
+  final HomeProvider controller;
+
+  const _AdvContentSection({required this.model, required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.model.type == 'restaurant_promotion')
+          if (model.type == 'restaurant_promotion')
             ClipRRect(
               borderRadius: BorderRadius.circular(30),
               child: NetworkImageWidget(
-                imageUrl: widget.model.profileImage ?? '',
+                imageUrl: model.profileImage ?? '',
                 height: 50,
                 width: 50,
                 fit: BoxFit.cover,
@@ -1074,7 +1238,7 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.model.title ?? '',
+                  model.title ?? '',
                   style: TextStyle(
                     color: AppThemeData.grey900,
                     fontSize: 14,
@@ -1083,7 +1247,7 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  widget.model.description ?? '',
+                  model.description ?? '',
                   style: TextStyle(
                     fontSize: 12,
                     fontFamily: AppThemeData.medium,
@@ -1114,29 +1278,5 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
         ],
       ),
     );
-  }
-
-  Future<void> _onAdvertisementTap(
-    RestaurantDetailsProvider restaurantDetailsProvider,
-  ) async {
-    ShowToastDialog.showLoader("Please wait".tr);
-    try {
-      VendorModel? vendorModel = _cachedVendor;
-      if (vendorModel == null && widget.model.vendorId != null) {
-        vendorModel = await FireStoreUtils.getVendorById(
-          widget.model.vendorId!,
-        );
-        _cachedVendor = vendorModel;
-      }
-      ShowToastDialog.closeLoader();
-
-      if (vendorModel != null) {
-        restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
-        Get.to(() => const RestaurantDetailsScreen());
-      }
-    } catch (e) {
-      ShowToastDialog.closeLoader();
-      ShowToastDialog.showToast("Failed to load restaurant details".tr);
-    }
   }
 }

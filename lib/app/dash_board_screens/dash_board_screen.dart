@@ -19,6 +19,23 @@ import 'package:jippymart_customer/widget/network_status_banner.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:provider/provider.dart';
 
+// Hero gradient — keep in sync with home_screen_two.dart
+const Color _kGradStart = Color(0xFFFF2D2D);
+const Color _kGradEnd = Color(0xFFFF8C42);
+
+const LinearGradient _kGradient = LinearGradient(
+  begin: Alignment.topLeft,
+  end: Alignment.bottomRight,
+  stops: [0.0, 1.0],
+  colors: [_kGradStart, _kGradEnd],
+);
+
+/// Status bar can only be one opaque colour; use a blended tone from
+/// the hero gradient so the transition into home feels smooth.
+Color _statusBarTintFromHeroGradient() {
+  return Color.lerp(_kGradStart, _kGradEnd, 0.18)!;
+}
+
 class DashBoardScreen extends StatefulWidget {
   const DashBoardScreen({super.key});
 
@@ -95,7 +112,9 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   void _startOrderStatusRefreshTicker() {
     _orderStatusRefreshTimer?.cancel();
-    _orderStatusRefreshTimer = Timer.periodic(_orderStatusRefreshInterval, (_) async {
+    _orderStatusRefreshTimer = Timer.periodic(_orderStatusRefreshInterval, (
+      _,
+    ) async {
       if (!mounted) return;
       if (_activeOrderStartTime == null) return;
       if (_isOrderRefreshInFlight) return;
@@ -193,8 +212,10 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     }).toList();
     if (activeOrders.isEmpty) return null;
     activeOrders.sort((a, b) {
-      final aTime = a.createdAt?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final bTime = b.createdAt?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final aTime =
+          a.createdAt?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime =
+          b.createdAt?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
       return bTime.compareTo(aTime);
     });
     return activeOrders.first;
@@ -253,7 +274,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Only reload when coming from background, not on every state change
     if (state == AppLifecycleState.resumed) {
       final orderProvider = context.read<OrderProvider>();
       unawaited(
@@ -261,6 +281,10 @@ class _DashBoardScreenState extends State<DashBoardScreen>
           if (mounted) _syncActiveOrderCountdown(orderProvider);
         }),
       );
+      // Re-apply status bar style when returning from background
+      final idx = context.read<DashBoardProvider>().selectedIndex;
+      _applyStatusBarStyle(idx);
+
       final now = DateTime.now();
       if (_lastBackPressTime == null ||
           now.difference(_lastBackPressTime!) > const Duration(seconds: 5)) {
@@ -304,11 +328,41 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     );
   }
 
+  void _applyStatusBarStyle(int tabIndex) {
+    SystemChrome.setSystemUIOverlayStyle(
+      tabIndex == 0
+          ? SystemUiOverlayStyle(
+              statusBarColor: _statusBarTintFromHeroGradient(),
+              statusBarIconBrightness: Brightness.light,
+              statusBarBrightness: Brightness.dark,
+              systemNavigationBarColor: Colors.white,
+              systemNavigationBarIconBrightness: Brightness.dark,
+              systemStatusBarContrastEnforced: false,
+              systemNavigationBarContrastEnforced: false,
+            )
+          : const SystemUiOverlayStyle(
+              statusBarColor: Colors.white,
+              statusBarIconBrightness: Brightness.dark,
+              statusBarBrightness: Brightness.light,
+              systemNavigationBarColor: Colors.white,
+              systemNavigationBarIconBrightness: Brightness.dark,
+              systemStatusBarContrastEnforced: false,
+              systemNavigationBarContrastEnforced: false,
+            ),
+    );
+  }
+
   Widget _buildMainContent(DashBoardProvider dashBoardProvider) {
     final safeIndex = dashBoardProvider.selectedIndex.clamp(
       0,
       dashBoardProvider.pageList.length - 1,
     );
+
+    // Apply now (avoids one white frame) and again after layout.
+    _applyStatusBarStyle(safeIndex);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _applyStatusBarStyle(safeIndex);
+    });
 
     return Consumer5<
       CartControllerProvider,
@@ -386,7 +440,10 @@ class _DashBoardScreenState extends State<DashBoardScreen>
             valueListenable: _remainingOrderTimeNotifier,
             builder: (_, remaining, __) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: AppThemeData.primary300,
                   borderRadius: BorderRadius.circular(20),

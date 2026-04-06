@@ -166,7 +166,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                         Icon(
                           Icons.location_on_rounded,
                           size: 22,
-                          color: AppThemeData.danger300,
+                          color: Colors.white,
                         ),
                         const SizedBox(width: 6),
                         Expanded(
@@ -177,10 +177,10 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                                 _locationTitle(),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontFamily: AppThemeData.semiBold,
                                   fontSize: 15,
-                                  color: AppThemeData.grey900,
+                                  color: Colors.white,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -192,7 +192,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                                 style: TextStyle(
                                   fontFamily: AppThemeData.medium,
                                   fontSize: 12,
-                                  color: AppThemeData.grey600,
+                                  color: Colors.white.withOpacity(0.75),
                                 ),
                               ),
                             ],
@@ -201,7 +201,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                         Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 20,
-                          color: AppThemeData.grey600,
+                          color: Colors.white.withOpacity(0.85),
                         ),
                       ],
                     ),

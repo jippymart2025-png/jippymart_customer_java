@@ -97,13 +97,14 @@ void main() async {
   // colored AppBars set their own [systemOverlayStyle] to override (e.g. cart).
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.white,
+      // Transparent baseline — each screen's AnnotatedRegion overrides this.
+      statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
       statusBarBrightness: Brightness.light,
       systemNavigationBarColor: Colors.white,
       systemNavigationBarIconBrightness: Brightness.dark,
-      systemStatusBarContrastEnforced: true,
-      systemNavigationBarContrastEnforced: true,
+      systemStatusBarContrastEnforced: false,
+      systemNavigationBarContrastEnforced: false,
     ),
   );
   GlobalDeeplinkHandler.init();
