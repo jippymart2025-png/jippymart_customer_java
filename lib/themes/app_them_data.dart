@@ -82,4 +82,24 @@ class AppThemeData {
   static const String montserratRegular = 'Montserrat-Regular';
 
   static const String googleSansCode = 'GoogleSansCode';
+
+  static const Color orange = Color(0xFFFF6B35);
+  static const Color orangeLight = Color(0xFFFFF0EB);
+  static const Color orangeMid = Color(0xFFFFD4C2);
+  static const Color green = Color(0xFF1DB954);
+  static const Color greenLight = Color(0xFFE8FDF0);
+  static const Color red = Color(0xFFEF4444);
+  static const Color pageBg = Color(0xFFF8F6F3);
+  static const Color cardBg = Color(0xFFFFFFFF);
+  static const Color textPrimary = Color(0xFF1A1208);
+  static const Color textMuted = Color(0xFF8B8377);
+  static const Color textLight = Color(0xFFC4BFB8);
+  static const Color divider = Color(0xFFF0EDE8);
+  static const Color chipBorder = Color(0xFFEEEBE6);
+
+  static const String fontSemiBold = AppThemeData.semiBold;
+  static const String fontMedium = AppThemeData.medium;
+  static const String fontBold = AppThemeData.bold;
 }
+
+class _T {}
