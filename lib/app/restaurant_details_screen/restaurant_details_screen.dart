@@ -23,6 +23,8 @@ import 'package:provider/provider.dart';
 import '../cart_check_out_page/cart_check_out_screen.dart';
 import '../review_list_screen/provider/review_list_provider.dart';
 
+const _kGradEnd = Color(0xFFff5201);
+
 // ==================== CONSTANTS ====================
 class _RestaurantScreenConstants {
   static const double scrollThreshold = 100.0;
@@ -193,7 +195,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
                       delegate: _StickySearchDelegate(
                         controller: controller,
                         visible: _showStickySearch,
-                        backgroundColor: AppThemeData.primary300,
+                        backgroundColor: _kGradEnd,
                         barHeight:
                             _RestaurantScreenConstants.stickySearchBarHeight,
                       ),
@@ -251,7 +253,13 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
       floating: false,
       pinned: true,
       automaticallyImplyLeading: false,
-      backgroundColor: Color(0xFFff5201),
+      backgroundColor: _kGradEnd,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: _kGradEnd,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+      ),
       // Show elevation once user has scrolled past the header card
       elevation: _showStickySearch ? 0 : 0,
       // handled by sticky delegate shadow
@@ -336,7 +344,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
         key: _headerCardKey,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Color(0xFFff5201),
+          color: _kGradEnd,
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(28),
             bottomRight: Radius.circular(28),

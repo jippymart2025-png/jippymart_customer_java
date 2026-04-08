@@ -16,7 +16,6 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:http/http.dart' as http;
-import 'dart:io';
 import 'package:provider/provider.dart';
 
 class AddressListProvider extends ChangeNotifier {
@@ -63,6 +62,7 @@ class AddressListProvider extends ChangeNotifier {
 
     try {
       _isInitializing = true;
+      _homeProvider = Provider.of<HomeProvider>(context, listen: false);
       final userId = await SqlStorageConst.getFirebaseId();
 
       if (userId == null || userId.isEmpty) {
@@ -73,9 +73,6 @@ class AddressListProvider extends ChangeNotifier {
       }
 
       _currentUserId = userId;
-
-      // Initialize HomeProvider
-      _homeProvider = Provider.of<HomeProvider>(context, listen: false);
 
       // Check cache first (unless forced refresh)
       final now = DateTime.now();
@@ -101,25 +98,32 @@ class AddressListProvider extends ChangeNotifier {
   }
 
   Future<void> _debouncedApiCall(String userId) async {
-    // Cancel previous timer if exists
     _debounceTimer?.cancel();
 
-    // Create new debounced call
+    final completer = Completer<void>();
+
     _debounceTimer = Timer(_debounceDuration, () async {
       try {
         final userModel = await getUserProfile(userId);
         if (userModel != null) {
           _updateFromApiResponse(userModel);
           _lastFetchTime = DateTime.now();
+        } else if (_userCache.containsKey(userId)) {
+          _loadFromCache(userId);
         }
       } catch (e) {
         print('[ADDRESS_LIST_PROVIDER] API call error: $e');
-        // Fallback to cache if available
         if (_userCache.containsKey(userId)) {
           _loadFromCache(userId);
         }
+      } finally {
+        if (!completer.isCompleted) {
+          completer.complete();
+        }
       }
     });
+
+    await completer.future;
   }
 
   void _updateFromApiResponse(UserModel userModel) {
@@ -217,28 +221,25 @@ class AddressListProvider extends ChangeNotifier {
   // Optimized setData method
   void setData(ShippingAddress shippingAddress) {
     shippingModel = shippingAddress;
+    houseBuildingTextEditingController.text =
+        shippingAddress.address?.toString() ?? '';
+    localityEditingController.text = shippingAddress.locality?.toString() ?? '';
+    landmarkEditingController.text = shippingAddress.landmark?.toString() ?? '';
 
-    // Batch controller updates
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      houseBuildingTextEditingController.text =
-          shippingAddress.address?.toString() ?? '';
-      localityEditingController.text =
-          shippingAddress.locality?.toString() ?? '';
-      landmarkEditingController.text =
-          shippingAddress.landmark?.toString() ?? '';
+    localityText = shippingAddress.locality?.toString() ?? '';
+    selectedSaveAs = shippingAddress.addressAs?.toString() ?? 'Home';
+    location = shippingAddress.location ?? UserLocation();
 
-      localityText = shippingAddress.locality?.toString() ?? '';
-      selectedSaveAs = shippingAddress.addressAs?.toString() ?? 'Home';
-      location = shippingAddress.location ?? UserLocation();
-
-      notifyListeners();
-    });
+    notifyListeners();
   }
 
   // Add this static helper method to check internet connection
   static Future<bool> checkInternet() async {
     try {
       final connectivityResult = await Connectivity().checkConnectivity();
+      if (connectivityResult is List<ConnectivityResult>) {
+        return !connectivityResult.contains(ConnectivityResult.none);
+      }
       return connectivityResult != ConnectivityResult.none;
     } catch (e) {
       return false;
@@ -493,31 +494,7 @@ class AddressListProvider extends ChangeNotifier {
     }
   }
 
-  // Add this copy method to UserModel (or create a copyWith method in UserModel)
-  // If UserModel doesn't have copyWith, add this method to AddressListProvider:
-  UserModel _copyUserModel(UserModel original) {
-    return UserModel.fromJson(original.toJson());
-  }
-
-  // Add copyWith method to ShippingAddress if needed
-  ShippingAddress _copyShippingAddress(ShippingAddress original) {
-    return ShippingAddress(
-      id: original.id,
-      address: original.address,
-      addressAs: original.addressAs,
-      landmark: original.landmark,
-      locality: original.locality,
-      location: original.location != null
-          ? UserLocation(
-              latitude: original.location!.latitude,
-              longitude: original.location!.longitude,
-            )
-          : null,
-      isDefault: original.isDefault,
-      zoneId: original.zoneId,
-    );
-  }
-
+  @override
   void dispose() {
     _debounceTimer?.cancel();
     houseBuildingTextEditingController.dispose();

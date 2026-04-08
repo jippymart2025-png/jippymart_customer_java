@@ -78,6 +78,8 @@ class _BottomBannerViewState extends State<BottomBannerView> {
                       borderRadius: const BorderRadius.all(Radius.circular(12)),
                       child: NetworkImageWidget(
                         imageUrl: bannerModel.photo.toString(),
+                        width: MediaQuery.of(context).size.width,
+                        height: 160,
                         fit: BoxFit.fill,
                       ),
                     ),

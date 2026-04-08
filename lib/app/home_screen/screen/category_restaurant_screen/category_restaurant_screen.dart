@@ -150,13 +150,13 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              _CircleIconButton(
-                icon: Icons.tune_rounded,
-                onTap: () {},
-                bgColor: AppThemeData.orange,
-                iconColor: Colors.white,
-              ),
+              // const SizedBox(width: 12),
+              // _CircleIconButton(
+              //   icon: Icons.tune_rounded,
+              //   onTap: () {},
+              //   bgColor: AppThemeData.orange,
+              //   iconColor: Colors.white,
+              // ),
             ],
           ),
 
@@ -173,19 +173,19 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
                   fontFamily: AppThemeData.fontMedium,
                 ),
               ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () {},
-                child: const Text(
-                  'Change ›',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppThemeData.orange,
-                    fontFamily: AppThemeData.fontSemiBold,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
+              // const Spacer(),
+              // GestureDetector(
+              //   onTap: () {},
+              //   child: const Text(
+              //     'Change ›',
+              //     style: TextStyle(
+              //       fontSize: 13,
+              //       color: AppThemeData.orange,
+              //       fontFamily: AppThemeData.fontSemiBold,
+              //       fontWeight: FontWeight.w700,
+              //     ),
+              //   ),
+              // ),
             ],
           ),
         ],

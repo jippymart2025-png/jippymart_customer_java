@@ -77,7 +77,9 @@ Future rateApp() async {
 
 // ─── Zomato Brand Colors ──────────────────────────────────────────────────────
 class _ZColors {
-  static const Color primary = Color(0xFFE23744); // Zomato red
+  static const _kGradStart = Color(0xFFE8192C);
+  static const _kGradEnd = Color(0xFFFF6B35);
+  static const Color primary = Color(0xFFE74C3C);
   static const Color primaryLight = Color(0xFFFFF0F1);
   static const Color primaryDark = Color(0xFFC0000F);
   static const Color surface = Color(0xFFF8F8F8);
@@ -367,18 +369,22 @@ class _ProfileScreenState extends State<ProfileScreen>
     return SliverAppBar(
       expandedHeight: 150,
       pinned: true,
-      backgroundColor: _ZColors.primary,
+      backgroundColor: Color(0xFFFF4E1F),
       elevation: 0,
       leading: const SizedBox.shrink(),
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
-            color: AppThemeData.primary300,
-
-            // gradient: LinearGradient(
-            //   begin: Alignment.topLeft,
-            //   end: Alignment.bottomRight,
-            // ),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                _ZColors._kGradStart,
+                Color(0xFFFF4E1F),
+                _ZColors._kGradEnd,
+              ],
+              stops: [0.0, 0.55, 1.0],
+            ),
           ),
           child: SafeArea(
             child: Padding(

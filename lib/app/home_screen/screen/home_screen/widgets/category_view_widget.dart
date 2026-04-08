@@ -237,10 +237,10 @@ class _CategoryCircleTile extends StatelessWidget {
                   ),
                   child: Container(
                     padding: const EdgeInsets.all(3),
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.white,
-                    ),
+                    // decoration: const BoxDecoration(
+                    //   shape: BoxShape.circle,
+                    //   color: Colors.white,
+                    // ),
                     child: ClipOval(
                       child: SizedBox(
                         width: 64,

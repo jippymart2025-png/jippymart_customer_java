@@ -33,7 +33,7 @@ class CheckinSection extends StatelessWidget {
         // streakDay reflects the CURRENT streak regardless of today's check-in.
         // If the user missed yesterday, WalletProvider should have already reset
         // streakDay to 0 before this widget is rendered.
-        final streakDay = wp.streakDay; // 0 if missed, N if active
+        final streakDay = wp.displayStreakDay;
         final checkedInToday = wp.checkedInToday;
 
         // The displayed streak counter shows the streak BEFORE check-in too.

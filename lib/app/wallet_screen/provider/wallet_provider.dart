@@ -20,6 +20,7 @@ class WalletProvider extends ChangeNotifier {
   List<CoinLedgerModel> _coinLedger = [];
   List<ReferralModel> _myReferrals = [];
   DailyCheckinModel? _checkinStatus;
+  int _lastKnownPositiveStreak = 0;
   bool _loadingWallet = false;
   bool _loadingLedger = false;
   bool _loadingReferrals = false;
@@ -54,6 +55,27 @@ class WalletProvider extends ChangeNotifier {
   bool get checkedInToday => _checkinStatus?.checkedInToday ?? false;
 
   int get streakDay => _checkinStatus?.streakDayNumber ?? 0;
+
+  /// UI-friendly streak value:
+  /// - Uses API streak when available (>0)
+  /// - If backend temporarily returns 0 before today's check-in but last check-in
+  ///   date is yesterday, keep showing yesterday's streak instead of 0
+  int get displayStreakDay {
+    final status = _checkinStatus;
+    final apiStreak = status?.streakDayNumber ?? 0;
+    if (apiStreak > 0) return apiStreak;
+    if (status == null) return 0;
+
+    final d = status.date;
+    if (d != null && _isYesterday(d)) {
+      // If app cold-started and no cached streak exists, avoid jarring 0 by
+      // showing minimum carry-over of 1 for yesterday-checked users.
+      return _lastKnownPositiveStreak > 0 ? _lastKnownPositiveStreak : 1;
+    }
+
+    // Missed at least one day => streak resets.
+    return 0;
+  }
 
   /// Money balance in rupees (for display). Backend may return paise.
   double get moneyBalanceRupees => (_moneyBalancePaise ?? 0) / 100.0;
@@ -127,11 +149,23 @@ class WalletProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _checkinStatus = await _api.getCheckinStatus();
+      final fetchedStreak = _checkinStatus?.streakDayNumber ?? 0;
+      if (fetchedStreak > 0) {
+        _lastKnownPositiveStreak = fetchedStreak;
+      }
     } catch (_) {
       _checkinStatus = null;
     }
     _loadingCheckin = false;
     notifyListeners();
+  }
+
+  bool _isYesterday(DateTime value) {
+    final local = value.toLocal();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final inputDay = DateTime(local.year, local.month, local.day);
+    return inputDay == today.subtract(const Duration(days: 1));
   }
 
   /// Redeem coins. Returns success message or error. Idempotency key optional.
