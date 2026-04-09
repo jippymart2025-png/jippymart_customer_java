@@ -571,7 +571,13 @@ class _DealsScreenState extends State<DealsScreen>
     final rs = _cachedRS!;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: const SystemUiOverlayStyle(
+        // Keep status bar merged with Deals header gradient.
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+      ),
       child: Scaffold(
         backgroundColor: _DC.bg,
         body: Column(

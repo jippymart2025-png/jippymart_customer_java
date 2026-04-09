@@ -131,22 +131,24 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        // gradient: LinearGradient(
-        //   begin: Alignment.topLeft,
-        //   end: Alignment.bottomRight,
-        //   colors: [
-        //     const Color(0xFFFFF8F0),
-        //     const Color(0xFFFFF0E0),
-        //     AppThemeData.primary50,
-        //   ],
-        // ),
+        // [UI] Layered glow overlay on top of hero gradient.
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withOpacity(0.16),
+            Colors.white.withOpacity(0.07),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.45, 1.0],
+        ),
       ),
       child: Padding(
         padding: EdgeInsets.only(
-          top: MediaQuery.of(context).viewPadding.top + 12,
+          top: MediaQuery.of(context).viewPadding.top + 6,
           left: 16,
           right: 16,
-          bottom: 12,
+          bottom: 16,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,53 +159,90 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: InkWell(
-                    onTap: () => _onLocationTap(),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Icon(
-                          Icons.location_on_rounded,
-                          size: 22,
-                          color: Colors.white,
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      onTap: () => _onLocationTap(),
+                      borderRadius: BorderRadius.circular(16),
+                      splashColor: Colors.white.withOpacity(0.12),
+                      highlightColor: Colors.white.withOpacity(0.08),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.11),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.22),
+                            width: 0.9,
+                          ),
                         ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Column(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                _locationTitle(),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontFamily: AppThemeData.semiBold,
-                                  fontSize: 15,
+                              Container(
+                                width: 30,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
+                                  borderRadius: BorderRadius.circular(9),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.24),
+                                    width: 0.8,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.location_on_rounded,
+                                  size: 18,
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                "Delivering to address ⬆️",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontFamily: AppThemeData.medium,
-                                  fontSize: 12,
-                                  color: Colors.white.withOpacity(0.75),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _locationTitle(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontFamily: AppThemeData.semiBold,
+                                        fontSize: 16,
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -0.2,
+                                        height: 1.15,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      "Delivering to address".tr,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontFamily: AppThemeData.medium,
+                                        fontSize: 12,
+                                        color: Colors.white.withOpacity(0.82),
+                                        letterSpacing: 0.1,
+                                      ),
+                                    ),
+                                  ],
                                 ),
+                              ),
+                              Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 21,
+                                color: Colors.white.withOpacity(0.92),
                               ),
                             ],
                           ),
                         ),
-                        Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          size: 20,
-                          color: Colors.white.withOpacity(0.85),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -266,7 +305,17 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
         Get.to(const ProfileScreen());
       },
       borderRadius: BorderRadius.circular(24),
-      child: _buildProfileAvatar(),
+      child: Container(
+        width: 42,
+        height: 42,
+        padding: const EdgeInsets.all(1.5),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.12),
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white.withOpacity(0.22), width: 0.9),
+        ),
+        child: _buildProfileAvatar(),
+      ),
     );
   }
 
@@ -314,34 +363,47 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
           onTap: () => Get.to(() => const WalletHomeScreen()),
           borderRadius: BorderRadius.circular(24),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 11),
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
+              color: Colors.white.withOpacity(0.94),
+              borderRadius: BorderRadius.circular(21),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.45),
+                width: 0.8,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
+                  color: Colors.black.withOpacity(0.12),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
                 ),
               ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.account_balance_wallet_rounded,
-                  size: 18,
-                  color: AppThemeData.danger300,
+                Container(
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    color: AppThemeData.danger300.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    Icons.account_balance_wallet_rounded,
+                    size: 15,
+                    color: AppThemeData.danger300,
+                  ),
                 ),
-                const SizedBox(width: 4),
+                const SizedBox(width: 6),
                 Text(
                   loading
                       ? "..."
                       : "₹${rupees == rupees.truncateToDouble() ? rupees.toInt() : rupees.toStringAsFixed(1)}",
                   style: TextStyle(
                     fontFamily: AppThemeData.semiBold,
-                    fontSize: 12,
+                    fontSize: 12.5,
                     color: AppThemeData.grey800,
                   ),
                 ),
@@ -355,15 +417,16 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
 
   Widget _buildFoodMartBar() {
     return Container(
-      height: 44,
+      height: 46,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(23),
+        border: Border.all(color: Colors.white.withOpacity(0.5), width: 0.8),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withOpacity(0.14),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
@@ -373,7 +436,11 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
             child: Container(
               margin: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: AppThemeData.primary300,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFD6162A), Color(0xFFFF6035)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
                 borderRadius: BorderRadius.circular(19),
               ),
               child: const Center(
@@ -382,7 +449,8 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                    fontSize: 13.5,
+                    letterSpacing: 0.2,
                   ),
                 ),
               ),
@@ -401,9 +469,10 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                   child: Text(
                     'MART',
                     style: TextStyle(
-                      color: Colors.grey[600],
+                      color: Colors.grey[700],
                       fontWeight: FontWeight.w600,
-                      fontSize: 13,
+                      fontSize: 13.5,
+                      letterSpacing: 0.2,
                     ),
                   ),
                 ),
@@ -418,51 +487,70 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
   Widget _buildSearchBar() {
     return Consumer<SwiggySearchProvider>(
       builder: (context, swiggySearchProvider, _) {
-        return InkWell(
-          onTap: () {
-            swiggySearchProvider.initFunction();
-            Get.to(() => const SwiggySearchScreen());
-          },
+        return Material(
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(16),
-          child: Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+          child: InkWell(
+            onTap: () {
+              swiggySearchProvider.initFunction();
+              Get.to(() => const SwiggySearchScreen());
+            },
+            borderRadius: BorderRadius.circular(16),
+            splashColor: Colors.white.withOpacity(0.14),
+            highlightColor: Colors.white.withOpacity(0.08),
+            child: Container(
+              height: 50,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.96),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.55),
+                  width: 0.8,
                 ),
-              ],
-            ),
-            child: Row(
-              children: [
-                SvgPicture.asset(
-                  "assets/icons/ic_search.svg",
-                  color: AppThemeData.primary300,
-                  width: 20,
-                  height: 20,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    "Search 'dishes', 'restaurants'".tr,
-                    style: TextStyle(
-                      fontFamily: AppThemeData.medium,
-                      fontSize: 14,
-                      color: Colors.grey[600],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.14),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      color: AppThemeData.primary50,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    alignment: Alignment.center,
+                    child: SvgPicture.asset(
+                      "assets/icons/ic_search.svg",
+                      color: AppThemeData.primary300,
+                      width: 16,
+                      height: 16,
                     ),
                   ),
-                ),
-                Icon(
-                  Icons.mic_none_rounded,
-                  size: 22,
-                  color: AppThemeData.grey500,
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      "Search for dishes, restaurants".tr,
+                      style: TextStyle(
+                        fontFamily: AppThemeData.medium,
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Icons.mic_none_rounded,
+                    size: 21,
+                    color: AppThemeData.grey600,
+                  ),
+                ],
+              ),
             ),
           ),
         );

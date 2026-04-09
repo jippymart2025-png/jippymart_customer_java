@@ -48,7 +48,7 @@ class _CategoryRestaurantScreenState extends State<CategoryRestaurantScreen>
                 const SliverFillRemaining(child: _EmptyView())
               else
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final vendor = controller.allNearestRestaurant[index];
@@ -91,10 +91,10 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  double get minExtent => 120;
+  double get minExtent => 140;
 
   @override
-  double get maxExtent => 120;
+  double get maxExtent => 140;
 
   @override
   bool shouldRebuild(_StickyHeaderDelegate old) =>
@@ -107,88 +107,94 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     return Container(
-      color: AppThemeData.pageBg,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 8),
-
-          // ── Top row ──────────────────────────────────────
-          Row(
+      color: Colors.white, // ✅ pure white background
+      child: SafeArea(
+        // ✅ handles notch / status bar
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _CircleIconButton(
-                icon: Icons.arrow_back_ios_new_rounded,
-                onTap: () => Get.back(),
-                bgColor: AppThemeData.cardBg,
-                iconColor: AppThemeData.textPrimary,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      categoryName,
-                      style: const TextStyle(
-                        fontFamily: AppThemeData.fontBold,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppThemeData.textPrimary,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+              const SizedBox(height: 5),
+
+              // ── Top row ──────────────────────────────────────
+              Row(
+                children: [
+                  _CircleIconButton(
+                    icon: Icons.arrow_back_ios_new_rounded,
+                    onTap: () => Get.back(),
+                    bgColor: AppThemeData.cardBg,
+                    iconColor: AppThemeData.textPrimary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          categoryName,
+                          style: const TextStyle(
+                            fontFamily: AppThemeData.fontBold,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: AppThemeData.textPrimary,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          '$count restaurants nearby',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppThemeData.textMuted,
+                            fontFamily: AppThemeData.fontMedium,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      '$count restaurants nearby',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppThemeData.textMuted,
-                        fontFamily: AppThemeData.fontMedium,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                  // const SizedBox(width: 12),
+                  // _CircleIconButton(
+                  //   icon: Icons.tune_rounded,
+                  //   onTap: () {},
+                  //   bgColor: AppThemeData.orange,
+                  //   iconColor: Colors.white,
+                  // ),
+                ],
               ),
-              // const SizedBox(width: 12),
-              // _CircleIconButton(
-              //   icon: Icons.tune_rounded,
-              //   onTap: () {},
-              //   bgColor: AppThemeData.orange,
-              //   iconColor: Colors.white,
-              // ),
+
+              const SizedBox(height: 12),
+
+              // ── Sort row ─────────────────────────────────────
+              Row(
+                children: [
+                  const Text(
+                    'Sorted by distance',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppThemeData.textMuted,
+                      fontFamily: AppThemeData.fontMedium,
+                    ),
+                  ),
+                  // const Spacer(),
+                  // GestureDetector(
+                  //   onTap: () {},
+                  //   child: const Text(
+                  //     'Change ›',
+                  //     style: TextStyle(
+                  //       fontSize: 13,
+                  //       color: AppThemeData.orange,
+                  //       fontFamily: AppThemeData.fontSemiBold,
+                  //       fontWeight: FontWeight.w700,
+                  //     ),
+                  //   ),
+                  // ),
+                ],
+              ),
             ],
           ),
-
-          const SizedBox(height: 16),
-
-          // ── Sort row ─────────────────────────────────────
-          Row(
-            children: [
-              const Text(
-                'Sorted by distance',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppThemeData.textMuted,
-                  fontFamily: AppThemeData.fontMedium,
-                ),
-              ),
-              // const Spacer(),
-              // GestureDetector(
-              //   onTap: () {},
-              //   child: const Text(
-              //     'Change ›',
-              //     style: TextStyle(
-              //       fontSize: 13,
-              //       color: AppThemeData.orange,
-              //       fontFamily: AppThemeData.fontSemiBold,
-              //       fontWeight: FontWeight.w700,
-              //     ),
-              //   ),
-              // ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }

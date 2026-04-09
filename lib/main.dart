@@ -506,7 +506,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
             return EasyLoading.init()(
               context,
               SafeArea(
-                top: true,
+                // Let screens control top insets so immersive headers can
+                // blend with status bar without a separate top strip.
+                top: false,
                 bottom: true,
                 left: true,
                 right: true,
