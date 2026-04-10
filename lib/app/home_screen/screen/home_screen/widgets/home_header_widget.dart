@@ -29,10 +29,12 @@ class HomeHeaderWidget extends StatefulWidget {
     super.key,
     required this.homeProvider,
     required this.context,
+    this.showSearchBar = true,
   });
 
   final HomeProvider homeProvider;
   final BuildContext context;
+  final bool showSearchBar;
 
   @override
   State<HomeHeaderWidget> createState() => _HomeHeaderWidgetState();
@@ -160,7 +162,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
               children: [
                 Expanded(
                   child: Material(
-                    color: Colors.transparent,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     child: InkWell(
                       onTap: () => _onLocationTap(),
@@ -179,7 +181,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
-                            vertical: 8,
+                            vertical: 4,
                           ),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,17 +190,17 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                                 width: 30,
                                 height: 30,
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: Colors.black.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(9),
                                   border: Border.all(
-                                    color: Colors.white.withOpacity(0.24),
+                                    color: Colors.black.withOpacity(0.24),
                                     width: 0.8,
                                   ),
                                 ),
                                 child: const Icon(
                                   Icons.location_on_rounded,
                                   size: 18,
-                                  color: Colors.white,
+                                  color: Colors.black,
                                 ),
                               ),
                               const SizedBox(width: 8),
@@ -213,7 +215,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                                       style: const TextStyle(
                                         fontFamily: AppThemeData.semiBold,
                                         fontSize: 16,
-                                        color: Colors.white,
+                                        color: Colors.black,
                                         fontWeight: FontWeight.w700,
                                         letterSpacing: -0.2,
                                         height: 1.15,
@@ -227,7 +229,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                                       style: TextStyle(
                                         fontFamily: AppThemeData.medium,
                                         fontSize: 12,
-                                        color: Colors.white.withOpacity(0.82),
+                                        color: Colors.black.withOpacity(0.82),
                                         letterSpacing: 0.1,
                                       ),
                                     ),
@@ -237,7 +239,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
                               Icon(
                                 Icons.keyboard_arrow_down_rounded,
                                 size: 21,
-                                color: Colors.white.withOpacity(0.92),
+                                color: Colors.black.withOpacity(0.92),
                               ),
                             ],
                           ),
@@ -257,8 +259,16 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
               const SizedBox(height: 12),
               _buildFoodMartBar(),
             ],
-            const SizedBox(height: 12),
-            _buildSearchBar(),
+            const SizedBox(height: 10),
+            IgnorePointer(
+              ignoring: !widget.showSearchBar,
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 140),
+                curve: Curves.easeOutCubic,
+                opacity: widget.showSearchBar ? 1 : 0,
+                child: const HomeSearchBar(),
+              ),
+            ),
           ],
         ),
       ),
@@ -485,6 +495,15 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
   }
 
   Widget _buildSearchBar() {
+    return const HomeSearchBar();
+  }
+}
+
+class HomeSearchBar extends StatelessWidget {
+  const HomeSearchBar({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     return Consumer<SwiggySearchProvider>(
       builder: (context, swiggySearchProvider, _) {
         return Material(

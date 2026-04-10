@@ -371,7 +371,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
               ),
             ],
           ),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -379,13 +379,13 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
                 controller: controller,
                 disableHero: widget.disableHero,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 5),
               _StatusTimingRow(controller: controller),
               if (controller.couponList.isNotEmpty) ...[
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 _CouponsSection(controller: controller),
               ],
-              const SizedBox(height: 4),
+              const SizedBox(height: 0),
             ],
           ),
         ),
@@ -574,7 +574,7 @@ class _SearchBarWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: darkMode
-              ? Colors.white.withOpacity(0.35)
+              ? Colors.white.withOpacity(0.90)
               : AppThemeData.grey200,
           width: 1,
         ),

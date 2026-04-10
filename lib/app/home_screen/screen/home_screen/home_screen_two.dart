@@ -309,26 +309,82 @@ class _HomeMainContent extends StatefulWidget {
 
 class _HomeMainContentState extends State<_HomeMainContent> {
   final ScrollController _scroll = ScrollController();
+  static const double _kStickySearchShowOffset = 120;
+  static const double _kStickySearchHideOffset = 92;
+  bool _showStickySearch = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_handleScroll);
+  }
+
+  void _handleScroll() {
+    if (!_scroll.hasClients) return;
+    final offset = _scroll.offset;
+    if (!_showStickySearch && offset >= _kStickySearchShowOffset && mounted) {
+      setState(() => _showStickySearch = true);
+      return;
+    }
+    if (_showStickySearch && offset <= _kStickySearchHideOffset && mounted) {
+      setState(() => _showStickySearch = false);
+    }
+  }
 
   @override
   void dispose() {
+    _scroll.removeListener(_handleScroll);
     _scroll.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      controller: _scroll,
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      slivers: [
-        SliverToBoxAdapter(
-          child: _GradientHeroSliver(controller: widget.controller),
+    final topPadding = MediaQuery.of(context).viewPadding.top;
+
+    return Stack(
+      children: [
+        CustomScrollView(
+          controller: _scroll,
+          physics: const BouncingScrollPhysics(
+            parent: AlwaysScrollableScrollPhysics(),
+          ),
+          slivers: [
+            SliverToBoxAdapter(
+              child: _GradientHeroSliver(
+                controller: widget.controller,
+                showInlineSearch: !_showStickySearch,
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: _HomeContentCard(controller: widget.controller),
+            ),
+          ],
         ),
-        SliverToBoxAdapter(
-          child: _HomeContentCard(controller: widget.controller),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: IgnorePointer(
+            ignoring: !_showStickySearch,
+            child: AnimatedOpacity(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutCubic,
+              opacity: _showStickySearch ? 1 : 0,
+              child: AnimatedSlide(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                offset: _showStickySearch
+                    ? Offset.zero
+                    : const Offset(0, -0.15),
+                child: Container(
+                  color: _kBgCanvas,
+                  padding: EdgeInsets.fromLTRB(16, topPadding, 16, 6),
+                  child: const RepaintBoundary(child: HomeSearchBar()),
+                ),
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -1016,8 +1072,12 @@ class _BottomInfoRow extends StatelessWidget {
 
 class _GradientHeroSliver extends StatefulWidget {
   final HomeProvider controller;
+  final bool showInlineSearch;
 
-  const _GradientHeroSliver({required this.controller});
+  const _GradientHeroSliver({
+    required this.controller,
+    required this.showInlineSearch,
+  });
 
   @override
   State<_GradientHeroSliver> createState() => _GradientHeroSliverState();
@@ -1069,6 +1129,7 @@ class _GradientHeroSliverState extends State<_GradientHeroSliver> {
             key: ValueKey(Constant.selectedZone?.id ?? 'nozone'),
             homeProvider: widget.controller,
             context: context,
+            showSearchBar: widget.showInlineSearch,
           ),
           if (hasBanner)
             _OverlapBannerRow(

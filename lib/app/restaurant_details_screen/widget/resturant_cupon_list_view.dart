@@ -38,13 +38,13 @@ class CouponListView extends StatelessWidget {
                         : available < 840
                         ? 0.15
                         : 0.15))
-                .clamp(150.0, 250.0);
+                .clamp(100.0, 200.0);
 
         // Card height scales with width but stays within a tight range
-        final cardHeight = (cardWidth * 0.29).clamp(68.0, 88.0);
+        final cardHeight = (cardWidth * 0.20).clamp(60.0, 80.0);
 
         // GIF/discount badge scales with card
-        final gifSize = (cardHeight * 0.72).clamp(44.0, 62.0);
+        final gifSize = (cardHeight * 0.0).clamp(0.0, 0.0);
 
         // Typography scales with available width
         final titleSize = _lerp(available, 360, 840, 12.0, 15.0);
@@ -186,16 +186,16 @@ class _DiscountBadge extends StatelessWidget {
     return SizedBox(
       width: gifSize,
       height: gifSize,
-      child: DecoratedBox(
-        decoration: const BoxDecoration(),
-        child: Center(
-          child: Icon(
-            Icons.percent_sharp,
-            size: labelSize * 2, // make it bigger
-            color: AppThemeData.primary600,
-          ),
-        ),
-      ),
+      // child: DecoratedBox(
+      //   decoration: const BoxDecoration(),
+      //   child: Center(
+      //     child: Icon(
+      //       Icons.percent_sharp,
+      //       size: labelSize * 2, // make it bigger
+      //       color: AppThemeData.primary600,
+      //     ),
+      //   ),
+      // ),
     );
   }
 }
