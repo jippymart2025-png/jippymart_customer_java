@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:country_code_picker/country_code_picker.dart';
 import 'package:flutter/foundation.dart';
@@ -123,6 +124,11 @@ void main() async {
   }
   await GetStorage.init();
   await Preferences.initPref();
+  try {
+    await FacebookAppEventsService().initialize();
+  } catch (e) {
+    if (kDebugMode) print('⚠️ Facebook App Events early init failed: $e');
+  }
 
   // MartFirestoreService: register here (cheap); heavy init is in _initializeHeavyServicesInBackground
   try {
@@ -393,6 +399,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     if (state == AppLifecycleState.resumed) {
+      unawaited(FacebookAppEventsService().logAppOpen());
       // Notify deep link service that app has resumed
       FinalDeepLinkService().onAppResumed();
 

@@ -526,33 +526,37 @@ class _PaymentMethodsCard extends StatelessWidget {
 
   final CartControllerProvider controller;
 
+  bool get _isCodEnabledByZone => controller.isCodEnabledForCurrentZone;
+
   bool get _isCodVisible {
     final amt = controller.useWalletBalance
         ? controller.amountToChargeViaGateway
         : controller.subTotal;
-    return controller.cashOnDeliverySettingModel.isEnabled == true &&
-        amt <= controller.cashOnDeliverySettingModel.getMaxAmount() &&
+    return _isCodEnabledByZone &&
+        amt <= controller.codMaxAmountForCurrentZone &&
         !controller.hasPromotionalItems();
   }
+
+  bool get _showCodDisabledByZone => !_isCodEnabledByZone;
 
   bool get _showCodMaxMsg {
     final amt = controller.useWalletBalance
         ? controller.amountToChargeViaGateway
         : controller.subTotal;
-    return controller.cashOnDeliverySettingModel.isEnabled == true &&
-        amt > controller.cashOnDeliverySettingModel.getMaxAmount();
+    return _isCodEnabledByZone &&
+        amt > controller.codMaxAmountForCurrentZone;
   }
 
   bool get _showCodPromoMsg {
     final amt = controller.useWalletBalance
         ? controller.amountToChargeViaGateway
         : controller.subTotal;
-    return controller.cashOnDeliverySettingModel.isEnabled == true &&
-        amt <= controller.cashOnDeliverySettingModel.getMaxAmount() &&
+    return _isCodEnabledByZone &&
+        amt <= controller.codMaxAmountForCurrentZone &&
         controller.hasPromotionalItems();
   }
 
-  bool get _hasOnline => controller.razorPayModel.isEnabled == true;
+  bool get _hasOnline => controller.isRazorpayEnabledForCurrentZone;
 
   @override
   Widget build(BuildContext context) {
@@ -570,7 +574,7 @@ class _PaymentMethodsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          if (_isCodVisible)
+          if (_isCodVisible || _showCodDisabledByZone)
             _PaymentTile(
               controller: controller,
               value: PaymentGateway.cod,
@@ -578,15 +582,18 @@ class _PaymentMethodsCard extends StatelessWidget {
               iconBgColor: const Color(0xFFE8F5E9),
               iconColor: const Color(0xFF388E3C),
               title: 'Cash on Delivery',
-              subtitle: 'Pay in cash when order arrives',
+              subtitle: _showCodDisabledByZone
+                  ? 'Disabled for your delivery zone'
+                  : 'Pay in cash when order arrives',
               roundTop: true,
               roundBottom: !_hasOnline,
               showDivider: _hasOnline,
+              isEnabled: !_showCodDisabledByZone,
             ),
           if (_showCodMaxMsg)
             _WarningBanner(
               message:
-                  'COD not available for orders above ₹${controller.cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}',
+                  'COD not available for orders above ₹${controller.codMaxAmountForCurrentZone.toStringAsFixed(0)}',
             ),
           if (_showCodPromoMsg)
             const _WarningBanner(
@@ -636,6 +643,7 @@ class _PaymentTile extends StatelessWidget {
     required this.roundTop,
     required this.roundBottom,
     required this.showDivider,
+    this.isEnabled = true,
   });
 
   final CartControllerProvider controller;
@@ -648,6 +656,7 @@ class _PaymentTile extends StatelessWidget {
   final bool roundTop;
   final bool roundBottom;
   final bool showDivider;
+  final bool isEnabled;
 
   bool get _selected => controller.selectedPaymentMethod == value.name;
 
@@ -661,12 +670,16 @@ class _PaymentTile extends StatelessWidget {
       children: [
         InkWell(
           borderRadius: radius,
-          onTap: () => controller.setSelectedPaymentMethod(value.name),
+          onTap: isEnabled
+              ? () => controller.setSelectedPaymentMethod(value.name)
+              : null,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-              color: _selected ? AppThemeData.primary50 : Colors.transparent,
+              color: _selected && isEnabled
+                  ? AppThemeData.primary50
+                  : Colors.transparent,
               borderRadius: radius,
             ),
             child: Row(
@@ -675,10 +688,14 @@ class _PaymentTile extends StatelessWidget {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: iconBgColor,
+                    color: isEnabled ? iconBgColor : AppThemeData.grey100,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(icon, color: iconColor, size: 22),
+                  child: Icon(
+                    icon,
+                    color: isEnabled ? iconColor : AppThemeData.grey400,
+                    size: 22,
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -690,7 +707,8 @@ class _PaymentTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 15,
                           fontFamily: AppThemeData.semiBold,
-                          color: AppThemeData.grey900,
+                          color:
+                              isEnabled ? AppThemeData.grey900 : AppThemeData.grey400,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -699,7 +717,8 @@ class _PaymentTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontFamily: AppThemeData.regular,
-                          color: AppThemeData.grey500,
+                          color:
+                              isEnabled ? AppThemeData.grey500 : AppThemeData.grey400,
                         ),
                       ),
                     ],
@@ -711,17 +730,19 @@ class _PaymentTile extends StatelessWidget {
                   height: 24,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: _selected
+                    color: _selected && isEnabled
                         ? AppThemeData.primary300
                         : Colors.transparent,
                     border: Border.all(
-                      color: _selected
+                      color: _selected && isEnabled
                           ? AppThemeData.primary300
-                          : AppThemeData.grey300,
+                          : (isEnabled
+                              ? AppThemeData.grey300
+                              : AppThemeData.grey200),
                       width: 2,
                     ),
                   ),
-                  child: _selected
+                  child: _selected && isEnabled
                       ? const Icon(Icons.check, color: Colors.white, size: 14)
                       : null,
                 ),

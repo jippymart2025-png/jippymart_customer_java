@@ -306,6 +306,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   CodSettingModel cashOnDeliverySettingModel = CodSettingModel();
   RazorPayModel razorPayModel = RazorPayModel();
+  Map<String, dynamic> _zonePaymentSettings = {};
 
   /// Use Wallet toggle: when true, apply wallet balance to order (split or full).
   bool useWalletBalance = false;
@@ -398,6 +399,69 @@ class CartControllerProvider extends ChangeNotifier {
   /// True when wallet cannot be used (e.g. cart contains promotional items).
   bool get isWalletDisabledByPromotions => hasPromotionalItems();
 
+  Map<String, dynamic> _normalizeZonePaymentSettings(dynamic raw) {
+    if (raw is! Map) return <String, dynamic>{};
+    final normalized = <String, dynamic>{};
+    raw.forEach((key, value) {
+      if (key == null || value is! Map) return;
+      normalized[key.toString()] = Map<String, dynamic>.from(value as Map);
+    });
+    return normalized;
+  }
+
+  bool? _parseFlexibleBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == 'true' || normalized == '1') return true;
+      if (normalized == 'false' || normalized == '0') return false;
+    }
+    return null;
+  }
+
+  double? _parseFlexibleDouble(dynamic value) {
+    if (value is num) return value.toDouble();
+    if (value is String) return double.tryParse(value.trim());
+    return null;
+  }
+
+  String? get currentPaymentZoneId {
+    final selectedLocationZoneId = Constant.selectedLocation.zoneId;
+    if (selectedLocationZoneId != null && selectedLocationZoneId.isNotEmpty) {
+      return selectedLocationZoneId;
+    }
+    return null;
+  }
+
+  bool? _readZonePaymentFlag(String key) {
+    final zoneId = currentPaymentZoneId;
+    if (zoneId == null || zoneId.isEmpty) return null;
+    final zoneConfig = _zonePaymentSettings[zoneId];
+    if (zoneConfig is! Map) return null;
+    return _parseFlexibleBool(zoneConfig[key]);
+  }
+
+  bool get isCodEnabledForCurrentZone =>
+      _readZonePaymentFlag('cod') ?? (cashOnDeliverySettingModel.isEnabled == true);
+
+  bool get isRazorpayEnabledForCurrentZone =>
+      _readZonePaymentFlag('razorpay') ?? (razorPayModel.isEnabled == true);
+
+  double get codMaxAmountForCurrentZone {
+    final zoneId = currentPaymentZoneId;
+    if (zoneId != null && zoneId.isNotEmpty) {
+      final zoneConfig = _zonePaymentSettings[zoneId];
+      if (zoneConfig is Map) {
+        final parsed = _parseFlexibleDouble(zoneConfig['maxAmount']);
+        if (parsed != null && parsed > 0) {
+          return parsed;
+        }
+      }
+    }
+    return cashOnDeliverySettingModel.getMaxAmount();
+  }
+
   /// Sets [useWalletBalance]. When turning on, clears coupon and recalculates (no change to other price logic).
   /// Does nothing if [value] is true and cart has promotional items (wallet not allowed for promos).
   Future<void> setUseWalletBalance(bool value) async {
@@ -473,7 +537,7 @@ class CartControllerProvider extends ChangeNotifier {
       // Wallet is refreshed from WalletProvider when opening cart from CartScreen; fallback only if needed (e.g. deep link to cart)
 
       Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (subTotal > cashOnDeliverySettingModel.getMaxAmount() &&
+        if (subTotal > codMaxAmountForCurrentZone &&
             selectedPaymentMethod == PaymentGateway.cod.name) {
           selectedPaymentMethod = PaymentGateway.razorpay.name;
         }
@@ -2291,9 +2355,9 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _processCODOrder() async {
     try {
       // Validate COD availability
-      if (cashOnDeliverySettingModel.isEnabled != true) {
+      if (!isCodEnabledForCurrentZone) {
         ShowToastDialog.showToast(
-          "Cash on Delivery is currently disabled. Please select another payment method."
+          "Cash on Delivery is not available in your zone. Please select another payment method."
               .tr,
         );
         endOrderProcessing();
@@ -2303,9 +2367,9 @@ class CartControllerProvider extends ChangeNotifier {
       final codAmountCheck = useWalletBalance
           ? amountToChargeViaGateway
           : totalAmount;
-      if (codAmountCheck > cashOnDeliverySettingModel.getMaxAmount()) {
+      if (codAmountCheck > codMaxAmountForCurrentZone) {
         ShowToastDialog.showToast(
-          "Cash on Delivery is not available for orders above ₹${cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}. Please select another payment method."
+          "Cash on Delivery is not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}. Please select another payment method."
               .tr,
         );
         endOrderProcessing();
@@ -2586,84 +2650,76 @@ class CartControllerProvider extends ChangeNotifier {
 
   getPaymentSettings() async {
     try {
-      await FireStoreUtils.getPaymentSettingsData()
-          .then((value) {
-            try {
-              final razorpaySettingsStr = Preferences.getString(
-                Preferences.razorpaySettings,
-              );
-              final codSettingsStr = Preferences.getString(
-                Preferences.codSettings,
-              );
-              if (razorpaySettingsStr.isNotEmpty) {
-                razorPayModel = RazorPayModel.fromJson(
-                  jsonDecode(razorpaySettingsStr),
-                );
-              }
+      await FireStoreUtils.getPaymentSettingsData();
 
-              if (codSettingsStr.isNotEmpty) {
-                cashOnDeliverySettingModel = CodSettingModel.fromJson(
-                  jsonDecode(codSettingsStr),
-                );
-              }
+      try {
+        final razorpaySettingsStr = Preferences.getString(
+          Preferences.razorpaySettings,
+        );
+        final codSettingsStr = Preferences.getString(
+          Preferences.codSettings,
+        );
+        final zonePaymentSettingsStr = Preferences.getString(
+          Preferences.zonePaymentSettings,
+        );
+        if (razorpaySettingsStr.isNotEmpty) {
+          razorPayModel = RazorPayModel.fromJson(
+            jsonDecode(razorpaySettingsStr),
+          );
+        }
 
-              // 🔑 CRITICAL: If COD is disabled and currently selected, switch to another payment method
-              if (selectedPaymentMethod == PaymentGateway.cod.name &&
-                  cashOnDeliverySettingModel.isEnabled != true) {
-                selectedPaymentMethod = '';
-                print(
-                  '[PAYMENT_SETTINGS] COD is disabled, clearing COD selection',
-                );
-              }
+        if (codSettingsStr.isNotEmpty) {
+          cashOnDeliverySettingModel = CodSettingModel.fromJson(
+            jsonDecode(codSettingsStr),
+          );
+        }
+        if (zonePaymentSettingsStr.isNotEmpty) {
+          _zonePaymentSettings = _normalizeZonePaymentSettings(
+            jsonDecode(zonePaymentSettingsStr),
+          );
+        } else {
+          _zonePaymentSettings = {};
+        }
 
-              if (cashOnDeliverySettingModel.isEnabled == true &&
-                  subTotal <= cashOnDeliverySettingModel.getMaxAmount() &&
-                  !hasMartItemsInCart()) {
-                selectedPaymentMethod = PaymentGateway.cod.name;
-              } else if (razorPayModel.isEnabled == true) {
-                selectedPaymentMethod = PaymentGateway.razorpay.name;
-              }
+        // If COD is disabled and currently selected, clear and recalculate.
+        if (selectedPaymentMethod == PaymentGateway.cod.name &&
+            !isCodEnabledForCurrentZone) {
+          selectedPaymentMethod = '';
+          print('[PAYMENT_SETTINGS] COD is disabled, clearing COD selection');
+        }
 
-              // 🔑 OPTIMIZATION: Pre-initialize Razorpay when settings are loaded
-              // This eliminates initialization delay when user clicks "Confirm Payment"
-              if (razorPayModel.isEnabled == true &&
-                  razorPayModel.razorpayKey != null &&
-                  razorPayModel.razorpayKey!.isNotEmpty) {
-                _preInitializeRazorpay();
-              }
+        if (isCodEnabledForCurrentZone &&
+            subTotal <= codMaxAmountForCurrentZone &&
+            !hasMartItemsInCart()) {
+          selectedPaymentMethod = PaymentGateway.cod.name;
+        } else if (isRazorpayEnabledForCurrentZone) {
+          selectedPaymentMethod = PaymentGateway.razorpay.name;
+        }
 
-              // 🔑 CRITICAL FIX: DO NOT register event listeners here
-              // Event listeners are already registered in RazorpayCrashPrevention.safeInitialize()
-              // Registering them again causes duplicate callbacks and multiple orders
-              // The crash prevention utility handles all event listener registration
-              print(
-                '✅ [PAYMENT_SETTINGS] Event listeners are managed by RazorpayCrashPrevention, skipping duplicate registration',
-              );
+        // Pre-initialize Razorpay to reduce checkout interaction latency.
+        if (isRazorpayEnabledForCurrentZone &&
+            razorPayModel.razorpayKey != null &&
+            razorPayModel.razorpayKey!.isNotEmpty) {
+          _preInitializeRazorpay();
+        }
 
-              checkAndUpdatePaymentMethod();
-            } catch (e) {
-              print('[CART_PROVIDER] Error parsing payment settings: $e');
-              // Continue with default payment method selection
-              if (razorPayModel.isEnabled == true) {
-                selectedPaymentMethod = PaymentGateway.razorpay.name;
-                // Try to pre-initialize even on error
-                _preInitializeRazorpay();
-              }
-            }
-          })
-          .catchError((e) {
-            print('[CART_PROVIDER] Error fetching payment settings: $e');
-            // Set default payment method on error
-            if (razorPayModel.isEnabled == true) {
-              selectedPaymentMethod = PaymentGateway.razorpay.name;
-              // Try to pre-initialize even on error
-              _preInitializeRazorpay();
-            }
-          });
+        checkAndUpdatePaymentMethod();
+      } catch (e) {
+        print('[CART_PROVIDER] Error parsing payment settings: $e');
+        if (isRazorpayEnabledForCurrentZone) {
+          selectedPaymentMethod = PaymentGateway.razorpay.name;
+          _preInitializeRazorpay();
+        }
+        notifyListeners();
+      }
     } catch (e) {
       print('[CART_PROVIDER] Error in getPaymentSettings: $e');
+      if (isRazorpayEnabledForCurrentZone) {
+        selectedPaymentMethod = PaymentGateway.razorpay.name;
+        _preInitializeRazorpay();
+      }
+      notifyListeners();
     }
-    notifyListeners();
   }
 
   // Add this field if it's missing:
@@ -5975,14 +6031,37 @@ class CartControllerProvider extends ChangeNotifier {
       selectedPaymentMethod = '';
     }
     final hasPromoItems = hasPromotionalItems();
+    final codAmountCheck = useWalletBalance ? amountToChargeViaGateway : subTotal;
+    final canUseCod =
+        isCodEnabledForCurrentZone &&
+        codAmountCheck <= codMaxAmountForCurrentZone &&
+        !hasPromoItems;
+    final canUseOnline = isRazorpayEnabledForCurrentZone;
+
+    if (selectedPaymentMethod == PaymentGateway.cod.name && !canUseCod) {
+      selectedPaymentMethod =
+          canUseOnline ? PaymentGateway.razorpay.name : '';
+    }
+    if (selectedPaymentMethod == PaymentGateway.razorpay.name && !canUseOnline) {
+      selectedPaymentMethod = canUseCod ? PaymentGateway.cod.name : '';
+    }
+
     if (hasPromoItems) {
       if (selectedPaymentMethod == PaymentGateway.cod.name ||
           selectedPaymentMethod.isEmpty) {
-        selectedPaymentMethod = PaymentGateway.razorpay.name;
+        selectedPaymentMethod =
+            canUseOnline ? PaymentGateway.razorpay.name : '';
       }
-    } else if (subTotal > 599) {
+    } else if (codAmountCheck > codMaxAmountForCurrentZone) {
       if (selectedPaymentMethod == PaymentGateway.cod.name ||
           selectedPaymentMethod.isEmpty) {
+        selectedPaymentMethod =
+            canUseOnline ? PaymentGateway.razorpay.name : '';
+      }
+    } else if (selectedPaymentMethod.isEmpty) {
+      if (canUseCod) {
+        selectedPaymentMethod = PaymentGateway.cod.name;
+      } else if (canUseOnline) {
         selectedPaymentMethod = PaymentGateway.razorpay.name;
       }
     }
@@ -6298,7 +6377,7 @@ class CartControllerProvider extends ChangeNotifier {
 
                   // Validation messages (use remaining amount when wallet is used)
                   if ((useWalletBalance ? amountToChargeViaGateway : subTotal) >
-                          cashOnDeliverySettingModel.getMaxAmount() &&
+                          codMaxAmountForCurrentZone &&
                       selectedPaymentMethod == PaymentGateway.cod.name)
                     Container(
                       padding: EdgeInsets.all(8),
@@ -6313,7 +6392,7 @@ class CartControllerProvider extends ChangeNotifier {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              "COD not available for orders above ₹${cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}",
+                              "COD not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}",
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.orange[800],
@@ -6377,9 +6456,9 @@ class CartControllerProvider extends ChangeNotifier {
                           ? amountToChargeViaGateway
                           : subTotal;
                       if (codCheck >
-                          cashOnDeliverySettingModel.getMaxAmount()) {
+                          codMaxAmountForCurrentZone) {
                         ShowToastDialog.showToast(
-                          "COD not available for orders above ₹${cashOnDeliverySettingModel.getMaxAmount().toStringAsFixed(0)}. Please select online payment."
+                          "COD not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}. Please select online payment."
                               .tr,
                         );
                         return;

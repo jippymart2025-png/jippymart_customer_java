@@ -132,7 +132,29 @@
 				<string>jippymart</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.facebook.sdk</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>fb640838582128923</string>
+			</array>
+		</dict>
 	</array>
+
+	<!-- Facebook App Events -->
+	<key>FacebookAppID</key>
+	<string>640838582128923</string>
+	<key>FacebookClientToken</key>
+	<string>qTBqYZbLtSkKFXP5YaVxhxx9fGg</string>
+	<key>FacebookDisplayName</key>
+	<string>JippyMart</string>
+	<key>FacebookAutoLogAppEventsEnabled</key>
+	<true/>
+	<key>FacebookAdvertiserIDCollectionEnabled</key>
+	<true/>
 
 	<!-- Universal Links: Associated Domains for HTTPS deep links -->
 	<!-- Note: The actual Associated Domains capability must be added in Xcode -->

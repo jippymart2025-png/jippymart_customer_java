@@ -1,18 +1,23 @@
 import 'package:facebook_app_events/facebook_app_events.dart';
 import 'package:flutter/foundation.dart';
+import 'package:jippymart_customer/utils/preferences.dart';
 
 /// Facebook App Events Service
-/// 
+///
 /// Provides a wrapper around Facebook App Events SDK for tracking user events
 class FacebookAppEventsService {
-  static final FacebookAppEventsService _instance = FacebookAppEventsService._internal();
-  
+  static final FacebookAppEventsService _instance =
+      FacebookAppEventsService._internal();
+
   factory FacebookAppEventsService() => _instance;
-  
+
   FacebookAppEventsService._internal();
-  
+
   final FacebookAppEvents _facebookAppEvents = FacebookAppEvents();
   bool _isInitialized = false;
+  DateTime? _lastAppOpenTrackedAt;
+
+  static const String _installTrackedKey = 'fb_install_event_tracked';
 
   /// Initialize Facebook App Events SDK
   Future<void> initialize() async {
@@ -27,7 +32,18 @@ class FacebookAppEventsService {
       // Facebook App Events SDK initializes automatically
       // No explicit initialization needed for version 0.19.2
       _isInitialized = true;
-      
+      await _facebookAppEvents.setAutoLogAppEventsEnabled(true);
+      await _facebookAppEvents.setAdvertiserTracking(enabled: true, collectId: true);
+
+      if (kDebugMode) {
+        final appId = await _facebookAppEvents.getApplicationId();
+        print('🔧 [FB EVENTS] SDK app id: $appId');
+      }
+
+      // Track first-open once per install and one app-open on init.
+      await logInstallOnce();
+      await logAppOpen();
+
       if (kDebugMode) {
         print('✅ [FB EVENTS] Facebook App Events initialized successfully');
       }
@@ -39,8 +55,63 @@ class FacebookAppEventsService {
     }
   }
 
+  /// Track app-open safely (throttled to avoid duplicate spam).
+  Future<void> logAppOpen() async {
+    if (!_isInitialized) return;
+
+    final now = DateTime.now();
+    if (_lastAppOpenTrackedAt != null &&
+        now.difference(_lastAppOpenTrackedAt!) < const Duration(seconds: 30)) {
+      return;
+    }
+    _lastAppOpenTrackedAt = now;
+
+    try {
+      await _facebookAppEvents.logEvent(name: 'fb_mobile_activate_app');
+      await _facebookAppEvents.flush();
+
+      if (kDebugMode) {
+        print('🔥 [FB EVENTS] fb_mobile_activate_app fired');
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ FB activate_app error: $e');
+      }
+    }
+  }
+
+  /// Track first-open once after install.
+  Future<void> logInstallOnce() async {
+    if (!_isInitialized) return;
+
+    final alreadyTracked = Preferences.getString(_installTrackedKey) == 'true';
+
+    if (alreadyTracked) return;
+
+    try {
+      await _facebookAppEvents.logEvent(
+        name: 'first_open',
+        parameters: <String, dynamic>{
+          'source': 'app_launch',
+          'ts': DateTime.now().toIso8601String(),
+        },
+      );
+      await _facebookAppEvents.flush();
+
+      if (kDebugMode) {
+        print('🔥 [FB EVENTS] first_open tracked');
+      }
+
+      await Preferences.setString(_installTrackedKey, 'true');
+    } catch (e) {
+      if (kDebugMode) {
+        print('❌ FB install error: $e');
+      }
+    }
+  }
+
   /// Log a custom event
-  /// 
+  ///
   /// [eventName] - Name of the event
   /// [parameters] - Optional parameters to attach to the event
   Future<void> logEvent(
@@ -49,7 +120,9 @@ class FacebookAppEventsService {
   }) async {
     if (!_isInitialized) {
       if (kDebugMode) {
-        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+        print(
+          '⚠️ [FB EVENTS] Service not initialized. Call initialize() first.',
+        );
       }
       return;
     }
@@ -59,7 +132,7 @@ class FacebookAppEventsService {
         name: eventName,
         parameters: parameters ?? {},
       );
-      
+
       if (kDebugMode) {
         print('📊 [FB EVENTS] Logged event: $eventName');
       }
@@ -71,7 +144,7 @@ class FacebookAppEventsService {
   }
 
   /// Log a purchase event
-  /// 
+  ///
   /// [amount] - Purchase amount
   /// [currency] - Currency code (e.g., 'USD', 'INR')
   /// [parameters] - Optional parameters
@@ -82,7 +155,9 @@ class FacebookAppEventsService {
   }) async {
     if (!_isInitialized) {
       if (kDebugMode) {
-        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+        print(
+          '⚠️ [FB EVENTS] Service not initialized. Call initialize() first.',
+        );
       }
       return;
     }
@@ -93,7 +168,7 @@ class FacebookAppEventsService {
         currency: currency,
         parameters: parameters ?? {},
       );
-      
+
       if (kDebugMode) {
         print('💰 [FB EVENTS] Logged purchase: $amount $currency');
       }
@@ -105,7 +180,7 @@ class FacebookAppEventsService {
   }
 
   /// Log an add to cart event
-  /// 
+  ///
   /// [amount] - Item amount
   /// [currency] - Currency code
   /// [contentId] - Content/product ID
@@ -118,15 +193,15 @@ class FacebookAppEventsService {
   }) async {
     if (!_isInitialized) {
       if (kDebugMode) {
-        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+        print(
+          '⚠️ [FB EVENTS] Service not initialized. Call initialize() first.',
+        );
       }
       return;
     }
 
     try {
-      final parameters = <String, dynamic>{
-        'fb_currency': currency,
-      };
+      final parameters = <String, dynamic>{'fb_currency': currency};
       if (contentId != null) {
         parameters['fb_content_id'] = contentId;
       }
@@ -139,7 +214,7 @@ class FacebookAppEventsService {
         valueToSum: amount,
         parameters: parameters,
       );
-      
+
       if (kDebugMode) {
         print('🛒 [FB EVENTS] Logged add to cart: $amount $currency');
       }
@@ -151,7 +226,7 @@ class FacebookAppEventsService {
   }
 
   /// Log a view content event
-  /// 
+  ///
   /// [contentId] - Content/product ID
   /// [contentType] - Content type
   /// [currency] - Currency code
@@ -164,7 +239,9 @@ class FacebookAppEventsService {
   }) async {
     if (!_isInitialized) {
       if (kDebugMode) {
-        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+        print(
+          '⚠️ [FB EVENTS] Service not initialized. Call initialize() first.',
+        );
       }
       return;
     }
@@ -174,7 +251,7 @@ class FacebookAppEventsService {
         'fb_content_id': contentId,
         'fb_content_type': contentType,
       };
-      
+
       if (currency != null) {
         parameters['fb_currency'] = currency;
       }
@@ -187,7 +264,7 @@ class FacebookAppEventsService {
         valueToSum: value,
         parameters: parameters,
       );
-      
+
       if (kDebugMode) {
         print('👁️ [FB EVENTS] Logged view content: $contentId');
       }
@@ -199,7 +276,7 @@ class FacebookAppEventsService {
   }
 
   /// Log a search event
-  /// 
+  ///
   /// [searchString] - Search query string
   /// [contentType] - Content type being searched
   Future<void> logSearch({
@@ -208,16 +285,16 @@ class FacebookAppEventsService {
   }) async {
     if (!_isInitialized) {
       if (kDebugMode) {
-        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+        print(
+          '⚠️ [FB EVENTS] Service not initialized. Call initialize() first.',
+        );
       }
       return;
     }
 
     try {
-      final parameters = <String, dynamic>{
-        'fb_search_string': searchString,
-      };
-      
+      final parameters = <String, dynamic>{'fb_search_string': searchString};
+
       if (contentType != null) {
         parameters['fb_content_type'] = contentType;
       }
@@ -226,7 +303,7 @@ class FacebookAppEventsService {
         name: 'fb_mobile_search',
         parameters: parameters,
       );
-      
+
       if (kDebugMode) {
         print('🔍 [FB EVENTS] Logged search: $searchString');
       }
@@ -238,7 +315,7 @@ class FacebookAppEventsService {
   }
 
   /// Log an initiate checkout event
-  /// 
+  ///
   /// [amount] - Checkout amount
   /// [currency] - Currency code
   /// [numItems] - Number of items in checkout
@@ -249,16 +326,16 @@ class FacebookAppEventsService {
   }) async {
     if (!_isInitialized) {
       if (kDebugMode) {
-        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+        print(
+          '⚠️ [FB EVENTS] Service not initialized. Call initialize() first.',
+        );
       }
       return;
     }
 
     try {
-      final parameters = <String, dynamic>{
-        'fb_currency': currency,
-      };
-      
+      final parameters = <String, dynamic>{'fb_currency': currency};
+
       if (numItems != null) {
         parameters['fb_num_items'] = numItems;
       }
@@ -268,7 +345,7 @@ class FacebookAppEventsService {
         valueToSum: amount,
         parameters: parameters,
       );
-      
+
       if (kDebugMode) {
         print('🛍️ [FB EVENTS] Logged initiate checkout: $amount $currency');
       }
@@ -283,14 +360,16 @@ class FacebookAppEventsService {
   Future<void> flush() async {
     if (!_isInitialized) {
       if (kDebugMode) {
-        print('⚠️ [FB EVENTS] Service not initialized. Call initialize() first.');
+        print(
+          '⚠️ [FB EVENTS] Service not initialized. Call initialize() first.',
+        );
       }
       return;
     }
 
     try {
       await _facebookAppEvents.flush();
-      
+
       if (kDebugMode) {
         print('📤 [FB EVENTS] Flushed pending events');
       }

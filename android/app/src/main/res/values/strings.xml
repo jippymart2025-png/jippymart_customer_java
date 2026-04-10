@@ -3,6 +3,7 @@
     <string name="app_name">JippyMart</string>
     <!-- Facebook App Events Configuration -->
     <string name="facebook_app_id">640838582128923</string>
-    <!-- TODO: Replace with your Facebook Client Token from https://developers.facebook.com/apps/640838582128923/settings/basic/ -->
-    <string name="facebook_client_token">640838582128923|qTBqYZbLtSkKFXP5YaVxhxx9fGg</string>
+    <!-- Keep only client token value (without app_id prefix) -->
+    <string name="facebook_client_token">qTBqYZbLtSkKFXP5YaVxhxx9fGg</string>
+    <string name="fb_login_protocol_scheme">fb640838582128923</string>
 </resources>

@@ -27,6 +27,7 @@ class Preferences {
   static const walletSettings = "walletSettings";
   static const razorpaySettings = "razorpaySettings";
   static const codSettings = "CODSettings";
+  static const zonePaymentSettings = "ZonePaymentSettings";
   static const midTransSettings = "midTransSettings";
   static const orangeMoneySettings = "orangeMoneySettings";
   static const xenditSettings = "xenditSettings";
