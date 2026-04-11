@@ -34,159 +34,146 @@ class _MartHeaderCardState extends State<MartHeaderCard> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity, // Use full width instead of fixed 412
-      height: 150, // Back to original height - only toggle and address
+      width: double.infinity,
       color: Colors.transparent,
-
       child: Padding(
-        padding: EdgeInsets.only(top: MediaQuery.of(context).viewPadding.top),
-        child: Stack(
+        padding: EdgeInsets.only(
+          top: MediaQuery.of(context).viewPadding.top + 8,
+          left: 16,
+          right: 16,
+          bottom: 8,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             // Group 280 - Toggle Button
-            Positioned(
-              left: 16,
-              right: 16,
-              top: 16,
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFAF9EE),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    // Jippy Food Button (Left)
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _navigateToCorrectHomeScreen,
-                        child: Container(
-                          margin: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFAF9EE),
-                            // Jippy Food is not selected in mart screen
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'FOOD',
-                              style: TextStyle(
-                                color: Color(
-                                  0xFF666666,
-                                ), // Consistent grey color
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
+            Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAF9EE),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  // Jippy Food Button (Left)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _navigateToCorrectHomeScreen,
+                      child: Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFAF9EE),
+                          // Jippy Food is not selected in mart screen
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'FOOD',
+                            style: TextStyle(
+                              color: Color(0xFF666666),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
                           ),
                         ),
                       ),
                     ),
-                    // JippyMart Button (Right)
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: _selectMart,
-                        child: Container(
-                          margin: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            color: ColorConst.orangeLight,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'MART',
-                              style: TextStyle(
-                                color: Colors.white, // White text for selected
-                                fontWeight: FontWeight.w600,
-                                fontSize: 14,
-                              ),
+                  ),
+                  // JippyMart Button (Right)
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: _selectMart,
+                      child: Container(
+                        margin: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: ColorConst.orangeLight,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Center(
+                          child: Text(
+                            'MART',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-
+            const SizedBox(height: 10),
             // Group 289 - Delivery Address Section
-            Positioned(
-              left: 16,
-              top: 70, // Reduced for better visibility on all devices
-              right: 16,
-              child: SizedBox(
-                height: 60, // Increased from 55 to 60 to prevent overflow
-                child: Row(
-                  children: [
-                    // User avatar with initials
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: ColorConst.orangeLight,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          _getUserInitials(),
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // User avatar with initials
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: ColorConst.orangeLight,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getUserInitials(),
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
                       ),
                     ),
-
-                    const SizedBox(width: 16),
-
-                    // Delivery address information
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Delivery to ${Constant.selectedLocation.addressAs ?? 'Current Location'}',
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
-                              // Reduced from 20/16 to 1.2 to save space
-                              color: ColorConst.white,
-                            ),
-                          ),
-                          const SizedBox(
-                            height: 1,
-                          ), // Reduced from 2 to 1 to save space
-                          Text(
-                            Constant.selectedLocation.getFullAddress(),
-                            style: TextStyle(
-                              fontFamily: 'Montserrat',
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              height: 1.2,
-                              // Reduced from 15/12 to 1.2 to save space
-                              color: ColorConst.white,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
+                  ),
                 ),
-              ),
+
+                const SizedBox(width: 12),
+
+                // Delivery address information
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Delivery to ${Constant.selectedLocation.addressAs ?? 'Current Location'}',
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          height: 1.2,
+                          color: ColorConst.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        Constant.selectedLocation.getFullAddress(),
+                        style: TextStyle(
+                          fontFamily: 'Montserrat',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 1.2,
+                          color: ColorConst.white,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
             ),
           ],
         ),

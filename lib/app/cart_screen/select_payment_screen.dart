@@ -43,47 +43,48 @@ class _SelectPaymentScreenState extends State<SelectPaymentScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CartControllerProvider>(
-      builder: (context, controller, _) {
-        return Scaffold(
-          backgroundColor: const Color(0xFFF7F7F7),
-          appBar: _buildAppBar(),
-          body: FadeTransition(
-            opacity: _fadeAnim,
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _OrderSummaryStrip(controller: controller),
-                  if (controller.selectedFoodType != 'TakeAway') ...[
-                    const SizedBox(height: 16),
-                    _DeliveryAddressCard(controller: controller),
-                  ],
-                  const SizedBox(height: 20),
-                  _sectionLabel('STEP 1  ·  Your Wallet'),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: _WalletToggleCard(controller: controller),
-                  ),
-                  if (!controller.isFullyPaidByWallet) ...[
-                    const SizedBox(height: 24),
-                    _sectionLabel('STEP 2  ·  Pay Remaining via'),
-                    const SizedBox(height: 8),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      child: _PaymentMethodsCard(controller: controller),
-                    ),
-                  ],
-                  const SizedBox(height: 120),
-                ],
+    final controller = context.read<CartControllerProvider>();
+    final _ = context.select<CartControllerProvider, (String, bool, String)>(
+      (p) =>
+          (p.selectedFoodType, p.isFullyPaidByWallet, p.selectedPaymentMethod),
+    );
+    return Scaffold(
+      backgroundColor: const Color(0xFFF7F7F7),
+      appBar: _buildAppBar(),
+      body: FadeTransition(
+        opacity: _fadeAnim,
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _OrderSummaryStrip(controller: controller),
+              if (controller.selectedFoodType != 'TakeAway') ...[
+                const SizedBox(height: 16),
+                _DeliveryAddressCard(controller: controller),
+              ],
+              const SizedBox(height: 20),
+              _sectionLabel('STEP 1  ·  Your Wallet'),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: _WalletToggleCard(controller: controller),
               ),
-            ),
+              if (!controller.isFullyPaidByWallet) ...[
+                const SizedBox(height: 24),
+                _sectionLabel('STEP 2  ·  Pay Remaining via'),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: _PaymentMethodsCard(controller: controller),
+                ),
+              ],
+              const SizedBox(height: 120),
+            ],
           ),
-          bottomNavigationBar: _ConfirmPayBar(controller: controller),
-        );
-      },
+        ),
+      ),
+      bottomNavigationBar: _ConfirmPayBar(controller: controller),
     );
   }
 
@@ -543,8 +544,7 @@ class _PaymentMethodsCard extends StatelessWidget {
     final amt = controller.useWalletBalance
         ? controller.amountToChargeViaGateway
         : controller.subTotal;
-    return _isCodEnabledByZone &&
-        amt > controller.codMaxAmountForCurrentZone;
+    return _isCodEnabledByZone && amt > controller.codMaxAmountForCurrentZone;
   }
 
   bool get _showCodPromoMsg {
@@ -707,8 +707,9 @@ class _PaymentTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 15,
                           fontFamily: AppThemeData.semiBold,
-                          color:
-                              isEnabled ? AppThemeData.grey900 : AppThemeData.grey400,
+                          color: isEnabled
+                              ? AppThemeData.grey900
+                              : AppThemeData.grey400,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -717,8 +718,9 @@ class _PaymentTile extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 12,
                           fontFamily: AppThemeData.regular,
-                          color:
-                              isEnabled ? AppThemeData.grey500 : AppThemeData.grey400,
+                          color: isEnabled
+                              ? AppThemeData.grey500
+                              : AppThemeData.grey400,
                         ),
                       ),
                     ],
@@ -737,8 +739,8 @@ class _PaymentTile extends StatelessWidget {
                       color: _selected && isEnabled
                           ? AppThemeData.primary300
                           : (isEnabled
-                              ? AppThemeData.grey300
-                              : AppThemeData.grey200),
+                                ? AppThemeData.grey300
+                                : AppThemeData.grey200),
                       width: 2,
                     ),
                   ),
@@ -952,18 +954,19 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
               onPressed: (_canPay && !_isProcessing && !_tapLocked)
                   ? () async => _handleConfirmPay(context, controller)
                   : null,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppThemeData.primary300,
-                disabledBackgroundColor: AppThemeData.grey200,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ).copyWith(
-                elevation: WidgetStateProperty.resolveWith<double>(
-                  (states) =>
-                      states.contains(WidgetState.disabled) ? 0 : 1.5,
-                ),
-              ),
+              style:
+                  FilledButton.styleFrom(
+                    backgroundColor: AppThemeData.primary300,
+                    disabledBackgroundColor: AppThemeData.grey200,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ).copyWith(
+                    elevation: WidgetStateProperty.resolveWith<double>(
+                      (states) =>
+                          states.contains(WidgetState.disabled) ? 0 : 1.5,
+                    ),
+                  ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -992,9 +995,7 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
                           ? 'Processing...'
                           : (_tapLocked && _canPay)
                           ? 'Payment started - change method to retry'
-                          : (_canPay
-                                ? _btnLabel
-                                : 'Select a payment method'),
+                          : (_canPay ? _btnLabel : 'Select a payment method'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

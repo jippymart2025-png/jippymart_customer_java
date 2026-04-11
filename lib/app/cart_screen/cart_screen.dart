@@ -196,31 +196,30 @@ class _CartScreenState extends State<CartScreen> {
   Widget build(BuildContext context) {
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
+    final controller = context.read<CartControllerProvider>();
+    final _ = context.select<CartControllerProvider, int>(
+      (p) => p.priceSyncVersion,
+    );
+    final isGlobalLocked = context.select<CartControllerProvider, bool>(
+      (p) => p.isGlobalLocked,
+    );
 
-    return Consumer<CartControllerProvider>(
-      builder: (context, controller, _) {
-        final _ = controller.priceSyncVersion;
-
-        return WillPopScope(
-          onWillPop: () async {
-            if (controller.isGlobalLocked) {
-              ShowToastDialog.showToast(
-                "Please wait, payment is processing...",
-              );
-              return false;
-            }
-            return true;
-          },
-          child: Scaffold(
-            backgroundColor: const Color(0xFFF5F5F5),
-            appBar: _buildAppBar(cartTheme),
-            body: _buildBody(controller, themeColors, cartTheme),
-            bottomNavigationBar: HomeProvider.cartItem.isEmpty
-                ? null
-                : cartNavigationBarWidget(context),
-          ),
-        );
+    return WillPopScope(
+      onWillPop: () async {
+        if (isGlobalLocked) {
+          ShowToastDialog.showToast("Please wait, payment is processing...");
+          return false;
+        }
+        return true;
       },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF5F5F5),
+        appBar: _buildAppBar(cartTheme),
+        body: _buildBody(controller, themeColors, cartTheme),
+        bottomNavigationBar: HomeProvider.cartItem.isEmpty
+            ? null
+            : cartNavigationBarWidget(context),
+      ),
     );
   }
 
@@ -293,47 +292,27 @@ class _CartScreenState extends State<CartScreen> {
       return _buildEmptyCart();
     }
 
-    return SingleChildScrollView(
+    return CustomScrollView(
       physics: const BouncingScrollPhysics(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // ── Delivery Address ──────────────────────────────────────────────
-          _buildDeliveryAddress(controller),
-
-          // ── Products Card ─────────────────────────────────────────────────
-          _buildSectionCard(
+      slivers: [
+        SliverToBoxAdapter(child: _buildDeliveryAddress(controller)),
+        SliverToBoxAdapter(
+          child: _buildSectionCard(
             margin: const EdgeInsets.symmetric(horizontal: 12),
             child: cartProductDetailsImageWidget(controller),
           ),
-
-          const SizedBox(height: 8),
-
-          // ── Coupon / Offers ───────────────────────────────────────────────
-          _buildOffersSection(controller),
-
-          const SizedBox(height: 8),
-
-          // ── Bill Details ──────────────────────────────────────────────────
-          _buildBillDetails(controller),
-
-          const SizedBox(height: 8),
-
-          // ── Payment Method ────────────────────────────────────────────────
-          // _buildPaymentMethodRow(controller),
-          const SizedBox(height: 8),
-
-          // ── Delivery Tips ─────────────────────────────────────────────────
-          _buildDeliveryTips(controller),
-
-          const SizedBox(height: 8),
-
-          // ── Remarks ───────────────────────────────────────────────────────
-          _buildRemarks(controller),
-
-          const SizedBox(height: 100), // space for bottom nav
-        ],
-      ),
+        ),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        SliverToBoxAdapter(child: _buildOffersSection(controller)),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        SliverToBoxAdapter(child: _buildBillDetails(controller)),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        SliverToBoxAdapter(child: _buildDeliveryTips(controller)),
+        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+        SliverToBoxAdapter(child: _buildRemarks(controller)),
+        const SliverToBoxAdapter(child: SizedBox(height: 100)),
+      ],
     );
   }
 

@@ -314,18 +314,15 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Use separate consumers for different parts to reduce rebuilds
-    return Consumer<DashBoardProvider>(
-      builder: (context, dashBoardProvider, _) {
-        if (dashBoardProvider.pageList.isEmpty) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-
-        return _buildMainContent(dashBoardProvider);
-      },
+    final dashBoardProvider = context.read<DashBoardProvider>();
+    final dashboardState = context.select<DashBoardProvider, (int, int)>(
+      (p) => (p.pageList.length, p.selectedIndex),
     );
+    if (dashboardState.$1 == 0) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    return _buildMainContent(dashBoardProvider);
   }
 
   void _applyStatusBarStyle(int tabIndex) {
@@ -364,56 +361,44 @@ class _DashBoardScreenState extends State<DashBoardScreen>
       if (mounted) _applyStatusBarStyle(safeIndex);
     });
 
-    return Consumer5<
-      CartControllerProvider,
-      OrderProvider,
-      SplashProvider,
-      HomeProvider,
-      FavouriteProvider
-    >(
-      builder:
-          (
-            context,
-            cartControllerProvider,
-            orderProvider,
-            splashProvider,
-            homeProvider,
-            favouriteProvider,
-            _,
-          ) {
-            final hasActiveOrder = _activeOrderStartTime != null;
-            return PopScope(
-              canPop: dashBoardProvider.canPopNow,
-              onPopInvoked: (didPop) => _handleBackPress(
-                didPop,
-                dashBoardProvider,
-                homeProvider,
-                splashProvider,
-                cartControllerProvider,
-                orderProvider,
-                context,
-                favouriteProvider,
-              ),
-              child: Scaffold(
-                body: _buildAnimatedBody(dashBoardProvider, safeIndex),
-                bottomNavigationBar: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (hasActiveOrder) _buildOrderTimerBanner(),
-                    _buildOptimizedBottomBar(
-                      dashBoardProvider,
-                      cartControllerProvider,
-                      orderProvider,
-                      context,
-                      splashProvider,
-                      homeProvider,
-                      favouriteProvider,
-                    ),
-                  ],
-                ),
-              ),
-            );
-          },
+    final cartControllerProvider = context.read<CartControllerProvider>();
+    final orderProvider = context.read<OrderProvider>();
+    final splashProvider = context.read<SplashProvider>();
+    final homeProvider = context.read<HomeProvider>();
+    final favouriteProvider = context.read<FavouriteProvider>();
+    final _ = context.select<DashBoardProvider, bool>((p) => p.canPopNow);
+
+    final hasActiveOrder = _activeOrderStartTime != null;
+    return PopScope(
+      canPop: dashBoardProvider.canPopNow,
+      onPopInvoked: (didPop) => _handleBackPress(
+        didPop,
+        dashBoardProvider,
+        homeProvider,
+        splashProvider,
+        cartControllerProvider,
+        orderProvider,
+        context,
+        favouriteProvider,
+      ),
+      child: Scaffold(
+        body: _buildAnimatedBody(dashBoardProvider, safeIndex),
+        bottomNavigationBar: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasActiveOrder) _buildOrderTimerBanner(),
+            _buildOptimizedBottomBar(
+              dashBoardProvider,
+              cartControllerProvider,
+              orderProvider,
+              context,
+              splashProvider,
+              homeProvider,
+              favouriteProvider,
+            ),
+          ],
+        ),
+      ),
     );
   }
 

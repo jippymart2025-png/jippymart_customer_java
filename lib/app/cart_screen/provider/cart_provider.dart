@@ -109,6 +109,8 @@ class CartControllerProvider extends ChangeNotifier {
   Timer? _cleanupTimer;
   Timer? _batchUpdateTimer;
   Timer? _priceSyncTimer;
+  Timer? _codGuardTimer;
+  StreamSubscription<List<CartProductModel>>? _cartStreamSubscription;
   bool _isBatchUpdateScheduled = false;
   bool _isPriceSyncScheduled = false;
   bool _orderInProgress = false;
@@ -443,7 +445,8 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   bool get isCodEnabledForCurrentZone =>
-      _readZonePaymentFlag('cod') ?? (cashOnDeliverySettingModel.isEnabled == true);
+      _readZonePaymentFlag('cod') ??
+      (cashOnDeliverySettingModel.isEnabled == true);
 
   bool get isRazorpayEnabledForCurrentZone =>
       _readZonePaymentFlag('razorpay') ?? (razorPayModel.isEnabled == true);
@@ -536,7 +539,8 @@ class CartControllerProvider extends ChangeNotifier {
       validateUserProfile();
       // Wallet is refreshed from WalletProvider when opening cart from CartScreen; fallback only if needed (e.g. deep link to cart)
 
-      Timer.periodic(const Duration(seconds: 1), (timer) {
+      _codGuardTimer?.cancel();
+      _codGuardTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
         if (subTotal > codMaxAmountForCurrentZone &&
             selectedPaymentMethod == PaymentGateway.cod.name) {
           selectedPaymentMethod = PaymentGateway.razorpay.name;
@@ -1416,8 +1420,9 @@ class CartControllerProvider extends ChangeNotifier {
             }
 
             final catalogId = _catalogProductIdForFetch(result.productId);
-            final prefetchedFood =
-                catalogId.isNotEmpty ? foodByCatalogId[catalogId] : null;
+            final prefetchedFood = catalogId.isNotEmpty
+                ? foodByCatalogId[catalogId]
+                : null;
             final prefetchedMart = martByLineId[result.productId];
 
             if (result.hasPriceChange &&
@@ -1856,13 +1861,13 @@ class CartControllerProvider extends ChangeNotifier {
   /// One HTTP round-trip per unique catalog id + parallel mart reads.
   /// Returns maps so callers can apply updates without re-fetching each product.
   Future<
-      ({
-        Map<String, PriceUpdateResult> results,
-        Map<String, ProductModel?> foodByCatalogId,
-        Map<String, MartItemModel?> martByLineId,
-      })> validateAndUpdateCartPricesForBatch(
-    List<CartProductModel> batch,
-  ) async {
+    ({
+      Map<String, PriceUpdateResult> results,
+      Map<String, ProductModel?> foodByCatalogId,
+      Map<String, MartItemModel?> martByLineId,
+    })
+  >
+  validateAndUpdateCartPricesForBatch(List<CartProductModel> batch) async {
     final Map<String, PriceUpdateResult> results = {};
 
     final foodCatalogIds = <String>{};
@@ -2656,9 +2661,7 @@ class CartControllerProvider extends ChangeNotifier {
         final razorpaySettingsStr = Preferences.getString(
           Preferences.razorpaySettings,
         );
-        final codSettingsStr = Preferences.getString(
-          Preferences.codSettings,
-        );
+        final codSettingsStr = Preferences.getString(Preferences.codSettings);
         final zonePaymentSettingsStr = Preferences.getString(
           Preferences.zonePaymentSettings,
         );
@@ -2877,10 +2880,7 @@ class CartControllerProvider extends ChangeNotifier {
     return false;
   }
 
-  ProductOption? _matchProductOption(
-    ProductModel product,
-    VariantInfo? vi,
-  ) {
+  ProductOption? _matchProductOption(ProductModel product, VariantInfo? vi) {
     if (vi == null || product.options == null || product.options!.isEmpty) {
       return null;
     }
@@ -2899,10 +2899,7 @@ class CartControllerProvider extends ChangeNotifier {
     return null;
   }
 
-  Variants? _matchItemAttributeVariant(
-    ProductModel product,
-    VariantInfo? vi,
-  ) {
+  Variants? _matchItemAttributeVariant(ProductModel product, VariantInfo? vi) {
     if (vi == null || product.itemAttribute?.variants == null) return null;
     final vars = product.itemAttribute!.variants!;
     final vid = vi.variantId?.trim();
@@ -2962,9 +2959,7 @@ class CartControllerProvider extends ChangeNotifier {
         changed = true;
       }
       final img = variant.variantImage;
-      if (img != null &&
-          img.isNotEmpty &&
-          vi.variantImage != img) {
+      if (img != null && img.isNotEmpty && vi.variantImage != img) {
         vi.variantImage = img;
         changed = true;
       }
@@ -3004,8 +2999,7 @@ class CartControllerProvider extends ChangeNotifier {
         final storedDiscount =
             double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
         final storedReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
-        final storedDisplay =
-            storedDiscount > 0 && storedDiscount < storedReg
+        final storedDisplay = storedDiscount > 0 && storedDiscount < storedReg
             ? storedDiscount
             : storedReg;
         if ((live - storedDisplay).abs() > 0.01) {
@@ -3032,10 +3026,7 @@ class CartControllerProvider extends ChangeNotifier {
         if (opt != null && opt.price != null) {
           if (vendorModel.id != null) {
             return double.parse(
-              Constant.productCommissionPrice(
-                vendorModel,
-                opt.price ?? '0',
-              ),
+              Constant.productCommissionPrice(vendorModel, opt.price ?? '0'),
             );
           }
           return double.tryParse(opt.price ?? '0') ?? 0.0;
@@ -3263,7 +3254,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> getCartData() async {
     _startOperation('getCartData');
 
-    cartProvider.cartStream.listen((event) async {
+    _cartStreamSubscription ??= cartProvider.cartStream.listen((event) async {
       final newProductSetHash = _generateProductSetHashFromItems(event);
       final productSetChanged =
           _lastObservedProductSetHash != null &&
@@ -6031,7 +6022,9 @@ class CartControllerProvider extends ChangeNotifier {
       selectedPaymentMethod = '';
     }
     final hasPromoItems = hasPromotionalItems();
-    final codAmountCheck = useWalletBalance ? amountToChargeViaGateway : subTotal;
+    final codAmountCheck = useWalletBalance
+        ? amountToChargeViaGateway
+        : subTotal;
     final canUseCod =
         isCodEnabledForCurrentZone &&
         codAmountCheck <= codMaxAmountForCurrentZone &&
@@ -6039,24 +6032,26 @@ class CartControllerProvider extends ChangeNotifier {
     final canUseOnline = isRazorpayEnabledForCurrentZone;
 
     if (selectedPaymentMethod == PaymentGateway.cod.name && !canUseCod) {
-      selectedPaymentMethod =
-          canUseOnline ? PaymentGateway.razorpay.name : '';
+      selectedPaymentMethod = canUseOnline ? PaymentGateway.razorpay.name : '';
     }
-    if (selectedPaymentMethod == PaymentGateway.razorpay.name && !canUseOnline) {
+    if (selectedPaymentMethod == PaymentGateway.razorpay.name &&
+        !canUseOnline) {
       selectedPaymentMethod = canUseCod ? PaymentGateway.cod.name : '';
     }
 
     if (hasPromoItems) {
       if (selectedPaymentMethod == PaymentGateway.cod.name ||
           selectedPaymentMethod.isEmpty) {
-        selectedPaymentMethod =
-            canUseOnline ? PaymentGateway.razorpay.name : '';
+        selectedPaymentMethod = canUseOnline
+            ? PaymentGateway.razorpay.name
+            : '';
       }
     } else if (codAmountCheck > codMaxAmountForCurrentZone) {
       if (selectedPaymentMethod == PaymentGateway.cod.name ||
           selectedPaymentMethod.isEmpty) {
-        selectedPaymentMethod =
-            canUseOnline ? PaymentGateway.razorpay.name : '';
+        selectedPaymentMethod = canUseOnline
+            ? PaymentGateway.razorpay.name
+            : '';
       }
     } else if (selectedPaymentMethod.isEmpty) {
       if (canUseCod) {
@@ -6455,8 +6450,7 @@ class CartControllerProvider extends ChangeNotifier {
                       final codCheck = useWalletBalance
                           ? amountToChargeViaGateway
                           : subTotal;
-                      if (codCheck >
-                          codMaxAmountForCurrentZone) {
+                      if (codCheck > codMaxAmountForCurrentZone) {
                         ShowToastDialog.showToast(
                           "COD not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}. Please select online payment."
                               .tr,
@@ -8396,13 +8390,15 @@ class CartControllerProvider extends ChangeNotifier {
         Future(() async {
           if (martLineIds.isEmpty) return;
           final martService = Get.find<MartFirestoreService>();
-          await Future.wait(martLineIds.map((lineId) async {
-            try {
-              martByLineId[lineId] = await martService.getItemById(lineId);
-            } catch (_) {
-              martByLineId[lineId] = null;
-            }
-          }));
+          await Future.wait(
+            martLineIds.map((lineId) async {
+              try {
+                martByLineId[lineId] = await martService.getItemById(lineId);
+              } catch (_) {
+                martByLineId[lineId] = null;
+              }
+            }),
+          );
         }),
       ]);
     } catch (e) {
@@ -8452,11 +8448,11 @@ class CartControllerProvider extends ChangeNotifier {
             }
           } else {
             final catalogId = _catalogProductIdForFetch(cartItem.id!);
-            currentProduct =
-                catalogId.isEmpty ? null : foodByCatalogId[catalogId];
+            currentProduct = catalogId.isEmpty
+                ? null
+                : foodByCatalogId[catalogId];
             if (currentProduct != null && currentProduct is ProductModel) {
-              currentPrice =
-                  _getCurrentProductPrice(currentProduct, cartItem);
+              currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
             }
           }
 
@@ -8482,7 +8478,8 @@ class CartControllerProvider extends ChangeNotifier {
 
             cartItem.price = currentPrice.toStringAsFixed(2);
             cartItem.discountPrice = "0";
-            if (currentProduct is ProductModel && cartItem.variantInfo != null) {
+            if (currentProduct is ProductModel &&
+                cartItem.variantInfo != null) {
               _syncVariantInfoFieldsFromProduct(
                 cartItem.variantInfo!,
                 currentProduct,
@@ -8510,14 +8507,14 @@ class CartControllerProvider extends ChangeNotifier {
                 cartItem.variantInfo!,
                 currentProduct,
               );
-              final liveLine =
-                  _getCurrentProductPrice(currentProduct, cartItem);
+              final liveLine = _getCurrentProductPrice(
+                currentProduct,
+                cartItem,
+              );
               final sdDisc =
                   double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
-              final sdReg =
-                  double.tryParse(cartItem.price ?? '0') ?? 0.0;
-              final sdDisplay =
-                  sdDisc > 0 && sdDisc < sdReg ? sdDisc : sdReg;
+              final sdReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
+              final sdDisplay = sdDisc > 0 && sdDisc < sdReg ? sdDisc : sdReg;
               if ((liveLine - sdDisplay).abs() > 0.01) {
                 cartItem.price = liveLine.toStringAsFixed(2);
                 cartItem.discountPrice = '0';
@@ -8608,6 +8605,8 @@ class CartControllerProvider extends ChangeNotifier {
     _cleanupTimer?.cancel();
     _batchUpdateTimer?.cancel();
     _priceSyncTimer?.cancel();
+    _codGuardTimer?.cancel();
+    _cartStreamSubscription?.cancel();
     _calculatePriceDebounceTimer?.cancel();
     _syncPricesDebounceTimer?.cancel();
     _stopPendingOrderRetryTimer(); // 🔑 CRITICAL: Stop periodic retry timer

@@ -81,28 +81,28 @@ class HomeScreenTwo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<HomeProvider>(
-      builder: (context, controller, _) {
-        return AnnotatedRegion<SystemUiOverlayStyle>(
-          value: const SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            statusBarIconBrightness: Brightness.light,
-            statusBarBrightness: Brightness.dark,
-            systemStatusBarContrastEnforced: false,
-          ),
-          child: Scaffold(
-            backgroundColor: _kBgCanvas,
-            body: RefreshIndicator(
-              color: _kGradStart,
-              backgroundColor: _kSurfaceWhite,
-              strokeWidth: 2.5,
-              displacement: 60,
-              onRefresh: () async => controller.getRefresh(context),
-              child: _HomeBody(controller: controller),
-            ),
-          ),
-        );
-      },
+    final controller = context.read<HomeProvider>();
+    final _ = context.select<HomeProvider, (bool, bool, int)>(
+      (p) => (p.isLoading, p.zoneCheckCompleted, p.bannerModel.length),
+    );
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+      ),
+      child: Scaffold(
+        backgroundColor: _kBgCanvas,
+        body: RefreshIndicator(
+          color: _kGradStart,
+          backgroundColor: _kSurfaceWhite,
+          strokeWidth: 2.5,
+          displacement: 60,
+          onRefresh: () async => controller.getRefresh(context),
+          child: _HomeBody(controller: controller),
+        ),
+      ),
     );
   }
 }
@@ -359,6 +359,9 @@ class _HomeMainContentState extends State<_HomeMainContent> {
             SliverToBoxAdapter(
               child: _HomeContentCard(controller: widget.controller),
             ),
+            const _AllRestaurantsHeaderSliver(),
+            const _AllRestaurantsGridSliver(),
+            const SliverToBoxAdapter(child: SizedBox(height: 30)),
           ],
         ),
         Positioned(
@@ -421,8 +424,6 @@ class _HomeContentCard extends StatelessWidget {
           _AdvertisementSection(controller: controller),
           _BottomBannerSection(controller: controller),
           const SizedBox(height: 12),
-          _AllRestaurantsSection(),
-          const SizedBox(height: 30),
         ],
       ),
     );
@@ -598,6 +599,156 @@ class _BottomBannerSection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 24, left: 16, right: 16),
       child: BottomBannerView(),
+    );
+  }
+}
+
+class _AllRestaurantsHeaderSliver extends StatelessWidget {
+  const _AllRestaurantsHeaderSliver();
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<BestRestaurantProvider, (int, bool, String?, List<String>)>(
+      selector: (_, p) => (
+        p.allNearestRestaurant.length,
+        p.isLoading,
+        p.currentFilter,
+        p.availableFilters,
+      ),
+      shouldRebuild: (prev, next) =>
+          prev.$1 != next.$1 ||
+          prev.$2 != next.$2 ||
+          prev.$3 != next.$3 ||
+          prev.$4 != next.$4,
+      builder: (context, data, _) {
+        if (data.$1 == 0 || data.$2) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+
+        final prov = context.read<BestRestaurantProvider>();
+        return SliverToBoxAdapter(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 18,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [_kGradStart, _kGradEnd],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      "All Restaurants".tr,
+                      style: const TextStyle(
+                        fontFamily: AppThemeData.semiBold,
+                        color: Color(0xFF1A1A2E),
+                        fontSize: _kFontXL,
+                        letterSpacing: -0.2,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                child: FilterBar(
+                  selectedFilters: {},
+                  onFilterToggled: (f) => _handleFilterToggle(f, prov, context),
+                  availableFilters: data.$4,
+                  currentFilter: data.$3,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: Divider(
+                  color: AppThemeData.grey200,
+                  thickness: 1,
+                  height: 1,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleFilterToggle(
+    FilterType filter,
+    BestRestaurantProvider prov,
+    BuildContext context,
+  ) {
+    switch (filter) {
+      case FilterType.distance:
+        prov.applyFilter('distance');
+        break;
+      case FilterType.rating:
+        prov.applyFilter('rating');
+        break;
+      case FilterType.priceLowToHigh:
+      case FilterType.priceHighToLow:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('This filter is currently not available'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF1A1A2E),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+    }
+  }
+}
+
+class _AllRestaurantsGridSliver extends StatelessWidget {
+  const _AllRestaurantsGridSliver();
+
+  @override
+  Widget build(BuildContext context) {
+    return Selector<BestRestaurantProvider, List<VendorModel>>(
+      selector: (_, p) => p.allNearestRestaurant,
+      shouldRebuild: (prev, next) => prev.length != next.length || prev != next,
+      builder: (context, all, _) {
+        if (all.isEmpty) {
+          return const SliverToBoxAdapter(child: SizedBox.shrink());
+        }
+
+        return SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          sliver: SliverPadding(
+            padding: const EdgeInsets.only(top: 4, bottom: 8),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: 0.62,
+              ),
+              delegate: SliverChildBuilderDelegate((ctx, i) {
+                return RepaintBoundary(
+                  child: _RestaurantCard(vendorModel: all[i]),
+                );
+              }, childCount: all.length),
+            ),
+          ),
+        );
+      },
     );
   }
 }

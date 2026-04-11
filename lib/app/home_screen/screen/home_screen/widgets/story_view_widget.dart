@@ -66,32 +66,31 @@ class StoryView extends StatelessWidget {
               ],
             ),
           ),
-          Consumer<BestRestaurantProvider>(
-            builder: (context, bestRestaurantProvider, _) {
-              return Expanded(
-                child: Padding(
+          Expanded(
+            child: Selector<BestRestaurantProvider, List<StoryModel>>(
+              selector: (_, p) => p.storyList,
+              shouldRebuild: (prev, next) => prev.length != next.length,
+              builder: (context, storyList, _) {
+                return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: bestRestaurantProvider.storyList.length,
+                    itemCount: storyList.length,
                     scrollDirection: Axis.horizontal,
                     itemBuilder: (context, index) {
-                      StoryModel storyModel =
-                          bestRestaurantProvider.storyList[index];
+                      final storyModel = storyList[index];
 
                       return Padding(
                         padding: const EdgeInsets.only(right: 10),
                         child: InkWell(
                           onTap: () {
                             log(
-                              bestRestaurantProvider.storyList[index].videoUrls
-                                  .toString(),
+                              storyModel.videoUrls.toString(),
                               name: "storyList ",
                             );
                             Navigator.of(context).push(
                               MaterialPageRoute(
                                 builder: (context) => MoreStories(
-                                  storyList: bestRestaurantProvider.storyList,
+                                  storyList: storyList,
                                   index: index,
                                 ),
                               ),
@@ -108,17 +107,24 @@ class StoryView extends StatelessWidget {
                                   // Use VideoThumbnailWidget to handle both Firebase thumbnails and MP4 video thumbnails
                                   storyModel.videoUrls.isNotEmpty
                                       ? VideoThumbnailWidget(
-                                          thumbnailUrl: storyModel.videoThumbnail,
+                                          thumbnailUrl:
+                                              storyModel.videoThumbnail,
                                           videoUrl: storyModel.videoUrls.first,
                                           fit: BoxFit.cover,
-                                          height: Responsive.height(100, context),
+                                          height: Responsive.height(
+                                            100,
+                                            context,
+                                          ),
                                           width: Responsive.width(100, context),
                                         )
                                       : NetworkImageWidget(
                                           imageUrl: storyModel.videoThumbnail
                                               .toString(),
                                           fit: BoxFit.cover,
-                                          height: Responsive.height(100, context),
+                                          height: Responsive.height(
+                                            100,
+                                            context,
+                                          ),
                                           width: Responsive.width(100, context),
                                         ),
                                   Container(
@@ -129,100 +135,8 @@ class StoryView extends StatelessWidget {
                                       horizontal: 5,
                                       vertical: 8,
                                     ),
-                                    child: FutureBuilder(
-                                      future: FireStoreUtils.getVendorById(
-                                        storyModel.vendorID.toString(),
-                                      ),
-                                      builder: (context, snapshot) {
-                                        if (snapshot.connectionState ==
-                                            ConnectionState.waiting) {
-                                          return Constant.loader();
-                                        } else {
-                                          if (snapshot.hasError) {
-                                            return Center(
-                                              child: Text(
-                                                'Error: ${snapshot.error}',
-                                              ),
-                                            );
-                                          } else if (snapshot.data == null) {
-                                            return const SizedBox();
-                                          } else {
-                                            VendorModel vendorModel =
-                                                snapshot.data!;
-                                            return Row(
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.start,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                ClipOval(
-                                                  child:
-                                                      RestaurantImageWithStatus(
-                                                        vendorModel:
-                                                            vendorModel,
-                                                        width: 30,
-                                                        height: 30,
-                                                      ),
-                                                ),
-                                                const SizedBox(width: 4),
-                                                Expanded(
-                                                  child: Column(
-                                                    mainAxisAlignment:
-                                                        MainAxisAlignment.start,
-                                                    crossAxisAlignment:
-                                                        CrossAxisAlignment
-                                                            .start,
-                                                    children: [
-                                                      Text(
-                                                        vendorModel.title
-                                                            .toString(),
-                                                        textAlign:
-                                                            TextAlign.center,
-                                                        maxLines: 1,
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 12,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                        ),
-                                                      ),
-                                                      Row(
-                                                        children: [
-                                                          SvgPicture.asset(
-                                                            "assets/icons/ic_star.svg",
-                                                          ),
-                                                          const SizedBox(
-                                                            width: 5,
-                                                          ),
-                                                          Text(
-                                                            "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum!.toStringAsFixed(0))} ${'reviews'}",
-                                                            textAlign: TextAlign
-                                                                .center,
-                                                            maxLines: 1,
-                                                            style: const TextStyle(
-                                                              color: AppThemeData
-                                                                  .warning300,
-                                                              fontSize: 10,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w700,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            );
-                                          }
-                                        }
-                                      },
+                                    child: _StoryVendorMeta(
+                                      vendorId: storyModel.vendorID.toString(),
                                     ),
                                   ),
                                 ],
@@ -233,13 +147,107 @@ class StoryView extends StatelessWidget {
                       );
                     },
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
           const SizedBox(height: 10),
         ],
       ),
+    );
+  }
+}
+
+class _StoryVendorMeta extends StatefulWidget {
+  final String vendorId;
+
+  const _StoryVendorMeta({required this.vendorId});
+
+  @override
+  State<_StoryVendorMeta> createState() => _StoryVendorMetaState();
+}
+
+class _StoryVendorMetaState extends State<_StoryVendorMeta> {
+  late Future<VendorModel?> _vendorFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _vendorFuture = FireStoreUtils.getVendorById(widget.vendorId);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StoryVendorMeta oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.vendorId != widget.vendorId) {
+      _vendorFuture = FireStoreUtils.getVendorById(widget.vendorId);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<VendorModel?>(
+      future: _vendorFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Constant.loader();
+        }
+        if (snapshot.hasError || snapshot.data == null) {
+          return const SizedBox.shrink();
+        }
+
+        final vendorModel = snapshot.data!;
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ClipOval(
+              child: RestaurantImageWithStatus(
+                vendorModel: vendorModel,
+                width: 30,
+                height: 30,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vendorModel.title.toString(),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      overflow: TextOverflow.ellipsis,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      SvgPicture.asset("assets/icons/ic_star.svg"),
+                      const SizedBox(width: 5),
+                      Text(
+                        "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount.toString(), reviewSum: vendorModel.reviewsSum!.toStringAsFixed(0))} ${'reviews'}",
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        style: const TextStyle(
+                          color: AppThemeData.warning300,
+                          fontSize: 10,
+                          overflow: TextOverflow.ellipsis,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

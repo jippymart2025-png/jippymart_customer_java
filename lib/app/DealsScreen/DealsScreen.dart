@@ -1355,364 +1355,343 @@ class _PromotionCardState extends State<_PromotionCard>
   // ── Build ──────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
+    final qty = context.select<CartProvider, int>((_) => _cartQty());
+    final inCart = qty > 0;
+    final closed = !_isOpen;
+    final spec = widget.promotion.specialPrice;
+    final limit = widget.promotion.itemLimit;
+
     return FadeTransition(
       opacity: _entryFade,
       child: SlideTransition(
         position: _entrySlide,
-        child: Consumer<CartProvider>(
-          builder: (ctx, _, __) {
-            final qty = _cartQty();
-            final inCart = qty > 0;
-            final closed = !_isOpen;
-            final spec = widget.promotion.specialPrice;
-            final limit = widget.promotion.itemLimit;
-
-            return Opacity(
-              opacity: closed ? 0.55 : 1.0,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: _DC.surface,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF2D1B4E).withOpacity(0.09),
-                      blurRadius: 14,
-                      spreadRadius: 0,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+        child: Opacity(
+          opacity: closed ? 0.55 : 1.0,
+          child: Container(
+            decoration: BoxDecoration(
+              color: _DC.surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2D1B4E).withOpacity(0.09),
+                  blurRadius: 14,
+                  spreadRadius: 0,
+                  offset: const Offset(0, 4),
                 ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: Stack(
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Stack(
+                children: [
+                  Column(
+                    mainAxisSize: MainAxisSize.max,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.max,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // ── Image ──────────────────────────────
-                          Flexible(
-                            flex: 5,
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                // Image
-                                Container(
-                                  color: const Color(0xFFF5F2FB),
-                                  child: _loadingProduct
-                                      ? const Center(
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2,
-                                            color: _DC.brand,
-                                          ),
-                                        )
-                                      : _imgUrl != null
-                                      ? NetworkImageWidget(
-                                          imageUrl: _imgUrl!,
-                                          width: double.infinity,
-                                          height: double.infinity,
-                                          fit: BoxFit.fill,
-                                        )
-                                      : Center(
-                                          child: Icon(
-                                            Icons.local_offer_rounded,
-                                            size: 32,
-                                            color: _DC.brand.withOpacity(0.4),
-                                          ),
-                                        ),
-                                ),
+                      // ── Image ──────────────────────────────
+                      Flexible(
+                        flex: 5,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // Image
+                            Container(
+                              color: const Color(0xFFF5F2FB),
+                              child: _loadingProduct
+                                  ? const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: _DC.brand,
+                                      ),
+                                    )
+                                  : _imgUrl != null
+                                  ? NetworkImageWidget(
+                                      imageUrl: _imgUrl!,
+                                      width: double.infinity,
+                                      height: double.infinity,
+                                      fit: BoxFit.fill,
+                                    )
+                                  : Center(
+                                      child: Icon(
+                                        Icons.local_offer_rounded,
+                                        size: 32,
+                                        color: _DC.brand.withOpacity(0.4),
+                                      ),
+                                    ),
+                            ),
 
-                                // Bottom gradient for legibility
-                                Positioned(
-                                  bottom: 0,
-                                  left: 0,
-                                  right: 0,
-                                  height: 40,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.bottomCenter,
-                                        end: Alignment.topCenter,
-                                        colors: [
-                                          Colors.black.withOpacity(0.22),
-                                          Colors.transparent,
-                                        ],
+                            // Bottom gradient for legibility
+                            Positioned(
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: 40,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.bottomCenter,
+                                    end: Alignment.topCenter,
+                                    colors: [
+                                      Colors.black.withOpacity(0.22),
+                                      Colors.transparent,
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Veg/Non-veg badge
+                            if (_product != null)
+                              Positioned(
+                                top: 7,
+                                left: 7,
+                                child: Container(
+                                  width: rs.vegOuter,
+                                  height: rs.vegOuter,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(4),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.12),
+                                        blurRadius: 4,
+                                      ),
+                                    ],
+                                  ),
+                                  child: Center(
+                                    child: Container(
+                                      width: rs.vegInner,
+                                      height: rs.vegInner,
+                                      decoration: BoxDecoration(
+                                        color: (_product!.veg == true)
+                                            ? _DC.green
+                                            : _DC.red,
+                                        borderRadius: BorderRadius.circular(
+                                          2.5,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
+                              ),
 
-                                // Veg/Non-veg badge
-                                if (_product != null)
-                                  Positioned(
-                                    top: 7,
-                                    left: 7,
-                                    child: Container(
-                                      width: rs.vegOuter,
-                                      height: rs.vegOuter,
+                            // Discount badge
+                            if (_product?.price != null &&
+                                _product!.price!.isNotEmpty)
+                              Positioned(
+                                top: 7,
+                                right: 7,
+                                child: Builder(
+                                  builder: (_) {
+                                    final pct = _discPct(_product!.price, spec);
+                                    if (pct.isEmpty)
+                                      return const SizedBox.shrink();
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 7,
+                                        vertical: 3,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(4),
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFFD12477),
+                                            Color(0xFFFF5E8F),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(8),
                                         boxShadow: [
                                           BoxShadow(
-                                            color: Colors.black.withOpacity(
-                                              0.12,
-                                            ),
-                                            blurRadius: 4,
+                                            color: _DC.brand.withOpacity(0.35),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
                                           ),
                                         ],
                                       ),
-                                      child: Center(
-                                        child: Container(
-                                          width: rs.vegInner,
-                                          height: rs.vegInner,
-                                          decoration: BoxDecoration(
-                                            color: (_product!.veg == true)
-                                                ? _DC.green
-                                                : _DC.red,
-                                            borderRadius: BorderRadius.circular(
-                                              2.5,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-
-                                // Discount badge
-                                if (_product?.price != null &&
-                                    _product!.price!.isNotEmpty)
-                                  Positioned(
-                                    top: 7,
-                                    right: 7,
-                                    child: Builder(
-                                      builder: (_) {
-                                        final pct = _discPct(
-                                          _product!.price,
-                                          spec,
-                                        );
-                                        if (pct.isEmpty)
-                                          return const SizedBox.shrink();
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 7,
-                                            vertical: 3,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [
-                                                Color(0xFFD12477),
-                                                Color(0xFFFF5E8F),
-                                              ],
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: _DC.brand.withOpacity(
-                                                  0.35,
-                                                ),
-                                                blurRadius: 6,
-                                                offset: const Offset(0, 2),
-                                              ),
-                                            ],
-                                          ),
-                                          child: Text(
-                                            pct,
-                                            style: TextStyle(
-                                              fontSize:
-                                                  rs.discountBadgeFontSize,
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w800,
-                                              letterSpacing: 0.2,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ),
-
-                                // Item limit badge
-                                if (limit > 0)
-                                  Positioned(
-                                    bottom: 6,
-                                    left: 6,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.62),
-                                        borderRadius: BorderRadius.circular(7),
-                                      ),
                                       child: Text(
-                                        'Limit $limit',
+                                        pct,
                                         style: TextStyle(
-                                          fontSize: rs.limitBadgeFontSize,
+                                          fontSize: rs.discountBadgeFontSize,
                                           color: Colors.white,
-                                          fontWeight: FontWeight.w700,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.2,
                                         ),
                                       ),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                            // Item limit badge
+                            if (limit > 0)
+                              Positioned(
+                                bottom: 6,
+                                left: 6,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.62),
+                                    borderRadius: BorderRadius.circular(7),
+                                  ),
+                                  child: Text(
+                                    'Limit $limit',
+                                    style: TextStyle(
+                                      fontSize: rs.limitBadgeFontSize,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                              ],
-                            ),
-                          ),
-
-                          // ── Details ────────────────────────────
-                          Flexible(
-                            flex: 4,
-                            child: Padding(
-                              padding: EdgeInsets.fromLTRB(
-                                rs.cardPad,
-                                rs.cardPad,
-                                rs.cardPad,
-                                rs.cardPad - 1,
+                                ),
                               ),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.max,
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Product name
-                                  Text(
-                                    widget.promotion.productTitle,
+                          ],
+                        ),
+                      ),
+
+                      // ── Details ────────────────────────────
+                      Flexible(
+                        flex: 4,
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(
+                            rs.cardPad,
+                            rs.cardPad,
+                            rs.cardPad,
+                            rs.cardPad - 1,
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.max,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Product name
+                              Text(
+                                widget.promotion.productTitle,
+                                style: TextStyle(
+                                  fontSize: rs.nameFontSize,
+                                  fontWeight: FontWeight.w800,
+                                  color: _DC.text1,
+                                  letterSpacing: -0.2,
+                                  height: 1.2,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+
+                              // Restaurant name
+                              if (widget.promotion.restaurantTitle.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 2),
+                                  child: Text(
+                                    widget.promotion.restaurantTitle,
                                     style: TextStyle(
-                                      fontSize: rs.nameFontSize,
-                                      fontWeight: FontWeight.w800,
-                                      color: _DC.text1,
-                                      letterSpacing: -0.2,
-                                      height: 1.2,
+                                      fontSize: rs.subFontSize,
+                                      color: _DC.text3,
+                                      fontWeight: FontWeight.w400,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
+                                ),
 
-                                  // Restaurant name
-                                  if (widget
-                                      .promotion
-                                      .restaurantTitle
-                                      .isNotEmpty)
-                                    Padding(
-                                      padding: const EdgeInsets.only(top: 2),
-                                      child: Text(
-                                        widget.promotion.restaurantTitle,
-                                        style: TextStyle(
-                                          fontSize: rs.subFontSize,
-                                          color: _DC.text3,
-                                          fontWeight: FontWeight.w400,
+                              // Delivery time
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: SizedBox(
+                                  height: 14,
+                                  child: _DeliveryTicker(
+                                    deliveryTime: _vendor != null
+                                        ? Constant.getDeliveryTimeText(_vendor!)
+                                        : '25-30 mins',
+                                  ),
+                                ),
+                              ),
+
+                              // Price row + button
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _fmtPrice(spec),
+                                          style: TextStyle(
+                                            fontSize: rs.specialPriceFontSize,
+                                            fontWeight: FontWeight.w800,
+                                            color: _DC.text1,
+                                            letterSpacing: -0.3,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-
-                                  // Delivery time
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 2),
-                                    child: SizedBox(
-                                      height: 14,
-                                      child: _DeliveryTicker(
-                                        deliveryTime: _vendor != null
-                                            ? Constant.getDeliveryTimeText(
-                                                _vendor!,
-                                              )
-                                            : '25-30 mins',
-                                      ),
+                                        if (_product?.price != null &&
+                                            _product!.price!.isNotEmpty)
+                                          Text(
+                                            _fmtPrice(_product!.price),
+                                            style: TextStyle(
+                                              fontSize:
+                                                  rs.originalPriceFontSize,
+                                              color: _DC.text3,
+                                              fontWeight: FontWeight.w400,
+                                              decoration:
+                                                  TextDecoration.lineThrough,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                      ],
                                     ),
                                   ),
-
-                                  // Price row + button
-                                  Row(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              _fmtPrice(spec),
-                                              style: TextStyle(
-                                                fontSize:
-                                                    rs.specialPriceFontSize,
-                                                fontWeight: FontWeight.w800,
-                                                color: _DC.text1,
-                                                letterSpacing: -0.3,
-                                              ),
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                            if (_product?.price != null &&
-                                                _product!.price!.isNotEmpty)
-                                              Text(
-                                                _fmtPrice(_product!.price),
-                                                style: TextStyle(
-                                                  fontSize:
-                                                      rs.originalPriceFontSize,
-                                                  color: _DC.text3,
-                                                  fontWeight: FontWeight.w400,
-                                                  decoration: TextDecoration
-                                                      .lineThrough,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      _buildCartBtn(
-                                        inCart: inCart,
-                                        qty: qty,
-                                        closed: closed,
-                                      ),
-                                    ],
+                                  const SizedBox(width: 6),
+                                  _buildCartBtn(
+                                    inCart: inCart,
+                                    qty: qty,
+                                    closed: closed,
                                   ),
                                 ],
                               ),
-                            ),
+                            ],
                           ),
-                        ],
+                        ),
                       ),
+                    ],
+                  ),
 
-                      // Closed overlay
-                      if (closed)
-                        Positioned.fill(
+                  // Closed overlay
+                  if (closed)
+                    Positioned.fill(
+                      child: Container(
+                        color: _DC.closedOverlay,
+                        child: Center(
                           child: Container(
-                            color: _DC.closedOverlay,
-                            child: Center(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 5,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _DC.closedPill,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  'Closed',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: rs.closedFontSize,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _DC.closedPill,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'Closed',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: rs.closedFontSize,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ),
                         ),
-                    ],
-                  ),
-                ),
+                      ),
+                    ),
+                ],
               ),
-            );
-          },
+            ),
+          ),
         ),
       ),
     );

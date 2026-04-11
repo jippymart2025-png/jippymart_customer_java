@@ -25,14 +25,9 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-        child: ListView.separated(
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          itemCount: HomeProvider.cartItem.length,
-          physics: const NeverScrollableScrollPhysics(),
-          separatorBuilder: (context, index) => const SizedBox(height: 10),
-          itemBuilder: (context, index) {
-            CartProductModel cartProductModel = HomeProvider.cartItem[index];
+        child: Column(
+          children: List.generate(HomeProvider.cartItem.length, (index) {
+            final cartProductModel = HomeProvider.cartItem[index];
             String? productId;
             if (cartProductModel.id != null &&
                 cartProductModel.id!.isNotEmpty &&
@@ -44,6 +39,8 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                 productId = parts.first;
               }
             }
+
+            Widget itemChild;
             if (productId == null ||
                 productId.isEmpty ||
                 productId.trim().isEmpty ||
@@ -54,41 +51,45 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                   '[CART_PRODUCT] Invalid or null product ID: ${cartProductModel.id}',
                 );
               }
-              return _buildProductItem(cartProductModel, null, controller);
+              itemChild = _buildProductItem(cartProductModel, null, controller);
+            } else {
+              final cachedProduct = controller.getCachedProduct(productId);
+              final isMartItem =
+                  cartProductModel.vendorID?.startsWith('mart_') == true ||
+                  cartProductModel.vendorID?.toLowerCase().contains('mart') ==
+                      true;
+
+              if (cachedProduct == null &&
+                  !isMartItem &&
+                  !controller.productsLoaded) {
+                if (!controller.isLoadingProducts) {
+                  controller.preloadCartProducts();
+                }
+                if (controller.isLoadingProducts) {
+                  itemChild = _buildProductShimmer(cartProductModel);
+                } else {
+                  itemChild = _buildProductItem(
+                    cartProductModel,
+                    cachedProduct,
+                    controller,
+                  );
+                }
+              } else {
+                itemChild = _buildProductItem(
+                  cartProductModel,
+                  cachedProduct,
+                  controller,
+                );
+              }
             }
 
-            // Use cached product from controller - no FutureBuilder needed!
-            final cachedProduct = controller.getCachedProduct(productId);
-
-            // Check if this is a mart item (mart items use cart data, not ProductModel)
-            final isMartItem =
-                cartProductModel.vendorID?.startsWith('mart_') == true ||
-                cartProductModel.vendorID?.toLowerCase().contains('mart') ==
-                    true;
-
-            // If product is not cached yet and it's not a mart item
-            if (cachedProduct == null &&
-                !isMartItem &&
-                !controller.productsLoaded) {
-              // Trigger load if not already loading (loads in background)
-              if (!controller.isLoadingProducts) {
-                controller.preloadCartProducts();
-              }
-              // Show shimmer only while actively loading restaurant items
-              if (controller.isLoadingProducts) {
-                return _buildProductShimmer(cartProductModel);
-              }
-            }
-
-            // Show product item:
-            // - For restaurant items: use cachedProduct (may be null if still loading)
-            // - For mart items: cachedProduct will be null, use cartProductModel data
-            return _buildProductItem(
-              cartProductModel,
-              cachedProduct,
-              controller,
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: index == HomeProvider.cartItem.length - 1 ? 0 : 10,
+              ),
+              child: itemChild,
             );
-          },
+          }),
         ),
       ),
     ),

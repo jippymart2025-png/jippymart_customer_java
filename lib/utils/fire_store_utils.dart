@@ -856,7 +856,7 @@ class FireStoreUtils {
 
     // Fetch new products in parallel (using the existing method)
     final fetchFutures = idsToFetch.map(
-      (id) => getProductById(id, forceRefresh: true),
+      (id) => getProductById(id, forceRefresh: forceRefresh),
     );
     final fetchResults = await Future.wait(fetchFutures);
 

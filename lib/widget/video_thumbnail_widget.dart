@@ -12,6 +12,7 @@ class VideoThumbnailWidget extends StatefulWidget {
   final BoxFit fit;
   final double? width;
   final double? height;
+  final bool generateFromVideo;
 
   const VideoThumbnailWidget({
     super.key,
@@ -20,6 +21,7 @@ class VideoThumbnailWidget extends StatefulWidget {
     this.fit = BoxFit.cover,
     this.width,
     this.height,
+    this.generateFromVideo = false,
   });
 
   @override
@@ -35,7 +37,8 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
   void initState() {
     super.initState();
     // If no thumbnail URL provided, generate from video
-    if (widget.thumbnailUrl == null || widget.thumbnailUrl!.isEmpty) {
+    if (widget.generateFromVideo &&
+        (widget.thumbnailUrl == null || widget.thumbnailUrl!.isEmpty)) {
       _generateThumbnail();
     }
   }
@@ -50,14 +53,14 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
     try {
       // Use URL as-is (keep encoded) - Uri.parse handles encoded URLs correctly
       String videoUrl = widget.videoUrl.trim();
-      
+
       _thumbnailController = VideoPlayerController.networkUrl(
         Uri.parse(videoUrl),
         videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
       );
 
       await _thumbnailController!.initialize();
-      
+
       // Seek to first frame (0 seconds)
       await _thumbnailController!.seekTo(Duration.zero);
       await _thumbnailController!.pause();
@@ -69,7 +72,10 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
         });
       }
     } catch (e) {
-      log("VideoThumbnail: Error generating thumbnail: $e", name: "VideoThumbnail");
+      log(
+        "VideoThumbnail: Error generating thumbnail: $e",
+        name: "VideoThumbnail",
+      );
       if (mounted) {
         setState(() {
           _isGeneratingThumbnail = false;
@@ -103,15 +109,14 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
         height: widget.height,
         color: Colors.black,
         child: const Center(
-          child: CircularProgressIndicator(
-            color: Colors.white,
-            strokeWidth: 2,
-          ),
+          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
         ),
       );
     }
 
-    if (_thumbnailGenerated && _thumbnailController != null && _thumbnailController!.value.isInitialized) {
+    if (_thumbnailGenerated &&
+        _thumbnailController != null &&
+        _thumbnailController!.value.isInitialized) {
       return SizedBox(
         width: widget.width,
         height: widget.height,
@@ -131,12 +136,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       width: widget.width,
       height: widget.height,
       color: Colors.black,
-      child: const Icon(
-        Icons.videocam,
-        color: Colors.white54,
-        size: 40,
-      ),
+      child: const Icon(Icons.videocam, color: Colors.white54, size: 40),
     );
   }
 }
-

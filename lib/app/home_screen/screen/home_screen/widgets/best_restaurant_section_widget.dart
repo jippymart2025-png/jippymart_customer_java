@@ -794,16 +794,23 @@ import '../../../../../widgets/app_loading_widget.dart';
 //  GRADIENT CONSTANTS
 // ─────────────────────────────────────────────────────────────
 
-final _kGradStart = Colors.grey.withOpacity(0.5);
-final _kGradMid = Colors.grey.withOpacity(0.20);
-final _kGradEnd = Colors.grey.withOpacity(0.30);
+// final _kGradStart = Colors.lightBlueAccent.withOpacity(
+//   0.35,
+// ); // very light (top)
+// final _kGradMid = Colors.lightBlueAccent.withOpacity(0.15); // medium
+// final _kGradEnd = Colors.lightBlueAccent.withOpacity(0.05); // stronger (bottom)
 
-final _kSectionGradient = LinearGradient(
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-  colors: [_kGradStart, _kGradMid, _kGradEnd],
+final _kSectionGradient = const LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [
+    Color(0x3833B5E5), // ~0.45 opacity
+    Color(0x3833B5E5), // ~0.22
+    Color(0x1A33B5E5), // ~0.10
+    Color(0x0D33B5E5), // ~0.05
+  ],
+  stops: [0.0, 0.3, 0.7, 1.0],
 );
-
 // ─────────────────────────────────────────────────────────────
 //  BEST RESTAURANTS SECTION
 // ─────────────────────────────────────────────────────────────
@@ -851,7 +858,7 @@ class BestRestaurantsSection extends StatelessWidget {
             return Container(
               decoration: BoxDecoration(
                 gradient: _kSectionGradient,
-                borderRadius: BorderRadius.all(Radius.circular(20)),
+                borderRadius: BorderRadius.all(Radius.circular(30)),
               ),
               clipBehavior: Clip.antiAlias,
               child: Column(
@@ -887,7 +894,7 @@ class BestRestaurantsSection extends StatelessWidget {
     RestaurantListProvider provider,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -898,7 +905,7 @@ class BestRestaurantsSection extends StatelessWidget {
               fontSize: 20,
               fontWeight: FontWeight.bold,
               fontFamily: AppThemeData.bold,
-              color: Color(0xFFFF6B35),
+              color: AppThemeData.surfaceDark,
               letterSpacing: -0.3,
             ),
           ),
@@ -906,7 +913,7 @@ class BestRestaurantsSection extends StatelessWidget {
           // RIGHT — See all pill
           Container(
             decoration: BoxDecoration(
-              border: Border.all(color: Color(0xFFFF6B35).withOpacity(0.45)),
+              border: Border.all(color: Colors.black.withOpacity(0.45)),
               borderRadius: BorderRadius.circular(20),
             ),
             child: Material(
@@ -933,14 +940,14 @@ class BestRestaurantsSection extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           fontFamily: AppThemeData.medium,
-                          color: Color(0xFFFF6B35),
+                          color: AppThemeData.surfaceDark,
                         ),
                       ),
                       const SizedBox(width: 4),
                       const Icon(
                         Icons.arrow_forward_rounded,
                         size: 14,
-                        color: Color(0xFFC0392B),
+                        color: AppThemeData.surfaceDark,
                       ),
                     ],
                   ),

@@ -224,7 +224,7 @@ class _CategoryCircleTile extends StatelessWidget {
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppThemeData.primary300.withOpacity(0.18),
+                        color: AppThemeData.primary300.withOpacity(0.10),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
