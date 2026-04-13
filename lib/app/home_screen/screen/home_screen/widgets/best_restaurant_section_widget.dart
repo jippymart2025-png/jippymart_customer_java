@@ -844,15 +844,9 @@ class BestRestaurantsSection extends StatelessWidget {
 
             if (displayList.isEmpty) return const SizedBox.shrink();
 
-            final int midPoint = (displayList.length / 2).ceil();
-            final List<VendorModel> firstRowItems = displayList
-                .take(midPoint)
-                .cast<VendorModel>()
-                .toList();
-            final List<VendorModel> secondRowItems = displayList
-                .skip(midPoint)
-                .cast<VendorModel>()
-                .toList();
+            final _CarouselRows rows = _buildCarouselRows(displayList);
+            final List<VendorModel> firstRowItems = rows.firstRowItems;
+            final List<VendorModel> secondRowItems = rows.secondRowItems;
 
             // ── Entire section sits on the gradient ──────────────
             return Container(
@@ -880,11 +874,28 @@ class BestRestaurantsSection extends StatelessWidget {
                       Get.to(const RestaurantDetailsScreen());
                     },
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 25),
                 ],
               ),
             );
           },
+    );
+  }
+
+  _CarouselRows _buildCarouselRows(List<VendorModel> displayList) {
+    final int total = displayList.length;
+    if (total < 3) {
+      return _CarouselRows(
+        firstRowItems: List<VendorModel>.from(displayList),
+        secondRowItems: const <VendorModel>[],
+      );
+    }
+
+    // Explicitly keep 4 cards as 2 + 2.
+    final int firstRowCount = total == 4 ? 2 : (total / 2).ceil();
+    return _CarouselRows(
+      firstRowItems: displayList.sublist(0, firstRowCount),
+      secondRowItems: displayList.sublist(firstRowCount),
     );
   }
 
@@ -961,6 +972,16 @@ class BestRestaurantsSection extends StatelessWidget {
   }
 }
 
+class _CarouselRows {
+  final List<VendorModel> firstRowItems;
+  final List<VendorModel> secondRowItems;
+
+  const _CarouselRows({
+    required this.firstRowItems,
+    required this.secondRowItems,
+  });
+}
+
 // ─────────────────────────────────────────────────────────────
 //  DUAL ROW CAROUSEL — same-direction linked scroll
 // ─────────────────────────────────────────────────────────────
@@ -1020,6 +1041,8 @@ class _DualRowCarouselState extends State<_DualRowCarousel> {
 
   @override
   void dispose() {
+    _row1Controller.removeListener(_onRow1Scroll);
+    _row2Controller.removeListener(_onRow2Scroll);
     _row1Controller.dispose();
     _row2Controller.dispose();
     super.dispose();
@@ -1030,6 +1053,7 @@ class _DualRowCarouselState extends State<_DualRowCarousel> {
     final screenWidth = MediaQuery.of(context).size.width;
     final cardWidth = (screenWidth - 48) / 2.2;
     final cardHeight = cardWidth / 0.75;
+    final hasSecondRow = widget.secondRowItems.isNotEmpty;
 
     // No extra Container/gradient here — parent already provides it
     return Column(
@@ -1041,14 +1065,16 @@ class _DualRowCarouselState extends State<_DualRowCarousel> {
           cardHeight: cardHeight,
           onTap: widget.onRestaurantTap,
         ),
-        const SizedBox(height: 16),
-        _SmoothCarousel(
-          items: widget.secondRowItems,
-          controller: _row2Controller,
-          cardWidth: cardWidth,
-          cardHeight: cardHeight,
-          onTap: widget.onRestaurantTap,
-        ),
+        if (hasSecondRow) ...[
+          const SizedBox(height: 14),
+          _SmoothCarousel(
+            items: widget.secondRowItems,
+            controller: _row2Controller,
+            cardWidth: cardWidth,
+            cardHeight: cardHeight,
+            onTap: widget.onRestaurantTap,
+          ),
+        ],
       ],
     );
   }
