@@ -659,15 +659,15 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
                   ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                child: FilterBar(
-                  selectedFilters: {},
-                  onFilterToggled: (f) => _handleFilterToggle(f, prov, context),
-                  availableFilters: data.$4,
-                  currentFilter: data.$3,
-                ),
-              ),
+              // Padding(
+              //   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              //   child: FilterBar(
+              //     selectedFilters: {},
+              //     onFilterToggled: (f) => _handleFilterToggle(f, prov, context),
+              //     availableFilters: data.$4,
+              //     currentFilter: data.$3,
+              //   ),
+              // ),
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,

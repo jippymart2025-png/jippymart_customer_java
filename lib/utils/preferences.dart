@@ -35,6 +35,7 @@ class Preferences {
   // Wallet & coin runtime config cache
   static const walletConfigJson = "walletConfigJson";
   static const walletConfigLastUpdatedMillis = "walletConfigLastUpdatedMillis";
+  static const walletLastKnownPositiveStreak = "walletLastKnownPositiveStreak";
   
   // Google Maps API Key stored locally as fallback
   static const googleMapsApiKey = "googleMapsApiKey";

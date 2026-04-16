@@ -405,19 +405,22 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   Widget _buildOrderTimerBanner() {
     return Container(
       width: double.infinity,
-      color: const Color(0xFFFFF8E1),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppThemeData.danger300,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
       child: Row(
         children: [
-          Icon(Icons.timer_outlined, color: AppThemeData.primary300, size: 18),
-          const SizedBox(width: 8),
+          Icon(Icons.timer_outlined, color: AppThemeData.surface, size: 22),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               'Order in progress',
               style: TextStyle(
-                fontSize: 13,
+                fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: AppThemeData.grey900,
+                color: AppThemeData.surface,
               ),
             ),
           ),
@@ -427,17 +430,17 @@ class _DashBoardScreenState extends State<DashBoardScreen>
               return Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
-                  vertical: 6,
+                  vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: AppThemeData.primary300,
+                  color: AppThemeData.surface,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   _formatDuration(remaining),
                   style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
+                    color: Colors.black,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.3,
                   ),

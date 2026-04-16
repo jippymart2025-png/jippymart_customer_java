@@ -371,7 +371,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
               ),
             ],
           ),
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 2),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -385,7 +385,6 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
                 const SizedBox(height: 10),
                 _CouponsSection(controller: controller),
               ],
-              const SizedBox(height: 0),
             ],
           ),
         ),
@@ -863,7 +862,7 @@ class _CouponsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // const Text(
         //   "Additional Offers",

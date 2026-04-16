@@ -421,7 +421,7 @@ class _CardImage extends StatelessWidget {
                         ? Icons.favorite_rounded
                         : Icons.favorite_border_rounded,
                     size: 15,
-                    color: isFav ? AppThemeData.orange : Colors.white,
+                    color: isFav ? AppThemeData.orange : Colors.black,
                   ),
                 ),
               ),
@@ -449,7 +449,7 @@ class _CardImage extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white,
+                        color: Colors.black,
                         fontFamily: AppThemeData.fontSemiBold,
                       ),
                     ),
@@ -506,7 +506,7 @@ class _CardImage extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: Colors.black,
                             fontFamily: AppThemeData.fontSemiBold,
                           ),
                         ),
@@ -521,7 +521,7 @@ class _CardImage extends StatelessWidget {
                         const Icon(
                           Icons.place_rounded,
                           size: 13,
-                          color: Colors.white70,
+                          color: Colors.black,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -529,7 +529,7 @@ class _CardImage extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: Colors.white,
+                            color: Colors.black,
                             fontFamily: AppThemeData.fontSemiBold,
                           ),
                         ),
@@ -564,7 +564,7 @@ class _GlassChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.18),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(100),
             border: Border.all(
               color: borderColor ?? Colors.white.withOpacity(0.28),

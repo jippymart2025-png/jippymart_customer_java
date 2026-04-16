@@ -19,6 +19,7 @@ import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/facebook_app_events_test.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
 import 'package:jippymart_customer/services/mobile_deep_link_service.dart';
+import 'package:jippymart_customer/services/order_review_service.dart';
 import 'package:jippymart_customer/services/pending_deep_link_handler.dart';
 import 'package:jippymart_customer/services/smartlook_service.dart';
 import 'package:jippymart_customer/services/remote_config_service.dart';
@@ -375,6 +376,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  bool _reviewCheckScheduled = false;
+
   @override
   void initState() {
     super.initState();
@@ -392,6 +395,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         Preferences.languageCodeKey,
         jsonEncode(languageModel.toJson()),
       );
+      _scheduleReviewCheck();
     });
   }
 
@@ -420,10 +424,39 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           print('⚠️ [APP_LIFECYCLE] Error checking pending payment: $e');
         }
       });
+      _scheduleReviewCheck();
     } else if (state == AppLifecycleState.paused) {
       // Notify deep link service that app has paused
       FinalDeepLinkService().onAppPaused();
     }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _scheduleReviewCheck() {
+    if (_reviewCheckScheduled) return;
+    _reviewCheckScheduled = true;
+    Future.delayed(const Duration(seconds: 2), () async {
+      _reviewCheckScheduled = false;
+      if (!mounted) return;
+      final dialogContext = GlobalDeeplinkHandler.navigatorKey.currentContext;
+      if (dialogContext != null) {
+        await OrderReviewService.instance.checkAndShowReviewPopup(dialogContext);
+      } else {
+        // Navigator may not be ready on very first frame; retry shortly.
+        Future.delayed(const Duration(seconds: 1), () async {
+          final retryContext = GlobalDeeplinkHandler.navigatorKey.currentContext;
+          if (retryContext == null) return;
+          await OrderReviewService.instance.checkAndShowReviewPopup(
+            retryContext,
+          );
+        });
+      }
+    });
   }
 
   @override

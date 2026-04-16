@@ -540,6 +540,15 @@ class _LedgerTile extends StatelessWidget {
     ),
   };
 
+  String formatToIST(String? dateStr) {
+    if (dateStr == null || dateStr.isEmpty) return '';
+
+    final utcDate = DateTime.parse(dateStr + 'Z');
+    final istDate = utcDate.toLocal();
+
+    return DateFormat('HH:mm').format(istDate);
+  }
+
   static const _defaultConfig = _TileConfig(
     label: 'Transaction',
     icon: Icons.toll_rounded,
@@ -560,9 +569,10 @@ class _LedgerTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isCredit = (entry.coins ?? 0) >= 0;
     final config = _configs[(entry.type ?? '').toUpperCase()] ?? _defaultConfig;
-    final timeStr = entry.createdAt != null
-        ? DateFormat('HH:mm').format(entry.createdAt!)
-        : '';
+    final date = entry.createdAt?.toLocal();
+
+    final timeStr = date != null ? DateFormat('hh:mm a').format(date) : '';
+
     final coinColor = isCredit
         ? const Color(0xFF16A34A)
         : const Color(0xFFDC2626);

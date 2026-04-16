@@ -16,18 +16,22 @@ import 'package:shimmer/shimmer.dart';
 import '../../../constant/show_toast_dialog.dart';
 
 Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 0),
-    child: Container(
-      decoration: ShapeDecoration(
-        color: AppThemeData.grey50,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
-        child: Column(
-          children: List.generate(HomeProvider.cartItem.length, (index) {
-            final cartProductModel = HomeProvider.cartItem[index];
+  return Consumer<CartControllerProvider>(
+    builder: (context, cartController, _) {
+      final cartItems = List<CartProductModel>.from(HomeProvider.cartItem);
+
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 0),
+        child: Container(
+          decoration: ShapeDecoration(
+            color: AppThemeData.grey50,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+            child: Column(
+              children: List.generate(cartItems.length, (index) {
+                final cartProductModel = cartItems[index];
             String? productId;
             if (cartProductModel.id != null &&
                 cartProductModel.id!.isNotEmpty &&
@@ -53,7 +57,7 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
               }
               itemChild = _buildProductItem(cartProductModel, null, controller);
             } else {
-              final cachedProduct = controller.getCachedProduct(productId);
+              final cachedProduct = cartController.getCachedProduct(productId);
               final isMartItem =
                   cartProductModel.vendorID?.startsWith('mart_') == true ||
                   cartProductModel.vendorID?.toLowerCase().contains('mart') ==
@@ -61,38 +65,40 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
 
               if (cachedProduct == null &&
                   !isMartItem &&
-                  !controller.productsLoaded) {
-                if (!controller.isLoadingProducts) {
-                  controller.preloadCartProducts();
+                  !cartController.productsLoaded) {
+                if (!cartController.isLoadingProducts) {
+                  cartController.preloadCartProducts();
                 }
-                if (controller.isLoadingProducts) {
+                if (cartController.isLoadingProducts) {
                   itemChild = _buildProductShimmer(cartProductModel);
                 } else {
                   itemChild = _buildProductItem(
                     cartProductModel,
                     cachedProduct,
-                    controller,
+                    cartController,
                   );
                 }
               } else {
                 itemChild = _buildProductItem(
                   cartProductModel,
                   cachedProduct,
-                  controller,
+                  cartController,
                 );
               }
             }
 
             return Padding(
               padding: EdgeInsets.only(
-                bottom: index == HomeProvider.cartItem.length - 1 ? 0 : 10,
+                bottom: index == cartItems.length - 1 ? 0 : 10,
               ),
               child: itemChild,
             );
-          }),
+              }),
+            ),
+          ),
         ),
-      ),
-    ),
+      );
+    },
   );
 }
 
@@ -374,8 +380,8 @@ Widget _buildProductItem(
                             children: [
                               // Decrease Button
                               InkWell(
-                                onTap: () {
-                                  cartController.addToCart(
+                                onTap: () async {
+                                  await cartController.addToCart(
                                     cartProductModel: cartProductModel,
                                     isIncrement: false,
                                     quantity: quantity > 1 ? quantity - 1 : 0,
@@ -409,7 +415,7 @@ Widget _buildProductItem(
 
                               // Increase Button with promotional quantity check
                               InkWell(
-                                onTap: () {
+                                onTap: () async {
                                   // Check promotional quantity limits
                                   if (isPromotional) {
                                     final isAllowed = cartController
@@ -433,7 +439,7 @@ Widget _buildProductItem(
                                     }
                                   }
 
-                                  cartController.addToCart(
+                                  await cartController.addToCart(
                                     cartProductModel: cartProductModel,
                                     isIncrement: true,
                                     quantity: quantity + 1,

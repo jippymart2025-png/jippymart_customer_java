@@ -43,11 +43,7 @@ class _SelectPaymentScreenState extends State<SelectPaymentScreen>
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.read<CartControllerProvider>();
-    final _ = context.select<CartControllerProvider, (String, bool, String)>(
-      (p) =>
-          (p.selectedFoodType, p.isFullyPaidByWallet, p.selectedPaymentMethod),
-    );
+    final controller = context.watch<CartControllerProvider>();
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F7),
       appBar: _buildAppBar(),

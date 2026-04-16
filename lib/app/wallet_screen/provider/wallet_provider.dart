@@ -6,6 +6,7 @@ import 'package:jippymart_customer/models/coin_wallet_model.dart';
 import 'package:jippymart_customer/models/daily_checkin_model.dart';
 import 'package:jippymart_customer/models/referral_model.dart';
 import 'package:jippymart_customer/services/wallet_api_service.dart';
+import 'package:jippymart_customer/utils/preferences.dart';
 
 class WalletProvider extends ChangeNotifier {
   final WalletApiService _api = WalletApiService.instance;
@@ -63,14 +64,22 @@ class WalletProvider extends ChangeNotifier {
   int get displayStreakDay {
     final status = _checkinStatus;
     final apiStreak = status?.streakDayNumber ?? 0;
-    if (apiStreak > 0) return apiStreak;
+    if (apiStreak > 0) {
+      _lastKnownPositiveStreak = apiStreak;
+      return apiStreak;
+    }
     if (status == null) return 0;
+
+    if (_lastKnownPositiveStreak <= 0) {
+      _lastKnownPositiveStreak = Preferences.getInt(
+        Preferences.walletLastKnownPositiveStreak,
+      );
+    }
 
     final d = status.date;
     if (d != null && _isYesterday(d)) {
-      // If app cold-started and no cached streak exists, avoid jarring 0 by
-      // showing minimum carry-over of 1 for yesterday-checked users.
-      return _lastKnownPositiveStreak > 0 ? _lastKnownPositiveStreak : 1;
+      // Keep yesterday's streak visible until today's check-in is completed.
+      return _lastKnownPositiveStreak > 0 ? _lastKnownPositiveStreak : 0;
     }
 
     // Missed at least one day => streak resets.
@@ -152,6 +161,20 @@ class WalletProvider extends ChangeNotifier {
       final fetchedStreak = _checkinStatus?.streakDayNumber ?? 0;
       if (fetchedStreak > 0) {
         _lastKnownPositiveStreak = fetchedStreak;
+        await Preferences.setInt(
+          Preferences.walletLastKnownPositiveStreak,
+          fetchedStreak,
+        );
+      } else {
+        final lastDate = _checkinStatus?.date;
+        final isCarryOverAllowed = lastDate != null && _isYesterday(lastDate);
+        if (!isCarryOverAllowed) {
+          _lastKnownPositiveStreak = 0;
+          await Preferences.setInt(
+            Preferences.walletLastKnownPositiveStreak,
+            0,
+          );
+        }
       }
     } catch (_) {
       _checkinStatus = null;

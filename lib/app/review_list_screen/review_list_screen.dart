@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'package:jippymart_customer/app/chat_screens/full_screen_image_viewer.dart';
 import 'package:jippymart_customer/app/review_list_screen/provider/review_list_provider.dart';
 import 'package:jippymart_customer/constant/collection_name.dart';
@@ -13,6 +15,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+
+DateTime? parseCreatedAt(dynamic createdAt) {
+  if (createdAt == null) return null;
+
+  try {
+    // ✅ Case 1: ISO String
+    if (createdAt is String) {
+      return DateTime.parse(createdAt).toLocal();
+    }
+
+    // ✅ Case 2: Firebase Timestamp Map
+    if (createdAt is Map) {
+      final seconds = createdAt['seconds'];
+      final nanos = createdAt['nanoseconds'] ?? 0;
+
+      return DateTime.fromMillisecondsSinceEpoch(
+        (seconds * 1000) + (nanos ~/ 1000000),
+        isUtc: true,
+      ).toLocal();
+    }
+
+    // ✅ Case 3: Firestore Timestamp object (rare)
+    if (createdAt is Timestamp) {
+      return createdAt.toDate().toLocal();
+    }
+  } catch (e) {
+    print("Date parse error: $e");
+  }
+
+  return null;
+}
 
 class ReviewListScreen extends StatelessWidget {
   const ReviewListScreen({super.key});
@@ -263,13 +296,26 @@ class ReviewListScreen extends StatelessWidget {
                                     ),
                                   ),
                                 const SizedBox(height: 5),
-                                Text(
-                                  ratingModel.createdAt.toString(),
-                                  style: TextStyle(
-                                    color: AppThemeData.grey600,
-                                    fontSize: 14,
-                                    fontFamily: AppThemeData.medium,
-                                  ),
+
+                                Builder(
+                                  builder: (context) {
+                                    final date = parseCreatedAt(
+                                      ratingModel.createdAt,
+                                    );
+
+                                    return Text(
+                                      date != null
+                                          ? DateFormat(
+                                              'dd MMM, h:mm a',
+                                            ).format(date)
+                                          : '',
+                                      style: TextStyle(
+                                        color: AppThemeData.grey600,
+                                        fontSize: 14,
+                                        fontFamily: AppThemeData.medium,
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

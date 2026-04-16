@@ -26,6 +26,17 @@ class SqlStorageConst {
     return await storage.read(key: 'user_id');
   }
 
+  static Future<String?> getUserName() async {
+    final storage = FlutterSecureStorage();
+
+    final firstName = await storage.read(key: 'user_firstName');
+    final lastName = await storage.read(key: 'user_lastName');
+
+    if (firstName == null && lastName == null) return null;
+
+    return "${firstName ?? ''} ${lastName ?? ''}".trim();
+  }
+
   // Store user data locally
   static Future<void> storeUserData(
     UserModel user, {

@@ -1974,6 +1974,80 @@ class FireStoreUtils {
     return null;
   }
 
+  static Future<Map<String, dynamic>?> getReviewEligibility() async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+          '${AppConst.baseUrl}reviews/eligibility?customerId=${await SqlStorageConst.getFirebaseId()}',
+        ),
+        headers: await getHeaders(),
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = json.decode(response.body);
+        if (responseData['success'] == true && responseData['data'] is Map) {
+          return Map<String, dynamic>.from(responseData['data'] as Map);
+        }
+      } else {
+        print(
+          'getReviewEligibility API Error: ${response.statusCode} - ${response.body}',
+        );
+      }
+    } catch (e) {
+      print('Error fetching review eligibility: $e');
+    }
+    return null;
+  }
+
+  static Future<bool> submitOrderReview({
+    required String orderId,
+    required String vendorId,
+    String? driverId,
+    required String action,
+    int? rating,
+    String? comment,
+  }) async {
+    try {
+      final Map<String, dynamic> payload = {
+        'customerId': await SqlStorageConst.getFirebaseId(),
+        'uname': await SqlStorageConst.getUserName(),
+        'orderId': orderId,
+        'vendorId': vendorId,
+        'driverId': driverId,
+        'action': action,
+      };
+
+      if (rating != null) payload['rating'] = rating;
+      if (comment != null && comment.trim().isNotEmpty) {
+        payload['comment'] = comment.trim();
+      }
+
+      final response = await http.post(
+        Uri.parse('${AppConst.baseUrl}reviews/submit'),
+        headers: await getHeaders(),
+        body: jsonEncode(payload),
+      );
+
+      final Map<String, dynamic> responseData = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return responseData['success'] == true;
+      }
+
+      // Treat already handled as successful from UX perspective.
+      if (responseData['code'] == 'ALREADY_DONE') {
+        return true;
+      }
+
+      print(
+        'submitOrderReview API Error: ${response.statusCode} - ${response.body}',
+      );
+      return false;
+    } catch (e) {
+      print('Error submitting order review: $e');
+      return false;
+    }
+  }
+
   static Future<VendorCategoryModel?> getVendorCategoryByCategoryId(
     String categoryId,
   ) async {

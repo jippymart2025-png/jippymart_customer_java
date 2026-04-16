@@ -627,9 +627,13 @@ class _CartScreenState extends State<CartScreen> {
   // ─── BILL DETAILS ──────────────────────────────────────────────────────────
 
   Widget _buildBillDetails(CartControllerProvider controller) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      child: billCartWidget(controller, context),
+    return Consumer<CartControllerProvider>(
+      builder: (context, cartController, _) {
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 12),
+          child: billCartWidget(cartController, context),
+        );
+      },
     );
   }
 

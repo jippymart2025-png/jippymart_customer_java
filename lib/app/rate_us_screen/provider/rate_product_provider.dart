@@ -276,7 +276,7 @@ class RateProductProvider extends ChangeNotifier {
           orderId: orderModel.id,
           vendorId: productModel.vendorID,
           createdAt: ratingModel.id == null
-              ? Timestamp.now().toString()
+              ? DateTime.now().toUtc().toIso8601String()
               : ratingModel.createdAt,
           // Keep original create date
           // updatedAt: Timestamp.now().toString(),

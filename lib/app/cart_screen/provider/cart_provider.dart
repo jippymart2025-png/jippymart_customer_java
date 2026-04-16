@@ -5625,7 +5625,44 @@ class CartControllerProvider extends ChangeNotifier {
       return false;
     }
 
+    final isVendorOpen = await _validateVendorOpenForOrdering();
+    if (!isVendorOpen) {
+      return false;
+    }
+
     return true;
+  }
+
+  Future<bool> _validateVendorOpenForOrdering() async {
+    try {
+      if (vendorModel.id == null || vendorModel.id!.isEmpty) {
+        return true;
+      }
+
+      final latestVendor = await FireStoreUtils.getVendorById(vendorModel.id!);
+      if (latestVendor == null) {
+        return true;
+      }
+
+      if (latestVendor.vType == 'mart') {
+        if (latestVendor.isOpen == false) {
+          ShowToastDialog.showToast(
+            "Jippy Mart is temporarily closed. Please try again later.",
+          );
+          return false;
+        }
+      } else {
+        if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
+          ShowToastDialog.showToast("Restaurant Closed");
+          return false;
+        }
+      }
+
+      return true;
+    } catch (e) {
+      print('[VENDOR_STATUS] ❌ Error while validating vendor status: $e');
+      return true;
+    }
   }
 
   Future<bool> _validateAddressBulletproof(
@@ -7118,6 +7155,12 @@ class CartControllerProvider extends ChangeNotifier {
     BuildContext context,
   ) async {
     try {
+      final isVendorOpen = await controller._validateVendorOpenForOrdering();
+      if (!isVendorOpen) {
+        controller.endOrderProcessing();
+        return;
+      }
+
       await startPaytmPaymentFlow(context);
     } catch (e, stackTrace) {
       print('❌ [PAYTM_PAYMENT] Error: $e');
