@@ -2227,8 +2227,27 @@ class FireStoreUtils {
 
           for (final promo in promotionsData) {
             try {
-              final isAvailable =
-                  promo['isAvailable'] == 1 || promo['isAvailable'] == true;
+              final dynamic isAvailableNowRaw = promo['is_available_now'];
+              final dynamic isAvailableLegacyRaw =
+                  promo['isAvailable'] ?? promo['is_available'];
+
+              bool? parseAvailability(dynamic value) {
+                if (value == null) return null;
+                if (value is bool) return value;
+                if (value is num) return value == 1;
+                if (value is String) {
+                  final normalized = value.trim().toLowerCase();
+                  if (normalized == '1' || normalized == 'true') return true;
+                  if (normalized == '0' || normalized == 'false') return false;
+                }
+                return null;
+              }
+
+              final isAvailableNow = parseAvailability(isAvailableNowRaw);
+              final isAvailableLegacy = parseAvailability(isAvailableLegacyRaw);
+              // If backend omits availability flags, keep promotions visible.
+              final isPromotionAvailable =
+                  isAvailableNow ?? isAvailableLegacy ?? true;
 
               // ⏱ Time validation
               final startTime = DateTime.parse(promo['start_time']);
@@ -2237,7 +2256,7 @@ class FireStoreUtils {
               // 🗺 Zone validation (extra safety)
               final promoZoneId = promo['zoneId']?.toString();
 
-              if (!isAvailable ||
+              if (!isPromotionAvailable ||
                   promoZoneId != zoneId ||
                   now.isBefore(startTime) ||
                   now.isAfter(endTime)) {
@@ -2260,6 +2279,7 @@ class FireStoreUtils {
                 'free_delivery_km': promo['free_delivery_km'],
                 'special_price': promo['special_price'],
                 'isAvailable': true,
+                'is_available_now': 1,
               });
             } catch (e) {
               print('Error parsing promotion: $e');

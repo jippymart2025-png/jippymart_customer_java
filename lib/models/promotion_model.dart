@@ -46,6 +46,20 @@ class PromotionModel {
       }
     }
 
+    final isAvailableNow = json['is_available_now'];
+    final isAvailableLegacy = json['isAvailable'];
+
+    final availableNow =
+        isAvailableNow == 1 ||
+        isAvailableNow == true ||
+        isAvailableNow == '1' ||
+        isAvailableNow == 'true' ||
+        ((isAvailableNow == null) &&
+            (isAvailableLegacy == 1 ||
+                isAvailableLegacy == true ||
+                isAvailableLegacy == '1' ||
+                isAvailableLegacy == 'true'));
+
     return PromotionModel(
       id: json['id'] is int ? json['id'] : int.tryParse(json['id']?.toString() ?? ''),
       paymentMode: json['payment_mode']?.toString(),
@@ -69,10 +83,7 @@ class PromotionModel {
       specialPrice: json['special_price'] is num
           ? json['special_price'].toDouble()
           : double.tryParse(json['special_price']?.toString() ?? '0'),
-      isAvailable: json['isAvailable'] == 1 ||
-          json['isAvailable'] == true ||
-          json['isAvailable'] == '1' ||
-          json['isAvailable'] == 'true',
+      isAvailable: availableNow,
     );
   }
 
@@ -93,6 +104,7 @@ class PromotionModel {
       'free_delivery_km': freeDeliveryKm,
       'special_price': specialPrice,
       'isAvailable': isAvailable,
+      'is_available_now': isAvailable ? 1 : 0,
     };
   }
 }

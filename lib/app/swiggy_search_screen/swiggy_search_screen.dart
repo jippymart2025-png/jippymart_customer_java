@@ -13,6 +13,9 @@ import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/widget/product_options_bottom_sheet.dart';
+import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 
 class SwiggySearchScreen extends StatefulWidget {
   const SwiggySearchScreen({Key? key}) : super(key: key);
@@ -117,6 +120,57 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
           );
         },
       ),
+      actions: [
+        Consumer<CartProvider>(
+          builder: (context, _, __) {
+            final cartCount = _getTotalCartQuantity();
+            return Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  icon: Icon(
+                    Icons.shopping_cart_outlined,
+                    color: AppThemeData.grey900,
+                  ),
+                  onPressed: () {
+                    Get.to(() => const CartScreen());
+                  },
+                ),
+                if (cartCount > 0)
+                  Positioned(
+                    right: 8,
+                    top: 6,
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 2,
+                      ),
+                      decoration: const BoxDecoration(
+                        color: Colors.orangeAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        cartCount > 99 ? '99+' : cartCount.toString(),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          height: 1.0,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(width: 8),
+      ],
     );
   }
 
@@ -1264,6 +1318,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         vendor != null && RestaurantStatusUtils.canAcceptOrders(vendor);
     final isProductAvailable = product.isAvailable ?? true;
     final isProductAvailableNow = product.isAvailableAtCurrentTime;
+    final hasOptions = _hasProductOptions(product);
+    final hasAddOns = _hasProductAddOns(product);
+    final shouldShowOptions = hasOptions || hasAddOns;
     final isButtonEnabled =
         canAcceptOrders &&
         isProductAvailable &&
@@ -1531,7 +1588,17 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
             height: 50,
             child: ElevatedButton(
               onPressed: isButtonEnabled
-                  ? () async => await _addToCart(product)
+                  ? () async {
+                      if (shouldShowOptions && vendor != null) {
+                        await _openProductOptionsBottomSheet(
+                          context: context,
+                          product: product,
+                          vendor: vendor,
+                        );
+                        return;
+                      }
+                      await _addToCart(product);
+                    }
                   : () {
                       if (!isLoading && vendor != null) {
                         String message;
@@ -1571,6 +1638,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   isProductAvailable,
                   isProductAvailableNow,
                   vendor,
+                  shouldShowOptions,
                 ),
                 style: TextStyle(
                   fontSize: 16,
@@ -1594,13 +1662,57 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     bool isProductAvailable,
     bool isProductAvailableNow,
     VendorModel? vendor,
+    bool shouldShowOptions,
   ) {
     if (isLoading) return "Loading...".tr;
     if (vendor == null) return "Restaurant unavailable".tr;
     if (!canAcceptOrders) return "Restaurant is closed".tr;
     if (!isProductAvailable) return "Product unavailable".tr;
     if (!isProductAvailableNow) return "Unavailable now".tr;
+    if (shouldShowOptions) return "Options".tr;
     return "Add to Cart".tr;
+  }
+
+  bool _hasProductOptions(ProductModel product) {
+    return product.options != null &&
+        product.options!.isNotEmpty &&
+        (product.itemAttribute == null ||
+            product.itemAttribute!.attributes == null ||
+            product.itemAttribute!.attributes!.isEmpty);
+  }
+
+  bool _hasProductAddOns(ProductModel product) {
+    return product.addOnsTitle != null &&
+        product.addOnsTitle!.isNotEmpty &&
+        product.addOnsPrice != null &&
+        product.addOnsPrice!.isNotEmpty;
+  }
+
+  Future<void> _openProductOptionsBottomSheet({
+    required BuildContext context,
+    required ProductModel product,
+    required VendorModel vendor,
+  }) async {
+    final restaurantDetailsProvider = context.read<RestaurantDetailsProvider>();
+    restaurantDetailsProvider.vendorModel = vendor;
+    restaurantDetailsProvider.selectedAddOns.clear();
+
+    final hasDiscount =
+        product.disPrice != null &&
+        product.disPrice!.isNotEmpty &&
+        product.disPrice != "0";
+
+    final priceToPass = hasDiscount ? product.disPrice! : (product.price ?? "0");
+    final disPriceToPass = hasDiscount ? (product.price ?? "0") : "0";
+
+    showProductOptionsBottomSheet(
+      context: context,
+      controller: restaurantDetailsProvider,
+      productModel: product,
+      priceToPass: priceToPass,
+      disPriceToPass: disPriceToPass,
+      buttonFontSize: 16,
+    );
   }
 
   Future<VendorModel?> _getVendorDetails(String vendorID) async {
@@ -1690,11 +1802,19 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         promoId: null,
       );
 
-      await cartProvider.addToCart(currentContext, cartProductModel, 1);
+      final isAdded = await cartProvider.addToCart(
+        currentContext,
+        cartProductModel,
+        1,
+      );
+      if (!isAdded) {
+        return;
+      }
+      final cartCount = _getTotalCartQuantity();
 
       Get.snackbar(
         "Added to Cart",
-        "${product.name} has been added to your cart",
+        "${product.name} added. Cart: $cartCount ${cartCount == 1 ? 'item' : 'items'}",
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppThemeData.success500,
         colorText: AppThemeData.grey50,
@@ -1714,5 +1834,12 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         duration: const Duration(seconds: 3),
       );
     }
+  }
+
+  int _getTotalCartQuantity() {
+    return HomeProvider.cartItem.fold<int>(
+      0,
+      (sum, item) => sum + (item.quantity ?? 0),
+    );
   }
 }

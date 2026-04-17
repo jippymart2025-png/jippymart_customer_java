@@ -72,6 +72,11 @@ class ProductModel {
   factory ProductModel.fromApiJson(Map<String, dynamic> json) {
     try {
       final parsedId = _parseInt(json['id'] ?? json['product_id']);
+      final isAvailableNow = _parseNullableBool(json['is_available_now']);
+      final isAvailableLegacy =
+          _parseNullableBool(json['isAvailable']) ??
+          _parseNullableBool(json['is_available']);
+      final resolvedIsAvailable = isAvailableNow ?? isAvailableLegacy ?? true;
       return ProductModel(
         id: _parseString(json['id']),
         name: _parseString(json['name']),
@@ -83,11 +88,7 @@ class ProductModel {
             json['publish'] == 1 ||
             json['publish'] == '1' ||
             json['publish'] == 'true',
-        isAvailable:
-            json['is_available'] == true ||
-            json['is_available'] == 1 ||
-            json['isAvailable'] == true ||
-            json['isAvailable'] == 1,
+        isAvailable: resolvedIsAvailable,
         nonveg: json['nonveg'] == true || json['nonveg'] == 1,
         veg: json['veg'] == true || json['veg'] == 1,
         photo: _parseString(json['photo']),
@@ -182,6 +183,18 @@ class ProductModel {
     return null;
   }
 
+  static bool? _parseNullableBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value == 1;
+    if (value is String) {
+      final normalized = value.trim().toLowerCase();
+      if (normalized == '1' || normalized == 'true') return true;
+      if (normalized == '0' || normalized == 'false') return false;
+    }
+    return null;
+  }
+
   /// Parse `options` field from API / JSON into a strongly-typed list.
   static List<ProductOption>? _parseOptions(dynamic value) {
     if (value == null) return null;
@@ -209,6 +222,11 @@ class ProductModel {
 
   ProductModel.fromJson(Map<String, dynamic> json) {
     try {
+      final isAvailableNow = _parseNullableBool(json['is_available_now']);
+      final isAvailableLegacy =
+          _parseNullableBool(json['isAvailable']) ??
+          _parseNullableBool(json['is_available']);
+      final resolvedIsAvailable = isAvailableNow ?? isAvailableLegacy ?? true;
       // FIX: Use helper method to parse int fields that might come as String
       fats = _parseInt(json['fats']);
       vendorID = _parseString(json['vendorID'] ?? json['vendor_id']);
@@ -312,15 +330,7 @@ class ProductModel {
       description = _parseString(json['description']);
       createdAt = _parseDate(json['createdAt']);
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
-      isAvailable =
-          json['isAvailable'] == 1 ||
-          json['isAvailable'] == true ||
-          json['is_available'] == 1 ||
-          json['is_available'] == true ||
-          json['isAvailable'] == "1" ||
-          json['isAvailable'] == "true" ||
-          json['is_available'] == "1" ||
-          json['is_available'] == "true";
+      isAvailable = resolvedIsAvailable;
       // Parse simple options list if present (defensive - works with both Map and List)
       options = _parseOptions(json['options']);
       availableTimings = _parseAvailableTimings(
@@ -509,6 +519,7 @@ class ProductModel {
     data['description'] = description;
     data['createdAt'] = createdAt;
     data['isAvailable'] = isAvailable;
+    data['is_available_now'] = isAvailable == true ? 1 : 0;
     data['available_timings'] =
         availableTimings?.map((e) => e.toJson()).toList();
 

@@ -535,8 +535,11 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     HomeProvider homeProvider,
     FavouriteProvider favouriteProvider,
   ) {
-    // Cache cart item count to reduce rebuilds
-    final currentCartItemCount = HomeProvider.cartItem.length;
+    // Use total quantity (1,2,3...) instead of unique line item count.
+    final currentCartItemCount = HomeProvider.cartItem.fold<int>(
+      0,
+      (sum, item) => sum + (item.quantity ?? 0),
+    );
     final shouldUpdateBadge = currentCartItemCount != _lastCartItemCount;
     if (shouldUpdateBadge) {
       _lastCartItemCount = currentCartItemCount;

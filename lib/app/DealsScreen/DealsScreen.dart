@@ -453,6 +453,7 @@ class _DealsScreenState extends State<DealsScreen>
         final promos = data
             .take(100)
             .map((p) => PromotionModel.fromJson(p))
+            .where((promo) => promo.isAvailable)
             .toList();
         final vendorIds = promos
             .map((p) => p.restaurantId)
