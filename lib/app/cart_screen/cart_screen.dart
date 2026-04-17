@@ -21,6 +21,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/services/cart_provider.dart' as service_cart;
 import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
@@ -194,6 +195,8 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Rebuild screen whenever underlying cart rows change.
+    context.watch<service_cart.CartProvider>();
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
     final controller = context.read<CartControllerProvider>();

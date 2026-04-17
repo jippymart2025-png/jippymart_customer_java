@@ -410,22 +410,22 @@ class _CardImage extends StatelessWidget {
             ),
 
             // Favourite button — top left
-            Positioned(
-              top: 12,
-              left: 12,
-              child: GestureDetector(
-                onTap: onFavTap,
-                child: _GlassChip(
-                  child: Icon(
-                    isFav
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    size: 15,
-                    color: isFav ? AppThemeData.orange : Colors.black,
-                  ),
-                ),
-              ),
-            ),
+            // Positioned(
+            //   top: 12,
+            //   left: 12,
+            //   child: GestureDetector(
+            //     onTap: onFavTap,
+            //     child: _GlassChip(
+            //       child: Icon(
+            //         isFav
+            //             ? Icons.favorite_rounded
+            //             : Icons.favorite_border_rounded,
+            //         size: 15,
+            //         color: isFav ? AppThemeData.orange : Colors.black,
+            //       ),
+            //     ),
+            //   ),
+            // ),
 
             // Open / closed badge — top right
             Positioned(

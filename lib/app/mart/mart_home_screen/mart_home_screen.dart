@@ -2551,8 +2551,15 @@ import '../mart_search_screen.dart';
 // Cart helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
-String _martVendorId(MartItemModel product, MartProvider mart) =>
-    'mart_${product.vendorID ?? mart.selectedVendorId}';
+String _martVendorId(MartItemModel product, MartProvider mart) {
+  final rawVendorId =
+      product.vendorID?.trim().isNotEmpty == true
+          ? product.vendorID!.trim()
+          : (mart.selectedVendorId.trim().isNotEmpty
+                ? mart.selectedVendorId.trim()
+                : 'unknown');
+  return 'mart_$rawVendorId';
+}
 
 CartProductModel _martCartLine(
   MartItemModel product,
@@ -2611,12 +2618,19 @@ Future<void> _handleMartIncrement(
       listen: false,
     );
     final cartProv = Provider.of<CartProvider>(context, listen: false);
-
-    await cartCtrl.addToCart(
-      cartProductModel: _martCartLine(product, mart),
-      isIncrement: true,
-      quantity: 1,
+    final currentQty = _martQtyInCart(
+      HomeProvider.cartItem,
+      product,
+      _martVendorId(product, mart),
     );
+    final nextQty = currentQty + 1;
+
+    final success = await cartCtrl.addToCart(
+      cartProductModel: _martCartLine(product, mart, quantity: nextQty),
+      isIncrement: true,
+      quantity: nextQty,
+    );
+    if (!success) return;
     await cartProv.initCart();
 
     if (!context.mounted) return;

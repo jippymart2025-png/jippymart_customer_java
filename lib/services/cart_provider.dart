@@ -125,6 +125,7 @@ class CartProvider with ChangeNotifier {
       _cartItems[existingItemIndex].quantity = quantity;
       _cartItems[existingItemIndex].price = product.price;
       _cartItems[existingItemIndex].discountPrice = product.discountPrice;
+      _cartItems[existingItemIndex].merchantPrice = product.merchantPrice;
       _cartItems[existingItemIndex].promoId = product.promoId;
       if (product.extras != null && product.extras!.isNotEmpty) {
         _cartItems[existingItemIndex].extras = product.extras;

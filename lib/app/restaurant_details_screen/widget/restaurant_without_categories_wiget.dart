@@ -10,6 +10,8 @@ import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/special_price_badge.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_product_details_view.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/widget/product_options_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
@@ -34,6 +36,14 @@ Widget buildProductsWithoutCategories(
       List<String> selectedVariants = [];
       List<String> selectedIndexVariants = [];
       List<String> selectedIndexArray = [];
+      final hasItemAttributes =
+          productModel.itemAttribute != null &&
+          productModel.itemAttribute!.attributes != null &&
+          productModel.itemAttribute!.attributes!.isNotEmpty;
+      final hasOptionsOnly =
+          productModel.options != null &&
+          productModel.options!.isNotEmpty &&
+          !hasItemAttributes;
 
       if (productModel.itemAttribute != null) {
         if (productModel.itemAttribute!.attributes!.isNotEmpty) {
@@ -185,7 +195,8 @@ Widget buildProductsWithoutCategories(
                       Builder(
                         builder: (context) {
                           // Use cached data - no async/network calls
-                          final promo = productModel.id != null &&
+                          final promo =
+                              productModel.id != null &&
                                   productModel.vendorID != null
                               ? controller.getActivePromotionForProduct(
                                   productId: productModel.id!.toString(),
@@ -393,9 +404,8 @@ Widget buildProductsWithoutCategories(
                         productModel.id.toString(),
                       );
                     },
-                    child: controller.isProductFavorite(
-                            productModel.id.toString(),
-                          )
+                    child:
+                        controller.isProductFavorite(productModel.id.toString())
                         ? SvgPicture.asset("assets/icons/ic_like_fill.svg")
                         : SvgPicture.asset("assets/icons/ic_like.svg"),
                   ),
@@ -409,9 +419,20 @@ Widget buildProductsWithoutCategories(
                         child: isItemAvailable
                             ? selectedVariants.isNotEmpty ||
                                       (productModel.addOnsTitle != null &&
-                                          productModel.addOnsTitle!.isNotEmpty)
+                                          productModel
+                                              .addOnsTitle!
+                                              .isNotEmpty) ||
+                                      (productModel.options != null &&
+                                          productModel.options!.isNotEmpty)
                                   ? RoundedButtonFill(
-                                      title: "Add".tr,
+                                      title:
+                                          (productModel.options != null &&
+                                              productModel
+                                                  .options!
+                                                  .isNotEmpty &&
+                                              selectedVariants.isEmpty)
+                                          ? "Options".tr
+                                          : "Add".tr,
                                       width: 10,
                                       height: 4,
                                       color: AppThemeData.grey50,
@@ -479,9 +500,21 @@ Widget buildProductsWithoutCategories(
                                         }
 
                                         controller.calculatePrice(productModel);
-                                        // productDetailsBottomSheet(
-                                        //     context,
-                                        //     productModel);
+                                        if (hasOptionsOnly) {
+                                          showProductOptionsBottomSheet(
+                                            context: context,
+                                            controller: controller,
+                                            productModel: productModel,
+                                            priceToPass: price,
+                                            disPriceToPass: disPrice,
+                                            buttonFontSize: 14,
+                                          );
+                                        } else {
+                                          _showProductDetailsBottomSheet(
+                                            context,
+                                            productModel,
+                                          );
+                                        }
                                       },
                                     )
                                   : HomeProvider.cartItem
@@ -807,6 +840,395 @@ Widget buildProductsWithoutCategories(
             ),
           ],
         ),
+      );
+    },
+  );
+}
+
+void _showProductDetailsBottomSheet(
+  BuildContext context,
+  ProductModel productModel,
+) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    isDismissible: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+    ),
+    clipBehavior: Clip.antiAliasWithSaveLayer,
+    builder: (context) => FractionallySizedBox(
+      heightFactor: 0.85,
+      child: StatefulBuilder(
+        builder: (context1, setState) =>
+            ProductDetailsView(productModel: productModel),
+      ),
+    ),
+  );
+}
+
+void _showOptionsBottomSheet({
+  required BuildContext context,
+  required RestaurantDetailsProvider controller,
+  required ProductModel productModel,
+  required String price,
+  required String disPrice,
+}) {
+  final options = productModel.options ?? [];
+  final hasOptions = options.isNotEmpty;
+  final hasAddOns =
+      productModel.addOnsTitle != null &&
+      productModel.addOnsTitle!.isNotEmpty &&
+      productModel.addOnsPrice != null &&
+      productModel.addOnsPrice!.isNotEmpty;
+
+  if (!hasOptions && !hasAddOns) return;
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) {
+      final Set<int> selectedOptionIndices = hasOptions ? {0} : <int>{};
+      final Set<int> selectedAddonIndices = <int>{};
+
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AnimatedPadding(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOut,
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: AppThemeData.surface,
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: AppThemeData.grey300,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        productModel.name ?? '',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontFamily: AppThemeData.semiBold,
+                          fontWeight: FontWeight.w600,
+                          color: AppThemeData.grey900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 340),
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (hasOptions) ...[
+                                Text(
+                                  'Choose options'.tr,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontFamily: AppThemeData.semiBold,
+                                    color: AppThemeData.grey800,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: options.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 6),
+                                  itemBuilder: (context, index) {
+                                    final option = options[index];
+                                    final disabled =
+                                        option.isAvailable == false ||
+                                        option.price == null;
+                                    final isSelected = selectedOptionIndices
+                                        .contains(index);
+                                    final priceText = Constant.amountShow(
+                                      amount: Constant.productCommissionPrice(
+                                        controller.vendorModel,
+                                        option.price ?? '0',
+                                      ),
+                                    );
+
+                                    return InkWell(
+                                      onTap: disabled
+                                          ? null
+                                          : () {
+                                              setState(() {
+                                                if (isSelected) {
+                                                  selectedOptionIndices.remove(
+                                                    index,
+                                                  );
+                                                } else {
+                                                  selectedOptionIndices.add(
+                                                    index,
+                                                  );
+                                                }
+                                              });
+                                            },
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? AppThemeData.primary300
+                                                    .withOpacity(0.06)
+                                              : AppThemeData.grey50,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? AppThemeData.primary300
+                                                : AppThemeData.grey200,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                '${option.title ?? ''}  $priceText',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: disabled
+                                                      ? AppThemeData.grey400
+                                                      : AppThemeData.grey900,
+                                                ),
+                                              ),
+                                            ),
+                                            if (isSelected)
+                                              Icon(
+                                                Icons.check_circle,
+                                                color: AppThemeData.primary300,
+                                                size: 18,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                              if (hasAddOns) ...[
+                                Text(
+                                  'Add-ons'.tr,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontFamily: AppThemeData.semiBold,
+                                    color: AppThemeData.grey800,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                ListView.separated(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  itemCount: productModel.addOnsTitle!.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(height: 6),
+                                  itemBuilder: (context, index) {
+                                    final title = productModel
+                                        .addOnsTitle![index]
+                                        .toString();
+                                    final rawPrice =
+                                        index < productModel.addOnsPrice!.length
+                                        ? productModel.addOnsPrice![index]
+                                              .toString()
+                                        : '0';
+                                    final isSelected = selectedAddonIndices
+                                        .contains(index);
+                                    final addOnPriceText = Constant.amountShow(
+                                      amount: Constant.productCommissionPrice(
+                                        controller.vendorModel,
+                                        rawPrice,
+                                      ),
+                                    );
+
+                                    return InkWell(
+                                      onTap: () {
+                                        setState(() {
+                                          if (isSelected) {
+                                            selectedAddonIndices.remove(index);
+                                            controller.selectedAddOns.remove(
+                                              title,
+                                            );
+                                          } else {
+                                            selectedAddonIndices.add(index);
+                                            controller.selectedAddOns.add(
+                                              title,
+                                            );
+                                          }
+                                        });
+                                      },
+                                      borderRadius: BorderRadius.circular(12),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: isSelected
+                                              ? AppThemeData.primary300
+                                                    .withOpacity(0.06)
+                                              : AppThemeData.grey50,
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: isSelected
+                                                ? AppThemeData.primary300
+                                                : AppThemeData.grey200,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                '$title  $addOnPriceText',
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  color: AppThemeData.grey900,
+                                                ),
+                                              ),
+                                            ),
+                                            if (isSelected)
+                                              Icon(
+                                                Icons.check_circle,
+                                                color: AppThemeData.primary300,
+                                                size: 18,
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppThemeData.primary300,
+                            foregroundColor: AppThemeData.grey50,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
+                          onPressed: () {
+                            if (hasOptions && selectedOptionIndices.isEmpty) {
+                              ShowToastDialog.showToast(
+                                'Please select at least one option'.tr,
+                              );
+                              return;
+                            }
+
+                            if (hasOptions) {
+                              for (final index in selectedOptionIndices) {
+                                if (index < 0 || index >= options.length) {
+                                  continue;
+                                }
+                                final selected = options[index];
+                                if (selected.isAvailable == false) {
+                                  continue;
+                                }
+
+                                final optionPrice =
+                                    Constant.productCommissionPrice(
+                                      controller.vendorModel,
+                                      selected.price ?? '0',
+                                    );
+
+                                final variantInfo = VariantInfo(
+                                  variantId: selected.id,
+                                  variantPrice: selected.price ?? '0',
+                                  variantSku:
+                                      selected.subtitle ?? selected.title ?? '',
+                                  variantOptions: {
+                                    'option':
+                                        selected.subtitle ??
+                                        selected.title ??
+                                        '',
+                                    'merchant_price':
+                                        selected.originalPrice ?? '0',
+                                  },
+                                );
+
+                                controller.addToCart(
+                                  productModel: productModel,
+                                  price: optionPrice,
+                                  discountPrice: '0',
+                                  isIncrement: true,
+                                  quantity: 1,
+                                  variantInfo: variantInfo,
+                                );
+                              }
+                            } else {
+                              controller.addProductAndRemoveProductFunction(
+                                productModel: productModel,
+                                price: price,
+                                disPrice: disPrice,
+                              );
+                            }
+
+                            Navigator.of(context).pop();
+                          },
+                          child: Text(
+                            'Add'.tr,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontFamily: AppThemeData.semiBold,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       );
     },
   );

@@ -31,6 +31,7 @@ class ProductModel {
   bool? isAvailable;
   String? categoryTitle;
   List<ProductOption>? options;
+  List<ProductAvailabilitySchedule>? availableTimings;
 
   ProductModel({
     this.fats,
@@ -63,6 +64,7 @@ class ProductModel {
     this.isAvailable,
     this.categoryTitle,
     this.options,
+    this.availableTimings,
   });
 
   // Factory constructor for API JSON
@@ -76,7 +78,16 @@ class ProductModel {
         description: _parseString(json['description']),
         categoryID: _parseString(json['category_id']),
         categoryTitle: _parseString(json['category_title']),
-        isAvailable: json['is_available'] == true || json['is_available'] == 1,
+        publish:
+            json['publish'] == true ||
+            json['publish'] == 1 ||
+            json['publish'] == '1' ||
+            json['publish'] == 'true',
+        isAvailable:
+            json['is_available'] == true ||
+            json['is_available'] == 1 ||
+            json['isAvailable'] == true ||
+            json['isAvailable'] == 1,
         nonveg: json['nonveg'] == true || json['nonveg'] == 1,
         veg: json['veg'] == true || json['veg'] == 1,
         photo: _parseString(json['photo']),
@@ -88,13 +99,23 @@ class ProductModel {
         reviewsCount: _parseNum(json['reviews_count']),
         reviewsSum: _parseNum(json['reviews_sum']),
         quantity: _parseInt(json['quantity']) ?? -1,
-        price: _parsePrice(json['original_price']) ?? '0',
-        merchantPrice: _parsePrice(json['merchant_price']) ??
+        price:
+            _parsePrice(json['price']) ??
             _parsePrice(json['original_price']) ??
             '0',
-        disPrice: _parsePrice(json['discount_price']) ?? '0',
-        vendorID: _parseString(json['vendorID']),
+        merchantPrice: _parsePrice(json['merchant_price']) ??
+            _parsePrice(json['original_price']) ??
+            _parsePrice(json['price']) ??
+            '0',
+        disPrice:
+            _parsePrice(json['disPrice']) ??
+            _parsePrice(json['discount_price']) ??
+            '0',
+        vendorID: _parseString(json['vendorID'] ?? json['vendor_id']),
         options: _parseOptions(json['options']),
+        availableTimings: _parseAvailableTimings(
+          json['available_timings'] ?? json['availableTimings'],
+        ),
       );
     } catch (e) {
       print('❌ Error parsing product JSON: $e');
@@ -190,7 +211,7 @@ class ProductModel {
     try {
       // FIX: Use helper method to parse int fields that might come as String
       fats = _parseInt(json['fats']);
-      vendorID = _parseString(json['vendorID']);
+      vendorID = _parseString(json['vendorID'] ?? json['vendor_id']);
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
       veg =
           json['veg'] == 1 ||
@@ -264,7 +285,10 @@ class ProductModel {
       reviewsCount = _parseNum(json['reviewsCount']) ?? 0.0;
 
       // FIX: Handle both string and int for disPrice
-      disPrice = _parsePrice(json['disPrice']) ?? "0";
+      disPrice =
+          _parsePrice(json['disPrice']) ??
+          _parsePrice(json['discount_price']) ??
+          "0";
       // Parse photos - handle both string and list formats
       photos = _parseJsonStringToList<String>(json['photos'])?.cast<String>();
       nonveg =
@@ -274,18 +298,34 @@ class ProductModel {
           json['nonveg'] == "true";
       photo = _parseString(json['photo']);
       // FIX: Handle both string and int for price
-      price = _parsePrice(json['price']) ?? "0";
-      categoryID = _parseString(json['categoryID']);
+      price =
+          _parsePrice(json['price']) ??
+          _parsePrice(json['original_price']) ??
+          "0";
+      merchantPrice =
+          _parsePrice(json['merchant_price']) ??
+          _parsePrice(json['merchantPrice']) ??
+          _parsePrice(json['original_price']) ??
+          _parsePrice(json['price']) ??
+          "0";
+      categoryID = _parseString(json['categoryID'] ?? json['category_id']);
       description = _parseString(json['description']);
       createdAt = _parseDate(json['createdAt']);
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
       isAvailable =
           json['isAvailable'] == 1 ||
           json['isAvailable'] == true ||
+          json['is_available'] == 1 ||
+          json['is_available'] == true ||
           json['isAvailable'] == "1" ||
-          json['isAvailable'] == "true";
+          json['isAvailable'] == "true" ||
+          json['is_available'] == "1" ||
+          json['is_available'] == "true";
       // Parse simple options list if present (defensive - works with both Map and List)
       options = _parseOptions(json['options']);
+      availableTimings = _parseAvailableTimings(
+        json['available_timings'] ?? json['availableTimings'],
+      );
     } catch (e, stackTrace) {
       print('❌ Error parsing ProductModel from JSON: $e');
       print('❌ Stack trace: $stackTrace');
@@ -349,6 +389,82 @@ class ProductModel {
     return null;
   }
 
+  static List<ProductAvailabilitySchedule>? _parseAvailableTimings(
+    dynamic value,
+  ) {
+    if (value == null) return null;
+    try {
+      final parsed = value is String ? json.decode(value) : value;
+      if (parsed is! List) return null;
+      return parsed
+          .whereType<Map>()
+          .map(
+            (e) => ProductAvailabilitySchedule.fromJson(
+              Map<String, dynamic>.from(e),
+            ),
+          )
+          .toList();
+    } catch (e) {
+      print('⚠️ Failed to parse available_timings: $e');
+      return null;
+    }
+  }
+
+  bool get isAvailableAtCurrentTime {
+    final timings = availableTimings;
+    if (timings == null || timings.isEmpty) return true;
+
+    final now = DateTime.now();
+    final today = _weekdayName(now.weekday);
+    final todaySchedule = timings.firstWhere(
+      (entry) => entry.day?.toLowerCase() == today.toLowerCase(),
+      orElse: () => ProductAvailabilitySchedule(day: today, timeslot: []),
+    );
+
+    final slots = todaySchedule.timeslot;
+    if (slots == null || slots.isEmpty) return false;
+
+    final currentMinutes = now.hour * 60 + now.minute;
+    for (final slot in slots) {
+      final fromMinutes = _parseTimeToMinutes(slot.from);
+      final toMinutes = _parseTimeToMinutes(slot.to);
+      if (fromMinutes == null || toMinutes == null) continue;
+
+      if (fromMinutes <= toMinutes) {
+        if (currentMinutes >= fromMinutes && currentMinutes <= toMinutes) {
+          return true;
+        }
+      } else if (currentMinutes >= fromMinutes || currentMinutes <= toMinutes) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  static int? _parseTimeToMinutes(String? value) {
+    if (value == null || value.isEmpty) return null;
+    final parts = value.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return hour * 60 + minute;
+  }
+
+  static String _weekdayName(int weekday) {
+    const days = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return days[(weekday - 1).clamp(0, 6)];
+  }
+
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['fats'] = fats;
@@ -393,12 +509,63 @@ class ProductModel {
     data['description'] = description;
     data['createdAt'] = createdAt;
     data['isAvailable'] = isAvailable;
+    data['available_timings'] =
+        availableTimings?.map((e) => e.toJson()).toList();
 
     if (options != null) {
       data['options'] = options!.map((e) => e.toJson()).toList();
     }
 
     return data;
+  }
+}
+
+class ProductAvailabilitySchedule {
+  String? day;
+  List<ProductAvailabilityTimeslot>? timeslot;
+
+  ProductAvailabilitySchedule({this.day, this.timeslot});
+
+  factory ProductAvailabilitySchedule.fromJson(Map<String, dynamic> json) {
+    return ProductAvailabilitySchedule(
+      day: ProductModel._parseString(json['day']),
+      timeslot: (json['timeslot'] as List?)
+          ?.whereType<Map>()
+          .map(
+            (e) => ProductAvailabilityTimeslot.fromJson(
+              Map<String, dynamic>.from(e),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'day': day,
+      'timeslot': timeslot?.map((e) => e.toJson()).toList(),
+    };
+  }
+}
+
+class ProductAvailabilityTimeslot {
+  String? from;
+  String? to;
+
+  ProductAvailabilityTimeslot({this.from, this.to});
+
+  factory ProductAvailabilityTimeslot.fromJson(Map<String, dynamic> json) {
+    return ProductAvailabilityTimeslot(
+      from: ProductModel._parseString(json['from']),
+      to: ProductModel._parseString(json['to']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'from': from,
+      'to': to,
+    };
   }
 }
 

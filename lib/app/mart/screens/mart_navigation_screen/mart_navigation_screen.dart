@@ -1,3 +1,5 @@
+import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart'
+    show CartControllerProvider;
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart'
     show HomeProvider;
 import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
@@ -40,7 +42,7 @@ class MartNavigationScreen extends StatelessWidget {
                   children: navController.pageList,
                 ),
                 bottomNavigationBar: navController.selectedIndex != 3
-                    ? _buildEnhancedNavigationBar(navController)
+                    ? _buildEnhancedNavigationBar(context, navController)
                     : const SizedBox.shrink(),
               ),
             ),
@@ -50,7 +52,10 @@ class MartNavigationScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEnhancedNavigationBar(MartNavigationProvider controller) {
+  Widget _buildEnhancedNavigationBar(
+    BuildContext context,
+    MartNavigationProvider controller,
+  ) {
     return Container(
       decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(
@@ -58,6 +63,7 @@ class MartNavigationScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildEnhancedNavItem(
+              context: context,
               icon: ImageConst.homeOne,
               activeIcon: ImageConst.homeOne,
               label: 'Home',
@@ -72,6 +78,7 @@ class MartNavigationScreen extends StatelessWidget {
             //   controller: controller,
             // ),
             _buildEnhancedNavItem(
+              context: context,
               icon: ImageConst.cartOne,
               activeIcon: ImageConst.cartOne,
               label: 'Cart',
@@ -82,8 +89,11 @@ class MartNavigationScreen extends StatelessWidget {
                   return StreamBuilder<List<CartProductModel>>(
                     stream: cartProvider.cartStream,
                     builder: (context, snapshot) {
-                      int cartItemCount =
-                          snapshot.data?.length ?? HomeProvider.cartItem.length;
+                      final items = snapshot.data ?? HomeProvider.cartItem;
+                      final cartItemCount = items.fold<int>(
+                        0,
+                        (sum, item) => sum + (item.quantity ?? 0),
+                      );
                       return cartItemCount > 0
                           ? _buildCartBadge(cartItemCount)
                           : const SizedBox.shrink();
@@ -93,6 +103,7 @@ class MartNavigationScreen extends StatelessWidget {
               ),
             ),
             _buildEnhancedNavItem(
+              context: context,
               icon: ImageConst.profile,
               activeIcon: ImageConst.profile,
               label: 'Profile',
@@ -106,6 +117,7 @@ class MartNavigationScreen extends StatelessWidget {
   }
 
   Widget _buildEnhancedNavItem({
+    required BuildContext context,
     required String icon,
     required String activeIcon,
     required String label,
@@ -116,8 +128,12 @@ class MartNavigationScreen extends StatelessWidget {
     final isActive = controller.selectedIndex == index;
     final primaryColor = ColorConst.orangeLight;
     return GestureDetector(
-      onTap: () {
+      onTap: () async {
         print("Tapped on index: $index"); // Debug
+        if (index == 2) {
+          // Keep mart cart page in sync with badge updates.
+          await context.read<CartControllerProvider>().forceRefreshCart();
+        }
         controller.changeIndex(index);
       },
       behavior: HitTestBehavior.opaque,

@@ -465,6 +465,11 @@ class OrderProvider extends ChangeNotifier {
         vid.contains('vendor');
   }
 
+  bool _isLiveFoodProductReorderable(ProductModel? product) {
+    if (product == null) return false;
+    return product.publish != false && product.isAvailable != false;
+  }
+
   /// Reorder all items from an order (batched live catalog fetch, variant-aware prices).
   Future<void> reorderOrder(OrderModel order, BuildContext context) async {
     if (order.products == null || order.products!.isEmpty) {
@@ -477,6 +482,7 @@ class OrderProvider extends ChangeNotifier {
     try {
       int addedCount = 0;
       int failedCount = 0;
+      int unavailableCount = 0;
       final vendor = order.vendor;
       final lines = order.products!;
 
@@ -497,10 +503,19 @@ class OrderProvider extends ChangeNotifier {
 
       for (final element in lines) {
         try {
+          final isMartLine = _isMartOrderLine(element);
           ProductModel? p;
-          if (!_isMartOrderLine(element)) {
+          if (!isMartLine) {
             final cid = FireStoreUtils.catalogIdFromOrderLine(element.id);
-            p = cid.isEmpty ? null : foodByCatalogId[cid];
+            if (cid.isEmpty) {
+              unavailableCount++;
+              continue;
+            }
+            p = foodByCatalogId[cid];
+            if (!_isLiveFoodProductReorderable(p)) {
+              unavailableCount++;
+              continue;
+            }
           }
 
           var info = FireStoreUtils.priceInfoForReorderLine(
@@ -508,14 +523,16 @@ class OrderProvider extends ChangeNotifier {
             element: element,
             vendor: vendor,
           );
-          info ??= FireStoreUtils.priceInfoForReorderLine(
-            product: null,
-            element: element,
-            vendor: vendor,
-          );
+          if (info == null && isMartLine) {
+            info = FireStoreUtils.priceInfoForReorderLine(
+              product: null,
+              element: element,
+              vendor: vendor,
+            );
+          }
 
           if (info == null) {
-            failedCount++;
+            unavailableCount++;
             continue;
           }
 
@@ -529,7 +546,7 @@ class OrderProvider extends ChangeNotifier {
             quantity: element.quantity ?? 1,
             vendorID: element.vendorID,
             categoryId: element.categoryId,
-            merchantPrice: element.merchantPrice,
+            merchantPrice: info.merchantPrice ?? element.merchantPrice,
             extrasPrice: element.extrasPrice,
             extras: element.extras,
             variantInfo: element.variantInfo,
@@ -548,11 +565,23 @@ class OrderProvider extends ChangeNotifier {
 
       ShowToastDialog.closeLoader();
 
-      if (addedCount > 0) {
+      if (addedCount > 0 && unavailableCount == 0 && failedCount == 0) {
         ShowToastDialog.showToast("$addedCount item(s) added to cart".tr);
-      }
-
-      if (failedCount > 0) {
+      } else if (addedCount > 0) {
+        final parts = <String>["$addedCount item(s) added to cart".tr];
+        if (unavailableCount > 0) {
+          parts.add(
+            "$unavailableCount item(s) were no longer available and were skipped"
+                .tr,
+          );
+        }
+        if (failedCount > 0) {
+          parts.add("$failedCount item(s) could not be added".tr);
+        }
+        ShowToastDialog.showToast(parts.join(". "));
+      } else if (unavailableCount > 0 && failedCount == 0) {
+        ShowToastDialog.showToast("These items are no longer available".tr);
+      } else if (failedCount > 0) {
         ShowToastDialog.showToast(
           "$failedCount item(s) could not be added. Please try again.".tr,
         );

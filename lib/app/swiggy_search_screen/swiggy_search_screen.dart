@@ -1263,7 +1263,12 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     final canAcceptOrders =
         vendor != null && RestaurantStatusUtils.canAcceptOrders(vendor);
     final isProductAvailable = product.isAvailable ?? true;
-    final isButtonEnabled = canAcceptOrders && isProductAvailable && !isLoading;
+    final isProductAvailableNow = product.isAvailableAtCurrentTime;
+    final isButtonEnabled =
+        canAcceptOrders &&
+        isProductAvailable &&
+        isProductAvailableNow &&
+        !isLoading;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1536,6 +1541,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                           message = status['reason'];
                         } else if (!isProductAvailable) {
                           message = "This product is currently unavailable".tr;
+                        } else if (!isProductAvailableNow) {
+                          message =
+                              "This product is not available at this time".tr;
                         } else {
                           message = "Unable to add to cart".tr;
                         }
@@ -1561,6 +1569,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   isLoading,
                   canAcceptOrders,
                   isProductAvailable,
+                  isProductAvailableNow,
                   vendor,
                 ),
                 style: TextStyle(
@@ -1583,12 +1592,14 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     bool isLoading,
     bool canAcceptOrders,
     bool isProductAvailable,
+    bool isProductAvailableNow,
     VendorModel? vendor,
   ) {
     if (isLoading) return "Loading...".tr;
     if (vendor == null) return "Restaurant unavailable".tr;
     if (!canAcceptOrders) return "Restaurant is closed".tr;
     if (!isProductAvailable) return "Product unavailable".tr;
+    if (!isProductAvailableNow) return "Unavailable now".tr;
     return "Add to Cart".tr;
   }
 
@@ -1637,6 +1648,18 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
   Future<void> _addToCart(ProductModel product) async {
     final currentContext = context;
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
+
+    if (!product.isAvailableAtCurrentTime) {
+      Get.snackbar(
+        "Unavailable",
+        "This product is not available at this time",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppThemeData.danger500,
+        colorText: AppThemeData.grey50,
+        duration: const Duration(seconds: 3),
+      );
+      return;
+    }
 
     try {
       final vendor = await _getVendorDetails(product.vendorID ?? '');

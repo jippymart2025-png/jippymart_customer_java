@@ -42,11 +42,13 @@ import 'package:jippymart_customer/services/api_queue_manager.dart';
 class ProductPriceInfo {
   final double currentPrice;
   final double discountPrice;
+  final String? merchantPrice;
   final String? promoId;
 
   ProductPriceInfo({
     required this.currentPrice,
     required this.discountPrice,
+    this.merchantPrice,
     this.promoId,
   });
 }
@@ -1449,11 +1451,13 @@ class FireStoreUtils {
 
   static ProductPriceInfo _reorderVariantPriceInfo({
     required double unit,
+    String? merchantPrice,
     String? promoId,
   }) {
     return ProductPriceInfo(
       currentPrice: unit,
       discountPrice: 0.0,
+      merchantPrice: merchantPrice,
       promoId: promoId,
     );
   }
@@ -1487,6 +1491,7 @@ class FireStoreUtils {
         return ProductPriceInfo(
           currentPrice: unit,
           discountPrice: hasVariant ? 0.0 : unit,
+          merchantPrice: element.merchantPrice ?? element.price,
           promoId: element.promoId,
         );
       }
@@ -1497,14 +1502,21 @@ class FireStoreUtils {
           productVendorId != vendorId) {
         return null;
       }
+      if (product.publish == false || product.isAvailable == false) {
+        return null;
+      }
 
       final variantInfo = element.variantInfo;
       final promoId = element.promoId;
       if (variantInfo != null) {
         final opt = _matchProductOptionForReorder(product, variantInfo);
         if (opt != null && opt.price != null) {
+          if (opt.isAvailable == false) {
+            return null;
+          }
           return _reorderVariantPriceInfo(
             unit: _commissionUnitPrice(v, opt.price),
+            merchantPrice: opt.originalPrice ?? opt.price,
             promoId: promoId,
           );
         }
@@ -1519,6 +1531,8 @@ class FireStoreUtils {
               v,
               varRow.variantPrice ?? product.price ?? '0',
             ),
+            merchantPrice:
+                varRow.variantPrice ?? product.merchantPrice ?? product.price,
             promoId: promoId,
           );
         }
@@ -1528,6 +1542,7 @@ class FireStoreUtils {
         if (rawParsed != null && rawParsed > 0) {
           return _reorderVariantPriceInfo(
             unit: _commissionUnitPrice(v, rawVp),
+            merchantPrice: rawVp,
             promoId: promoId,
           );
         }
@@ -1536,7 +1551,11 @@ class FireStoreUtils {
           element.price,
           element.discountPrice,
         );
-        return _reorderVariantPriceInfo(unit: fb, promoId: promoId);
+        return _reorderVariantPriceInfo(
+          unit: fb,
+          merchantPrice: element.merchantPrice ?? element.price,
+          promoId: promoId,
+        );
       }
 
       final reg = double.tryParse(product.price ?? '0') ?? 0.0;
@@ -1545,6 +1564,7 @@ class FireStoreUtils {
         return ProductPriceInfo(
           currentPrice: _commissionUnitPrice(v, product.price),
           discountPrice: _commissionUnitPrice(v, product.disPrice),
+          merchantPrice: product.merchantPrice ?? product.price,
           promoId: promoId,
         );
       }
@@ -1553,6 +1573,7 @@ class FireStoreUtils {
       return ProductPriceInfo(
         currentPrice: unit,
         discountPrice: unit,
+        merchantPrice: product.merchantPrice ?? product.price,
         promoId: promoId,
       );
     } catch (e) {
