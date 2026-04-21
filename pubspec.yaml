@@ -113,9 +113,8 @@ dependencies:
   connectivity_plus: ^6.1.1
   # Coin / reward sound (check-in, etc.)
   audioplayers: ^6.4.0
-  # Paytm All-in-One SDK for UPI / cards
-  paytm_allinonesdk:
-    path: plugins/paytm_allinonesdk
+  # Paytm official All-in-One SDK bridge (Flutter)
+  paytmpayments_allinonesdk: ^1.0.2
 
 dependency_overrides:
   webview_flutter: ^4.7.0

@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:flutter/services.dart';
-import 'package:paytm_allinonesdk/paytm_allinonesdk.dart';
+import 'package:paytmpayments_allinonesdk/paytmpayments_allinonesdk.dart';
 
 import 'package:jippymart_customer/constant/constant.dart';
 
@@ -16,10 +17,12 @@ import '../utils/utils/app_constant.dart';
 /// - Ask backend for final order status (server side verification)
 class PaytmService {
   PaytmService._();
+  static final PaytmPaymentsAllinonesdk _paytmSdk =
+      PaytmPaymentsAllinonesdk();
 
   /// Fallback MID (if backend doesn't return one).
   /// Prefer using the MID returned by `/paytm/initiate`.
-  static const String fallbackMid = "rVjBPY03604052666374";
+  static const String fallbackMid = "oblKKV54729841220347";
 
   /// Base URL for backend Paytm APIs.
   ///
@@ -79,15 +82,19 @@ class PaytmService {
     required bool isStaging,
   }) async {
     try {
-      final result = await AllInOneSdk.startTransaction(
+      final normalizedCallbackUrl = _normalizeCallbackUrl(
+        callbackUrl: callbackUrl,
+        orderId: orderId,
+        isStaging: isStaging,
+      );
+      final result = await _paytmSdk.startTransaction(
         mid,
         orderId,
         amount,
         txnToken,
-        callbackUrl,
+        normalizedCallbackUrl,
         isStaging,
-        false,
-        false, // disable Paytm Assist (fix Android 14+ receiver crash)
+        Platform.isIOS,
       );
 
       if (result is Map) {
@@ -112,6 +119,20 @@ class PaytmService {
         'message': e.toString(),
       };
     }
+  }
+
+  static String _normalizeCallbackUrl({
+    required String callbackUrl,
+    required String orderId,
+    required bool isStaging,
+  }) {
+    final trimmed = callbackUrl.trim();
+    if (trimmed.isNotEmpty) {
+      return trimmed;
+    }
+    return isStaging
+        ? 'https://securestage.paytmpayments.com/theia/paytmCallback?ORDER_ID=$orderId'
+        : 'https://secure.paytmpayments.com/theia/paytmCallback?ORDER_ID=$orderId';
   }
 
   /// 3) Ask backend for final order status (server‑side verification).

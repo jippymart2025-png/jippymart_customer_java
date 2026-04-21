@@ -106,17 +106,6 @@
 	<key>UIRequiresFullScreen</key>
 	<false/>
 	
-	<!-- iPad Multitasking Support -->
-	<key>UIApplicationSceneManifest</key>
-	<dict>
-		<key>UIApplicationSupportsMultipleScenes</key>
-		<false/>
-	</dict>
-	
-	<!-- iPad Split View Support -->
-	<key>UIApplicationSupportsIndirectInputEvents</key>
-	<true/>
-
 	<!-- ================= DEEP LINKING CONFIGURATION ================= -->
 	
 	<!-- URL Schemes: Custom scheme for deep linking (jippymart://) -->
@@ -130,6 +119,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>jippymart</string>
+				<string>paytmoblKKV54729841220347</string>
 			</array>
 		</dict>
 		<dict>
@@ -142,6 +132,14 @@
 				<string>fb640838582128923</string>
 			</array>
 		</dict>
+	</array>
+
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>paytm</string>
+		<string>paytmmp</string>
+		<string>phonepe</string>
+		<string>tez</string>
 	</array>
 
 	<!-- Facebook App Events -->

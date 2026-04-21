@@ -58,8 +58,12 @@
                }
                self.appinvoke.setBridgeName(name: "Flutter")
                self.appinvoke.restrictAppInvokeFlow(restrict: restrictAppInvoke)
-                self.appinvoke.openPaytm(merchantId: mid, orderId: orderId, txnToken: transactionToken, amount: amount, callbackUrl: callbackUrl, delegate: self, environment: env, urlScheme: "")
+              let urlScheme = self.resolveUrlScheme(mid: mid, callbackUrl: callbackUrl, parameters: parameters)
+               self.appinvoke.openPaytm(merchantId: mid, orderId: orderId, txnToken: transactionToken, amount: amount, callbackUrl: callbackUrl, delegate: self, environment: env, urlScheme: urlScheme)
              }
+        } else {
+            let error = FlutterError(code: "0", message: "Invalid Parameters", details: parameters)
+            self.flutterCallbackResult?(error)
          }
      }
 
@@ -112,6 +116,25 @@
         }
         
         return urlString
+    }
+
+    private func resolveUrlScheme(mid: String, callbackUrl: String, parameters: [String: Any]) -> String {
+        if let explicitScheme = parameters["urlScheme"] as? String {
+            let trimmed = explicitScheme.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty {
+                return trimmed
+            }
+        }
+
+        if let callbackScheme = URLComponents(string: callbackUrl)?.scheme {
+            let lower = callbackScheme.lowercased()
+            if lower != "http" && lower != "https" && !lower.isEmpty {
+                return callbackScheme
+            }
+        }
+
+        // Paytm iOS app-invoke expects paytm<MID> as URL scheme.
+        return "paytm\(mid)"
     }
     
  }
@@ -175,8 +198,27 @@ extension SwiftAllInOneSdkPlugin: AIDelegate {
 
             if let vc = controller {
                 DispatchQueue.main.async {
-                    UIApplication.shared.keyWindow?.rootViewController?.present(vc, animated: true, completion: nil)
+                    self.topViewController()?.present(vc, animated: true, completion: nil)
                 }
             }
+        }
+
+        private func topViewController(base: UIViewController? = nil) -> UIViewController? {
+            let root = base ?? UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }
+                .flatMap { $0.windows }
+                .first(where: \.isKeyWindow)?
+                .rootViewController
+
+            if let navigationController = root as? UINavigationController {
+                return topViewController(base: navigationController.visibleViewController)
+            }
+            if let tabBarController = root as? UITabBarController, let selected = tabBarController.selectedViewController {
+                return topViewController(base: selected)
+            }
+            if let presented = root?.presentedViewController {
+                return topViewController(base: presented)
+            }
+            return root
         }
   }

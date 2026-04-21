@@ -222,6 +222,7 @@ class _DeliveryAddressCard extends StatelessWidget {
         ),
         child: InkWell(
           borderRadius: BorderRadius.circular(12),
+          canRequestFocus: false,
           onTap: () =>
               controller.changeLocationFunctionInCart(context: context),
           child: Padding(
@@ -665,6 +666,7 @@ class _PaymentTile extends StatelessWidget {
       children: [
         InkWell(
           borderRadius: radius,
+          canRequestFocus: false,
           onTap: isEnabled
               ? () => controller.setSelectedPaymentMethod(value.name)
               : null,
@@ -853,6 +855,7 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
     CartControllerProvider controller,
   ) async {
     if (_tapLocked || _isProcessing) return;
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       _tapLocked = true;
       _lastPaymentConfigKey = _paymentConfigKey();

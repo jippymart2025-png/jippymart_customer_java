@@ -13,7 +13,7 @@ class AllInOneSdk {
       String callbackUrl,
       bool isStaging,
       bool restrictAppInvoke,
-      [bool enableAssist = true]) async {
+      [bool enableAssist = true, String? urlScheme]) async {
     var sendMap = <String, dynamic>{
       "mid": mid,
       "orderId": orderId,
@@ -22,7 +22,9 @@ class AllInOneSdk {
       "callbackUrl": callbackUrl,
       "isStaging": isStaging,
       "restrictAppInvoke": restrictAppInvoke,
-      "enableAssist": enableAssist
+      "enableAssist": enableAssist,
+      if (urlScheme != null && urlScheme.trim().isNotEmpty)
+        "urlScheme": urlScheme.trim(),
     };
     Map<dynamic, dynamic>? version =
         await _channel.invokeMethod('startTransaction', sendMap);
