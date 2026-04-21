@@ -165,25 +165,6 @@ class _SearchScreenState extends State<SearchScreen> {
               "Try different keywords or check spelling".tr,
               style: TextStyle(color: AppThemeData.grey400),
             ),
-            const SizedBox(height: 20),
-            // Debug buttons
-            Column(
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    controller.debugProductData();
-                  },
-                  child: Text("Debug Product Data".tr),
-                ),
-                const SizedBox(height: 8),
-                ElevatedButton(
-                  onPressed: () {
-                    controller.forceSearchWithDebug(controller.searchText);
-                  },
-                  child: Text("Force Search with Debug".tr),
-                ),
-              ],
-            ),
           ],
         ),
       );
@@ -264,102 +245,100 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildRestaurantItem(VendorModel vendorModel) {
-    return Consumer<RestaurantDetailsProvider>(
-      builder: (context, restaurantDetailsProvider, _) {
-        return InkWell(
-          onTap: () {
-            restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
-            Get.to(
-              () => const RestaurantDetailsScreen(),
-              arguments: {"vendorModel": vendorModel},
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 20),
-            child: Container(
-              decoration: ShapeDecoration(
-                color: AppThemeData.grey50,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return InkWell(
+      onTap: () {
+        context.read<RestaurantDetailsProvider>().initFunction(
+          vendorModels: vendorModel,
+        );
+        Get.to(
+          () => const RestaurantDetailsScreen(),
+          arguments: {"vendorModel": vendorModel},
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 20),
+        child: Container(
+          decoration: ShapeDecoration(
+            color: AppThemeData.grey50,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
                 children: [
-                  Stack(
-                    children: [
-                      ClipRRect(
-                        borderRadius: const BorderRadius.only(
-                          topLeft: Radius.circular(16),
-                          topRight: Radius.circular(16),
-                        ),
-                        child: Stack(
-                          children: [
-                            RestaurantImageView(vendorModel: vendorModel),
-                            Container(
-                              height: Responsive.height(20, context),
-                              width: Responsive.width(100, context),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: const Alignment(-0.00, -1.00),
-                                  end: const Alignment(0, 1),
-                                  colors: [
-                                    Colors.black.withOpacity(0),
-                                    const Color(0xFF111827),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _buildRestaurantBadges(vendorModel),
-                    ],
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                    child: Stack(
                       children: [
-                        Text(
-                          vendorModel.title ?? '',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontFamily: AppThemeData.semiBold,
-                            color: AppThemeData.grey900,
+                        RestaurantImageView(vendorModel: vendorModel),
+                        Container(
+                          height: Responsive.height(20, context),
+                          width: Responsive.width(100, context),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: const Alignment(-0.00, -1.00),
+                              end: const Alignment(0, 1),
+                              colors: [
+                                Colors.black.withOpacity(0),
+                                const Color(0xFF111827),
+                              ],
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        if (vendorModel.location != null &&
-                            vendorModel.location!.isNotEmpty)
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.location_on,
-                                size: 16,
-                                color: AppThemeData.grey400,
-                              ),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  vendorModel.location!,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: AppThemeData.grey400,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                       ],
                     ),
                   ),
+                  _buildRestaurantBadges(vendorModel),
                 ],
               ),
-            ),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      vendorModel.title ?? '',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontFamily: AppThemeData.semiBold,
+                        color: AppThemeData.grey900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    if (vendorModel.location != null &&
+                        vendorModel.location!.isNotEmpty)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.location_on,
+                            size: 16,
+                            color: AppThemeData.grey400,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              vendorModel.location!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: AppThemeData.grey400,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -472,20 +451,12 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildProductsList(SearchScreenProvider controller) {
-    print(
-      "DEBUG: Building products list with ${controller.productSearchList.length} products",
-    );
-    if (controller.productSearchList.isNotEmpty) {
-      print("DEBUG: First product: ${controller.productSearchList.first.name}");
-    }
-
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: controller.productSearchList.length,
       itemBuilder: (context, index) {
         ProductModel productModel = controller.productSearchList[index];
-        print("DEBUG: Building product item $index: ${productModel.name}");
         return _buildProductItem(productModel);
       },
     );
@@ -497,15 +468,11 @@ class _SearchScreenState extends State<SearchScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: () async {
-          print("DEBUG: Product tapped: ${productModel.name}");
           // Get the vendor details for this product
           VendorModel? vendorModel = await FireStoreUtils.getVendorById(
             productModel.vendorID.toString(),
           );
           if (vendorModel != null) {
-            print(
-              "DEBUG: Navigating to restaurant with product: ${productModel.id}",
-            );
             RestaurantDetailsProvider restaurantDetailsProvider =
                 Provider.of<RestaurantDetailsProvider>(context, listen: false);
 

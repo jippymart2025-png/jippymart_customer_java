@@ -19,6 +19,8 @@ import 'package:jippymart_customer/widget/network_status_banner.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/cart_provider.dart';
+
 // Hero gradient — keep in sync with home_screen_two.dart
 const Color _kGradStart = Color(0xFFFF2D2D);
 const Color _kGradEnd = Color(0xFFFF8C42);
@@ -362,6 +364,9 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     });
 
     final cartControllerProvider = context.read<CartControllerProvider>();
+    final cartItemCount = context.select<CartProvider, int>(
+      (provider) => provider.totalQuantity,
+    );
     final orderProvider = context.read<OrderProvider>();
     final splashProvider = context.read<SplashProvider>();
     final homeProvider = context.read<HomeProvider>();
@@ -390,6 +395,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
             _buildOptimizedBottomBar(
               dashBoardProvider,
               cartControllerProvider,
+              cartItemCount,
               orderProvider,
               context,
               splashProvider,
@@ -529,20 +535,16 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   Widget _buildOptimizedBottomBar(
     DashBoardProvider controller,
     CartControllerProvider cartControllerProvider,
+    int cartItemCount,
     OrderProvider orderProvider,
     BuildContext context,
     SplashProvider splashProvider,
     HomeProvider homeProvider,
     FavouriteProvider favouriteProvider,
   ) {
-    // Use total quantity (1,2,3...) instead of unique line item count.
-    final currentCartItemCount = HomeProvider.cartItem.fold<int>(
-      0,
-      (sum, item) => sum + (item.quantity ?? 0),
-    );
-    final shouldUpdateBadge = currentCartItemCount != _lastCartItemCount;
+    final shouldUpdateBadge = cartItemCount != _lastCartItemCount;
     if (shouldUpdateBadge) {
-      _lastCartItemCount = currentCartItemCount;
+      _lastCartItemCount = cartItemCount;
     }
 
     return AnimatedBuilder(
@@ -560,7 +562,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
               homeProvider: homeProvider,
               favouriteProvider: favouriteProvider,
               context: context,
-              cartItemCount: currentCartItemCount,
+              cartItemCount: cartItemCount,
             ),
           ),
         );

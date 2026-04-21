@@ -3285,10 +3285,13 @@ class _MartQtyStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<MartProvider, CartProvider>(
-      builder: (context, mart, _, __) {
-        final vid = _martVendorId(product, mart);
-        final qty = _martQtyInCart(HomeProvider.cartItem, product, vid);
+    return Selector2<MartProvider, CartProvider, int>(
+      selector: (context, mart, cart) {
+        final vendorId = _martVendorId(product, mart);
+        final productId = product.id ?? '';
+        return cart.quantityFor(vendorId: vendorId, productId: productId);
+      },
+      builder: (context, qty, __) {
         final r = rs.addStepperHeight / 2;
 
         if (qty <= 0) {

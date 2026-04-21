@@ -39,6 +39,7 @@ class OrderProvider extends ChangeNotifier {
   final Map<String, double> _orderTotalCache = {};
   final Map<String, DateTime> _cacheTimestamps = {};
   Timer? _refreshTimer;
+  bool _initialized = false;
 
   @override
   void dispose() {
@@ -47,8 +48,11 @@ class OrderProvider extends ChangeNotifier {
   }
 
   Future<void> initFunction() async {
+    if (_initialized) return;
+    _initialized = true;
     await getOrder();
     // Auto-refresh every 10 minutes
+    _refreshTimer?.cancel();
     _refreshTimer = Timer.periodic(const Duration(minutes: 10), (timer) {
       if (Constant.userModel != null) {
         getOrder(forceRefresh: true);
@@ -68,8 +72,7 @@ class OrderProvider extends ChangeNotifier {
       if (kDebugMode) {
         log('[OrderController] Using cached orders');
       }
-      isLoading = false;
-      notifyListeners();
+      _updateLoadingState(false);
       return;
     }
 
@@ -88,8 +91,7 @@ class OrderProvider extends ChangeNotifier {
       }
       _clearLists();
       _isFetching = false;
-      isLoading = false;
-      notifyListeners();
+      _updateLoadingState(false);
       return;
     }
 
@@ -101,8 +103,7 @@ class OrderProvider extends ChangeNotifier {
         );
       }
 
-      isLoading = true;
-      notifyListeners();
+      _updateLoadingState(true);
 
       // Clear old cache if forcing refresh
       if (forceRefresh) {
@@ -153,8 +154,7 @@ class OrderProvider extends ChangeNotifier {
       _handleError();
     } finally {
       _isFetching = false;
-      isLoading = false;
-      notifyListeners();
+      _updateLoadingState(false);
 
       // If user requested refresh while a fetch was running, execute it now.
       if (_hasQueuedForceRefresh) {
@@ -162,6 +162,12 @@ class OrderProvider extends ChangeNotifier {
         await getOrder(forceRefresh: true);
       }
     }
+  }
+
+  void _updateLoadingState(bool value) {
+    if (isLoading == value) return;
+    isLoading = value;
+    notifyListeners();
   }
 
   void _processOrders(List<OrderModel> orders) {

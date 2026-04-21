@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
-import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/order_details_screen.dart';
@@ -83,8 +82,8 @@ class _OrderScreenState extends State<OrderScreen>
       return const SizedBox.shrink();
     }
 
-    return Consumer2<DashBoardProvider, OrderProvider>(
-      builder: (context, dashBoardProvider, controller, _) {
+    return Consumer<OrderProvider>(
+      builder: (context, controller, _) {
         // Additional mounted check inside builder
         if (!mounted) {
           return const SizedBox.shrink();

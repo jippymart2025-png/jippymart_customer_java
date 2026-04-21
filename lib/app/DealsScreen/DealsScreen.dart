@@ -1173,13 +1173,13 @@ class _PromotionCardState extends State<_PromotionCard>
 
   int _cartQty() {
     final id = widget.promotion.productId;
+    final vendorId = widget.promotion.restaurantId;
     if (id.isEmpty) return 0;
-    return HomeProvider.cartItem
-        .where(
-          (item) =>
-              item.id != null && (item.id == id || item.id!.startsWith('$id~')),
-        )
-        .fold<int>(0, (s, item) => s + (item.quantity ?? 0));
+    if (vendorId.isEmpty) return 0;
+    return context.read<CartProvider>().quantityFor(
+      vendorId: vendorId,
+      productId: id,
+    );
   }
 
   String _fmtPrice(dynamic price) {
@@ -1289,15 +1289,14 @@ class _PromotionCardState extends State<_PromotionCard>
         final ok = await cp.addToCart(context, cartItem, newQty);
         if (!ok) ShowToastDialog.showToast("Failed to add to cart".tr);
       } else {
-        final matches = HomeProvider.cartItem
-            .where(
-              (item) =>
-                  item.id != null &&
-                  (item.id == pid || item.id!.startsWith('$pid~')),
-            )
-            .toList();
-        if (matches.isNotEmpty) {
-          final cid = matches.first.id!;
+        final existing = HomeProvider.cartItem.cast<CartProductModel?>().firstWhere(
+          (item) =>
+              item?.id != null &&
+              (item!.id == pid || item.id!.startsWith('$pid~')),
+          orElse: () => null,
+        );
+        if (existing != null && existing.id != null) {
+          final cid = existing.id!;
           if (newQty > 0) {
             await cp.addToCart(
               context,
@@ -1356,7 +1355,12 @@ class _PromotionCardState extends State<_PromotionCard>
   // ── Build ──────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final qty = context.select<CartProvider, int>((_) => _cartQty());
+    final qty = context.select<CartProvider, int>(
+      (cart) => cart.quantityFor(
+        vendorId: widget.promotion.restaurantId,
+        productId: widget.promotion.productId,
+      ),
+    );
     final inCart = qty > 0;
     final closed = !_isOpen;
     final spec = widget.promotion.specialPrice;

@@ -17,7 +17,6 @@ import '../../profile_screen/profile_screen.dart';
 
 class DashBoardProvider extends ChangeNotifier {
   DashBoardProvider() {
-    print('[DASHBOARD_PROVIDER] Initializing...');
     _initializePageList();
   }
 
@@ -27,6 +26,8 @@ class DashBoardProvider extends ChangeNotifier {
   DateTime? currentBackPressTime;
   bool canPopNow = false;
   bool _addressCheckCompleted = false;
+  bool _cartInitialized = false;
+  bool _ordersInitialized = false;
 
   void changeNavbar(
     int index,
@@ -39,8 +40,10 @@ class DashBoardProvider extends ChangeNotifier {
   ) {
     if (index < 0 || index >= pageList.length) return;
 
-    selectedIndex = index;
-    notifyListeners();
+    if (selectedIndex != index) {
+      selectedIndex = index;
+      notifyListeners();
+    }
 
     // Initialize screen-specific data if needed
     switch (index) {
@@ -50,10 +53,16 @@ class DashBoardProvider extends ChangeNotifier {
         }
         break;
       case 2: // Cart
-        cartControllerProvider.initFunction(context);
+        if (!_cartInitialized) {
+          _cartInitialized = true;
+          cartControllerProvider.initFunction(context);
+        }
         break;
       case 3: // Orders
-        orderProvider.initFunction();
+        if (!_ordersInitialized) {
+          _ordersInitialized = true;
+          orderProvider.initFunction();
+        }
         break;
     }
   }
@@ -79,14 +88,12 @@ class DashBoardProvider extends ChangeNotifier {
     ];
 
     selectedIndex = selectedIndex.clamp(0, pageList.length - 1);
-    print('[DASHBOARD_PROVIDER] Initialized with ${pageList.length} pages');
     notifyListeners();
   }
 
   Future<void> _loadUserDataInBackground(BuildContext context) async {
     try {
       if (Constant.userModel == null) {
-        print('[DASHBOARD] User model is null');
         return;
       }
 
@@ -96,7 +103,7 @@ class DashBoardProvider extends ChangeNotifier {
         _addressCheckCompleted = true;
       }
     } catch (e) {
-      print('[DASHBOARD] Error loading user data: $e');
+      debugPrint('[DASHBOARD] Error loading user data: $e');
     }
   }
 
@@ -115,7 +122,7 @@ class DashBoardProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print("[DASHBOARD] Error checking addresses: $e");
+      debugPrint("[DASHBOARD] Error checking addresses: $e");
     }
   }
 
@@ -189,7 +196,7 @@ class DashBoardProvider extends ChangeNotifier {
         barrierDismissible: false,
       );
     } catch (e) {
-      print('[DASHBOARD] Error showing dialog: $e');
+      debugPrint('[DASHBOARD] Error showing dialog: $e');
       // Simple fallback
       Get.snackbar(
         'Address Required',

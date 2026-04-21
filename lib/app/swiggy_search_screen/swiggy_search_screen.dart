@@ -15,7 +15,6 @@ import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_deta
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/product_options_bottom_sheet.dart';
 import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 
 class SwiggySearchScreen extends StatefulWidget {
   const SwiggySearchScreen({Key? key}) : super(key: key);
@@ -121,9 +120,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         },
       ),
       actions: [
-        Consumer<CartProvider>(
-          builder: (context, _, __) {
-            final cartCount = _getTotalCartQuantity();
+        Selector<CartProvider, int>(
+          selector: (_, provider) => provider.totalQuantity,
+          builder: (context, cartCount, __) {
             return Stack(
               clipBehavior: Clip.none,
               children: [
@@ -1810,7 +1809,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
       if (!isAdded) {
         return;
       }
-      final cartCount = _getTotalCartQuantity();
+      final cartCount = context.read<CartProvider>().totalQuantity;
 
       Get.snackbar(
         "Added to Cart",
@@ -1836,10 +1835,4 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     }
   }
 
-  int _getTotalCartQuantity() {
-    return HomeProvider.cartItem.fold<int>(
-      0,
-      (sum, item) => sum + (item.quantity ?? 0),
-    );
-  }
 }

@@ -719,15 +719,29 @@ class Constant {
     required BuildContext context,
     required Function() onTap,
   }) async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) {
+      ShowToastDialog.showToast(
+        "Please turn on location services to continue",
+      );
+      return;
+    }
+
     LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
     }
-    if (permission == LocationPermission.denied) {
-      ShowToastDialog.showToast(
-        "You have to allow location permission to use your location",
-      );
-    } else if (permission == LocationPermission.deniedForever) {
+
+    final isGranted =
+        permission == LocationPermission.whileInUse ||
+        permission == LocationPermission.always;
+
+    if (isGranted) {
+      onTap();
+      return;
+    }
+
+    if (permission == LocationPermission.deniedForever) {
       showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -735,7 +749,9 @@ class Constant {
         },
       );
     } else {
-      onTap();
+      ShowToastDialog.showToast(
+        "You have to allow location permission to use your location",
+      );
     }
   }
 

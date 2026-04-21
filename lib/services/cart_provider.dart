@@ -37,12 +37,23 @@ class CartProvider with ChangeNotifier {
   final _cartStreamController =
       StreamController<List<CartProductModel>>.broadcast();
   List<CartProductModel> _cartItems = [];
+  Map<String, int> _quantityByVendorAndProduct = <String, int>{};
+  int _totalQuantity = 0;
 
   // Cache location data to avoid repeated Preferences calls
   bool _locationSaved = false;
   DateTime? _lastLocationSaveTime;
 
   Stream<List<CartProductModel>> get cartStream => _cartStreamController.stream;
+  int get totalQuantity => _totalQuantity;
+
+  int quantityFor({
+    required String vendorId,
+    required String productId,
+  }) {
+    if (vendorId.isEmpty || productId.isEmpty) return 0;
+    return _quantityByVendorAndProduct['$vendorId|$productId'] ?? 0;
+  }
 
   Future<void> initCart() async {
     while (_activeCartSync != null) {
@@ -64,6 +75,7 @@ class CartProvider with ChangeNotifier {
       }
       HomeProvider.cartItem.clear();
       HomeProvider.cartItem.addAll(_cartItems);
+      _rebuildQuantityCache();
       if (kDebugMode) {
         print(
           'DEBUG: CartProvider - Synced ${HomeProvider.cartItem.length} items to global cartItem',
@@ -180,6 +192,7 @@ class CartProvider with ChangeNotifier {
     }
     HomeProvider.cartItem.clear();
     HomeProvider.cartItem.addAll(_cartItems);
+    _rebuildQuantityCache();
     _cartStreamController.sink.add(_cartItems);
     print(
       'DEBUG: CartProvider - Cart updated, total items: ${_cartItems.length}',
@@ -249,13 +262,11 @@ class CartProvider with ChangeNotifier {
         print(
           'DEBUG: CartProvider - Item removed from cart, remaining items: ${_cartItems.length}',
         );
-        notifyListeners();
       } else {
         await DatabaseHelper.instance.updateCartProduct(_cartItems[index]);
         print('DEBUG: CartProvider - Item quantity updated to: $quantity');
       }
     }
-    notifyListeners();
     await initCart();
     print('DEBUG: CartProvider - Stream updated after removeFromCart');
   }
@@ -316,6 +327,27 @@ class CartProvider with ChangeNotifier {
   void forceStreamUpdate() {
     print('DEBUG: CartProvider forceStreamUpdate() called');
     _cartStreamController.sink.add(_cartItems);
+  }
+
+  void _rebuildQuantityCache() {
+    final map = <String, int>{};
+    var total = 0;
+    for (final item in _cartItems) {
+      final vendorId = item.vendorID;
+      final id = item.id;
+      final quantity = item.quantity ?? 0;
+      if (vendorId == null || vendorId.isEmpty || id == null || id.isEmpty) {
+        total += quantity;
+        continue;
+      }
+
+      final normalizedId = id.split('~').first;
+      final key = '$vendorId|$normalizedId';
+      map[key] = (map[key] ?? 0) + quantity;
+      total += quantity;
+    }
+    _quantityByVendorAndProduct = map;
+    _totalQuantity = total;
   }
 
   // Method to check cart persistence
