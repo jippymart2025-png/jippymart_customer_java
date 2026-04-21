@@ -10,6 +10,8 @@ Future<void> firebaseMessageBackgroundHandle(RemoteMessage message) async {
 
 class NotificationService {
   static const int _orderTimerNotificationId = 3001;
+  int? _lastOrderTimerMinuteNotified;
+  bool _hasShownOrderTimerNotification = false;
   FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
@@ -112,6 +114,14 @@ class NotificationService {
     final totalSeconds = remaining.inSeconds < 0 ? 0 : remaining.inSeconds;
     final minutes = totalSeconds ~/ 60;
     final seconds = totalSeconds % 60;
+
+    // Prevent iOS top-banner "jumping" by avoiding per-second notification updates.
+    // We notify on first show and when minute value changes.
+    if (_lastOrderTimerMinuteNotified == minutes) {
+      return;
+    }
+    _lastOrderTimerMinuteNotified = minutes;
+
     final mm = minutes.toString().padLeft(2, '0');
     final ss = seconds.toString().padLeft(2, '0');
     final value = '$mm:$ss';
@@ -128,13 +138,14 @@ class NotificationService {
       showWhen: false,
     );
 
-    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-      presentAlert: true,
+    final DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      // Show banner only once, then keep silent notification-center updates.
+      presentAlert: !_hasShownOrderTimerNotification,
       presentBadge: false,
       presentSound: false,
     );
 
-    const NotificationDetails details = NotificationDetails(
+    final NotificationDetails details = NotificationDetails(
       android: androidDetails,
       iOS: iosDetails,
     );
@@ -145,9 +156,12 @@ class NotificationService {
       'Time left: $value',
       details,
     );
+    _hasShownOrderTimerNotification = true;
   }
 
   Future<void> cancelOrderTimerNotification() async {
+    _lastOrderTimerMinuteNotified = null;
+    _hasShownOrderTimerNotification = false;
     await flutterLocalNotificationsPlugin.cancel(_orderTimerNotificationId);
   }
 }

@@ -395,6 +395,21 @@ class CartControllerProvider extends ChangeNotifier {
   double get amountToChargeViaGateway =>
       useWalletBalance ? paymentGatewayAmount : totalAmount;
 
+  double _roundCurrencyAmount(double amount) {
+    if (amount.isNaN || amount.isInfinite) return 0.0;
+    final sign = amount < 0 ? -1.0 : 1.0;
+    final absAmount = amount.abs();
+    final base = absAmount.floorToDouble();
+    final fraction = absAmount - base;
+    final rounded = fraction > 0.5 ? base + 1.0 : base;
+    return rounded * sign;
+  }
+
+  double get roundedTotalAmount => _roundCurrencyAmount(totalAmount);
+
+  double get roundedPaymentGatewayAmount =>
+      _roundCurrencyAmount(paymentGatewayAmount);
+
   /// True when coupons are disabled because "Use Wallet" is on.
   bool get isCouponDisabledByWallet => useWalletBalance;
 
@@ -7590,7 +7605,7 @@ class CartControllerProvider extends ChangeNotifier {
       "cart_items": HomeProvider.cartItem.map((e) => e.toJson()).toList(),
       "selected_address": selectedAddress?.toJson(),
       "payment_method": PaymentGateway.paytm.name,
-      "total_amount": totalAmount,
+      "total_amount": roundedTotalAmount,
       "delivery_charges": deliveryCharges.toString(),
       "tip_amount": deliveryTips.toString(),
       "coupon_id": selectedCouponModel.id ?? '',
@@ -7600,7 +7615,7 @@ class CartControllerProvider extends ChangeNotifier {
       "vendor_id": _getVendorIdForOrder(),
       "status": paymentGatewayAmount > 0 ? "PENDING" : Constant.orderPlaced,
       "wallet_amount": walletToUse,
-      "payment_gateway_amount": paymentGatewayAmount,
+      "payment_gateway_amount": roundedPaymentGatewayAmount,
     };
   }
 
@@ -7944,7 +7959,7 @@ class CartControllerProvider extends ChangeNotifier {
       orderModel.discount = couponAmount;
       orderModel.deliveryCharge = deliveryCharges.toString();
       orderModel.tipAmount = deliveryTips.toString();
-      orderModel.toPayAmount = totalAmount;
+      orderModel.toPayAmount = roundedTotalAmount;
       orderModel.scheduleTime = Timestamp.fromDate(scheduleDateTime);
 
       // 🔑 OPTIMIZATION: Validate vendor subscription before building payload
@@ -7995,7 +8010,7 @@ class CartControllerProvider extends ChangeNotifier {
         "payment_method": selectedPaymentMethod,
         "payment_id": _lastPaymentId ?? '',
         "razorpay_payment_id": _lastPaymentId ?? '',
-        "total_amount": totalAmount,
+        "total_amount": roundedTotalAmount,
         "delivery_charges": deliveryCharges.toString(),
         "tip_amount": deliveryTips.toString(),
         "coupon_id": selectedCouponModel.id ?? '',
@@ -8012,7 +8027,7 @@ class CartControllerProvider extends ChangeNotifier {
         "status": Constant.orderPlaced,
         "created_at": DateTime.now().toIso8601String(),
         "wallet_amount": walletToUse,
-        "payment_gateway_amount": paymentGatewayAmount,
+        "payment_gateway_amount": roundedPaymentGatewayAmount,
       };
 
       // 🔑 DEBUG: Payload summary for backend wallet/referral debugging (grep ORDER_CREATION_PAYLOAD)
@@ -8128,7 +8143,7 @@ class CartControllerProvider extends ChangeNotifier {
       additionalTasks.add(
         _createOrderBilling(
           responseData['data']['order_id'],
-          totalAmount.toString(),
+          roundedTotalAmount.toStringAsFixed(0),
           surgePercent.toInt(),
           adminFee,
         ),

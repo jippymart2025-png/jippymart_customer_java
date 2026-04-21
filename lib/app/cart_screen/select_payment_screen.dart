@@ -3,6 +3,7 @@ import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/h
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/utils/currency_display.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -156,9 +157,7 @@ class _OrderSummaryStrip extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  Constant.amountShow(
-                    amount: controller.totalAmount.toStringAsFixed(2),
-                  ),
+                  payableAmountDisplay(controller.totalAmount),
                   style: TextStyle(
                     fontSize: 24,
                     fontFamily: AppThemeData.semiBold,
@@ -810,12 +809,12 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
 
   String get _btnLabel {
     if (controller.isFullyPaidByWallet) {
-      return 'Pay ${Constant.amountShow(amount: controller.totalAmount.toStringAsFixed(2))} from Wallet';
+      return 'Pay ${payableAmountDisplay(controller.totalAmount)} from Wallet';
     }
     if (controller.useWalletBalance && controller.walletToUse > 0) {
-      return 'Confirm & Pay ${Constant.amountShow(amount: controller.paymentGatewayAmount.toStringAsFixed(2))}';
+      return 'Confirm & Pay ${payableAmountDisplay(controller.paymentGatewayAmount)}';
     }
-    return 'Confirm & Pay ${Constant.amountShow(amount: controller.totalAmount.toStringAsFixed(2))}';
+    return 'Confirm & Pay ${payableAmountDisplay(controller.totalAmount)}';
   }
 
   bool get isCod => controller.selectedPaymentMethod == PaymentGateway.cod.name;
@@ -934,9 +933,7 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
                   color: isCod
                       ? const Color(0xFF388E3C)
                       : const Color(0xFF1565C0),
-                  amount: Constant.amountShow(
-                    amount: controller.paymentGatewayAmount.toStringAsFixed(2),
-                  ),
+                  amount: payableAmountDisplay(controller.paymentGatewayAmount),
                   label: isCod ? 'COD' : 'Online',
                 ),
               ],
