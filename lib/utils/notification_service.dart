@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:developer';
+import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -9,6 +10,8 @@ Future<void> firebaseMessageBackgroundHandle(RemoteMessage message) async {
 }
 
 class NotificationService {
+  static bool _backgroundHandlerRegistered = false;
+  static bool _tokenRefreshListenerAttached = false;
   static const int _orderTimerNotificationId = 3001;
   int? _lastOrderTimerMinuteNotified;
   bool _hasShownOrderTimerNotification = false;
@@ -16,9 +19,16 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   initInfo() async {
+    if (!_backgroundHandlerRegistered) {
+      FirebaseMessaging.onBackgroundMessage(firebaseMessageBackgroundHandle);
+      _backgroundHandlerRegistered = true;
+    }
+
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
-      alert: true,
+      // iOS duplicate fix: we show our own local notification in onMessage.
+      // Keep system foreground alert off to avoid double notifications.
+      alert: false,
       badge: true,
       sound: true,
     );
@@ -31,6 +41,7 @@ class NotificationService {
       provisional: false,
       sound: true,
     );
+    log("::::::::::::Notification permission::::::::::::::::: ${request.authorizationStatus}");
 
     if (request.authorizationStatus == AuthorizationStatus.authorized ||
         request.authorizationStatus == AuthorizationStatus.provisional) {
@@ -43,6 +54,8 @@ class NotificationService {
               iOS: iosInitializationSettings);
       await flutterLocalNotificationsPlugin.initialize(initializationSettings,
           onDidReceiveNotificationResponse: (payload) {});
+      await _logAppleAndFcmTokens();
+      _attachTokenRefreshListener();
       setupInteractedMessage();
     }
   }
@@ -51,8 +64,7 @@ class NotificationService {
     RemoteMessage? initialMessage =
         await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      FirebaseMessaging.onBackgroundMessage(
-          (message) => firebaseMessageBackgroundHandle(message));
+      log("::::::::::::Initial message::::::::::::::::: ${initialMessage.messageId}");
     }
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -75,6 +87,25 @@ class NotificationService {
   static getToken() async {
     String? token = await FirebaseMessaging.instance.getToken();
     return token;
+  }
+
+  Future<void> _logAppleAndFcmTokens() async {
+    try {
+      final apnsToken = await FirebaseMessaging.instance.getAPNSToken();
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      log("::::::::::::APNS TOKEN::::::::::::::::: ${apnsToken ?? 'NULL'}");
+      log("::::::::::::FCM TOKEN::::::::::::::::: ${fcmToken ?? 'NULL'}");
+    } catch (e) {
+      log("::::::::::::TOKEN FETCH ERROR::::::::::::::::: $e");
+    }
+  }
+
+  void _attachTokenRefreshListener() {
+    if (_tokenRefreshListenerAttached) return;
+    FirebaseMessaging.instance.onTokenRefresh.listen((token) {
+      log("::::::::::::FCM TOKEN REFRESH::::::::::::::::: $token");
+    });
+    _tokenRefreshListenerAttached = true;
   }
 
   void display(RemoteMessage message) async {

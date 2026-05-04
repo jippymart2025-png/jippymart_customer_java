@@ -8028,6 +8028,7 @@ class CartControllerProvider extends ChangeNotifier {
         "created_at": DateTime.now().toIso8601String(),
         "wallet_amount": walletToUse,
         "payment_gateway_amount": roundedPaymentGatewayAmount,
+        "notes": reMarkController.text, // ✅ correct
       };
 
       // 🔑 DEBUG: Payload summary for backend wallet/referral debugging (grep ORDER_CREATION_PAYLOAD)

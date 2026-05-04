@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:flutter/services.dart';
-import 'package:paytm_allinonesdk/paytm_allinonesdk.dart';
 import './edit_text.dart';
 
 void main() {
@@ -15,9 +14,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(brightness: Brightness.dark),
       home: Scaffold(
-        appBar: AppBar(
-          title: Text('Flutter App'),
-        ),
+        appBar: AppBar(title: Text('Flutter App')),
         body: HomeScreen(),
       ),
     );
@@ -39,6 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   String callbackUrl = "";
   bool restrictAppInvoke = false;
   bool enableAssist = true;
+
   @override
   void initState() {
     print("initState");
@@ -56,34 +54,42 @@ class _HomeScreenState extends State<HomeScreen> {
               EditText('Merchant ID', mid, onChange: (val) => mid = val),
               EditText('Order ID', orderId, onChange: (val) => orderId = val),
               EditText('Amount', amount, onChange: (val) => amount = val),
-              EditText('Transaction Token', txnToken,
-                  onChange: (val) => txnToken = val),
-              EditText('CallBack URL', callbackUrl,
-                  onChange: (val) => callbackUrl = val),
+              EditText(
+                'Transaction Token',
+                txnToken,
+                onChange: (val) => txnToken = val,
+              ),
+              EditText(
+                'CallBack URL',
+                callbackUrl,
+                onChange: (val) => callbackUrl = val,
+              ),
               Row(
                 children: <Widget>[
                   Checkbox(
-                      activeColor: Colors.lightBlue,
-                      value: isStaging,
-                      onChanged: (bool? val) {
-                        setState(() {
-                          isStaging = val!;
-                        });
-                      }),
-                  Text("Staging")
+                    activeColor: Colors.lightBlue,
+                    value: isStaging,
+                    onChanged: (bool? val) {
+                      setState(() {
+                        isStaging = val!;
+                      });
+                    },
+                  ),
+                  Text("Staging"),
                 ],
               ),
               Row(
                 children: <Widget>[
                   Checkbox(
-                      activeColor: Colors.lightBlue,
-                      value: restrictAppInvoke,
-                      onChanged: (bool? val) {
-                        setState(() {
-                          restrictAppInvoke = val!;
-                        });
-                      }),
-                  Text("Restrict AppInvoke")
+                    activeColor: Colors.lightBlue,
+                    value: restrictAppInvoke,
+                    onChanged: (bool? val) {
+                      setState(() {
+                        restrictAppInvoke = val!;
+                      });
+                    },
+                  ),
+                  Text("Restrict AppInvoke"),
                 ],
               ),
               Container(
@@ -101,9 +107,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 alignment: Alignment.bottomLeft,
                 child: Text("Message : "),
               ),
-              Container(
-                child: Text(result),
-              ),
+              Container(child: Text(result)),
             ],
           ),
         ),
@@ -123,30 +127,41 @@ class _HomeScreenState extends State<HomeScreen> {
       "callbackUrl": callbackUrl,
       "isStaging": isStaging,
       "restrictAppInvoke": restrictAppInvoke,
-      "enableAssist": enableAssist
+      "enableAssist": enableAssist,
     };
     print(sendMap);
     try {
-      var response = AllInOneSdk.startTransaction(mid, orderId, amount,
-          txnToken, callbackUrl, isStaging, restrictAppInvoke, enableAssist);
-      response.then((value) {
-        print(value);
-        setState(() {
-          result = value.toString();
-        });
-      }).catchError((onError) {
-        if (onError is PlatformException) {
-          setState(() {
-            result = onError.message.toString() +
-                " \n  " +
-                onError.details.toString();
+      var response = AllInOneSdk.startTransaction(
+        mid,
+        orderId,
+        amount,
+        txnToken,
+        callbackUrl,
+        isStaging,
+        restrictAppInvoke,
+        enableAssist,
+      );
+      response
+          .then((value) {
+            print(value);
+            setState(() {
+              result = value.toString();
+            });
+          })
+          .catchError((onError) {
+            if (onError is PlatformException) {
+              setState(() {
+                result =
+                    onError.message.toString() +
+                    " \n  " +
+                    onError.details.toString();
+              });
+            } else {
+              setState(() {
+                result = onError.toString();
+              });
+            }
           });
-        } else {
-          setState(() {
-            result = onError.toString();
-          });
-        }
-      });
     } catch (err) {
       result = err.toString();
     }
