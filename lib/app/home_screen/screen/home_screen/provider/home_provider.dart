@@ -719,17 +719,19 @@ class HomeProvider extends ChangeNotifier {
     _addLoadingTask('ensureLocation');
 
     try {
-      // Check if we have valid location already
+      // Prefer fresh GPS location on startup so the app does not continue using
+      // a stale saved location from previous launches.
+      await _getLocationFromGPS();
       if (_hasValidLocation()) return;
 
-      // Try to load from storage first (fastest)
+      // Fallback to previously saved location if GPS is unavailable.
       final storageLocation = await _loadLocationFromStorage();
       if (storageLocation != null) {
         Constant.selectedLocation = storageLocation;
-        return;
+        if (_hasValidLocation()) return;
       }
 
-      // Try to get from user model
+      // Try to get from user model if no saved location is available.
       if (Constant.userModel != null) {
         final userLocation = _getDefaultAddressFromUser();
         if (userLocation != null) {
@@ -737,9 +739,6 @@ class HomeProvider extends ChangeNotifier {
           return;
         }
       }
-
-      // Finally, try GPS
-      await _getLocationFromGPS();
     } finally {
       _removeLoadingTask('ensureLocation');
     }

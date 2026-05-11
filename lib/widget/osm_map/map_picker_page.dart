@@ -56,7 +56,7 @@ class _MapPickerPageState extends State<MapPickerPage> {
       try {
         // Use faster location accuracy for better performance
         position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.medium,
+          desiredAccuracy: LocationAccuracy.high,
           timeLimit: const Duration(seconds: 5),
         ).timeout(const Duration(seconds: 6));
       } catch (e) {

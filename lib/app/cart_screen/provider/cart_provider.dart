@@ -372,20 +372,21 @@ class CartControllerProvider extends ChangeNotifier {
   /// Returns 0 when cart has promotional items (wallet not allowed for promos).
   double get walletToUse {
     if (isWalletDisabledByPromotions) return 0.0;
-    return useWalletBalance
-        ? (walletBalanceRupees <= 0
-              ? 0.0
-              : (totalAmount <= 0
-                    ? 0.0
-                    : (walletBalanceRupees >= totalAmount
-                          ? totalAmount
-                          : walletBalanceRupees)))
-        : 0.0;
+    if (!useWalletBalance) return 0.0;
+    if (walletBalanceRupees <= 0 || totalAmount <= 0) return 0.0;
+
+    // Always cap at totalAmount
+    final effective = walletBalanceRupees >= totalAmount
+        ? totalAmount
+        : walletBalanceRupees;
+
+    // Proper rounding
+    return effective.roundToDouble();
   }
 
   /// Amount to charge via payment gateway (COD or Razorpay). Single source of truth.
   double get paymentGatewayAmount =>
-      totalAmount <= 0 ? 0.0 : (totalAmount - walletToUse);
+      totalAmount <= 0 ? 0.0 : (totalAmount - walletToUse).roundToDouble();
 
   /// True when order is fully covered by wallet (no gateway needed).
   bool get isFullyPaidByWallet =>
@@ -7600,6 +7601,10 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Map<String, dynamic> _buildOrderPayload(String authorId) {
+    final double walletUsed = walletToUse;
+    final double gatewayAmount = double.parse(
+      (roundedTotalAmount - walletUsed).toStringAsFixed(2),
+    );
     return {
       "author_id": authorId,
       "cart_items": HomeProvider.cartItem.map((e) => e.toJson()).toList(),
@@ -7614,8 +7619,8 @@ class CartControllerProvider extends ChangeNotifier {
       "schedule_time": scheduleDateTime.toIso8601String(),
       "vendor_id": _getVendorIdForOrder(),
       "status": paymentGatewayAmount > 0 ? "PENDING" : Constant.orderPlaced,
-      "wallet_amount": walletToUse,
-      "payment_gateway_amount": roundedPaymentGatewayAmount,
+      "wallet_amount": walletUsed,
+      "payment_gateway_amount": gatewayAmount,
     };
   }
 
@@ -7990,7 +7995,10 @@ class CartControllerProvider extends ChangeNotifier {
 
       // 🔑 OPTIMIZATION: Get author ID once and reuse (avoid duplicate await)
       final authorId = await SqlStorageConst.getFirebaseId();
-
+      final double walletUsed = walletToUse.roundToDouble();
+      final double gatewayAmount = double.parse(
+        (roundedTotalAmount - walletUsed).toStringAsFixed(2),
+      );
       // Build API payload
       Map<String, dynamic> orderPayload = {
         "author_id": authorId,
@@ -8026,8 +8034,8 @@ class CartControllerProvider extends ChangeNotifier {
             vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
         "status": Constant.orderPlaced,
         "created_at": DateTime.now().toIso8601String(),
-        "wallet_amount": walletToUse,
-        "payment_gateway_amount": roundedPaymentGatewayAmount,
+        "wallet_amount": walletUsed,
+        "payment_gateway_amount": gatewayAmount,
         "notes": reMarkController.text, // ✅ correct
       };
 

@@ -46,10 +46,10 @@ class CheckinSection extends StatelessWidget {
             : 0;
 
         // Day window: show from max(1, streakDay-1) so current day is near left
-        final startDay = streakDay > 1 ? (streakDay - 1).clamp(1, 99) : 1;
+        final startDay = streakDay > 1 ? (streakDay - 1).clamp(1, 1) : 1;
         final dayNumbers = List<int>.generate(
           _visibleDays,
-          (i) => (startDay + i).clamp(1, 99),
+          (i) => (startDay + i).clamp(1, 30),
         );
 
         return Container(

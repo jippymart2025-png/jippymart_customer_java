@@ -57,6 +57,14 @@ class WalletProvider extends ChangeNotifier {
 
   int get streakDay => _checkinStatus?.streakDayNumber ?? 0;
 
+  /// Maps API streak to position in the repeating 1–30 reward cycle.
+  /// Backend may return 31, 32, … after day 30; UI must wrap so bonuses and
+  /// daily coins (e.g. 25) match days 1–30 again.
+  static int streakDayInCycle(int apiStreak) {
+    if (apiStreak <= 0) return 0;
+    return ((apiStreak - 1) % 30) + 1;
+  }
+
   /// UI-friendly streak value:
   /// - Uses API streak when available (>0)
   /// - If backend temporarily returns 0 before today's check-in but last check-in

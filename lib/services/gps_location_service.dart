@@ -23,7 +23,7 @@ class GpsLocationService {
 
   static const String _locationCacheKey = 'gps_location_cache';
   static const String _locationTimestampKey = 'gps_location_timestamp';
-  static const Duration _cacheExpiry = Duration(hours: 1);
+  static const Duration _cacheExpiry = Duration(minutes: 5);
 
   /// **Get Current GPS Location**
   ///
@@ -41,7 +41,8 @@ class GpsLocationService {
       final cachedLocation = await _getCachedLocation();
       if (cachedLocation != null) {
         print(
-          '[GPS_LOCATION] Using cached location: ${cachedLocation.latitude}, ${cachedLocation.longitude}',
+          '[GPS_LOCATION] Using cached location: ${cachedLocation
+              .latitude}, ${cachedLocation.longitude}',
         );
         return cachedLocation;
       }
@@ -70,29 +71,30 @@ class GpsLocationService {
           print('[GPS_LOCATION] GPS attempt $attempt/3');
 
           position =
-              await Geolocator.getCurrentPosition(
-                desiredAccuracy: LocationAccuracy.medium,
-                // Balanced accuracy for speed
-                timeLimit: const Duration(
-                  seconds: 10,
-                ), // Increased timeout for GPS lock
-              ).timeout(
-                const Duration(seconds: 12), // Additional timeout wrapper
-                onTimeout: () {
-                  print(
-                    '[GPS_LOCATION] GPS location request timed out (attempt $attempt)',
-                  );
-                  throw TimeoutException(
-                    'GPS location request timed out',
-                    const Duration(seconds: 12),
-                  );
-                },
+          await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.high,
+            // Balanced accuracy for speed
+            timeLimit: const Duration(
+              seconds: 10,
+            ), // Increased timeout for GPS lock
+          ).timeout(
+            const Duration(seconds: 12), // Additional timeout wrapper
+            onTimeout: () {
+              print(
+                '[GPS_LOCATION] GPS location request timed out (attempt $attempt)',
               );
+              throw TimeoutException(
+                'GPS location request timed out',
+                const Duration(seconds: 12),
+              );
+            },
+          );
 
           // If we got a valid position, break out of retry loop
           if (position.latitude != 0 && position.longitude != 0) {
             print(
-              '[GPS_LOCATION] GPS location obtained on attempt $attempt: ${position.latitude}, ${position.longitude}',
+              '[GPS_LOCATION] GPS location obtained on attempt $attempt: ${position
+                  .latitude}, ${position.longitude}',
             );
             break;
           }
@@ -175,7 +177,8 @@ class GpsLocationService {
         // Check if cache is still valid
         if (now.difference(cacheTime) < _cacheExpiry) {
           print(
-            '[GPS_LOCATION] Using cached location: $cachedLat, $cachedLng - ${cachedAddress ?? 'No address'}',
+            '[GPS_LOCATION] Using cached location: $cachedLat, $cachedLng - ${cachedAddress ??
+                'No address'}',
           );
           return Position(
             latitude: cachedLat,
@@ -232,7 +235,8 @@ class GpsLocationService {
       );
 
       print(
-        '[GPS_LOCATION] Location cached with address: ${position.latitude}, ${position.longitude} - $address',
+        '[GPS_LOCATION] Location cached with address: ${position
+            .latitude}, ${position.longitude} - $address',
       );
     } catch (e) {
       print('[GPS_LOCATION] Error caching location: $e');
@@ -275,10 +279,8 @@ class GpsLocationService {
   /// This is the main method to be called for zone detection
   /// Returns coordinates in the format expected by zone detection
   /// **Get Full Address from GPS Coordinates**
-  static Future<String> getAddressFromCoordinates(
-    double latitude,
-    double longitude,
-  ) async {
+  static Future<String> getAddressFromCoordinates(double latitude,
+      double longitude,) async {
     try {
       print(
         '[GPS_LOCATION] Getting address for coordinates: $latitude, $longitude',
@@ -393,7 +395,9 @@ class GpsLocationService {
         }
 
         // If we still don't have a detailed address, try using the 'name' field
-        if (address.isEmpty || address.split(',').length < 3) {
+        if (address.isEmpty || address
+            .split(',')
+            .length < 3) {
           if (place.name != null && place.name!.isNotEmpty) {
             address = place.name!;
             // Add additional components if available
