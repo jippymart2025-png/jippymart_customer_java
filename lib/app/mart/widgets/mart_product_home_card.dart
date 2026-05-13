@@ -38,7 +38,8 @@ class MartProductCardHome extends StatelessWidget {
       final martController = Provider.of<MartProvider>(context, listen: false);
       CartControllerProvider cartControllerProvider =
           Provider.of<CartControllerProvider>(context, listen: false);
-      final martVendorID = "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
+      final martVendorID =
+          "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
       final cartProduct = CartProductModel(
         id: product.id,
         name: product.name,
@@ -202,6 +203,7 @@ class MartProductCardHome extends StatelessWidget {
         extras: [],
         variantInfo: null,
         promoId: null,
+        selectedOption: selectedOption,
       );
 
       final success = await cartControllerProvider.addToCart(

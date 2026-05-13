@@ -154,28 +154,27 @@ class CartControllerProvider extends ChangeNotifier {
     _pendingOrderRetryTimer?.cancel();
 
     // Check for pending orders every 30 seconds
-    _pendingOrderRetryTimer = Timer.periodic(const Duration(seconds: 30), (
-      timer,
-    ) async {
-      try {
-        final paymentState = Preferences.getString(_paymentStateKey);
-        if (paymentState == 'true') {
-          final savedPaymentId = Preferences.getString(_paymentIdKey);
-          if (savedPaymentId.isNotEmpty && !_isOrderBeingCreated) {
-            print(
-              '🔄 [PERIODIC_RETRY] Found pending payment, attempting to place order...',
-            );
-            await checkPendingPaymentAndPlaceOrder();
+    _pendingOrderRetryTimer =
+        Timer.periodic(const Duration(seconds: 30), (timer,) async {
+          try {
+            final paymentState = Preferences.getString(_paymentStateKey);
+            if (paymentState == 'true') {
+              final savedPaymentId = Preferences.getString(_paymentIdKey);
+              if (savedPaymentId.isNotEmpty && !_isOrderBeingCreated) {
+                print(
+                  '🔄 [PERIODIC_RETRY] Found pending payment, attempting to place order...',
+                );
+                await checkPendingPaymentAndPlaceOrder();
+              }
+            } else {
+              // No pending payment, cancel timer
+              timer.cancel();
+              _pendingOrderRetryTimer = null;
+            }
+          } catch (e) {
+            print('❌ [PERIODIC_RETRY] Error in periodic retry: $e');
           }
-        } else {
-          // No pending payment, cancel timer
-          timer.cancel();
-          _pendingOrderRetryTimer = null;
-        }
-      } catch (e) {
-        print('❌ [PERIODIC_RETRY] Error in periodic retry: $e');
-      }
-    });
+        });
   }
 
   /// 🔑 CRITICAL: Stop periodic retry timer
@@ -213,7 +212,7 @@ class CartControllerProvider extends ChangeNotifier {
   final Map<String, double> _cachedFreeDeliveryKm = {};
   final Map<String, double> _cachedExtraKmCharge = {};
   final Map<String, double> _cachedPromotionalBaseCharge =
-      {}; // 🔑 NEW: Cache for promotional base charge
+  {}; // 🔑 NEW: Cache for promotional base charge
   List<TaxModel>? _cachedTaxList;
   bool _calculationCacheLoaded = false;
 
@@ -242,7 +241,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   // 🔑 RAZORPAY
   final RazorpayCrashPrevention _razorpayCrashPrevention =
-      RazorpayCrashPrevention();
+  RazorpayCrashPrevention();
 
   // 🔑 DEBOUNCING
   Timer? _calculatePriceDebounceTimer;
@@ -323,8 +322,8 @@ class CartControllerProvider extends ChangeNotifier {
     }
     return (userModel.walletAmount != null)
         ? (userModel.walletAmount is int
-              ? (userModel.walletAmount as int).toDouble()
-              : (double.tryParse(userModel.walletAmount.toString()) ?? 0.0))
+        ? (userModel.walletAmount as int).toDouble()
+        : (double.tryParse(userModel.walletAmount.toString()) ?? 0.0))
         : 0.0;
   }
 
@@ -462,7 +461,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   bool get isCodEnabledForCurrentZone =>
       _readZonePaymentFlag('cod') ??
-      (cashOnDeliverySettingModel.isEnabled == true);
+          (cashOnDeliverySettingModel.isEnabled == true);
 
   bool get isRazorpayEnabledForCurrentZone =>
       _readZonePaymentFlag('razorpay') ?? (razorPayModel.isEnabled == true);
@@ -491,10 +490,18 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
     if (value && !useWalletBalance) {
+      // Check if there's an active coupon
+      bool hadCoupon =
+          selectedCouponModel.id != null && selectedCouponModel.id!.isNotEmpty;
       selectedCouponModel = CouponModel();
       couponCodeController.text = '';
       couponAmount = 0.0;
       await calculatePrice();
+      if (hadCoupon) {
+        ShowToastDialog.showToast(
+          'Coupon removed because wallet amount is being used'.tr,
+        );
+      }
     }
     useWalletBalance = value;
     checkAndUpdatePaymentMethod();
@@ -503,16 +510,18 @@ class CartControllerProvider extends ChangeNotifier {
 
   bool _hasActiveCouponApplied() {
     return (selectedCouponModel.id != null &&
-            selectedCouponModel.id!.isNotEmpty) ||
-        couponCodeController.text.trim().isNotEmpty ||
+        selectedCouponModel.id!.isNotEmpty) ||
+        couponCodeController.text
+            .trim()
+            .isNotEmpty ||
         couponAmount > 0;
   }
 
   String _generateProductSetHashFromItems(List<CartProductModel> items) {
     if (items.isEmpty) return 'empty';
     final ids =
-        items.map((item) => item.id ?? '').where((id) => id.isNotEmpty).toList()
-          ..sort();
+    items.map((item) => item.id ?? '').where((id) => id.isNotEmpty).toList()
+      ..sort();
     return ids.join('|');
   }
 
@@ -586,7 +595,8 @@ class CartControllerProvider extends ChangeNotifier {
 
       if (metric.duration!.inMilliseconds > 200) {
         print(
-          '[PERFORMANCE] ⚠️ $operationId took ${metric.duration!.inMilliseconds}ms',
+          '[PERFORMANCE] ⚠️ $operationId took ${metric.duration!
+              .inMilliseconds}ms',
         );
       }
     }
@@ -601,7 +611,9 @@ class CartControllerProvider extends ChangeNotifier {
         final count = _operationCounts[key] ?? 1;
         final avgTime = metric.duration!.inMilliseconds / count;
         print(
-          '[PERFORMANCE] $key: ${metric.duration!.inMilliseconds}ms (avg: ${avgTime.toStringAsFixed(1)}ms, count: $count)',
+          '[PERFORMANCE] $key: ${metric.duration!
+              .inMilliseconds}ms (avg: ${avgTime.toStringAsFixed(
+              1)}ms, count: $count)',
         );
       }
     });
@@ -619,7 +631,7 @@ class CartControllerProvider extends ChangeNotifier {
 
     // Clean old operation timestamps
     _operationTimestamps.removeWhere(
-      (key, value) => value.isBefore(cutoffTime),
+          (key, value) => value.isBefore(cutoffTime),
     );
 
     // Clean recently synced items
@@ -637,17 +649,17 @@ class CartControllerProvider extends ChangeNotifier {
 
     // 🔑 NEW: Clean promotional calculation cache
     _promotionalCalculationCache.removeWhere(
-      (key, value) => !productIdsInCart.any((id) => key.contains(id!)),
+          (key, value) => !productIdsInCart.any((id) => key.contains(id!)),
     );
 
     // 🔑 NEW: Clean cached delivery km
     _cachedFreeDeliveryKm.removeWhere(
-      (key, value) => !productIdsInCart.any((id) => key.contains(id!)),
+          (key, value) => !productIdsInCart.any((id) => key.contains(id!)),
     );
 
     // 🔑 NEW: Clean cached extra km charge
     _cachedExtraKmCharge.removeWhere(
-      (key, value) => !productIdsInCart.any((id) => key.contains(id!)),
+          (key, value) => !productIdsInCart.any((id) => key.contains(id!)),
     );
 
     // Clean performance metrics (keep last 50)
@@ -748,7 +760,7 @@ class CartControllerProvider extends ChangeNotifier {
           Constant.userModel!.shippingAddress != null &&
           Constant.userModel!.shippingAddress!.isNotEmpty) {
         final defaultAddress = Constant.userModel!.shippingAddress!.firstWhere(
-          (a) => a.isDefault == true,
+              (a) => a.isDefault == true,
           orElse: () => Constant.userModel!.shippingAddress!.first,
         );
         selectedAddress = defaultAddress;
@@ -818,8 +830,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<ShippingAddress?> _getCurrentLocationAddress(
-    BuildContext context,
-  ) async {
+      BuildContext context,) async {
     try {
       if (Constant.selectedLocation.location?.latitude != null &&
           Constant.selectedLocation.location?.longitude != null) {
@@ -854,9 +865,11 @@ class CartControllerProvider extends ChangeNotifier {
           }
 
           return ShippingAddress(
-            id: 'home_screen_address_${DateTime.now().millisecondsSinceEpoch}',
+            id: 'home_screen_address_${DateTime
+                .now()
+                .millisecondsSinceEpoch}',
             addressAs:
-                Constant.selectedLocation.addressAs ?? 'Current Location',
+            Constant.selectedLocation.addressAs ?? 'Current Location',
             address: address,
             locality: locality,
             location: UserLocation(latitude: lat, longitude: lng),
@@ -872,11 +885,9 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> _detectZoneIdForCoordinates(
-    double latitude,
-    double longitude,
-    BuildContext context,
-  ) async {
+  Future<String?> _detectZoneIdForCoordinates(double latitude,
+      double longitude,
+      BuildContext context,) async {
     try {
       final zoneModel = await HomeProvider.getCurrentZone(latitude, longitude);
       if (zoneModel == null || zoneModel.zone == null) {
@@ -913,7 +924,7 @@ class CartControllerProvider extends ChangeNotifier {
       // Schedule for later
       _calculatePriceDebounceTimer = Timer(
         _rateLimitDuration - now.difference(lastCall),
-        () {
+            () {
           if (!_isCalculatingPrice) {
             _calculatePriceInternal();
           }
@@ -935,7 +946,7 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       await ANRPrevention.executeWithANRPrevention(
         'CartController_calculatePrice',
-        () async {
+            () async {
           // Cache tax list
           if (_cachedTaxList != null) {
             Constant.taxList = _cachedTaxList;
@@ -1151,11 +1162,14 @@ class CartControllerProvider extends ChangeNotifier {
 
     if (selectedCouponModel.id != null && selectedCouponModel.id!.isNotEmpty) {
       activeCoupon = selectedCouponModel;
-    } else if (couponCodeController.text.trim().isNotEmpty) {
+    } else if (couponCodeController.text
+        .trim()
+        .isNotEmpty) {
       // 🔑 OPTIMIZATION: Cache coupon lookup
       final enteredCode = couponCodeController.text.trim().toLowerCase();
       activeCoupon = couponList.firstWhere(
-        (element) => (element.code ?? '').trim().toLowerCase() == enteredCode,
+            (element) =>
+        (element.code ?? '').trim().toLowerCase() == enteredCode,
         orElse: CouponModel.new,
       );
       if ((activeCoupon.id ?? '').isEmpty &&
@@ -1180,7 +1194,8 @@ class CartControllerProvider extends ChangeNotifier {
           double.tryParse(activeCoupon.itemValue ?? '0') ?? 0.0;
       if (couponBaseAmount < minimumValue) {
         ShowToastDialog.showToast(
-          "Minimum order value for this coupon is ${Constant.amountShow(amount: activeCoupon.itemValue ?? '0')}"
+          "Minimum order value for this coupon is ${Constant.amountShow(
+              amount: activeCoupon.itemValue ?? '0')}"
               .tr,
         );
         couponCodeController.text = "";
@@ -1325,27 +1340,25 @@ class CartControllerProvider extends ChangeNotifier {
 
     totalAmount =
         (subTotal - couponAmount - specialDiscountAmount) +
-        taxAmount +
-        (isFreeDelivery ? 0.0 : deliveryCharges) +
-        deliveryTips +
-        surgePercent;
+            taxAmount +
+            (isFreeDelivery ? 0.0 : deliveryCharges) +
+            deliveryTips +
+            surgePercent;
   }
 
-  void _validateCalculations(
-    double previousSubTotal,
-    double previousTotalAmount,
-    double previousDeliveryCharges,
-    double previousTaxAmount,
-  ) {
+  void _validateCalculations(double previousSubTotal,
+      double previousTotalAmount,
+      double previousDeliveryCharges,
+      double previousTaxAmount,) {
     final bool isCartEmpty = HomeProvider.cartItem.isEmpty;
     final bool hasInvalidValues =
         subTotal < 0 ||
-        totalAmount < 0 ||
-        subTotal.isNaN ||
-        totalAmount.isNaN ||
-        subTotal.isInfinite ||
-        totalAmount.isInfinite ||
-        (!isCartEmpty && (subTotal == 0.0 || totalAmount == 0.0));
+            totalAmount < 0 ||
+            subTotal.isNaN ||
+            totalAmount.isNaN ||
+            subTotal.isInfinite ||
+            totalAmount.isInfinite ||
+            (!isCartEmpty && (subTotal == 0.0 || totalAmount == 0.0));
 
     if (hasInvalidValues) {
       print('[CALC_VALIDATION] ⚠️ Invalid values, restoring previous values');
@@ -1454,7 +1467,8 @@ class CartControllerProvider extends ChangeNotifier {
               );
 
               print(
-                '[PRICE_SYNC] ✅ Updated ${result.productName}: ₹${result.oldPrice} → ₹${result.newPrice}',
+                '[PRICE_SYNC] ✅ Updated ${result.productName}: ₹${result
+                    .oldPrice} → ₹${result.newPrice}',
               );
             } else {
               final persisted = await _persistVariantInfoSyncForProductId(
@@ -1464,7 +1478,8 @@ class CartControllerProvider extends ChangeNotifier {
               if (persisted) {
                 variantMetaChanged = true;
                 print(
-                  '[PRICE_SYNC] ✅ Synced variant/option fields for ${result.productId}',
+                  '[PRICE_SYNC] ✅ Synced variant/option fields for ${result
+                      .productId}',
                 );
               }
             }
@@ -1487,7 +1502,8 @@ class CartControllerProvider extends ChangeNotifier {
       if (hasUpdates || variantMetaChanged) {
         if (hasUpdates) {
           print(
-            '[PRICE_SYNC] ✅ Sync complete with ${allUpdates.length} line updates',
+            '[PRICE_SYNC] ✅ Sync complete with ${allUpdates
+                .length} line updates',
           );
         }
         if (variantMetaChanged && !hasUpdates) {
@@ -1525,7 +1541,8 @@ class CartControllerProvider extends ChangeNotifier {
           final update = updates.first;
           Get.snackbar(
             '💰 Price Updated'.tr,
-            '${update.productName ?? "Item"}: ₹${update.oldPrice} → ₹${update.newPrice}',
+            '${update.productName ?? "Item"}: ₹${update.oldPrice} → ₹${update
+                .newPrice}',
             snackPosition: SnackPosition.BOTTOM,
             duration: Duration(seconds: 4),
             backgroundColor: Colors.green,
@@ -1665,7 +1682,9 @@ class CartControllerProvider extends ChangeNotifier {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    '${updates.length} item${updates.length > 1 ? 's' : ''} updated',
+                    '${updates.length} item${updates.length > 1
+                        ? 's'
+                        : ''} updated',
                     style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                   ),
                 ],
@@ -1678,7 +1697,10 @@ class CartControllerProvider extends ChangeNotifier {
             // Item List
             Container(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.of(Get.context!).size.height * 0.4,
+                maxHeight: MediaQuery
+                    .of(Get.context!)
+                    .size
+                    .height * 0.4,
               ),
               child: ListView.builder(
                 shrinkWrap: true,
@@ -1823,7 +1845,10 @@ class CartControllerProvider extends ChangeNotifier {
             ),
 
             // Safe area for bottom navigation
-            SizedBox(height: MediaQuery.of(Get.context!).padding.bottom),
+            SizedBox(height: MediaQuery
+                .of(Get.context!)
+                .padding
+                .bottom),
           ],
         ),
       ),
@@ -1835,9 +1860,8 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Compares [cartItem] with already-fetched catalog [currentProduct] (no I/O).
   PriceUpdateResult _priceUpdateResultFromFetchedProduct(
-    CartProductModel cartItem,
-    dynamic currentProduct,
-  ) {
+      CartProductModel cartItem,
+      dynamic currentProduct,) {
     if (currentProduct == null) {
       return PriceUpdateResult(
         productId: cartItem.id!,
@@ -1853,7 +1877,7 @@ class CartControllerProvider extends ChangeNotifier {
         double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
     final storedRegularPrice = double.tryParse(cartItem.price ?? "0") ?? 0.0;
     final storedDisplayPrice =
-        storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
+    storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
         ? storedDiscountPrice
         : storedRegularPrice;
 
@@ -1877,11 +1901,11 @@ class CartControllerProvider extends ChangeNotifier {
   /// One HTTP round-trip per unique catalog id + parallel mart reads.
   /// Returns maps so callers can apply updates without re-fetching each product.
   Future<
-    ({
+      ({
       Map<String, PriceUpdateResult> results,
       Map<String, ProductModel?> foodByCatalogId,
       Map<String, MartItemModel?> martByLineId,
-    })
+      })
   >
   validateAndUpdateCartPricesForBatch(List<CartProductModel> batch) async {
     final Map<String, PriceUpdateResult> results = {};
@@ -2001,9 +2025,9 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     return (
-      results: results,
-      foodByCatalogId: foodByCatalogId,
-      martByLineId: martByLineId,
+    results: results,
+    foodByCatalogId: foodByCatalogId,
+    martByLineId: martByLineId,
     );
   }
 
@@ -2058,19 +2082,19 @@ class CartControllerProvider extends ChangeNotifier {
 
       final hasFirstName =
           user.firstName != null &&
-          user.firstName!.trim().isNotEmpty &&
-          user.firstName!.trim().length >= 2;
+              user.firstName!.trim().isNotEmpty &&
+              user.firstName!.trim().length >= 2;
 
       final hasPhoneNumber =
           user.phoneNumber != null &&
-          user.phoneNumber!.trim().isNotEmpty &&
-          user.phoneNumber!.trim().length >= 10;
+              user.phoneNumber!.trim().isNotEmpty &&
+              user.phoneNumber!.trim().length >= 10;
 
       final hasEmail =
           user.email != null &&
-          user.email!.trim().isNotEmpty &&
-          user.email!.contains('@') &&
-          user.email!.contains('.');
+              user.email!.trim().isNotEmpty &&
+              user.email!.contains('@') &&
+              user.email!.contains('.');
 
       isProfileValid = hasFirstName && hasPhoneNumber && hasEmail;
 
@@ -2390,7 +2414,8 @@ class CartControllerProvider extends ChangeNotifier {
           : totalAmount;
       if (codAmountCheck > codMaxAmountForCurrentZone) {
         ShowToastDialog.showToast(
-          "Cash on Delivery is not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}. Please select another payment method."
+          "Cash on Delivery is not available for orders above ₹${codMaxAmountForCurrentZone
+              .toStringAsFixed(0)}. Please select another payment method."
               .tr,
         );
         endOrderProcessing();
@@ -2639,12 +2664,10 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Helper method to create order billing via API
-  Future<void> _createOrderBilling(
-    String orderId,
-    String totalAmount,
-    int surgePercent,
-    String adminFee,
-  ) async {
+  Future<void> _createOrderBilling(String orderId,
+      String totalAmount,
+      int surgePercent,
+      String adminFee,) async {
     try {
       final billingPayload = {
         'order_id': orderId,
@@ -2763,7 +2786,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<bool> validateMinimumOrderValue() async {
     try {
       bool hasMartItems = HomeProvider.cartItem.any(
-        (item) => item.vendorID?.startsWith('mart_') == true,
+            (item) => item.vendorID?.startsWith('mart_') == true,
       );
 
       if (!hasMartItems) {
@@ -2778,10 +2801,10 @@ class CartControllerProvider extends ChangeNotifier {
         isSettingsActive = _martDeliverySettings!['is_active'] ?? true;
         minOrderValue =
             (_martDeliverySettings!['min_order_value'] as num?)?.toDouble() ??
-            99.0;
+                99.0;
         minOrderMessage =
             _martDeliverySettings!['min_order_message'] ??
-            'Min Item value is ₹${minOrderValue.toInt()}';
+                'Min Item value is ₹${minOrderValue.toInt()}';
       } else {
         final settings = await _fetchMartDeliveryChargeSettings();
         if (settings != null) {
@@ -2791,7 +2814,7 @@ class CartControllerProvider extends ChangeNotifier {
               (settings['min_order_value'] as num?)?.toDouble() ?? 99.0;
           minOrderMessage =
               settings['min_order_message'] ??
-              'Min Item value is ₹${minOrderValue.toInt()}';
+                  'Min Item value is ₹${minOrderValue.toInt()}';
         }
       }
 
@@ -2945,7 +2968,7 @@ class CartControllerProvider extends ChangeNotifier {
         changed = true;
       }
       final merchantVal =
-          (opt.originalPrice != null && opt.originalPrice!.trim().isNotEmpty)
+      (opt.originalPrice != null && opt.originalPrice!.trim().isNotEmpty)
           ? opt.originalPrice!
           : newVp;
       if (vi.variantOptions is Map) {
@@ -2985,8 +3008,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Persists `variant_info` (option price, merchant_price in variant_options map, etc.)
   /// for all cart rows with [productId], when line price was already correct.
-  Future<bool> _persistVariantInfoSyncForProductId(
-    String productId, {
+  Future<bool> _persistVariantInfoSyncForProductId(String productId, {
     ProductModel? prefetchedFood,
   }) async {
     bool anyChanged = false;
@@ -3127,14 +3149,13 @@ class CartControllerProvider extends ChangeNotifier {
     return 0.0;
   }
 
-  Future<void> _updateCartItemPrice(
-    PriceUpdateResult result, {
+  Future<void> _updateCartItemPrice(PriceUpdateResult result, {
     ProductModel? prefetchedFood,
     MartItemModel? prefetchedMart,
   }) async {
     try {
       final cartItemIndex = HomeProvider.cartItem.indexWhere(
-        (item) => item.id == result.productId,
+            (item) => item.id == result.productId,
       );
 
       if (cartItemIndex < 0) return;
@@ -3213,7 +3234,9 @@ class CartControllerProvider extends ChangeNotifier {
       HomeProvider.cartItem[cartItemIndex] = cartItem;
 
       print(
-        '[PRICE_UPDATE] ✅ Updated ${result.productName ?? cartItem.name}: ₹${result.oldPrice ?? "N/A"} → ₹${result.newPrice ?? "N/A"}',
+        '[PRICE_UPDATE] ✅ Updated ${result.productName ??
+            cartItem.name}: ₹${result.oldPrice ?? "N/A"} → ₹${result.newPrice ??
+            "N/A"}',
       );
     } catch (e) {
       print('[PRICE_UPDATE] ❌ Error: $e');
@@ -3274,7 +3297,7 @@ class CartControllerProvider extends ChangeNotifier {
       final newProductSetHash = _generateProductSetHashFromItems(event);
       final productSetChanged =
           _lastObservedProductSetHash != null &&
-          _lastObservedProductSetHash != newProductSetHash;
+              _lastObservedProductSetHash != newProductSetHash;
       _lastObservedProductSetHash = newProductSetHash;
 
       if (productSetChanged && _hasActiveCouponApplied()) {
@@ -3422,8 +3445,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       final List<Future<void>> loadFutures = productsToLoad.map((
-        productId,
-      ) async {
+          productId,) async {
         try {
           final cartItem =
               cartItemsByProductId[productId] ?? CartProductModel();
@@ -3548,12 +3570,13 @@ class CartControllerProvider extends ChangeNotifier {
 
         // Only sync zoneId if missing
         if ((selectedAddress?.zoneId == null ||
-                selectedAddress!.zoneId!.isEmpty) &&
+            selectedAddress!.zoneId!.isEmpty) &&
             Constant.selectedLocation.zoneId != null &&
             Constant.selectedLocation.zoneId!.isNotEmpty) {
           selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
           print(
-            '[CART_SYNC] ✅ Synced zoneId only (address unchanged): ${selectedAddress!.zoneId}',
+            '[CART_SYNC] ✅ Synced zoneId only (address unchanged): ${selectedAddress!
+                .zoneId}',
           );
           notifyListeners();
         }
@@ -3587,12 +3610,13 @@ class CartControllerProvider extends ChangeNotifier {
 
               // Ensure zoneId is set
               if ((selectedAddress!.zoneId == null ||
-                      selectedAddress!.zoneId!.isEmpty) &&
+                  selectedAddress!.zoneId!.isEmpty) &&
                   Constant.selectedLocation.zoneId != null &&
                   Constant.selectedLocation.zoneId!.isNotEmpty) {
                 selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
                 print(
-                  '[CART_SYNC] ✅ Set zoneId from Constant.selectedLocation: ${selectedAddress!.zoneId}',
+                  '[CART_SYNC] ✅ Set zoneId from Constant.selectedLocation: ${selectedAddress!
+                      .zoneId}',
                 );
               }
 
@@ -3603,7 +3627,8 @@ class CartControllerProvider extends ChangeNotifier {
               await calculatePrice();
 
               print(
-                '[CART_SYNC] ✅ Synced selectedAddress with Constant.selectedLocation (zoneId: ${selectedAddress!.zoneId})',
+                '[CART_SYNC] ✅ Synced selectedAddress with Constant.selectedLocation (zoneId: ${selectedAddress!
+                    .zoneId})',
               );
               notifyListeners();
             }
@@ -3611,12 +3636,13 @@ class CartControllerProvider extends ChangeNotifier {
         } else {
           // Coordinates match, but check if zoneId needs syncing
           if ((selectedAddress?.zoneId == null ||
-                  selectedAddress!.zoneId!.isEmpty) &&
+              selectedAddress!.zoneId!.isEmpty) &&
               Constant.selectedLocation.zoneId != null &&
               Constant.selectedLocation.zoneId!.isNotEmpty) {
             selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
             print(
-              '[CART_SYNC] ✅ Synced zoneId while coordinates match: ${selectedAddress!.zoneId}',
+              '[CART_SYNC] ✅ Synced zoneId while coordinates match: ${selectedAddress!
+                  .zoneId}',
             );
             notifyListeners();
           }
@@ -3752,7 +3778,9 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
 
-    if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
+    if (restaurantId.isEmpty || restaurantId
+        .trim()
+        .isEmpty) {
       print('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
       await _loadGlobalCouponsOnly();
       return;
@@ -3771,46 +3799,47 @@ class CartControllerProvider extends ChangeNotifier {
 
       final allCoupons = _currentContext == "mart"
           ? await RestaurantApiHelper.getMartCoupons(
-              restaurantId: restaurantId,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
-                return <CouponModel>[];
-              },
-            )
+        restaurantId: restaurantId,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
+          return <CouponModel>[];
+        },
+      )
           : await RestaurantApiHelper.getRestaurantCoupons(
-              restaurantId: restaurantId,
-              zoneId: Constant.selectedZone!.id.toString(),
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out');
-                return <CouponModel>[];
-              },
-            );
+        restaurantId: restaurantId,
+        zoneId: Constant.selectedZone!.id.toString(),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out');
+          return <CouponModel>[];
+        },
+      );
 
       print(
-        '[COUPON_LOAD] ✅ Received ${allCoupons.length} coupons from ${_currentContext} API',
+        '[COUPON_LOAD] ✅ Received ${allCoupons
+            .length} coupons from ${_currentContext} API',
       );
 
       final filteredGlobalCoupons = allCoupons
           .where(
             (c) =>
-                c.resturantId == null ||
-                c.resturantId == '' ||
-                c.resturantId?.toUpperCase() == 'ALL',
-          )
+        c.resturantId == null ||
+            c.resturantId == '' ||
+            c.resturantId?.toUpperCase() == 'ALL',
+      )
           .toList();
 
       final vendorCoupons = allCoupons
           .where(
             (c) =>
-                c.resturantId != null &&
-                c.resturantId!.isNotEmpty &&
-                c.resturantId!.toUpperCase() != 'ALL' &&
-                c.resturantId == restaurantId,
-          )
+        c.resturantId != null &&
+            c.resturantId!.isNotEmpty &&
+            c.resturantId!.toUpperCase() != 'ALL' &&
+            c.resturantId == restaurantId,
+      )
           .toList();
 
       final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
@@ -3823,14 +3852,15 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       final contextFilteredAllCoupons =
-          CouponFilterService.filterCouponsByContext(
-            coupons: combinedAllCoupons.cast<CouponModel>(),
-            contextType: _currentContext,
-            fallbackEnabled: true,
-          );
+      CouponFilterService.filterCouponsByContext(
+        coupons: combinedAllCoupons.cast<CouponModel>(),
+        contextType: _currentContext,
+        fallbackEnabled: true,
+      );
 
       print(
-        '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} coupons for context: $_currentContext',
+        '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons
+            .length} coupons for context: $_currentContext',
       );
 
       _cachedCouponList = contextFilteredCoupons;
@@ -3938,36 +3968,37 @@ class CartControllerProvider extends ChangeNotifier {
 
       final globalCoupons = _currentContext == "mart"
           ? await RestaurantApiHelper.getMartCoupons(restaurantId: '').timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Global mart coupon API call timed out');
-                return <CouponModel>[];
-              },
-            )
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print('[COUPON_LOAD] ⏱️ Global mart coupon API call timed out');
+          return <CouponModel>[];
+        },
+      )
           : await RestaurantApiHelper.getRestaurantCoupons(
-              restaurantId: '',
-              zoneId: Constant.selectedZone!.id.toString(),
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print(
-                  '[COUPON_LOAD] ⏱️ Global restaurant coupon API call timed out',
-                );
-                return <CouponModel>[];
-              },
-            );
+        restaurantId: '',
+        zoneId: Constant.selectedZone!.id.toString(),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          print(
+            '[COUPON_LOAD] ⏱️ Global restaurant coupon API call timed out',
+          );
+          return <CouponModel>[];
+        },
+      );
 
       print(
-        '[COUPON_LOAD] ✅ Received ${globalCoupons.length} global coupons from ${_currentContext} API',
+        '[COUPON_LOAD] ✅ Received ${globalCoupons
+            .length} global coupons from ${_currentContext} API',
       );
 
       final filteredGlobalCoupons = globalCoupons
           .where(
             (c) =>
-                c.resturantId == null ||
-                c.resturantId == '' ||
-                c.resturantId?.toUpperCase() == 'ALL',
-          )
+        c.resturantId == null ||
+            c.resturantId == '' ||
+            c.resturantId?.toUpperCase() == 'ALL',
+      )
           .toList();
 
       final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
@@ -3977,7 +4008,8 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       print(
-        '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} global coupons for context: $_currentContext',
+        '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons
+            .length} global coupons for context: $_currentContext',
       );
 
       _cachedCouponList = contextFilteredCoupons;
@@ -4062,7 +4094,9 @@ class CartControllerProvider extends ChangeNotifier {
       return;
     }
 
-    if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
+    if (restaurantId.isEmpty || restaurantId
+        .trim()
+        .isEmpty) {
       print('[COUPON_LOAD] ⚠️ Fallback: Skipping - empty restaurant ID');
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
@@ -4088,54 +4122,55 @@ class CartControllerProvider extends ChangeNotifier {
       final List<CouponModel> allCoupons;
       if (_currentContext == "mart") {
         allCoupons =
-            await RestaurantApiHelper.getMartCoupons(
-              restaurantId: restaurantId,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print(
-                  '[COUPON_LOAD] ⏱️ Fallback: Mart coupon API call timed out',
-                );
-                return <CouponModel>[];
-              },
+        await RestaurantApiHelper.getMartCoupons(
+          restaurantId: restaurantId,
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print(
+              '[COUPON_LOAD] ⏱️ Fallback: Mart coupon API call timed out',
             );
+            return <CouponModel>[];
+          },
+        );
       } else {
         allCoupons =
-            await RestaurantApiHelper.getRestaurantCoupons(
-              restaurantId: restaurantId,
-              zoneId: Constant.selectedZone!.id.toString(),
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print(
-                  '[COUPON_LOAD] ⏱️ Fallback: Restaurant coupon API call timed out',
-                );
-                return <CouponModel>[];
-              },
+        await RestaurantApiHelper.getRestaurantCoupons(
+          restaurantId: restaurantId,
+          zoneId: Constant.selectedZone!.id.toString(),
+        ).timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            print(
+              '[COUPON_LOAD] ⏱️ Fallback: Restaurant coupon API call timed out',
             );
+            return <CouponModel>[];
+          },
+        );
       }
 
       print(
-        '[COUPON_LOAD] ✅ Fallback: Received ${allCoupons.length} coupons from ${_currentContext} API',
+        '[COUPON_LOAD] ✅ Fallback: Received ${allCoupons
+            .length} coupons from ${_currentContext} API',
       );
 
       final filteredGlobalCoupons = allCoupons
           .where(
             (c) =>
-                c.resturantId == null ||
-                c.resturantId == '' ||
-                c.resturantId?.toUpperCase() == 'ALL',
-          )
+        c.resturantId == null ||
+            c.resturantId == '' ||
+            c.resturantId?.toUpperCase() == 'ALL',
+      )
           .toList();
 
       final vendorCoupons = allCoupons
           .where(
             (c) =>
-                c.resturantId != null &&
-                c.resturantId!.isNotEmpty &&
-                c.resturantId!.toUpperCase() != 'ALL' &&
-                c.resturantId == restaurantId,
-          )
+        c.resturantId != null &&
+            c.resturantId!.isNotEmpty &&
+            c.resturantId!.toUpperCase() != 'ALL' &&
+            c.resturantId == restaurantId,
+      )
           .toList();
 
       final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
@@ -4218,8 +4253,8 @@ class CartControllerProvider extends ChangeNotifier {
 
     final canUseCache =
         _lastUsedCouponsFetchAt != null &&
-        DateTime.now().difference(_lastUsedCouponsFetchAt!) <
-            _usedCouponsCacheExpiry;
+            DateTime.now().difference(_lastUsedCouponsFetchAt!) <
+                _usedCouponsCacheExpiry;
     if (canUseCache) {
       _applyUsedCouponIds(_cachedUsedCouponIds);
       if (notify) notifyListeners();
@@ -4443,7 +4478,10 @@ class CartControllerProvider extends ChangeNotifier {
     // Use unawaited future to save in background without blocking
     Future.microtask(() async {
       try {
-        final now = DateTime.now().millisecondsSinceEpoch.toString();
+        final now = DateTime
+            .now()
+            .millisecondsSinceEpoch
+            .toString();
         // Save all state in parallel for faster execution
         await Future.wait([
           Preferences.setString(_paymentStateKey, 'true'),
@@ -4508,11 +4546,10 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// 🔑 CRITICAL: Place order with automatic retry mechanism (up to 3 attempts)
-  Future<void> _placeOrderWithRetry(
-    String paymentId,
-    String? signature, {
-    int maxRetries = 3,
-  }) async {
+  Future<void> _placeOrderWithRetry(String paymentId,
+      String? signature, {
+        int maxRetries = 3,
+      }) async {
     int attempt = 0;
     bool orderPlaced = false;
 
@@ -4546,7 +4583,8 @@ class CartControllerProvider extends ChangeNotifier {
           // Wait before retry with exponential backoff (1s, 2s, 4s)
           final waitTime = Duration(seconds: attempt);
           print(
-            '⏳ [PAYMENT_SUCCESS] Waiting ${waitTime.inSeconds}s before retry...',
+            '⏳ [PAYMENT_SUCCESS] Waiting ${waitTime
+                .inSeconds}s before retry...',
           );
           await Future.delayed(waitTime);
 
@@ -4696,11 +4734,9 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Add this if it's missing
-  bool isPromotionalItemQuantityAllowed(
-    String productId,
-    String restaurantId,
-    int currentQuantity,
-  ) {
+  bool isPromotionalItemQuantityAllowed(String productId,
+      String restaurantId,
+      int currentQuantity,) {
     if (currentQuantity <= 0) {
       return true;
     }
@@ -4746,9 +4782,9 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       final response = await http
           .get(
-            Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
-            headers: await getHeaders(),
-          )
+        Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
+        headers: await getHeaders(),
+      )
           .timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
@@ -4771,10 +4807,8 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Add this if it's missing
-  double calculateSurgeFee(
-    Map<String, dynamic> weather,
-    Map<String, dynamic> rules,
-  ) {
+  double calculateSurgeFee(Map<String, dynamic> weather,
+      Map<String, dynamic> rules,) {
     double surge = 0;
     String condition = weather['weather'][0]['main'].toLowerCase();
     if (condition.contains("rain")) surge += rules["rain"];
@@ -5074,7 +5108,7 @@ class CartControllerProvider extends ChangeNotifier {
           // Use cached value if available, otherwise wait for cache (will recalculate)
           freeDeliveryKm =
               _cachedFreeDeliveryKm[cacheKey] ??
-              4.0; // Default to 4km for promotional
+                  4.0; // Default to 4km for promotional
         }
       }
 
@@ -5118,13 +5152,13 @@ class CartControllerProvider extends ChangeNotifier {
     // 🔑 DYNAMIC: Get base charge from promotional cache or delivery charge cache
     final baseCharge =
         _cachedPromotionalBaseCharge[cacheKey] ??
-        DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
+            DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
 
     // 🔑 NEW: Check if this promotional item should include base charge in calculation
     final includeBaseCharge =
         promoDetails?['include_base_charge'] == true ||
-        promoDetails?['consider_base_charge'] == true ||
-        promoDetails?['free_up_charge'] == true;
+            promoDetails?['consider_base_charge'] == true ||
+            promoDetails?['free_up_charge'] == true;
 
     _calculateDeliveryCharge(
       orderType: 'promotional',
@@ -5143,7 +5177,7 @@ class CartControllerProvider extends ChangeNotifier {
     required double baseCharge,
     required String logPrefix,
     bool includeBaseChargeInOriginalFee =
-        true, // 🔑 NEW: Flag to control base charge inclusion
+    true, // 🔑 NEW: Flag to control base charge inclusion
   }) {
     if (vendorModel.isSelfDelivery == true &&
         Constant.isSelfDeliveryFeature == true) {
@@ -5325,8 +5359,8 @@ class CartControllerProvider extends ChangeNotifier {
     // 🔑 CRITICAL: Check if this is a promotional item - if so, NEVER use global fallback
     // Check if item has promoId in cart
     final isPromotionalItem = HomeProvider.cartItem.any(
-      (item) =>
-          item.id == productId &&
+          (item) =>
+      item.id == productId &&
           item.vendorID == restaurantId &&
           item.promoId != null &&
           item.promoId!.isNotEmpty,
@@ -5344,7 +5378,8 @@ class CartControllerProvider extends ChangeNotifier {
     // Only use global fallback for non-promotional items
     final globalFreeKm =
         deliveryChargeModel.freeDeliveryDistanceKm?.toDouble() ??
-        DeliveryChargeCache.instance.getFreeDeliveryDistanceKm(fallback: 7.0);
+            DeliveryChargeCache.instance.getFreeDeliveryDistanceKm(
+                fallback: 7.0);
     return globalFreeKm;
   }
 
@@ -5397,11 +5432,9 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _cachePromotionalData(
-    String productId,
-    String restaurantId,
-    String cacheKey,
-  ) async {
+  Future<void> _cachePromotionalData(String productId,
+      String restaurantId,
+      String cacheKey,) async {
     try {
       final promoDetails = await FireStoreUtils.getActivePromotionForProduct(
         productId: productId,
@@ -5423,15 +5456,16 @@ class CartControllerProvider extends ChangeNotifier {
         // 🔑 DYNAMIC: Get base charge from cache, with fallback from promo details if available
         final promoBaseCharge =
             (promoDetails['base_delivery_charge'] as num?)?.toDouble() ??
-            DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
+                DeliveryChargeCache.instance.getBaseDeliveryCharge(
+                    fallback: 21.0);
 
         // 🔑 NEW: Check if promotional item should include base charge in "free up" calculation
         // Some promotions consider base charge, some don't - check flag if available
         final includeBaseCharge =
             promoDetails['include_base_charge'] == true ||
-            promoDetails['consider_base_charge'] == true ||
-            promoDetails['free_up_charge'] ==
-                true; // Default to true if not specified
+                promoDetails['consider_base_charge'] == true ||
+                promoDetails['free_up_charge'] ==
+                    true; // Default to true if not specified
 
         _cachedFreeDeliveryKm[cacheKey] = freeDeliveryKm;
         _cachedExtraKmCharge[cacheKey] = extraKmCharge;
@@ -5534,12 +5568,14 @@ class CartControllerProvider extends ChangeNotifier {
       if (productsToLoad.isEmpty) return;
 
       final List<Future<void>> loadFutures = productsToLoad.map((
-        productId,
-      ) async {
+          productId,) async {
         try {
           final isMartItem = _isMartItem(
             HomeProvider.cartItem.firstWhere(
-              (item) => item.id?.split('~').first == productId,
+                  (item) =>
+              item.id
+                  ?.split('~')
+                  .first == productId,
               orElse: () => CartProductModel(),
             ),
           );
@@ -5572,8 +5608,8 @@ class CartControllerProvider extends ChangeNotifier {
         return CustomDialogBox(
           title: "Login Required".tr,
           descriptions:
-              "Please login to add items to your cart and continue shopping."
-                  .tr,
+          "Please login to add items to your cart and continue shopping."
+              .tr,
           positiveString: "Login".tr,
           negativeString: "Cancel".tr,
           positiveClick: () {
@@ -5623,7 +5659,8 @@ class CartControllerProvider extends ChangeNotifier {
       String message = "Please complete your profile before placing an order.";
       if (missingFields.isNotEmpty) {
         message =
-            "Missing required fields: ${missingFields.join(', ')}. Please complete your profile.";
+        "Missing required fields: ${missingFields.join(
+            ', ')}. Please complete your profile.";
       }
 
       ShowToastDialog.showToast(message);
@@ -5681,8 +5718,7 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> _validateAddressBulletproof(
-    BuildContext context, {
+  Future<bool> _validateAddressBulletproof(BuildContext context, {
     bool isRetry = false,
   }) async {
     try {
@@ -5816,7 +5852,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (vendorModel.zoneId == null || vendorModel.zoneId!.isEmpty) {
         if (vendorModel.id != null) {
           final hasMartItems = HomeProvider.cartItem.any(
-            (item) => item.vendorID?.startsWith('mart_') == true,
+                (item) => item.vendorID?.startsWith('mart_') == true,
           );
 
           if (hasMartItems) {
@@ -5849,12 +5885,12 @@ class CartControllerProvider extends ChangeNotifier {
             address.zoneId!.isNotEmpty) {
           vendorModel.zoneId = address.zoneId;
         } else if ((vendorModel.zoneId == null ||
-                vendorModel.zoneId!.isEmpty) &&
+            vendorModel.zoneId!.isEmpty) &&
             Constant.selectedLocation.zoneId != null &&
             Constant.selectedLocation.zoneId!.isNotEmpty) {
           vendorModel.zoneId = Constant.selectedLocation.zoneId;
         } else if ((vendorModel.zoneId == null ||
-                vendorModel.zoneId!.isEmpty) &&
+            vendorModel.zoneId!.isEmpty) &&
             Constant.selectedZone?.id != null &&
             Constant.selectedZone!.id!.isNotEmpty) {
           vendorModel.zoneId = Constant.selectedZone!.id;
@@ -6049,13 +6085,13 @@ class CartControllerProvider extends ChangeNotifier {
 
     final isReady =
         cartNotEmpty &&
-        subTotalValid &&
-        totalValid &&
-        paymentMethodSelected &&
-        profileValid &&
-        notProcessing &&
-        notPaymentInProgress &&
-        notPaymentCompleted;
+            subTotalValid &&
+            totalValid &&
+            paymentMethodSelected &&
+            profileValid &&
+            notProcessing &&
+            notPaymentInProgress &&
+            notPaymentCompleted;
 
     return isReady;
   }
@@ -6080,8 +6116,8 @@ class CartControllerProvider extends ChangeNotifier {
         : subTotal;
     final canUseCod =
         isCodEnabledForCurrentZone &&
-        codAmountCheck <= codMaxAmountForCurrentZone &&
-        !hasPromoItems;
+            codAmountCheck <= codMaxAmountForCurrentZone &&
+            !hasPromoItems;
     final canUseOnline = isRazorpayEnabledForCurrentZone;
 
     if (selectedPaymentMethod == PaymentGateway.cod.name && !canUseCod) {
@@ -6116,10 +6152,8 @@ class CartControllerProvider extends ChangeNotifier {
     if (!_isCalculatingPrice) notifyListeners();
   }
 
-  Future<void> rollbackFailedOrder(
-    String orderId,
-    List<CartProductModel> products,
-  ) async {
+  Future<void> rollbackFailedOrder(String orderId,
+      List<CartProductModel> products,) async {
     try {
       // Prepare the request body
       final Map<String, dynamic> requestBody = {
@@ -6239,7 +6273,9 @@ class CartControllerProvider extends ChangeNotifier {
                                   Text(
                                     walletDisabledByPromos
                                         ? "Wallet cannot be used for orders with promotional items"
-                                        : "Wallet balance: ${Constant.amountShow(amount: walletBalanceRupees.toStringAsFixed(2))}",
+                                        : "Wallet balance: ${Constant
+                                        .amountShow(amount: walletBalanceRupees
+                                        .toStringAsFixed(2))}",
                                     style: TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 14,
@@ -6255,7 +6291,9 @@ class CartControllerProvider extends ChangeNotifier {
                                     Padding(
                                       padding: EdgeInsets.only(top: 2),
                                       child: Text(
-                                        "₹${walletToUse.toStringAsFixed(2)} from wallet, ₹${paymentGatewayAmount.toStringAsFixed(2)} via payment",
+                                        "₹${walletToUse.toStringAsFixed(
+                                            2)} from wallet, ₹${paymentGatewayAmount
+                                            .toStringAsFixed(2)} via payment",
                                         style: TextStyle(
                                           fontSize: 11,
                                           color: Colors.orange.shade800,
@@ -6274,16 +6312,16 @@ class CartControllerProvider extends ChangeNotifier {
                                   onChanged: walletDisabledByPromos
                                       ? null
                                       : (value) async {
-                                          await setUseWalletBalance(value);
-                                          setSwitchState(() {});
-                                          setState(() {});
-                                          if (value && isFullyPaidByWallet) {
-                                            selectedPaymentMethod =
-                                                PaymentGateway.wallet.name;
-                                            notifyListeners();
-                                            Get.back(result: true);
-                                          }
-                                        },
+                                    await setUseWalletBalance(value);
+                                    setSwitchState(() {});
+                                    setState(() {});
+                                    if (value && isFullyPaidByWallet) {
+                                      selectedPaymentMethod =
+                                          PaymentGateway.wallet.name;
+                                      notifyListeners();
+                                      Get.back(result: true);
+                                    }
+                                  },
                                   activeColor: Colors.orange,
                                 );
                               },
@@ -6425,7 +6463,7 @@ class CartControllerProvider extends ChangeNotifier {
 
                   // Validation messages (use remaining amount when wallet is used)
                   if ((useWalletBalance ? amountToChargeViaGateway : subTotal) >
-                          codMaxAmountForCurrentZone &&
+                      codMaxAmountForCurrentZone &&
                       selectedPaymentMethod == PaymentGateway.cod.name)
                     Container(
                       padding: EdgeInsets.all(8),
@@ -6440,7 +6478,8 @@ class CartControllerProvider extends ChangeNotifier {
                           SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              "COD not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}",
+                              "COD not available for orders above ₹${codMaxAmountForCurrentZone
+                                  .toStringAsFixed(0)}",
                               style: TextStyle(
                                 fontSize: 12,
                                 color: Colors.orange[800],
@@ -6505,7 +6544,9 @@ class CartControllerProvider extends ChangeNotifier {
                           : subTotal;
                       if (codCheck > codMaxAmountForCurrentZone) {
                         ShowToastDialog.showToast(
-                          "COD not available for orders above ₹${codMaxAmountForCurrentZone.toStringAsFixed(0)}. Please select online payment."
+                          "COD not available for orders above ₹${codMaxAmountForCurrentZone
+                              .toStringAsFixed(
+                              0)}. Please select online payment."
                               .tr,
                         );
                         return;
@@ -6644,7 +6685,8 @@ class CartControllerProvider extends ChangeNotifier {
 
     if (!razorPayModel.razorpayKey!.startsWith('rzp_')) {
       print(
-        '❌ [RAZORPAY_CHECKOUT] Invalid Razorpay key format: ${razorPayModel.razorpayKey}',
+        '❌ [RAZORPAY_CHECKOUT] Invalid Razorpay key format: ${razorPayModel
+            .razorpayKey}',
       );
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
@@ -6761,19 +6803,20 @@ class CartControllerProvider extends ChangeNotifier {
           try {
             final martItems = await MartFirestoreService().getMartItems();
             final martItem = martItems.firstWhere(
-              (mart) => mart.id == item.id!,
-              orElse: () => MartItemModel(
-                id: '',
-                name: '',
-                description: '',
-                price: 0,
-                photo: '',
-                isAvailable: false,
-                publish: false,
-                veg: false,
-                nonveg: false,
-                quantity: 0,
-              ),
+                  (mart) => mart.id == item.id!,
+              orElse: () =>
+                  MartItemModel(
+                    id: '',
+                    name: '',
+                    description: '',
+                    price: 0,
+                    photo: '',
+                    isAvailable: false,
+                    publish: false,
+                    veg: false,
+                    nonveg: false,
+                    quantity: 0,
+                  ),
             );
 
             final availableQuantity = martItem.quantity;
@@ -6798,7 +6841,9 @@ class CartControllerProvider extends ChangeNotifier {
           if (productId == null ||
               productId.isEmpty ||
               productId == 'null' ||
-              productId.trim().isEmpty) {
+              productId
+                  .trim()
+                  .isEmpty) {
             print('[CART_VALIDATION] Invalid product ID: $productId');
             ShowToastDialog.showToast(
               "Some items in your cart have invalid product information.".tr,
@@ -6807,7 +6852,9 @@ class CartControllerProvider extends ChangeNotifier {
           }
 
           final baseProductId = productId.contains('~')
-              ? productId.split('~').first
+              ? productId
+              .split('~')
+              .first
               : productId;
 
           final product = await FireStoreUtils.getProductById(baseProductId);
@@ -6824,7 +6871,8 @@ class CartControllerProvider extends ChangeNotifier {
 
             if (availableQuantity < orderedQuantity) {
               ShowToastDialog.showToast(
-                "${product.name} is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity"
+                "${product
+                    .name} is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity"
                     .tr,
               );
               return false;
@@ -6921,10 +6969,8 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> processPayment(
-    CartControllerProvider controller,
-    BuildContext context,
-  ) async {
+  Future<void> processPayment(CartControllerProvider controller,
+      BuildContext context,) async {
     _startOperation('processPayment');
 
     try {
@@ -6996,8 +7042,7 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<void> _processRazorpayPayment(
-    CartControllerProvider controller,
-  ) async {
+      CartControllerProvider controller,) async {
     if (controller.razorPayModel.razorpayKey == null ||
         controller.razorPayModel.razorpayKey!.isEmpty) {
       print('❌ [RAZORPAY] Razorpay key is missing or empty');
@@ -7013,7 +7058,8 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     print(
-      '✅ [RAZORPAY] Razorpay key found: ${controller.razorPayModel.razorpayKey!.substring(0, 10)}...',
+      '✅ [RAZORPAY] Razorpay key found: ${controller.razorPayModel.razorpayKey!
+          .substring(0, 10)}...',
     );
 
     // 🔑 OPTIMIZATION: Clear stale payment state immediately (non-blocking)
@@ -7022,7 +7068,8 @@ class CartControllerProvider extends ChangeNotifier {
     controller._lastPaymentId = null;
 
     print(
-      '🔑 [RAZORPAY] Starting payment flow for amount: ${controller.totalAmount}',
+      '🔑 [RAZORPAY] Starting payment flow for amount: ${controller
+          .totalAmount}',
     );
 
     // 🔑 OPTIMIZATION: Show loader immediately, then yield so it can paint before async work
@@ -7166,10 +7213,8 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _processPaytmPayment(
-    CartControllerProvider controller,
-    BuildContext context,
-  ) async {
+  Future<void> _processPaytmPayment(CartControllerProvider controller,
+      BuildContext context,) async {
     try {
       final isVendorOpen = await controller._validateVendorOpenForOrdering();
       if (!isVendorOpen) {
@@ -7511,10 +7556,10 @@ class CartControllerProvider extends ChangeNotifier {
 
       final response = await http
           .post(
-            Uri.parse('${AppConst.baseUrl}paytm/initiate'),
-            headers: await getHeaders(),
-            body: jsonEncode(payload),
-          )
+        Uri.parse('${AppConst.baseUrl}paytm/initiate'),
+        headers: await getHeaders(),
+        body: jsonEncode(payload),
+      )
           .timeout(const Duration(seconds: 25));
 
       final json = jsonDecode(response.body);
@@ -7534,9 +7579,9 @@ class CartControllerProvider extends ChangeNotifier {
 
       final callbackUrl =
           json['callbackUrl'] ??
-          (isStaging
-              ? "https://securestage.paytmpayments.com/theia/paytmCallback?ORDER_ID=$orderId"
-              : "https://secure.paytmpayments.com/theia/paytmCallback?ORDER_ID=$orderId");
+              (isStaging
+                  ? "https://securestage.paytmpayments.com/theia/paytmCallback?ORDER_ID=$orderId"
+                  : "https://secure.paytmpayments.com/theia/paytmCallback?ORDER_ID=$orderId");
 
       // ✅ Wallet-only case
       if (txnToken.isEmpty) {
@@ -7648,7 +7693,8 @@ class CartControllerProvider extends ChangeNotifier {
       Provider.of<OrderPlacingProvider>(
         context,
         listen: false,
-      ).initFunction(orderModels: OrderModel()..id = orderId);
+      ).initFunction(orderModels: OrderModel()
+        ..id = orderId);
     } catch (_) {}
 
     Get.offAll(() => const OrderPlacingScreen());
@@ -7881,8 +7927,7 @@ class CartControllerProvider extends ChangeNotifier {
           vendorModel.id != null) {
         vendorSubscriptionCheck =
             FireStoreUtils.getVendorById(vendorModel.id.toString()).then((
-              vender,
-            ) {
+                vender,) {
               if (vender?.subscriptionTotalOrders == '0' ||
                   vender?.subscriptionTotalOrders == null) {
                 throw Exception('Vendor has reached maximum order capacity');
@@ -7913,40 +7958,40 @@ class CartControllerProvider extends ChangeNotifier {
       int maxNumber = 5;
       final orderNumberFuture = http
           .get(
-            Uri.parse('${AppConst.baseUrl}firestore/getLatestOrderInRange'),
-            headers: await getHeaders(),
-          )
+        Uri.parse('${AppConst.baseUrl}firestore/getLatestOrderInRange'),
+        headers: await getHeaders(),
+      )
           .timeout(
-            const Duration(seconds: 5),
-            // 🔑 OPTIMIZATION: Short timeout for faster failure
-            onTimeout: () {
-              throw Exception('Order number fetch timeout');
-            },
-          )
+        const Duration(seconds: 5),
+        // 🔑 OPTIMIZATION: Short timeout for faster failure
+        onTimeout: () {
+          throw Exception('Order number fetch timeout');
+        },
+      )
           .then((response) {
-            if (response.statusCode == 200) {
-              final responseData = json.decode(response.body);
-              if (responseData['success'] == true &&
-                  responseData['order'] != null) {
-                final orderData = responseData['order'];
-                final String orderIdFromApi = orderData['id'].toString();
-                final match = RegExp(r'Jippy3(\d+)').firstMatch(orderIdFromApi);
-                if (match != null) {
-                  final num = int.tryParse(match.group(1)!);
-                  if (num != null && num > maxNumber) {
-                    return num;
-                  }
-                }
+        if (response.statusCode == 200) {
+          final responseData = json.decode(response.body);
+          if (responseData['success'] == true &&
+              responseData['order'] != null) {
+            final orderData = responseData['order'];
+            final String orderIdFromApi = orderData['id'].toString();
+            final match = RegExp(r'Jippy3(\d+)').firstMatch(orderIdFromApi);
+            if (match != null) {
+              final num = int.tryParse(match.group(1)!);
+              if (num != null && num > maxNumber) {
+                return num;
               }
             }
-            return maxNumber;
-          })
+          }
+        }
+        return maxNumber;
+      })
           .catchError((e) {
-            print(
-              '⚠️ [ORDER_CREATION] Error fetching latest order (non-critical): $e',
-            );
-            return maxNumber; // Return default on error
-          });
+        print(
+          '⚠️ [ORDER_CREATION] Error fetching latest order (non-critical): $e',
+        );
+        return maxNumber; // Return default on error
+      });
 
       // 🔑 OPTIMIZATION: Build order model immediately (no await delays)
       orderModel.address = selectedAddress;
@@ -8003,6 +8048,7 @@ class CartControllerProvider extends ChangeNotifier {
       Map<String, dynamic> orderPayload = {
         "author_id": authorId,
         "cart_items": tempProduc.map((item) => item.toJson()).toList(),
+        "zone_id": Constant.selectedZone!.id.toString(),
         "selected_address": {
           "isDefault": selectedAddress?.isDefault,
           "address": selectedAddress?.address,
@@ -8031,7 +8077,7 @@ class CartControllerProvider extends ChangeNotifier {
         "special_discount": specialDiscountMap,
         "vendor_id": _getVendorIdForOrder(),
         "v_type":
-            vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
+        vendorModel.vType ?? (hasMartItemsInCart() ? 'mart' : 'restaurant'),
         "status": Constant.orderPlaced,
         "created_at": DateTime.now().toIso8601String(),
         "wallet_amount": walletUsed,
@@ -8042,8 +8088,8 @@ class CartControllerProvider extends ChangeNotifier {
       // 🔑 DEBUG: Payload summary for backend wallet/referral debugging (grep ORDER_CREATION_PAYLOAD)
       print(
         '🌐 [ORDER_CREATION_PAYLOAD] author_id=$authorId | total_amount=$totalAmount | '
-        'wallet_amount=$walletToUse | payment_gateway_amount=$paymentGatewayAmount | '
-        'payment_method=$selectedPaymentMethod',
+            'wallet_amount=$walletToUse | payment_gateway_amount=$paymentGatewayAmount | '
+            'payment_method=$selectedPaymentMethod',
       );
       if (walletToUse > 0) {
         print(
@@ -8077,49 +8123,62 @@ class CartControllerProvider extends ChangeNotifier {
       // http package works in background, so this will execute even if app is backgrounded
       final response = await http
           .post(
-            Uri.parse('${AppConst.baseUrl}mobile/orders'),
-            headers: headers,
-            body: bodyJson,
-          )
+        Uri.parse('${AppConst.baseUrl}mobile/orders'),
+        headers: headers,
+        body: bodyJson,
+      )
           .timeout(
-            const Duration(seconds: 20),
-            // 🔑 OPTIMIZATION: Reduced timeout for faster failure detection
-            onTimeout: () {
-              throw Exception(
-                'Order creation API call timed out after 20 seconds',
-              );
-            },
+        const Duration(seconds: 20),
+        // 🔑 OPTIMIZATION: Reduced timeout for faster failure detection
+        onTimeout: () {
+          throw Exception(
+            'Order creation API call timed out after 20 seconds',
           );
+        },
+      );
 
       print('🌐 [ORDER_CREATION] API response status: ${response.statusCode}');
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        print(
-          '❌ [ORDER_CREATION] API returned error status: ${response.statusCode}',
-        );
-        print('❌ [ORDER_CREATION] Response body: ${response.body}');
-        if (response.statusCode == 422) {
-          print(
-            '❌ [ORDER_CREATION_DEBUG] 422 = validation failed. Backend: check wallet_amount, payment_gateway_amount, total_amount validation and wallet balance.',
-          );
-        }
-        throw Exception(
-          'API returned status code: ${response.statusCode}. Response: ${response.body}',
-        );
-      }
+      // if (response.statusCode != 200 && response.statusCode != 201) {
+      //   print(
+      //     '❌ [ORDER_CREATION] API returned error status: ${response
+      //         .statusCode}',
+      //   );
+      //
+      //   print('❌ [ORDER_CREATION] Response body: ${response.body}');
+      //
+      //   if (response.statusCode == 422) {
+      //     print('❌ [ORDER_CREATION_DEBUG] 422 = validation failed.');
+      //   }
+      //
+      //   throw Exception(
+      //     'API returned status code: ${response
+      //         .statusCode}. Response: ${response.body}',
+      //   );
+      // }
 
       final responseData = json.decode(response.body);
 
       if (responseData['success'] != true) {
-        print(
-          '❌ [ORDER_CREATION] API returned error: ${responseData['message']}',
-        );
-        print(
-          '❌ [ORDER_CREATION_DEBUG] Backend createOrder: ensure wallet deduction (when wallet_amount>0) and referee 100 coins (first order) run in same transaction.',
-        );
-        throw Exception('API returned error: ${responseData['message']}');
-      }
+        final backendMessage =
+            responseData['message']?.toString() ?? 'Unable to place your order';
 
+        print('❌ [ORDER_CREATION] API returned error: $backendMessage');
+
+        try {
+          ShowToastDialog.closeLoader();
+        } catch (_) {}
+
+        endOrderProcessing();
+
+        ShowToastDialog.showToast(backendMessage.tr);
+
+        _isOrderBeingCreated = false;
+        _isOrderCreationInProgress = false;
+        _currentOrderPaymentId = null;
+
+        return;
+      }
       if (responseData['data'] == null ||
           responseData['data']['order_id'] == null) {
         print('❌ [ORDER_CREATION] API response missing order_id');
@@ -8128,7 +8187,8 @@ class CartControllerProvider extends ChangeNotifier {
 
       orderModel.id = responseData['data']['order_id'];
       print(
-        '✅ [ORDER_CREATION] Order created successfully with ID: ${orderModel.id}',
+        '✅ [ORDER_CREATION] Order created successfully with ID: ${orderModel
+            .id}',
       );
       if (walletToUse > 0) {
         print(
@@ -8256,7 +8316,9 @@ class CartControllerProvider extends ChangeNotifier {
         // Order is still placed successfully, navigation can happen when app resumes
       }
 
-      print('✅ [ORDER_CREATION] Order placement complete!');
+      ShowToastDialog.showToast("Order placed successfully!".tr);
+
+      print('✅ [ORDER_CREATION] Order completed successfully');
     } catch (e, stackTrace) {
       print("❌ [ORDER_CREATION] Error: $e");
       print("❌ [ORDER_CREATION] Stack trace: $stackTrace");
@@ -8319,7 +8381,7 @@ class CartControllerProvider extends ChangeNotifier {
         _lastCartItemCount != currentCount ||
         _lastCartItemHash != currentHash) {
       _cachedHasPromotionalItems = HomeProvider.cartItem.any(
-        (item) => item.promoId != null && item.promoId!.isNotEmpty,
+            (item) => item.promoId != null && item.promoId!.isNotEmpty,
       );
       _lastCartItemCount = currentCount;
       _lastCartItemHash = currentHash;
@@ -8348,7 +8410,8 @@ class CartControllerProvider extends ChangeNotifier {
   // 🔑 OPTIMIZATION: Generate simple hash to detect cart changes
   String _generateCartHash() {
     if (HomeProvider.cartItem.isEmpty) return 'empty';
-    return '${HomeProvider.cartItem.length}_${HomeProvider.cartItem.map((e) => '${e.id}_${e.quantity}').join('|')}';
+    return '${HomeProvider.cartItem.length}_${HomeProvider.cartItem.map((
+        e) => '${e.id}_${e.quantity}').join('|')}';
   }
 
   // 🔑 OPTIMIZATION: Invalidate cart type cache when cart changes
@@ -8424,7 +8487,8 @@ class CartControllerProvider extends ChangeNotifier {
     final items = List<CartProductModel>.from(HomeProvider.cartItem);
 
     print(
-      '[PRICE_SYNC] 🔍 Starting IMMEDIATE price validation for ${items.length} items',
+      '[PRICE_SYNC] 🔍 Starting IMMEDIATE price validation for ${items
+          .length} items',
     );
 
     final foodCatalogIds = <String>{};
@@ -8496,12 +8560,13 @@ class CartControllerProvider extends ChangeNotifier {
         final storedRegularPrice =
             double.tryParse(cartItem.price ?? "0") ?? 0.0;
         final storedPrice =
-            storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
+        storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
             ? storedDiscountPrice
             : storedRegularPrice;
 
         print(
-          '[PRICE_SYNC] [$itemType] Checking ${cartItem.name}: Stored price in cart = ₹$storedPrice',
+          '[PRICE_SYNC] [$itemType] Checking ${cartItem
+              .name}: Stored price in cart = ₹$storedPrice',
         );
 
         dynamic currentProduct;
@@ -8532,7 +8597,8 @@ class CartControllerProvider extends ChangeNotifier {
 
           if (priceDifference > tolerance) {
             print(
-              '[PRICE_SYNC] ✅✅✅ PRICE CHANGE DETECTED for ${cartItem.name}: ₹$storedPrice → ₹$currentPrice (difference: ₹$priceDifference)',
+              '[PRICE_SYNC] ✅✅✅ PRICE CHANGE DETECTED for ${cartItem
+                  .name}: ₹$storedPrice → ₹$currentPrice (difference: ₹$priceDifference)',
             );
 
             results[cartItem.id!] = PriceUpdateResult(
@@ -8557,7 +8623,8 @@ class CartControllerProvider extends ChangeNotifier {
             cartDirty = true;
           } else {
             print(
-              '[PRICE_SYNC] ℹ️ No significant price change for ${cartItem.name} (difference: ₹$priceDifference)',
+              '[PRICE_SYNC] ℹ️ No significant price change for ${cartItem
+                  .name} (difference: ₹$priceDifference)',
             );
 
             results[cartItem.id!] = PriceUpdateResult(
@@ -8595,7 +8662,8 @@ class CartControllerProvider extends ChangeNotifier {
           }
         } catch (e) {
           print(
-            '[PRICE_SYNC] ❌ Error fetching current price for ${cartItem.id}: $e',
+            '[PRICE_SYNC] ❌ Error fetching current price for ${cartItem
+                .id}: $e',
           );
           results[cartItem.id!] = PriceUpdateResult(
             productId: cartItem.id!,
@@ -8622,7 +8690,8 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> markCouponAsUsed(String couponId) async {
     try {
-      await SqlStorageConst.getFirebaseId(); // Get user ID for authentication context
+      await SqlStorageConst
+          .getFirebaseId(); // Get user ID for authentication context
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}mobile/coupons/$couponId/used'),
         headers: await getHeaders(),

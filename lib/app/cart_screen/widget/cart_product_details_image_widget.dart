@@ -25,74 +25,84 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
         child: Container(
           decoration: ShapeDecoration(
             color: AppThemeData.grey50,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
             child: Column(
               children: List.generate(cartItems.length, (index) {
                 final cartProductModel = cartItems[index];
-            String? productId;
-            if (cartProductModel.id != null &&
-                cartProductModel.id!.isNotEmpty &&
-                cartProductModel.id!.toLowerCase() != 'null') {
-              final parts = cartProductModel.id!.split('~');
-              if (parts.isNotEmpty &&
-                  parts.first.isNotEmpty &&
-                  parts.first.toLowerCase() != 'null') {
-                productId = parts.first;
-              }
-            }
-
-            Widget itemChild;
-            if (productId == null ||
-                productId.isEmpty ||
-                productId.trim().isEmpty ||
-                productId.toLowerCase() == 'null') {
-              if (cartProductModel.id != null &&
-                  cartProductModel.id!.toLowerCase() != 'null') {
-                print(
-                  '[CART_PRODUCT] Invalid or null product ID: ${cartProductModel.id}',
-                );
-              }
-              itemChild = _buildProductItem(cartProductModel, null, controller);
-            } else {
-              final cachedProduct = cartController.getCachedProduct(productId);
-              final isMartItem =
-                  cartProductModel.vendorID?.startsWith('mart_') == true ||
-                  cartProductModel.vendorID?.toLowerCase().contains('mart') ==
-                      true;
-
-              if (cachedProduct == null &&
-                  !isMartItem &&
-                  !cartController.productsLoaded) {
-                if (!cartController.isLoadingProducts) {
-                  cartController.preloadCartProducts();
+                String? productId;
+                if (cartProductModel.id != null &&
+                    cartProductModel.id!.isNotEmpty &&
+                    cartProductModel.id!.toLowerCase() != 'null') {
+                  final parts = cartProductModel.id!.split('~');
+                  if (parts.isNotEmpty &&
+                      parts.first.isNotEmpty &&
+                      parts.first.toLowerCase() != 'null') {
+                    productId = parts.first;
+                  }
                 }
-                if (cartController.isLoadingProducts) {
-                  itemChild = _buildProductShimmer(cartProductModel);
-                } else {
+
+                Widget itemChild;
+                if (productId == null ||
+                    productId.isEmpty ||
+                    productId.trim().isEmpty ||
+                    productId.toLowerCase() == 'null') {
+                  if (cartProductModel.id != null &&
+                      cartProductModel.id!.toLowerCase() != 'null') {
+                    print(
+                      '[CART_PRODUCT] Invalid or null product ID: ${cartProductModel.id}',
+                    );
+                  }
                   itemChild = _buildProductItem(
                     cartProductModel,
-                    cachedProduct,
-                    cartController,
+                    null,
+                    controller,
                   );
-                }
-              } else {
-                itemChild = _buildProductItem(
-                  cartProductModel,
-                  cachedProduct,
-                  cartController,
-                );
-              }
-            }
+                } else {
+                  final cachedProduct = cartController.getCachedProduct(
+                    productId,
+                  );
+                  final isMartItem =
+                      cartProductModel.vendorID?.startsWith('mart_') == true ||
+                      cartProductModel.vendorID?.toLowerCase().contains(
+                            'mart',
+                          ) ==
+                          true;
 
-            return Padding(
-              padding: EdgeInsets.only(
-                bottom: index == cartItems.length - 1 ? 0 : 10,
-              ),
-              child: itemChild,
-            );
+                  if (cachedProduct == null &&
+                      !isMartItem &&
+                      !cartController.productsLoaded) {
+                    if (!cartController.isLoadingProducts) {
+                      cartController.preloadCartProducts();
+                    }
+                    if (cartController.isLoadingProducts) {
+                      itemChild = _buildProductShimmer(cartProductModel);
+                    } else {
+                      itemChild = _buildProductItem(
+                        cartProductModel,
+                        cachedProduct,
+                        cartController,
+                      );
+                    }
+                  } else {
+                    itemChild = _buildProductItem(
+                      cartProductModel,
+                      cachedProduct,
+                      cartController,
+                    );
+                  }
+                }
+
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index == cartItems.length - 1 ? 0 : 10,
+                  ),
+                  child: itemChild,
+                );
               }),
             ),
           ),
@@ -191,16 +201,7 @@ Widget _buildProductItem(
                             height: 60,
                             fit: BoxFit.cover,
                             errorBuilder: (context, error, stackTrace) =>
-                                Container(
-                                  width: 60,
-                                  height: 60,
-                                  color: AppThemeData.grey200,
-                                  child: Icon(
-                                    Icons.image_not_supported,
-                                    color: AppThemeData.grey400,
-                                    size: 30,
-                                  ),
-                                ),
+                                const _Placeholder(isDark: false),
                             loadingBuilder: (context, child, loadingProgress) {
                               if (loadingProgress == null) return child;
                               return Container(
@@ -223,16 +224,7 @@ Widget _buildProductItem(
                               );
                             },
                           )
-                        : Container(
-                            width: 60,
-                            height: 60,
-                            color: AppThemeData.grey200,
-                            child: Icon(
-                              Icons.image_not_supported,
-                              color: AppThemeData.grey400,
-                              size: 30,
-                            ),
-                          ),
+                        : const _Placeholder(isDark: false),
                   ),
 
                   // Promotional Badge
@@ -310,7 +302,104 @@ Widget _buildProductItem(
                       ],
                     ),
 
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
+
+                    if (cartProductModel.selectedOption != null &&
+                        (cartProductModel.selectedOption?['title'] != null ||
+                            cartProductModel.selectedOption?['option_title'] !=
+                                null))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              cartProductModel.selectedOption?['title'] ??
+                                  cartProductModel
+                                      .selectedOption?['option_title'] ??
+                                  'Option',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontFamily: AppThemeData.semiBold,
+                                color: AppThemeData.grey900,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (cartProductModel.selectedOption?['subtitle'] !=
+                                    null ||
+                                cartProductModel
+                                        .selectedOption?['option_subtitle'] !=
+                                    null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                cartProductModel.selectedOption?['subtitle'] ??
+                                    cartProductModel
+                                        .selectedOption?['option_subtitle'] ??
+                                    '',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontFamily: AppThemeData.regular,
+                                  color: AppThemeData.grey500,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
+                    else if (cartProductModel.variantInfo?.variantOptions !=
+                            null &&
+                        cartProductModel.variantInfo?.variantOptions is Map)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          cartProductModel
+                                  .variantInfo
+                                  ?.variantOptions?['option'] ??
+                              cartProductModel.variantInfo?.variantSku ??
+                              '',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontFamily: AppThemeData.semiBold,
+                            color: AppThemeData.grey900,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    if (cartProductModel.extras != null &&
+                        cartProductModel.extras!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Add-ons: ${cartProductModel.extras!.map((e) {
+                            try {
+                              if (e is Map && e['title'] != null) {
+                                return e['title'].toString();
+                              }
+                              if (e is String) {
+                                return e;
+                              }
+                              return (e.title ?? '').toString();
+                            } catch (_) {
+                              return '';
+                            }
+                          }).where((title) => title.isNotEmpty).join(', ')}',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontFamily: AppThemeData.regular,
+                            color: AppThemeData.grey500,
+                            fontStyle: FontStyle.italic,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
 
                     // Price Display
                     Row(
@@ -470,52 +559,6 @@ Widget _buildProductItem(
                         ),
                       ],
                     ),
-
-                    // Variants and Add-ons if any
-                    // if (cartProductModel.variantInfo != null &&
-                    //     cartProductModel.variantInfo!.variantName != null)
-                    //   Padding(
-                    //     padding: const EdgeInsets.only(top: 4),
-                    //     child: Text(
-                    //       'Variant: ${cartProductModel.variantInfo!.variantName}',
-                    //       style: TextStyle(
-                    //         fontSize: 11,
-                    //         fontFamily: AppThemeData.regular,
-                    //         color: AppThemeData.grey500,
-                    //         fontStyle: FontStyle.italic,
-                    //       ),
-                    //       maxLines: 1,
-                    //       overflow: TextOverflow.ellipsis,
-                    //     ),
-                    //   ),
-                    if (cartProductModel.extras != null &&
-                        cartProductModel.extras!.isNotEmpty)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(
-                          'Add-ons: ${cartProductModel.extras!.map((e) {
-                            try {
-                              if (e is Map && e['title'] != null) {
-                                return e['title'].toString();
-                              }
-                              if (e is String) {
-                                return e;
-                              }
-                              return (e.title ?? '').toString();
-                            } catch (_) {
-                              return '';
-                            }
-                          }).where((title) => title.isNotEmpty).join(', ')}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontFamily: AppThemeData.regular,
-                            color: AppThemeData.grey500,
-                            fontStyle: FontStyle.italic,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -560,6 +603,30 @@ Widget _buildProductShimmer(CartProductModel cartProductModel) {
       ),
     ),
   );
+}
+
+class _Placeholder extends StatelessWidget {
+  const _Placeholder({required this.isDark});
+
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: isDark ? AppThemeData.grey700 : AppThemeData.grey200,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.fastfood_rounded,
+            size: 60,
+            color: isDark ? AppThemeData.grey500 : AppThemeData.grey400,
+          ),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
 }
 
 // import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';

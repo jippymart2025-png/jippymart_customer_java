@@ -52,6 +52,11 @@ class _CouponListScreenState extends State<CouponListScreen> {
       ShowToastDialog.showToast('You have already used this coupon'.tr);
       return;
     }
+    // Check if wallet is being used - prevent coupon application
+    if (controller.useWalletBalance) {
+      ShowToastDialog.showToast('Cannot apply coupon when wallet amount is being used'.tr);
+      return;
+    }
     final enteredCode = _couponCodeController.text.trim().toLowerCase();
     final couponCode = coupon.code?.toLowerCase() ?? '';
     if (enteredCode.isNotEmpty && enteredCode != couponCode) {
@@ -75,6 +80,8 @@ class _CouponListScreenState extends State<CouponListScreen> {
     }
     controller.selectedCouponModel = coupon;
     controller.couponCodeController.text = coupon.code ?? '';
+    // Disable wallet when applying coupon
+    controller.useWalletBalance = false;
     controller.calculatePrice();
     ShowToastDialog.showToast('Coupon applied!'.tr);
     Get.back();

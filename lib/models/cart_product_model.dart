@@ -15,6 +15,7 @@ class CartProductModel {
   List<dynamic>? extras;
   VariantInfo? variantInfo;
   String? promoId; // Add missing promo_id field
+  Map<String, dynamic>? selectedOption; // Store selected option details
 
   CartProductModel({
     this.id,
@@ -31,6 +32,7 @@ class CartProductModel {
     this.variantInfo,
     this.extras,
     this.promoId, // Add to constructor
+    this.selectedOption,
   });
 
   CartProductModel.fromJson(Map<String, dynamic> json) {
@@ -47,6 +49,22 @@ class CartProductModel {
     extrasPrice = json['extras_price'];
     promoId = json['promo_id']; // Parse promo_id from JSON
 
+    // Parse selected option
+    final optionData = json['selected_option'];
+    if (optionData != null && optionData != "null") {
+      if (optionData is String) {
+        try {
+          selectedOption = Map<String, dynamic>.from(jsonDecode(optionData));
+        } catch (_) {
+          selectedOption = null;
+        }
+      } else if (optionData is Map<String, dynamic>) {
+        selectedOption = optionData;
+      } else if (optionData is Map) {
+        selectedOption = Map<String, dynamic>.from(optionData);
+      }
+    }
+
     extras = json['extras'] == "null" || json['extras'] == null
         ? null
         : "String" == json['extras'].runtimeType.toString()
@@ -59,7 +77,8 @@ class CartProductModel {
         variantInfo = null;
       } else if (vi is String) {
         variantInfo = VariantInfo.fromJson(
-            Map<String, dynamic>.from(jsonDecode(vi) as Map));
+          Map<String, dynamic>.from(jsonDecode(vi) as Map),
+        );
       } else if (vi is Map<String, dynamic>) {
         variantInfo = VariantInfo.fromJson(vi);
       } else if (vi is Map) {
@@ -91,6 +110,9 @@ class CartProductModel {
     if (variantInfo != null) {
       data['variant_info'] = variantInfo?.toJson(); // Handle null value
     }
+    if (selectedOption != null) {
+      data['selected_option'] = selectedOption;
+    }
     return data;
   }
 }
@@ -98,6 +120,7 @@ class CartProductModel {
 class VariantInfo {
   String? variantId;
   String? variantPrice;
+  String? veriant;
   String? variantSku;
   String? variantImage;
   dynamic variantOptions; // Changed to dynamic to handle both Map and List

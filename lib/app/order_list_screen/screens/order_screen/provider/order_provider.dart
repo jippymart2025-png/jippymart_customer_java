@@ -477,126 +477,126 @@ class OrderProvider extends ChangeNotifier {
   }
 
   /// Reorder all items from an order (batched live catalog fetch, variant-aware prices).
-  Future<void> reorderOrder(OrderModel order, BuildContext context) async {
-    if (order.products == null || order.products!.isEmpty) {
-      ShowToastDialog.showToast("No items to reorder".tr);
-      return;
-    }
-
-    ShowToastDialog.showLoader("Fetching current prices...".tr);
-
-    try {
-      int addedCount = 0;
-      int failedCount = 0;
-      int unavailableCount = 0;
-      final vendor = order.vendor;
-      final lines = order.products!;
-
-      final foodCatalogIds = <String>{};
-      for (final e in lines) {
-        if (_isMartOrderLine(e)) continue;
-        final cid = FireStoreUtils.catalogIdFromOrderLine(e.id);
-        if (cid.isNotEmpty) foodCatalogIds.add(cid);
-      }
-
-      var foodByCatalogId = <String, ProductModel?>{};
-      if (foodCatalogIds.isNotEmpty) {
-        foodByCatalogId = await FireStoreUtils.getProductsByIds(
-          foodCatalogIds.toList(),
-          forceRefresh: true,
-        );
-      }
-
-      for (final element in lines) {
-        try {
-          final isMartLine = _isMartOrderLine(element);
-          ProductModel? p;
-          if (!isMartLine) {
-            final cid = FireStoreUtils.catalogIdFromOrderLine(element.id);
-            if (cid.isEmpty) {
-              unavailableCount++;
-              continue;
-            }
-            p = foodByCatalogId[cid];
-            if (!_isLiveFoodProductReorderable(p)) {
-              unavailableCount++;
-              continue;
-            }
-          }
-
-          var info = FireStoreUtils.priceInfoForReorderLine(
-            product: p,
-            element: element,
-            vendor: vendor,
-          );
-          if (info == null && isMartLine) {
-            info = FireStoreUtils.priceInfoForReorderLine(
-              product: null,
-              element: element,
-              vendor: vendor,
-            );
-          }
-
-          if (info == null) {
-            unavailableCount++;
-            continue;
-          }
-
-          final productToAdd = CartProductModel(
-            id: element.id,
-            name: element.name,
-            photo: element.photo,
-            price: info.currentPrice.toStringAsFixed(2),
-            discountPrice: info.discountPrice.toStringAsFixed(2),
-            promoId: info.promoId ?? element.promoId,
-            quantity: element.quantity ?? 1,
-            vendorID: element.vendorID,
-            categoryId: element.categoryId,
-            merchantPrice: info.merchantPrice ?? element.merchantPrice,
-            extrasPrice: element.extrasPrice,
-            extras: element.extras,
-            variantInfo: element.variantInfo,
-          );
-
-          await addToCartWithLivePrices(
-            cartProductModel: productToAdd,
-            context: context,
-          );
-          addedCount++;
-        } catch (e) {
-          failedCount++;
-          log('Error adding item ${element.id}: $e');
-        }
-      }
-
-      ShowToastDialog.closeLoader();
-
-      if (addedCount > 0 && unavailableCount == 0 && failedCount == 0) {
-        ShowToastDialog.showToast("$addedCount item(s) added to cart".tr);
-      } else if (addedCount > 0) {
-        final parts = <String>["$addedCount item(s) added to cart".tr];
-        if (unavailableCount > 0) {
-          parts.add(
-            "$unavailableCount item(s) were no longer available and were skipped"
-                .tr,
-          );
-        }
-        if (failedCount > 0) {
-          parts.add("$failedCount item(s) could not be added".tr);
-        }
-        ShowToastDialog.showToast(parts.join(". "));
-      } else if (unavailableCount > 0 && failedCount == 0) {
-        ShowToastDialog.showToast("These items are no longer available".tr);
-      } else if (failedCount > 0) {
-        ShowToastDialog.showToast(
-          "$failedCount item(s) could not be added. Please try again.".tr,
-        );
-      }
-    } catch (e) {
-      ShowToastDialog.closeLoader();
-      ShowToastDialog.showToast("Error fetching current prices".tr);
-    }
-  }
+  // Future<void> reorderOrder(OrderModel order, BuildContext context) async {
+  //   if (order.products == null || order.products!.isEmpty) {
+  //     ShowToastDialog.showToast("No items to reorder".tr);
+  //     return;
+  //   }
+  //
+  //   ShowToastDialog.showLoader("Fetching current prices...".tr);
+  //
+  //   try {
+  //     int addedCount = 0;
+  //     int failedCount = 0;
+  //     int unavailableCount = 0;
+  //     final vendor = order.vendor;
+  //     final lines = order.products!;
+  //
+  //     final foodCatalogIds = <String>{};
+  //     for (final e in lines) {
+  //       if (_isMartOrderLine(e)) continue;
+  //       final cid = FireStoreUtils.catalogIdFromOrderLine(e.id);
+  //       if (cid.isNotEmpty) foodCatalogIds.add(cid);
+  //     }
+  //
+  //     var foodByCatalogId = <String, ProductModel?>{};
+  //     if (foodCatalogIds.isNotEmpty) {
+  //       foodByCatalogId = await FireStoreUtils.getProductsByIds(
+  //         foodCatalogIds.toList(),
+  //         forceRefresh: true,
+  //       );
+  //     }
+  //
+  //     for (final element in lines) {
+  //       try {
+  //         final isMartLine = _isMartOrderLine(element);
+  //         ProductModel? p;
+  //         if (!isMartLine) {
+  //           final cid = FireStoreUtils.catalogIdFromOrderLine(element.id);
+  //           if (cid.isEmpty) {
+  //             unavailableCount++;
+  //             continue;
+  //           }
+  //           p = foodByCatalogId[cid];
+  //           if (!_isLiveFoodProductReorderable(p)) {
+  //             unavailableCount++;
+  //             continue;
+  //           }
+  //         }
+  //
+  //         var info = FireStoreUtils.priceInfoForReorderLine(
+  //           product: p,
+  //           element: element,
+  //           vendor: vendor,
+  //         );
+  //         if (info == null && isMartLine) {
+  //           info = FireStoreUtils.priceInfoForReorderLine(
+  //             product: null,
+  //             element: element,
+  //             vendor: vendor,
+  //           );
+  //         }
+  //
+  //         if (info == null) {
+  //           unavailableCount++;
+  //           continue;
+  //         }
+  //
+  //         final productToAdd = CartProductModel(
+  //           id: element.id,
+  //           name: element.name,
+  //           photo: element.photo,
+  //           price: info.currentPrice.toStringAsFixed(2),
+  //           discountPrice: info.discountPrice.toStringAsFixed(2),
+  //           promoId: info.promoId ?? element.promoId,
+  //           quantity: element.quantity ?? 1,
+  //           vendorID: element.vendorID,
+  //           categoryId: element.categoryId,
+  //           merchantPrice: info.merchantPrice ?? element.merchantPrice,
+  //           extrasPrice: element.extrasPrice,
+  //           extras: element.extras,
+  //           variantInfo: element.variantInfo,
+  //         );
+  //
+  //         await addToCartWithLivePrices(
+  //           cartProductModel: productToAdd,
+  //           context: context,
+  //         );
+  //         addedCount++;
+  //       } catch (e) {
+  //         failedCount++;
+  //         log('Error adding item ${element.id}: $e');
+  //       }
+  //     }
+  //
+  //     ShowToastDialog.closeLoader();
+  //
+  //     if (addedCount > 0 && unavailableCount == 0 && failedCount == 0) {
+  //       ShowToastDialog.showToast("$addedCount item(s) added to cart".tr);
+  //     } else if (addedCount > 0) {
+  //       final parts = <String>["$addedCount item(s) added to cart".tr];
+  //       if (unavailableCount > 0) {
+  //         parts.add(
+  //           "$unavailableCount item(s) were no longer available and were skipped"
+  //               .tr,
+  //         );
+  //       }
+  //       if (failedCount > 0) {
+  //         parts.add("$failedCount item(s) could not be added".tr);
+  //       }
+  //       ShowToastDialog.showToast(parts.join(". "));
+  //     } else if (unavailableCount > 0 && failedCount == 0) {
+  //       ShowToastDialog.showToast("These items are no longer available".tr);
+  //     } else if (failedCount > 0) {
+  //       ShowToastDialog.showToast(
+  //         "$failedCount item(s) could not be added. Please try again.".tr,
+  //       );
+  //     }
+  //   } catch (e) {
+  //     ShowToastDialog.closeLoader();
+  //     ShowToastDialog.showToast("Error fetching current prices".tr);
+  //   }
+  // }
 
   // Method to manually refresh orders
   Future<void> refreshOrders() async {

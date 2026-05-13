@@ -90,9 +90,10 @@ class ProductDetailsView extends StatelessWidget {
                                         productModel.id.toString(),
                                       );
                                     },
-                                    child: controller.isProductFavorite(
-                                            productModel.id.toString(),
-                                          )
+                                    child:
+                                        controller.isProductFavorite(
+                                          productModel.id.toString(),
+                                        )
                                         ? SvgPicture.asset(
                                             "assets/icons/ic_like_fill.svg",
                                           )

@@ -519,7 +519,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                       ),
                       const SizedBox(height: 12),
                       ...(widget.product.options!.map((option) {
-                        final hasDiscount = option['original_price'] != null &&
+                        final hasDiscount =
+                            option['original_price'] != null &&
                             option['price'] != null &&
                             option['original_price'] > option['price'];
                         return Container(
@@ -537,7 +538,9 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                                 child: SizedBox(
                                   width: 56,
                                   height: 56,
-                                  child: (option['image']?.toString().isNotEmpty == true)
+                                  child:
+                                      (option['image']?.toString().isNotEmpty ==
+                                          true)
                                       ? NetworkImageWidget(
                                           imageUrl: option['image'].toString(),
                                           width: 56,
@@ -559,7 +562,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                                   children: [
                                     Text(
                                       option['option_title']?.toString() ??
-                                          option['option_subtitle']?.toString() ??
+                                          option['option_subtitle']
+                                              ?.toString() ??
                                           'Option',
                                       style: const TextStyle(
                                         fontSize: 14,
@@ -586,7 +590,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                                             style: TextStyle(
                                               fontSize: 12,
                                               color: Colors.grey[600],
-                                              decoration: TextDecoration.lineThrough,
+                                              decoration:
+                                                  TextDecoration.lineThrough,
                                             ),
                                           ),
                                         ],
@@ -951,13 +956,16 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         photo: selectedOption['image']?.toString().isNotEmpty == true
             ? selectedOption['image'].toString()
             : widget.product.photo,
-        price: selectedOption['original_price']?.toString() ??
+        price:
+            selectedOption['original_price']?.toString() ??
             selectedOption['price']?.toString() ??
             widget.product.price.toString(),
-        discountPrice: selectedOption['price']?.toString() ??
+        discountPrice:
+            selectedOption['price']?.toString() ??
             widget.product.disPrice?.toString() ??
             widget.product.price.toString(),
-        vendorID: "mart_${widget.product.vendorID ?? martController.selectedVendorId ?? 'unknown'}",
+        vendorID:
+            "mart_${widget.product.vendorID ?? martController.selectedVendorId ?? 'unknown'}",
         vendorName: "Jippy Mart",
         categoryId: widget.product.categoryID,
         quantity: 1,
@@ -965,6 +973,7 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
         extras: [],
         variantInfo: null,
         promoId: null,
+        selectedOption: selectedOption,
       );
       final success = await cartControllerProvider.addToCart(
         cartProductModel: cartProduct,
@@ -1014,7 +1023,8 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
 
   /// Show bottom sheet to choose an option (when product has options)
   void _showOptionsBottomSheet() {
-    if (widget.product.options == null || widget.product.options!.isEmpty) return;
+    if (widget.product.options == null || widget.product.options!.isEmpty)
+      return;
     final sheetHeight = MediaQuery.of(context).size.height * 0.6;
     showModalBottomSheet(
       context: context,
@@ -1056,126 +1066,134 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
               ),
               Expanded(
                 child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: widget.product.options!.length,
-                itemBuilder: (context, index) {
-                  final option = widget.product.options![index];
-                  final hasDiscount = option['original_price'] != null &&
-                      option['price'] != null &&
-                      option['original_price'] > option['price'];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: SizedBox(
-                            width: 50,
-                            height: 50,
-                            child: (option['image']?.toString().isNotEmpty == true)
-                                ? NetworkImageWidget(
-                                    imageUrl: option['image'].toString(),
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                  )
-                                : NetworkImageWidget(
-                                    imageUrl: widget.product.photo,
-                                    width: 50,
-                                    height: 50,
-                                    fit: BoxFit.cover,
-                                  ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                option['option_title']?.toString() ??
-                                    option['option_subtitle']?.toString() ??
-                                    'Option',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Text(
-                                    '₹${option['price']?.toString() ?? '0'}',
-                                    style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.green,
+                  itemBuilder: (context, index) {
+                    final option = widget.product.options![index];
+                    final hasDiscount =
+                        option['original_price'] != null &&
+                        option['price'] != null &&
+                        option['original_price'] > option['price'];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: SizedBox(
+                              width: 50,
+                              height: 50,
+                              child:
+                                  (option['image']?.toString().isNotEmpty ==
+                                      true)
+                                  ? NetworkImageWidget(
+                                      imageUrl: option['image'].toString(),
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : NetworkImageWidget(
+                                      imageUrl: widget.product.photo,
+                                      width: 50,
+                                      height: 50,
+                                      fit: BoxFit.cover,
                                     ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  option['option_title']?.toString() ??
+                                      option['option_subtitle']?.toString() ??
+                                      'Option',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  if (hasDiscount) ...[
-                                    const SizedBox(width: 8),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
                                     Text(
-                                      '₹${option['original_price']?.toString() ?? '0'}',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey[600],
-                                        decoration: TextDecoration.lineThrough,
+                                      '₹${option['price']?.toString() ?? '0'}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green,
                                       ),
                                     ),
+                                    if (hasDiscount) ...[
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        '₹${option['original_price']?.toString() ?? '0'}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                          decoration:
+                                              TextDecoration.lineThrough,
+                                        ),
+                                      ),
+                                    ],
                                   ],
-                                ],
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        Material(
-                          color: ColorConst.orangeLight,
-                          borderRadius: BorderRadius.circular(10),
-                          child: InkWell(
+                          Material(
+                            color: ColorConst.orangeLight,
                             borderRadius: BorderRadius.circular(10),
-                            onTap: () {
-                              Navigator.pop(context);
-                              _addOptionToCart(option);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              child: Text(
-                                'ADD',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _addOptionToCart(option);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 10,
+                                ),
+                                child: Text(
+                                  'ADD',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
 
   Widget _buildAddToCartButton() {
-    final hasOptions = widget.product.has_options == true &&
+    final hasOptions =
+        widget.product.has_options == true &&
         widget.product.options != null &&
         widget.product.options!.isNotEmpty;
 
@@ -1203,10 +1221,14 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
       child: ElevatedButton(
         onPressed: () async {
           try {
-            final martController = Provider.of<MartProvider>(context, listen: false);
+            final martController = Provider.of<MartProvider>(
+              context,
+              listen: false,
+            );
             CartControllerProvider cartControllerProvider =
                 Provider.of<CartControllerProvider>(context, listen: false);
-            final martVendorID = "mart_${widget.product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
+            final martVendorID =
+                "mart_${widget.product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
             final cartProduct = CartProductModel(
               id: widget.product.id,
               name: widget.product.name,
@@ -1371,7 +1393,10 @@ class _MartProductDetailsScreenState extends State<MartProductDetailsScreen>
                 IconButton(
                   onPressed: () async {
                     try {
-                      final martController = Provider.of<MartProvider>(context, listen: false);
+                      final martController = Provider.of<MartProvider>(
+                        context,
+                        listen: false,
+                      );
                       // Get the cart controller
                       CartControllerProvider cartControllerProvider =
                           Provider.of<CartControllerProvider>(

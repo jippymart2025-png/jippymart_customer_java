@@ -67,7 +67,8 @@ class MartProductCard extends StatelessWidget {
       final martController = Provider.of<MartProvider>(context, listen: false);
       CartControllerProvider cartControllerProvider =
           Provider.of<CartControllerProvider>(context, listen: false);
-      final martVendorID = "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
+      final martVendorID =
+          "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}";
       final cartProduct = CartProductModel(
         id: product.id,
         name: product.name,
@@ -141,7 +142,7 @@ class MartProductCard extends StatelessWidget {
           ),
         ),
       );
-      
+
       // Ensure snackbar dismisses after 2 seconds
       Timer(const Duration(seconds: 2), () {
         if (context.mounted) {
@@ -255,7 +256,8 @@ class MartProductCard extends StatelessWidget {
             selectedOption['price']?.toString() ??
             product.disPrice?.toString() ??
             product.price.toString(),
-        vendorID: "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}",
+        vendorID:
+            "mart_${product.vendorID ?? martController.selectedVendorId ?? 'unknown'}",
         vendorName: "Jippy Mart",
         categoryId: product.categoryID,
         quantity: 1,
@@ -263,6 +265,7 @@ class MartProductCard extends StatelessWidget {
         extras: [],
         variantInfo: null,
         promoId: null,
+        selectedOption: selectedOption,
       );
 
       print('[CART] Adding option to cart: ${cartProduct.name}');
