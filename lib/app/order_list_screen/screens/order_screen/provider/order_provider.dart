@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:developer';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
@@ -597,6 +599,240 @@ class OrderProvider extends ChangeNotifier {
   //     ShowToastDialog.showToast("Error fetching current prices".tr);
   //   }
   // }
+
+  Future<void> reorderOrder(OrderModel order, BuildContext context) async {
+    if (order.products == null || order.products!.isEmpty) {
+      ShowToastDialog.showToast("No items to reorder".tr);
+      return;
+    }
+
+    ShowToastDialog.showLoader("Fetching current prices...".tr);
+
+    try {
+      int addedCount = 0;
+      int failedCount = 0;
+      int unavailableCount = 0;
+
+      final vendor = order.vendor;
+      final lines = order.products!;
+
+      /// Fetch all food products first
+      final foodCatalogIds = <String>{};
+
+      for (final e in lines) {
+        if (_isMartOrderLine(e)) continue;
+
+        final cid = FireStoreUtils.catalogIdFromOrderLine(e.id);
+
+        if (cid.isNotEmpty) {
+          foodCatalogIds.add(cid);
+        }
+      }
+
+      Map<String, ProductModel?> foodByCatalogId = {};
+
+      if (foodCatalogIds.isNotEmpty) {
+        foodByCatalogId = await FireStoreUtils.getProductsByIds(
+          foodCatalogIds.toList(),
+          forceRefresh: true,
+        );
+      }
+
+      /// Process each order item
+      for (final element in lines) {
+        try {
+          final isMartLine = _isMartOrderLine(element);
+
+          ProductModel? product;
+
+          if (!isMartLine) {
+            final cid = FireStoreUtils.catalogIdFromOrderLine(element.id);
+
+            if (cid.isEmpty) {
+              unavailableCount++;
+              continue;
+            }
+
+            product = foodByCatalogId[cid];
+
+            /// Product exists check
+            if (product == null) {
+              unavailableCount++;
+              continue;
+            }
+
+            /// Existing reorder validation
+            if (!_isLiveFoodProductReorderable(product)) {
+              unavailableCount++;
+              continue;
+            }
+
+            /// Available days + timing check
+            if (!isProductAvailableNow(product)) {
+              unavailableCount++;
+              continue;
+            }
+          }
+
+          /// Get latest pricing info
+          var info = FireStoreUtils.priceInfoForReorderLine(
+            product: product,
+            element: element,
+            vendor: vendor,
+          );
+
+          if (info == null && isMartLine) {
+            info = FireStoreUtils.priceInfoForReorderLine(
+              product: null,
+              element: element,
+              vendor: vendor,
+            );
+          }
+
+          if (info == null) {
+            unavailableCount++;
+            continue;
+          }
+
+          /// Create cart item
+          final productToAdd = CartProductModel(
+            id: element.id,
+            name: element.name,
+            photo: element.photo,
+            price: info.currentPrice.toStringAsFixed(2),
+            discountPrice: info.discountPrice.toStringAsFixed(2),
+            promoId: info.promoId ?? element.promoId,
+            quantity: element.quantity ?? 1,
+            vendorID: element.vendorID,
+            categoryId: element.categoryId,
+            merchantPrice: info.merchantPrice ?? element.merchantPrice,
+            extrasPrice: element.extrasPrice,
+            extras: element.extras,
+            variantInfo: element.variantInfo,
+          );
+
+          /// Add to cart
+          await addToCartWithLivePrices(
+            cartProductModel: productToAdd,
+            context: context,
+          );
+
+          addedCount++;
+        } catch (e) {
+          failedCount++;
+          log('Error adding item ${element.id}: $e');
+        }
+      }
+
+      ShowToastDialog.closeLoader();
+
+      /// Result messages
+      if (addedCount > 0 && unavailableCount == 0 && failedCount == 0) {
+        ShowToastDialog.showToast("$addedCount item(s) added to cart".tr);
+      } else if (addedCount > 0) {
+        final parts = <String>["$addedCount item(s) added to cart".tr];
+
+        if (unavailableCount > 0) {
+          parts.add(
+            "$unavailableCount item(s) were no longer available and were skipped"
+                .tr,
+          );
+        }
+
+        if (failedCount > 0) {
+          parts.add("$failedCount item(s) could not be added".tr);
+        }
+
+        ShowToastDialog.showToast(parts.join(". "));
+      } else if (unavailableCount > 0 && failedCount == 0) {
+        ShowToastDialog.showToast("These items are currently unavailable".tr);
+      } else if (failedCount > 0) {
+        ShowToastDialog.showToast(
+          "$failedCount item(s) could not be added. Please try again.".tr,
+        );
+      }
+    } catch (e) {
+      ShowToastDialog.closeLoader();
+
+      log("Reorder error: $e");
+
+      ShowToastDialog.showToast("Error fetching current prices".tr);
+    }
+  }
+
+  bool isProductAvailableNow(ProductModel? product) {
+    if (product == null) return false;
+
+    try {
+      final now = DateTime.now();
+
+      final currentDay = DateFormat('EEEE').format(now);
+
+      final timings = product.availableTimings;
+
+      if (timings == null || timings.isEmpty) {
+        return true;
+      }
+
+      ProductAvailabilitySchedule? todaySchedule;
+
+      for (final item in timings) {
+        if ((item.day ?? '').toLowerCase() == currentDay.toLowerCase()) {
+          todaySchedule = item;
+          break;
+        }
+      }
+
+      if (todaySchedule == null) {
+        return false;
+      }
+
+      final slots = todaySchedule.timeslot ?? [];
+
+      if (slots.isEmpty) {
+        return false;
+      }
+
+      for (final slot in slots) {
+        final from = slot.from;
+        final to = slot.to;
+
+        if (from == null || to == null) continue;
+
+        final fromParts = from.split(":");
+        final toParts = to.split(":");
+
+        final fromTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          int.parse(fromParts[0]),
+          int.parse(fromParts[1]),
+        );
+
+        final toTime = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          int.parse(toParts[0]),
+          int.parse(toParts[1]),
+        );
+
+        log("NOW => $now");
+        log("FROM => $fromTime");
+        log("TO => $toTime");
+
+        if (!now.isBefore(fromTime) && !now.isAfter(toTime)) {
+          return true;
+        }
+      }
+
+      return false;
+    } catch (e) {
+      log("Availability timing error: $e");
+      return false;
+    }
+  }
 
   // Method to manually refresh orders
   Future<void> refreshOrders() async {

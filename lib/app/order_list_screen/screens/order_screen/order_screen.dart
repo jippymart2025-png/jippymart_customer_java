@@ -495,27 +495,62 @@ class _OrderScreenState extends State<OrderScreen>
   Widget _buildOrderTotal(OrderModel orderModel) {
     final double toPayAmount = orderModel.toPayAmount ?? 0.0;
 
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: Text(
-            "Total to Pay",
-            style: TextStyle(
-              color: AppThemeData.grey900,
-              fontFamily: AppThemeData.semiBold,
-              fontWeight: FontWeight.w600,
-              fontSize: 16,
+        if ((orderModel.walletUsed ?? 0) > 0)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    "Wallet Used",
+                    style: TextStyle(
+                      color: AppThemeData.grey700,
+                      fontFamily: AppThemeData.medium,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+
+                Text(
+                  "- ${Constant.amountShow(amount: orderModel.walletUsed.toString())}",
+                  style: TextStyle(
+                    color: AppThemeData.success300,
+                    fontFamily: AppThemeData.medium,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-        Text(
-          Constant.amountShow(amount: toPayAmount.toString()),
-          style: TextStyle(
-            color: AppThemeData.primary300,
-            fontFamily: AppThemeData.semiBold,
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
+
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                "Total to Pay",
+                style: TextStyle(
+                  color: AppThemeData.grey900,
+                  fontFamily: AppThemeData.semiBold,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+
+            Text(
+              Constant.amountShow(
+                amount: "${toPayAmount - (orderModel.walletUsed ?? 0)}",
+              ),
+              style: TextStyle(
+                color: AppThemeData.primary300,
+                fontFamily: AppThemeData.semiBold,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
         ),
       ],
     );

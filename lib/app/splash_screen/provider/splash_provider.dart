@@ -296,16 +296,24 @@ class SplashProvider extends ChangeNotifier {
         );
         _checkUpdatesInBackground();
         return;
+      } else if (hasLocationInConstant && Constant.isZoneAvailable != true) {
+        // Location exists but zone NOT available - show location permission screen to select a different location
+        print(
+          '[SPLASH] Location exists but zone NOT available. Showing location permission screen for user to select a location with service.',
+        );
+        _hasNavigated = true;
+        Get.offAll(
+          () => const LocationPermissionScreen(),
+          transition: Transition.fadeIn,
+          duration: const Duration(milliseconds: 800),
+        );
+        _checkUpdatesInBackground();
+        return;
       } else if (hasAnyLocation || hasAnyZone) {
-        // Location or zone exists (cached or in Constant) - allow to dashboard
-        // Zone check can happen in background if needed
-        if (!inZone && hasLocationInConstant) {
+        // Location or zone exists (cached or in Constant) and zone is available - allow to dashboard
+        if (hasCachedLocation || hasCachedZone) {
           print(
-            '[SPLASH] Location exists but zone not available. Allowing to dashboard - zone check can continue in background',
-          );
-        } else if (hasCachedLocation || hasCachedZone) {
-          print(
-            '[SPLASH] Cached location/zone found. Allowing to dashboard - data will be loaded',
+            '[SPLASH] Cached location/zone found and zone available. Allowing to dashboard - data will be loaded',
           );
         }
       }

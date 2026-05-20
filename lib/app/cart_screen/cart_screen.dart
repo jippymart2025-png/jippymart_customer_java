@@ -298,7 +298,13 @@ class _CartScreenState extends State<CartScreen> {
     return CustomScrollView(
       physics: const BouncingScrollPhysics(),
       slivers: [
-        SliverToBoxAdapter(child: _buildDeliveryAddress(controller)),
+        SliverToBoxAdapter(
+          child: Consumer<CartControllerProvider>(
+            builder: (context, controller, child) {
+              return _buildDeliveryAddress(controller);
+            },
+          ),
+        ),
         SliverToBoxAdapter(
           child: _buildSectionCard(
             margin: const EdgeInsets.symmetric(horizontal: 12),
@@ -306,7 +312,13 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ),
         const SliverToBoxAdapter(child: SizedBox(height: 8)),
-        SliverToBoxAdapter(child: _buildOffersSection(controller)),
+        SliverToBoxAdapter(
+          child: Consumer<CartControllerProvider>(
+            builder: (context, controller, child) {
+              return _buildOffersSection(controller);
+            },
+          ),
+        ),
         const SliverToBoxAdapter(child: SizedBox(height: 8)),
         SliverToBoxAdapter(child: _buildBillDetails(controller)),
         const SliverToBoxAdapter(child: SizedBox(height: 8)),

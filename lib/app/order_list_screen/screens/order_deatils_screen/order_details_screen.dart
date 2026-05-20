@@ -1654,11 +1654,45 @@ class OrderDetailsScreen extends StatelessWidget {
                   label: "Taxes & Charges",
                   value: Constant.amountShow(amount: bill.taxAmount.toString()),
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 5),
+
+                if ((order.walletUsed ?? 0) > 0) ...[
+                  Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Wallet Used".tr,
+                            style: TextStyle(
+                              fontFamily: AppThemeData.medium,
+                              fontSize: 16,
+                              color: AppThemeData.grey700,
+                            ),
+                          ),
+
+                          Text(
+                            Constant.amountShow(amount: "${order.walletUsed}"),
+                            style: TextStyle(
+                              fontFamily: AppThemeData.medium,
+                              fontSize: 16,
+                              color: AppThemeData.green,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ],
+                const SizedBox(height: 5),
+
                 _buildBillRow(
                   label: "To Pay".tr,
                   value: Constant.amountShow(
-                    amount: "${bill.totalAmount + (surgeFee ?? 0.0)}",
+                    amount:
+                        ((bill.totalAmount + (surgeFee ?? 0.0)) -
+                                (order.walletUsed ?? 0))
+                            .toStringAsFixed(0),
                   ),
                 ),
               ],

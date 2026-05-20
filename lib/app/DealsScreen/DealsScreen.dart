@@ -189,6 +189,127 @@ class _DeliveryTickerState extends State<_DeliveryTicker> {
   }
 }
 
+// ── Skeleton Card (shown while waiting for zone/data) ─────────────
+class _SkeletonCard extends StatefulWidget {
+  final _RS rs;
+
+  const _SkeletonCard({required this.rs});
+
+  @override
+  State<_SkeletonCard> createState() => _SkeletonCardState();
+}
+
+class _SkeletonCardState extends State<_SkeletonCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _shimmer;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _shimmer = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+    _anim = CurvedAnimation(parent: _shimmer, curve: Curves.easeInOut);
+  }
+
+  @override
+  void dispose() {
+    _shimmer.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _anim,
+      builder: (_, __) {
+        final shimmerColor = Color.lerp(
+          const Color(0xFFEDE8F8),
+          const Color(0xFFD9D3F0),
+          _anim.value,
+        )!;
+        return Container(
+          decoration: BoxDecoration(
+            color: _DC.surface,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2D1B4E).withOpacity(0.07),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                // Image placeholder
+                Flexible(flex: 5, child: Container(color: shimmerColor)),
+                // Details placeholder
+                Flexible(
+                  flex: 4,
+                  child: Padding(
+                    padding: EdgeInsets.all(widget.rs.cardPad),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          height: 11,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: shimmerColor,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        Container(
+                          height: 9,
+                          width: 80,
+                          decoration: BoxDecoration(
+                            color: shimmerColor,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              height: 13,
+                              width: 55,
+                              decoration: BoxDecoration(
+                                color: shimmerColor,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                            ),
+                            Container(
+                              width: widget.rs.btnWidth,
+                              height: widget.rs.btnHeight,
+                              decoration: BoxDecoration(
+                                color: shimmerColor,
+                                borderRadius: BorderRadius.circular(
+                                  widget.rs.btnRadius,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 // ── Main Screen ───────────────────────────────────────────────────
 class DealsScreen extends StatefulWidget {
   const DealsScreen({super.key});
@@ -199,12 +320,17 @@ class DealsScreen extends StatefulWidget {
 
 class _DealsScreenState extends State<DealsScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
-  bool _isLoading = true;
+  // ── State ──────────────────────────────────────────────────────
+  bool _isLoading = false;
+
+  // _isWaitingForZone = true means "show skeleton" (zone not yet known OR
+  // data fetch in progress).  We start true so the very first frame always
+  // renders skeleton, never a blank/empty flash.
+  bool _isWaitingForZone = true;
   List<PromotionModel> _promotionsList = [];
   List<BannerModel> _dealsBanners = [];
   String? _currentZoneId;
   HomeProvider? _homeProvider;
-  int _selectedCategoryIndex = 0;
 
   static const Duration _networkTimeout = Duration(seconds: 10);
   static const Duration _cacheDuration = Duration(minutes: 3);
@@ -216,24 +342,18 @@ class _DealsScreenState extends State<DealsScreen>
   DateTime? _lastLoadTime;
   int _retryCount = 0;
   static const int _maxRetries = 1;
+
   Timer? _zoneDebounce;
+  Timer? _zonePollTimer; // polls every 250 ms until zone arrives
   _RS? _cachedRS;
 
   late AnimationController _headerAnim;
   late Animation<double> _headerFade;
   late Animation<Offset> _headerSlide;
 
-  // final List<String> _categories = [
-  //   'All Deals',
-  //   'Food',
-  //   'Grocery',
-  //   'Beverages',
-  //   'Snacks',
-  //   'Offers',
-  // ];
+  // ── Zone helpers ───────────────────────────────────────────────
 
-  /// Prefer [Constant.selectedZone], fall back to [Constant.selectedLocation.zoneId]
-  /// so deals refresh when zone is updated either way (e.g. automatic GPS/zone API).
+  /// Returns the best zone ID currently available in memory — no I/O.
   String? _effectiveZoneId() {
     final fromZone = Constant.selectedZone?.id?.trim();
     if (fromZone != null && fromZone.isNotEmpty) return fromZone;
@@ -242,12 +362,42 @@ class _DealsScreenState extends State<DealsScreen>
     return null;
   }
 
-  void _onHomeProviderNotify() {
-    if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _checkAndReloadIfZoneChanged();
+  /// Starts a 250 ms poller.  The moment a zone is written to
+  /// [Constant] by any other code path (HomeProvider, splash, etc.)
+  /// the poller fires [_loadAllData] and cancels itself.
+  /// Hard cap: 8 s — after that we show the empty state.
+  void _startZonePoller() {
+    _zonePollTimer?.cancel();
+    _zonePollTimer = Timer.periodic(const Duration(milliseconds: 250), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      final zoneId = _effectiveZoneId();
+      if (zoneId != null && zoneId.isNotEmpty) {
+        t.cancel();
+        _zonePollTimer = null;
+        _currentZoneId = zoneId;
+        // Don't clear _isWaitingForZone here — _loadAllData's finally block
+        // will clear it once data is actually ready, preventing any empty flash.
+        _loadAllData();
+      }
+    });
+
+    // Safety cap — stop polling after 8 s, show empty state
+    Future.delayed(const Duration(seconds: 8), () {
+      if (!mounted || !_isWaitingForZone) return;
+      _zonePollTimer?.cancel();
+      _zonePollTimer = null;
+      if (mounted)
+        setState(() {
+          _isWaitingForZone = false;
+          _isLoading = false;
+        });
     });
   }
+
+  // ── Lifecycle ──────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -270,9 +420,16 @@ class _DealsScreenState extends State<DealsScreen>
             curve: const Interval(0.1, 0.8, curve: Curves.easeOutCubic),
           ),
         );
-
-    _loadAllDataWithCache();
     _headerAnim.forward();
+
+    if (_currentZoneId != null && _currentZoneId!.isNotEmpty) {
+      // Zone already known — load immediately, skeleton shown until done.
+      _loadAllDataWithCache();
+    } else {
+      // Zone not ready — poller will call _loadAllData when it arrives.
+      // _isWaitingForZone is already true from field declaration.
+      _startZonePoller();
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -283,9 +440,10 @@ class _DealsScreenState extends State<DealsScreen>
 
   @override
   void dispose() {
+    _zonePollTimer?.cancel();
+    _zoneDebounce?.cancel();
     _homeProvider?.removeListener(_onHomeProviderNotify);
     WidgetsBinding.instance.removeObserver(this);
-    _zoneDebounce?.cancel();
     _headerAnim.dispose();
     super.dispose();
   }
@@ -303,41 +461,64 @@ class _DealsScreenState extends State<DealsScreen>
     if (state == AppLifecycleState.resumed) _checkAndReloadIfZoneChanged();
   }
 
-  void _checkAndReloadIfZoneChanged() {
-    final newZoneId = _effectiveZoneId();
-    if (newZoneId != null &&
-        newZoneId.isNotEmpty &&
-        newZoneId != _currentZoneId) {
-      _zoneDebounce?.cancel();
-      _zoneDebounce = Timer(const Duration(milliseconds: 500), () {
-        if (!mounted) return;
-        final confirmed = _effectiveZoneId();
-        if (confirmed != null &&
-            confirmed.isNotEmpty &&
-            confirmed == newZoneId) {
-          final previousZoneId = _currentZoneId;
-          _currentZoneId = newZoneId;
-          _lastLoadTime = null;
-          if (previousZoneId != null &&
-              previousZoneId.isNotEmpty &&
-              previousZoneId != newZoneId) {
-            CacheManager().remove('deals_banners_$previousZoneId');
-            CacheManager().remove('promotions_$previousZoneId');
-          }
-          _productCache.clear();
-          _vendorCache.clear();
-          _restaurantStatusCache.clear();
+  // ── Zone change detection ──────────────────────────────────────
+
+  void _onHomeProviderNotify() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _checkAndReloadIfZoneChanged();
+      // If we're sitting empty because zone wasn't ready on first load,
+      // reload the moment HomeProvider delivers a zone.
+      if (!_isLoading && !_isWaitingForZone && _promotionsList.isEmpty) {
+        final zoneNow = _effectiveZoneId();
+        if (zoneNow != null && zoneNow.isNotEmpty) {
+          _zonePollTimer?.cancel();
+          _zonePollTimer = null;
           _loadAllData();
         }
-      });
-    }
+      }
+    });
   }
+
+  void _checkAndReloadIfZoneChanged() {
+    final newZoneId = _effectiveZoneId();
+    if (newZoneId == null || newZoneId.isEmpty || newZoneId == _currentZoneId) {
+      return;
+    }
+    _zoneDebounce?.cancel();
+    _zoneDebounce = Timer(const Duration(milliseconds: 400), () {
+      if (!mounted) return;
+      final confirmed = _effectiveZoneId();
+      if (confirmed == null || confirmed.isEmpty || confirmed != newZoneId)
+        return;
+      final prev = _currentZoneId;
+      _currentZoneId = newZoneId;
+      _lastLoadTime = null;
+      if (prev != null && prev.isNotEmpty && prev != newZoneId) {
+        CacheManager().remove('deals_banners_$prev');
+        CacheManager().remove('promotions_$prev');
+      }
+      _productCache.clear();
+      _vendorCache.clear();
+      _restaurantStatusCache.clear();
+      _loadAllData();
+    });
+  }
+
+  // ── Data loading ───────────────────────────────────────────────
 
   Future<void> _loadAllDataWithCache() async {
     final now = DateTime.now();
     if (_lastLoadTime != null &&
-        now.difference(_lastLoadTime!) < _cacheDuration) {
-      if (mounted) setState(() => _isLoading = false);
+        now.difference(_lastLoadTime!) < _cacheDuration &&
+        _promotionsList.isNotEmpty) {
+      // Cache is warm and we already have data — drop skeleton immediately.
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+          _isWaitingForZone = false;
+        });
       return;
     }
     await _loadAllData();
@@ -345,9 +526,7 @@ class _DealsScreenState extends State<DealsScreen>
 
   Future<void> _refreshAllData() async {
     try {
-      String? zoneId = _currentZoneId;
-      if (zoneId == null || zoneId.isEmpty)
-        zoneId = await _getCurrentZoneIdWithRetry();
+      final zoneId = _currentZoneId ?? _effectiveZoneId();
       if (zoneId != null && zoneId.isNotEmpty) {
         CacheManager().remove('deals_banners_$zoneId');
         CacheManager().remove('promotions_$zoneId');
@@ -364,11 +543,13 @@ class _DealsScreenState extends State<DealsScreen>
   }
 
   Future<void> _loadAllData() async {
+    // Guard: don't stack concurrent loads
     if (_isLoading && _retryCount > 0) return;
+    // Keep skeleton visible throughout the fetch — don't touch _isWaitingForZone here.
     if (mounted) setState(() => _isLoading = true);
     try {
-      await _loadDealsBanners();
-      await _loadPromotionsData();
+      // Run banners + promotions concurrently
+      await Future.wait([_loadDealsBanners(), _loadPromotionsData()]);
       _lastLoadTime = DateTime.now();
       _retryCount = 0;
     } catch (_) {
@@ -378,26 +559,26 @@ class _DealsScreenState extends State<DealsScreen>
         if (mounted) await _loadAllData();
       }
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      // Only now is it safe to drop the skeleton — data is ready (or failed).
+      if (mounted)
+        setState(() {
+          _isLoading = false;
+          _isWaitingForZone = false;
+        });
     }
   }
 
   Future<void> _loadDealsBanners() async {
+    final zoneId = _currentZoneId ?? _effectiveZoneId();
+    if (zoneId == null || zoneId.isEmpty) return;
     try {
-      String? zoneId = _currentZoneId;
-      if (zoneId == null || zoneId.isEmpty)
-        zoneId = await _getCurrentZoneIdWithRetry();
-      if (zoneId == null || zoneId.isEmpty) {
-        if (mounted) setState(() => _dealsBanners = []);
-        return;
-      }
       final cacheKey = 'deals_banners_$zoneId';
       final banners = await CacheManager().getOrSetBanners<List<BannerModel>>(
         cacheKey,
         () => ApiQueueManager().enqueue<List<BannerModel>>(
           priority: RequestPriority.normal,
           key: cacheKey,
-          request: () => _fetchDealsBanners(zoneId!),
+          request: () => _fetchDealsBanners(zoneId),
         ),
       );
       if (mounted) setState(() => _dealsBanners = banners);
@@ -409,9 +590,14 @@ class _DealsScreenState extends State<DealsScreen>
   Future<List<BannerModel>> _fetchDealsBanners(String zoneId) async {
     try {
       final url = '${AppConst.baseUrl}menu-items/banners/deals?zone_id=$zoneId';
-      final headers = await _getHeaders();
       final response = await http
-          .get(Uri.parse(url), headers: headers)
+          .get(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+          )
           .timeout(_networkTimeout);
       if (response.statusCode == 200) {
         final j = json.decode(response.body);
@@ -431,21 +617,18 @@ class _DealsScreenState extends State<DealsScreen>
   }
 
   Future<void> _loadPromotionsData() async {
+    final zoneId = _currentZoneId ?? _effectiveZoneId();
+    if (zoneId == null || zoneId.isEmpty) return;
+    // Update _currentZoneId in case it was null before
+    if (_currentZoneId != zoneId) _currentZoneId = zoneId;
     try {
-      String? zoneId = _currentZoneId;
-      if (zoneId == null || zoneId.isEmpty)
-        zoneId = await _getCurrentZoneIdWithRetry();
-      if (zoneId == null || zoneId.isEmpty) {
-        if (mounted) setState(() => _promotionsList = []);
-        return;
-      }
       final cacheKey = 'promotions_$zoneId';
       final data = await CacheManager().getOrSet<List<Map<String, dynamic>>>(
         cacheKey,
         () => ApiQueueManager().enqueue<List<Map<String, dynamic>>>(
           priority: RequestPriority.normal,
           key: cacheKey,
-          request: () => FireStoreUtils.getAllActivePromotions(zoneId: zoneId!),
+          request: () => FireStoreUtils.getAllActivePromotions(zoneId: zoneId),
         ),
         type: CacheType.general,
       );
@@ -472,8 +655,9 @@ class _DealsScreenState extends State<DealsScreen>
   }
 
   Future<void> _preCacheVendors(List<String> ids) async {
-    for (final id in ids) {
-      if (!_vendorCache.containsKey(id)) {
+    // Fetch all vendors concurrently
+    await Future.wait(
+      ids.where((id) => !_vendorCache.containsKey(id)).map((id) async {
         try {
           final v = await FireStoreUtils.getVendorById(id);
           if (v != null) {
@@ -483,8 +667,8 @@ class _DealsScreenState extends State<DealsScreen>
             );
           }
         } catch (_) {}
-      }
-    }
+      }),
+    );
   }
 
   Future<List<PromotionModel>> _sortByStatus(
@@ -502,68 +686,15 @@ class _DealsScreenState extends State<DealsScreen>
           _restaurantStatusCache[id] = open;
         }
         return MapEntry(p, open);
-      }).toList();
-      entries.sort((a, b) => b.value ? 1 : -1);
+      }).toList()..sort((a, b) => b.value ? 1 : -1);
       return entries.map((e) => e.key).toList();
     } catch (_) {
       return promos;
     }
   }
 
-  Future<String?> _getCurrentZoneIdWithRetry() async {
-    for (int i = 0; i < 2; i++) {
-      try {
-        final z = await _getCurrentZoneId();
-        if (z != null && z.isNotEmpty) return z;
-      } catch (_) {}
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-    return _effectiveZoneId();
-  }
-
-  Future<String?> _getCurrentZoneId() async {
-    try {
-      final pos = await LocationService.getCurrentLocation(
-        showLoader: false,
-        showError: false,
-      );
-      if (pos != null) {
-        final zoneId = await HomeProvider.detectZoneId(
-          pos.latitude,
-          pos.longitude,
-        );
-        if (zoneId != null && zoneId.isNotEmpty) {
-          Constant.selectedLocation.location = UserLocation(
-            latitude: pos.latitude,
-            longitude: pos.longitude,
-          );
-          Constant.selectedLocation.zoneId = zoneId;
-          try {
-            final zm = await HomeProvider.getCurrentZone(
-              pos.latitude,
-              pos.longitude,
-            );
-            if (zm != null && zm.success == true && zm.zone != null) {
-              final dz = HomeProvider.convertToOldZoneModel(zm);
-              if (dz != null) {
-                Constant.selectedZone = dz;
-                Constant.isZoneAvailable = zm.isZoneAvailable == true;
-              }
-            }
-          } catch (_) {}
-          return zoneId;
-        }
-      }
-    } catch (_) {}
-    return _effectiveZoneId();
-  }
-
-  Future<Map<String, String>> _getHeaders() async => {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  };
-
   // ── Build ──────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -573,7 +704,6 @@ class _DealsScreenState extends State<DealsScreen>
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
-        // Keep status bar merged with Deals header gradient.
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
@@ -584,10 +714,9 @@ class _DealsScreenState extends State<DealsScreen>
         body: Column(
           children: [
             _buildAppBar(rs),
-            // _buildCategoryTabs(),
             Expanded(
-              child: _isLoading
-                  ? _buildLoader()
+              child: _isWaitingForZone || _isLoading
+                  ? _buildSkeletonGrid(rs) // skeleton covers ALL loading states
                   : _promotionsList.isEmpty
                   ? _buildEmpty()
                   : RefreshIndicator(
@@ -653,6 +782,31 @@ class _DealsScreenState extends State<DealsScreen>
     );
   }
 
+  // ── Skeleton grid (shown while zone poller is running) ─────────
+  Widget _buildSkeletonGrid(_RS rs) {
+    return CustomScrollView(
+      physics: const NeverScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(child: _buildSectionHeader(rs, skeleton: true)),
+        SliverPadding(
+          padding: EdgeInsets.fromLTRB(rs.hPad, 0, rs.hPad, 24),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: rs.gridCols,
+              crossAxisSpacing: rs.gridSpacing,
+              mainAxisSpacing: rs.gridSpacing,
+              childAspectRatio: rs.gridAspectRatio,
+            ),
+            delegate: SliverChildBuilderDelegate(
+              (_, __) => _SkeletonCard(rs: rs),
+              childCount: 6, // always show 6 skeleton placeholders
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAppBar(_RS rs) {
     return SlideTransition(
       position: _headerSlide,
@@ -713,7 +867,6 @@ class _DealsScreenState extends State<DealsScreen>
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Title block
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -779,7 +932,6 @@ class _DealsScreenState extends State<DealsScreen>
                               ],
                             ),
                             const SizedBox(height: 8),
-                            // Glowing accent line
                             Container(
                               height: 3,
                               width: 50,
@@ -803,7 +955,6 @@ class _DealsScreenState extends State<DealsScreen>
                           ],
                         ),
                       ),
-                      // Count badge
                       if (_promotionsList.isNotEmpty)
                         Container(
                           padding: const EdgeInsets.symmetric(
@@ -852,66 +1003,7 @@ class _DealsScreenState extends State<DealsScreen>
     );
   }
 
-  // Widget _buildCategoryTabs() {
-  //   return Container(
-  //     color: _DC.surface,
-  //     child: Column(
-  //       children: [
-  //         SizedBox(
-  //           height: 48,
-  //           child: ListView.separated(
-  //             scrollDirection: Axis.horizontal,
-  //             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-  //             itemCount: _categories.length,
-  //             separatorBuilder: (_, __) => const SizedBox(width: 8),
-  //             itemBuilder: (ctx, i) {
-  //               final active = _selectedCategoryIndex == i;
-  //               return GestureDetector(
-  //                 onTap: () => setState(() => _selectedCategoryIndex = i),
-  //                 child: AnimatedContainer(
-  //                   duration: const Duration(milliseconds: 200),
-  //                   padding: const EdgeInsets.symmetric(
-  //                     horizontal: 16,
-  //                     vertical: 6,
-  //                   ),
-  //                   decoration: BoxDecoration(
-  //                     color: active ? _DC.brand : _DC.surface2,
-  //                     borderRadius: BorderRadius.circular(20),
-  //                     border: Border.all(
-  //                       color: active ? _DC.brand : const Color(0xFFE8E4F0),
-  //                       width: 1.5,
-  //                     ),
-  //                     boxShadow: active
-  //                         ? [
-  //                             BoxShadow(
-  //                               color: _DC.brand.withOpacity(0.28),
-  //                               blurRadius: 10,
-  //                               offset: const Offset(0, 3),
-  //                             ),
-  //                           ]
-  //                         : null,
-  //                   ),
-  //                   // child: Text(
-  //                   //   _categories[i],
-  //                   //   style: TextStyle(
-  //                   //     fontSize: 12.5,
-  //                   //     fontWeight: FontWeight.w600,
-  //                   //     color: active ? Colors.white : _DC.text2,
-  //                   //     letterSpacing: 0.1,
-  //                   //   ),
-  //                   // ),
-  //                 ),
-  //               );
-  //             },
-  //           ),
-  //         ),
-  //         Container(height: 1, color: const Color(0xFFF0EDF8)),
-  //       ],
-  //     ),
-  //   );
-  // }
-
-  Widget _buildSectionHeader(_RS rs) {
+  Widget _buildSectionHeader(_RS rs, {bool skeleton = false}) {
     return Padding(
       padding: EdgeInsets.fromLTRB(rs.hPad, 18, rs.hPad, 12),
       child: Row(
@@ -935,21 +1027,22 @@ class _DealsScreenState extends State<DealsScreen>
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-            decoration: BoxDecoration(
-              color: _DC.brandLight,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              '${_promotionsList.length} items',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color: _DC.brand,
+          if (!skeleton)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: _DC.brandLight,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${_promotionsList.length} items',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: _DC.brand,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -1114,8 +1207,9 @@ class _PromotionCardState extends State<_PromotionCard>
       _loadingProduct = false;
     }
 
-    if (_vendor == null && widget.promotion.restaurantId.isNotEmpty)
+    if (_vendor == null && widget.promotion.restaurantId.isNotEmpty) {
       _loadVendor();
+    }
   }
 
   String? _validateImg(String? photo) {
@@ -1174,8 +1268,7 @@ class _PromotionCardState extends State<_PromotionCard>
   int _cartQty() {
     final id = widget.promotion.productId;
     final vendorId = widget.promotion.restaurantId;
-    if (id.isEmpty) return 0;
-    if (vendorId.isEmpty) return 0;
+    if (id.isEmpty || vendorId.isEmpty) return 0;
     return context.read<CartProvider>().quantityFor(
       vendorId: vendorId,
       productId: id,
@@ -1289,12 +1382,14 @@ class _PromotionCardState extends State<_PromotionCard>
         final ok = await cp.addToCart(context, cartItem, newQty);
         if (!ok) ShowToastDialog.showToast("Failed to add to cart".tr);
       } else {
-        final existing = HomeProvider.cartItem.cast<CartProductModel?>().firstWhere(
-          (item) =>
-              item?.id != null &&
-              (item!.id == pid || item.id!.startsWith('$pid~')),
-          orElse: () => null,
-        );
+        final existing = HomeProvider.cartItem
+            .cast<CartProductModel?>()
+            .firstWhere(
+              (item) =>
+                  item?.id != null &&
+                  (item!.id == pid || item.id!.startsWith('$pid~')),
+              orElse: () => null,
+            );
         if (existing != null && existing.id != null) {
           final cid = existing.id!;
           if (newQty > 0) {
@@ -1353,6 +1448,7 @@ class _PromotionCardState extends State<_PromotionCard>
   }
 
   // ── Build ──────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final qty = context.select<CartProvider, int>(
@@ -1399,7 +1495,6 @@ class _PromotionCardState extends State<_PromotionCard>
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            // Image
                             Container(
                               color: const Color(0xFFF5F2FB),
                               child: _loadingProduct
@@ -1424,8 +1519,6 @@ class _PromotionCardState extends State<_PromotionCard>
                                       ),
                                     ),
                             ),
-
-                            // Bottom gradient for legibility
                             Positioned(
                               bottom: 0,
                               left: 0,
@@ -1444,8 +1537,6 @@ class _PromotionCardState extends State<_PromotionCard>
                                 ),
                               ),
                             ),
-
-                            // Veg/Non-veg badge
                             if (_product != null)
                               Positioned(
                                 top: 7,
@@ -1479,8 +1570,6 @@ class _PromotionCardState extends State<_PromotionCard>
                                   ),
                                 ),
                               ),
-
-                            // Discount badge
                             if (_product?.price != null &&
                                 _product!.price!.isNotEmpty)
                               Positioned(
@@ -1525,8 +1614,6 @@ class _PromotionCardState extends State<_PromotionCard>
                                   },
                                 ),
                               ),
-
-                            // Item limit badge
                             if (limit > 0)
                               Positioned(
                                 bottom: 6,
@@ -1553,7 +1640,6 @@ class _PromotionCardState extends State<_PromotionCard>
                           ],
                         ),
                       ),
-
                       // ── Details ────────────────────────────
                       Flexible(
                         flex: 4,
@@ -1569,7 +1655,6 @@ class _PromotionCardState extends State<_PromotionCard>
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Product name
                               Text(
                                 widget.promotion.productTitle,
                                 style: TextStyle(
@@ -1582,8 +1667,6 @@ class _PromotionCardState extends State<_PromotionCard>
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-
-                              // Restaurant name
                               if (widget.promotion.restaurantTitle.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 2),
@@ -1598,8 +1681,6 @@ class _PromotionCardState extends State<_PromotionCard>
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-
-                              // Delivery time
                               Padding(
                                 padding: const EdgeInsets.only(top: 2),
                                 child: SizedBox(
@@ -1611,8 +1692,6 @@ class _PromotionCardState extends State<_PromotionCard>
                                   ),
                                 ),
                               ),
-
-                              // Price row + button
                               Row(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
@@ -1665,8 +1744,6 @@ class _PromotionCardState extends State<_PromotionCard>
                       ),
                     ],
                   ),
-
-                  // Closed overlay
                   if (closed)
                     Positioned.fill(
                       child: Container(
@@ -1753,7 +1830,6 @@ class _PromotionCardState extends State<_PromotionCard>
       );
     }
 
-    // Stepper
     return Container(
       height: rs.btnHeight,
       decoration: BoxDecoration(

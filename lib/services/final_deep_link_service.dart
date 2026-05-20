@@ -186,12 +186,15 @@ class FinalDeepLinkService {
     }
 
     // If app was recently resumed, wait longer for app to be ready
-    final isRecentlyResumed = _isAppResumed && 
-        _lastResumeTime != null && 
+    final isRecentlyResumed =
+        _isAppResumed &&
+        _lastResumeTime != null &&
         DateTime.now().difference(_lastResumeTime!).inSeconds < 3;
-    
+
     if (isRecentlyResumed) {
-      print('🔥🔥🔥 [FLUTTER] App recently resumed, waiting for app to be ready...');
+      print(
+        '🔥🔥🔥 [FLUTTER] App recently resumed, waiting for app to be ready...',
+      );
       await Future.delayed(const Duration(milliseconds: 1500));
     }
 
@@ -289,26 +292,32 @@ class FinalDeepLinkService {
       print('🔥 [NEW HANDLER] Cleaned Restaurant ID: $restaurantId');
 
       // Check if app was recently resumed
-      final isRecentlyResumedLocal = _isAppResumed && 
-          _lastResumeTime != null && 
+      final isRecentlyResumedLocal =
+          _isAppResumed &&
+          _lastResumeTime != null &&
           DateTime.now().difference(_lastResumeTime!).inSeconds < 5;
-      
+
       if (isRecentlyResumedLocal) {
-        print('🔥 [NEW HANDLER] App recently resumed, waiting longer for stability...');
+        print(
+          '🔥 [NEW HANDLER] App recently resumed, waiting longer for stability...',
+        );
         await Future.delayed(const Duration(milliseconds: 1500));
       }
 
       // Ensure navigator is ready with longer wait if resumed
       final maxAttempts = isRecentlyResumedLocal ? 60 : 40;
       int attempts = 0;
-      while (GlobalDeeplinkHandler.navigatorKey.currentState == null && attempts < maxAttempts) {
+      while (GlobalDeeplinkHandler.navigatorKey.currentState == null &&
+          attempts < maxAttempts) {
         await Future.delayed(const Duration(milliseconds: 50));
         attempts++;
       }
-      
+
       if (GlobalDeeplinkHandler.navigatorKey.currentState == null) {
         print('❌ [NEW HANDLER] Navigator not ready, waiting...');
-        await Future.delayed(Duration(milliseconds: isRecentlyResumedLocal ? 1500 : 1000));
+        await Future.delayed(
+          Duration(milliseconds: isRecentlyResumedLocal ? 1500 : 1000),
+        );
         if (!await _waitForNavigator()) {
           print(
             '❌ [NEW HANDLER] Navigator still not ready after wait, aborting',
@@ -333,7 +342,9 @@ class FinalDeepLinkService {
       }
 
       // Wait a bit more to ensure UI is ready (longer if resumed)
-      await Future.delayed(Duration(milliseconds: isRecentlyResumedLocal ? 800 : 500));
+      await Future.delayed(
+        Duration(milliseconds: isRecentlyResumedLocal ? 800 : 500),
+      );
 
       // Get context - try multiple times if needed
       BuildContext? ctx =
@@ -561,7 +572,9 @@ class FinalDeepLinkService {
     _lastResumeTime = DateTime.now();
     // Reset processed flag when app resumes to allow new deep links
     _hasProcessedDeepLink = false;
-    print('🔥🔥🔥 [FLUTTER] App resumed from background, resetting deep link flags');
+    print(
+      '🔥🔥🔥 [FLUTTER] App resumed from background, resetting deep link flags',
+    );
   }
 
   /// Called when app goes to background
@@ -576,29 +589,35 @@ class FinalDeepLinkService {
     CategoryDetailsProvider? categoryDetailsProvider,
   ) async {
     print('🔥 [NEW HANDLER] Starting deep link handler for: $url');
-    
+
     // If app was recently resumed, wait longer
-    final isRecentlyResumedLocal = _isAppResumed && 
-        _lastResumeTime != null && 
+    final isRecentlyResumedLocal =
+        _isAppResumed &&
+        _lastResumeTime != null &&
         DateTime.now().difference(_lastResumeTime!).inSeconds < 5;
-    
+
     if (isRecentlyResumedLocal) {
-      print('🔥 [NEW HANDLER] App recently resumed, waiting longer for stability...');
+      print(
+        '🔥 [NEW HANDLER] App recently resumed, waiting longer for stability...',
+      );
       await Future.delayed(const Duration(milliseconds: 1000));
     }
-    
+
     // Wait for Navigator to be available (max ~3 seconds when resumed)
     final maxAttempts = isRecentlyResumedLocal ? 60 : 40;
     int attempts = 0;
-    while (GlobalDeeplinkHandler.navigatorKey.currentState == null && attempts < maxAttempts) {
+    while (GlobalDeeplinkHandler.navigatorKey.currentState == null &&
+        attempts < maxAttempts) {
       await Future.delayed(const Duration(milliseconds: 50));
       attempts++;
     }
-    
+
     if (GlobalDeeplinkHandler.navigatorKey.currentState == null) {
       print('❌ [NEW HANDLER] Navigator not ready, retrying...');
       // Retry once more with longer delay
-      await Future.delayed(Duration(milliseconds: isRecentlyResumedLocal ? 1000 : 500));
+      await Future.delayed(
+        Duration(milliseconds: isRecentlyResumedLocal ? 1000 : 500),
+      );
       if (!await _waitForNavigator()) {
         print(
           '❌ [NEW HANDLER] Navigator still not ready, skipping deep link: $url',
@@ -606,9 +625,11 @@ class FinalDeepLinkService {
         return;
       }
     }
-    
+
     // Extra delay when resumed to ensure UI is stable
-    await Future.delayed(Duration(milliseconds: isRecentlyResumedLocal ? 500 : 300));
+    await Future.delayed(
+      Duration(milliseconds: isRecentlyResumedLocal ? 500 : 300),
+    );
 
     // Check for restaurant pattern first (before parsing) - PRIORITY HANDLING
     final restaurantId = _extractRestaurantIdFromUrl(url);
@@ -883,9 +904,54 @@ class FinalDeepLinkService {
     );
   }
 
-  void _navigateToDeals() {
+  // ════════════════════════════════════════════════════════════════
+  // PATCH NOTES – FinalDeepLinkService (_navigateToDeals fix)
+  //
+  // Problem: _navigateToDeals() immediately switches the dashboard to
+  // tab 2 (DealsScreen).  If the app just cold-started from the deep
+  // link, Constant.selectedZone is still null at that point, so
+  // DealsScreen.initState() finds no zone and renders "No deals".
+  //
+  // Fix: before switching tab, wait up to ~3 s for the zone to be
+  // available (polling at 200 ms intervals).  If it never arrives,
+  // navigate anyway so the user at least sees the screen (the Retry
+  // button in _buildEmpty lets them reload manually).
+  // ════════════════════════════════════════════════════════════════
+
+  // ─── Drop-in replacement for _navigateToDeals() in FinalDeepLinkService ───
+
+  void _navigateToDeals() async {
     try {
-      print('🔗 [GLOBAL_DEEPLINK] Navigating to DealsScreen via Dashboard');
+      print('🔗 [DEEP_LINK] Navigating to DealsScreen via Dashboard');
+
+      // ── Wait for zone to be ready (up to ~3 s) ──────────────────
+      int waited = 0;
+      const pollMs = 200;
+      const maxWaitMs = 3000;
+
+      while (waited < maxWaitMs) {
+        final zoneId =
+            Constant.selectedZone?.id?.trim() ??
+            Constant.selectedLocation.zoneId?.trim();
+        if (zoneId != null && zoneId.isNotEmpty) break;
+        await Future.delayed(const Duration(milliseconds: pollMs));
+        waited += pollMs;
+      }
+
+      final zoneReady =
+          (Constant.selectedZone?.id?.trim() ?? '').isNotEmpty ||
+          (Constant.selectedLocation.zoneId?.trim() ?? '').isNotEmpty;
+
+      if (!zoneReady) {
+        print(
+          '⚠️ [DEEP_LINK] Zone still not ready after ${maxWaitMs}ms – '
+          'navigating to Deals anyway; user can retry.',
+        );
+      } else {
+        print('✅ [DEEP_LINK] Zone ready, navigating to Deals now.');
+      }
+
+      // ── Switch to Deals tab ──────────────────────────────────────
       final ctx = GlobalDeeplinkHandler.navigatorKey.currentContext;
       if (ctx == null) {
         Get.offAll(() => const DashBoardScreen());
@@ -894,6 +960,7 @@ class FinalDeepLinkService {
 
       final currentRoute = Get.currentRoute;
       if (currentRoute == '/') {
+        // Already on dashboard – just switch the tab.
         _changeDashboardTab(ctx, 2);
       } else {
         Get.offAll(() => const DashBoardScreen());
@@ -905,11 +972,15 @@ class FinalDeepLinkService {
         });
       }
     } catch (e) {
-      print('❌ [GLOBAL_DEEPLINK] Error navigating to deals: $e');
+      print('❌ [DEEP_LINK] Error navigating to deals: $e');
       Get.offAll(() => const DashBoardScreen());
     }
   }
 
+  // ─── ALSO update the same method in GlobalDeeplinkHandler ───────────────────
+  // The GlobalDeeplinkHandler._navigateToDeals() is identical in logic;
+  // replace it with the same polling approach (copy the method body above,
+  // only difference is the print tag changes to '[GLOBAL_DEEPLINK]').
   /// Extract restaurant ID from URL using regex
   String? _extractRestaurantIdFromUrl(String url) {
     print('🔥 [NEW HANDLER] Extracting restaurant ID from URL: $url');

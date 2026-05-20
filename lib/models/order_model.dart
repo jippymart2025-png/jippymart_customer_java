@@ -34,6 +34,7 @@ class OrderModel {
   List<dynamic>? rejectedByDrivers;
   double? toPayAmount;
   String? surgeFee;
+  double? walletUsed;
 
   // NEW FIELDS
   dynamic calculatedCharges;
@@ -201,6 +202,9 @@ class OrderModel {
 
     restaurantMenuPhotos = json['restaurantMenuPhotos'] ?? [];
     workingHours = json['workingHours'] ?? [];
+    walletUsed = json['wallet_used'] != null
+        ? double.tryParse(json['wallet_used'].toString()) ?? 0.0
+        : 0.0;
   }
 
   // FIXED: Complete overhaul of toPay parsing to handle all possible field names
@@ -332,7 +336,7 @@ class OrderModel {
     data['photo'] = photo;
     data['restaurantMenuPhotos'] = restaurantMenuPhotos;
     data['workingHours'] = workingHours;
-
+    data['wallet_used'] = walletUsed;
     return data;
   }
 
