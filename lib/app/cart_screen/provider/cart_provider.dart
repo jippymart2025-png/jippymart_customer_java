@@ -7115,6 +7115,7 @@ class CartControllerProvider extends ChangeNotifier {
     final orderResult = await RazorPayController().createOrderRazorPay(
       amount: gatewayAmount,
       razorpayModel: controller.razorPayModel,
+      selectedAddress: selectedAddress,
     );
 
     if (orderResult == null) {
@@ -7122,7 +7123,7 @@ class CartControllerProvider extends ChangeNotifier {
       try {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
-          "Something went wrong, please contact admin.".tr,
+          "Selected address is outside the delivery area. Please change your location.",
         );
       } catch (e) {
         print('⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e');
