@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_maps_place_picker_mb/google_maps_place_picker.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
+import 'package:jippymart_customer/utils/location_zone_navigation.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -164,7 +165,13 @@ class _AddressListScreenState extends State<AddressListScreen> {
                 },
                 onItemAction: (index) =>
                     _handleItemAction(context, index, ctrl),
-                onItemTap: (addr) => Get.back(result: addr),
+                onItemTap: (addr) => _selectAddress(context, addr),
+                onUseMyLocation: () async {
+                  final addr = await ctrl.useMyCurrentLocation();
+                  if (addr != null && context.mounted) {
+                    await _selectAddress(context, addr);
+                  }
+                },
               ),
             );
           },
@@ -174,6 +181,43 @@ class _AddressListScreenState extends State<AddressListScreen> {
   }
 
   // ── Action handlers ────────────────────────────────────────────────────────
+
+  Future<void> _selectAddress(
+    BuildContext context,
+    ShippingAddress addr,
+  ) async {
+    final lat = addr.location?.latitude;
+    final lng = addr.location?.longitude;
+
+    if (lat == null || lng == null || lat == 0.0 || lng == 0.0) {
+      Get.back(result: addr);
+      return;
+    }
+
+    ShowToastDialog.showLoader("Checking service availability...".tr);
+    try {
+      final zoneModel = await HomeProvider.getCurrentZone(lat, lng);
+      final inZone = LocationZoneNavigation.isZoneModelInService(zoneModel);
+      ShowToastDialog.closeLoader();
+
+      if (!inZone) {
+        if (!mounted) return;
+        final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+        await homeProvider.changeLocationAddressFunction(
+          context: context,
+          addressModel: addr,
+        );
+        // Out of zone: navigates to LocationPermissionScreen — do not pop.
+        return;
+      }
+
+      if (mounted) Get.back(result: addr);
+    } catch (e) {
+      ShowToastDialog.closeLoader();
+      print('[ADDRESS_LIST] Zone check error: $e');
+      if (mounted) Get.back(result: addr);
+    }
+  }
 
   void _handleItemAction(
     BuildContext context,
@@ -321,12 +365,14 @@ class _AddressScrollBody extends StatelessWidget {
   final VoidCallback onAddNew;
   final void Function(int) onItemAction;
   final void Function(ShippingAddress) onItemTap;
+  final Future<void> Function() onUseMyLocation;
 
   const _AddressScrollBody({
     required this.ctrl,
     required this.onAddNew,
     required this.onItemAction,
     required this.onItemTap,
+    required this.onUseMyLocation,
   });
 
   @override
@@ -350,7 +396,11 @@ class _AddressScrollBody extends StatelessWidget {
             delegate: SliverChildListDelegate([
               _HeroBanner(count: addresses.length),
               const SizedBox(height: _Tokens.sp16),
-              _QuickActionRow(ctrl: ctrl, onAddNew: onAddNew),
+              _QuickActionRow(
+                ctrl: ctrl,
+                onAddNew: onAddNew,
+                onUseMyLocation: onUseMyLocation,
+              ),
               const SizedBox(height: _Tokens.sp24),
               _SectionHeader(count: addresses.length),
               const SizedBox(height: _Tokens.sp12),
@@ -531,8 +581,13 @@ class _HeroBanner extends StatelessWidget {
 class _QuickActionRow extends StatelessWidget {
   final AddressListProvider ctrl;
   final VoidCallback onAddNew;
+  final Future<void> Function() onUseMyLocation;
 
-  const _QuickActionRow({required this.ctrl, required this.onAddNew});
+  const _QuickActionRow({
+    required this.ctrl,
+    required this.onAddNew,
+    required this.onUseMyLocation,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -544,7 +599,7 @@ class _QuickActionRow extends StatelessWidget {
             label: "Use my location".tr,
             sublabel: "Auto-detect".tr,
             isPrimary: false,
-            onTap: ctrl.useMyCurrentLocation,
+            onTap: () => onUseMyLocation(),
           ),
         ),
         const SizedBox(width: _Tokens.sp12),

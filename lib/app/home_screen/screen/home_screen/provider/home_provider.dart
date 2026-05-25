@@ -39,7 +39,9 @@ import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:jippymart_customer/services/cache_manager.dart';
+import 'package:jippymart_customer/utils/location_zone_navigation.dart';
 import 'package:jippymart_customer/utils/mart_zone_utils.dart';
+import 'package:jippymart_customer/app/location_permission_screen/provider/location_permission_provider.dart';
 
 class HomeProvider extends ChangeNotifier {
   // Constants and static properties
@@ -379,17 +381,13 @@ class HomeProvider extends ChangeNotifier {
 
   // Location and zone management
   Future<void> _loadZoneIdFromStorage() async {
-    try {
-      final savedZoneId = Preferences.getString(Preferences.selectedZoneId);
-      if (savedZoneId.isNotEmpty) {
-        Constant.selectedLocation.zoneId = savedZoneId;
-      }
-    } catch (e) {
-      print('[HOME_PROVIDER] Error loading zone ID from storage: $e');
-    }
+    // Zone ID is set only after a successful in-zone check in getZone().
+    // Do not restore a saved zone ID here — it may be stale or from fallback.
   }
 
-  Future<void> changeLocationAddressFunction({
+  /// Updates global location and reloads home data.
+  /// Returns `false` when coordinates are out of zone (navigates to location screen).
+  Future<bool> changeLocationAddressFunction({
     required BuildContext context,
     required ShippingAddress addressModel,
   }) async {
@@ -451,9 +449,21 @@ class HomeProvider extends ChangeNotifier {
       print(
         '[HOME_PROVIDER] Location change completed in ${stopwatch.elapsedMilliseconds}ms',
       );
+
+      if (!LocationZoneNavigation.isInServiceArea()) {
+        await LocationPermissionProvider.cacheZoneData();
+        if (context.mounted) {
+          await LocationZoneNavigation.openOutOfServiceScreen(
+            context: context,
+          );
+        }
+        return false;
+      }
+      return true;
     } catch (e) {
       print('[HOME_PROVIDER] Error changing location: $e');
       ShowToastDialog.showToast("Failed to update location".tr);
+      return false;
     } finally {
       stopwatch.stop();
     }
@@ -495,7 +505,7 @@ class HomeProvider extends ChangeNotifier {
           Constant.selectedLocation.location?.longitude ?? 0.0;
 
       if (latitude == 0.0 || longitude == 0.0) {
-        await _setFallbackZone();
+        await _clearZoneState();
         return;
       }
 
@@ -510,14 +520,16 @@ class HomeProvider extends ChangeNotifier {
       final zoneModel = await getCurrentZone(latitude, longitude);
 
       if (zoneModel != null && zoneModel.success == true) {
-        _addToCache(cacheKey, zoneModel);
+        if (zoneModel.isZoneAvailable == true && zoneModel.zone != null) {
+          _addToCache(cacheKey, zoneModel);
+        }
         _processZoneModel(zoneModel);
       } else {
-        await _setFallbackZone();
+        await _clearZoneState();
       }
     } catch (e) {
       print('[HOME_PROVIDER] Error getting zone: $e');
-      await _setFallbackZone();
+      await _clearZoneState();
     } finally {
       _removeLoadingTask('getZone');
       zoneCheckCompleted = true;
@@ -527,107 +539,68 @@ class HomeProvider extends ChangeNotifier {
   }
 
   void _processZoneModel(ZoneModel zoneModel) {
-    if (zoneModel.zone != null) {
-      final detectedZone = convertToOldZoneModel(zoneModel);
-      if (detectedZone != null) {
-        // Clear mart vendor cache when zone changes to ensure fresh data
-        final previousZoneId = Constant.selectedZone?.id;
-        Constant.selectedZone = detectedZone;
-        Constant.isZoneAvailable = zoneModel.isZoneAvailable == true;
+    if (zoneModel.isZoneAvailable != true ||
+        zoneModel.zone == null ||
+        zoneModel.zone!.publish != true) {
+      unawaited(_clearZoneState());
+      return;
+    }
 
-        if (detectedZone.id != null && detectedZone.id!.isNotEmpty) {
-          Constant.selectedLocation.zoneId = detectedZone.id;
-          Preferences.setString(Preferences.selectedZoneId, detectedZone.id!);
+    final detectedZone = convertToOldZoneModel(zoneModel);
+    if (detectedZone == null ||
+        detectedZone.id == null ||
+        detectedZone.id!.isEmpty) {
+      unawaited(_clearZoneState());
+      return;
+    }
 
-          // Clear mart vendor cache if zone changed
-          if (previousZoneId != null && previousZoneId != detectedZone.id) {
-            MartZoneUtils.clearMartVendorCache();
-          }
-        }
+    // Clear mart vendor cache when zone changes to ensure fresh data
+    final previousZoneId = Constant.selectedZone?.id;
+    Constant.selectedZone = detectedZone;
+    Constant.isZoneAvailable = true;
+    Constant.selectedLocation.zoneId = detectedZone.id;
+    Preferences.setString(Preferences.selectedZoneId, detectedZone.id!);
 
-        // Load restaurants in background
-        if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
-          unawaited(bestRestaurantProvider.loadRestaurantsAndRelatedData());
-        }
-      }
+    // Clear mart vendor cache if zone changed
+    if (previousZoneId != null && previousZoneId != detectedZone.id) {
+      MartZoneUtils.clearMartVendorCache();
+    }
+
+    // Load restaurants in background
+    if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
+      unawaited(bestRestaurantProvider.loadRestaurantsAndRelatedData());
     }
   }
 
-  Future<void> _setFallbackZone() async {
+  /// Clears zone state when location is out of zone or zone cannot be resolved.
+  /// Does not assign a fallback zone or persist a zone ID.
+  Future<void> _clearZoneState() async {
+    Constant.selectedZone = null;
+    Constant.isZoneAvailable = false;
+    Constant.selectedLocation.zoneId = null;
+    Preferences.setString(Preferences.selectedZoneId, '');
+    _cache.remove('fallback_zone');
+    _cacheTimestamps.remove('fallback_zone');
+
     try {
-      final cacheKey = 'fallback_zone';
-      final cachedZone = _getFromCache(cacheKey) as Zone?;
+      final box = GetStorage();
+      box.write('zone_data', {
+        'isZoneAvailable': false,
+        'zoneId': '',
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      });
 
-      if (cachedZone != null) {
-        Constant.selectedZone = cachedZone;
-        Constant.isZoneAvailable = false;
-        return;
-      }
-
-      final response = await http
-          .get(Uri.parse('${AppConst.baseUrl}zones/all'), headers: headers)
-          .timeout(_networkTimeout);
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true &&
-            data['zones'] != null &&
-            data['zones'].isNotEmpty) {
-          final firstZone = data['zones'][0];
-          final fallbackZoneModel = Zone(
-            id: firstZone['id']?.toString(),
-            name: firstZone['name']?.toString(),
-            latitude: firstZone['latitude'] == null
-                ? null
-                : double.tryParse(firstZone['latitude'].toString()).toString(),
-            longitude: firstZone['longitude'] != null
-                ? double.tryParse(firstZone['longitude'].toString()).toString()
-                : null,
-            publish: firstZone['publish'] == true || firstZone['publish'] == 1,
-            area: _convertToAreaList(firstZone['area']),
-          );
-
-          if (fallbackZoneModel.id != null) {
-            Constant.selectedZone = fallbackZoneModel;
-            Constant.isZoneAvailable = false;
-            Preferences.setString(
-              Preferences.selectedZoneId,
-              fallbackZoneModel.id!,
-            );
-            _addToCache(cacheKey, fallbackZoneModel);
-          }
-        }
+      final savedLocation = box.read('user_location');
+      if (savedLocation is Map) {
+        box.write('user_location', {
+          ...Map<String, dynamic>.from(savedLocation),
+          'zoneId': '',
+          'isZoneAvailable': false,
+        });
       }
     } catch (e) {
-      print('[HOME_PROVIDER] Error setting fallback zone: $e');
-      Constant.selectedZone = null;
-      Constant.isZoneAvailable = false;
-      Preferences.setString(Preferences.selectedZoneId, '');
+      print('[HOME_PROVIDER] Error clearing zone cache: $e');
     }
-  }
-
-  List<Area> _convertToAreaList(dynamic areaData) {
-    final List<Area> areaList = [];
-
-    if (areaData != null && areaData is List) {
-      for (var point in areaData) {
-        if (point is Map &&
-            point['latitude'] != null &&
-            point['longitude'] != null) {
-          areaList.add(
-            Area(
-              latitude: point['latitude'] is double
-                  ? point['latitude']
-                  : double.parse(point['latitude'].toString()),
-              longitude: point['longitude'] is double
-                  ? point['longitude']
-                  : double.parse(point['longitude'].toString()),
-            ),
-          );
-        }
-      }
-    }
-    return areaList;
   }
 
   /// Public method to reload banners (useful after zone changes)
@@ -1027,23 +1000,17 @@ class HomeProvider extends ChangeNotifier {
           await getZone().timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              print('[HOME_PROVIDER] Zone check timed out, using fallback');
-              unawaited(_setFallbackZone());
+              print('[HOME_PROVIDER] Zone check timed out, clearing zone state');
+              unawaited(_clearZoneState());
             },
           );
         } catch (e) {
-          print('[HOME_PROVIDER] Error getting zone: $e, using fallback');
-          await _setFallbackZone();
+          print('[HOME_PROVIDER] Error getting zone: $e, clearing zone state');
+          await _clearZoneState();
         }
       } else {
-        print('[HOME_PROVIDER] No valid location, setting fallback zone');
-        await _setFallbackZone();
-      }
-
-      // If zone is still null after getZone, use fallback
-      if (Constant.selectedZone == null) {
-        print('[HOME_PROVIDER] Zone is null after getZone, setting fallback');
-        await _setFallbackZone();
+        print('[HOME_PROVIDER] No valid location, clearing zone state');
+        await _clearZoneState();
       }
 
       // Mark as completed
@@ -1062,19 +1029,13 @@ class HomeProvider extends ChangeNotifier {
       );
     } catch (e) {
       print('[HOME_PROVIDER] ensureLocationAndZoneChecked: ❌ Error - $e');
-      // Try fallback zone
-      try {
-        await _setFallbackZone();
-      } catch (fallbackError) {
-        print('[HOME_PROVIDER] Fallback zone also failed: $fallbackError');
-      }
+      await _clearZoneState();
 
       zoneCheckCompleted = true;
       hasActuallyCheckedZone = true;
       isLoadingFunction(false);
       notifyListeners();
 
-      // Try to reload banners even if fallback failed
       unawaited(_loadBanners());
     } finally {
       stopwatch.stop();

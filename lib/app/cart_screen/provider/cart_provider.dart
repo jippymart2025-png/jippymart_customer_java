@@ -728,6 +728,39 @@ class CartControllerProvider extends ChangeNotifier {
 
   // ============ ADDRESS MANAGEMENT ============
 
+  /// Display helpers aligned with [HomeHeaderWidget] (uses [Constant.selectedLocation]).
+  static String homeLocationTitle() {
+    final loc = Constant.selectedLocation;
+    if (loc.locality != null && loc.locality!.trim().isNotEmpty) {
+      return loc.locality!.trim();
+    }
+    if (loc.addressAs != null && loc.addressAs!.trim().isNotEmpty) {
+      return loc.addressAs!.trim();
+    }
+    final full = loc.getFullAddress();
+    if (full.length > 25) return '${full.substring(0, 25)}...';
+    return full.isEmpty ? 'Delivery location' : full;
+  }
+
+  static String homeLocationAddressAs() {
+    final label = Constant.selectedLocation.addressAs?.trim();
+    if (label != null && label.isNotEmpty) return label;
+    return 'Home';
+  }
+
+  static String homeLocationFullAddress() {
+    final full = Constant.selectedLocation.getFullAddress();
+    return full.isEmpty ? 'Select delivery address' : full;
+  }
+
+  static bool hasValidHomeLocation() {
+    final loc = Constant.selectedLocation.location;
+    return loc?.latitude != null &&
+        loc?.longitude != null &&
+        loc!.latitude != 0.0 &&
+        loc.longitude != 0.0;
+  }
+
   Future<void> initializeAddress(BuildContext context) async {
     await _initializeAddressWithPriority(context);
   }
@@ -744,7 +777,34 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      // PRIORITY 1: Saved addresses
+      // PRIORITY 1: Home screen location (same as HomeProvider / header)
+      final homeScreenAddress = await _getCurrentLocationAddress(context);
+      if (homeScreenAddress != null) {
+        selectedAddress = homeScreenAddress;
+        _addressInitialized = true;
+
+        _cachedDistance = null;
+        _cachedCustomerLat = null;
+        _cachedCustomerLng = null;
+
+        await initialLiseSurgeValue(
+          homeScreenAddress.location?.latitude ?? 0.0,
+          homeScreenAddress.location?.longitude ?? 0.0,
+        );
+
+        if (HomeProvider.cartItem.isNotEmpty) {
+          await _loadFreshVendorForCart();
+          if (vendorModel.id != null) {
+            await calculatePrice();
+          }
+        }
+
+        notifyListeners();
+        print('[ADDRESS] ✅ Using home screen location');
+        return;
+      }
+
+      // PRIORITY 2: Saved addresses
       if (Constant.userModel != null &&
           Constant.userModel!.shippingAddress != null &&
           Constant.userModel!.shippingAddress!.isNotEmpty) {
@@ -755,7 +815,6 @@ class CartControllerProvider extends ChangeNotifier {
         selectedAddress = defaultAddress;
         _addressInitialized = true;
 
-        // 🔑 OPTIMIZATION: Invalidate distance cache when address changes
         _cachedDistance = null;
         _cachedCustomerLat = null;
         _cachedCustomerLng = null;
@@ -774,34 +833,6 @@ class CartControllerProvider extends ChangeNotifier {
 
         notifyListeners();
         print('[ADDRESS] ✅ Using saved address');
-        return;
-      }
-
-      // PRIORITY 2: Current location
-      final homeScreenAddress = await _getCurrentLocationAddress(context);
-      if (homeScreenAddress != null) {
-        selectedAddress = homeScreenAddress;
-        _addressInitialized = true;
-
-        // 🔑 OPTIMIZATION: Invalidate distance cache when address changes
-        _cachedDistance = null;
-        _cachedCustomerLat = null;
-        _cachedCustomerLng = null;
-
-        await initialLiseSurgeValue(
-          homeScreenAddress.location?.latitude ?? 0.0,
-          homeScreenAddress.location?.longitude ?? 0.0,
-        );
-
-        if (HomeProvider.cartItem.isNotEmpty) {
-          await _loadFreshVendorForCart();
-          if (vendorModel.id != null) {
-            await calculatePrice();
-          }
-        }
-
-        notifyListeners();
-        print('[ADDRESS] ✅ Using current location');
         return;
       }
 
@@ -852,7 +883,9 @@ class CartControllerProvider extends ChangeNotifier {
           }
 
           return ShippingAddress(
-            id: 'home_screen_address_${DateTime.now().millisecondsSinceEpoch}',
+            id:
+                Constant.selectedLocation.id ??
+                'home_screen_address_${DateTime.now().millisecondsSinceEpoch}',
             addressAs:
                 Constant.selectedLocation.addressAs ?? 'Current Location',
             address: address,
@@ -3537,88 +3570,50 @@ class CartControllerProvider extends ChangeNotifier {
     _startOperation('syncAddressWithHomeLocation');
 
     try {
-      // 🔑 CRITICAL: Don't auto-sync if address is already initialized with a saved/default address
-      if (_addressInitialized &&
-          selectedAddress != null &&
-          selectedAddress!.id != null &&
-          !selectedAddress!.id!.startsWith('home_screen_address_')) {
-        print('[CART_SYNC] ⚠️ Address is a saved address, skipping auto-sync');
-
-        // Only sync zoneId if missing
-        if ((selectedAddress?.zoneId == null ||
-                selectedAddress!.zoneId!.isEmpty) &&
-            Constant.selectedLocation.zoneId != null &&
-            Constant.selectedLocation.zoneId!.isNotEmpty) {
-          selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
-          print(
-            '[CART_SYNC] ✅ Synced zoneId only (address unchanged): ${selectedAddress!.zoneId}',
-          );
-          notifyListeners();
-        }
+      if (Constant.selectedLocation.location?.latitude == null ||
+          Constant.selectedLocation.location?.longitude == null) {
         return;
       }
 
-      // Check if Constant.selectedLocation has valid coordinates
-      if (Constant.selectedLocation.location?.latitude != null &&
-          Constant.selectedLocation.location?.longitude != null) {
-        final homeLat = Constant.selectedLocation.location!.latitude!;
-        final homeLng = Constant.selectedLocation.location!.longitude!;
+      final homeLat = Constant.selectedLocation.location!.latitude!;
+      final homeLng = Constant.selectedLocation.location!.longitude!;
+      final currentLat = selectedAddress?.location?.latitude;
+      final currentLng = selectedAddress?.location?.longitude;
 
-        // Check if current selectedAddress matches Constant.selectedLocation
-        final currentLat = selectedAddress?.location?.latitude;
-        final currentLng = selectedAddress?.location?.longitude;
+      if (currentLat == null ||
+          currentLng == null ||
+          currentLat != homeLat ||
+          currentLng != homeLng) {
+        final homeScreenAddress = await _getCurrentLocationAddress(context);
+        if (homeScreenAddress != null) {
+          selectedAddress = homeScreenAddress;
+          _addressInitialized = true;
 
-        // If coordinates don't match AND address is not initialized, sync the address
-        if (currentLat == null ||
-            currentLng == null ||
-            currentLat != homeLat ||
-            currentLng != homeLng) {
-          // Only sync if address is not initialized (first time) or is a temporary address
-          if (!_addressInitialized ||
-              selectedAddress == null ||
-              selectedAddress!.id == null ||
-              selectedAddress!.id!.startsWith('home_screen_address_')) {
-            final homeScreenAddress = await _getCurrentLocationAddress(context);
-            if (homeScreenAddress != null) {
-              selectedAddress = homeScreenAddress;
-              _addressInitialized = true; // Mark as initialized after sync
-
-              // Ensure zoneId is set
-              if ((selectedAddress!.zoneId == null ||
-                      selectedAddress!.zoneId!.isEmpty) &&
-                  Constant.selectedLocation.zoneId != null &&
-                  Constant.selectedLocation.zoneId!.isNotEmpty) {
-                selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
-                print(
-                  '[CART_SYNC] ✅ Set zoneId from Constant.selectedLocation: ${selectedAddress!.zoneId}',
-                );
-              }
-
-              // Update surge value for new location
-              await initialLiseSurgeValue(homeLat, homeLng);
-
-              // Recalculate prices with new address
-              await calculatePrice();
-
-              print(
-                '[CART_SYNC] ✅ Synced selectedAddress with Constant.selectedLocation (zoneId: ${selectedAddress!.zoneId})',
-              );
-              notifyListeners();
-            }
-          }
-        } else {
-          // Coordinates match, but check if zoneId needs syncing
-          if ((selectedAddress?.zoneId == null ||
+          if ((selectedAddress!.zoneId == null ||
                   selectedAddress!.zoneId!.isEmpty) &&
               Constant.selectedLocation.zoneId != null &&
               Constant.selectedLocation.zoneId!.isNotEmpty) {
             selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
-            print(
-              '[CART_SYNC] ✅ Synced zoneId while coordinates match: ${selectedAddress!.zoneId}',
-            );
-            notifyListeners();
           }
+
+          _cachedDistance = null;
+          _cachedCustomerLat = null;
+          _cachedCustomerLng = null;
+
+          await initialLiseSurgeValue(homeLat, homeLng);
+          await calculatePrice();
+
+          print(
+            '[CART_SYNC] ✅ Synced cart address with home screen location',
+          );
+          notifyListeners();
         }
+      } else if ((selectedAddress?.zoneId == null ||
+              selectedAddress!.zoneId!.isEmpty) &&
+          Constant.selectedLocation.zoneId != null &&
+          Constant.selectedLocation.zoneId!.isNotEmpty) {
+        selectedAddress!.zoneId = Constant.selectedLocation.zoneId;
+        notifyListeners();
       }
     } catch (e) {
       print('[CART_SYNC] ❌ Error syncing address with home location: $e');
@@ -8385,46 +8380,81 @@ class CartControllerProvider extends ChangeNotifier {
 
   // ============ OTHER METHODS ============
 
-  void changeLocationFunctionInCart({required BuildContext context}) {
-    Get.to(const AddressListScreen())!.then((value) async {
-      if (value != null) {
-        ShippingAddress addressModel = value;
+  /// Same flow as home header: address list → [HomeProvider.changeLocationAddressFunction].
+  Future<void> changeLocationFunctionInCart({
+    required BuildContext context,
+  }) async {
+    if (Constant.userModel == null) {
+      Constant.checkPermission(
+        context: context,
+        onTap: () => Get.offAll(() => PhoneNumberScreen()),
+      );
+      return;
+    }
 
-        try {
-          if (addressModel.zoneId != null && addressModel.zoneId!.isNotEmpty) {
-            print('[ADDRESS_CHANGE] ✅ Using existing zoneId');
-          } else if (Constant.selectedLocation.zoneId != null &&
-              Constant.selectedLocation.zoneId!.isNotEmpty) {
-            addressModel.zoneId = Constant.selectedLocation.zoneId;
-          } else if (Constant.selectedZone != null) {
-            addressModel.zoneId = Constant.selectedZone!.id;
-          } else {
-            final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
-              addressModel.location!.latitude!,
-              addressModel.location!.longitude!,
-              context,
-            );
-            if (zoneId.isNotEmpty) {
-              addressModel.zoneId = zoneId;
-            }
+    context.read<AddressListProvider>().initFunction(context: context);
+    final value = await Get.to(() => const AddressListScreen());
+    if (value == null || value is! ShippingAddress) return;
+
+    final homeProvider = context.read<HomeProvider>();
+    final updated = await homeProvider.changeLocationAddressFunction(
+      context: context,
+      addressModel: value,
+    );
+    if (!updated || !context.mounted) return;
+
+    await _applySelectedDeliveryAddress(context, value);
+  }
+
+  Future<void> _applySelectedDeliveryAddress(
+    BuildContext context,
+    ShippingAddress picked,
+  ) async {
+    final home = Constant.selectedLocation;
+    var addressModel = ShippingAddress(
+      id: home.id ?? picked.id,
+      addressAs: home.addressAs ?? picked.addressAs ?? 'Home',
+      address: home.address ?? picked.address,
+      locality: home.locality ?? picked.locality,
+      landmark: home.landmark ?? picked.landmark,
+      location: home.location ?? picked.location,
+      isDefault: picked.isDefault,
+      zoneId: home.zoneId ?? picked.zoneId,
+      latitude: picked.latitude,
+      longitude: picked.longitude,
+    );
+
+    try {
+      if (addressModel.zoneId == null || addressModel.zoneId!.isEmpty) {
+        if (Constant.selectedZone?.id != null &&
+            Constant.selectedZone!.id!.isNotEmpty) {
+          addressModel.zoneId = Constant.selectedZone!.id;
+        } else if (addressModel.location?.latitude != null &&
+            addressModel.location?.longitude != null) {
+          final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
+            addressModel.location!.latitude!,
+            addressModel.location!.longitude!,
+            context,
+          );
+          if (zoneId.isNotEmpty) {
+            addressModel.zoneId = zoneId;
           }
-        } catch (e) {
-          print('[ADDRESS_CHANGE] ❌ Error detecting zone: $e');
         }
-
-        selectedAddress = addressModel;
-        _addressInitialized = true;
-
-        // 🔑 OPTIMIZATION: Invalidate distance cache when address changes
-        _cachedDistance = null;
-        _cachedCustomerLat = null;
-        _cachedCustomerLng = null;
-
-        await _loadFreshVendorForCart();
-        notifyListeners();
-        await calculatePrice();
       }
-    });
+    } catch (e) {
+      print('[ADDRESS_CHANGE] ❌ Error detecting zone: $e');
+    }
+
+    selectedAddress = addressModel;
+    _addressInitialized = true;
+
+    _cachedDistance = null;
+    _cachedCustomerLat = null;
+    _cachedCustomerLng = null;
+
+    await _loadFreshVendorForCart();
+    notifyListeners();
+    await calculatePrice();
   }
 
   //   /// Get cached product by ID - returns null if not cached

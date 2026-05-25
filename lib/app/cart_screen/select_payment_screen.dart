@@ -268,9 +268,7 @@ class _DeliveryAddressCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              controller.selectedAddress?.addressAs
-                                      ?.toString() ??
-                                  'Home',
+                              CartControllerProvider.homeLocationAddressAs(),
                               style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.white,
@@ -282,8 +280,7 @@ class _DeliveryAddressCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        controller.selectedAddress?.getFullAddress() ??
-                            'Select delivery address',
+                        CartControllerProvider.homeLocationFullAddress(),
                         style: TextStyle(
                           fontSize: 13,
                           fontFamily: AppThemeData.medium,

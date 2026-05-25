@@ -700,10 +700,56 @@ class LocationPermissionScreen extends StatelessWidget {
 
   // ── All original static/instance methods preserved exactly ────────────────
 
+  /// Runs zones/current for the selected location. Returns true only when in zone.
+  static Future<bool> finalizeLocationWithZoneCheck(BuildContext context) async {
+    try {
+      final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+      final locProvider = Provider.of<LocationPermissionProvider>(
+        context,
+        listen: false,
+      );
+      await homeProvider.getZone();
+      await LocationPermissionProvider.cacheZoneData();
+      final inZone =
+          Constant.isZoneAvailable == true &&
+          Constant.selectedZone?.id != null &&
+          Constant.selectedZone!.id!.isNotEmpty;
+      locProvider.setOutOfService(!inZone);
+      if (inZone) {
+        await homeProvider.reloadBanners();
+      }
+      return inZone;
+    } catch (e) {
+      print('[LOCATION_PERMISSION] Zone check failed: $e');
+      Provider.of<LocationPermissionProvider>(
+        context,
+        listen: false,
+      ).setOutOfService(true);
+      return false;
+    }
+  }
+
   static Future<void> navigateAfterLocationSet(
     BuildContext context,
     SplashProvider? splashProvider,
   ) async {
+    if (Constant.isZoneAvailable != true ||
+        Constant.selectedZone?.id == null ||
+        Constant.selectedZone!.id!.isEmpty) {
+      print(
+        '[LOCATION_PERMISSION] Navigation blocked — location is out of service area',
+      );
+      Provider.of<LocationPermissionProvider>(
+        context,
+        listen: false,
+      ).setOutOfService(true);
+      ShowToastDialog.showToast(
+        "Service is not available at this location. Please choose a different address."
+            .tr,
+      );
+      return;
+    }
+
     try {
       final box = GetStorage();
       final cachedAuth = box.read('cached_auth_check');
@@ -772,42 +818,6 @@ class LocationPermissionScreen extends StatelessWidget {
       Preferences.selectedLocationLng,
       location.longitude.toString(),
     );
-  }
-
-  static Future<void> cacheZoneData() async {
-    try {
-      final box = GetStorage();
-      box.write('zone_data', {
-        'isZoneAvailable': Constant.isZoneAvailable,
-        'zoneId':
-            Constant.selectedZone?.id ?? Constant.selectedLocation.zoneId ?? '',
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-      });
-      final zoneId =
-          Constant.selectedZone?.id ?? Constant.selectedLocation.zoneId;
-      if (zoneId != null && zoneId.isNotEmpty) {
-        await Preferences.setString(Preferences.selectedZoneId, zoneId);
-        print('[LOCATION_PERMISSION] ✅ Cached zone ID: $zoneId');
-      }
-      if (Constant.selectedLocation.location != null) {
-        final location = Constant.selectedLocation.location!;
-        box.write('user_location', {
-          'latitude': location.latitude,
-          'longitude': location.longitude,
-          'zoneId': zoneId ?? '',
-          'isZoneAvailable': Constant.isZoneAvailable,
-          'address':
-              Constant.selectedLocation.address ??
-              Constant.selectedLocation.locality ??
-              '',
-          'locality': Constant.selectedLocation.locality ?? '',
-          'timestamp': DateTime.now().millisecondsSinceEpoch,
-        });
-        print('[LOCATION_PERMISSION] ✅ Cached location with zone data');
-      }
-    } catch (e) {
-      print('[LOCATION_PERMISSION] Error caching zone data: $e');
-    }
   }
 
   ShippingAddress? findExistingAddress(
@@ -932,25 +942,29 @@ class LocationPermissionScreen extends StatelessWidget {
       await updateLocationInLocal(addressModel.location!);
       try {
         final currentContext = Get.context ?? context;
-        final homeProvider = Provider.of<HomeProvider>(
-          currentContext,
-          listen: false,
-        );
-        await homeProvider.getZone();
-        await LocationPermissionScreen.cacheZoneData();
-        await homeProvider.reloadBanners();
-        await LocationPermissionScreen.navigateAfterLocationSet(
-          currentContext,
-          splashProvider,
-        );
-      } catch (zoneError) {
-        print('[MAP_SELECTION] Error checking zone: $zoneError');
-        try {
-          final currentContext = Get.context ?? context;
+        final inZone =
+            await LocationPermissionScreen.finalizeLocationWithZoneCheck(
+              currentContext,
+            );
+        if (inZone) {
           await LocationPermissionScreen.navigateAfterLocationSet(
             currentContext,
             splashProvider,
           );
+        } else {
+          ShowToastDialog.showToast(
+            "Service is not available at this location. Please choose a different address."
+                .tr,
+          );
+        }
+      } catch (zoneError) {
+        print('[MAP_SELECTION] Error checking zone: $zoneError');
+        try {
+          final currentContext = Get.context ?? context;
+          Provider.of<LocationPermissionProvider>(
+            currentContext,
+            listen: false,
+          ).setOutOfService(true);
         } catch (navError) {
           print('[MAP_SELECTION] Error navigating: $navError');
           ShowToastDialog.showToast(
@@ -994,11 +1008,26 @@ class LocationPermissionScreen extends StatelessWidget {
 // _LocationBody  — extracted for cleanliness
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _LocationBody extends StatelessWidget {
+class _LocationBody extends StatefulWidget {
   final LocationPermissionProvider controller;
   final LocationPermissionScreen screen;
 
   const _LocationBody({required this.controller, required this.screen});
+
+  @override
+  State<_LocationBody> createState() => _LocationBodyState();
+}
+
+class _LocationBodyState extends State<_LocationBody> {
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.syncOutOfServiceFromConstant();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      widget.controller.refreshZoneStatus(context);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1046,7 +1075,7 @@ class _LocationBody extends StatelessWidget {
           bottom: 0,
           left: 0,
           right: 0,
-          child: _BottomPanel(controller: controller, screen: screen),
+          child: _BottomPanel(controller: widget.controller, screen: widget.screen),
         ),
       ],
     );
@@ -1097,49 +1126,78 @@ class _BottomPanel extends StatelessWidget {
             ),
           ),
 
-          // Location pin icon row
-          Row(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: _kBrand.withOpacity(0.10),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Center(
-                  child: Icon(Icons.location_on, color: _kBrand, size: 26),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Enable Location Services".tr,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF111111),
-                        letterSpacing: -0.3,
-                        height: 1.2,
-                      ),
+          // Title row — permission prompt vs out-of-service zone
+          Consumer<LocationPermissionProvider>(
+            builder: (context, locProvider, _) {
+              final isOutOfZone = locProvider.isOutOfServiceArea;
+              final isChecking = locProvider.isCheckingZone;
+
+              return Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: (isOutOfZone ? const Color(0xFFFFE8E8) : _kBrand)
+                          .withOpacity(isOutOfZone ? 1.0 : 0.10),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "Allow JippyMart to find restaurants near you".tr,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF888888),
-                        height: 1.4,
-                      ),
+                    child: Center(
+                      child: isChecking
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: _kBrand,
+                              ),
+                            )
+                          : Icon(
+                              isOutOfZone
+                                  ? Icons.location_off_rounded
+                                  : Icons.location_on,
+                              color: isOutOfZone ? _kBrandDeep : _kBrand,
+                              size: 26,
+                            ),
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isOutOfZone
+                              ? "Service Not Available in Your Area".tr
+                              : "Enable Location Services".tr,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF111111),
+                            letterSpacing: -0.3,
+                            height: 1.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isOutOfZone
+                              ? "We don't currently deliver to your location. Please try a different address within our service area."
+                                    .tr
+                              : "Allow JippyMart to find restaurants near you"
+                                    .tr,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF888888),
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
 
           const SizedBox(height: 28),
@@ -1160,21 +1218,26 @@ class _BottomPanel extends StatelessWidget {
                           showError: true,
                         );
                     if (success) {
-                      final homeProvider = Provider.of<HomeProvider>(
-                        Get.context ?? context,
-                        listen: false,
-                      );
-                      await homeProvider.getZone();
-                      await LocationPermissionScreen.cacheZoneData();
-                      await homeProvider.reloadBanners();
-                      final splashProvider = Provider.of<SplashProvider>(
-                        Get.context ?? context,
-                        listen: false,
-                      );
-                      await LocationPermissionScreen.navigateAfterLocationSet(
-                        Get.context ?? context,
-                        splashProvider,
-                      );
+                      final ctx = Get.context ?? context;
+                      final inZone =
+                          await LocationPermissionScreen.finalizeLocationWithZoneCheck(
+                            ctx,
+                          );
+                      if (inZone) {
+                        final splashProvider = Provider.of<SplashProvider>(
+                          ctx,
+                          listen: false,
+                        );
+                        await LocationPermissionScreen.navigateAfterLocationSet(
+                          ctx,
+                          splashProvider,
+                        );
+                      } else {
+                        ShowToastDialog.showToast(
+                          "Service is not available at this location. Please choose a different address."
+                              .tr,
+                        );
+                      }
                     }
                   } catch (e) {
                     print('[CURRENT_LOCATION] Error: $e');
@@ -1279,18 +1342,28 @@ class _BottomPanel extends StatelessWidget {
                             const AddressListScreen(),
                           );
                           if (result != null && result is ShippingAddress) {
-                            homeProvider.changeLocationAddressFunction(
-                              addressModel: result,
-                              context: Get.context ?? context,
-                            );
-                            final splashProvider = Provider.of<SplashProvider>(
-                              Get.context ?? context,
-                              listen: false,
-                            );
-                            await LocationPermissionScreen.navigateAfterLocationSet(
-                              Get.context ?? context,
-                              splashProvider,
-                            );
+                            final ctx = Get.context ?? context;
+                            final inZone =
+                                await homeProvider.changeLocationAddressFunction(
+                                  context: ctx,
+                                  addressModel: result,
+                                );
+                            if (inZone) {
+                              final splashProvider =
+                                  Provider.of<SplashProvider>(
+                                    ctx,
+                                    listen: false,
+                                  );
+                              await LocationPermissionScreen.navigateAfterLocationSet(
+                                ctx,
+                                splashProvider,
+                              );
+                            } else {
+                              ShowToastDialog.showToast(
+                                "Service is not available at this location. Please choose a different address."
+                                    .tr,
+                              );
+                            }
                           }
                         },
                       );
@@ -1318,21 +1391,26 @@ class _BottomPanel extends StatelessWidget {
                           showError: true,
                         );
                     if (success) {
-                      final homeProvider = Provider.of<HomeProvider>(
-                        Get.context ?? context,
-                        listen: false,
-                      );
-                      await homeProvider.getZone();
-                      await LocationPermissionScreen.cacheZoneData();
-                      await homeProvider.reloadBanners();
-                      final splashProvider = Provider.of<SplashProvider>(
-                        Get.context ?? context,
-                        listen: false,
-                      );
-                      await LocationPermissionScreen.navigateAfterLocationSet(
-                        Get.context ?? context,
-                        splashProvider,
-                      );
+                      final ctx = Get.context ?? context;
+                      final inZone =
+                          await LocationPermissionScreen.finalizeLocationWithZoneCheck(
+                            ctx,
+                          );
+                      if (inZone) {
+                        final splashProvider = Provider.of<SplashProvider>(
+                          ctx,
+                          listen: false,
+                        );
+                        await LocationPermissionScreen.navigateAfterLocationSet(
+                          ctx,
+                          splashProvider,
+                        );
+                      } else {
+                        ShowToastDialog.showToast(
+                          "Service is not available at this location. Please choose a different address."
+                              .tr,
+                        );
+                      }
                     }
                   } catch (e) {
                     print('[CHANGE_LOCATION] Error: $e');

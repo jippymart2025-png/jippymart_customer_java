@@ -1,4 +1,3 @@
-import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/coupon_list_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/cart_screen/widget/cart_bill_details_widget.dart';
@@ -156,12 +155,11 @@ class _CartScreenState extends State<CartScreen> {
     _lastRefreshTime = DateTime.now();
     try {
       await controller.forceRefreshCart();
+      await controller.syncAddressWithHomeLocation(context);
       if (controller.selectedAddress == null ||
           controller.selectedAddress!.location?.latitude == null ||
           controller.selectedAddress!.location?.longitude == null) {
         await controller.initializeAddress(context);
-      } else {
-        await controller.syncAddressWithHomeLocation(context);
       }
       controller.checkAndUpdatePaymentMethod();
       await controller.syncCartPricesInBackground();
@@ -195,8 +193,9 @@ class _CartScreenState extends State<CartScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild screen whenever underlying cart rows change.
+    // Rebuild when cart rows or home location change.
     context.watch<service_cart.CartProvider>();
+    context.watch<HomeProvider>();
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
     final controller = context.read<CartControllerProvider>();
@@ -464,8 +463,7 @@ class _CartScreenState extends State<CartScreen> {
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
-                            controller.selectedAddress?.addressAs?.toString() ??
-                                'Home',
+                            CartControllerProvider.homeLocationAddressAs(),
                             style: const TextStyle(
                               fontSize: 10,
                               color: Colors.white,
@@ -477,8 +475,7 @@ class _CartScreenState extends State<CartScreen> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      controller.selectedAddress?.getFullAddress() ??
-                          'Select delivery address',
+                      CartControllerProvider.homeLocationFullAddress(),
                       style: TextStyle(
                         fontSize: 13,
                         fontFamily: AppThemeData.medium,

@@ -173,7 +173,7 @@ class AddressListProvider extends ChangeNotifier {
   }
 
   // Optimized useMyCurrentLocation with error handling
-  Future<void> useMyCurrentLocation() async {
+  Future<ShippingAddress?> useMyCurrentLocation() async {
     try {
       ShowToastDialog.showLoader("Getting your location...".tr);
 
@@ -186,7 +186,7 @@ class AddressListProvider extends ChangeNotifier {
       ShowToastDialog.closeLoader();
 
       if (addressModel != null) {
-        Get.back(result: addressModel);
+        return addressModel;
       } else {
         ShowToastDialog.showToast(
           "Could not get location. Please try again.".tr,
@@ -199,6 +199,7 @@ class AddressListProvider extends ChangeNotifier {
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast("Failed to get location".tr);
     }
+    return null;
   }
 
   // Optimized clearData method
