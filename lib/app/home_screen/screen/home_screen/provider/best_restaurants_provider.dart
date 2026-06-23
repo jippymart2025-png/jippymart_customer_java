@@ -13,6 +13,7 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/services/cache_manager.dart';
 
+import '../../../../../models/outlet.dart';
 import '../../../../../utils/restaurant_status_utils.dart';
 import '../../../../restaurant_details_screen/provider/restaurant_details_provider.dart';
 
@@ -22,7 +23,8 @@ class BestRestaurantProvider extends ChangeNotifier {
   Timer? _notifyTimer;
   Future<void>? _storiesLoadingTask;
   Future<void>? _relatedDataLoadingTask;
-  bool isLoading = true;
+  Future<void>? _restaurantLoadingTask;
+  bool isLoading = false;
   String? currentFilter;
   List<String> availableFilters = [];
 
@@ -65,90 +67,111 @@ class BestRestaurantProvider extends ChangeNotifier {
   }
 
   Future<void> loadRestaurantsAndRelatedData({String? filter}) async {
+    if (_restaurantLoadingTask != null) {
+      return _restaurantLoadingTask!;
+    }
+    _restaurantLoadingTask = _loadRestaurantsAndRelatedDataImpl(filter: filter);
+    try {
+      await _restaurantLoadingTask;
+    } finally {
+      _restaurantLoadingTask = null;
+    }
+  }
+
+  Future<void> _loadRestaurantsAndRelatedDataImpl({String? filter}) async {
     print('[DEBUG] Loading restaurants from API with filter: $filter');
     final String? zoneId = Constant.selectedZone?.id;
     final double latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
     final double longitude =
         Constant.selectedLocation.location?.longitude ?? 0.0;
-    if (zoneId == null || zoneId.isEmpty) {
-      print('[DEBUG] No zone ID available, skipping restaurant fetch');
+    final hasZone = zoneId != null && zoneId.isNotEmpty;
+    final hasLocation = latitude != 0.0 && longitude != 0.0;
+
+    if (!hasLocation && !hasZone) {
+      print('[DEBUG] No location or zone available, skipping restaurant fetch');
+      isLoading = false;
+      notifyListeners();
       return;
     }
+
+    isLoading = true;
+    notifyListeners();
+
     try {
-      final bestRestaurantsKey = 'best_restaurants_$zoneId';
-      final nearestKey =
-          'nearest_restaurants_${zoneId}_${filter ?? 'all'}_${latitude}_${longitude}';
+      List<VendorModel> bestRestaurants = [];
+      List<VendorModel> restaurants = [];
+      final futures = <Future<void>>[];
 
-      // Run both API calls in parallel; cache only, no queue wrapper
-      final bestFuture = CacheManager().getOrSetRestaurants<List<VendorModel>>(
-        bestRestaurantsKey,
-        () => getBestRestaurants(zoneId: zoneId),
-      );
-      final nearestFuture = CacheManager()
-          .getOrSetRestaurants<List<VendorModel>>(
-            nearestKey,
-            () => getNearestRestaurants(
-              zoneId: zoneId,
-              latitude: latitude,
-              longitude: longitude,
-              radius: double.parse(Constant.radius),
-              filter: filter,
-              onFiltersReceived: (availableFilters, currentFilter) {
-                this.availableFilters = availableFilters;
-                this.currentFilter = currentFilter;
-              },
-            ),
-          );
+      if (hasZone) {
+        final bestRestaurantsKey = 'best_restaurants_$zoneId';
+        futures.add(
+          CacheManager()
+              .getOrSetRestaurants<List<VendorModel>>(
+                bestRestaurantsKey,
+                () => getBestRestaurants(zoneId: zoneId),
+              )
+              .then((value) => bestRestaurants = value)
+              .catchError((e) {
+                print('[DEBUG] Best restaurants fetch failed: $e');
+              }),
+        );
+      }
 
-      final results = await Future.wait([bestFuture, nearestFuture]);
-      final bestRestaurants = results[0] as List<VendorModel>;
-      final restaurants = results[1] as List<VendorModel>;
+      if (hasLocation) {
+        futures.add(
+          getNearestRestaurants(
+            latitude: latitude,
+            longitude: longitude,
+          ).then((value) => restaurants = value).catchError((e) {
+            print('[DEBUG] Nearest outlets fetch failed: $e');
+          }),
+        );
+      }
 
-      bestRestaurantList.clear();
-      bestRestaurantList.addAll(bestRestaurants);
-      popularRestaurantList.clear();
-      newArrivalRestaurantList.clear();
-      allNearestRestaurant.clear();
-      advertisementList.clear();
-      storyList.clear();
+      await Future.wait(futures);
+
+      bestRestaurantList = List<VendorModel>.from(restaurants);
+      popularRestaurantList = List<VendorModel>.from(restaurants);
+      newArrivalRestaurantList = List<VendorModel>.from(restaurants);
+      allNearestRestaurant = List<VendorModel>.from(restaurants);
       _updateBestRestaurantDerivedLists();
-      allNearestRestaurant.addAll(restaurants);
-      newArrivalRestaurantList.addAll(restaurants);
-      popularRestaurantList.addAll(restaurants);
       Constant.restaurantList = allNearestRestaurant;
 
       isLoading = false;
-      _scheduleNotify();
+      notifyListeners();
 
-      // Distance calc in background, then notify
-      _processRestaurantData(allNearestRestaurant)
-          .then((_) {
-            logRestaurantDiagnostics();
-            _scheduleNotify();
-          })
-          .catchError((e) {
-            print('[DEBUG] Error in distance processing: $e');
-            _scheduleNotify();
-          });
+      if (allNearestRestaurant.isNotEmpty) {
+        _processRestaurantData(allNearestRestaurant)
+            .then((_) {
+              logRestaurantDiagnostics();
+              _scheduleNotify();
+            })
+            .catchError((e) {
+              print('[DEBUG] Error in distance processing: $e');
+              _scheduleNotify();
+            });
+      }
 
-      _storiesLoadingTask = _loadStoriesFromAPI(zoneId).then((_) {
-        _scheduleNotify();
-      });
-      _storiesLoadingTask?.catchError((e) {
-        print('[DEBUG] Error in background story load: $e');
-      });
+      if (hasZone) {
+        _storiesLoadingTask = _loadStoriesFromAPI(zoneId).then((_) {
+          _scheduleNotify();
+        });
+        _storiesLoadingTask?.catchError((e) {
+          print('[DEBUG] Error in background story load: $e');
+        });
 
-      _relatedDataLoadingTask = _loadRelatedDataInParallel(allNearestRestaurant)
-          .then((_) {
-            _scheduleNotify();
-          });
-      _relatedDataLoadingTask?.catchError((e) {
-        print('[DEBUG] Error in background related-data load: $e');
-      });
+        _relatedDataLoadingTask =
+            _loadRelatedDataInParallel(allNearestRestaurant).then((_) {
+              _scheduleNotify();
+            });
+        _relatedDataLoadingTask?.catchError((e) {
+          print('[DEBUG] Error in background related-data load: $e');
+        });
+      }
     } catch (e) {
       print('[DEBUG] Error fetching restaurants from API: $e');
       isLoading = false;
-      _scheduleNotify();
+      notifyListeners();
     }
   }
 
@@ -289,7 +312,7 @@ class BestRestaurantProvider extends ChangeNotifier {
     try {
       final headers = await getHeaders();
       String url =
-          '${AppConst.baseUrl}restaurants/bestrestaurants?zone_id=$zoneId';
+          '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.415397&lng=78.447721';
       final uri = Uri.parse(url);
       print('[BEST_RESTAURANT_API] Fetching best restaurants from: $uri');
 
@@ -331,72 +354,49 @@ class BestRestaurantProvider extends ChangeNotifier {
   }
 
   static Future<List<VendorModel>> getNearestRestaurants({
-    required String zoneId,
     required double latitude,
     required double longitude,
-    double radius = 20,
-    String? filter,
-    required Function(List<String> availableFilters, String? currentFilter)
-    onFiltersReceived,
   }) async {
     try {
       final headers = await getHeaders();
-      // Build URL with optional filter
-      String url =
-          '${AppConst.baseUrl}restaurants/nearest?'
-          'zone_id=$zoneId&'
-          'latitude=$latitude&'
-          'longitude=$longitude&'
-          'radius=$radius';
-      if (filter != null && filter.isNotEmpty) {
-        url += '&filter=$filter';
-      }
-      final uri = Uri.parse(url);
-      print('[RESTAURANT_API] Fetching restaurants from: $uri');
+
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.415397&lng=78.447721',
+      );
+
+      print('[OUTLET_API] Fetching nearby outlets from: $uri');
 
       final response = await http
           .get(uri, headers: headers)
           .timeout(_networkTimeout);
+
       if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        print('getNearestRestaurants ${response.body}');
+        final jsonResponse = jsonDecode(response.body);
 
-        if (jsonResponse['success'] == true) {
-          List<dynamic> data = jsonResponse['data'];
-          List<VendorModel> restaurants = data
-              .map((item) => VendorModel.fromJson(item))
-              .toList();
+        print('[OUTLET_API] Response: ${response.body}');
 
-          // Get available filters from API response
-          final availableFilters = List<String>.from(
-            jsonResponse['availableFilters'] ?? [],
-          );
-          final currentFilter = jsonResponse['filter'];
+        final outlets = (jsonResponse['outlets'] as List<dynamic>? ?? [])
+            .map((e) => Outlet.fromJson(e as Map<String, dynamic>))
+            .toList();
 
-          // Call the callback to update the provider
-          onFiltersReceived(availableFilters, currentFilter);
+        final restaurants = outlets
+            .map((outlet) => outlet.toVendorModel())
+            .toList();
 
-          print(
-            '[RESTAURANT_API] Restaurants fetched successfully: ${restaurants.length}',
-          );
-          print('[RESTAURANT_API] Available filters: $availableFilters');
-          print('[RESTAURANT_API] Current filter: $currentFilter');
+        print('[OUTLET_API] Outlets fetched: ${restaurants.length}');
 
-          return restaurants;
-        } else {
-          print('[RESTAURANT_API] API returned success: false');
-          return [];
-        }
-      } else {
-        print('[RESTAURANT_API] HTTP error: ${response.statusCode}');
-        throw Exception('Failed to load restaurants: ${response.statusCode}');
+        return restaurants;
       }
-    } on TimeoutException catch (e) {
-      print('[RESTAURANT_API] Timeout fetching restaurants: $e');
+
+      print('[OUTLET_API] HTTP error: ${response.statusCode}');
       return [];
-    } catch (e) {
-      print('[RESTAURANT_API] Error fetching restaurants: $e');
-      rethrow;
+    } on TimeoutException catch (e) {
+      print('[OUTLET_API] Timeout fetching outlets: $e');
+      return [];
+    } catch (e, stackTrace) {
+      print('[OUTLET_API] Error fetching outlets: $e');
+      print(stackTrace);
+      return [];
     }
   }
 
@@ -429,8 +429,6 @@ class BestRestaurantProvider extends ChangeNotifier {
             vendor.latitude!,
             vendor.longitude!,
           );
-        } else {
-          vendor.distance = null;
         }
       }
       if (i + batchSize < vendors.length) {

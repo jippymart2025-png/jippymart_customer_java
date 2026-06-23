@@ -25,11 +25,14 @@ class VendorCategoryModel {
     reviewAttributes = json['review_attributes'] ?? [];
     photo = json['photo'] ?? "";
     description = json['description'] ?? '';
-    id = json['id']?.toString() ?? ""; // Handle both string and numeric IDs
-    title = json['title'] ?? "";
-    productCount = json['product_count'] ?? 0;
+    id = json['id']?.toString() ??
+        json['categoryId']?.toString() ??
+        "";
+    title = json['title'] ?? json['categoryName'] ?? "";
+    productCount = json['product_count'] ??
+        (json['products'] is List ? (json['products'] as List).length : 0);
     showInHomepage = json['show_in_homepage'] == true;
-    publish = json['publish'] == true;
+    publish = json['publish'] == true || json['categoryId'] != null;
     vType = json['vType'] ?? 'restaurant';
   }
 

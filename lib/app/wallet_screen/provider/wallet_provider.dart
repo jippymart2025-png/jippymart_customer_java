@@ -246,7 +246,22 @@ class WalletProvider extends ChangeNotifier {
     try {
       final res = await _api.postCheckin(idempotencyKey: idempotencyKey);
       if (res != null && res['success'] == true) {
-        await refreshCheckinStatus();
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+        final streak = res['currentStreak'] is int
+            ? res['currentStreak'] as int
+            : int.tryParse(res['currentStreak']?.toString() ?? '0') ?? 0;
+        final points = res['points'] is int
+            ? res['points'] as int
+            : int.tryParse(res['points']?.toString() ?? '0') ?? 0;
+
+        _checkinStatus = DailyCheckinModel(
+          date: today,
+          streakDayNumber: streak,
+          coinsAwarded: points,
+        );
+        _lastKnownPositiveStreak = streak;
+        notifyListeners();
         await refreshWallet(force: true);
         return null;
       }

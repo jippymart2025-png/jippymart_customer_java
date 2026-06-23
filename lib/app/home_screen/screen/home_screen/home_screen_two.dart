@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/group_order_section/create_group_order.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/order_type_View.dart';
 import 'package:provider/provider.dart';
 
 import 'package:jippymart_customer/app/advertisement_screens/all_advertisement_screen.dart';
@@ -122,17 +124,12 @@ class _HomeBody extends StatelessWidget {
       return const RestaurantLoadingWidget();
     }
 
-    return Selector<BestRestaurantProvider, (bool, bool)>(
-      selector: (_, p) => (p.isLoading, p.allNearestRestaurant.isEmpty),
-      builder: (context, data, _) {
-        final isLoading = data.$1;
-        final isEmpty = data.$2;
-
-        if (isLoading) return const RestaurantLoadingWidget();
-
+    return Selector<BestRestaurantProvider, int>(
+      selector: (_, p) => p.allNearestRestaurant.length,
+      builder: (context, outletCount, _) {
         if (controller.hasActuallyCheckedZone &&
             Constant.isZoneAvailable == false &&
-            isEmpty) {
+            outletCount == 0) {
           return _NoServiceView(
             isZoneUnavailable: Constant.isZoneAvailable == false,
           );
@@ -418,6 +415,7 @@ class _HomeContentCard extends StatelessWidget {
         children: [
           if (hasBanner) const SizedBox(height: _kBannerPeekAbove + 12),
           // const SizedBox(height: 0),
+          _ordertypeSection(),
           _CategorySection(),
           const SizedBox(height: 8),
           const BestRestaurantsSection(restaurantList: []),
@@ -430,6 +428,39 @@ class _HomeContentCard extends StatelessWidget {
   }
 }
 
+//new impliment of orders
+
+class _ordertypeSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prov = context.watch<CategoryViewProvider>();
+    if (prov.vendorCategoryModel.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
+        OrderOptionsView(
+          onGroupOrderingTap: () {
+            Get.to(() => const CreateGroupOrderScreen());
+          },
+          onHomeMadeMealsTap: () {
+            // TODO: navigate to Home Made Meals screen
+          },
+          onDineInTap: () {
+            // TODO: navigate to Dine In screen
+          },
+          onMultiOrderingTap: () {
+            // TODO: navigate to Multi Ordering screen
+          },
+          onScheduleOrderTap: () {
+            // TODO: navigate to Schedule Order screen
+          },
+        ),
+      ],
+    );
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // _CategorySection
 // ─────────────────────────────────────────────────────────────────────────────
@@ -608,24 +639,13 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<BestRestaurantProvider, (int, bool, String?, List<String>)>(
-      selector: (_, p) => (
-        p.allNearestRestaurant.length,
-        p.isLoading,
-        p.currentFilter,
-        p.availableFilters,
-      ),
-      shouldRebuild: (prev, next) =>
-          prev.$1 != next.$1 ||
-          prev.$2 != next.$2 ||
-          prev.$3 != next.$3 ||
-          prev.$4 != next.$4,
-      builder: (context, data, _) {
-        if (data.$1 == 0 || data.$2) {
+    return Selector<BestRestaurantProvider, int>(
+      selector: (_, p) => p.allNearestRestaurant.length,
+      builder: (context, count, _) {
+        if (count == 0) {
           return const SliverToBoxAdapter(child: SizedBox.shrink());
         }
 
-        final prov = context.read<BestRestaurantProvider>();
         return SliverToBoxAdapter(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -654,6 +674,25 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
                         color: Color(0xFF1A1A2E),
                         fontSize: _kFontXL,
                         letterSpacing: -0.2,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _kGradStart.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$count',
+                        style: const TextStyle(
+                          fontSize: _kFontSM,
+                          fontFamily: AppThemeData.semiBold,
+                          color: _kGradStart,
+                        ),
                       ),
                     ),
                   ],
@@ -721,11 +760,11 @@ class _AllRestaurantsGridSliver extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Selector<BestRestaurantProvider, List<VendorModel>>(
-      selector: (_, p) => p.allNearestRestaurant,
-      shouldRebuild: (prev, next) => prev.length != next.length || prev != next,
-      builder: (context, all, _) {
-        if (all.isEmpty) {
+    return Selector<BestRestaurantProvider, int>(
+      selector: (_, p) => p.allNearestRestaurant.length,
+      builder: (context, count, _) {
+        final all = context.read<BestRestaurantProvider>().allNearestRestaurant;
+        if (count == 0) {
           return const SliverToBoxAdapter(child: SizedBox.shrink());
         }
 
@@ -744,7 +783,7 @@ class _AllRestaurantsGridSliver extends StatelessWidget {
                 return RepaintBoundary(
                   child: _RestaurantCard(vendorModel: all[i]),
                 );
-              }, childCount: all.length),
+              }, childCount: count),
             ),
           ),
         );
@@ -815,24 +854,24 @@ class _AllRestaurantsSection extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  // Container(
-                  //   padding: const EdgeInsets.symmetric(
-                  //     horizontal: 8,
-                  //     vertical: 3,
-                  //   ),
-                  //   decoration: BoxDecoration(
-                  //     color: _kGradStart.withOpacity(0.1),
-                  //     borderRadius: BorderRadius.circular(12),
-                  //   ),
-                  //   // child: Text(
-                  //   //   '${all.length}',
-                  //   //   style: const TextStyle(
-                  //   //     fontSize: _kFontSM,
-                  //   //     fontFamily: AppThemeData.semiBold,
-                  //   //     color: _kGradStart,
-                  //   //   ),
-                  //   // ),
-                  // ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _kGradStart.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${all.length}',
+                      style: const TextStyle(
+                        fontSize: _kFontSM,
+                        fontFamily: AppThemeData.semiBold,
+                        color: _kGradStart,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

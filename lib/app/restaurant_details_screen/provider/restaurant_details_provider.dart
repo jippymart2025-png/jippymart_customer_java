@@ -9,6 +9,7 @@ import 'package:jippymart_customer/models/AttributesModel.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
+import 'package:jippymart_customer/models/outlet_details.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
@@ -140,46 +141,66 @@ class RestaurantApiHelper {
     bool? offerOnly,
   }) async {
     try {
-      final Map<String, String> queryParams = {};
+      final Map<String, String> queryParams = {
+        'outletId': "14",
+        'userType': 'CUSTOMER',
+      };
+
       if (search != null && search.isNotEmpty) {
         queryParams['search'] = search;
       }
+
       if (isVeg == true) {
         queryParams['is_veg'] = 'true';
       }
+
       if (isNonVeg == true) {
         queryParams['is_nonveg'] = 'true';
       }
+
       if (offerOnly == true) {
         queryParams['offer_only'] = 'true';
       }
+
       final uri = Uri.parse(
-        '${AppConst.baseUrl}restaurants/$restaurantId/product-feed',
+        '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails',
       ).replace(queryParameters: queryParams);
+
       print('🔍 API Call: $uri');
+
       final response = await http
           .get(uri, headers: await getHeaders())
-          .timeout(Duration(seconds: 10));
-      log(
-        'getRestaurantProducts Response for $restaurantId: ${response.statusCode}',
-      );
+          .timeout(const Duration(seconds: 10));
+
+      print('📦 Response Body: ${response.body}');
+
       if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true) {
-          print('✅ Successfully loaded products for restaurant $restaurantId');
-          return data['data'];
-        } else {
-          print('❌ API Error for $restaurantId: ${data['message']}');
-          throw Exception('API returned error: ${data['message']}');
-        }
-      } else {
-        print('❌ HTTP Error for $restaurantId: ${response.statusCode}');
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+        return _parseOutletDetailsResponse(response.body);
       }
+
+      throw Exception('HTTP ${response.statusCode}: ${response.body}');
     } catch (e) {
-      print('❌ API Error for restaurant $restaurantId: $e');
+      print('❌ API Error: $e');
       rethrow;
     }
+  }
+
+  static Map<String, dynamic> _parseOutletDetailsResponse(String body) {
+    final decoded = json.decode(body);
+
+    if (decoded is Map<String, dynamic>) {
+      if (decoded['success'] == true &&
+          decoded['data'] is Map<String, dynamic>) {
+        return Map<String, dynamic>.from(decoded['data'] as Map);
+      }
+      if (decoded.containsKey('outletId') ||
+          decoded.containsKey('categories')) {
+        return decoded;
+      }
+      throw Exception(decoded['message']?.toString() ?? 'Unknown API Error');
+    }
+
+    throw Exception('Invalid outlet details response');
   }
 }
 
@@ -499,22 +520,18 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     String restaurantId,
   ) async {
     try {
-      // Use static API helper
       final apiData = await RestaurantApiHelper.getRestaurantProducts(
         restaurantId: restaurantId,
       );
 
-      // Parse data
-      final categories = _parseCategories(apiData['categories'] ?? []);
-      final products = _parseProducts(apiData['products'] ?? []);
+      final outletDetails = _applyOutletDetails(apiData);
 
-      // Fetch coupons using static helper
       final coupons = await _fetchCoupons(restaurantId);
 
       return RestaurantCacheData(
         restaurantId: restaurantId,
-        products: products,
-        categories: categories,
+        products: outletDetails.allProducts,
+        categories: outletDetails.vendorCategories,
         coupons: coupons,
       );
     } catch (e) {
@@ -523,39 +540,13 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     }
   }
 
+  OutletDetails _applyOutletDetails(Map<String, dynamic> apiData) {
+    final outletDetails = OutletDetails.fromJson(apiData);
+    vendorModel = outletDetails.toVendorModel(existing: vendorModel);
+    return outletDetails;
+  }
+
   /// OPTIMIZED DATA PARSING
-  List<VendorCategoryModel> _parseCategories(dynamic categoriesData) {
-    if (categoriesData is! List) return [];
-
-    final categories = <VendorCategoryModel>[];
-    for (final item in categoriesData) {
-      try {
-        if (item is Map<String, dynamic>) {
-          categories.add(VendorCategoryModel.fromJson(item));
-        }
-      } catch (e) {
-        print('⚠️ Skipping invalid category: $e');
-      }
-    }
-    return categories;
-  }
-
-  List<ProductModel> _parseProducts(dynamic productsData) {
-    if (productsData is! List) return [];
-
-    final products = <ProductModel>[];
-    for (final item in productsData) {
-      try {
-        if (item is Map<String, dynamic>) {
-          products.add(ProductModel.fromApiJson(item));
-        }
-      } catch (e) {
-        print('⚠️ Skipping invalid product: $e');
-      }
-    }
-    return products;
-  }
-
   Future<List<CouponModel>> _fetchCoupons(String restaurantId) async {
     try {
       final coupons = await RestaurantApiHelper.getRestaurantCoupons(
@@ -800,7 +791,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         offerOnly: isOfferFilter,
       );
 
-      productList = _parseProducts(apiData['products'] ?? []);
+      final outletDetails = _applyOutletDetails(apiData);
+      productList = outletDetails.allProducts;
+      vendorCategoryList = outletDetails.vendorCategories;
       _buildCategoryProductMapping();
     } catch (e) {
       print('❌ API search failed: $e');
@@ -820,9 +813,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         offerOnly: isOfferFilter,
       );
 
-      final apiProducts = _parseProducts(apiData['products'] ?? []);
+      final outletDetails = _applyOutletDetails(apiData);
+      final apiProducts = outletDetails.allProducts;
       if (_lastSearchQuery == query && apiProducts.isNotEmpty) {
         productList = apiProducts;
+        vendorCategoryList = outletDetails.vendorCategories;
         _buildCategoryProductMapping();
         notifyListeners();
       }
@@ -1401,9 +1396,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
             offerOnly: isOfferFilter,
           );
 
-          vendorCategoryList = _parseCategories(apiData['categories'] ?? []);
-          allProductList = _parseProducts(apiData['products'] ?? []);
-          productList = List.from(allProductList);
+          final outletDetails = _applyOutletDetails(apiData);
+
+          vendorCategoryList = outletDetails.vendorCategories;
+          allProductList = outletDetails.allProducts;
+          productList = List<ProductModel>.from(allProductList);
 
           // Load promotions in background
           _loadAllPromotionsForRestaurant();
@@ -1412,6 +1409,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           _buildCategoryProductMapping();
         } catch (e) {
           print('❌ Error loading products: $e');
+
           allProductList = [];
           productList = [];
           vendorCategoryList = [];

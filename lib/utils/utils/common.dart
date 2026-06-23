@@ -11,6 +11,8 @@ Future<Map<String, String>> getHeaders() async {
   return {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Authorization': 'Bearer $authToken',
+    // 'Authorization': 'Bearer $authToken',
+    'Authorization':
+        'Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMTk0MDAxLCJleHAiOjE3ODIyODA0MDF9.0lRR6EYnZmqmctZVNysujYZNqR4ouPhLAFkov5papOw',
   };
 }

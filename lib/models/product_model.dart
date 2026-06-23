@@ -67,61 +67,96 @@ class ProductModel {
     this.availableTimings,
   });
 
-  // Factory constructor for API JSON
-  // In ProductModel.fromJson, replace the problematic section:
   factory ProductModel.fromApiJson(Map<String, dynamic> json) {
     try {
-      final parsedId = _parseInt(json['id'] ?? json['product_id']);
-      final isAvailableNow = _parseNullableBool(json['is_available_now']);
-      final isAvailableLegacy =
-          _parseNullableBool(json['isAvailable']) ??
-          _parseNullableBool(json['is_available']);
-      final resolvedIsAvailable = isAvailableNow ?? isAvailableLegacy ?? true;
       return ProductModel(
-        id: _parseString(json['id']),
-        name: _parseString(json['name']),
-        description: _parseString(json['description']),
-        categoryID: _parseString(json['category_id']),
-        categoryTitle: _parseString(json['category_title']),
-        publish:
-            json['publish'] == true ||
-            json['publish'] == 1 ||
-            json['publish'] == '1' ||
-            json['publish'] == 'true',
-        isAvailable: resolvedIsAvailable,
-        nonveg: json['nonveg'] == true || json['nonveg'] == 1,
-        veg: json['veg'] == true || json['veg'] == 1,
-        photo: _parseString(json['photo']),
-        photos: _parseStringList(json['photos']),
-        addOnsTitle: _parseStringList(json['add_ons_title']),
-        addOnsPrice: _parsePriceList(json['add_ons_price']),
-        itemAttribute: _parseItemAttribute(json['item_attribute']),
-        productSpecification: _parseMap(json['product_specification']),
-        reviewsCount: _parseNum(json['reviews_count']),
-        reviewsSum: _parseNum(json['reviews_sum']),
-        quantity: _parseInt(json['quantity']) ?? -1,
+        id: (json['productId'] ?? json['id'])?.toString(),
+
+        name:
+            json['productName']?.toString() ??
+            json['name']?.toString() ??
+            '',
+
+        description:
+            json['description']?.toString() ??
+            '',
+
+        categoryID:
+            json['category_id']?.toString() ??
+            json['categoryId']?.toString(),
+
+        categoryTitle:
+            json['category_title']?.toString() ??
+            json['categoryName']?.toString(),
+
+        vendorID:
+            json['vendor_id']?.toString() ??
+            json['vendorID']?.toString(),
+
         price:
-            _parsePrice(json['price']) ??
-            _parsePrice(json['original_price']) ??
+            json['price']?.toString() ??
             '0',
-        merchantPrice: _parsePrice(json['merchant_price']) ??
-            _parsePrice(json['original_price']) ??
-            _parsePrice(json['price']) ??
+
+        merchantPrice:
+            json['merchantPrice']?.toString() ??
+            json['merchant_price']?.toString() ??
+            json['price']?.toString() ??
             '0',
+
         disPrice:
-            _parsePrice(json['disPrice']) ??
-            _parsePrice(json['discount_price']) ??
+            json['discount_price']?.toString() ??
+            json['disPrice']?.toString() ??
             '0',
-        vendorID: _parseString(json['vendorID'] ?? json['vendor_id']),
+
+        photo:
+            json['thumbnail']?.toString() ??
+            json['photo']?.toString() ??
+            '',
+
+        photos: json['photos'] is List
+            ? List<String>.from(json['photos'])
+            : [],
+
+        veg:
+            json['isVeg'] == true ||
+            json['veg'] == true ||
+            json['veg'] == 1,
+
+        nonveg:
+            json['isVeg'] == false ||
+            json['nonveg'] == true ||
+            json['nonveg'] == 1,
+
+        publish: true,
+
+        isAvailable: true,
+
+        quantity: -1,
+
+        addOnsTitle: [],
+
+        addOnsPrice: [],
+
+        reviewsCount: 0,
+
+        reviewsSum: 0,
+
+        itemAttribute: json['hasProductVariants'] == true &&
+                json['variants'] is Map<String, dynamic>
+            ? ItemAttribute.fromJson(json['variants'] as Map<String, dynamic>)
+            : _parseItemAttribute(json['item_attribute'] ?? json['variants']),
+
         options: _parseOptions(json['options']),
-        availableTimings: _parseAvailableTimings(
-          json['available_timings'] ?? json['availableTimings'],
-        ),
+
+        availableTimings: _parseProductTimings(json['productTimings']) ??
+            _parseAvailableTimings(
+              json['available_timings'] ?? json['availableTimings'],
+            ),
       );
     } catch (e) {
-      print('❌ Error parsing product JSON: $e');
-      print('❌ Problematic JSON: $json');
-      return ProductModel(); // Return empty product instead of crashing
+      print('❌ Product Parse Error: $e');
+      print('❌ JSON: $json');
+      return ProductModel();
     }
   }
 
@@ -420,6 +455,40 @@ class ProductModel {
     }
   }
 
+  /// Converts outlet API `productTimings` [{day, startTime, endTime}] into
+  /// the schedule format used by the UI availability checks.
+  static List<ProductAvailabilitySchedule>? _parseProductTimings(
+    dynamic value,
+  ) {
+    if (value == null) return null;
+    if (value is! List || value.isEmpty) return null;
+
+    final grouped = <String, List<ProductAvailabilityTimeslot>>{};
+
+    for (final item in value) {
+      if (item is! Map) continue;
+      final day = item['day']?.toString();
+      final startTime = item['startTime']?.toString();
+      final endTime = item['endTime']?.toString();
+      if (day == null || day.isEmpty) continue;
+
+      grouped.putIfAbsent(day, () => []).add(
+            ProductAvailabilityTimeslot(from: startTime, to: endTime),
+          );
+    }
+
+    if (grouped.isEmpty) return null;
+
+    return grouped.entries
+        .map(
+          (entry) => ProductAvailabilitySchedule(
+            day: entry.key,
+            timeslot: entry.value,
+          ),
+        )
+        .toList();
+  }
+
   bool get isAvailableAtCurrentTime {
     final timings = availableTimings;
     if (timings == null || timings.isEmpty) return true;
@@ -520,8 +589,9 @@ class ProductModel {
     data['createdAt'] = createdAt;
     data['isAvailable'] = isAvailable;
     data['is_available_now'] = isAvailable == true ? 1 : 0;
-    data['available_timings'] =
-        availableTimings?.map((e) => e.toJson()).toList();
+    data['available_timings'] = availableTimings
+        ?.map((e) => e.toJson())
+        .toList();
 
     if (options != null) {
       data['options'] = options!.map((e) => e.toJson()).toList();
@@ -552,10 +622,7 @@ class ProductAvailabilitySchedule {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'day': day,
-      'timeslot': timeslot?.map((e) => e.toJson()).toList(),
-    };
+    return {'day': day, 'timeslot': timeslot?.map((e) => e.toJson()).toList()};
   }
 }
 
@@ -573,10 +640,7 @@ class ProductAvailabilityTimeslot {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'from': from,
-      'to': to,
-    };
+    return {'from': from, 'to': to};
   }
 }
 
@@ -605,13 +669,12 @@ class ProductOption {
       title: ProductModel._parseString(json['title']),
       subtitle: ProductModel._parseString(json['subtitle']),
       price: ProductModel._parsePrice(json['price']) ?? '0',
-      isAvailable:
-          json['is_available'] == true || json['is_available'] == 1,
-      originalPrice: ProductModel._parsePrice(json['original_price']) ??
+      isAvailable: json['is_available'] == true || json['is_available'] == 1,
+      originalPrice:
+          ProductModel._parsePrice(json['original_price']) ??
           ProductModel._parsePrice(json['price']) ??
           '0',
-      isFeatured:
-          json['is_featured'] == true || json['is_featured'] == 1,
+      isFeatured: json['is_featured'] == true || json['is_featured'] == 1,
     );
   }
 

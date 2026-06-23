@@ -54,6 +54,21 @@ class DailyCheckinModel {
           ? json['coins_awarded'] as int
           : int.tryParse(json['coins_awarded']?.toString() ?? '0');
     }
+    // Spring Boot daily-streak POST response
+    if (streakDayNumber == 0 && json['currentStreak'] != null) {
+      streakDayNumber = json['currentStreak'] is int
+          ? json['currentStreak'] as int
+          : int.tryParse(json['currentStreak']?.toString() ?? '0');
+    }
+    if ((coinsAwarded == null || coinsAwarded == 0) && json['points'] != null) {
+      coinsAwarded = json['points'] is int
+          ? json['points'] as int
+          : int.tryParse(json['points']?.toString() ?? '0');
+    }
+    if (date == null && json['currentStreak'] != null) {
+      final now = DateTime.now();
+      date = DateTime(now.year, now.month, now.day);
+    }
   }
 
   Map<String, dynamic> toJson() {

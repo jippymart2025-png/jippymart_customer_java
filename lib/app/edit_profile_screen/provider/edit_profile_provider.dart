@@ -118,6 +118,11 @@ class EditProfileProvider extends ChangeNotifier {
     return _cachedUserId!;
   }
 
+  Future<int?> _getCustomerId() async {
+    final storedId = await SqlStorageConst.getUserId() ?? _userModel.id ?? '';
+    return int.tryParse(storedId);
+  }
+
   void _populateFormFields() {
     if (_userModel.id != null) {
       firstNameController.text = _userModel.firstName?.toString() ?? "";
@@ -249,20 +254,27 @@ class EditProfileProvider extends ChangeNotifier {
     // Handle image upload only if changed
     if (_hasProfileImageChanged && _profileImage.isNotEmpty) {
       if (!Constant().hasValidUrl(_profileImage)) {
-        final userId = await _getUserId();
-        _userModel.profilePictureURL =
-            await Constant.uploadUserImageToFireStorage(
-              File(_profileImage),
-              "profileImage/$userId",
-              File(_profileImage).path.split('/').last,
-            );
+        final customerId = await _getCustomerId();
+        if (customerId == null) {
+          throw Exception('Invalid customer id');
+        }
+
+        final uploadedUrl = await EditProfileProvider.uploadProfilePic(
+          userId: customerId,
+          imageFile: File(_profileImage),
+          existingProfilePicUrl: _userModel.profilePictureURL,
+        );
+        if (uploadedUrl == null || uploadedUrl.isEmpty) {
+          throw Exception('Profile picture upload failed');
+        }
+        _userModel.profilePictureURL = uploadedUrl;
+        _profileImage = uploadedUrl;
       } else {
         _userModel.profilePictureURL = _profileImage;
       }
       _hasProfileImageChanged = false;
     }
 
-    // Only call API if there are changes - use the static method
     final success = await EditProfileProvider.updateUserStatic(_userModel);
 
     if (success) {
@@ -279,91 +291,134 @@ class EditProfileProvider extends ChangeNotifier {
     return await EditProfileProvider.updateUserStatic(userModel);
   }
 
+  static Future<String?> uploadProfilePic({
+    required int userId,
+    required File imageFile,
+    String? existingProfilePicUrl,
+  }) async {
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${AppConst.outletBaseUrl}driver/saveOrUpdateProfilePic'),
+      );
+
+      final authHeaders = await getHeaders();
+      if (authHeaders['Authorization'] != null) {
+        request.headers['Authorization'] = authHeaders['Authorization']!;
+      }
+      request.headers['accept'] = '*/*';
+
+      request.fields['userId'] = userId.toString();
+      request.fields['profilePicUrl'] = existingProfilePicUrl ?? '';
+      request.fields['userType'] = 'customer';
+
+      final multipartFile = await http.MultipartFile.fromPath(
+        'profilePicFile',
+        imageFile.path,
+        filename: imageFile.path.split('/').last,
+      );
+      request.files.add(multipartFile);
+
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      print(
+        '[EDIT_PROFILE] uploadProfilePic: ${response.statusCode} ${response.body}',
+      );
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        return null;
+      }
+
+      return _extractProfilePicUrl(response.body);
+    } catch (error) {
+      print('[EDIT_PROFILE] uploadProfilePic error: $error');
+      return null;
+    }
+  }
+
+  static String? _extractProfilePicUrl(String responseBody) {
+    try {
+      final responseData = jsonDecode(responseBody);
+      if (responseData is! Map<String, dynamic>) return null;
+
+      final data = responseData['data'];
+      if (data is Map<String, dynamic>) {
+        return data['profilePicUrl']?.toString() ??
+            data['profilePictureURL']?.toString();
+      }
+      if (data is String && data.isNotEmpty) {
+        return data;
+      }
+
+      return responseData['profilePicUrl']?.toString() ??
+          responseData['profilePictureURL']?.toString();
+    } catch (e) {
+      print('[EDIT_PROFILE] Failed to parse profile pic response: $e');
+      return null;
+    }
+  }
+
   // Static method for external access (kept from original code)
   static Future<bool> updateUserStatic(UserModel userModel) async {
     try {
-      final userId = await SqlStorageConst.getFirebaseId();
-      String? uid = userModel.firebaseId ?? userId ?? '';
-      if (uid.isEmpty) {
+      final storedId = await SqlStorageConst.getUserId() ?? userModel.id ?? '';
+      final customerId = int.tryParse(storedId);
+      if (customerId == null) {
         return false;
       }
 
-      print("userdata ${userModel.toJson()}");
-      userModel.id = uid;
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('${AppConst.baseUrl}user/profile'),
-      );
+      userModel.id = customerId.toString();
+
       final headers = await getHeaders();
-      request.headers.addAll(headers);
+      final body = <String, dynamic>{
+        'firstName': userModel.firstName ?? '',
+        'lastName': userModel.lastName ?? '',
+        'email': userModel.email ?? '',
+        'phoneNumber': userModel.phoneNumber ?? '',
+        'customerId': 104,
+        'profilePicUrl': userModel.profilePictureURL ?? '',
+      };
 
-      // Add text fields
-      request.fields['firebase_id'] = uid;
-      if (userModel.firstName != null) {
-        request.fields['firstName'] = userModel.firstName!;
-      }
-      if (userModel.lastName != null) {
-        request.fields['lastName'] = userModel.lastName!;
-      }
-      if (userModel.email != null) {
-        request.fields['email'] = userModel.email!;
-      }
-      if (userModel.phoneNumber != null) {
-        request.fields['phoneNumber'] = userModel.phoneNumber!;
-      }
-      if (userModel.countryCode != null) {
-        request.fields['countryCode'] = userModel.countryCode!;
-      }
-      if (userModel.fcmToken != null && userModel.fcmToken!.trim().isNotEmpty) {
-        request.fields['fcmToken'] = userModel.fcmToken!.trim();
-      }
+      print('[EDIT_PROFILE] updateCustomerProfilePic body: $body');
 
-      // Add shipping address if available
-      if (userModel.shippingAddress != null &&
-          userModel.shippingAddress!.isNotEmpty) {
-        request.fields['shippingAddress'] = jsonEncode(
-          userModel.shippingAddress!,
-        );
-      }
-      // Add location if available
-      if (userModel.location != null) {
-        request.fields['location'] = userModel.location as String;
-      }
+      final response = await http.put(
+        Uri.parse(
+          '${AppConst.outletBaseUrl}co/customers/updateCustomerProfilePic',
+        ),
+        headers: headers,
+        body: jsonEncode(body),
+      );
 
-      // Add profile picture if it's a file path (not a URL)
-      if (userModel.profilePictureURL != null &&
-          userModel.profilePictureURL!.isNotEmpty &&
-          !userModel.profilePictureURL!.startsWith('http')) {
+      print(
+        '[EDIT_PROFILE] updateCustomerProfilePic: ${response.statusCode} ${response.body}',
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
         try {
-          var file = File(userModel.profilePictureURL!);
-          if (await file.exists()) {
-            var multipartFile = await http.MultipartFile.fromPath(
-              'profilePictureURL',
-              file.path,
-              filename: 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg',
-            );
-            request.files.add(multipartFile);
+          final responseData = jsonDecode(response.body);
+          if (responseData is Map<String, dynamic> &&
+              responseData.containsKey('success') &&
+              responseData['success'] != true) {
+            return false;
           }
-        } catch (e) {
-          print('Error adding profile picture: $e');
+        } catch (_) {
+          // Non-JSON success response is acceptable.
         }
-      }
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
-      print("userdata ${response.body}");
-      if (response.statusCode == 200) {
-        var responseData = jsonDecode(response.body);
-        if (responseData['success'] == true) {
-          Constant.userModel = userModel;
-          return true;
-        } else {
-          return false;
+
+        if (response.body.isNotEmpty) {
+          final updatedUrl = _extractProfilePicUrl(response.body);
+          if (updatedUrl != null && updatedUrl.isNotEmpty) {
+            userModel.profilePictureURL = updatedUrl;
+          }
         }
-      } else {
-        return false;
+
+        Constant.userModel = userModel;
+        return true;
       }
+
+      return false;
     } catch (error) {
-      print(" updateUser $error");
+      print('[EDIT_PROFILE] updateUser error: $error');
       return false;
     }
   }

@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/address_screens/provider/saveCustomerDeliveryAddress.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -440,10 +441,10 @@ class AddressListProvider extends ChangeNotifier {
         address: houseBuildingTextEditingController.text.trim(),
         locality: localityEditingController.text.trim(),
         landmark: landmarkEditingController.text.trim(),
-        isDefault: shippingAddressList.isEmpty ? true : false,
+        isDefault: shippingAddressList.isEmpty,
       );
 
-      // Get zone ID only if needed
+      // Get zone ID
       if (location.latitude != null && location.longitude != null) {
         final zoneId = await MartZoneUtils.getZoneIdForCoordinates(
           location.latitude!,
@@ -456,39 +457,57 @@ class AddressListProvider extends ChangeNotifier {
         }
       }
 
-      // Update address list
-      List<ShippingAddress> updatedAddressList;
+      // Update local address list
+      List<ShippingAddress> updatedAddressList = List<ShippingAddress>.from(
+        shippingAddressList,
+      );
+
       if (shippingModel.id != null && index >= 0) {
-        updatedAddressList = List<ShippingAddress>.from(shippingAddressList);
         updatedAddressList[index] = shippingModels;
       } else {
-        updatedAddressList = List<ShippingAddress>.from(shippingAddressList);
         updatedAddressList.add(shippingModels);
       }
 
-      // Update user model and save
       userModel.shippingAddress = updatedAddressList;
-      final success = await addressListProvider.updateUser(userModel);
+
+      // Call API
+      final success = await saveCustomerDeliveryAddress(
+        customerId: 104,
+        // Replace with actual customer ID
+        latitude: location.latitude ?? 0.0,
+        longitude: location.longitude ?? 0.0,
+        doorNo: houseBuildingTextEditingController.text.trim(),
+        buildingName: houseBuildingTextEditingController.text.trim(),
+        laneNo: landmarkEditingController.text.trim(),
+        // area: 1, // Replace with actual area ID
+        // city: 1, // Replace with actual city ID
+        createdBy: 104, // Replace with actual user ID
+      );
 
       if (success) {
         shippingAddressList = updatedAddressList;
-        clearCache(); // Invalidate cache
 
-        // Refresh home provider data
+        clearCache();
+
         if (_homeProvider != null) {
           _homeProvider!.ensureUserModelIsLoaded();
         }
 
         ShowToastDialog.closeLoader();
         Get.back();
+
         ShowToastDialog.showToast("Address saved successfully".tr);
       } else {
         ShowToastDialog.closeLoader();
+
         ShowToastDialog.showToast("Failed to save address".tr);
       }
-    } catch (e) {
-      print("saveAddressFunction error: $e");
+    } catch (e, stackTrace) {
+      print("saveAddressFunction Error: $e");
+      print(stackTrace);
+
       ShowToastDialog.closeLoader();
+
       ShowToastDialog.showToast("Error saving address".tr);
     } finally {
       setLoading(false);

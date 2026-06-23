@@ -221,18 +221,7 @@ class HomeProvider extends ChangeNotifier {
         // Continue even if some requests fail
       });
 
-      // Load restaurants if zone is available
-      if (Constant.selectedZone?.id != null &&
-          Constant.selectedZone!.id!.isNotEmpty) {
-        unawaited(
-          bestRestaurantProvider
-              .loadRestaurantsAndRelatedData()
-              .timeout(const Duration(seconds: 8))
-              .catchError((e) {
-                print('[HOME_PROVIDER] Restaurant load error: $e');
-              }),
-        );
-      }
+      _loadOutletsIfCoordinatesAvailable();
 
       // Initialize other providers in background
       _initializeBackgroundProviders();
@@ -479,11 +468,7 @@ class HomeProvider extends ChangeNotifier {
       // Reload banners with new zone
       await _loadBanners();
 
-      // Reload restaurants
-      if (Constant.selectedZone?.id != null &&
-          Constant.selectedZone!.id!.isNotEmpty) {
-        await bestRestaurantProvider.loadRestaurantsAndRelatedData();
-      }
+      await _loadOutletsIfCoordinatesAvailable();
 
       // Reload categories
       await categoryViewProvider.loadVendorCategories();
@@ -566,9 +551,26 @@ class HomeProvider extends ChangeNotifier {
       MartZoneUtils.clearMartVendorCache();
     }
 
-    // Load restaurants in background
-    if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
-      unawaited(bestRestaurantProvider.loadRestaurantsAndRelatedData());
+    _loadOutletsIfCoordinatesAvailable();
+  }
+
+  bool _hasCoordinates() {
+    final lat = Constant.selectedLocation.location?.latitude ?? 0.0;
+    final lng = Constant.selectedLocation.location?.longitude ?? 0.0;
+    return lat != 0.0 && lng != 0.0;
+  }
+
+  Future<void> _loadOutletsIfCoordinatesAvailable() async {
+    if (!_hasCoordinates()) {
+      print('[HOME_PROVIDER] No coordinates yet, skipping outlet load');
+      bestRestaurantProvider.isLoading = false;
+      bestRestaurantProvider.notifyListeners();
+      return;
+    }
+    try {
+      await bestRestaurantProvider.loadRestaurantsAndRelatedData();
+    } catch (e) {
+      print('[HOME_PROVIDER] Restaurant load error: $e');
     }
   }
 
@@ -711,6 +713,9 @@ class HomeProvider extends ChangeNotifier {
           Constant.selectedLocation = userLocation;
           return;
         }
+      }
+      if (_hasCoordinates()) {
+        unawaited(_loadOutletsIfCoordinatesAvailable());
       }
     } finally {
       _removeLoadingTask('ensureLocation');
@@ -870,6 +875,7 @@ class HomeProvider extends ChangeNotifier {
       CacheManager().clearByPattern('nearest_restaurants_$zoneId');
       CacheManager().remove('stories_$zoneId');
     }
+    CacheManager().clearByPattern('nearest_outlets_v2_');
 
     // Clear category cache
     CacheManager().remove('categories_home');
@@ -896,9 +902,7 @@ class HomeProvider extends ChangeNotifier {
         getZone(),
         _loadBanners(),
         categoryViewProvider.loadVendorCategories(),
-        if (Constant.selectedZone?.id != null &&
-            Constant.selectedZone!.id!.isNotEmpty)
-          bestRestaurantProvider.loadRestaurantsAndRelatedData(),
+        _loadOutletsIfCoordinatesAvailable(),
       ], eagerError: true);
 
       print('[HOME_PROVIDER] ✅ Refresh completed successfully');

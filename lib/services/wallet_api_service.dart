@@ -6,6 +6,7 @@ import 'package:jippymart_customer/models/coin_ledger_model.dart';
 import 'package:jippymart_customer/models/coin_wallet_model.dart';
 import 'package:jippymart_customer/models/daily_checkin_model.dart';
 import 'package:jippymart_customer/models/referral_model.dart';
+import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
@@ -189,25 +190,38 @@ class WalletApiService {
     }
   }
 
-  /// POST /checkin — daily check-in (idempotent; timezone Asia/Kolkata).
-  /// Body: { "firebase_id", "timezone", "idempotency_key" optional }
+  static String _todayDateParam() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<int?> _customerId() async {
+    final storedId = await SqlStorageConst.getUserId() ?? '';
+    return int.tryParse(storedId);
+  }
+
+  /// POST /co/customers/daily-streak/{customerId}?date=YYYY-MM-DD
+  /// Response: { "success": true, "message": "...", "currentStreak": int, "maxStreak": int?, "points": int }
   Future<Map<String, dynamic>?> postCheckin({String? idempotencyKey}) async {
     try {
-      final firebaseId = await SqlStorageConst.getFirebaseId() ?? '';
-      final body = <String, dynamic>{
-        'firebase_id': firebaseId,
-        'timezone': 'Asia/Kolkata',
-      };
-      if (idempotencyKey != null && idempotencyKey.isNotEmpty) {
-        body['idempotency_key'] = idempotencyKey;
+      final customerId = await _customerId();
+      if (customerId == null) {
+        print('[WalletApiService] postCheckin: missing customerId');
+        return null;
       }
-      final response = await http.post(
-        Uri.parse('${_base}checkin'),
-        headers: await _headers(),
-        body: json.encode(body),
-      ).timeout(const Duration(seconds: 15));
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}co/customers/daily-streak/$customerId',
+      ).replace(queryParameters: {'date': _todayDateParam()});
+      final response = await http
+          .post(uri, headers: await _headers())
+          .timeout(const Duration(seconds: 15));
       final map = json.decode(response.body) as Map<String, dynamic>?;
-      if (response.statusCode != 200 && response.statusCode != 201) return null;
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        return map;
+      }
+      if (map?['success'] == true) {
+        await _persistCheckinFromResponse(map!);
+      }
       return map;
     } catch (e) {
       print('[WalletApiService] postCheckin error: $e');
@@ -215,30 +229,44 @@ class WalletApiService {
     }
   }
 
-  /// GET /checkin/status — today's status and streak.
-  /// Query: firebase_id. Response: { "success": true, "data": DailyCheckinModel }
+  /// No GET endpoint on Spring Boot — rebuild status from locally cached streak data.
   Future<DailyCheckinModel?> getCheckinStatus() async {
     try {
-      final firebaseId = await SqlStorageConst.getFirebaseId() ?? '';
-      final uri = Uri.parse('${_base}checkin/status').replace(
-        queryParameters: firebaseId.isNotEmpty ? {'firebase_id': firebaseId} : null,
-      );
-      final response = await http.get(
-        uri,
-        headers: await _headers(),
-      ).timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200) return null;
-      final map = json.decode(response.body) as Map<String, dynamic>?;
-      if (map?['success'] != true || map?['data'] == null) return null;
-      final data = map!['data'];
-      if (data is Map<String, dynamic>) {
-        return DailyCheckinModel.fromJson(data);
+      final dateStr = Preferences.getString(Preferences.walletLastCheckinDate);
+      if (dateStr.isEmpty) return null;
+
+      final parsed = DateTime.tryParse(dateStr);
+      if (parsed == null) return null;
+
+      final lastDay = DateTime(parsed.year, parsed.month, parsed.day);
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final daysSinceLastCheckin = today.difference(lastDay).inDays;
+
+      var streak = Preferences.getInt(Preferences.walletLastKnownPositiveStreak);
+      if (daysSinceLastCheckin > 1) {
+        streak = 0;
       }
-      return null;
+
+      return DailyCheckinModel(
+        date: lastDay,
+        streakDayNumber: streak,
+      );
     } catch (e) {
       print('[WalletApiService] getCheckinStatus error: $e');
       return null;
     }
+  }
+
+  Future<void> _persistCheckinFromResponse(Map<String, dynamic> map) async {
+    final streak = map['currentStreak'] is int
+        ? map['currentStreak'] as int
+        : int.tryParse(map['currentStreak']?.toString() ?? '0') ?? 0;
+    await Preferences.setString(
+      Preferences.walletLastCheckinDate,
+      _todayDateParam(),
+    );
+    await Preferences.setInt(Preferences.walletLastKnownPositiveStreak, streak);
   }
 
   /// Parse coin_wallet from GET /wallet response.
