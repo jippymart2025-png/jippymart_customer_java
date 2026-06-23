@@ -147,7 +147,10 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
                     ),
                     IconButton(
                       onPressed: () => Navigator.pop(sheetContext),
-                      icon: Icon(Icons.close_rounded, color: AppThemeData.grey500),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: AppThemeData.grey500,
+                      ),
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
                     ),
@@ -487,8 +490,7 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
               selected
                   ? Icons.check_circle_rounded
                   : Icons.radio_button_unchecked_rounded,
-              color:
-                  selected ? const Color(0xFFFF6B2C) : AppThemeData.grey400,
+              color: selected ? const Color(0xFFFF6B2C) : AppThemeData.grey400,
               size: 22,
             ),
           ],
