@@ -215,6 +215,7 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
           const SizedBox(height: 8),
           _buildRestaurantDropdown(),
           const SizedBox(height: 22),
+
           _sectionLabel('Order settings'),
           const SizedBox(height: 10),
           _buildDropdownRow(
