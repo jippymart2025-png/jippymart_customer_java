@@ -10,6 +10,7 @@ import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/outlet_details.dart';
+import 'package:jippymart_customer/models/outlet.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
@@ -142,7 +143,7 @@ class RestaurantApiHelper {
   }) async {
     try {
       final Map<String, String> queryParams = {
-        'outletId': "14",
+        'outletId': restaurantId,
         'userType': 'CUSTOMER',
       };
 
@@ -201,6 +202,103 @@ class RestaurantApiHelper {
     }
 
     throw Exception('Invalid outlet details response');
+  }
+
+  static List<dynamic> _parseNearbyOutletsList(
+    Map<String, dynamic> jsonResponse,
+  ) {
+    final outlets = jsonResponse['outlets'];
+    if (outlets is List && outlets.isNotEmpty) return outlets;
+
+    final data = jsonResponse['data'];
+    if (data is List && data.isNotEmpty) return data;
+    if (data is Map<String, dynamic>) {
+      final nested = data['outlets'];
+      if (nested is List && nested.isNotEmpty) return nested;
+    }
+
+    if (jsonResponse['success'] == true && outlets is List) return outlets;
+    return const [];
+  }
+
+  static String _nearbyCacheKey = '';
+  static List<VendorModel> _nearbyCache = [];
+
+  static void clearNearbyOutletsCache() {
+    _nearbyCacheKey = '';
+    _nearbyCache = [];
+  }
+
+  /// Single nearby-outlets fetch shared across home, zone check, and restaurant list.
+  static Future<List<VendorModel>> fetchNearbyOutlets({
+    required double latitude,
+    required double longitude,
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = '$latitude|$longitude';
+    if (!forceRefresh &&
+        _nearbyCacheKey == cacheKey &&
+        _nearbyCache.isNotEmpty) {
+      return List<VendorModel>.from(_nearbyCache);
+    }
+
+    final uri = Uri.parse(
+      '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.415397&lng=78.447721',
+    );
+
+    print('[OUTLET_API] Fetching nearby outlets from: $uri');
+
+    final response = await http
+        .get(uri, headers: await getHeaders())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode != 200) {
+      print('[OUTLET_API] HTTP error: ${response.statusCode}');
+      return [];
+    }
+
+    final jsonResponse = json.decode(response.body);
+    if (jsonResponse is! Map<String, dynamic>) return [];
+
+    print('[OUTLET_API] Response: ${response.body}');
+
+    final outletsList = _parseNearbyOutletsList(jsonResponse);
+    final restaurants = outletsList
+        .whereType<Map>()
+        .map((e) => Outlet.fromJson(Map<String, dynamic>.from(e)))
+        .map((outlet) => outlet.toVendorModel())
+        .toList();
+
+    print('[OUTLET_API] Outlets fetched: ${restaurants.length}');
+
+    _nearbyCacheKey = cacheKey;
+    _nearbyCache = List<VendorModel>.from(restaurants);
+    return restaurants;
+  }
+
+  /// Checks if food service is available at coordinates using outlet APIs.
+  static Future<bool> checkOutletServiceAvailable({
+    required double latitude,
+    required double longitude,
+    String? outletId,
+  }) async {
+    try {
+      final restaurants = await fetchNearbyOutlets(
+        latitude: latitude,
+        longitude: longitude,
+      );
+      if (restaurants.isNotEmpty) return true;
+
+      if (outletId != null && outletId.isNotEmpty) {
+        await getRestaurantProducts(restaurantId: outletId);
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      print('[OUTLET_SERVICE] unavailable: $e');
+      return false;
+    }
   }
 }
 

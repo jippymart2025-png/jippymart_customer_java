@@ -221,7 +221,7 @@ class HomeProvider extends ChangeNotifier {
         // Continue even if some requests fail
       });
 
-      _loadOutletsIfCoordinatesAvailable();
+      // Outlets load inside getZone() when service is available.
 
       // Initialize other providers in background
       _initializeBackgroundProviders();
@@ -431,6 +431,7 @@ class HomeProvider extends ChangeNotifier {
 
       // Clear cache as location changed
       _clearCache();
+      RestaurantApiHelper.clearNearbyOutletsCache();
 
       // Reload data with new location
       await _reloadDataAfterLocationChange(context);
@@ -462,13 +463,11 @@ class HomeProvider extends ChangeNotifier {
     isLoadingFunction(true);
 
     try {
-      // Get zone for new location
+      // Get service availability and load outlets for new location
       await getZone();
 
       // Reload banners with new zone
       await _loadBanners();
-
-      await _loadOutletsIfCoordinatesAvailable();
 
       // Reload categories
       await categoryViewProvider.loadVendorCategories();
@@ -494,26 +493,41 @@ class HomeProvider extends ChangeNotifier {
         return;
       }
 
-      final cacheKey = 'zone_${latitude}_${longitude}';
-      final cachedZone = _getFromCache(cacheKey) as ZoneModel?;
+      final cacheKey = 'service_${latitude}_$longitude';
+      final cachedAvailable = _getFromCache(cacheKey) as bool?;
 
-      if (cachedZone != null && cachedZone.success == true) {
-        _processZoneModel(cachedZone);
+      if (cachedAvailable == true) {
+        _markServiceAvailable();
+        if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
+          await _loadOutletsIfCoordinatesAvailable();
+        }
         return;
       }
 
-      final zoneModel = await getCurrentZone(latitude, longitude);
+      if (cachedAvailable == false) {
+        await _clearZoneState();
+        return;
+      }
 
-      if (zoneModel != null && zoneModel.success == true) {
-        if (zoneModel.isZoneAvailable == true && zoneModel.zone != null) {
-          _addToCache(cacheKey, zoneModel);
-        }
-        _processZoneModel(zoneModel);
+      final restaurants = await RestaurantApiHelper.fetchNearbyOutlets(
+        latitude: latitude,
+        longitude: longitude,
+      );
+
+      final isServiceAvailable = restaurants.isNotEmpty;
+      _addToCache(cacheKey, isServiceAvailable);
+
+      if (isServiceAvailable) {
+        _markServiceAvailable();
+        bestRestaurantProvider.applyRestaurants(
+          restaurants,
+          zoneId: Constant.selectedZone?.id,
+        );
       } else {
         await _clearZoneState();
       }
     } catch (e) {
-      print('[HOME_PROVIDER] Error getting zone: $e');
+      print('[HOME_PROVIDER] Error checking outlet service: $e');
       await _clearZoneState();
     } finally {
       _removeLoadingTask('getZone');
@@ -521,6 +535,24 @@ class HomeProvider extends ChangeNotifier {
       hasActuallyCheckedZone = true;
       notifyListeners();
     }
+  }
+
+  void _markServiceAvailable() {
+    Constant.isZoneAvailable = true;
+    Constant.selectedZone ??= Zone(
+      id: 'service-area',
+      name: 'Service Area',
+      publish: true,
+    );
+    if (Constant.selectedZone!.id == null ||
+        Constant.selectedZone!.id!.isEmpty) {
+      Constant.selectedZone!.id = 'service-area';
+    }
+    Constant.selectedLocation.zoneId = Constant.selectedZone!.id;
+    Preferences.setString(
+      Preferences.selectedZoneId,
+      Constant.selectedZone!.id!,
+    );
   }
 
   void _processZoneModel(ZoneModel zoneModel) {
@@ -561,8 +593,8 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<void> _loadOutletsIfCoordinatesAvailable() async {
-    if (!_hasCoordinates()) {
-      print('[HOME_PROVIDER] No coordinates yet, skipping outlet load');
+    if (!_hasCoordinates() || Constant.isZoneAvailable != true) {
+      print('[HOME_PROVIDER] Service unavailable or no coordinates, skipping outlet load');
       bestRestaurantProvider.isLoading = false;
       bestRestaurantProvider.notifyListeners();
       return;
@@ -577,6 +609,7 @@ class HomeProvider extends ChangeNotifier {
   /// Clears zone state when location is out of zone or zone cannot be resolved.
   /// Does not assign a fallback zone or persist a zone ID.
   Future<void> _clearZoneState() async {
+    RestaurantApiHelper.clearNearbyOutletsCache();
     Constant.selectedZone = null;
     Constant.isZoneAvailable = false;
     Constant.selectedLocation.zoneId = null;
@@ -1046,61 +1079,57 @@ class HomeProvider extends ChangeNotifier {
     }
   }
 
-  // Static helper methods (from original code - kept for compatibility)
+  // Static helper — outlet API replaces legacy zones/current.
   static Future<ZoneModel?> getCurrentZone(
     double latitude,
     double longitude,
   ) async {
     try {
-      final headers = await getHeaders();
-      final response = await http
-          .get(
-            Uri.parse(
-              '${AppConst.baseUrl}zones/current?latitude=$latitude&longitude=$longitude',
-            ),
-            headers: headers,
-          )
-          .timeout(_networkTimeout);
+      final restaurants = await RestaurantApiHelper.fetchNearbyOutlets(
+        latitude: latitude,
+        longitude: longitude,
+      );
 
-      if (response.statusCode == 200) {
-        return zoneModelFromJson(response.body);
+      if (restaurants.isEmpty) {
+        return ZoneModel(
+          success: true,
+          isZoneAvailable: false,
+          message: 'Service not available in this area',
+        );
       }
-      return null;
+
+      return ZoneModel(
+        success: true,
+        isZoneAvailable: true,
+        zone: Zone(
+          id: 'service-area',
+          name: 'Service Area',
+          publish: true,
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+        ),
+      );
     } catch (e) {
+      print('[HOME_PROVIDER] Outlet service check failed: $e');
       return null;
     }
   }
 
   static Future<String?> detectZoneId(double latitude, double longitude) async {
     try {
-      print('[ZONE_API] Detecting zone ID for: $latitude, $longitude');
-      final response = await http
-          .get(
-            Uri.parse(
-              '${AppConst.baseUrl}zones/detect-id?latitude=$latitude&longitude=$longitude',
-            ),
-            headers: headers,
-          )
-          .timeout(_networkTimeout);
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-
-        if (data['success'] == true && data['is_zone_available'] == true) {
-          print('[ZONE_API] Zone ID detected: ${data['zone_id']}');
-          return data['zone_id'];
-        } else {
-          print('[ZONE_API] No zone detected: ${data['message']}');
-          return null;
-        }
-      } else {
-        print('[ZONE_API] HTTP error: ${response.statusCode}');
-        return null;
+      print('[ZONE_API] Detecting service for: $latitude, $longitude');
+      final zoneModel = await getCurrentZone(latitude, longitude);
+      if (zoneModel?.isZoneAvailable == true && zoneModel?.zone?.id != null) {
+        print('[ZONE_API] Service area id: ${zoneModel!.zone!.id}');
+        return zoneModel.zone!.id;
       }
+      print('[ZONE_API] No service for coordinates');
+      return null;
     } on TimeoutException catch (e) {
-      print('[ZONE_API] Timeout detecting zone ID: $e');
+      print('[ZONE_API] Timeout detecting service area: $e');
       return null;
     } catch (e) {
-      print('[ZONE_API] Error detecting zone ID: $e');
+      print('[ZONE_API] Error detecting service area: $e');
       return null;
     }
   }

@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
+import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/services/group_order_api_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
 
 import 'InviteFriendsScreen.dart';
@@ -26,6 +29,7 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
   List<VendorModel> _restaurants = [];
   VendorModel? _selectedVendor;
   bool _isLoadingRestaurants = true;
+  bool _isCreatingGroup = false;
   String? _restaurantLoadError;
 
   final List<String> _closingTimeOptions = [
@@ -106,6 +110,71 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
   SelectedRestaurant? get _selectedRestaurant => _selectedVendor == null
       ? null
       : SelectedRestaurant.fromVendorModel(_selectedVendor!);
+
+  int _parseMinutes(String value) => int.tryParse(value.split(' ').first) ?? 30;
+
+  int _parseMaxMembers(String value) =>
+      int.tryParse(value.split(' ').first) ?? 10;
+
+  String _paymentResponsibility() {
+    return _paymentMode == GroupPaymentMode.splitIndividually
+        ? 'INDIVIDUAL'
+        : 'HOST';
+  }
+
+  Future<void> _createGroupOrder() async {
+    if (_selectedVendor == null || _isCreatingGroup) return;
+
+    final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+    if (customerId == null) {
+      ShowToastDialog.showToast('Please log in to create a group order');
+      return;
+    }
+
+    final outletId = int.tryParse(_selectedVendor!.id ?? '');
+    if (outletId == null) {
+      ShowToastDialog.showToast('Invalid restaurant selected');
+      return;
+    }
+
+    setState(() => _isCreatingGroup = true);
+    ShowToastDialog.showLoader('Creating group...');
+
+    try {
+      final result = await GroupOrderApiService.createGroupOrderInvitation(
+        hostCustomerId: customerId,
+        outletId: outletId,
+        orderCloseDurationInMinutes: _parseMinutes(_closingTime),
+        paymentResponsibility: _paymentResponsibility(),
+        maxMembers: _parseMaxMembers(_maxMembers),
+        createdBy: customerId,
+      );
+
+      ShowToastDialog.closeLoader();
+      if (!mounted) return;
+      setState(() => _isCreatingGroup = false);
+
+      if (result == null || result.invitationCode.isEmpty) {
+        ShowToastDialog.showToast('Failed to create group order');
+        return;
+      }
+
+      final invitationCode = result.invitationCode;
+      Get.to(
+        () => InviteFriendsScreen(
+          groupCode: invitationCode,
+          groupLink:
+              'https://jippymart.in/g/${result.groupOrdersInvitationId}/$invitationCode',
+          restaurant: _selectedVendor!,
+          groupOrdersInvitationId: result.groupOrdersInvitationId,
+        ),
+      );
+    } catch (e) {
+      ShowToastDialog.closeLoader();
+      if (mounted) setState(() => _isCreatingGroup = false);
+      ShowToastDialog.showToast('Failed to create group order');
+    }
+  }
 
   void _showRestaurantPicker() {
     if (_restaurants.isEmpty) return;
@@ -260,26 +329,26 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
                 ),
                 elevation: 0,
               ),
-              onPressed: _selectedRestaurant == null
+              onPressed: _selectedRestaurant == null || _isCreatingGroup
                   ? null
-                  : () {
-                      // TODO: actually create the group order on your backend here,
-                      // then pass the real group code / link it returns.
-                      Get.to(
-                        () => InviteFriendsScreen(
-                          groupCode: 'FD9842',
-                          groupLink: 'https://foodie.in/g/FD9842',
-                        ),
-                      );
-                    },
-              child: const Text(
-                'Create Group',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                ),
-              ),
+                  : _createGroupOrder,
+              child: _isCreatingGroup
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2.5,
+                      ),
+                    )
+                  : const Text(
+                      'Create Group',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
             ),
           ),
         ),

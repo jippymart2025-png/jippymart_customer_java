@@ -127,9 +127,7 @@ class _HomeBody extends StatelessWidget {
     return Selector<BestRestaurantProvider, int>(
       selector: (_, p) => p.allNearestRestaurant.length,
       builder: (context, outletCount, _) {
-        if (controller.hasActuallyCheckedZone &&
-            Constant.isZoneAvailable == false &&
-            outletCount == 0) {
+        if (controller.hasActuallyCheckedZone && outletCount == 0) {
           return _NoServiceView(
             isZoneUnavailable: Constant.isZoneAvailable == false,
           );

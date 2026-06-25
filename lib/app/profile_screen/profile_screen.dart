@@ -12,6 +12,7 @@ import 'package:jippymart_customer/themes/custom_dialog_box.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
@@ -820,7 +821,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           } catch (_) {}
           await Preferences.clearSharPreference();
           const FlutterSecureStorage secureStorage = FlutterSecureStorage();
-          await secureStorage.delete(key: 'api_token');
+          await clearAuthToken();
           try {
             await DatabaseHelper.instance.deleteAllCartProducts();
             CartControllerProvider cartControllerProvider =

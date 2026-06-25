@@ -284,7 +284,6 @@ class SplashProvider extends ChangeNotifier {
           hasLocationInConstant;
 
       if (!hasAnyLocation && !hasAnyZone) {
-        // No location and no zone at all - show location permission screen
         print(
           '[SPLASH] No location/zone found (cached or in Constant), showing location permission screen',
         );
@@ -296,29 +295,9 @@ class SplashProvider extends ChangeNotifier {
         );
         _checkUpdatesInBackground();
         return;
-      } else if (hasLocationInConstant && Constant.isZoneAvailable != true) {
-        // Location exists but zone NOT available - show location permission screen to select a different location
-        print(
-          '[SPLASH] Location exists but zone NOT available. Showing location permission screen for user to select a location with service.',
-        );
-        _hasNavigated = true;
-        Get.offAll(
-          () => const LocationPermissionScreen(),
-          transition: Transition.fadeIn,
-          duration: const Duration(milliseconds: 800),
-        );
-        _checkUpdatesInBackground();
-        return;
-      } else if (hasAnyLocation || hasAnyZone) {
-        // Location or zone exists (cached or in Constant) and zone is available - allow to dashboard
-        if (hasCachedLocation || hasCachedZone) {
-          print(
-            '[SPLASH] Cached location/zone found and zone available. Allowing to dashboard - data will be loaded',
-          );
-        }
       }
 
-      // Navigate to dashboard - user is in zone
+      // Navigate to dashboard — home screen loads outlets and shows no-service if needed.
       print('[SPLASH] Navigating to dashboard after location/zone check...');
       _hasNavigated = true;
       try {

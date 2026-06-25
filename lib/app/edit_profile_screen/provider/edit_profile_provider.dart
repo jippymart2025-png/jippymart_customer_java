@@ -37,6 +37,8 @@ class EditProfileProvider extends ChangeNotifier {
 
   String get profileImage => _profileImage;
   bool _hasProfileImageChanged = false;
+  int _customerStatusId = 1;
+  String? _referralCode;
 
   // Cache user ID to avoid repeated calls
   String? _cachedUserId;
@@ -70,7 +72,7 @@ class EditProfileProvider extends ChangeNotifier {
       return;
     }
 
-    await _loadUserData();
+    await _loadUserData(forceRefresh: forceRefresh);
   }
 
   void _loadFromCache() {
@@ -82,26 +84,39 @@ class EditProfileProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadUserData() async {
+  Future<void> _loadUserData({bool forceRefresh = false}) async {
     if (_isLoading) return;
 
     _isLoading = true;
     notifyListeners();
 
     try {
-      if (Constant.userModel != null) {
+      final customerId = await _getCustomerId();
+      Map<String, dynamic>? profile;
+
+      if (customerId != null) {
+        profile = await fetchCustomerProfile(customerId);
+      }
+
+      if (profile != null) {
+        _applyProfileMap(profile);
+      } else if (!forceRefresh && Constant.userModel != null) {
         _userModel = Constant.userModel!;
+        _populateFormFields();
+        _profileImage = _userModel.profilePictureURL ?? "";
       } else {
         final userId = await _getUserId();
-        final user = await AddressListProvider.getUserProfile(userId);
-        if (user != null) {
-          _userModel = user;
-          Constant.userModel = user;
+        if (userId.isNotEmpty) {
+          final user = await AddressListProvider.getUserProfile(userId);
+          if (user != null) {
+            _userModel = user;
+            Constant.userModel = user;
+            _populateFormFields();
+            _profileImage = _userModel.profilePictureURL ?? "";
+          }
         }
       }
 
-      _populateFormFields();
-      _profileImage = _userModel.profilePictureURL ?? "";
       _isUserModelInitialized = true;
     } catch (e) {
       print('[EDIT_PROFILE] Error loading user data: $e');
@@ -111,10 +126,57 @@ class EditProfileProvider extends ChangeNotifier {
     }
   }
 
+  void _applyProfileMap(Map<String, dynamic> profile) {
+    _userModel.id = profile['customerId']?.toString();
+    _userModel.firstName = profile['firstName']?.toString();
+    _userModel.lastName = profile['lastName']?.toString();
+    _userModel.email = profile['email']?.toString();
+    _userModel.phoneNumber = profile['phoneNumber']?.toString();
+    _userModel.role = Constant.userRoleCustomer;
+    _userModel.active = true;
+    _customerStatusId = (profile['customerStatusId'] as num?)?.toInt() ?? 1;
+    _referralCode = profile['referralCode']?.toString();
+
+    Constant.userModel = _userModel;
+    _populateFormFields();
+    _profileImage = _userModel.profilePictureURL ?? "";
+  }
+
+  static Future<Map<String, dynamic>?> fetchCustomerProfile(
+    int customerId,
+  ) async {
+    try {
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}co/customers/$customerId',
+      );
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 20));
+
+      print('[EDIT_PROFILE] GET $uri -> ${response.statusCode}');
+      print('[EDIT_PROFILE] response: ${response.body}');
+
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+      return null;
+    } catch (e) {
+      print('[EDIT_PROFILE] fetchCustomerProfile error: $e');
+      return null;
+    }
+  }
+
   Future<String> _getUserId() async {
     if (_cachedUserId != null) return _cachedUserId!;
 
-    _cachedUserId = await SqlStorageConst.getFirebaseId() ?? '';
+    _cachedUserId =
+        await SqlStorageConst.getUserId() ??
+        await SqlStorageConst.getFirebaseId() ??
+        '';
     return _cachedUserId!;
   }
 
@@ -269,17 +331,28 @@ class EditProfileProvider extends ChangeNotifier {
         }
         _userModel.profilePictureURL = uploadedUrl;
         _profileImage = uploadedUrl;
+
+        final picUpdated = await EditProfileProvider.updateCustomerProfilePic(
+          userModel: _userModel,
+        );
+        if (!picUpdated) {
+          throw Exception('Profile picture update failed');
+        }
       } else {
         _userModel.profilePictureURL = _profileImage;
       }
       _hasProfileImageChanged = false;
     }
 
-    final success = await EditProfileProvider.updateUserStatic(_userModel);
+    final success = await EditProfileProvider.updateUserStatic(
+      _userModel,
+      customerStatusId: _customerStatusId,
+      referralCode: _referralCode,
+    );
 
     if (success) {
-      // Update cache
       Constant.userModel = _userModel;
+      await SqlStorageConst.storeUserData(_userModel);
       notifyListeners();
     } else {
       throw Exception('Update failed');
@@ -359,7 +432,11 @@ class EditProfileProvider extends ChangeNotifier {
   }
 
   // Static method for external access (kept from original code)
-  static Future<bool> updateUserStatic(UserModel userModel) async {
+  static Future<bool> updateUserStatic(
+    UserModel userModel, {
+    int customerStatusId = 1,
+    String? referralCode,
+  }) async {
     try {
       final storedId = await SqlStorageConst.getUserId() ?? userModel.id ?? '';
       final customerId = int.tryParse(storedId);
@@ -371,26 +448,27 @@ class EditProfileProvider extends ChangeNotifier {
 
       final headers = await getHeaders();
       final body = <String, dynamic>{
+        'customerId': customerId,
         'firstName': userModel.firstName ?? '',
         'lastName': userModel.lastName ?? '',
         'email': userModel.email ?? '',
         'phoneNumber': userModel.phoneNumber ?? '',
-        'customerId': 104,
-        'profilePicUrl': userModel.profilePictureURL ?? '',
+        'customerStatusId': customerStatusId,
+        'referralCode': referralCode,
       };
 
-      print('[EDIT_PROFILE] updateCustomerProfilePic body: $body');
+      print('[EDIT_PROFILE] updateCustomerProfile body: $body');
 
       final response = await http.put(
         Uri.parse(
-          '${AppConst.outletBaseUrl}co/customers/updateCustomerProfilePic',
+          '${AppConst.outletBaseUrl}co/customers/updateCustomerProfile',
         ),
         headers: headers,
         body: jsonEncode(body),
       );
 
       print(
-        '[EDIT_PROFILE] updateCustomerProfilePic: ${response.statusCode} ${response.body}',
+        '[EDIT_PROFILE] updateCustomerProfile: ${response.statusCode} ${response.body}',
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -405,20 +483,64 @@ class EditProfileProvider extends ChangeNotifier {
           // Non-JSON success response is acceptable.
         }
 
-        if (response.body.isNotEmpty) {
-          final updatedUrl = _extractProfilePicUrl(response.body);
-          if (updatedUrl != null && updatedUrl.isNotEmpty) {
-            userModel.profilePictureURL = updatedUrl;
-          }
-        }
-
         Constant.userModel = userModel;
+        await SqlStorageConst.storeUserData(userModel);
         return true;
       }
 
       return false;
     } catch (error) {
       print('[EDIT_PROFILE] updateUser error: $error');
+      return false;
+    }
+  }
+
+  static Future<bool> updateCustomerProfilePic({
+    required UserModel userModel,
+  }) async {
+    try {
+      final storedId = await SqlStorageConst.getUserId() ?? userModel.id ?? '';
+      final customerId = int.tryParse(storedId);
+      if (customerId == null) {
+        return false;
+      }
+
+      final headers = await getHeaders();
+      final body = <String, dynamic>{
+        'firstName': userModel.firstName ?? '',
+        'lastName': userModel.lastName ?? '',
+        'email': userModel.email ?? '',
+        'phoneNumber': userModel.phoneNumber ?? '',
+        'customerId': customerId,
+        'profilePicUrl': userModel.profilePictureURL ?? '',
+      };
+
+      final response = await http.put(
+        Uri.parse(
+          '${AppConst.outletBaseUrl}co/customers/updateCustomerProfilePic',
+        ),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+
+      print(
+        '[EDIT_PROFILE] updateCustomerProfilePic: ${response.statusCode} ${response.body}',
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        if (response.body.isNotEmpty) {
+          final updatedUrl = _extractProfilePicUrl(response.body);
+          if (updatedUrl != null && updatedUrl.isNotEmpty) {
+            userModel.profilePictureURL = updatedUrl;
+          }
+        }
+        Constant.userModel = userModel;
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      print('[EDIT_PROFILE] updateCustomerProfilePic error: $error');
       return false;
     }
   }

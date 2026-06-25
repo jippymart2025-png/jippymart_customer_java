@@ -168,10 +168,7 @@ class MartSearchProvider extends ChangeNotifier {
       final response = await http
           .get(
             uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
+            headers: await getHeaders(),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -304,10 +301,7 @@ class MartSearchProvider extends ChangeNotifier {
       final response = await http
           .get(
             uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
+            headers: await getHeaders(),
           )
           .timeout(const Duration(seconds: 10));
 
@@ -356,10 +350,7 @@ class MartSearchProvider extends ChangeNotifier {
       print('[MART_SEARCH] 🔥 Fetching trending searches from API...');
       final response = await http.get(
         Uri.parse('${AppConst.baseUrl}trending-searches'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        headers: await getHeaders(),
       );
 
       if (response.statusCode == 200) {

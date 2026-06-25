@@ -3,7 +3,7 @@ class AppConst {
 
   // static const String defaultBaseUrl = "https://test.jippymart.in/api/";
 
-  static const String defaultBaseUrl = "http://192.168.0.9:8000/api/";
+  static const String defaultBaseUrl = "http://192.168.0.13:8000/api/";
 
   // static const String defaultBaseUrl = "http://192.168.88.25:8082/api/";
 

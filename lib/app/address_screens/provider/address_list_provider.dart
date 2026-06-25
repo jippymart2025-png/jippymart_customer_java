@@ -470,21 +470,27 @@ class AddressListProvider extends ChangeNotifier {
 
       userModel.shippingAddress = updatedAddressList;
 
-      // Call API
-      final success = await saveCustomerDeliveryAddress(
-        customerId: 104,
-        // Replace with actual customer ID
+      final customerId =
+          int.tryParse(await SqlStorageConst.getUserId() ?? '') ?? 0;
+
+      final deliveryAddressId = await saveCustomerDeliveryAddress(
+        customerId: customerId,
         latitude: location.latitude ?? 0.0,
         longitude: location.longitude ?? 0.0,
         doorNo: houseBuildingTextEditingController.text.trim(),
         buildingName: houseBuildingTextEditingController.text.trim(),
         laneNo: landmarkEditingController.text.trim(),
-        // area: 1, // Replace with actual area ID
-        // city: 1, // Replace with actual city ID
-        createdBy: 104, // Replace with actual user ID
+        createdBy: customerId,
       );
 
-      if (success) {
+      if (deliveryAddressId != null) {
+        shippingModels.id = deliveryAddressId.toString();
+        if (shippingModel.id != null && index >= 0) {
+          updatedAddressList[index] = shippingModels;
+        } else if (updatedAddressList.isNotEmpty) {
+          updatedAddressList[updatedAddressList.length - 1] = shippingModels;
+        }
+        userModel.shippingAddress = updatedAddressList;
         shippingAddressList = updatedAddressList;
 
         clearCache();

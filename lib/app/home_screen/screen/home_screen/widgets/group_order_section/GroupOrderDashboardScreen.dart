@@ -1,15 +1,31 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
+import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/constant/show_toast_dialog.dart';
+import 'package:jippymart_customer/services/group_order_api_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+import 'package:provider/provider.dart';
 
 import 'SharedCartScreen.dart';
 import 'create_group_orders_model.dart';
 
 class GroupOrderDashboardScreen extends StatefulWidget {
   final String groupCode;
+  final VendorModel restaurant;
+  final int groupOrdersInvitationId;
+  final int? deliveryAddressId;
 
-  const GroupOrderDashboardScreen({super.key, required this.groupCode});
+  const GroupOrderDashboardScreen({
+    super.key,
+    required this.groupCode,
+    required this.restaurant,
+    required this.groupOrdersInvitationId,
+    this.deliveryAddressId,
+  });
 
   @override
   State<GroupOrderDashboardScreen> createState() =>
@@ -19,6 +35,7 @@ class GroupOrderDashboardScreen extends StatefulWidget {
 class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
   Duration _remaining = const Duration(minutes: 12, seconds: 14);
   Timer? _timer;
+  bool _isLeavingGroup = false;
 
   final List<String> _memberAvatars = [
     'https://i.pravatar.cc/100?img=1',
@@ -72,6 +89,79 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
 
   String _two(int n) => n.toString().padLeft(2, '0');
 
+  void _openRestaurantMenu() {
+    context.read<RestaurantDetailsProvider>().initFunction(
+          vendorModels: widget.restaurant,
+        );
+    Get.to(() => const RestaurantDetailsScreen());
+  }
+
+  Future<void> _leaveGroup() async {
+    if (_isLeavingGroup) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Leave group?'),
+        content: const Text(
+          'You will be removed from this group order. You can join again using the group code.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Leave',
+              style: TextStyle(color: Color(0xFFE63950)),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+    final deliveryAddressId = widget.deliveryAddressId;
+    if (customerId == null || deliveryAddressId == null) {
+      ShowToastDialog.showToast('Unable to leave group right now');
+      return;
+    }
+
+    setState(() => _isLeavingGroup = true);
+    ShowToastDialog.showLoader('Leaving group...');
+
+    try {
+      final result = await GroupOrderApiService.joinGroupMembers(
+        groupOrdersInvitationId: widget.groupOrdersInvitationId,
+        customerId: customerId,
+        deliveryAddressId: deliveryAddressId,
+        invitationCode: widget.groupCode,
+        createdBy: customerId,
+        isDropped: true,
+      );
+
+      ShowToastDialog.closeLoader();
+      if (!mounted) return;
+      setState(() => _isLeavingGroup = false);
+
+      if (result == null || !result.success) {
+        ShowToastDialog.showToast(result?.statusMsg ?? 'Failed to leave group');
+        return;
+      }
+
+      ShowToastDialog.showToast(result.statusMsg);
+      Get.back();
+    } catch (_) {
+      ShowToastDialog.closeLoader();
+      if (mounted) setState(() => _isLeavingGroup = false);
+      ShowToastDialog.showToast('Failed to leave group');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final minutes = _remaining.inMinutes;
@@ -122,9 +212,7 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  onPressed: () {
-                    // TODO: open add-items / menu screen for this restaurant
-                  },
+                  onPressed: _openRestaurantMenu,
                   child: const Text(
                     'Add items',
                     style: TextStyle(
@@ -231,7 +319,19 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
               ),
               IconButton(
                 icon: const Icon(Icons.close_rounded, color: Colors.white),
-                onPressed: () => Get.back(),
+                onPressed: _isLeavingGroup ? null : () => Get.back(),
+              ),
+              PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+                onSelected: (value) {
+                  if (value == 'leave') _leaveGroup();
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'leave',
+                    child: Text('Leave group'),
+                  ),
+                ],
               ),
             ],
           ),

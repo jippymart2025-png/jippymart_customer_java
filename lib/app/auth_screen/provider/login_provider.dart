@@ -19,6 +19,7 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart'
     show SqlStorageConst;
 import 'package:jippymart_customer/utils/safe_http_client.dart';
@@ -48,6 +49,7 @@ class LoginProvider extends ChangeNotifier {
   // Caching
   Map<String, dynamic> _apiResponseCache = {};
   Timer? _debounceTimer;
+  Timer? _resendCountdownTimer;
   DateTime? _lastOtpRequestTime;
   static const Duration _otpCooldown = Duration(seconds: 30);
 
@@ -55,12 +57,11 @@ class LoginProvider extends ChangeNotifier {
   final FlutterSecureStorage secureStorage = const FlutterSecureStorage();
 
   void startResendTimer() {
-    if (resendTimerStarted) return;
+    _resendCountdownTimer?.cancel();
     resendTimerStarted = true;
     resendSeconds = 60;
 
-    // Use a single timer instead of Future.doWhile to reduce CPU usage
-    Timer.periodic(const Duration(seconds: 1), (timer) {
+    _resendCountdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (resendSeconds <= 0) {
         timer.cancel();
         resendTimerStarted = false;
@@ -68,7 +69,6 @@ class LoginProvider extends ChangeNotifier {
         return;
       }
       resendSeconds--;
-      // Only notify listeners every 5 seconds to reduce rebuilds
       if (resendSeconds % 5 == 0 || resendSeconds <= 0) {
         notifyListeners();
       }
@@ -101,10 +101,7 @@ class LoginProvider extends ChangeNotifier {
 
     try {
       final url = Uri.parse('${AppConst.baseUrl}$endpoint');
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
+      final headers = await getHeaders();
 
       http.Response? response;
       if (method == 'POST') {
@@ -164,10 +161,7 @@ class LoginProvider extends ChangeNotifier {
       }
     }
 
-    // Debounce the OTP request
-    _debounceTimer = Timer(_debounceDuration, () async {
-      _sendOtpInternal(countryCode);
-    });
+    await _sendOtpInternal(countryCode);
   }
 
   Future<void> _sendOtpInternal(String countryCode) async {
@@ -188,17 +182,43 @@ class LoginProvider extends ChangeNotifier {
     ShowToastDialog.showLoader("Please wait".tr);
     try {
       phoneNumber = fullPhoneNumber;
-      final response = await _makeApiCall('send-otp', {'phone': phone}, 'POST');
+      final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/send-otp');
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization':
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMjgyOTI1LCJleHAiOjE3ODIzNjkzMjV9.2iRcYQ5GElr75HX6HKVOuAwiLWeWf6RqLHvqm-QxXNk",
+      };
+      final httpResponse = await SafeHttpClient.safePost(
+        url,
+        headers: headers,
+        body: json.encode({'mobileNumber': phone}),
+        timeout: _authTimeout,
+      );
+
+      if (httpResponse == null) {
+        throw const SocketException('No internet connection');
+      }
+
+      if (httpResponse.statusCode != 200) {
+        throw Exception(
+          'HTTP ${httpResponse.statusCode}: ${httpResponse.body}',
+        );
+      }
+
+      final response = json.decode(httpResponse.body) as Map<String, dynamic>;
 
       if (response['success'] == true) {
         isOtpSent = true;
         ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast("OTP sent successfully".tr);
+        ShowToastDialog.showToast(
+          response['message']?.toString() ?? "OTP sent successfully".tr,
+        );
         Get.to(() => OtpScreen());
       } else {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
-          response['message'] ?? "Failed to send OTP".tr,
+          response['message']?.toString() ?? "Failed to send OTP".tr,
         );
       }
     } catch (e) {
@@ -243,18 +263,38 @@ class LoginProvider extends ChangeNotifier {
         listen: false,
       );
 
-      final response = await _makeApiCall('verify-otp', {
-        'phone': fullPhoneNumber,
-        'otp': otp,
-      }, 'POST');
+      final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/verify-otp');
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization':
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMjgyOTI1LCJleHAiOjE3ODIzNjkzMjV9.2iRcYQ5GElr75HX6HKVOuAwiLWeWf6RqLHvqm-QxXNk",
+      };
+      final httpResponse = await SafeHttpClient.safePost(
+        url,
+        headers: headers,
+        body: json.encode({'mobileNumber': fullPhoneNumber, 'otp': otp}),
+        timeout: _authTimeout,
+      );
 
-      if (response['success'] == true) {
+      if (httpResponse == null) {
+        throw const SocketException('No internet connection');
+      }
+
+      if (httpResponse.statusCode != 200) {
+        throw Exception(
+          'HTTP ${httpResponse.statusCode}: ${httpResponse.body}',
+        );
+      }
+
+      final response = json.decode(httpResponse.body) as Map<String, dynamic>;
+
+      final accessToken = response['accessToken']?.toString() ?? '';
+      if (accessToken.isNotEmpty) {
         await _handleSuccessfulVerification(context, response, signupProvider);
       } else {
         ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast(
-          response['message'] ?? 'OTP verification failed',
-        );
+        ShowToastDialog.showToast('OTP verification failed');
         isVerifying = false;
         notifyListeners();
       }
@@ -271,27 +311,34 @@ class LoginProvider extends ChangeNotifier {
     Map<String, dynamic> response,
     SignupProvider signupProvider,
   ) async {
-    authToken = response['token'] ?? '';
-    await secureStorage.write(key: 'api_token', value: authToken);
+    authToken = response['accessToken']?.toString() ?? '';
+    await saveAuthToken(
+      authToken,
+      tokenType: response['tokenType']?.toString() ?? 'Bearer',
+    );
 
-    final userData = response['user'] ?? {};
-
-    if (userData['id'] != null) {
-      await secureStorage.write(
-        key: 'user_id',
-        value: userData['id'].toString(),
-      );
+    final customerId = response['customerId']?.toString();
+    if (customerId != null && customerId.isNotEmpty) {
+      await secureStorage.write(key: 'user_id', value: customerId);
     }
 
-    final firebaseId = _extractFirebaseId(userData);
-    if (firebaseId != null && firebaseId.isNotEmpty) {
-      await secureStorage.write(key: 'firebase_id', value: firebaseId);
-    }
+    final firstName = response['firstName']?.toString().trim() ?? '';
+    final lastName = response['lastName']?.toString().trim() ?? '';
+    final mobileNumber = response['mobileNumber']?.toString() ?? phoneNumber;
 
-    if (response['is_registered'] == true) {
-      await _handleRegisteredUser(context, userData, firebaseId);
+    final isRegistered = firstName.isNotEmpty && lastName.isNotEmpty;
+
+    if (isRegistered) {
+      final userData = <String, dynamic>{
+        'id': customerId,
+        'firstName': firstName,
+        'lastName': lastName,
+        'phoneNumber': mobileNumber,
+      };
+      await _handleRegisteredUser(context, userData, customerId);
     } else {
       ShowToastDialog.closeLoader();
+      signupProvider.authToken = authToken;
       signupProvider.initFunction(
         phoneNumber: phoneEditingController.value.text.trim(),
         countryCode: countryCode,
@@ -333,48 +380,32 @@ class LoginProvider extends ChangeNotifier {
 
     if (!context.mounted) return;
 
-    // Check location and zone before navigating - show zone selection if not in zone
-    ShowToastDialog.showLoader("Checking your location...".tr);
-    try {
-      final homeProvider = Provider.of<HomeProvider>(context, listen: false);
-      await homeProvider.initFunction(context: context);
-      await homeProvider.ensureLocationAndZoneChecked().timeout(
-        const Duration(seconds: 20),
-        onTimeout: () {
-          print('[LOGIN] Location/zone check timed out');
-          return null;
-        },
-      );
+    ShowToastDialog.closeLoader();
+    ShowToastDialog.showToast("Login successful".tr);
+    Get.offAll(() => const DashBoardScreen());
 
-      if (!context.mounted) return;
-      ShowToastDialog.closeLoader();
+    Future.microtask(() async {
+      try {
+        final navContext = Get.context;
+        if (navContext == null) return;
 
-      // If in zone with valid location -> home, else -> zone selection screen
-      if (Constant.isZoneAvailable == true &&
-          Constant.selectedZone?.id != null &&
-          Constant.selectedLocation.location?.latitude != null &&
-          Constant.selectedLocation.location!.latitude != 0) {
-        Get.offAll(() => const DashBoardScreen());
-      } else {
-        // Not in zone or no valid location - show location/zone selection screen
-        print(
-          '[LOGIN] User not in zone or no valid location, showing zone selection',
+        final homeProvider = Provider.of<HomeProvider>(navContext, listen: false);
+        await homeProvider.ensureLocationAndZoneChecked().timeout(
+          const Duration(seconds: 20),
+          onTimeout: () {
+            print('[LOGIN] Location/zone check timed out');
+            return null;
+          },
         );
-        Get.offAll(() => const LocationPermissionScreen());
+
+        await _performBackgroundInitialization(navContext);
+      } catch (e) {
+        print('[LOGIN] Error during background location/zone check: $e');
       }
-      Future.microtask(
-        () => _performBackgroundInitialization(Get.context ?? context),
-      );
-    } catch (e) {
-      print('[LOGIN] Error during location/zone check: $e');
-      if (context.mounted) {
-        ShowToastDialog.closeLoader();
-        Get.offAll(() => const LocationPermissionScreen());
-        Future.microtask(
-          () => _performBackgroundInitialization(Get.context ?? context),
-        );
-      }
-    }
+    });
+
+    isVerifying = false;
+    notifyListeners();
   }
 
   Future<void> _performBackgroundInitialization(BuildContext context) async {
@@ -434,7 +465,6 @@ class LoginProvider extends ChangeNotifier {
   }
 
   Future<void> resendOtp() async {
-    // Rate limiting for resend
     if (_lastOtpRequestTime != null) {
       final now = DateTime.now();
       if (now.difference(_lastOtpRequestTime!) < const Duration(seconds: 30)) {
@@ -443,22 +473,60 @@ class LoginProvider extends ChangeNotifier {
       }
     }
 
-    String fullPhoneNumber = '${phoneEditingController.value.text.trim()}';
+    final enteredPhone = phoneEditingController.value.text.trim();
+    final fullPhoneNumber = phoneNumber.isNotEmpty ? phoneNumber : enteredPhone;
 
-    ShowToastDialog.showLoader("Resending OTP...");
+    if (fullPhoneNumber.isEmpty) {
+      ShowToastDialog.showToast(
+        "Phone number missing. Please go back and retry.".tr,
+      );
+      return;
+    }
+
+    if (fullPhoneNumber.length != 10) {
+      ShowToastDialog.showToast("Phone number must be 10 digits".tr);
+      return;
+    }
+
+    ShowToastDialog.showLoader("Resending OTP...".tr);
     try {
-      final response = await _makeApiCall('resend-otp', {
-        'phone': fullPhoneNumber,
-      }, 'POST');
+      final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/resend-otp');
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization':
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMjgyOTI1LCJleHAiOjE3ODIzNjkzMjV9.2iRcYQ5GElr75HX6HKVOuAwiLWeWf6RqLHvqm-QxXNk",
+      };
+      final httpResponse = await SafeHttpClient.safePost(
+        url,
+        headers: headers,
+        body: json.encode({'mobileNumber': fullPhoneNumber}),
+        timeout: _authTimeout,
+      );
+
+      if (httpResponse == null) {
+        throw const SocketException('No internet connection');
+      }
+
+      if (httpResponse.statusCode != 200) {
+        throw Exception(
+          'HTTP ${httpResponse.statusCode}: ${httpResponse.body}',
+        );
+      }
+
+      final response = json.decode(httpResponse.body) as Map<String, dynamic>;
 
       if (response['success'] == true) {
         ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast("OTP resent successfully");
+        ShowToastDialog.showToast(
+          response['message']?.toString() ?? "OTP resent successfully".tr,
+        );
         _lastOtpRequestTime = DateTime.now();
+        startResendTimer();
       } else {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
-          response['message'] ?? "Failed to resend OTP".tr,
+          response['message']?.toString() ?? "Failed to resend OTP".tr,
         );
       }
     } catch (e) {
@@ -504,7 +572,7 @@ class LoginProvider extends ChangeNotifier {
 
     // Batch delete storage keys
     await Future.wait([
-      secureStorage.delete(key: 'api_token'),
+      clearAuthToken(),
       secureStorage.delete(key: 'user_id'),
       secureStorage.delete(key: 'user_firstName'),
       secureStorage.delete(key: 'user_lastName'),
@@ -520,6 +588,7 @@ class LoginProvider extends ChangeNotifier {
   @override
   void dispose() {
     _debounceTimer?.cancel();
+    _resendCountdownTimer?.cancel();
     emailEditingController.dispose();
     passwordEditingController.dispose();
     phoneEditingController.dispose();

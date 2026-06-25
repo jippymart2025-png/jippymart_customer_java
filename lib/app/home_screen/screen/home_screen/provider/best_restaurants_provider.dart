@@ -84,10 +84,9 @@ class BestRestaurantProvider extends ChangeNotifier {
     final double latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
     final double longitude =
         Constant.selectedLocation.location?.longitude ?? 0.0;
-    final hasZone = zoneId != null && zoneId.isNotEmpty;
     final hasLocation = latitude != 0.0 && longitude != 0.0;
 
-    if (!hasLocation && !hasZone) {
+    if (!hasLocation && (zoneId == null || zoneId.isEmpty)) {
       print('[DEBUG] No location or zone available, skipping restaurant fetch');
       isLoading = false;
       notifyListeners();
@@ -98,80 +97,62 @@ class BestRestaurantProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      List<VendorModel> bestRestaurants = [];
       List<VendorModel> restaurants = [];
-      final futures = <Future<void>>[];
-
-      if (hasZone) {
-        final bestRestaurantsKey = 'best_restaurants_$zoneId';
-        futures.add(
-          CacheManager()
-              .getOrSetRestaurants<List<VendorModel>>(
-                bestRestaurantsKey,
-                () => getBestRestaurants(zoneId: zoneId),
-              )
-              .then((value) => bestRestaurants = value)
-              .catchError((e) {
-                print('[DEBUG] Best restaurants fetch failed: $e');
-              }),
-        );
-      }
 
       if (hasLocation) {
-        futures.add(
-          getNearestRestaurants(
-            latitude: latitude,
-            longitude: longitude,
-          ).then((value) => restaurants = value).catchError((e) {
-            print('[DEBUG] Nearest outlets fetch failed: $e');
-          }),
+        restaurants = await getNearestRestaurants(
+          latitude: latitude,
+          longitude: longitude,
         );
       }
 
-      await Future.wait(futures);
-
-      bestRestaurantList = List<VendorModel>.from(restaurants);
-      popularRestaurantList = List<VendorModel>.from(restaurants);
-      newArrivalRestaurantList = List<VendorModel>.from(restaurants);
-      allNearestRestaurant = List<VendorModel>.from(restaurants);
-      _updateBestRestaurantDerivedLists();
-      Constant.restaurantList = allNearestRestaurant;
-
-      isLoading = false;
-      notifyListeners();
-
-      if (allNearestRestaurant.isNotEmpty) {
-        _processRestaurantData(allNearestRestaurant)
-            .then((_) {
-              logRestaurantDiagnostics();
-              _scheduleNotify();
-            })
-            .catchError((e) {
-              print('[DEBUG] Error in distance processing: $e');
-              _scheduleNotify();
-            });
-      }
-
-      if (hasZone) {
-        _storiesLoadingTask = _loadStoriesFromAPI(zoneId).then((_) {
-          _scheduleNotify();
-        });
-        _storiesLoadingTask?.catchError((e) {
-          print('[DEBUG] Error in background story load: $e');
-        });
-
-        _relatedDataLoadingTask =
-            _loadRelatedDataInParallel(allNearestRestaurant).then((_) {
-              _scheduleNotify();
-            });
-        _relatedDataLoadingTask?.catchError((e) {
-          print('[DEBUG] Error in background related-data load: $e');
-        });
-      }
+      applyRestaurants(restaurants, zoneId: zoneId);
     } catch (e) {
       print('[DEBUG] Error fetching restaurants from API: $e');
       isLoading = false;
       notifyListeners();
+    }
+  }
+
+  void applyRestaurants(List<VendorModel> restaurants, {String? zoneId}) {
+    bestRestaurantList = List<VendorModel>.from(restaurants);
+    popularRestaurantList = List<VendorModel>.from(restaurants);
+    newArrivalRestaurantList = List<VendorModel>.from(restaurants);
+    allNearestRestaurant = List<VendorModel>.from(restaurants);
+    _updateBestRestaurantDerivedLists();
+    Constant.restaurantList = allNearestRestaurant;
+
+    isLoading = false;
+    notifyListeners();
+
+    if (allNearestRestaurant.isEmpty) return;
+
+    _processRestaurantData(allNearestRestaurant)
+        .then((_) {
+          logRestaurantDiagnostics();
+          _scheduleNotify();
+        })
+        .catchError((e) {
+          print('[DEBUG] Error in distance processing: $e');
+          _scheduleNotify();
+        });
+
+    final effectiveZoneId = zoneId ?? Constant.selectedZone?.id;
+    if (effectiveZoneId != null && effectiveZoneId.isNotEmpty) {
+      _storiesLoadingTask = _loadStoriesFromAPI(effectiveZoneId).then((_) {
+        _scheduleNotify();
+      });
+      _storiesLoadingTask?.catchError((e) {
+        print('[DEBUG] Error in background story load: $e');
+      });
+
+      _relatedDataLoadingTask =
+          _loadRelatedDataInParallel(allNearestRestaurant).then((_) {
+            _scheduleNotify();
+          });
+      _relatedDataLoadingTask?.catchError((e) {
+        print('[DEBUG] Error in background related-data load: $e');
+      });
     }
   }
 
@@ -305,99 +286,24 @@ class BestRestaurantProvider extends ChangeNotifier {
     print('[DEBUG] All related data loaded');
   }
 
-  // Get best restaurants from bestrestaurants endpoint
+  // Get best restaurants from nearby outlets endpoint
   static Future<List<VendorModel>> getBestRestaurants({
     required String zoneId,
   }) async {
-    try {
-      final headers = await getHeaders();
-      String url =
-          '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.415397&lng=78.447721';
-      final uri = Uri.parse(url);
-      print('[BEST_RESTAURANT_API] Fetching best restaurants from: $uri');
-
-      final response = await http
-          .get(uri, headers: headers)
-          .timeout(_networkTimeout);
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        print('getBestRestaurants ${response.body}');
-
-        if (jsonResponse['success'] == true) {
-          List<dynamic> data = jsonResponse['data'];
-          List<VendorModel> restaurants = data
-              .map((item) => VendorModel.fromJson(item))
-              .toList();
-
-          print(
-            '[BEST_RESTAURANT_API] Best restaurants fetched successfully: ${restaurants.length}',
-          );
-
-          return restaurants;
-        } else {
-          print('[BEST_RESTAURANT_API] API returned success: false');
-          return [];
-        }
-      } else {
-        print('[BEST_RESTAURANT_API] HTTP error: ${response.statusCode}');
-        throw Exception(
-          'Failed to load best restaurants: ${response.statusCode}',
-        );
-      }
-    } on TimeoutException catch (e) {
-      print('[BEST_RESTAURANT_API] Timeout fetching best restaurants: $e');
-      return [];
-    } catch (e) {
-      print('[BEST_RESTAURANT_API] Error fetching best restaurants: $e');
-      rethrow;
-    }
+    final latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
+    final longitude = Constant.selectedLocation.location?.longitude ?? 0.0;
+    if (latitude == 0.0 || longitude == 0.0) return [];
+    return getNearestRestaurants(latitude: latitude, longitude: longitude);
   }
 
   static Future<List<VendorModel>> getNearestRestaurants({
     required double latitude,
     required double longitude,
-  }) async {
-    try {
-      final headers = await getHeaders();
-
-      final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.415397&lng=78.447721',
-      );
-
-      print('[OUTLET_API] Fetching nearby outlets from: $uri');
-
-      final response = await http
-          .get(uri, headers: headers)
-          .timeout(_networkTimeout);
-
-      if (response.statusCode == 200) {
-        final jsonResponse = jsonDecode(response.body);
-
-        print('[OUTLET_API] Response: ${response.body}');
-
-        final outlets = (jsonResponse['outlets'] as List<dynamic>? ?? [])
-            .map((e) => Outlet.fromJson(e as Map<String, dynamic>))
-            .toList();
-
-        final restaurants = outlets
-            .map((outlet) => outlet.toVendorModel())
-            .toList();
-
-        print('[OUTLET_API] Outlets fetched: ${restaurants.length}');
-
-        return restaurants;
-      }
-
-      print('[OUTLET_API] HTTP error: ${response.statusCode}');
-      return [];
-    } on TimeoutException catch (e) {
-      print('[OUTLET_API] Timeout fetching outlets: $e');
-      return [];
-    } catch (e, stackTrace) {
-      print('[OUTLET_API] Error fetching outlets: $e');
-      print(stackTrace);
-      return [];
-    }
+  }) {
+    return RestaurantApiHelper.fetchNearbyOutlets(
+      latitude: latitude,
+      longitude: longitude,
+    );
   }
 
   // Process restaurant data (only calculate distances, no sorting since API handles it)

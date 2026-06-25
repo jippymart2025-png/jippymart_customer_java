@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 
-import 'GroupOrderDashboardScreen.dart';
+import 'join_group_order_screen.dart';
 
 class InviteFriendsScreen extends StatelessWidget {
   final String groupCode;
   final String groupLink;
+  final VendorModel restaurant;
+  final int groupOrdersInvitationId;
 
   const InviteFriendsScreen({
     super.key,
     required this.groupCode,
     required this.groupLink,
+    required this.restaurant,
+    required this.groupOrdersInvitationId,
   });
 
   void _copy(BuildContext context, String text, String label) {
@@ -218,7 +223,13 @@ class InviteFriendsScreen extends StatelessWidget {
                   elevation: 0,
                 ),
                 onPressed: () {
-                  Get.to(() => GroupOrderDashboardScreen(groupCode: groupCode));
+                  Get.to(
+                    () => JoinGroupOrderScreen(
+                      groupOrdersInvitationId: groupOrdersInvitationId,
+                      invitationCode: groupCode,
+                      restaurant: restaurant,
+                    ),
+                  );
                 },
                 child: const Text(
                   'Continue',

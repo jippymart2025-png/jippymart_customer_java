@@ -1,8 +1,6 @@
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
-import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
-import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
@@ -13,6 +11,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
+import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 
@@ -54,54 +53,73 @@ class SignupProvider extends ChangeNotifier {
     BuildContext context,
     SplashProvider splashProvider,
   ) async {
-    // Prevent multiple signup attempts
     if (_isSigningUp) return;
 
     _isSigningUp = true;
     ShowToastDialog.showLoader("Creating your account...".tr);
 
     try {
-      String countryCode = countryCodeEditingController.text.replaceAll(
-        '+',
-        '',
-      );
-      Map<String, dynamic> signupData = {
-        "firstName": firstNameEditingController.value.text.trim(),
-        "lastName": lastNameEditingController.value.text.trim(),
-        "email": emailEditingController.value.text.trim().toLowerCase(),
-        "phone": phoneNUmberEditingController.value.text.trim(),
-        "countryCode": "+91",
+      final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+      if (customerId == null) {
+        ShowToastDialog.closeLoader();
+        ShowToastDialog.showToast("Please log in to complete signup".tr);
+        return;
+      }
+
+      final referralCode = referralCodeEditingController.text.trim();
+      final profileData = <String, dynamic>{
+        'firstName': firstNameEditingController.value.text.trim(),
+        'lastName': lastNameEditingController.value.text.trim(),
+        'email': emailEditingController.value.text.trim().toLowerCase(),
+        'phoneNumber': phoneNUmberEditingController.value.text.trim(),
+        'createdBy': customerId,
+        'customerId': customerId,
+        'referralCode': referralCode,
       };
 
-      final endpoint = authToken.isNotEmpty ? 'complete-profile' : 'signup';
-      print("signupData $signupData");
+      print('[SIGNUP] updateCustomerProfile body: $profileData');
 
-      final response = await _makeApiCall(
-        endpoint,
-        signupData,
-        'POST',
-        token: authToken.isNotEmpty ? authToken : null,
-      );
+      final headers = await getHeaders();
+      final response = await http
+          .put(
+            Uri.parse(
+              '${AppConst.outletBaseUrl}co/customers/updateCustomerProfile',
+            ),
+            headers: headers,
+            body: json.encode(profileData),
+          )
+          .timeout(const Duration(seconds: 20));
 
-      print('[SIGNUP] Full API response: $response');
+      print('[SIGNUP] status: ${response.statusCode}');
+      print('[SIGNUP] response: ${response.body}');
 
-      // Convert response to Map<String, dynamic> and check success
-      final Map<String, dynamic> responseMap = _convertToResponseMap(response);
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
 
-      if (responseMap['success'] == true) {
+      Map<String, dynamic> responseMap = {};
+      if (response.body.trim().isNotEmpty) {
+        responseMap = _convertToResponseMap(json.decode(response.body));
+      }
+      final isSuccess = responseMap['success'] != false;
+
+      if (isSuccess) {
+        final countryCode = countryCodeEditingController.text.replaceAll(
+          '+',
+          '',
+        );
         await _handleSuccessfulSignup(context, responseMap, countryCode);
       } else {
         ShowToastDialog.closeLoader();
-        final errorMessage = responseMap['message'] ?? "Signup failed".tr;
-        ShowToastDialog.showToast(errorMessage);
-        print('[SIGNUP] API Error Response: $response');
+        ShowToastDialog.showToast(
+          responseMap['message']?.toString() ?? "Signup failed".tr,
+        );
       }
       notifyListeners();
     } catch (e) {
       print('[DEBUG] signUp() error: ${e.toString()}');
       ShowToastDialog.closeLoader();
 
-      // More specific error messages
       if (e.toString().contains('timeout')) {
         ShowToastDialog.showToast(
           "Request timed out. Please check your connection and try again.",
@@ -111,14 +129,6 @@ class SignupProvider extends ChangeNotifier {
         ShowToastDialog.showToast(
           "No internet connection. Please check your network.",
         );
-      } else if (e.toString().contains('email already exists') ||
-          e.toString().contains('Email already registered')) {
-        ShowToastDialog.showToast(
-          "Email already registered. Please use a different email.",
-        );
-      } else if (e.toString().contains('phone already exists') ||
-          e.toString().contains('Phone already registered')) {
-        ShowToastDialog.showToast("Phone number already registered.");
       } else {
         ShowToastDialog.showToast("Error creating account. Please try again.");
       }
@@ -151,88 +161,33 @@ class SignupProvider extends ChangeNotifier {
     }
   }
 
-  Future<dynamic> _makeApiCall(
-    String endpoint,
-    Map<String, dynamic> data,
-    String method, {
-    String? token,
-  }) async {
-    try {
-      final headers = await _getHeaders();
-      if (token != null) {
-        headers['Authorization'] = 'Bearer $token';
-      }
-
-      final url = Uri.parse('${AppConst.baseUrl}$endpoint');
-      print('[API] Calling: $url');
-      print('[API] Data: $data');
-
-      http.Response response;
-      if (method == 'POST') {
-        response = await http
-            .post(url, headers: headers, body: json.encode(data))
-            .timeout(const Duration(seconds: 15));
-      } else {
-        response = await http
-            .get(url, headers: headers)
-            .timeout(const Duration(seconds: 15));
-      }
-
-      print('[API] Response status: ${response.statusCode}');
-      print('[API] Response body: ${response.body}');
-
-      // Parse response body - this may return Map<dynamic, dynamic>
-      final responseBody = json.decode(response.body);
-
-      // Accept both 200 and 201 as success statuses
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        return responseBody;
-      } else {
-        // Include the parsed response body in the exception
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
-      }
-    } on TimeoutException {
-      throw Exception('Request timed out. Please try again.');
-    } catch (e) {
-      print('[API] Error: $e');
-      rethrow;
-    }
-  }
-
-  Future<Map<String, String>> _getHeaders() async {
-    final token = await secureStorage.read(key: 'api_token');
-    return {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
-    };
-  }
-
   Future<void> _handleSuccessfulSignup(
     BuildContext context,
     Map<String, dynamic> response,
     String countryCode,
   ) async {
     try {
-      // Store token if provided
       if (response['token'] != null) {
-        await secureStorage.write(
-          key: 'api_token',
-          value: response['token'].toString(),
+        await saveAuthToken(response['token'].toString());
+      } else if (response['accessToken'] != null) {
+        await saveAuthToken(
+          response['accessToken'].toString(),
+          tokenType: response['tokenType']?.toString() ?? 'Bearer',
         );
-        print('[SIGNUP] Token stored successfully');
+      } else if (authToken.isNotEmpty) {
+        await saveAuthToken(authToken);
       }
 
-      // Safely get user data
-      final userData = (response['user'] is Map)
-          ? _convertToResponseMap(response['user'])
-          : <String, dynamic>{};
-
-      print('[SIGNUP] User data received: $userData');
+      final storedCustomerId = await SqlStorageConst.getUserId() ?? '';
+      final userData = (response['user'] is Map || response['data'] is Map)
+          ? _convertToResponseMap(response['user'] ?? response['data'])
+          : response;
 
       UserModel newUser = UserModel(
-        id: userData['id']?.toString() ?? '',
-        firebaseId: userData['firebase_id']?.toString() ?? '',
+        id: userData['customerId']?.toString() ??
+            userData['id']?.toString() ??
+            storedCustomerId,
+        firebaseId: userData['firebase_id']?.toString() ?? storedCustomerId,
         firstName:
             userData['firstName']?.toString() ??
             firstNameEditingController.value.text.trim(),
@@ -252,79 +207,25 @@ class SignupProvider extends ChangeNotifier {
             int.tryParse(userData['wallet_amount']?.toString() ?? '0') ?? 0,
       );
 
-      print('[SIGNUP] Created user model: ${newUser.toJson()}');
-
-      // Store user data locally
-      await SqlStorageConst.storeUserData(newUser);
+      await SqlStorageConst.storeUserData(newUser, countryCode: countryCode);
       Constant.userModel = newUser;
 
-      // Optional: apply referral code after signup (user is now authenticated)
-      final referralCode = referralCodeEditingController.text.trim();
-      if (referralCode.isNotEmpty && context.mounted) {
-        try {
-          final walletProvider =
-              Provider.of<WalletProvider>(context, listen: false);
-          final err = await walletProvider.applyReferralCode(code: referralCode);
-          if (err == null) {
-            ShowToastDialog.showToast("Referral code applied successfully".tr);
-          } else {
-            ShowToastDialog.showToast(err);
-          }
-        } catch (_) {
-          // Non-blocking; account is already created
-        }
+      ShowToastDialog.closeLoader();
+      ShowToastDialog.showToast(
+        response['message']?.toString() ?? "Account created successfully".tr,
+      );
+
+      if (!context.mounted) {
+        Get.offAll(() => const DashBoardScreen());
+        return;
       }
 
-      ShowToastDialog.closeLoader();
-      ShowToastDialog.showToast("Account created successfully".tr);
-
-      // Navigate immediately, handle location in background
-      await _navigateAfterSignup(context, newUser);
+      Get.offAll(() => const DashBoardScreen());
+      _performBackgroundLocationCheck(context);
     } catch (e) {
       ShowToastDialog.closeLoader();
       print('[SIGNUP] Error in handleSuccessfulSignup: $e');
-      ShowToastDialog.showToast("Account created! Please login to continue.");
-
-      // Even if there's an error in processing, navigate to dashboard
-      if (context.mounted) {
-        Get.offAll(const DashBoardScreen());
-      }
-    }
-  }
-
-  Future<void> _navigateAfterSignup(
-    BuildContext context,
-    UserModel newUser,
-  ) async {
-    try {
-      final hasAddress =
-          newUser.shippingAddress != null &&
-          newUser.shippingAddress!.isNotEmpty;
-
-      print('[SIGNUP] User has address: $hasAddress');
-      print('[SIGNUP] Shipping address: ${newUser.shippingAddress}');
-
-      if (hasAddress) {
-        // Navigate to dashboard immediately
-        if (context.mounted) {
-          print('[SIGNUP] Navigating to Dashboard');
-          Get.offAll(const DashBoardScreen());
-
-          // Initialize location in background
-          _performBackgroundLocationCheck(context);
-        }
-      } else {
-        // Navigate to location permission
-        if (context.mounted) {
-          print('[SIGNUP] Navigating to LocationPermissionScreen');
-          Get.offAll(() => LocationPermissionScreen());
-        }
-      }
-    } catch (e) {
-      print('[SIGNUP] Error in navigateAfterSignup: $e');
-      if (context.mounted) {
-        Get.offAll(const DashBoardScreen());
-      }
+      Get.offAll(() => const DashBoardScreen());
     }
   }
 

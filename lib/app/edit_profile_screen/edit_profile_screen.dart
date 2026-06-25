@@ -38,7 +38,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       const Duration(milliseconds: 100),
     ); // Small delay for smoother transition
     _editProvider = Provider.of<EditProfileProvider>(context, listen: false);
-    await _editProvider.initFunction();
+    await _editProvider.initFunction(forceRefresh: true);
     if (mounted) {
       setState(() => _isLoading = false);
     }

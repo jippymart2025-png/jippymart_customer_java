@@ -31,6 +31,7 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart' show Provider;
 import '../app/category_service/category__service_screen.dart';
+import '../app/home_screen/screen/home_screen/widgets/group_order_section/join_group_order_screen.dart';
 import 'mart_firestore_service.dart';
 
 class FinalDeepLinkService {
@@ -645,6 +646,21 @@ class FinalDeepLinkService {
     String? productId;
 
     print('🔥 [NEW HANDLER] Parsing URL: $url (scheme: ${uri.scheme})');
+
+    // Handle group order join links: /g/{invitationId}/{code}
+    if (pathSegments.length >= 3 && pathSegments[0] == 'g') {
+      final invitationId = int.tryParse(pathSegments[1]);
+      final invitationCode = pathSegments[2];
+      if (invitationId != null && invitationCode.isNotEmpty) {
+        Get.to(
+          () => JoinGroupOrderScreen(
+            groupOrdersInvitationId: invitationId,
+            invitationCode: invitationCode,
+          ),
+        );
+        return;
+      }
+    }
 
     // Handle deals early
     if (pathSegments.isNotEmpty && pathSegments[0] == 'deals') {

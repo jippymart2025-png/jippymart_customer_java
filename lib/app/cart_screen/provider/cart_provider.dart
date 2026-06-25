@@ -910,18 +910,20 @@ class CartControllerProvider extends ChangeNotifier {
   ) async {
     try {
       final zoneModel = await HomeProvider.getCurrentZone(latitude, longitude);
-      if (zoneModel == null || zoneModel.zone == null) {
+      if (zoneModel?.isZoneAvailable != true || zoneModel?.zone == null) {
         return null;
       }
 
-      final zone = zoneModel.zone!;
-      if (zone.area != null && zone.area!.isNotEmpty) {
-        if (Constant.isPointInPolygon(
-          LatLng(latitude, longitude),
-          zone.area!.cast<GeoPoint>(),
-        )) {
-          return zone.id;
-        }
+      final zone = zoneModel!.zone!;
+      if (zone.area == null || zone.area!.isEmpty) {
+        return zone.id;
+      }
+
+      if (Constant.isPointInPolygon(
+        LatLng(latitude, longitude),
+        zone.area!.cast<GeoPoint>(),
+      )) {
+        return zone.id;
       }
       return null;
     } catch (e) {

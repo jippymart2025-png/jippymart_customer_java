@@ -233,7 +233,6 @@ class _OtpScreenState extends State<OtpScreen> {
                     : (TapGestureRecognizer()
                         ..onTap = () {
                           controller.resendOtp();
-                          controller.startResendTimer();
                         }),
                 style: TextStyle(
                   color: controller.resendSeconds > 0
