@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/address_screens/provider/getCustomerDeliveryAddresses.dart';
 import 'package:jippymart_customer/app/address_screens/provider/saveCustomerDeliveryAddress.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -65,30 +66,32 @@ class AddressListProvider extends ChangeNotifier {
       _isInitializing = true;
       _homeProvider = Provider.of<HomeProvider>(context, listen: false);
       final userId = await SqlStorageConst.getFirebaseId();
+      final customerId = await SqlStorageConst.getUserId();
 
-      if (userId == null || userId.isEmpty) {
+      if ((userId == null || userId.isEmpty) &&
+          (customerId == null || customerId.isEmpty)) {
         shippingAddressList.clear();
         _isInitializing = false;
         notifyListeners();
         return;
       }
 
-      _currentUserId = userId;
+      _currentUserId = userId ?? customerId;
 
       // Check cache first (unless forced refresh)
       final now = DateTime.now();
       if (!forceRefresh &&
-          _userCache.containsKey(userId) &&
+          _userCache.containsKey(_currentUserId) &&
           _lastFetchTime != null &&
           now.difference(_lastFetchTime!) < _cacheDuration) {
-        _loadFromCache(userId);
+        _loadFromCache(_currentUserId!);
         _isInitializing = false;
         notifyListeners();
         return;
       }
 
       // Fetch from API with debouncing
-      await _debouncedApiCall(userId);
+      await _debouncedApiCall(_currentUserId!);
     } catch (e) {
       print('[ADDRESS_LIST_PROVIDER] Error loading addresses: $e');
       shippingAddressList.clear();
@@ -105,13 +108,19 @@ class AddressListProvider extends ChangeNotifier {
 
     _debounceTimer = Timer(_debounceDuration, () async {
       try {
-        final userModel = await getUserProfile(userId);
-        if (userModel != null) {
-          _updateFromApiResponse(userModel);
-          _lastFetchTime = DateTime.now();
-        } else if (_userCache.containsKey(userId)) {
-          _loadFromCache(userId);
+        final customerId =
+            int.tryParse(await SqlStorageConst.getUserId() ?? '') ?? 0;
+        if (customerId == 0) {
+          if (_userCache.containsKey(userId)) {
+            _loadFromCache(userId);
+          }
+          return;
         }
+
+        final addresses =
+            await getCustomerDeliveryAddresses(customerId: customerId);
+        _updateFromDeliveryAddresses(addresses);
+        _lastFetchTime = DateTime.now();
       } catch (e) {
         print('[ADDRESS_LIST_PROVIDER] API call error: $e');
         if (_userCache.containsKey(userId)) {
@@ -125,6 +134,23 @@ class AddressListProvider extends ChangeNotifier {
     });
 
     await completer.future;
+  }
+
+  void _updateFromDeliveryAddresses(List<ShippingAddress> addresses) {
+    shippingAddressList = List<ShippingAddress>.from(addresses);
+    userModel.shippingAddress = shippingAddressList;
+    Constant.userModel ??= UserModel();
+    Constant.userModel!.shippingAddress = shippingAddressList;
+
+    if (_currentUserId != null) {
+      _userCache[_currentUserId!] = UserModel.fromJson(userModel.toJson());
+    }
+
+    print(
+      '[ADDRESS_LIST_PROVIDER] Loaded ${shippingAddressList.length} addresses',
+    );
+
+    notifyListeners();
   }
 
   void _updateFromApiResponse(UserModel userModel) {
@@ -478,7 +504,7 @@ class AddressListProvider extends ChangeNotifier {
         latitude: location.latitude ?? 0.0,
         longitude: location.longitude ?? 0.0,
         doorNo: houseBuildingTextEditingController.text.trim(),
-        buildingName: houseBuildingTextEditingController.text.trim(),
+        buildingName: localityEditingController.text.trim(),
         laneNo: landmarkEditingController.text.trim(),
         createdBy: customerId,
       );

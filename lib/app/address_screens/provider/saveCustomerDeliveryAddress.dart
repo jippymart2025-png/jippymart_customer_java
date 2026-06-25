@@ -27,7 +27,9 @@ Future<int?> saveCustomerDeliveryAddress({
         'longitude': longitude,
         'doorNo': doorNo,
         'buildingName': buildingName,
-        'laneNo': laneNo,
+        'laneNo': laneNo.trim().isEmpty ? 'NA' : laneNo.trim(),
+        'area': null,
+        'city': null,
         'createdBy': createdBy,
       }),
     );
@@ -47,7 +49,9 @@ Future<int?> saveCustomerDeliveryAddress({
         ? Map<String, dynamic>.from(map['data'] as Map)
         : map;
 
-    final id = data['deliveryAddressId'] ?? data['id'];
+    final id = data['customerAddressId'] ??
+        data['deliveryAddressId'] ??
+        data['id'];
     if (id is num) return id.toInt();
     return int.tryParse(id?.toString() ?? '');
   } catch (e) {

@@ -24,6 +24,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
+import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:http/http.dart' as http;
 
 /// STATIC HELPER METHODS - Moved outside the class
@@ -1019,20 +1020,39 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   Future<void> toggleRestaurantFavorite() async {
     try {
-      if (Constant.userModel == null) return;
-
-      if (_isRestaurantFavorite) {
-        await FavouriteProvider.removeFavouriteRestaurant(
-          vendorModel.id.toString(),
-        );
-        _isRestaurantFavorite = false;
-      } else {
-        await FavouriteProvider.addFavouriteRestaurant(
-          vendorModel.id.toString(),
-        );
-        _isRestaurantFavorite = true;
+      if (Constant.userModel == null) {
+        ShowToastDialog.showToast("Please login to add favorites");
+        return;
       }
+
+      final customerId =
+          int.tryParse(await SqlStorageConst.getUserId() ?? '') ?? 0;
+      final outletId = int.tryParse(vendorModel.id ?? '') ?? 0;
+
+      if (customerId == 0 || outletId == 0) {
+        ShowToastDialog.showToast("Failed to update favorites");
+        return;
+      }
+
+      final previousState = _isRestaurantFavorite;
+      _isRestaurantFavorite = !previousState;
       notifyListeners();
+
+      final success = await FavouriteProvider.toggleFavoriteOutlet(
+        customerId: customerId,
+        outletId: outletId,
+      );
+
+      if (!success) {
+        _isRestaurantFavorite = previousState;
+        notifyListeners();
+        ShowToastDialog.showToast("Failed to update favorites");
+        return;
+      }
+
+      ShowToastDialog.showToast(
+        _isRestaurantFavorite ? "Added to favourites" : "Removed from favorites",
+      );
     } catch (e) {
       print('❌ Error toggling restaurant favorite: $e');
       ShowToastDialog.showToast("Failed to update favorites");

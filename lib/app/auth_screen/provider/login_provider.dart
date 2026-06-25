@@ -187,7 +187,7 @@ class LoginProvider extends ChangeNotifier {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization':
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMjgyOTI1LCJleHAiOjE3ODIzNjkzMjV9.2iRcYQ5GElr75HX6HKVOuAwiLWeWf6RqLHvqm-QxXNk",
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
       };
       final httpResponse = await SafeHttpClient.safePost(
         url,
@@ -268,7 +268,7 @@ class LoginProvider extends ChangeNotifier {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization':
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMjgyOTI1LCJleHAiOjE3ODIzNjkzMjV9.2iRcYQ5GElr75HX6HKVOuAwiLWeWf6RqLHvqm-QxXNk",
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
       };
       final httpResponse = await SafeHttpClient.safePost(
         url,
@@ -389,7 +389,10 @@ class LoginProvider extends ChangeNotifier {
         final navContext = Get.context;
         if (navContext == null) return;
 
-        final homeProvider = Provider.of<HomeProvider>(navContext, listen: false);
+        final homeProvider = Provider.of<HomeProvider>(
+          navContext,
+          listen: false,
+        );
         await homeProvider.ensureLocationAndZoneChecked().timeout(
           const Duration(seconds: 20),
           onTimeout: () {
@@ -495,7 +498,7 @@ class LoginProvider extends ChangeNotifier {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
         'Authorization':
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMjgyOTI1LCJleHAiOjE3ODIzNjkzMjV9.2iRcYQ5GElr75HX6HKVOuAwiLWeWf6RqLHvqm-QxXNk",
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
       };
       final httpResponse = await SafeHttpClient.safePost(
         url,

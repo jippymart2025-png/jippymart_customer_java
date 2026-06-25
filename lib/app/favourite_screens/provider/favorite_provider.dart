@@ -183,6 +183,42 @@ class FavouriteProvider extends ChangeNotifier {
     }
   }
 
+  static Future<bool> toggleFavoriteOutlet({
+    required int customerId,
+    required int outletId,
+  }) async {
+    try {
+      final headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization':
+            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
+      };
+
+      final response = await http
+          .post(
+            Uri.parse(
+              'http://192.168.0.17:8084/api/fm/customer/favorites/toggleFavoriteOutlet',
+            ),
+            headers: headers,
+            body: json.encode({
+              'customerId': customerId,
+              'outletId': outletId,
+              'createdBy': customerId,
+            }),
+          )
+          .timeout(_networkTimeout);
+
+      log('[Favorites] toggleFavoriteOutlet status: ${response.statusCode}');
+      log('[Favorites] toggleFavoriteOutlet body: ${response.body}');
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } catch (e) {
+      log('❌ Error toggling favorite outlet: $e');
+      return false;
+    }
+  }
+
   static Future<void> removeFavouriteRestaurant(String restaurantId) async {
     try {
       final userId = await SqlStorageConst.getFirebaseId();

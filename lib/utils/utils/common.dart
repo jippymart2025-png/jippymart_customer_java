@@ -43,6 +43,6 @@ Future<Map<String, String>> getHeaders() async {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
     "Authorization":
-        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMjk1NjcyLCJleHAiOjE3ODIzODIwNzJ9.kRzi2S4jHvh_MtkvrOrMHFxpx_tgkiWARn__2MAwj-4",
+        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
   };
 }
