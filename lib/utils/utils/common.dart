@@ -1,48 +1,56 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+
+const FlutterSecureStorage storage = FlutterSecureStorage();
 
 Map<String, String> get headers => {
   'Content-Type': 'application/json',
   'Accept': 'application/json',
 };
 
-const _devAuthToken =
-    'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMjgwMzk0LCJleHAiOjE3ODIzNjY3OTR9.L72qrS1XTdkwUNhHkw03PWlfNz7xonAo7fgyiWkCoMo';
-
 String formatAuthToken(String token, {String tokenType = 'Bearer'}) {
   final trimmed = token.trim();
+
   if (trimmed.isEmpty) return trimmed;
-  if (trimmed.contains(' ')) return trimmed;
-  if (tokenType.isEmpty) return trimmed;
+
+  if (trimmed.startsWith('Bearer ')) {
+    return trimmed;
+  }
+
   return '$tokenType $trimmed';
 }
 
+/// Save token after login
 Future<void> saveAuthToken(
   String accessToken, {
   String tokenType = 'Bearer',
 }) async {
   if (accessToken.trim().isEmpty) return;
-  const storage = FlutterSecureStorage();
+
   await storage.write(
     key: 'api_token',
     value: formatAuthToken(accessToken, tokenType: tokenType),
   );
 }
 
+/// Get saved token
+Future<String?> getAuthToken() async {
+  return await storage.read(key: 'api_token');
+}
+
+/// Remove token on logout
 Future<void> clearAuthToken() async {
-  const storage = FlutterSecureStorage();
   await storage.delete(key: 'api_token');
 }
 
+/// Common headers for all API calls
 Future<Map<String, String>> getHeaders() async {
-  final storedToken = await SqlStorageConst.getAuthToken();
-  final authToken = (storedToken != null && storedToken.isNotEmpty)
-      ? storedToken
-      : _devAuthToken;
+  final token = await getAuthToken();
+
   return {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    "Authorization":
-        "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
+    if (token != null && token.isNotEmpty)
+      'Authorization':
+          "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyNTM2NzY0LCJleHAiOjE3ODI2MjMxNjR9.AeQ5baAUIw9I57DNTZIMgaJSXjZTwkvlKnCibO0Hxhw",
   };
 }

@@ -233,7 +233,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
               ),
             ),
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(),
+          bottomNavigationBar: _buildBottomNavigationBar(controller),
           floatingActionButton: _buildFloatingActionButton(controller),
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
@@ -393,8 +393,10 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
   }
 
   // ==================== BOTTOM NAVIGATION ====================
-  Widget? _buildBottomNavigationBar() {
-    if (HomeProvider.cartItem.isEmpty) return null;
+  Widget? _buildBottomNavigationBar(RestaurantDetailsProvider controller) {
+    if (controller.isGroupOrderMode || HomeProvider.cartItem.isEmpty) {
+      return null;
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {

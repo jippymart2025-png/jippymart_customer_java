@@ -17,12 +17,14 @@ class JoinGroupOrderScreen extends StatefulWidget {
   final int groupOrdersInvitationId;
   final String invitationCode;
   final VendorModel? restaurant;
+  final int? hostCustomerId;
 
   const JoinGroupOrderScreen({
     super.key,
     required this.groupOrdersInvitationId,
     required this.invitationCode,
     this.restaurant,
+    this.hostCustomerId,
   });
 
   @override
@@ -178,6 +180,7 @@ class _JoinGroupOrderScreenState extends State<JoinGroupOrderScreen> {
           groupCode: widget.invitationCode,
           restaurant: widget.restaurant!,
           groupOrdersInvitationId: widget.groupOrdersInvitationId,
+          hostCustomerId: widget.hostCustomerId ?? customerId,
           deliveryAddressId: deliveryAddressId,
         ),
       );
@@ -423,12 +426,14 @@ Future<void> openJoinGroupOrderFromLink({
   required int groupOrdersInvitationId,
   required String invitationCode,
   VendorModel? restaurant,
+  int? hostCustomerId,
 }) async {
   await Get.to(
     () => JoinGroupOrderScreen(
       groupOrdersInvitationId: groupOrdersInvitationId,
       invitationCode: invitationCode,
       restaurant: restaurant,
+      hostCustomerId: hostCustomerId,
     ),
   );
 }

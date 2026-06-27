@@ -647,15 +647,19 @@ class FinalDeepLinkService {
 
     print('🔥 [NEW HANDLER] Parsing URL: $url (scheme: ${uri.scheme})');
 
-    // Handle group order join links: /g/{invitationId}/{code}
+    // Handle group order join links: /g/{invitationId}/{code}/{hostCustomerId}
     if (pathSegments.length >= 3 && pathSegments[0] == 'g') {
       final invitationId = int.tryParse(pathSegments[1]);
       final invitationCode = pathSegments[2];
+      final hostCustomerId = pathSegments.length >= 4
+          ? int.tryParse(pathSegments[3])
+          : null;
       if (invitationId != null && invitationCode.isNotEmpty) {
         Get.to(
           () => JoinGroupOrderScreen(
             groupOrdersInvitationId: invitationId,
             invitationCode: invitationCode,
+            hostCustomerId: hostCustomerId,
           ),
         );
         return;

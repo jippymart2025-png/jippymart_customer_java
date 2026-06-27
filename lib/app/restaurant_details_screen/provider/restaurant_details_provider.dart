@@ -15,6 +15,8 @@ import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
+import 'package:jippymart_customer/services/group_order_api_service.dart';
+import 'package:jippymart_customer/services/group_order_session.dart';
 import 'package:jippymart_customer/services/promotional_cache_service.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/performance_monitor.dart';
@@ -144,7 +146,7 @@ class RestaurantApiHelper {
   }) async {
     try {
       final Map<String, String> queryParams = {
-        'outletId': restaurantId,
+        'outletId': "14",
         'userType': 'CUSTOMER',
       };
 
@@ -409,6 +411,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   String _lastSearchQuery = '';
   String? _scrollToProductId;
   bool _shouldScrollToProduct = false;
+  int? _groupOrderInvitationId;
+  int? _groupOrderHostCustomerId;
 
   // Cache maps
   final Map<String, GlobalKey> categoryKeys =
@@ -433,6 +437,39 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   bool get promotionsLoaded => _promotionsLoaded;
 
   bool get isRestaurantFavorite => _isRestaurantFavorite;
+
+  int? get activeGroupOrderInvitationId =>
+      _groupOrderInvitationId ?? GroupOrderSession.instance.groupOrdersInvitationId;
+
+  int? get activeGroupOrderHostCustomerId =>
+      _groupOrderHostCustomerId ?? GroupOrderSession.instance.hostCustomerId;
+
+  void setGroupOrderContext({
+    required int groupOrderInvitationId,
+    required int hostCustomerId,
+    String? groupCode,
+    VendorModel? restaurant,
+    int? deliveryAddressId,
+  }) {
+    _groupOrderInvitationId = groupOrderInvitationId;
+    _groupOrderHostCustomerId = hostCustomerId;
+    if (restaurant != null) {
+      GroupOrderSession.instance.start(
+        groupOrdersInvitationId: groupOrderInvitationId,
+        hostCustomerId: hostCustomerId,
+        groupCode: groupCode ?? GroupOrderSession.instance.groupCode ?? '',
+        restaurant: restaurant,
+        deliveryAddressId: deliveryAddressId,
+      );
+    }
+    notifyListeners();
+  }
+
+  void clearGroupOrderContext() {
+    _groupOrderInvitationId = null;
+    _groupOrderHostCustomerId = null;
+    notifyListeners();
+  }
 
   /// Getter for public access to categoryKeys
   Map<String, GlobalKey> getCategoryKeys() => Map.from(categoryKeys);
@@ -1051,7 +1088,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
 
       ShowToastDialog.showToast(
-        _isRestaurantFavorite ? "Added to favourites" : "Removed from favorites",
+        _isRestaurantFavorite
+            ? "Added to favourites"
+            : "Removed from favorites",
       );
     } catch (e) {
       print('❌ Error toggling restaurant favorite: $e');
@@ -1243,6 +1282,99 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     return total.toStringAsFixed(2);
   }
 
+  bool get isGroupOrderMode =>
+      activeGroupOrderInvitationId != null &&
+      activeGroupOrderHostCustomerId != null;
+
+  int productQuantityInCart(String productId) {
+    if (productId.isEmpty) return 0;
+    if (isGroupOrderMode) {
+      return GroupOrderSession.instance.quantityFor(productId);
+    }
+    return HomeProvider.cartItem
+        .where(
+          (item) =>
+              item.id != null &&
+              (item.id == productId || item.id!.startsWith('$productId~')),
+        )
+        .fold<int>(0, (sum, item) => sum + (item.quantity ?? 0));
+  }
+
+  bool isProductInCart(String productId) =>
+      productQuantityInCart(productId) > 0;
+
+  int? _resolveNumericProductId(ProductModel productModel) {
+    final candidates = <String?>[
+      productModel.id,
+    ];
+    for (final candidate in candidates) {
+      final raw = candidate?.split('~').first.trim() ?? '';
+      final parsed = int.tryParse(raw);
+      if (parsed != null) return parsed;
+    }
+    return null;
+  }
+
+  Future<void> _addToGroupCart({
+    required ProductModel productModel,
+    required String price,
+    required int quantity,
+    VariantInfo? variantInfo,
+  }) async {
+    final invitationId = activeGroupOrderInvitationId;
+    if (invitationId == null) {
+      ShowToastDialog.showToast('Group order session expired');
+      return;
+    }
+
+    final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+    final productId = _resolveNumericProductId(productModel);
+    if (customerId == null || productId == null) {
+      ShowToastDialog.showToast('Unable to add item to group cart');
+      return;
+    }
+
+    final merchantUnitPrice =
+        double.tryParse(
+          variantInfo?.variantOptions is Map
+              ? (variantInfo!.variantOptions as Map)['merchant_price']
+                        ?.toString() ??
+                    ''
+              : productModel.merchantPrice ?? productModel.price ?? '0',
+        ) ??
+        0;
+    final onlineUnitPrice = double.tryParse(price) ?? 0;
+
+    print(
+      '[GroupOrder] addItemsToGroupCart invitation=$invitationId '
+      'customer=$customerId product=$productId qty=$quantity',
+    );
+
+    final result = await GroupOrderApiService.addItemsToGroupCart(
+      groupOrderInvitationId: invitationId,
+      customerId: customerId,
+      productId: productId,
+      quantity: quantity,
+      merchantUnitPrice: merchantUnitPrice,
+      onlineUnitPrice: onlineUnitPrice,
+      createdBy: customerId,
+    );
+
+    if (result == null || !result.success) {
+      ShowToastDialog.showToast(
+        result?.statusMsg ?? 'Failed to add item to group cart',
+      );
+      return;
+    }
+
+    GroupOrderSession.instance.incrementProduct(
+      productModel.id?.split('~').first ?? productId.toString(),
+      quantity,
+    );
+    ShowToastDialog.showToast(result.statusMsg);
+    notifyListeners();
+  }
+
   /// ADD TO CART METHOD - Fixed variant handling
   Future<void> addToCart({
     required ProductModel productModel,
@@ -1252,6 +1384,22 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required int quantity,
     VariantInfo? variantInfo,
   }) async {
+    if (isGroupOrderMode) {
+      if (!isIncrement) {
+        ShowToastDialog.showToast(
+          'Remove items from the group cart is not supported yet',
+        );
+        return;
+      }
+      await _addToGroupCart(
+        productModel: productModel,
+        price: price,
+        quantity: quantity,
+        variantInfo: variantInfo,
+      );
+      return;
+    }
+
     final productId = productModel.id?.toString() ?? '';
     final vendorId = vendorModel.id?.toString() ?? '';
 

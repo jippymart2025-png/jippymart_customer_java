@@ -117,8 +117,9 @@ class AddressListProvider extends ChangeNotifier {
           return;
         }
 
-        final addresses =
-            await getCustomerDeliveryAddresses(customerId: customerId);
+        final addresses = await getCustomerDeliveryAddresses(
+          customerId: customerId,
+        );
         _updateFromDeliveryAddresses(addresses);
         _lastFetchTime = DateTime.now();
       } catch (e) {
@@ -286,7 +287,7 @@ class AddressListProvider extends ChangeNotifier {
       final headers = await getHeaders();
       final response = await http
           .get(
-            Uri.parse('${AppConst.baseUrl}users/profile/$userId'),
+            Uri.parse('${AppConst.outletBaseUrl}co/customers/$userId'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 15)); // Reduced timeout

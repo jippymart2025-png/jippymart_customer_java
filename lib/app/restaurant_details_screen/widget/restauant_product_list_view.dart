@@ -766,21 +766,9 @@ class _AddToCartButton extends StatelessWidget {
     return hasOptions && !hasItemAttributes;
   }
 
-  bool get _isInCart => HomeProvider.cartItem.any((item) {
-    if (item.id == null || item.id!.isEmpty) return false;
-    return item.id == _productId || item.id!.startsWith('$_productId~');
-  });
+  bool get _isInCart => controller.isProductInCart(_productId);
 
-  int get _cartQty {
-    if (_productId.isEmpty) return 0;
-    return HomeProvider.cartItem
-        .where(
-          (item) =>
-              item.id != null &&
-              (item.id == _productId || item.id!.startsWith('$_productId~')),
-        )
-        .fold<int>(0, (sum, item) => sum + (item.quantity ?? 0));
-  }
+  int get _cartQty => controller.productQuantityInCart(_productId);
 
   Map<String, dynamic>? get _promo => controller.getActivePromotionForProduct(
     productId: _productId,

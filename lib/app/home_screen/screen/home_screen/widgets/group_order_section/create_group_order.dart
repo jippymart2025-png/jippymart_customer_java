@@ -164,9 +164,10 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
         () => InviteFriendsScreen(
           groupCode: invitationCode,
           groupLink:
-              'https://jippymart.in/g/${result.groupOrdersInvitationId}/$invitationCode',
+              'https://jippymart.in/g/${result.groupOrdersInvitationId}/$invitationCode/${result.hostCustomerId}',
           restaurant: _selectedVendor!,
           groupOrdersInvitationId: result.groupOrdersInvitationId,
+          hostCustomerId: result.hostCustomerId,
         ),
       );
     } catch (e) {

@@ -24,10 +24,12 @@ class MyProfileProvider extends ChangeNotifier {
 
   // Cached states to avoid repeated async calls
   bool _isUserLoggedIn = false;
+
   bool get isUserLoggedIn => _isUserLoggedIn;
 
   // Version info cache
   String? _cachedVersionText;
+
   String get versionText => _cachedVersionText ?? "V : ${Constant.appVersion}";
   bool _isVersionLoaded = false;
 
@@ -37,9 +39,11 @@ class MyProfileProvider extends ChangeNotifier {
 
   // Theme state (pure Dart, no GetX dependency for these)
   String _isDarkMode = "Light";
+
   String get isDarkMode => _isDarkMode;
 
   bool _isDarkModeSwitch = false;
+
   bool get isDarkModeSwitch => _isDarkModeSwitch;
 
   set isDarkModeSwitch(bool value) {
@@ -173,7 +177,7 @@ class MyProfileProvider extends ChangeNotifier {
         log('[PROFILE_SCREEN] Making DELETE API call for user: $userId');
       }
       final response = await http.delete(
-        Uri.parse('${AppConst.baseUrl}users/profile/$userId'),
+        Uri.parse('${AppConst.outletBaseUrl}co/customers/$userId'),
         headers: await getHeaders(),
       );
       if (kDebugMode) {

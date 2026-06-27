@@ -11,6 +11,7 @@ class InviteFriendsScreen extends StatelessWidget {
   final String groupLink;
   final VendorModel restaurant;
   final int groupOrdersInvitationId;
+  final int hostCustomerId;
 
   const InviteFriendsScreen({
     super.key,
@@ -18,6 +19,7 @@ class InviteFriendsScreen extends StatelessWidget {
     required this.groupLink,
     required this.restaurant,
     required this.groupOrdersInvitationId,
+    required this.hostCustomerId,
   });
 
   void _copy(BuildContext context, String text, String label) {
@@ -228,6 +230,7 @@ class InviteFriendsScreen extends StatelessWidget {
                       groupOrdersInvitationId: groupOrdersInvitationId,
                       invitationCode: groupCode,
                       restaurant: restaurant,
+                      hostCustomerId: hostCustomerId,
                     ),
                   );
                 },

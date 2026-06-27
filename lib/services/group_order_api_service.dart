@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/models/group_order_action_response.dart';
+import 'package:jippymart_customer/models/group_order_checkout_model.dart';
 import 'package:jippymart_customer/models/group_order_invitation_model.dart';
 import 'package:jippymart_customer/models/group_order_join_response.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
@@ -103,5 +105,107 @@ class GroupOrderApiService {
       print('[GroupOrderApi] joinGroupMembers error: $e');
       return null;
     }
+  }
+
+  static Future<GroupOrderActionResponse?> addItemsToGroupCart({
+    required int groupOrderInvitationId,
+    required int customerId,
+    required int productId,
+    required int quantity,
+    required double merchantUnitPrice,
+    required double onlineUnitPrice,
+    required int createdBy,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}co/group-orders/addItemsToGroupCart',
+      );
+
+      final body = {
+        'groupOrderInvitationId': groupOrderInvitationId,
+        'customerId': customerId,
+        'productId': productId,
+        'quantity': quantity,
+        'merchantUnitPrice': merchantUnitPrice,
+        'onlineUnitPrice': onlineUnitPrice,
+        'createdBy': createdBy,
+      };
+
+      print('[GroupOrderApi] POST $uri');
+      print('[GroupOrderApi] body: $body');
+
+      final response = await http
+          .post(uri, headers: await getHeaders(), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 30));
+
+      print('[GroupOrderApi] status: ${response.statusCode}');
+      print('[GroupOrderApi] response: ${response.body}');
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      return GroupOrderActionResponse.fromJson(decoded);
+    } catch (e) {
+      print('[GroupOrderApi] addItemsToGroupCart error: $e');
+      return null;
+    }
+  }
+
+  static Future<GroupOrderCheckoutModel?> groupOrderCheckOut({
+    required int groupOrdersInvitationId,
+    required int hostCustomerId,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}co/group-orders/groupOrderCheckOut',
+      ).replace(
+        queryParameters: {
+          'groupOrdersInvitationId': groupOrdersInvitationId.toString(),
+          'hostCustomerId': hostCustomerId.toString(),
+        },
+      );
+
+      print('[GroupOrderApi] GET $uri');
+
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 30));
+
+      print('[GroupOrderApi] status: ${response.statusCode}');
+      print('[GroupOrderApi] response: ${response.body}');
+
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final data = decoded.containsKey('data') && decoded['data'] is Map
+          ? Map<String, dynamic>.from(decoded['data'] as Map)
+          : decoded;
+
+      return GroupOrderCheckoutModel.fromJson(data);
+    } catch (e) {
+      print('[GroupOrderApi] groupOrderCheckOut error: $e');
+      return null;
+    }
+  }
+
+  static Map<String, int> quantitiesFromCheckout(GroupOrderCheckoutModel? model) {
+    final quantities = <String, int>{};
+    if (model == null) return quantities;
+
+    for (final delivery in model.deliveryCheckOutItems) {
+      for (final member in delivery.groupOrderCheckoutItems) {
+        for (final product in member.products) {
+          final key = product.productId.toString();
+          quantities[key] = (quantities[key] ?? 0) + product.quantity;
+        }
+      }
+    }
+    return quantities;
   }
 }

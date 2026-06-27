@@ -186,8 +186,6 @@ class LoginProvider extends ChangeNotifier {
       final headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization':
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
       };
       final httpResponse = await SafeHttpClient.safePost(
         url,
@@ -267,8 +265,6 @@ class LoginProvider extends ChangeNotifier {
       final headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization':
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
       };
       final httpResponse = await SafeHttpClient.safePost(
         url,
@@ -497,8 +493,6 @@ class LoginProvider extends ChangeNotifier {
       final headers = {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
-        'Authorization':
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
       };
       final httpResponse = await SafeHttpClient.safePost(
         url,

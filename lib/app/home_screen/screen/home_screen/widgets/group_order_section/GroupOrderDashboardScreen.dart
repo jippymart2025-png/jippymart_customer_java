@@ -1,11 +1,14 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
+import 'package:jippymart_customer/models/group_order_checkout_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/services/group_order_api_service.dart';
+import 'package:jippymart_customer/services/group_order_session.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +20,7 @@ class GroupOrderDashboardScreen extends StatefulWidget {
   final String groupCode;
   final VendorModel restaurant;
   final int groupOrdersInvitationId;
+  final int hostCustomerId;
   final int? deliveryAddressId;
 
   const GroupOrderDashboardScreen({
@@ -24,6 +28,7 @@ class GroupOrderDashboardScreen extends StatefulWidget {
     required this.groupCode,
     required this.restaurant,
     required this.groupOrdersInvitationId,
+    required this.hostCustomerId,
     this.deliveryAddressId,
   });
 
@@ -36,6 +41,9 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
   Duration _remaining = const Duration(minutes: 12, seconds: 14);
   Timer? _timer;
   bool _isLeavingGroup = false;
+  bool _isLoadingCheckout = true;
+  GroupOrderCheckoutModel? _checkout;
+  int _cartItemCount = 0;
 
   final List<String> _memberAvatars = [
     'https://i.pravatar.cc/100?img=1',
@@ -44,34 +52,19 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
     'https://i.pravatar.cc/100?img=4',
   ];
 
-  final List<GroupActivityEvent> _activity = [
-    GroupActivityEvent(
-      memberName: 'Rahul',
-      avatarUrl: 'https://i.pravatar.cc/100?img=1',
-      action: 'added',
-      detail: 'Chicken Burger',
-      timeAgo: '2 mins ago',
-    ),
-    GroupActivityEvent(
-      memberName: 'Sneha',
-      avatarUrl: 'https://i.pravatar.cc/100?img=5',
-      action: 'added',
-      detail: 'Garlic Bread',
-      timeAgo: '5 mins ago',
-    ),
-    GroupActivityEvent(
-      memberName: 'Akash',
-      avatarUrl: 'https://i.pravatar.cc/100?img=6',
-      action: 'is browsing',
-      detail: 'Desserts...',
-      timeAgo: 'Just now',
-      isLive: true,
-    ),
-  ];
+  List<GroupActivityEvent> _activity = [];
 
   @override
   void initState() {
     super.initState();
+    GroupOrderSession.instance.start(
+      groupOrdersInvitationId: widget.groupOrdersInvitationId,
+      hostCustomerId: widget.hostCustomerId,
+      groupCode: widget.groupCode,
+      restaurant: widget.restaurant,
+      deliveryAddressId: widget.deliveryAddressId,
+    );
+    _loadCheckout();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_remaining.inSeconds <= 0) {
         _timer?.cancel();
@@ -87,13 +80,77 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
     super.dispose();
   }
 
+  Future<void> _loadCheckout() async {
+    setState(() => _isLoadingCheckout = true);
+
+    final checkout = await GroupOrderApiService.groupOrderCheckOut(
+      groupOrdersInvitationId: widget.groupOrdersInvitationId,
+      hostCustomerId: widget.hostCustomerId,
+    );
+
+    if (!mounted) return;
+
+    final quantities =
+        GroupOrderApiService.quantitiesFromCheckout(checkout);
+    GroupOrderSession.instance.setQuantitiesFromCheckout(quantities);
+
+    setState(() {
+      _checkout = checkout;
+      _cartItemCount = checkout?.totalProductCount ?? 0;
+      _activity = _buildActivityFromCheckout(checkout);
+      _isLoadingCheckout = false;
+    });
+  }
+
+  List<GroupActivityEvent> _buildActivityFromCheckout(
+    GroupOrderCheckoutModel? checkout,
+  ) {
+    if (checkout == null) return [];
+
+    final events = <GroupActivityEvent>[];
+    for (final delivery in checkout.deliveryCheckOutItems) {
+      for (final member in delivery.groupOrderCheckoutItems) {
+        for (final product in member.products) {
+          events.add(
+            GroupActivityEvent(
+              memberName: member.customerName,
+              avatarUrl: 'https://i.pravatar.cc/100?u=${member.customerId}',
+              action: 'added',
+              detail: product.productName,
+              timeAgo: 'Recently',
+            ),
+          );
+        }
+      }
+    }
+    return events.take(10).toList();
+  }
+
   String _two(int n) => n.toString().padLeft(2, '0');
 
-  void _openRestaurantMenu() {
-    context.read<RestaurantDetailsProvider>().initFunction(
-          vendorModels: widget.restaurant,
-        );
-    Get.to(() => const RestaurantDetailsScreen());
+  void _openRestaurantMenu() async {
+    final provider = context.read<RestaurantDetailsProvider>();
+    provider.setGroupOrderContext(
+      groupOrderInvitationId: widget.groupOrdersInvitationId,
+      hostCustomerId: widget.hostCustomerId,
+      groupCode: widget.groupCode,
+      restaurant: widget.restaurant,
+      deliveryAddressId: widget.deliveryAddressId,
+    );
+    await provider.initFunction(vendorModels: widget.restaurant);
+    await Get.to(() => const RestaurantDetailsScreen());
+    await _loadCheckout();
+  }
+
+  Future<void> _openSharedCart() async {
+    await Get.to(
+      () => SharedCartScreen(
+        groupOrdersInvitationId: widget.groupOrdersInvitationId,
+        hostCustomerId: widget.hostCustomerId,
+        initialCheckout: _checkout,
+      ),
+    );
+    await _loadCheckout();
   }
 
   Future<void> _leaveGroup() async {
@@ -153,6 +210,10 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
         return;
       }
 
+      GroupOrderSession.instance.clear();
+      if (mounted) {
+        context.read<RestaurantDetailsProvider>().clearGroupOrderContext();
+      }
       ShowToastDialog.showToast(result.statusMsg);
       Get.back();
     } catch (_) {
@@ -166,35 +227,54 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
   Widget build(BuildContext context) {
     final minutes = _remaining.inMinutes;
     final seconds = _remaining.inSeconds % 60;
+    final memberCount = _checkout?.memberCount ?? 0;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F8),
       body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            _buildHeaderCard(minutes, seconds),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Activity',
-                    style: TextStyle(
-                      fontFamily: AppThemeData.semiBold,
-                      color: AppThemeData.grey900,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+        child: RefreshIndicator(
+          onRefresh: _loadCheckout,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              _buildHeaderCard(minutes, seconds, memberCount),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Activity',
+                      style: TextStyle(
+                        fontFamily: AppThemeData.semiBold,
+                        color: AppThemeData.grey900,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 10),
-                  ..._activity.map(_buildActivityRow),
-                ],
+                    const SizedBox(height: 10),
+                    if (_isLoadingCheckout)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 24),
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (_activity.isEmpty)
+                      Text(
+                        'No items added yet. Tap Add items to start ordering.',
+                        style: TextStyle(
+                          fontFamily: AppThemeData.medium,
+                          color: AppThemeData.grey500,
+                          fontSize: 13,
+                        ),
+                      )
+                    else
+                      ..._activity.map(_buildActivityRow),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 100),
-          ],
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: SafeArea(
@@ -235,13 +315,11 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
                     ),
                     elevation: 0,
                   ),
-                  onPressed: () {
-                    Get.to(() => const SharedCartScreen());
-                  },
-                  child: const Row(
+                  onPressed: _openSharedCart,
+                  child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(
+                      const Text(
                         'View Cart',
                         style: TextStyle(
                           color: Colors.white,
@@ -249,19 +327,21 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
                           fontSize: 14,
                         ),
                       ),
-                      SizedBox(width: 6),
-                      CircleAvatar(
-                        radius: 10,
-                        backgroundColor: Colors.white,
-                        child: Text(
-                          '6',
-                          style: TextStyle(
-                            color: Color(0xFFFF6B2C),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                      if (_cartItemCount > 0) ...[
+                        const SizedBox(width: 6),
+                        CircleAvatar(
+                          radius: 10,
+                          backgroundColor: Colors.white,
+                          child: Text(
+                            '$_cartItemCount',
+                            style: const TextStyle(
+                              color: Color(0xFFFF6B2C),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -273,7 +353,7 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
     );
   }
 
-  Widget _buildHeaderCard(int minutes, int seconds) {
+  Widget _buildHeaderCard(int minutes, int seconds, int memberCount) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
       decoration: const BoxDecoration(
@@ -294,14 +374,16 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: const [
-                        Text('🎉 ', style: TextStyle(fontSize: 16)),
-                        Text(
-                          'Friday Night Feast',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 19,
+                      children: [
+                        const Text('🎉 ', style: TextStyle(fontSize: 16)),
+                        Expanded(
+                          child: Text(
+                            widget.restaurant.title ?? 'Group Order',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 19,
+                            ),
                           ),
                         ),
                       ],
@@ -355,32 +437,13 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
                           ),
                         ),
                       ),
-                    Positioned(
-                      left: _memberAvatars.length * 18.0,
-                      child: CircleAvatar(
-                        radius: 14,
-                        backgroundColor: Colors.white,
-                        child: CircleAvatar(
-                          radius: 13,
-                          backgroundColor: const Color(0xFFE63950),
-                          child: const Text(
-                            '+2',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
               const SizedBox(width: 8),
-              const Text(
-                '6 members',
-                style: TextStyle(
+              Text(
+                memberCount > 0 ? '$memberCount members' : 'Group members',
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12.5,
                   fontWeight: FontWeight.w600,

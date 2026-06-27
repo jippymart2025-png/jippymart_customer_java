@@ -517,9 +517,9 @@ Widget buildProductsWithoutCategories(
                                         }
                                       },
                                     )
-                                  : HomeProvider.cartItem
-                                        .where((p0) => p0.id == productModel.id)
-                                        .isNotEmpty
+                                  : controller.isProductInCart(
+                                      productModel.id ?? '',
+                                    )
                                   ? Container(
                                       width: Responsive.width(120, context),
                                       height: Responsive.height(4.5, context),
@@ -580,14 +580,9 @@ Widget buildProductsWithoutCategories(
                                                       finalDiscountPrice,
                                                   isIncrement: false,
                                                   quantity:
-                                                      HomeProvider.cartItem
-                                                          .where(
-                                                            (p0) =>
-                                                                p0.id ==
-                                                                productModel.id,
-                                                          )
-                                                          .first
-                                                          .quantity! -
+                                                      controller.productQuantityInCart(
+                                                        productModel.id ?? '',
+                                                      ) -
                                                       1,
                                                 );
                                               },
@@ -601,28 +596,21 @@ Widget buildProductsWithoutCategories(
                                                     horizontal: 8,
                                                   ),
                                               child: Text(
-                                                HomeProvider.cartItem
-                                                    .where(
-                                                      (p0) =>
-                                                          p0.id ==
-                                                          productModel.id,
+                                                controller
+                                                    .productQuantityInCart(
+                                                      productModel.id ?? '',
                                                     )
-                                                    .first
-                                                    .quantity
                                                     .toString(),
                                                 textAlign: TextAlign.center,
                                                 maxLines: 1,
                                                 style: TextStyle(
                                                   fontSize:
-                                                      HomeProvider.cartItem
-                                                              .where(
-                                                                (p0) =>
-                                                                    p0.id ==
-                                                                    productModel
-                                                                        .id,
+                                                      controller
+                                                              .productQuantityInCart(
+                                                                productModel
+                                                                        .id ??
+                                                                    '',
                                                               )
-                                                              .first
-                                                              .quantity
                                                               .toString()
                                                               .length >
                                                           2
@@ -641,16 +629,10 @@ Widget buildProductsWithoutCategories(
                                           Flexible(
                                             child: InkWell(
                                               onTap: () async {
-                                                if ((HomeProvider.cartItem
-                                                                .where(
-                                                                  (p0) =>
-                                                                      p0.id ==
-                                                                      productModel
-                                                                          .id,
-                                                                )
-                                                                .first
-                                                                .quantity ??
-                                                            0) <=
+                                                if ((controller.productQuantityInCart(
+                                                              productModel.id ??
+                                                                  '',
+                                                            )) <=
                                                         (productModel
                                                                 .quantity ??
                                                             0) ||
@@ -680,15 +662,11 @@ Widget buildProductsWithoutCategories(
                                                           productModel
                                                                   .vendorID ??
                                                               '',
-                                                          HomeProvider.cartItem
-                                                                  .where(
-                                                                    (p0) =>
-                                                                        p0.id ==
-                                                                        productModel
-                                                                            .id,
-                                                                  )
-                                                                  .first
-                                                                  .quantity! +
+                                                          controller.productQuantityInCart(
+                                                                  productModel
+                                                                          .id ??
+                                                                      '',
+                                                                ) +
                                                               1,
                                                         );
 
