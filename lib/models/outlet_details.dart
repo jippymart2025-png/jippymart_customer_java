@@ -39,11 +39,7 @@ class OutletProductTiming {
   final String? startTime;
   final String? endTime;
 
-  OutletProductTiming({
-    required this.day,
-    this.startTime,
-    this.endTime,
-  });
+  OutletProductTiming({required this.day, this.startTime, this.endTime});
 
   factory OutletProductTiming.fromJson(Map<String, dynamic> json) {
     return OutletProductTiming(
@@ -54,11 +50,7 @@ class OutletProductTiming {
   }
 
   Map<String, dynamic> toJson() {
-    return {
-      'day': day,
-      'startTime': startTime,
-      'endTime': endTime,
-    };
+    return {'day': day, 'startTime': startTime, 'endTime': endTime};
   }
 }
 
@@ -94,7 +86,9 @@ class OutletCategory {
     }
 
     return OutletCategory(
-      categoryId: categoryId is int ? categoryId : int.tryParse('$categoryId') ?? 0,
+      categoryId: categoryId is int
+          ? categoryId
+          : int.tryParse('$categoryId') ?? 0,
       categoryName: categoryName,
       products: products,
     );
@@ -123,6 +117,7 @@ class OutletDetails {
   final int outletId;
   final String outletName;
   final String? outletPhone;
+  final bool isFavourite;
   final List<OutletTiming> outletTimings;
   final List<OutletCategory> categories;
 
@@ -130,6 +125,7 @@ class OutletDetails {
     required this.outletId,
     required this.outletName,
     this.outletPhone,
+    required this.isFavourite,
     required this.outletTimings,
     required this.categories,
   });
@@ -153,9 +149,7 @@ class OutletDetails {
     if (categoriesJson is List) {
       for (final item in categoriesJson) {
         if (item is Map<String, dynamic>) {
-          categories.add(
-            OutletCategory.fromJson(item, outletId: outletIdStr),
-          );
+          categories.add(OutletCategory.fromJson(item, outletId: outletIdStr));
         }
       }
     }
@@ -164,6 +158,7 @@ class OutletDetails {
       outletId: outletId is int ? outletId : int.tryParse('$outletId') ?? 0,
       outletName: json['outletName']?.toString() ?? '',
       outletPhone: json['outletPhone']?.toString(),
+      isFavourite: json['isFavourite'] == true,
       outletTimings: outletTimings,
       categories: categories,
     );
@@ -177,13 +172,13 @@ class OutletDetails {
 
   VendorModel toVendorModel({VendorModel? existing}) {
     final workingHours = outletTimings
-        .where((t) => t.isOpen && t.openingTime != null && t.closingTime != null)
+        .where(
+          (t) => t.isOpen && t.openingTime != null && t.closingTime != null,
+        )
         .map(
           (t) => WorkingHours(
             day: t.day,
-            timeslot: [
-              Timeslot(from: t.openingTime, to: t.closingTime),
-            ],
+            timeslot: [Timeslot(from: t.openingTime, to: t.closingTime)],
           ),
         )
         .toList();
@@ -199,8 +194,7 @@ class OutletDetails {
           ? workingHours
           : existing.workingHours;
       existing.isOpen = isOpenNow;
-      existing.openDineTime =
-          todayTiming?.openingTime ?? existing.openDineTime;
+      existing.openDineTime = todayTiming?.openingTime ?? existing.openDineTime;
       existing.closeDineTime =
           todayTiming?.closingTime ?? existing.closeDineTime;
       return existing;
@@ -243,6 +237,7 @@ class OutletDetails {
       'outletId': outletId,
       'outletName': outletName,
       'outletPhone': outletPhone,
+      'isFavourite': isFavourite,
       'outletTimings': outletTimings.map((t) => t.toJson()).toList(),
       'categories': categories.map((c) => c.toJson()).toList(),
     };

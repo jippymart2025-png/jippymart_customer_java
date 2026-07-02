@@ -390,38 +390,61 @@ class FireStoreUtils {
   }
 
   static Future<VendorModel?> _fetchVendorFromApi(String vendorId) async {
+    final userId = await SqlStorageConst.getFirebaseId();
+
     try {
-      final uri = Uri.parse('${AppConst.baseUrl}restaurants/$vendorId');
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails'
+        '?outletId=$vendorId'
+        '&userType=customer'
+        '&customerId=$userId',
+      );
+
+      if (kDebugMode) {
+        debugPrint("Vendor API : $uri");
+      }
+
       final response = await http
           .get(uri, headers: await getHeaders())
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw TimeoutException('Vendor fetch timeout');
-            },
-          );
+          .timeout(const Duration(seconds: 10));
+
+      if (kDebugMode) {
+        debugPrint("Status Code : ${response.statusCode}");
+        debugPrint("Response : ${response.body}");
+      }
+
       if (response.statusCode != 200) {
-        if (kDebugMode) {
-          dev.log("⚠️ Vendor fetch failed: ${response.statusCode}");
-        }
         return null;
       }
-      final jsonResponse = json.decode(response.body);
-      if (jsonResponse['success'] == true) {
-        final data = jsonResponse['data'];
-        if (data != null && data is Map<String, dynamic>) {
-          return VendorModel.fromJson(data);
-        }
+
+      final jsonResponse = jsonDecode(response.body);
+
+      if (jsonResponse["success"] != true) {
+        debugPrint("API Success = false");
+        return null;
       }
-      return null;
-    } on TimeoutException catch (e) {
-      if (kDebugMode) dev.log("⏰ Vendor timeout: $e");
-      return null;
-    } on http.ClientException catch (e) {
-      if (kDebugMode) dev.log("🌐 Vendor network error: $e");
-      return null;
-    } catch (e) {
-      if (kDebugMode) dev.log("❌ Error fetching vendor: $e");
+
+      final data = jsonResponse["data"];
+
+      if (data == null || data is! Map<String, dynamic>) {
+        debugPrint("Invalid vendor data");
+        return null;
+      }
+
+      final vendor = VendorModel.fromJson(data);
+
+      if (kDebugMode) {
+        debugPrint("Vendor Parsed");
+        // debugPrint("Outlet : ${vendor.outletName}");
+        debugPrint("OutletId : ${vendor.id}");
+        debugPrint("ZoneId : ${vendor.zoneId}");
+      }
+
+      return vendor;
+    } catch (e, s) {
+      debugPrint("Vendor Parse Error");
+      debugPrint(e.toString());
+      debugPrint(s.toString());
       return null;
     }
   }
@@ -1028,23 +1051,23 @@ class FireStoreUtils {
     }
   }
 
-  static Future<DeliveryCharge?> getDeliveryCharge() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}settings/delivery-charge'),
-        headers: await getHeaders(),
-      );
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        if (jsonResponse['success'] == true) {
-          return DeliveryCharge.fromJson(jsonResponse['data']);
-        }
-      }
-      return null;
-    } catch (e) {
-      return null;
-    }
-  }
+  // static Future<DeliveryCharge?> getDeliveryCharge() async {
+  //   try {
+  //     final response = await http.get(
+  //       Uri.parse('${AppConst.baseUrl}settings/delivery-charge'),
+  //       headers: await getHeaders(),
+  //     );
+  //     if (response.statusCode == 200) {
+  //       final jsonResponse = json.decode(response.body);
+  //       if (jsonResponse['success'] == true) {
+  //         return DeliveryCharge.fromJson(jsonResponse['data']);
+  //       }
+  //     }
+  //     return null;
+  //   } catch (e) {
+  //     return null;
+  //   }
+  // }
 
   static Future<List<TaxModel>?> getTaxList() async {
     print(" getTaxList ");

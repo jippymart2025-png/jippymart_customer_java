@@ -42,7 +42,7 @@ class AllAdvertisementProvider extends ChangeNotifier {
   getFavouriteRestaurant() async {
     if (Constant.userModel != null) {
       await FavouriteProvider.getFavouriteRestaurants().then((value) {
-        vendorModel = value;
+        vendorModel = value.favorites;
       });
     }
   }

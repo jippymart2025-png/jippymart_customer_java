@@ -29,6 +29,7 @@ import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
 
+import 'package:jippymart_customer/services/cart_api_service.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/paytm_service.dart';
 import 'package:jippymart_customer/services/smartlook_service.dart';
@@ -2080,44 +2081,44 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
 
-      if (user == null) {
-        isProfileValid = false;
-        ShowToastDialog.showToast(
-          "Unable to verify profile. Please check your internet connection and try again."
-              .tr,
-        );
-        return;
-      }
+      // if (user == null) {
+      //   isProfileValid = false;
+      //   ShowToastDialog.showToast(
+      //     "Unable to verify profile. Please check your internet connection and try again."
+      //         .tr,
+      //   );
+      //   return;
+      // }
 
-      final hasFirstName =
-          user.firstName != null &&
-          user.firstName!.trim().isNotEmpty &&
-          user.firstName!.trim().length >= 2;
+      // final hasFirstName =
+      //     user.firstName != null &&
+      //     user.firstName!.trim().isNotEmpty &&
+      //     user.firstName!.trim().length >= 2;
+      //
+      // final hasPhoneNumber =
+      //     user.phoneNumber != null &&
+      //     user.phoneNumber!.trim().isNotEmpty &&
+      //     user.phoneNumber!.trim().length >= 10;
+      //
+      // final hasEmail =
+      //     user.email != null &&
+      //     user.email!.trim().isNotEmpty &&
+      //     user.email!.contains('@') &&
+      //     user.email!.contains('.');
+      //
+      // isProfileValid = hasFirstName && hasPhoneNumber && hasEmail;
+      //
+      // userModel = user;
+      // Constant.userModel = user;
 
-      final hasPhoneNumber =
-          user.phoneNumber != null &&
-          user.phoneNumber!.trim().isNotEmpty &&
-          user.phoneNumber!.trim().length >= 10;
-
-      final hasEmail =
-          user.email != null &&
-          user.email!.trim().isNotEmpty &&
-          user.email!.contains('@') &&
-          user.email!.contains('.');
-
-      isProfileValid = hasFirstName && hasPhoneNumber && hasEmail;
-
-      userModel = user;
-      Constant.userModel = user;
-
-      if (!isProfileValid) {
-        final missingFields = <String>[];
-        if (!hasFirstName) missingFields.add('First Name (min 2 chars)');
-        if (!hasPhoneNumber) missingFields.add('Phone Number (min 10 digits)');
-        if (!hasEmail) missingFields.add('Valid Email Address');
-
-        print('[PROFILE] ⚠️ Missing fields: ${missingFields.join(', ')}');
-      }
+      // if (!isProfileValid) {
+      //   final missingFields = <String>[];
+      //   if (!hasFirstName) missingFields.add('First Name (min 2 chars)');
+      //   if (!hasPhoneNumber) missingFields.add('Phone Number (min 10 digits)');
+      //   if (!hasEmail) missingFields.add('Valid Email Address');
+      //
+      //   print('[PROFILE] ⚠️ Missing fields: ${missingFields.join(', ')}');
+      // }
 
       notifyListeners();
     } catch (e) {
@@ -3605,9 +3606,7 @@ class CartControllerProvider extends ChangeNotifier {
           await initialLiseSurgeValue(homeLat, homeLng);
           await calculatePrice();
 
-          print(
-            '[CART_SYNC] ✅ Synced cart address with home screen location',
-          );
+          print('[CART_SYNC] ✅ Synced cart address with home screen location');
           notifyListeners();
         }
       } else if ((selectedAddress?.zoneId == null ||
@@ -5443,37 +5442,69 @@ class CartControllerProvider extends ChangeNotifier {
 
   // ============ CART ITEM OPERATIONS ============
 
+  int? _resolveNumericProductId(CartProductModel cartProductModel) {
+    final raw = cartProductModel.id?.split('~').first.trim() ?? '';
+    return int.tryParse(raw);
+  }
+
+  Future<bool> _updateServerCart({
+    required CartProductModel cartProductModel,
+    required int quantity,
+  }) async {
+    final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+    final productId = _resolveNumericProductId(cartProductModel);
+    if (customerId == null || productId == null) return true;
+
+    final unitPrice = double.tryParse(cartProductModel.price ?? '0') ?? 0;
+    return CartApiService.updateCart(
+      customerId: customerId,
+      productId: productId,
+      quantity: quantity,
+      unitPrice: unitPrice,
+    );
+  }
+
   Future<bool> addToCart({
     required CartProductModel cartProductModel,
     required bool isIncrement,
     required int quantity,
   }) async {
-    if (isIncrement) {
-      final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
-      if (!isLoggedIn) {
-        _showLoginRequiredDialog(Get.context!);
-        return false;
-      }
+    final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+    if (!isLoggedIn) {
+      _showLoginRequiredDialog(Get.context!);
+      return false;
+    }
 
-      if (cartProductModel.promoId != null &&
-          cartProductModel.promoId!.isNotEmpty) {
-        final isAllowed = isPromotionalItemQuantityAllowed(
+    if (isIncrement &&
+        cartProductModel.promoId != null &&
+        cartProductModel.promoId!.isNotEmpty) {
+      final isAllowed = isPromotionalItemQuantityAllowed(
+        cartProductModel.id ?? '',
+        cartProductModel.vendorID ?? '',
+        quantity,
+      );
+      if (!isAllowed) {
+        final limit = getPromotionalItemLimit(
           cartProductModel.id ?? '',
           cartProductModel.vendorID ?? '',
-          quantity,
         );
-        if (!isAllowed) {
-          final limit = getPromotionalItemLimit(
-            cartProductModel.id ?? '',
-            cartProductModel.vendorID ?? '',
-          );
-          ShowToastDialog.showToast(
-            "Maximum $limit items allowed for this promotional offer".tr,
-          );
-          return false;
-        }
+        ShowToastDialog.showToast(
+          "Maximum $limit items allowed for this promotional offer".tr,
+        );
+        return false;
       }
+    }
 
+    final apiSuccess = await _updateServerCart(
+      cartProductModel: cartProductModel,
+      quantity: quantity,
+    );
+    if (!apiSuccess) {
+      ShowToastDialog.showToast('Failed to update cart'.tr);
+      return false;
+    }
+
+    if (isIncrement) {
       final success = await cartProvider.addToCart(
         Get.context!,
         cartProductModel,
@@ -5484,7 +5515,7 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
     } else {
-      cartProvider.removeFromCart(cartProductModel, quantity);
+      await cartProvider.removeFromCart(cartProductModel, quantity);
     }
 
     await _incrementalCartUpdate();

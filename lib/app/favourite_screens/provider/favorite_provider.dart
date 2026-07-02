@@ -13,19 +13,21 @@ import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/services/cache_manager.dart';
 import 'package:jippymart_customer/services/api_queue_manager.dart';
 
+import '../../../models/FavouriteRestaurantResponse.dart';
+
 class FavouriteProvider extends ChangeNotifier {
   static const Duration _networkTimeout = Duration(seconds: 15);
 
   bool favouriteRestaurant = true;
   List<VendorModel> favouriteVendorList = <VendorModel>[];
+  List<VendorModel> frequentVendorList = <VendorModel>[];
+  VendorModel? recentVendor;
   List<ProductModel> favouriteFoodList = <ProductModel>[];
   bool isLoading = false;
 
-  // Batch loading control
   bool _isLoadingVendors = false;
   bool _isLoadingFoods = false;
 
-  // Debounce timer
   Timer? _debounceTimer;
 
   Future<void> initFunction({bool forceRefresh = false}) async {
@@ -45,39 +47,6 @@ class FavouriteProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadFavoriteRestaurants(bool forceRefresh) async {
-    if (_isLoadingVendors) return;
-
-    try {
-      _isLoadingVendors = true;
-
-      final userId = await SqlStorageConst.getFirebaseId();
-      if (userId == null) {
-        favouriteVendorList = [];
-        return;
-      }
-
-      final cacheKey = 'favorite_restaurants_$userId';
-      if (forceRefresh) {
-        CacheManager().remove(cacheKey);
-      }
-
-      final restaurants = await CacheManager()
-          .getOrSetUserProfile<List<VendorModel>>(
-            cacheKey,
-            () => ApiQueueManager().enqueue<List<VendorModel>>(
-              priority: RequestPriority.normal,
-              key: cacheKey,
-              request: () => getFavouriteRestaurants(),
-            ),
-          );
-
-      favouriteVendorList = restaurants;
-    } finally {
-      _isLoadingVendors = false;
-    }
-  }
-
   Future<void> _loadFavoriteFoods(bool forceRefresh) async {
     if (_isLoadingFoods) return;
 
@@ -91,6 +60,7 @@ class FavouriteProvider extends ChangeNotifier {
       }
 
       final cacheKey = 'favorite_items_$userId';
+
       if (forceRefresh) {
         CacheManager().remove(cacheKey);
       }
@@ -111,8 +81,46 @@ class FavouriteProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> _loadFavoriteRestaurants(bool forceRefresh) async {
+    if (_isLoadingVendors) return;
+
+    try {
+      _isLoadingVendors = true;
+
+      final userId = await SqlStorageConst.getFirebaseId();
+
+      if (userId == null) {
+        favouriteVendorList = [];
+        frequentVendorList = [];
+        recentVendor = null;
+        return;
+      }
+
+      final cacheKey = 'favorite_restaurants_$userId';
+
+      if (forceRefresh) {
+        CacheManager().remove(cacheKey);
+      }
+
+      final response = await CacheManager()
+          .getOrSetUserProfile<FavouriteRestaurantResponse>(
+            cacheKey,
+            () => ApiQueueManager().enqueue<FavouriteRestaurantResponse>(
+              priority: RequestPriority.normal,
+              key: cacheKey,
+              request: () => getFavouriteRestaurants(),
+            ),
+          );
+
+      favouriteVendorList = response.favorites;
+      frequentVendorList = response.frequentOutlets;
+      recentVendor = response.recentOutlet;
+    } finally {
+      _isLoadingVendors = false;
+    }
+  }
+
   void changeTabUpdate(bool value) {
-    // Debounce tab switching
     _debounceTimer?.cancel();
     _debounceTimer = Timer(const Duration(milliseconds: 200), () {
       favouriteRestaurant = value;
@@ -120,63 +128,109 @@ class FavouriteProvider extends ChangeNotifier {
     });
   }
 
+  static VendorModel _parseFavoriteOutlet(Map<String, dynamic> json) {
+    final review = (json['review'] as num?)?.toDouble() ?? 0;
+    return VendorModel(
+      id: (json['favoriteOutletId'] ?? '').toString(),
+      title: json['outletName']?.toString() ?? 'Restaurant',
+      photo: json['outletPicUrl']?.toString() ?? '',
+      reviewsSum: review,
+      reviewsCount: review > 0 ? 1 : 0,
+      latitude: 0,
+      longitude: 0,
+      location: '',
+      isOpen: true,
+      isActive: true,
+      zoneId: Constant.selectedZone?.id,
+      vType: 'restaurant',
+    );
+  }
+
+  static List<VendorModel> _parseOutletList(dynamic raw) {
+    if (raw is! List) return [];
+    return raw
+        .whereType<Map>()
+        .map((e) => _parseFavoriteOutlet(Map<String, dynamic>.from(e)))
+        .where((vendor) => vendor.id != null && vendor.id!.isNotEmpty)
+        .toList();
+  }
+
   // ========== RESTAURANT FAVORITES API METHODS ==========
-
-  static Future<List<VendorModel>> getFavouriteRestaurants() async {
+  static Future<FavouriteRestaurantResponse> getFavouriteRestaurants() async {
     try {
-      final userId = await SqlStorageConst.getFirebaseId();
+      final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
 
-      if (userId == null) return [];
+      if (customerId == null) {
+        return FavouriteRestaurantResponse(
+          favorites: [],
+          frequentOutlets: [],
+          recentOutlet: null,
+        );
+      }
+
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}fm/customer/favorites/getFavoriteRecentFrequentOutlets',
+      ).replace(queryParameters: {'customerId': customerId.toString()});
 
       final response = await http
-          .get(
-            Uri.parse('${AppConst.baseUrl}favorites/restaurants/$userId'),
-            headers: await getHeaders(),
-          )
+          .get(uri, headers: await getHeaders())
           .timeout(_networkTimeout);
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        if (decoded is! Map<String, dynamic>) {
-          return [];
-        }
+      log('[Favorites] GET $uri status: ${response.statusCode}');
 
-        final responseData = decoded;
-        if (responseData['success'] == true) {
-          final List<dynamic> restaurantsData = responseData['data'] ?? [];
-          return restaurantsData
-              .whereType<Map<String, dynamic>>()
-              .map((item) => VendorModel.fromJson(item))
-              .toList();
-        }
+      if (response.statusCode != 200) {
+        return FavouriteRestaurantResponse(
+          favorites: [],
+          frequentOutlets: [],
+          recentOutlet: null,
+        );
       }
-      return [];
-    } on TimeoutException {
-      log('Timeout fetching favorite restaurants');
-      return [];
+
+      final jsonBody = jsonDecode(response.body);
+      if (jsonBody is! Map<String, dynamic>) {
+        return FavouriteRestaurantResponse(
+          favorites: [],
+          frequentOutlets: [],
+          recentOutlet: null,
+        );
+      }
+
+      final favorites = _parseOutletList(jsonBody['favorites']);
+      final frequentOutlets = _parseOutletList(jsonBody['frequentOutlets']);
+
+      VendorModel? recentOutlet;
+      final recentRaw = jsonBody['recentOutlet'];
+      if (recentRaw is Map<String, dynamic>) {
+        recentOutlet = _parseFavoriteOutlet(recentRaw);
+      } else if (recentRaw is Map) {
+        recentOutlet = _parseFavoriteOutlet(
+          Map<String, dynamic>.from(recentRaw),
+        );
+      }
+
+      return FavouriteRestaurantResponse(
+        favorites: favorites,
+        frequentOutlets: frequentOutlets,
+        recentOutlet: recentOutlet,
+      );
     } catch (e) {
       log('Error fetching favorite restaurants: $e');
-      return [];
+      return FavouriteRestaurantResponse(
+        favorites: [],
+        frequentOutlets: [],
+        recentOutlet: null,
+      );
     }
   }
 
   static Future<void> addFavouriteRestaurant(String restaurantId) async {
     try {
-      final userId = await SqlStorageConst.getFirebaseId();
+      final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+      final outletId = int.tryParse(restaurantId);
 
-      if (userId == null || restaurantId.isEmpty) return;
+      if (customerId == null || outletId == null) return;
 
-      await http
-          .post(
-            Uri.parse('${AppConst.baseUrl}favorites/restaurants'),
-            headers: await getHeaders(),
-            body: json.encode({
-              "firebase_id": userId,
-              "restaurant_id": restaurantId,
-            }),
-          )
-          .timeout(_networkTimeout);
-
+      await toggleFavoriteOutlet(customerId: customerId, outletId: outletId);
       log('✅ Restaurant added to favorites: $restaurantId');
     } catch (e) {
       log('❌ Error adding favorite restaurant: $e');
@@ -188,23 +242,16 @@ class FavouriteProvider extends ChangeNotifier {
     required int outletId,
   }) async {
     try {
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization':
-            "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyMzgzNTQ4LCJleHAiOjE3ODI0Njk5NDh9.Pm96Vs395-fbNIPWjYhX5AmqIjq-WHG-h4QU4IbrBdc",
-      };
-
       final response = await http
           .post(
             Uri.parse(
-              'http://192.168.0.17:8084/api/fm/customer/favorites/toggleFavoriteOutlet',
+              '${AppConst.outletBaseUrl}fm/customer/favorites/toggleFavouriteOutletOrProduct',
             ),
-            headers: headers,
+            headers: await getHeaders(),
             body: json.encode({
               'customerId': customerId,
-              'outletId': outletId,
-              'createdBy': customerId,
+              'favoriteId': outletId,
+              'favouriteType': "OUTLET",
             }),
           )
           .timeout(_networkTimeout);
@@ -221,21 +268,12 @@ class FavouriteProvider extends ChangeNotifier {
 
   static Future<void> removeFavouriteRestaurant(String restaurantId) async {
     try {
-      final userId = await SqlStorageConst.getFirebaseId();
+      final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+      final outletId = int.tryParse(restaurantId);
 
-      if (userId == null || restaurantId.isEmpty) return;
+      if (customerId == null || outletId == null) return;
 
-      await http
-          .delete(
-            Uri.parse('${AppConst.baseUrl}favorites/restaurants'),
-            headers: await getHeaders(),
-            body: json.encode({
-              "firebase_id": userId,
-              "restaurant_id": restaurantId,
-            }),
-          )
-          .timeout(_networkTimeout);
-
+      await toggleFavoriteOutlet(customerId: customerId, outletId: outletId);
       log('✅ Restaurant removed from favorites: $restaurantId');
     } catch (e) {
       log('❌ Error removing favorite restaurant: $e');
@@ -246,33 +284,35 @@ class FavouriteProvider extends ChangeNotifier {
 
   static Future<List<ProductModel>> getFavouriteFoods() async {
     try {
-      final userId = await SqlStorageConst.getFirebaseId();
+      final userId = await SqlStorageConst.getUserId();
 
       if (userId == null) return [];
 
       final response = await http
           .get(
-            Uri.parse('${AppConst.baseUrl}favorites/items/$userId'),
+            Uri.parse(
+              '${AppConst.outletBaseUrl}fm/customer/favorites/getFavoriteProducts?customerId=$userId',
+            ),
             headers: await getHeaders(),
           )
           .timeout(_networkTimeout);
 
-      if (response.statusCode == 200) {
-        final decoded = json.decode(response.body);
-        if (decoded is! Map<String, dynamic>) {
-          return [];
-        }
-
-        final responseData = decoded;
-        if (responseData['success'] == true) {
-          final List<dynamic> foodsData = responseData['data'] ?? [];
-          return foodsData
-              .whereType<Map<String, dynamic>>()
-              .map((item) => ProductModel.fromJson(item))
-              .toList();
-        }
+      if (response.statusCode != 200) {
+        return [];
       }
-      return [];
+
+      final decoded = json.decode(response.body);
+
+      if (decoded is! Map<String, dynamic>) {
+        return [];
+      }
+
+      final List<dynamic> foodsData = decoded['favoriteProducts'] ?? [];
+
+      return foodsData
+          .whereType<Map<String, dynamic>>()
+          .map((item) => _parseFavoriteProduct(item))
+          .toList();
     } on TimeoutException {
       log('Timeout fetching favorite foods');
       return [];
@@ -282,27 +322,62 @@ class FavouriteProvider extends ChangeNotifier {
     }
   }
 
+  static ProductModel _parseFavoriteProduct(Map<String, dynamic> json) {
+    return ProductModel(
+      id: (json['favoriteId'] ?? '').toString(),
+      name: json['productName'] ?? '',
+      photo: json['imageUrl'] ?? '',
+      price: ((json['onlinePrice'] as num?) ?? 0).toString(),
+      disPrice: json['onlinePrice']?.toString() ?? '0',
+      reviewsSum: (json['rating'] as num?)?.toDouble() ?? 0,
+      reviewsCount: ((json['rating'] as num?) ?? 0) > 0 ? 1 : 0,
+      veg: json['isVeg'] ?? false,
+      vendorID: (json['outletId'] ?? '').toString(),
+    );
+  }
+
   static Future<void> addFavouriteFood(String productId) async {
     try {
-      final userId = await SqlStorageConst.getFirebaseId();
+      print("===== addFavouriteFood called =====");
 
-      if (userId == null || productId.isEmpty || productId.length < 3) {
+      final userId = await SqlStorageConst.getFirebaseId();
+      print("userId: $userId");
+      print("productId: $productId");
+
+      if (userId == null) {
+        print("userId is null");
         return;
       }
 
-      final response = await http
-          .post(
-            Uri.parse('${AppConst.baseUrl}favorites/items'),
-            headers: await getHeaders(),
-            body: json.encode({"firebase_id": userId, "product_id": productId}),
-          )
-          .timeout(_networkTimeout);
-
-      if (response.statusCode != 200) {
-        log('Failed to add favorite food: ${response.statusCode}');
+      if (productId.isEmpty) {
+        print("productId is empty");
+        return;
       }
-    } catch (e) {
-      log('❌ Error adding favorite food: $e');
+
+      final url =
+          '${AppConst.outletBaseUrl}fm/customer/favorites/toggleFavouriteOutletOrProduct';
+
+      print("URL: $url");
+
+      final body = {
+        "customerId": userId,
+        "favoriteId": productId,
+        "favouriteType": "PRODUCT",
+      };
+
+      print("BODY: ${jsonEncode(body)}");
+
+      final response = await http.post(
+        Uri.parse(url),
+        headers: await getHeaders(),
+        body: jsonEncode(body),
+      );
+
+      print("STATUS: ${response.statusCode}");
+      print("RESPONSE: ${response.body}");
+    } catch (e, s) {
+      print("ERROR: $e");
+      print(s);
     }
   }
 
@@ -314,9 +389,8 @@ class FavouriteProvider extends ChangeNotifier {
 
       final response = await http
           .delete(
-            Uri.parse('${AppConst.baseUrl}favorites/items'),
+            Uri.parse('${AppConst.baseUrl}favorites/items/$userId/$productId'),
             headers: await getHeaders(),
-            body: json.encode({"firebase_id": userId, "product_id": productId}),
           )
           .timeout(_networkTimeout);
 
@@ -330,21 +404,23 @@ class FavouriteProvider extends ChangeNotifier {
 
   // ========== UI HELPER METHODS ==========
 
+  bool get hasRestaurantFavorites =>
+      favouriteVendorList.isNotEmpty ||
+      frequentVendorList.isNotEmpty ||
+      recentVendor != null;
+
   Future<void> removeFavoriteRestaurantUI(
     String restaurantId,
     int index,
   ) async {
     try {
-      // Remove from local list immediately for fast UI response
       if (index >= 0 && index < favouriteVendorList.length) {
         favouriteVendorList.removeAt(index);
       }
       notifyListeners();
 
-      // Call API in background
       unawaited(removeFavouriteRestaurant(restaurantId));
 
-      // Invalidate cache
       final userId = await SqlStorageConst.getFirebaseId();
       if (userId != null) {
         CacheManager().remove('favorite_restaurants_$userId');
@@ -357,62 +433,56 @@ class FavouriteProvider extends ChangeNotifier {
   }
 
   Future<void> removeFavoriteFoodUI(String productId, int index) async {
+    print("1. removeFavoriteFoodUI called");
+    print("2. productId = $productId");
+    print("3. index = $index");
+
     try {
-      // Remove from local list immediately for fast UI response
+      print("4. Before API");
+
+      await addFavouriteFood(productId);
+
+      print("5. After API");
+
       if (index >= 0 && index < favouriteFoodList.length) {
         favouriteFoodList.removeAt(index);
       }
+
       notifyListeners();
 
-      // Call API in background
-      unawaited(removeFavouriteFood(productId));
-
-      // Invalidate cache
-      final userId = await SqlStorageConst.getFirebaseId();
-      if (userId != null) {
-        CacheManager().remove('favorite_items_$userId');
-      }
-
-      log('🎯 Food item removed from UI: $productId');
-    } catch (e) {
-      log('⚠️ Error removing food item from UI: $e');
+      print("6. UI updated");
+    } catch (e, s) {
+      print(e);
+      print(s);
     }
   }
 
   Future<void> addFavoriteFoodUI(String productId, ProductModel product) async {
+    log("UI method called");
+
     try {
-      // Add to local list immediately for fast UI response
       if (!favouriteFoodList.any((item) => item.id == productId)) {
         favouriteFoodList.add(product);
       }
       notifyListeners();
 
-      // Call API in background
-      unawaited(addFavouriteFood(productId));
+      log("Calling API...");
+      await addFavouriteFood(productId);
 
-      // Invalidate cache
-      final userId = await SqlStorageConst.getFirebaseId();
-      if (userId != null) {
-        CacheManager().remove('favorite_items_$userId');
-      }
-
-      log('🎯 Food item added to UI: $productId');
+      log("API completed");
     } catch (e) {
-      log('⚠️ Error adding food item to UI: $e');
+      log("Error: $e");
     }
   }
 
-  // Check if restaurant is favorite
   bool isRestaurantFavorite(String restaurantId) {
     return favouriteVendorList.any((vendor) => vendor.id == restaurantId);
   }
 
-  // Check if food item is favorite
   bool isFoodFavorite(String productId) {
     return favouriteFoodList.any((product) => product.id == productId);
   }
 
-  // Refresh data
   Future<void> refreshData() async {
     await initFunction(forceRefresh: true);
   }

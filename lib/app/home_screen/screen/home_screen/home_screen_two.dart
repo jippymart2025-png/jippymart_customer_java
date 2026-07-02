@@ -7,7 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/group_order_section/create_group_order.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/group_order_section/group_order_navigation.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/order_type_View.dart';
 import 'package:provider/provider.dart';
 
@@ -431,17 +431,15 @@ class _HomeContentCard extends StatelessWidget {
 class _ordertypeSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final prov = context.watch<CategoryViewProvider>();
-    if (prov.vendorCategoryModel.isEmpty) return const SizedBox.shrink();
+    // final prov = context.watch<CategoryViewProvider>();
+    // if (prov.vendorCategoryModel.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
         OrderOptionsView(
-          onGroupOrderingTap: () {
-            Get.to(() => const CreateGroupOrderScreen());
-          },
+          onGroupOrderingTap: openGroupOrderFlow,
           onHomeMadeMealsTap: () {
             // TODO: navigate to Home Made Meals screen
           },
@@ -474,7 +472,7 @@ class _CategorySection extends StatelessWidget {
       children: [
         Padding(padding: const EdgeInsets.fromLTRB(20, 0, 20, 12)),
         const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14),
+          padding: EdgeInsets.symmetric(horizontal: 8),
           child: CategoryView(),
         ),
       ],

@@ -14,6 +14,7 @@ import 'package:jippymart_customer/models/outlet.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/services/cart_api_service.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/group_order_api_service.dart';
 import 'package:jippymart_customer/services/group_order_session.dart';
@@ -148,6 +149,7 @@ class RestaurantApiHelper {
       final Map<String, String> queryParams = {
         'outletId': "14",
         'userType': 'CUSTOMER',
+        'customerId': ?await SqlStorageConst.getFirebaseId(),
       };
 
       if (search != null && search.isNotEmpty) {
@@ -167,6 +169,7 @@ class RestaurantApiHelper {
       }
 
       final uri = Uri.parse(
+        // '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails',
         '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails',
       ).replace(queryParameters: queryParams);
 
@@ -340,6 +343,7 @@ class RestaurantCacheData {
   final List<ProductModel> products;
   final List<VendorCategoryModel> categories;
   final List<CouponModel> coupons;
+  final bool isFavourite;
   final DateTime timestamp;
 
   RestaurantCacheData({
@@ -347,6 +351,7 @@ class RestaurantCacheData {
     required this.products,
     required this.categories,
     required this.coupons,
+    this.isFavourite = false,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
 
@@ -355,6 +360,7 @@ class RestaurantCacheData {
     List<ProductModel>? products,
     List<VendorCategoryModel>? categories,
     List<CouponModel>? coupons,
+    bool? isFavourite,
     DateTime? timestamp,
   }) {
     return RestaurantCacheData(
@@ -362,6 +368,7 @@ class RestaurantCacheData {
       products: products ?? this.products,
       categories: categories ?? this.categories,
       coupons: coupons ?? this.coupons,
+      isFavourite: isFavourite ?? this.isFavourite,
       timestamp: timestamp ?? this.timestamp,
     );
   }
@@ -422,6 +429,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   final Map<String, Map<String, dynamic>> _promotionDataCache = {};
   final Map<String, int> _promotionLimitCache = {};
   final Map<String, bool> _promotionCheckedCache = {};
+  final Map<String, int> _serverCartQuantities = {};
 
   // Controllers
   StreamSubscription<List<CartProductModel>>? _cartSubscription;
@@ -439,7 +447,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   bool get isRestaurantFavorite => _isRestaurantFavorite;
 
   int? get activeGroupOrderInvitationId =>
-      _groupOrderInvitationId ?? GroupOrderSession.instance.groupOrdersInvitationId;
+      _groupOrderInvitationId ??
+      GroupOrderSession.instance.groupOrdersInvitationId;
 
   int? get activeGroupOrderHostCustomerId =>
       _groupOrderHostCustomerId ?? GroupOrderSession.instance.hostCustomerId;
@@ -521,6 +530,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     selectedIndexArray.clear();
     selectedAddOns.clear();
     quantity = 1;
+    _isRestaurantFavorite = false;
   }
 
   Future<void> _loadFromCache(RestaurantCacheData cachedData) async {
@@ -533,8 +543,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       allProductList = cachedData.products;
       productList = List.from(allProductList);
       couponList = cachedData.coupons;
+      _isRestaurantFavorite = cachedData.isFavourite;
 
-      // Load favorites
+      // Load product favorites
       await loadFavorites();
 
       // Load promotions in background
@@ -579,6 +590,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   Future<void> _refreshDataInBackground() async {
     try {
+      final previousFavorite = _isRestaurantFavorite;
       final freshData = await _fetchAllRestaurantData(vendorModel.id!);
 
       // Update cache with fresh data
@@ -589,11 +601,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           products: freshData.products,
           categories: freshData.categories,
           coupons: freshData.coupons,
+          isFavourite: freshData.isFavourite,
         ),
       );
 
-      // Update UI if there are significant changes
-      if (_hasSignificantChanges(freshData)) {
+      if (_hasSignificantChanges(freshData) ||
+          previousFavorite != freshData.isFavourite) {
         allProductList = freshData.products;
         productList = List.from(allProductList);
         vendorCategoryList = freshData.categories;
@@ -669,6 +682,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         products: outletDetails.allProducts,
         categories: outletDetails.vendorCategories,
         coupons: coupons,
+        isFavourite: outletDetails.isFavourite,
       );
     } catch (e) {
       print('❌ Error fetching restaurant data: $e');
@@ -678,7 +692,22 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   OutletDetails _applyOutletDetails(Map<String, dynamic> apiData) {
     final outletDetails = OutletDetails.fromJson(apiData);
+
+    // Update restaurant details
     vendorModel = outletDetails.toVendorModel(existing: vendorModel);
+    _isRestaurantFavorite = outletDetails.isFavourite;
+
+    // Initialize product favourites from API response
+    favoriteProductIds.clear();
+
+    for (final product in outletDetails.allProducts) {
+      if (product.id != null && product.isProductFavourite == true) {
+        favoriteProductIds.add(product.id!);
+      }
+    }
+
+    print("Favourite Products: $favoriteProductIds");
+
     return outletDetails;
   }
 
@@ -1039,12 +1068,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     try {
       if (Constant.userModel == null) return;
 
-      final favoriteRestaurants =
-          await FavouriteProvider.getFavouriteRestaurants();
-      _isRestaurantFavorite = favoriteRestaurants.any(
-        (r) => r.id == vendorModel.id,
-      );
-
       final favoriteItems = await FavouriteProvider.getFavouriteFoods();
       favoriteProductIds = favoriteItems
           .where((item) => item.id != null)
@@ -1108,17 +1131,21 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       if (productId.isEmpty) return;
 
       if (favoriteProductIds.contains(productId)) {
-        await FavouriteProvider.removeFavouriteFood(productId);
+        // Remove favourite
+        await FavouriteProvider.addFavouriteFood(productId);
+
         favoriteProductIds.remove(productId);
         ShowToastDialog.showToast("Removed from favorites");
       } else {
         await FavouriteProvider.addFavouriteFood(productId);
+
         favoriteProductIds.add(productId);
         ShowToastDialog.showToast("Added to favourites");
       }
+
       notifyListeners();
     } catch (e) {
-      print('❌ Error toggling product favorite: $e');
+      print("❌ Error toggling product favorite: $e");
       ShowToastDialog.showToast("Failed to update favorites");
     }
   }
@@ -1214,6 +1241,35 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       HomeProvider.cartItem.addAll(event);
       notifyListeners();
     });
+
+    _syncServerCart();
+  }
+
+  Future<void> _syncServerCart() async {
+    try {
+      final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+      if (!isLoggedIn) {
+        _serverCartQuantities.clear();
+        return;
+      }
+
+      final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+      if (customerId == null) return;
+
+      final cart = await CartApiService.getCart(customerId);
+      if (cart == null) return;
+
+      _serverCartQuantities
+        ..clear()
+        ..addEntries(
+          cart.items.map(
+            (item) => MapEntry(item.productId.toString(), item.quantity),
+          ),
+        );
+      notifyListeners();
+    } catch (e) {
+      print('[RestaurantDetails] _syncServerCart error: $e');
+    }
   }
 
   /// FIXED: calculatePrice method - No VariantInfo type issues
@@ -1291,6 +1347,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     if (isGroupOrderMode) {
       return GroupOrderSession.instance.quantityFor(productId);
     }
+
+    final baseId = productId.split('~').first;
+    final serverQty = _serverCartQuantities[baseId];
+    if (serverQty != null) return serverQty;
+
     return HomeProvider.cartItem
         .where(
           (item) =>
@@ -1304,9 +1365,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       productQuantityInCart(productId) > 0;
 
   int? _resolveNumericProductId(ProductModel productModel) {
-    final candidates = <String?>[
-      productModel.id,
-    ];
+    final candidates = <String?>[productModel.id];
     for (final candidate in candidates) {
       final raw = candidate?.split('~').first.trim() ?? '';
       final parsed = int.tryParse(raw);
@@ -1487,7 +1546,30 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
     }
 
-    // Add or remove from cart
+    final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+    final numericProductId = _resolveNumericProductId(productModel);
+    if (customerId != null && numericProductId != null) {
+      final unitPrice = double.tryParse(price) ?? 0;
+      final apiSuccess = await CartApiService.updateCart(
+        customerId: customerId,
+        productId: numericProductId,
+        quantity: quantity,
+        unitPrice: unitPrice,
+      );
+
+      if (!apiSuccess) {
+        ShowToastDialog.showToast('Failed to update cart'.tr);
+        return;
+      }
+
+      await _syncServerCart();
+
+      if (isIncrement) {
+        ShowToastDialog.showToast('Item added to cart'.tr);
+      }
+    }
+
+    // Keep local cart in sync for checkout flow
     if (isIncrement) {
       await cartProvider.addToCart(Get.context!, cartProductModel, quantity);
     } else {

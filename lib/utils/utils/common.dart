@@ -51,6 +51,6 @@ Future<Map<String, String>> getHeaders() async {
     'Accept': 'application/json',
     if (token != null && token.isNotEmpty)
       'Authorization':
-          "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyNTM2NzY0LCJleHAiOjE3ODI2MjMxNjR9.AeQ5baAUIw9I57DNTZIMgaJSXjZTwkvlKnCibO0Hxhw",
+          "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyODg4NTAwLCJleHAiOjE3ODI5NzQ5MDB9.vdofVrlmKQPf_OuBqAqKBQ_825Mo6EtrDStHQgYhyn8",
   };
 }

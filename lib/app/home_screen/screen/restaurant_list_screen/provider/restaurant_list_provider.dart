@@ -38,8 +38,8 @@ class RestaurantListProvider extends ChangeNotifier {
     if (Constant.userModel != null) {
       try {
         // Get VendorModel list from API
-        final List<VendorModel> vendorFavourites =
-            await FavouriteProvider.getFavouriteRestaurants();
+        final response = await FavouriteProvider.getFavouriteRestaurants();
+        final vendorFavourites = response.favorites;
 
         // Convert to FavouriteModel list
         favouriteList.clear();

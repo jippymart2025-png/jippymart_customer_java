@@ -10,6 +10,7 @@ class ProductModel {
   int? proteins;
   List<dynamic>? addOnsPrice;
   num? reviewsSum;
+  bool? isProductFavourite;
   bool? takeawayOption;
   String? name;
   Map<String, dynamic>? reviewAttributes;
@@ -43,6 +44,7 @@ class ProductModel {
     this.proteins,
     this.addOnsPrice,
     this.reviewsSum,
+    this.isProductFavourite,
     this.takeawayOption,
     this.name,
     this.reviewAttributes,
@@ -72,30 +74,20 @@ class ProductModel {
       return ProductModel(
         id: (json['productId'] ?? json['id'])?.toString(),
 
-        name:
-            json['productName']?.toString() ??
-            json['name']?.toString() ??
-            '',
+        name: json['productName']?.toString() ?? json['name']?.toString() ?? '',
 
-        description:
-            json['description']?.toString() ??
-            '',
-
+        description: json['description']?.toString() ?? '',
+        isProductFavourite: json['isProductFavourite'] == true,
         categoryID:
-            json['category_id']?.toString() ??
-            json['categoryId']?.toString(),
+            json['category_id']?.toString() ?? json['categoryId']?.toString(),
 
         categoryTitle:
             json['category_title']?.toString() ??
             json['categoryName']?.toString(),
 
-        vendorID:
-            json['vendor_id']?.toString() ??
-            json['vendorID']?.toString(),
+        vendorID: json['vendor_id']?.toString() ?? json['vendorID']?.toString(),
 
-        price:
-            json['price']?.toString() ??
-            '0',
+        price: json['price']?.toString() ?? '0',
 
         merchantPrice:
             json['merchantPrice']?.toString() ??
@@ -108,19 +100,11 @@ class ProductModel {
             json['disPrice']?.toString() ??
             '0',
 
-        photo:
-            json['thumbnail']?.toString() ??
-            json['photo']?.toString() ??
-            '',
+        photo: json['thumbnail']?.toString() ?? json['photo']?.toString() ?? '',
 
-        photos: json['photos'] is List
-            ? List<String>.from(json['photos'])
-            : [],
+        photos: json['photos'] is List ? List<String>.from(json['photos']) : [],
 
-        veg:
-            json['isVeg'] == true ||
-            json['veg'] == true ||
-            json['veg'] == 1,
+        veg: json['isVeg'] == true || json['veg'] == true || json['veg'] == 1,
 
         nonveg:
             json['isVeg'] == false ||
@@ -141,14 +125,16 @@ class ProductModel {
 
         reviewsSum: 0,
 
-        itemAttribute: json['hasProductVariants'] == true &&
+        itemAttribute:
+            json['hasProductVariants'] == true &&
                 json['variants'] is Map<String, dynamic>
             ? ItemAttribute.fromJson(json['variants'] as Map<String, dynamic>)
             : _parseItemAttribute(json['item_attribute'] ?? json['variants']),
 
         options: _parseOptions(json['options']),
 
-        availableTimings: _parseProductTimings(json['productTimings']) ??
+        availableTimings:
+            _parseProductTimings(json['productTimings']) ??
             _parseAvailableTimings(
               json['available_timings'] ?? json['availableTimings'],
             ),
@@ -472,9 +458,9 @@ class ProductModel {
       final endTime = item['endTime']?.toString();
       if (day == null || day.isEmpty) continue;
 
-      grouped.putIfAbsent(day, () => []).add(
-            ProductAvailabilityTimeslot(from: startTime, to: endTime),
-          );
+      grouped
+          .putIfAbsent(day, () => [])
+          .add(ProductAvailabilityTimeslot(from: startTime, to: endTime));
     }
 
     if (grouped.isEmpty) return null;

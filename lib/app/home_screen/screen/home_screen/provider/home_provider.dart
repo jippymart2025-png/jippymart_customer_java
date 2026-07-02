@@ -443,9 +443,7 @@ class HomeProvider extends ChangeNotifier {
       if (!LocationZoneNavigation.isInServiceArea()) {
         await LocationPermissionProvider.cacheZoneData();
         if (context.mounted) {
-          await LocationZoneNavigation.openOutOfServiceScreen(
-            context: context,
-          );
+          await LocationZoneNavigation.openOutOfServiceScreen(context: context);
         }
         return false;
       }
@@ -594,7 +592,9 @@ class HomeProvider extends ChangeNotifier {
 
   Future<void> _loadOutletsIfCoordinatesAvailable() async {
     if (!_hasCoordinates() || Constant.isZoneAvailable != true) {
-      print('[HOME_PROVIDER] Service unavailable or no coordinates, skipping outlet load');
+      print(
+        '[HOME_PROVIDER] Service unavailable or no coordinates, skipping outlet load',
+      );
       bestRestaurantProvider.isLoading = false;
       bestRestaurantProvider.notifyListeners();
       return;
@@ -954,7 +954,7 @@ class HomeProvider extends ChangeNotifier {
   Future<void> getFavouriteRestaurant() async {
     if (Constant.userModel != null) {
       await FavouriteProvider.getFavouriteRestaurants().then((value) {
-        favouriteList = value;
+        favouriteList = value.favorites;
         notifyListeners();
       });
     }
@@ -1037,7 +1037,9 @@ class HomeProvider extends ChangeNotifier {
           await getZone().timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              print('[HOME_PROVIDER] Zone check timed out, clearing zone state');
+              print(
+                '[HOME_PROVIDER] Zone check timed out, clearing zone state',
+              );
               unawaited(_clearZoneState());
             },
           );

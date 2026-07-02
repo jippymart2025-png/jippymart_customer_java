@@ -8,7 +8,7 @@ class SplashHome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(globalSettingsNotifierProvider);
+    // ref.watch(globalSettingsNotifierProvider);
     return const VideoSplashScreen();
   }
 }

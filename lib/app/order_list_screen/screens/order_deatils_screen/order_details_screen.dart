@@ -180,13 +180,13 @@ class OrderDetailsScreen extends StatelessWidget {
       return _cachedMartDeliveryCharge!;
     }
 
-    final apiDeliveryCharge = await FireStoreUtils.getDeliveryCharge();
-    if (_hasDeliveryChargeData(apiDeliveryCharge)) {
-      _cachedMartDeliveryCharge = apiDeliveryCharge;
-      _lastDeliveryChargeFetchTime = DateTime.now();
-      vendor?.deliveryCharge = apiDeliveryCharge;
-      return apiDeliveryCharge!;
-    }
+    // final apiDeliveryCharge = await FireStoreUtils.getDeliveryCharge();
+    // if (_hasDeliveryChargeData(apiDeliveryCharge)) {
+    //   _cachedMartDeliveryCharge = apiDeliveryCharge;
+    //   _lastDeliveryChargeFetchTime = DateTime.now();
+    //   vendor?.deliveryCharge = apiDeliveryCharge;
+    //   return apiDeliveryCharge!;
+    // }
 
     final fallbackCharge = DeliveryCharge(
       itemTotalThreshold: _fallbackThreshold,

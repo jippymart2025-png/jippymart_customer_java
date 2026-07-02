@@ -6,6 +6,7 @@ import 'package:jippymart_customer/utils/fire_store_utils.dart';
 
 class OrderReviewService {
   OrderReviewService._();
+
   static final OrderReviewService instance = OrderReviewService._();
 
   bool _isChecking = false;
@@ -22,8 +23,8 @@ class OrderReviewService {
       final isEligible = eligibleData['eligible'] == true;
       if (!isEligible) return;
 
-      final orderId =
-          (eligibleData['orderId'] ?? eligibleData['orderid'] ?? '').toString();
+      final orderId = (eligibleData['orderId'] ?? eligibleData['orderid'] ?? '')
+          .toString();
       final vendorId =
           (eligibleData['vendorId'] ?? eligibleData['VendorId'] ?? '')
               .toString();
@@ -197,10 +198,7 @@ class _OrderReviewSheetState extends State<_OrderReviewSheet> {
               const SizedBox(height: 4),
               const Text(
                 'Please rate your latest delivered order',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppThemeData.grey500,
-                ),
+                style: TextStyle(fontSize: 13, color: AppThemeData.grey500),
               ),
               const SizedBox(height: 16),
               Center(

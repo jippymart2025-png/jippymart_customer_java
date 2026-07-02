@@ -373,9 +373,10 @@ class ProductListView extends StatelessWidget {
                           ShowToastDialog.showToast('Invalid product data');
                           return;
                         }
+
                         try {
                           await controller.toggleProductFavorite(
-                            productModel.id!.toString(),
+                            productModel.id!,
                           );
                         } catch (_) {
                           ShowToastDialog.showToast(
@@ -383,10 +384,7 @@ class ProductListView extends StatelessWidget {
                           );
                         }
                       },
-                      child:
-                          controller.isProductFavorite(
-                            productModel.id.toString(),
-                          )
+                      child: controller.isProductFavorite(productModel.id!)
                           ? SvgPicture.asset('assets/icons/ic_like_fill.svg')
                           : SvgPicture.asset('assets/icons/ic_like.svg'),
                     ),

@@ -11,6 +11,43 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 class GroupOrderApiService {
   GroupOrderApiService._();
 
+  static Future<GroupOrderInvitationModel?> getGroupOrderInvitation({
+    required int hostCustomerId,
+  }) async {
+    try {
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}co/group-orders/getGroupOrderInvitation',
+      ).replace(
+        queryParameters: {
+          'hostCustomerId': hostCustomerId.toString(),
+        },
+      );
+
+      print('[GroupOrderApi] GET $uri');
+
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 30));
+
+      print('[GroupOrderApi] status: ${response.statusCode}');
+      print('[GroupOrderApi] response: ${response.body}');
+
+      if (response.statusCode != 200) return null;
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final data = decoded.containsKey('data') && decoded['data'] is Map
+          ? Map<String, dynamic>.from(decoded['data'] as Map)
+          : decoded;
+
+      return GroupOrderInvitationModel.fromJson(data);
+    } catch (e) {
+      print('[GroupOrderApi] getGroupOrderInvitation error: $e');
+      return null;
+    }
+  }
+
   static Future<GroupOrderInvitationModel?> createGroupOrderInvitation({
     required int hostCustomerId,
     required int outletId,

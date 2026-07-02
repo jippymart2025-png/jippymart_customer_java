@@ -20,7 +20,8 @@ class VideoSplashScreen extends ConsumerStatefulWidget {
 
 class _VideoSplashScreenState extends ConsumerState<VideoSplashScreen> {
   late SplashProvider splashProvider;
-  late GlobalSettingsProvider globalSettingsProvider;
+
+  // late GlobalSettingsProvider globalSettingsProvider;
   Timer? _timeoutTimer;
   bool _hasNavigated = false; // Flag to prevent multiple navigations
 
@@ -28,12 +29,12 @@ class _VideoSplashScreenState extends ConsumerState<VideoSplashScreen> {
   void initState() {
     super.initState();
     splashProvider = prv.Provider.of<SplashProvider>(context, listen: false);
-    globalSettingsProvider = ref.read(globalSettingsNotifierProvider);
-    
+    // globalSettingsProvider = ref.read(globalSettingsNotifierProvider);
+
     // Start initialization
     splashProvider.initFunction(context);
-    globalSettingsProvider.initFunction(context);
-    
+    // globalSettingsProvider.initFunction(context);
+
     // Add safety timeout - if navigation doesn't happen within 15 seconds, force it
     _timeoutTimer = Timer(const Duration(seconds: 15), () {
       if (mounted && !_hasNavigated) {
@@ -58,27 +59,34 @@ class _VideoSplashScreenState extends ConsumerState<VideoSplashScreen> {
       }
       return;
     }
-    
+
     try {
       print('[SPLASH_SCREEN] Force navigation: Checking auth status first...');
-      
+
       // FIRST: Check auth status (for first install, skip location check)
       String? apiToken;
       String? userId;
       try {
-        apiToken = await SqlStorageConst.getAuthToken()
-            .timeout(const Duration(seconds: 3));
-        userId = await SqlStorageConst.getFirebaseId()
-            .timeout(const Duration(seconds: 3));
+        apiToken = await SqlStorageConst.getAuthToken().timeout(
+          const Duration(seconds: 3),
+        );
+        userId = await SqlStorageConst.getFirebaseId().timeout(
+          const Duration(seconds: 3),
+        );
       } catch (e) {
         print('[SPLASH_SCREEN] Error getting auth token/user ID: $e');
       }
-      
+
       if (!mounted || _hasNavigated) return;
-      
+
       // If user is not logged in, go directly to login (first install)
-      if (apiToken == null || apiToken.isEmpty || userId == null || userId.isEmpty) {
-        print('[SPLASH_SCREEN] User not logged in (first install), going to PhoneNumberScreen');
+      if (apiToken == null ||
+          apiToken.isEmpty ||
+          userId == null ||
+          userId.isEmpty) {
+        print(
+          '[SPLASH_SCREEN] User not logged in (first install), going to PhoneNumberScreen',
+        );
         _hasNavigated = true;
         Get.offAll(
           () => const PhoneNumberScreen(),
@@ -87,27 +95,33 @@ class _VideoSplashScreenState extends ConsumerState<VideoSplashScreen> {
         );
         return;
       }
-      
+
       // User is logged in, NOW check location permission
-      print('[SPLASH_SCREEN] User is logged in, checking location permission...');
+      print(
+        '[SPLASH_SCREEN] User is logged in, checking location permission...',
+      );
       bool hasLocationPermission = false;
       try {
-        final permission = await Geolocator.checkPermission()
-            .timeout(const Duration(seconds: 3));
-        hasLocationPermission = permission == LocationPermission.whileInUse ||
+        final permission = await Geolocator.checkPermission().timeout(
+          const Duration(seconds: 3),
+        );
+        hasLocationPermission =
+            permission == LocationPermission.whileInUse ||
             permission == LocationPermission.always;
       } catch (e) {
         print('[SPLASH_SCREEN] Error checking location permission: $e');
       }
-      
+
       if (!mounted || _hasNavigated) return;
-      
+
       // Navigate based on location permission and auth status
       // When force timeout fires, always go to LocationPermissionScreen for logged-in users
       // with permission - this ensures zone is checked before home (main flow may have timed out)
       _hasNavigated = true;
       if (!hasLocationPermission) {
-        print('[SPLASH_SCREEN] No location permission, going to LocationPermissionScreen');
+        print(
+          '[SPLASH_SCREEN] No location permission, going to LocationPermissionScreen',
+        );
         Get.offAll(
           () => const LocationPermissionScreen(),
           transition: Transition.fadeIn,
@@ -115,7 +129,9 @@ class _VideoSplashScreenState extends ConsumerState<VideoSplashScreen> {
         );
       } else {
         // Has permission - go to LocationPermissionScreen to verify zone before home
-        print('[SPLASH_SCREEN] Force nav: checking zone via LocationPermissionScreen');
+        print(
+          '[SPLASH_SCREEN] Force nav: checking zone via LocationPermissionScreen',
+        );
         Get.offAll(
           () => const LocationPermissionScreen(),
           transition: Transition.fadeIn,

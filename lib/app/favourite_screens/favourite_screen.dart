@@ -62,7 +62,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
                 ),
                 child:
                     favouriteProvider.isLoading &&
-                        favouriteProvider.favouriteVendorList.isEmpty
+                        !favouriteProvider.hasRestaurantFavorites
                     ? const AppLoadingWidget(
                         title: "🍕 Loading Your Favorites",
                         subtitle:
@@ -279,27 +279,67 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     FavouriteProvider favouriteProvider,
     BuildContext context,
   ) {
-    if (favouriteProvider.favouriteVendorList.isEmpty) {
+    if (!favouriteProvider.hasRestaurantFavorites) {
       return Constant.showEmptyView(
         message: "Favourite Restaurants not found.".tr,
       );
     }
 
-    return ListView.builder(
-      shrinkWrap: true,
+    return ListView(
       padding: EdgeInsets.zero,
-      scrollDirection: Axis.vertical,
-      itemCount: favouriteProvider.favouriteVendorList.length,
-      itemBuilder: (BuildContext context, int index) {
-        // Use cached vendor data if available
-        final vendorModel = favouriteProvider.favouriteVendorList[index];
-        return _buildRestaurantItem(
-          vendorModel,
-          favouriteProvider,
-          index,
-          context,
-        );
-      },
+      children: [
+        if (favouriteProvider.recentVendor != null) ...[
+          _buildSectionHeader('Recently Visited'.tr),
+          _buildRestaurantItem(
+            favouriteProvider.recentVendor!,
+            favouriteProvider,
+            -1,
+            context,
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (favouriteProvider.frequentVendorList.isNotEmpty) ...[
+          _buildSectionHeader('Frequently Ordered'.tr),
+          ...favouriteProvider.frequentVendorList.map(
+            (vendor) => _buildRestaurantItem(
+              vendor,
+              favouriteProvider,
+              favouriteProvider.favouriteVendorList.indexWhere(
+                (v) => v.id == vendor.id,
+              ),
+              context,
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+        if (favouriteProvider.favouriteVendorList.isNotEmpty) ...[
+          _buildSectionHeader('Your Favourites'.tr),
+          ...List.generate(
+            favouriteProvider.favouriteVendorList.length,
+            (index) => _buildRestaurantItem(
+              favouriteProvider.favouriteVendorList[index],
+              favouriteProvider,
+              index,
+              context,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 4),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 18,
+          fontFamily: AppThemeData.semiBold,
+          fontWeight: FontWeight.w600,
+          color: AppThemeData.grey900,
+        ),
+      ),
     );
   }
 
@@ -355,16 +395,30 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
                         Positioned(
                           right: 10,
                           top: 10,
-                          child: InkWell(
-                            onTap: () => _removeFavoriteRestaurant(
-                              vendorModel,
-                              favouriteProvider,
-                              index,
-                              context,
-                            ),
-                            child: SvgPicture.asset(
-                              "assets/icons/ic_like_fill.svg",
-                            ),
+                          child: Builder(
+                            builder: (context) {
+                              final isFavorite = favouriteProvider
+                                  .isRestaurantFavorite(vendorModel.id ?? '');
+                              final favoriteIndex = favouriteProvider
+                                  .favouriteVendorList
+                                  .indexWhere((v) => v.id == vendorModel.id);
+
+                              return InkWell(
+                                onTap: isFavorite && favoriteIndex >= 0
+                                    ? () => _removeFavoriteRestaurant(
+                                        vendorModel,
+                                        favouriteProvider,
+                                        favoriteIndex,
+                                        context,
+                                      )
+                                    : null,
+                                child: SvgPicture.asset(
+                                  isFavorite
+                                      ? "assets/icons/ic_like_fill.svg"
+                                      : "assets/icons/ic_like.svg",
+                                ),
+                              );
+                            },
                           ),
                         ),
                       ],
@@ -474,7 +528,9 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
           ),
           const SizedBox(width: 5),
           Text(
-            "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})",
+            vendorModel.reviewsCount != null && vendorModel.reviewsCount! > 0
+                ? "${Constant.calculateReview(reviewCount: vendorModel.reviewsCount!.toStringAsFixed(0), reviewSum: vendorModel.reviewsSum.toString())} (${vendorModel.reviewsCount!.toStringAsFixed(0)})"
+                : "New".tr,
             style: TextStyle(
               color: AppThemeData.primary300,
               fontFamily: AppThemeData.semiBold,
@@ -937,16 +993,33 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     BuildContext context,
   ) async {
     try {
+      print("========== FOOD ITEM TAP ==========");
+      print("Product ID: ${productModel.id}");
+      print("Vendor ID: ${productModel.vendorID}");
+
+      if (productModel.vendorID == null ||
+          productModel.vendorID.toString().trim().isEmpty) {
+        ShowToastDialog.showToast("Store not found".tr);
+        return;
+      }
+
       ShowToastDialog.showLoader("Please wait".tr);
 
-      // Check cache first
       VendorModel? vendorModel;
+
+      // Check cache first
       if (_vendorCache.containsKey(productModel.vendorID)) {
+        print("Vendor found in cache");
         vendorModel = _vendorCache[productModel.vendorID];
       } else {
+        print("Fetching vendor from Firestore...");
+
         vendorModel = await FireStoreUtils.getVendorById(
           productModel.vendorID.toString(),
         );
+
+        print("Vendor Response: $vendorModel");
+
         if (vendorModel != null) {
           _vendorCache[productModel.vendorID!] = vendorModel;
         }
@@ -954,28 +1027,50 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
 
       ShowToastDialog.closeLoader();
 
-      if (vendorModel != null) {
-        if (vendorModel.zoneId == Constant.selectedZone!.id) {
-          final restaurantDetailsProvider =
-              Provider.of<RestaurantDetailsProvider>(context, listen: false);
-          restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
-          Get.to(
-            RestaurantDetailsScreen(
-              scrollToProductId: productModel.id.toString(),
-            ),
-            arguments: {"vendorModel": vendorModel},
-          );
-        } else {
-          ShowToastDialog.showToast(
-            "Sorry, The Zone is not available in your area. change the other location first."
-                .tr,
-          );
-        }
-      } else {
+      if (vendorModel == null) {
+        print("Vendor is NULL");
         ShowToastDialog.showToast("Store not found".tr);
+        return;
       }
-    } catch (e) {
+
+      print("Vendor ID: ${vendorModel.id}");
+      print("Vendor Zone: ${vendorModel.zoneId}");
+      print("Selected Zone: ${Constant.selectedZone?.id}");
+
+      if (Constant.selectedZone == null) {
+        ShowToastDialog.showToast("Please select a location first".tr);
+        return;
+      }
+
+      if (vendorModel.zoneId == Constant.selectedZone!.id) {
+        print("Opening restaurant details");
+
+        final restaurantDetailsProvider =
+            Provider.of<RestaurantDetailsProvider>(context, listen: false);
+
+        await restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+
+        Get.to(
+          () => RestaurantDetailsScreen(
+            scrollToProductId: productModel.id.toString(),
+          ),
+          arguments: {"vendorModel": vendorModel},
+        );
+      } else {
+        print("Zone mismatch");
+
+        ShowToastDialog.showToast(
+          "Sorry, The Zone is not available in your area. Change the location first."
+              .tr,
+        );
+      }
+    } catch (e, stackTrace) {
       ShowToastDialog.closeLoader();
+
+      print("========== ERROR ==========");
+      print(e);
+      print(stackTrace);
+
       ShowToastDialog.showToast("Error loading restaurant details".tr);
     }
   }

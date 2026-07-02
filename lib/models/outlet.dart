@@ -4,6 +4,7 @@ class Outlet {
   final int outletId;
   final String outletName;
   final String? cuisineType;
+  final String? outletPicUrl;
   final String? outletPhone;
   final double? radius;
   final double? review;
@@ -20,6 +21,7 @@ class Outlet {
     required this.outletId,
     required this.outletName,
     this.cuisineType,
+    this.outletPicUrl,
     this.outletPhone,
     this.radius,
     this.review,
@@ -38,6 +40,7 @@ class Outlet {
       outletId: json['outletId'] ?? 0,
       outletName: json['outletName']?.toString() ?? '',
       cuisineType: json['cuisineType']?.toString(),
+      outletPicUrl: json['outletPicUrl']?.toString(),
       outletPhone: json['outletPhone']?.toString(),
       radius: (json['radius'] as num?)?.toDouble(),
       review: (json['review'] as num?)?.toDouble(),
@@ -58,6 +61,7 @@ class Outlet {
     return VendorModel(
       id: outletId.toString(),
       title: outletName,
+      photo: outletPicUrl,
       phonenumber: outletPhone ?? '',
       reviewsSum: rating,
       reviewsCount: rating > 0 ? 1 : 0,

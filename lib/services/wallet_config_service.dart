@@ -15,7 +15,7 @@ class WalletConfigService {
   static final WalletConfigService instance = WalletConfigService._();
 
   static const Duration _maxCacheAge = Duration(hours: 1);
-  
+
   Future<void> initialize() async {
     // 1) Apply cached config immediately if available (no network).
     _loadFromCache();
@@ -26,8 +26,10 @@ class WalletConfigService {
 
   void _loadFromCache() {
     try {
-      final cached =
-          Preferences.getString(Preferences.walletConfigJson, defaultValue: '');
+      final cached = Preferences.getString(
+        Preferences.walletConfigJson,
+        defaultValue: '',
+      );
       if (cached.isEmpty) return;
       final map = json.decode(cached) as Map<String, dynamic>;
       final config = WalletConfig.fromJson(map);
@@ -50,11 +52,10 @@ class WalletConfigService {
           defaultValue: 0,
         );
         final nowMs = DateTime.now().millisecondsSinceEpoch;
-        if (lastMs > 0 &&
-            nowMs - lastMs < _maxCacheAge.inMilliseconds) {
+        if (lastMs > 0 && nowMs - lastMs < _maxCacheAge.inMilliseconds) {
           return;
         }
-        await refreshFromBackend();
+        // await refreshFromBackend();
       } catch (e) {
         if (kDebugMode) {
           print('[WalletConfigService] _refreshIfStale error: $e');
@@ -64,33 +65,32 @@ class WalletConfigService {
   }
 
   /// Force-refresh from backend (e.g. after app update or settings change).
-  Future<void> refreshFromBackend() async {
-    try {
-      final data = await WalletApiService.instance.getWalletConfig();
-      if (data == null) {
-        if (kDebugMode) {
-          print('[WalletConfigService] No wallet config from backend');
-        }
-        return;
-      }
-      final config = WalletConfig.fromJson(data);
-      Constant.applyWalletConfig(config);
-      await Preferences.setString(
-        Preferences.walletConfigJson,
-        json.encode(config.toJson()),
-      );
-      await Preferences.setInt(
-        Preferences.walletConfigLastUpdatedMillis,
-        DateTime.now().millisecondsSinceEpoch,
-      );
-      if (kDebugMode) {
-        print('[WalletConfigService] Wallet config refreshed from backend');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('[WalletConfigService] refreshFromBackend error: $e');
-      }
-    }
-  }
+  // Future<void> refreshFromBackend() async {
+  //   try {
+  //     final data = await WalletApiService.instance.getWalletConfig();
+  //     if (data == null) {
+  //       if (kDebugMode) {
+  //         print('[WalletConfigService] No wallet config from backend');
+  //       }
+  //       return;
+  //     }
+  //     final config = WalletConfig.fromJson(data);
+  //     Constant.applyWalletConfig(config);
+  //     await Preferences.setString(
+  //       Preferences.walletConfigJson,
+  //       json.encode(config.toJson()),
+  //     );
+  //     await Preferences.setInt(
+  //       Preferences.walletConfigLastUpdatedMillis,
+  //       DateTime.now().millisecondsSinceEpoch,
+  //     );
+  //     if (kDebugMode) {
+  //       print('[WalletConfigService] Wallet config refreshed from backend');
+  //     }
+  //   } catch (e) {
+  //     if (kDebugMode) {
+  //       print('[WalletConfigService] refreshFromBackend error: $e');
+  //     }
+  //   }
+  // }
 }
-

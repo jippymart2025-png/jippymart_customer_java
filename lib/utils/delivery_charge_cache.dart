@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Validates cache on app launch without blocking the UI
 class DeliveryChargeCache {
   static DeliveryChargeCache? _instance;
+
   static DeliveryChargeCache get instance {
     _instance ??= DeliveryChargeCache._();
     return _instance!;
@@ -20,8 +21,12 @@ class DeliveryChargeCache {
   bool _isValidating = false;
   static const String _cacheKey = 'delivery_charge_cache';
   static const String _timestampKey = 'delivery_charge_timestamp';
-  static const Duration _cacheExpiry = Duration(hours: 24); // Cache for 24 hours
-  static const Duration _validationInterval = Duration(minutes: 5); // Validate every 5 minutes
+  static const Duration _cacheExpiry = Duration(
+    hours: 24,
+  ); // Cache for 24 hours
+  static const Duration _validationInterval = Duration(
+    minutes: 5,
+  ); // Validate every 5 minutes
 
   /// Get cached delivery charge (returns cached value immediately if available)
   DeliveryCharge? getCachedDeliveryCharge() {
@@ -53,12 +58,14 @@ class DeliveryChargeCache {
 
     // If cache is invalid or force refresh, fetch from API
     if (forceRefresh || !isCacheValid()) {
-      return await _fetchAndCacheDeliveryCharge();
+      // return await _fetchAndCacheDeliveryCharge();
     }
 
     // If cache exists but needs validation, return cached value and validate in background
     if (_cachedDeliveryCharge != null && needsValidation()) {
-      debugPrint('[DELIVERY_CACHE] 🔄 Cache needs validation, validating in background');
+      debugPrint(
+        '[DELIVERY_CACHE] 🔄 Cache needs validation, validating in background',
+      );
       _validateCacheInBackground();
       return _cachedDeliveryCharge;
     }
@@ -67,42 +74,42 @@ class DeliveryChargeCache {
   }
 
   /// Fetch delivery charge from API and cache it
-  Future<DeliveryCharge?> _fetchAndCacheDeliveryCharge() async {
-    if (_isValidating) {
-      debugPrint('[DELIVERY_CACHE] ⏳ Already validating, returning cached value');
-      return _cachedDeliveryCharge;
-    }
-
-    _isValidating = true;
-    try {
-      debugPrint('[DELIVERY_CACHE] 🔍 Fetching delivery charge from API...');
-      final deliveryCharge = await FireStoreUtils.getDeliveryCharge();
-      
-      if (deliveryCharge != null) {
-        _cachedDeliveryCharge = deliveryCharge;
-        _lastFetchTime = DateTime.now();
-        await _saveToSharedPreferences(deliveryCharge);
-        debugPrint('[DELIVERY_CACHE] ✅ Delivery charge cached successfully');
-      } else {
-        debugPrint('[DELIVERY_CACHE] ⚠️ API returned null, using cached value if available');
-      }
-      
-      return _cachedDeliveryCharge;
-    } catch (e) {
-      debugPrint('[DELIVERY_CACHE] ❌ Error fetching delivery charge: $e');
-      // Return cached value even if fetch fails
-      return _cachedDeliveryCharge;
-    } finally {
-      _isValidating = false;
-    }
-  }
+  // Future<DeliveryCharge?> _fetchAndCacheDeliveryCharge() async {
+  //   if (_isValidating) {
+  //     debugPrint('[DELIVERY_CACHE] ⏳ Already validating, returning cached value');
+  //     return _cachedDeliveryCharge;
+  //   }
+  //
+  //   _isValidating = true;
+  //   try {
+  //     debugPrint('[DELIVERY_CACHE] 🔍 Fetching delivery charge from API...');
+  //     final deliveryCharge = await FireStoreUtils.getDeliveryCharge();
+  //
+  //     if (deliveryCharge != null) {
+  //       _cachedDeliveryCharge = deliveryCharge;
+  //       _lastFetchTime = DateTime.now();
+  //       await _saveToSharedPreferences(deliveryCharge);
+  //       debugPrint('[DELIVERY_CACHE] ✅ Delivery charge cached successfully');
+  //     } else {
+  //       debugPrint('[DELIVERY_CACHE] ⚠️ API returned null, using cached value if available');
+  //     }
+  //
+  //     return _cachedDeliveryCharge;
+  //   } catch (e) {
+  //     debugPrint('[DELIVERY_CACHE] ❌ Error fetching delivery charge: $e');
+  //     // Return cached value even if fetch fails
+  //     return _cachedDeliveryCharge;
+  //   } finally {
+  //     _isValidating = false;
+  //   }
+  // }
 
   /// Validate cache in background without blocking
   void _validateCacheInBackground() {
     if (_isValidating) return;
-    
+
     Future.microtask(() async {
-      await _fetchAndCacheDeliveryCharge();
+      // await _fetchAndCacheDeliveryCharge();
     });
   }
 
@@ -115,10 +122,13 @@ class DeliveryChargeCache {
 
       if (cacheJson != null && timestampStr != null) {
         final timestamp = DateTime.tryParse(timestampStr);
-        if (timestamp != null && DateTime.now().difference(timestamp) < _cacheExpiry) {
+        if (timestamp != null &&
+            DateTime.now().difference(timestamp) < _cacheExpiry) {
           // Parse cached delivery charge (simplified - you may need to adjust based on your model)
           // For now, we'll fetch fresh data on launch but use cache during session
-          debugPrint('[DELIVERY_CACHE] 📦 Cache found in storage, will validate in background');
+          debugPrint(
+            '[DELIVERY_CACHE] 📦 Cache found in storage, will validate in background',
+          );
           _validateCacheInBackground();
         }
       }
@@ -158,11 +168,13 @@ class DeliveryChargeCache {
   /// Initialize cache on app launch (non-blocking)
   /// Call this in your app initialization
   Future<void> initializeOnAppLaunch() async {
-    debugPrint('[DELIVERY_CACHE] 🚀 Initializing delivery charge cache on app launch...');
-    
+    debugPrint(
+      '[DELIVERY_CACHE] 🚀 Initializing delivery charge cache on app launch...',
+    );
+
     // Load from storage first (if available)
     await loadCacheFromStorage();
-    
+
     // Fetch fresh data in background (non-blocking)
     Future.microtask(() async {
       await getDeliveryCharge(forceRefresh: true);
@@ -181,11 +193,13 @@ class DeliveryChargeCache {
 
   /// Get free delivery distance in km with fallback
   double getFreeDeliveryDistanceKm({double fallback = 7.0}) {
-    return _cachedDeliveryCharge?.freeDeliveryDistanceKm?.toDouble() ?? fallback;
+    return _cachedDeliveryCharge?.freeDeliveryDistanceKm?.toDouble() ??
+        fallback;
   }
 
   /// Get per km charge above free distance with fallback
   double getPerKmChargeAboveFreeDistance({double fallback = 8.0}) {
-    return _cachedDeliveryCharge?.perKmChargeAboveFreeDistance?.toDouble() ?? fallback;
+    return _cachedDeliveryCharge?.perKmChargeAboveFreeDistance?.toDouble() ??
+        fallback;
   }
 }
