@@ -153,7 +153,7 @@ class ProductListView extends StatelessWidget {
                         controller.returnKeyCategories(index: index) ??
                         'category_$index';
                     final stableKey = ValueKey<String>(
-                      vendorCategoryModel.id?.toString() ?? categoryKey,
+                      vendorCategoryModel.categoryId.toString(),
                     );
                     return KeyedSubtree(
                       key: stableKey,
@@ -189,8 +189,8 @@ class ProductListView extends StatelessWidget {
       shape: const Border(),
       initiallyExpanded: true,
       title: Text(
-        '${vendorCategoryModel.title}'
-        ' (${controller.getProductsByCategory(vendorCategoryModel.id.toString()).length})',
+        '${vendorCategoryModel.categoryName}'
+        ' (${controller.getProductsByCategory(vendorCategoryModel.categoryId.toString()).length})',
         style: TextStyle(
           fontSize: rs.categoryFontSize,
           fontFamily: AppThemeData.semiBold,
@@ -214,7 +214,7 @@ class ProductListView extends StatelessWidget {
     _RS rs,
   ) {
     final products = controller.getProductsByCategory(
-      vendorCategoryModel.id.toString(),
+      vendorCategoryModel.categoryId.toString(),
     );
 
     return Consumer<HomeProvider>(

@@ -35,7 +35,9 @@ class CategoryViewProvider extends ChangeNotifier {
     List<VendorCategoryModel> list = [];
     try {
       final headers = await getHeaders();
-      final url = Uri.parse('${AppConst.baseUrl}categories/home');
+      final url = Uri.parse(
+        '${AppConst.outletBaseUrl}fm/getHomeOrAllCategories?filter=HOME',
+      );
       print('[CATEGORY_API] Fetching home categories from: $url');
       final response = await http
           .get(url, headers: headers)

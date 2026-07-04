@@ -19,6 +19,7 @@ import 'package:jippymart_customer/constant/send_notification.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
+import 'package:jippymart_customer/models/customer_checkout_model.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 import 'package:jippymart_customer/models/order_model.dart';
 import 'package:jippymart_customer/models/payment_model/cod_setting_model.dart';
@@ -283,6 +284,15 @@ class CartControllerProvider extends ChangeNotifier {
   double taxAmount = 0.0;
   double totalAmount = 0.0;
   double surgePercent = 0.0;
+  double platformFee = 0.0;
+  double packagingFee = 0.0;
+  CustomerCheckoutModel? checkoutSummary;
+  bool _useServerCheckoutPricing = false;
+  bool _isFetchingCheckout = false;
+
+  bool get useServerCheckoutPricing => _useServerCheckoutPricing;
+
+  bool get checkoutCodAvailable => checkoutSummary?.codAvailable ?? true;
 
   bool isCartReady = false;
   bool isPaymentReady = false;
@@ -967,6 +977,12 @@ class CartControllerProvider extends ChangeNotifier {
     _startOperation('calculatePrice');
 
     try {
+      if (_useServerCheckoutPricing && !_isFetchingCheckout) {
+        final refreshed = await fetchCheckoutFromApi(silent: true);
+        if (refreshed) return;
+        _useServerCheckoutPricing = false;
+      }
+
       await ANRPrevention.executeWithANRPrevention(
         'CartController_calculatePrice',
         () async {
@@ -1172,7 +1188,7 @@ class CartControllerProvider extends ChangeNotifier {
     final hasMartItems = _getCachedHasMartItems();
 
     if (hasPromotionalItems) {
-      calculatePromotionalDeliveryChargeFast();
+      // calculatePromotionalDeliveryChargeFast();
     } else if (hasMartItems) {
       calculateMartDeliveryCharge();
     } else {
@@ -1379,7 +1395,9 @@ class CartControllerProvider extends ChangeNotifier {
         totalAmount.isNaN ||
         subTotal.isInfinite ||
         totalAmount.isInfinite ||
-        (!isCartEmpty && (subTotal == 0.0 || totalAmount == 0.0));
+        (!_useServerCheckoutPricing &&
+            !isCartEmpty &&
+            (subTotal == 0.0 || totalAmount == 0.0));
 
     if (hasInvalidValues) {
       print('[CALC_VALIDATION] ⚠️ Invalid values, restoring previous values');
@@ -1387,6 +1405,107 @@ class CartControllerProvider extends ChangeNotifier {
       totalAmount = previousTotalAmount;
       deliveryCharges = previousDeliveryCharges;
       taxAmount = previousTaxAmount;
+    }
+  }
+
+  void _invalidateServerCheckout() {
+    _useServerCheckoutPricing = false;
+    checkoutSummary = null;
+    platformFee = 0.0;
+    packagingFee = 0.0;
+  }
+
+  void _applyCheckoutResponse(CustomerCheckoutModel checkout) {
+    checkoutSummary = checkout;
+    subTotal = checkout.itemTotal;
+    deliveryCharges = checkout.deliveryCharge;
+    platformFee = checkout.platformFee;
+    surgePercent = checkout.surgeFee;
+    packagingFee = checkout.packagingFee;
+    couponAmount = checkout.couponDiscount;
+    deliveryTips = checkout.deliveryTip;
+    taxAmount = checkout.taxesAndCharges;
+    totalAmount = checkout.toPay;
+    _useServerCheckoutPricing = true;
+  }
+
+  int? _resolveOutletIdForCheckout() {
+    final vendorId = int.tryParse(vendorModel.id?.trim() ?? '');
+    if (vendorId != null && vendorId > 0) return vendorId;
+
+    if (HomeProvider.cartItem.isEmpty) return null;
+    return int.tryParse(HomeProvider.cartItem.first.vendorID?.trim() ?? '');
+  }
+
+  Future<bool> fetchCheckoutFromApi({bool silent = false}) async {
+    if (_isFetchingCheckout || HomeProvider.cartItem.isEmpty) return false;
+
+    _isFetchingCheckout = true;
+    if (!silent) {
+      ShowToastDialog.showLoader('Please wait'.tr);
+    }
+
+    try {
+      if (vendorModel.id == null) {
+        await _loadVendorForPriceCalculation();
+      }
+
+      final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+      final customerAddressId = int.tryParse(selectedAddress?.id?.trim() ?? '');
+      final outletId = _resolveOutletIdForCheckout();
+
+      if (customerId == null) {
+        if (!silent) {
+          ShowToastDialog.showToast('Please log in to continue'.tr);
+        }
+        return false;
+      }
+
+      // if (customerAddressId == null) {
+      //   if (!silent) {
+      //     ShowToastDialog.showToast('Please select a delivery address'.tr);
+      //   }
+      //   return false;
+      // }
+
+      if (outletId == null) {
+        if (!silent) {
+          ShowToastDialog.showToast('Restaurant not found for this cart'.tr);
+        }
+        return false;
+      }
+
+      final checkout = await CartApiService.checkout(
+        customerId: customerId,
+        customerAddressId: 325,
+        outletId: outletId,
+        couponDiscount: couponAmount,
+        deliveryTip: deliveryTips,
+      );
+
+      if (checkout == null) {
+        if (!silent) {
+          ShowToastDialog.showToast('Failed to calculate checkout'.tr);
+        }
+        return false;
+      }
+
+      _applyCheckoutResponse(checkout);
+      checkAndUpdatePaymentMethod();
+      updateCartReadiness();
+      notifyListeners();
+      return true;
+    } catch (e) {
+      print('[CART_CHECKOUT] Error: $e');
+      if (!silent) {
+        ShowToastDialog.showToast('Failed to calculate checkout'.tr);
+      }
+      return false;
+    } finally {
+      _isFetchingCheckout = false;
+      if (!silent) {
+        ShowToastDialog.closeLoader();
+      }
     }
   }
 
@@ -3315,6 +3434,10 @@ class CartControllerProvider extends ChangeNotifier {
         _clearAppliedCouponState(showMessage: true);
       }
 
+      if (productSetChanged) {
+        _invalidateServerCheckout();
+      }
+
       // Smart cache: cart DB changed → invalidate so next load reflects changes
       _invalidateCartRelatedCaches();
 
@@ -3330,7 +3453,7 @@ class CartControllerProvider extends ChangeNotifier {
         await _loadFreshVendorForCart();
       }
 
-      await _loadCalculationCache();
+      // await _loadCalculationCache();
 
       unawaited(
         _loadNewProductsIncrementally().catchError((e) {
@@ -5014,121 +5137,121 @@ class CartControllerProvider extends ChangeNotifier {
 
   // ============ DELIVERY CHARGE METHODS ============
 
-  void calculatePromotionalDeliveryChargeFast() {
-    final promotionalItems = HomeProvider.cartItem
-        .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
-        .toList();
-
-    if (promotionalItems.isEmpty) {
-      calculateRegularDeliveryCharge();
-      return;
-    }
-
-    final firstPromoItem = promotionalItems.first;
-    final cacheKey = '${firstPromoItem.id}-${firstPromoItem.vendorID}';
-
-    // 🔑 CRITICAL FIX: Always prioritize promotion cache for promotional items
-    // Never fall back to global values - always use promotional delivery charges
-    final promoDetails = _promotionalCalculationCache[cacheKey];
-    double freeDeliveryKm;
-    double extraKmCharge;
-
-    if (promoDetails != null) {
-      // 🔑 CRITICAL: Use free_delivery_km from promotion table (e.g., 4 km)
-      final promoFreeKm = (promoDetails['free_delivery_km'] as num?)
-          ?.toDouble();
-      if (promoFreeKm != null && promoFreeKm > 0) {
-        freeDeliveryKm = promoFreeKm;
-        // Cache it for faster access next time
-        _cachedFreeDeliveryKm[cacheKey] = promoFreeKm;
-        print(
-          '[PROMOTIONAL_DELIVERY] ✅ Using free delivery km from promotion table: $freeDeliveryKm km',
-        );
-      } else {
-        // 🔑 CRITICAL: If promotion table doesn't have free_delivery_km,
-        // check cached value (from previous fetch), but NEVER use global fallback
-        if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
-          freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
-          print(
-            '[PROMOTIONAL_DELIVERY] ⚠️ Promotion table missing free_delivery_km, using cached promotional value: $freeDeliveryKm km',
-          );
-        } else {
-          // 🔑 CRITICAL: For promotional items, we MUST have promotional data
-          // If cache is missing, trigger async load and use a safe default that will be updated
-          // But don't use global fallback - use a reasonable promotional default
-          print(
-            '[PROMOTIONAL_DELIVERY] ⚠️ No promotional cache found, triggering load...',
-          );
-          // Trigger async cache load
-          _cachePromotionalData(
-            firstPromoItem.id ?? '',
-            firstPromoItem.vendorID ?? '',
-            cacheKey,
-          );
-          // Use cached value if available, otherwise wait for cache (will recalculate)
-          freeDeliveryKm =
-              _cachedFreeDeliveryKm[cacheKey] ??
-              4.0; // Default to 4km for promotional
-        }
-      }
-
-      // Get extra km charge from promotion
-      final promoExtraKm = (promoDetails['extra_km_charge'] as num?)
-          ?.toDouble();
-      if (promoExtraKm != null && promoExtraKm > 0) {
-        extraKmCharge = promoExtraKm;
-        _cachedExtraKmCharge[cacheKey] = promoExtraKm;
-      } else {
-        extraKmCharge = _cachedExtraKmCharge[cacheKey] ?? 7.0;
-      }
-    } else {
-      // 🔑 CRITICAL: Promotion cache not loaded - check if we have cached values
-      // If not, trigger load and use promotional defaults (NOT global)
-      if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
-        freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
-        print(
-          '[PROMOTIONAL_DELIVERY] ✅ Using cached promotional free delivery km: $freeDeliveryKm km',
-        );
-      } else {
-        // Trigger async cache load
-        _cachePromotionalData(
-          firstPromoItem.id ?? '',
-          firstPromoItem.vendorID ?? '',
-          cacheKey,
-        );
-        // Use promotional default (4km) instead of global fallback
-        freeDeliveryKm = 4.0; // Default promotional free km
-        print(
-          '[PROMOTIONAL_DELIVERY] ⚠️ Promotion cache not loaded, using promotional default: $freeDeliveryKm km (will update when cache loads)',
-        );
-      }
-
-      extraKmCharge = _getCachedExtraKmCharge(
-        firstPromoItem.id ?? '',
-        firstPromoItem.vendorID ?? '',
-      );
-    }
-
-    // 🔑 DYNAMIC: Get base charge from promotional cache or delivery charge cache
-    final baseCharge =
-        _cachedPromotionalBaseCharge[cacheKey] ??
-        DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
-
-    // 🔑 NEW: Check if this promotional item should include base charge in calculation
-    final includeBaseCharge =
-        promoDetails?['include_base_charge'] == true ||
-        promoDetails?['consider_base_charge'] == true ||
-        promoDetails?['free_up_charge'] == true;
-
-    _calculateDeliveryCharge(
-      orderType: 'promotional',
-      freeDeliveryKm: freeDeliveryKm,
-      perKmCharge: extraKmCharge,
-      baseCharge: baseCharge,
-      logPrefix: '[PROMOTIONAL_DELIVERY]',
-      includeBaseChargeInOriginalFee: includeBaseCharge,
-    );
-  }
+  // void calculatePromotionalDeliveryChargeFast() {
+  //   final promotionalItems = HomeProvider.cartItem
+  //       .where((item) => item.promoId != null && item.promoId!.isNotEmpty)
+  //       .toList();
+  //
+  //   if (promotionalItems.isEmpty) {
+  //     calculateRegularDeliveryCharge();
+  //     return;
+  //   }
+  //
+  //   final firstPromoItem = promotionalItems.first;
+  //   final cacheKey = '${firstPromoItem.id}-${firstPromoItem.vendorID}';
+  //
+  //   // 🔑 CRITICAL FIX: Always prioritize promotion cache for promotional items
+  //   // Never fall back to global values - always use promotional delivery charges
+  //   final promoDetails = _promotionalCalculationCache[cacheKey];
+  //   double freeDeliveryKm;
+  //   double extraKmCharge;
+  //
+  //   if (promoDetails != null) {
+  //     // 🔑 CRITICAL: Use free_delivery_km from promotion table (e.g., 4 km)
+  //     final promoFreeKm = (promoDetails['free_delivery_km'] as num?)
+  //         ?.toDouble();
+  //     if (promoFreeKm != null && promoFreeKm > 0) {
+  //       freeDeliveryKm = promoFreeKm;
+  //       // Cache it for faster access next time
+  //       _cachedFreeDeliveryKm[cacheKey] = promoFreeKm;
+  //       print(
+  //         '[PROMOTIONAL_DELIVERY] ✅ Using free delivery km from promotion table: $freeDeliveryKm km',
+  //       );
+  //     } else {
+  //       // 🔑 CRITICAL: If promotion table doesn't have free_delivery_km,
+  //       // check cached value (from previous fetch), but NEVER use global fallback
+  //       if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
+  //         freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
+  //         print(
+  //           '[PROMOTIONAL_DELIVERY] ⚠️ Promotion table missing free_delivery_km, using cached promotional value: $freeDeliveryKm km',
+  //         );
+  //       } else {
+  //         // 🔑 CRITICAL: For promotional items, we MUST have promotional data
+  //         // If cache is missing, trigger async load and use a safe default that will be updated
+  //         // But don't use global fallback - use a reasonable promotional default
+  //         print(
+  //           '[PROMOTIONAL_DELIVERY] ⚠️ No promotional cache found, triggering load...',
+  //         );
+  //         // Trigger async cache load
+  //         _cachePromotionalData(
+  //           firstPromoItem.id ?? '',
+  //           firstPromoItem.vendorID ?? '',
+  //           cacheKey,
+  //         );
+  //         // Use cached value if available, otherwise wait for cache (will recalculate)
+  //         freeDeliveryKm =
+  //             _cachedFreeDeliveryKm[cacheKey] ??
+  //             4.0; // Default to 4km for promotional
+  //       }
+  //     }
+  //
+  //     // Get extra km charge from promotion
+  //     final promoExtraKm = (promoDetails['extra_km_charge'] as num?)
+  //         ?.toDouble();
+  //     if (promoExtraKm != null && promoExtraKm > 0) {
+  //       extraKmCharge = promoExtraKm;
+  //       _cachedExtraKmCharge[cacheKey] = promoExtraKm;
+  //     } else {
+  //       extraKmCharge = _cachedExtraKmCharge[cacheKey] ?? 7.0;
+  //     }
+  //   } else {
+  //     // 🔑 CRITICAL: Promotion cache not loaded - check if we have cached values
+  //     // If not, trigger load and use promotional defaults (NOT global)
+  //     if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
+  //       freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
+  //       print(
+  //         '[PROMOTIONAL_DELIVERY] ✅ Using cached promotional free delivery km: $freeDeliveryKm km',
+  //       );
+  //     } else {
+  //       // Trigger async cache load
+  //       _cachePromotionalData(
+  //         firstPromoItem.id ?? '',
+  //         firstPromoItem.vendorID ?? '',
+  //         cacheKey,
+  //       );
+  //       // Use promotional default (4km) instead of global fallback
+  //       freeDeliveryKm = 4.0; // Default promotional free km
+  //       print(
+  //         '[PROMOTIONAL_DELIVERY] ⚠️ Promotion cache not loaded, using promotional default: $freeDeliveryKm km (will update when cache loads)',
+  //       );
+  //     }
+  //
+  //     extraKmCharge = _getCachedExtraKmCharge(
+  //       firstPromoItem.id ?? '',
+  //       firstPromoItem.vendorID ?? '',
+  //     );
+  //   }
+  //
+  //   // 🔑 DYNAMIC: Get base charge from promotional cache or delivery charge cache
+  //   final baseCharge =
+  //       _cachedPromotionalBaseCharge[cacheKey] ??
+  //       DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
+  //
+  //   // 🔑 NEW: Check if this promotional item should include base charge in calculation
+  //   final includeBaseCharge =
+  //       promoDetails?['include_base_charge'] == true ||
+  //       promoDetails?['consider_base_charge'] == true ||
+  //       promoDetails?['free_up_charge'] == true;
+  //
+  //   _calculateDeliveryCharge(
+  //     orderType: 'promotional',
+  //     freeDeliveryKm: freeDeliveryKm,
+  //     perKmCharge: extraKmCharge,
+  //     baseCharge: baseCharge,
+  //     logPrefix: '[PROMOTIONAL_DELIVERY]',
+  //     includeBaseChargeInOriginalFee: includeBaseCharge,
+  //   );
+  // }
 
   void _calculateDeliveryCharge({
     required String orderType,
@@ -5347,34 +5470,34 @@ class CartControllerProvider extends ChangeNotifier {
     return _cachedExtraKmCharge[cacheKey] ?? 7.0;
   }
 
-  Future<void> _loadCalculationCache() async {
-    if (_calculationCacheLoaded) return;
-
-    try {
-      _cachedTaxList ??= await FireStoreUtils.getTaxList();
-      final futures = <Future>[];
-
-      for (var item in HomeProvider.cartItem) {
-        if (item.promoId != null && item.promoId!.isNotEmpty) {
-          final cacheKey = '${item.id}-${item.vendorID}';
-          if (!_promotionalCalculationCache.containsKey(cacheKey)) {
-            futures.add(
-              _cachePromotionalData(
-                item.id ?? '',
-                item.vendorID ?? '',
-                cacheKey,
-              ),
-            );
-          }
-        }
-      }
-
-      await Future.wait(futures);
-      _calculationCacheLoaded = true;
-    } catch (e) {
-      print('[CALC_CACHE] ❌ Error: $e');
-    }
-  }
+  // Future<void> _loadCalculationCache() async {
+  //   if (_calculationCacheLoaded) return;
+  //
+  //   try {
+  //     _cachedTaxList ??= await FireStoreUtils.getTaxList();
+  //     final futures = <Future>[];
+  //
+  //     for (var item in HomeProvider.cartItem) {
+  //       if (item.promoId != null && item.promoId!.isNotEmpty) {
+  //         final cacheKey = '${item.id}-${item.vendorID}';
+  //         if (!_promotionalCalculationCache.containsKey(cacheKey)) {
+  //           futures.add(
+  //             _cachePromotionalData(
+  //               item.id ?? '',
+  //               item.vendorID ?? '',
+  //               cacheKey,
+  //             ),
+  //           );
+  //         }
+  //       }
+  //     }
+  //
+  //     await Future.wait(futures);
+  //     _calculationCacheLoaded = true;
+  //   } catch (e) {
+  //     print('[CALC_CACHE] ❌ Error: $e');
+  //   }
+  // }
 
   set isGlobalLocked(bool value) {
     _isGlobalLocked = value;
@@ -5391,54 +5514,54 @@ class CartControllerProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _cachePromotionalData(
-    String productId,
-    String restaurantId,
-    String cacheKey,
-  ) async {
-    try {
-      final promoDetails = await FireStoreUtils.getActivePromotionForProduct(
-        productId: productId,
-        restaurantId: restaurantId,
-      );
-
-      if (promoDetails != null) {
-        _promotionalCalculationCache[cacheKey] = promoDetails;
-
-        // 🔑 CRITICAL FIX: For promotional items, use promotional free_delivery_km from table
-        // If null, don't default to 3.0 - use promotional default (4.0) or fetch it
-        final promoFreeKm = (promoDetails['free_delivery_km'] as num?)
-            ?.toDouble();
-        final freeDeliveryKm =
-            promoFreeKm ?? 4.0; // 🔑 Use 4.0 as promotional default, not 3.0
-
-        final extraKmCharge =
-            (promoDetails['extra_km_charge'] as num?)?.toDouble() ?? 7.0;
-        // 🔑 DYNAMIC: Get base charge from cache, with fallback from promo details if available
-        final promoBaseCharge =
-            (promoDetails['base_delivery_charge'] as num?)?.toDouble() ??
-            DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
-
-        // 🔑 NEW: Check if promotional item should include base charge in "free up" calculation
-        // Some promotions consider base charge, some don't - check flag if available
-        final includeBaseCharge =
-            promoDetails['include_base_charge'] == true ||
-            promoDetails['consider_base_charge'] == true ||
-            promoDetails['free_up_charge'] ==
-                true; // Default to true if not specified
-
-        _cachedFreeDeliveryKm[cacheKey] = freeDeliveryKm;
-        _cachedExtraKmCharge[cacheKey] = extraKmCharge;
-        // 🔑 DYNAMIC: Store base charge in cache for promotional items
-        _cachedPromotionalBaseCharge[cacheKey] = promoBaseCharge;
-        // 🔑 NEW: Store flag for whether to include base charge
-        _promotionalCalculationCache[cacheKey]?['include_base_charge'] =
-            includeBaseCharge;
-      }
-    } catch (e) {
-      print('[PROMO_CACHE] ❌ Error: $e');
-    }
-  }
+  // Future<void> _cachePromotionalData(
+  //   String productId,
+  //   String restaurantId,
+  //   String cacheKey,
+  // ) async {
+  //   try {
+  //     final promoDetails = await FireStoreUtils.getActivePromotionForProduct(
+  //       productId: productId,
+  //       restaurantId: restaurantId,
+  //     );
+  //
+  //     if (promoDetails != null) {
+  //       _promotionalCalculationCache[cacheKey] = promoDetails;
+  //
+  //       // 🔑 CRITICAL FIX: For promotional items, use promotional free_delivery_km from table
+  //       // If null, don't default to 3.0 - use promotional default (4.0) or fetch it
+  //       final promoFreeKm = (promoDetails['free_delivery_km'] as num?)
+  //           ?.toDouble();
+  //       final freeDeliveryKm =
+  //           promoFreeKm ?? 4.0; // 🔑 Use 4.0 as promotional default, not 3.0
+  //
+  //       final extraKmCharge =
+  //           (promoDetails['extra_km_charge'] as num?)?.toDouble() ?? 7.0;
+  //       // 🔑 DYNAMIC: Get base charge from cache, with fallback from promo details if available
+  //       final promoBaseCharge =
+  //           (promoDetails['base_delivery_charge'] as num?)?.toDouble() ??
+  //           DeliveryChargeCache.instance.getBaseDeliveryCharge(fallback: 21.0);
+  //
+  //       // 🔑 NEW: Check if promotional item should include base charge in "free up" calculation
+  //       // Some promotions consider base charge, some don't - check flag if available
+  //       final includeBaseCharge =
+  //           promoDetails['include_base_charge'] == true ||
+  //           promoDetails['consider_base_charge'] == true ||
+  //           promoDetails['free_up_charge'] ==
+  //               true; // Default to true if not specified
+  //
+  //       _cachedFreeDeliveryKm[cacheKey] = freeDeliveryKm;
+  //       _cachedExtraKmCharge[cacheKey] = extraKmCharge;
+  //       // 🔑 DYNAMIC: Store base charge in cache for promotional items
+  //       _cachedPromotionalBaseCharge[cacheKey] = promoBaseCharge;
+  //       // 🔑 NEW: Store flag for whether to include base charge
+  //       _promotionalCalculationCache[cacheKey]?['include_base_charge'] =
+  //           includeBaseCharge;
+  //     }
+  //   } catch (e) {
+  //     print('[PROMO_CACHE] ❌ Error: $e');
+  //   }
+  // }
 
   // ============ CART ITEM OPERATIONS ============
 

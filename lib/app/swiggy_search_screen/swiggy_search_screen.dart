@@ -918,8 +918,8 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
           children: categories.map<Widget>((VendorCategoryModel category) {
             return GestureDetector(
               onTap: () {
-                searchController.text = category.title ?? '';
-                controller.performUnifiedSearch(category.title ?? '');
+                searchController.text = category.categoryName ?? '';
+                controller.performUnifiedSearch(category.categoryName ?? '');
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -932,7 +932,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   border: Border.all(color: AppThemeData.primary200),
                 ),
                 child: Text(
-                  category.title ?? 'Category',
+                  category.categoryName ?? 'Category',
                   style: TextStyle(
                     color: AppThemeData.primary300,
                     fontWeight: FontWeight.w500,
@@ -1701,7 +1701,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         product.disPrice!.isNotEmpty &&
         product.disPrice != "0";
 
-    final priceToPass = hasDiscount ? product.disPrice! : (product.price ?? "0");
+    final priceToPass = hasDiscount
+        ? product.disPrice!
+        : (product.price ?? "0");
     final disPriceToPass = hasDiscount ? (product.price ?? "0") : "0";
 
     showProductOptionsBottomSheet(
@@ -1834,5 +1836,4 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
       );
     }
   }
-
 }

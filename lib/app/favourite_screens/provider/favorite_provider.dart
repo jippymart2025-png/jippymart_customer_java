@@ -128,10 +128,48 @@ class FavouriteProvider extends ChangeNotifier {
     });
   }
 
+  static String _firstNonEmptyId(
+    Map<String, dynamic> json,
+    List<String> keys,
+  ) {
+    for (final key in keys) {
+      final value = json[key];
+      if (value == null) continue;
+      final str = value.toString().trim();
+      if (str.isNotEmpty && str != '0' && str.toLowerCase() != 'null') {
+        return str;
+      }
+    }
+    return '';
+  }
+
+  static String _outletIdFromFavoriteJson(Map<String, dynamic> json) {
+    final direct = _firstNonEmptyId(json, [
+      'outletId',
+      'favoriteOutletId',
+      'vendorId',
+      'vendor_id',
+      'vendorID',
+      'storeId',
+      'store_id',
+    ]);
+    if (direct.isNotEmpty) return direct;
+
+    final outlet = json['outlet'];
+    if (outlet is Map) {
+      return _firstNonEmptyId(Map<String, dynamic>.from(outlet), [
+        'outletId',
+        'favoriteOutletId',
+        'id',
+      ]);
+    }
+    return '';
+  }
+
   static VendorModel _parseFavoriteOutlet(Map<String, dynamic> json) {
     final review = (json['review'] as num?)?.toDouble() ?? 0;
     return VendorModel(
-      id: (json['favoriteOutletId'] ?? '').toString(),
+      id: _firstNonEmptyId(json, ['favoriteOutletId', 'outletId', 'id']),
       title: json['outletName']?.toString() ?? 'Restaurant',
       photo: json['outletPicUrl']?.toString() ?? '',
       reviewsSum: review,
@@ -324,16 +362,36 @@ class FavouriteProvider extends ChangeNotifier {
 
   static ProductModel _parseFavoriteProduct(Map<String, dynamic> json) {
     return ProductModel(
-      id: (json['favoriteId'] ?? '').toString(),
-      name: json['productName'] ?? '',
-      photo: json['imageUrl'] ?? '',
-      price: ((json['onlinePrice'] as num?) ?? 0).toString(),
-      disPrice: json['onlinePrice']?.toString() ?? '0',
+      id: _firstNonEmptyId(json, ['productId', 'favoriteId', 'id']),
+      name: json['productName'] ?? json['name'] ?? '',
+      photo: json['imageUrl'] ?? json['photo'] ?? '',
+      price: ((json['onlinePrice'] as num?) ?? json['price'] as num? ?? 0)
+          .toString(),
+      disPrice:
+          (json['discountPrice'] ?? json['disPrice'] ?? json['onlinePrice'])
+              ?.toString() ??
+          '0',
       reviewsSum: (json['rating'] as num?)?.toDouble() ?? 0,
       reviewsCount: ((json['rating'] as num?) ?? 0) > 0 ? 1 : 0,
-      veg: json['isVeg'] ?? false,
-      vendorID: (json['outletId'] ?? '').toString(),
+      veg: json['isVeg'] == true || json['veg'] == true,
+      nonveg: json['isVeg'] == false || json['nonVeg'] == true,
+      vendorID: _outletIdFromFavoriteJson(json),
     );
+  }
+
+  VendorModel? findFavoriteVendorByOutletId(String outletId) {
+    if (outletId.isEmpty) return null;
+
+    final vendors = <VendorModel>[
+      if (recentVendor != null) recentVendor!,
+      ...frequentVendorList,
+      ...favouriteVendorList,
+    ];
+
+    for (final vendor in vendors) {
+      if (vendor.id == outletId) return vendor;
+    }
+    return null;
   }
 
   static Future<void> addFavouriteFood(String productId) async {

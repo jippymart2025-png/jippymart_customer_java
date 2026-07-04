@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/app/home_screen/screen/category_restaurant_screen/category_restaurant_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/category_restaurant_screen/provider/category_resaurant_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
-import 'package:jippymart_customer/app/home_screen/screen/view_all_category_screen/provider/view_all_categroy_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/view_all_category_screen/view_all_category_screen.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -15,25 +14,13 @@ class CategoryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer3<
-      CategoryViewProvider,
-      ViewAllCategoryProvider,
-      CategoryRestaurantProvider
-    >(
-      builder:
-          (
-            context,
-            controller,
-            viewAllCategoryProvider,
-            categoryRestaurantProvider,
-            _,
-          ) {
-            return _CategoryViewBody(
-              controller: controller,
-              viewAllCategoryProvider: viewAllCategoryProvider,
-              categoryRestaurantProvider: categoryRestaurantProvider,
-            );
-          },
+    return Consumer2<CategoryViewProvider, CategoryRestaurantProvider>(
+      builder: (context, controller, categoryRestaurantProvider, _) {
+        return _CategoryViewBody(
+          controller: controller,
+          categoryRestaurantProvider: categoryRestaurantProvider,
+        );
+      },
     );
   }
 }
@@ -41,12 +28,10 @@ class CategoryView extends StatelessWidget {
 class _CategoryViewBody extends StatelessWidget {
   const _CategoryViewBody({
     required this.controller,
-    required this.viewAllCategoryProvider,
     required this.categoryRestaurantProvider,
   });
 
   final CategoryViewProvider controller;
-  final ViewAllCategoryProvider viewAllCategoryProvider;
   final CategoryRestaurantProvider categoryRestaurantProvider;
 
   // static const LinearGradient _cardAccentGradient = LinearGradient(
@@ -132,7 +117,6 @@ class _CategoryViewBody extends StatelessWidget {
                       borderRadius: BorderRadius.circular(24),
                       child: InkWell(
                         onTap: () {
-                          viewAllCategoryProvider.initFunction();
                           Get.to(const ViewAllCategoryScreen());
                         },
                         borderRadius: BorderRadius.circular(24),
@@ -246,7 +230,9 @@ class _CategoryCircleTile extends StatelessWidget {
                         width: 64,
                         height: 64,
                         child: NetworkImageWidget(
-                          imageUrl: category.photo.toString(),
+                          imageUrl: category.categoryImageUrl,
+                          width: 64,
+                          height: 64,
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -257,7 +243,7 @@ class _CategoryCircleTile extends StatelessWidget {
                 SizedBox(
                   width: 76,
                   child: Text(
-                    category.title ?? '',
+                    category.categoryName,
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

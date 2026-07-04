@@ -9,8 +9,22 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
-class ViewAllCategoryScreen extends StatelessWidget {
+class ViewAllCategoryScreen extends StatefulWidget {
   const ViewAllCategoryScreen({super.key});
+
+  @override
+  State<ViewAllCategoryScreen> createState() => _ViewAllCategoryScreenState();
+}
+
+class _ViewAllCategoryScreenState extends State<ViewAllCategoryScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<ViewAllCategoryProvider>().getCategoryData();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -121,39 +135,31 @@ class ViewAllCategoryScreen extends StatelessWidget {
                       ],
                     ),
                     child: ClipOval(
-                      child: NetworkImageWidget(
-                        imageUrl: category.photo.toString(),
-                        fit: BoxFit.cover,
-                        // placeholder: Container(
-                        //   decoration: BoxDecoration(
-                        //     shape: BoxShape.circle,
-                        //     color: isDark ? AppThemeData.grey800 : AppThemeData.grey200,
-                        //   ),
-                        //   child: Icon(
-                        //     Icons.category,
-                        //     color: isDark ? AppThemeData.grey400 : AppThemeData.grey500,
-                        //     size: 30,
-                        //   ),
-                        // ),
+                      child: SizedBox(
+                        width: 70,
+                        height: 70,
+                        child: NetworkImageWidget(
+                          imageUrl: category.categoryImageUrl,
+                          width: 70,
+                          height: 70,
+                          fit: BoxFit.cover,
+                        ),
                       ),
                     ),
                   ),
 
-                  // Category Name
                   const SizedBox(height: 8),
-                  Flexible(
-                    child: Text(
-                      category.title ?? '',
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AppThemeData.grey900,
-                        fontFamily: AppThemeData.medium,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        height: 1.2,
-                      ),
+                  Text(
+                    category.categoryName,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppThemeData.grey900,
+                      fontFamily: AppThemeData.medium,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
                     ),
                   ),
                 ],

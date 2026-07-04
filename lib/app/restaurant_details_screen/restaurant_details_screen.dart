@@ -1245,10 +1245,12 @@ class _MenuModal {
                       itemBuilder: (context, index) {
                         final category = controller.vendorCategoryList[index];
                         final productCount = controller
-                            .getProductsByCategory(category.id.toString())
+                            .getProductsByCategory(
+                              category.categoryId.toString(),
+                            )
                             .length;
                         return _MenuItem(
-                          title: category.title ?? "",
+                          title: category.categoryName ?? "",
                           count: productCount,
                           onTap: () {
                             Navigator.pop(context);

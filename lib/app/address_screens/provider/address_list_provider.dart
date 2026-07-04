@@ -565,11 +565,8 @@ class AddressListProvider extends ChangeNotifier {
       }
 
       final headers = await getHeaders();
-      headers['Content-Type'] = 'application/json';
-      headers['Accept'] = 'application/json';
-      // Use the specific address endpoint for deletion
       final url =
-          '${AppConst.baseUrl}users/$userId/shipping-address/$addressId';
+          '${AppConst.baseUrl}co/customers/deleteCustomerDeliveryAddress?customerAddressId=$addressId';
 
       log("🟢 DELETE URL: $url");
 

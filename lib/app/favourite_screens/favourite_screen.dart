@@ -787,7 +787,7 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     final disPrice = priceData['disPrice'];
 
     return InkWell(
-      onTap: () => _handleFoodItemTap(productModel, context),
+      onTap: () => _handleFoodItemTap(productModel, favouriteProvider, context),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 8),
@@ -990,15 +990,12 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
 
   Future<void> _handleFoodItemTap(
     ProductModel productModel,
+    FavouriteProvider favouriteProvider,
     BuildContext context,
   ) async {
     try {
-      print("========== FOOD ITEM TAP ==========");
-      print("Product ID: ${productModel.id}");
-      print("Vendor ID: ${productModel.vendorID}");
-
-      if (productModel.vendorID == null ||
-          productModel.vendorID.toString().trim().isEmpty) {
+      final outletId = productModel.vendorID?.trim() ?? '';
+      if (outletId.isEmpty) {
         ShowToastDialog.showToast("Store not found".tr);
         return;
       }
@@ -1007,44 +1004,32 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
 
       VendorModel? vendorModel;
 
-      // Check cache first
-      if (_vendorCache.containsKey(productModel.vendorID)) {
-        print("Vendor found in cache");
-        vendorModel = _vendorCache[productModel.vendorID];
+      if (_vendorCache.containsKey(outletId)) {
+        vendorModel = _vendorCache[outletId];
       } else {
-        print("Fetching vendor from Firestore...");
+        vendorModel = favouriteProvider.findFavoriteVendorByOutletId(outletId);
 
-        vendorModel = await FireStoreUtils.getVendorById(
-          productModel.vendorID.toString(),
-        );
-
-        print("Vendor Response: $vendorModel");
+        vendorModel ??= await FireStoreUtils.getVendorById(outletId);
 
         if (vendorModel != null) {
-          _vendorCache[productModel.vendorID!] = vendorModel;
+          _vendorCache[outletId] = vendorModel;
         }
       }
 
       ShowToastDialog.closeLoader();
 
       if (vendorModel == null) {
-        print("Vendor is NULL");
         ShowToastDialog.showToast("Store not found".tr);
         return;
       }
-
-      print("Vendor ID: ${vendorModel.id}");
-      print("Vendor Zone: ${vendorModel.zoneId}");
-      print("Selected Zone: ${Constant.selectedZone?.id}");
 
       if (Constant.selectedZone == null) {
         ShowToastDialog.showToast("Please select a location first".tr);
         return;
       }
 
-      if (vendorModel.zoneId == Constant.selectedZone!.id) {
-        print("Opening restaurant details");
-
+      if (vendorModel.zoneId == null ||
+          vendorModel.zoneId == Constant.selectedZone!.id) {
         final restaurantDetailsProvider =
             Provider.of<RestaurantDetailsProvider>(context, listen: false);
 
@@ -1057,8 +1042,6 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
           arguments: {"vendorModel": vendorModel},
         );
       } else {
-        print("Zone mismatch");
-
         ShowToastDialog.showToast(
           "Sorry, The Zone is not available in your area. Change the location first."
               .tr,
@@ -1067,9 +1050,8 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
     } catch (e, stackTrace) {
       ShowToastDialog.closeLoader();
 
-      print("========== ERROR ==========");
-      print(e);
-      print(stackTrace);
+      debugPrint('Error opening favorite food: $e');
+      debugPrint('$stackTrace');
 
       ShowToastDialog.showToast("Error loading restaurant details".tr);
     }
@@ -1121,14 +1103,13 @@ class _FavouriteScreenState extends State<FavouriteScreen> {
       VendorModel? vendorModel;
 
       // Check vendor cache first
-      if (_vendorCache.containsKey(productModel.vendorID)) {
-        vendorModel = _vendorCache[productModel.vendorID];
-      } else {
-        vendorModel = await FireStoreUtils.getVendorById(
-          productModel.vendorID.toString(),
-        );
+      final outletId = productModel.vendorID?.trim() ?? '';
+      if (outletId.isNotEmpty && _vendorCache.containsKey(outletId)) {
+        vendorModel = _vendorCache[outletId];
+      } else if (outletId.isNotEmpty) {
+        vendorModel = await FireStoreUtils.getVendorById(outletId);
         if (vendorModel != null) {
-          _vendorCache[productModel.vendorID!] = vendorModel;
+          _vendorCache[outletId] = vendorModel;
         }
       }
 

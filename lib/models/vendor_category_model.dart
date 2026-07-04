@@ -1,52 +1,65 @@
 class VendorCategoryModel {
-  List<dynamic>? reviewAttributes;
-  String? photo;
-  String? description;
-  String? id;
-  String? title;
-  int? productCount;
-  bool? showInHomepage;
-  bool? publish;
-  String? vType;
+  final int categoryId;
+  final String categoryName;
+  final String categoryType;
+  final String categoryImageUrl;
+  final List<dynamic>? reviewAttributes;
 
   VendorCategoryModel({
+    this.categoryId = 0,
+    this.categoryName = '',
+    this.categoryType = '',
+    this.categoryImageUrl = '',
     this.reviewAttributes,
-    this.photo,
-    this.description,
-    this.id,
-    this.title,
-    this.productCount,
-    this.showInHomepage,
-    this.publish,
-    this.vType,
   });
 
-  VendorCategoryModel.fromJson(Map<String, dynamic> json) {
-    reviewAttributes = json['review_attributes'] ?? [];
-    photo = json['photo'] ?? "";
-    description = json['description'] ?? '';
-    id = json['id']?.toString() ??
-        json['categoryId']?.toString() ??
-        "";
-    title = json['title'] ?? json['categoryName'] ?? "";
-    productCount = json['product_count'] ??
-        (json['products'] is List ? (json['products'] as List).length : 0);
-    showInHomepage = json['show_in_homepage'] == true;
-    publish = json['publish'] == true || json['categoryId'] != null;
-    vType = json['vType'] ?? 'restaurant';
+  factory VendorCategoryModel.empty() {
+    return VendorCategoryModel();
   }
 
+  factory VendorCategoryModel.fromJson(Map<String, dynamic> json) {
+    final rawId = json['categoryId'] ?? json['id'];
+    final parsedId = rawId is int
+        ? rawId
+        : int.tryParse(rawId?.toString() ?? '') ?? 0;
+
+    return VendorCategoryModel(
+      categoryId: parsedId,
+      categoryName: (json['categoryName'] ?? json['title'] ?? '').toString(),
+      categoryType: (json['categoryType'] ?? json['vType'] ?? '').toString(),
+      categoryImageUrl:
+          (json['categoryImageUrl'] ?? json['photo'] ?? '').toString(),
+      reviewAttributes: json['review_attributes'] is List
+          ? List<dynamic>.from(json['review_attributes'])
+          : null,
+    );
+  }
+
+  // Legacy getters kept for older call sites.
+  String? get id => categoryId == 0 ? null : categoryId.toString();
+
+  String? get title => categoryName.isEmpty ? null : categoryName;
+
+  String? get photo => categoryImageUrl.isEmpty ? null : categoryImageUrl;
+
+  String? get description => null;
+
+  int? get productCount => null;
+
+  bool? get showInHomepage => null;
+
+  bool? get publish => categoryId != 0;
+
+  String? get vType =>
+      categoryType.isEmpty ? 'restaurant' : categoryType;
+
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = <String, dynamic>{};
-    data['review_attributes'] = reviewAttributes;
-    data['photo'] = photo;
-    data['description'] = description;
-    data['id'] = id;
-    data['title'] = title;
-    data['product_count'] = productCount;
-    data['show_in_homepage'] = showInHomepage;
-    data['publish'] = publish;
-    data['vType'] = vType;
-    return data;
+    return {
+      'categoryId': categoryId,
+      'categoryName': categoryName,
+      'categoryType': categoryType,
+      'categoryImageUrl': categoryImageUrl,
+      if (reviewAttributes != null) 'review_attributes': reviewAttributes,
+    };
   }
 }

@@ -16,7 +16,7 @@ class CategoryRestaurantProvider extends ChangeNotifier {
   bool isLoading = true;
   String? errorMessage;
 
-  VendorCategoryModel vendorCategoryModel = VendorCategoryModel();
+  VendorCategoryModel vendorCategoryModel = VendorCategoryModel.empty();
   List<VendorModel> allNearestRestaurant = <VendorModel>[];
 
   late HomeProvider _homeProvider;
@@ -82,7 +82,7 @@ class CategoryRestaurantProvider extends ChangeNotifier {
       }
 
       final response = await _getAllNearestRestaurantByCategoryId(
-        categoryId: vendorCategoryModel.id.toString(),
+        categoryId: vendorCategoryModel.categoryId.toString(),
         zoneid: Constant.selectedZone!.id.toString(),
         latitude: latitude,
         longitude: longitude,

@@ -96,11 +96,10 @@ class OutletCategory {
 
   VendorCategoryModel toVendorCategoryModel() {
     return VendorCategoryModel(
-      id: categoryId.toString(),
-      title: categoryName,
-      productCount: products.length,
-      publish: true,
-      vType: 'restaurant',
+      categoryId: categoryId,
+      categoryName: categoryName,
+      categoryType: 'RESTAURANT',
+      categoryImageUrl: '',
     );
   }
 

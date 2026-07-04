@@ -36,8 +36,9 @@ class _CategoryRestaurantScreenState extends State<CategoryRestaurantScreen>
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _StickyHeaderDelegate(
-                  categoryName:
-                      controller.vendorCategoryModel.title ?? 'Restaurants',
+                  categoryName: controller.vendorCategoryModel.categoryName.isEmpty
+                      ? 'Restaurants'
+                      : controller.vendorCategoryModel.categoryName,
                   count: controller.allNearestRestaurant.length,
                 ),
               ),

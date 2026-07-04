@@ -378,6 +378,17 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     );
   }
 
+  Future<void> _handleCheckout(BuildContext context) async {
+    if (HomeProvider.cartItem.isEmpty) return;
+
+    final success = await controller.fetchCheckoutFromApi();
+    if (!mounted || !success) return;
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (context) => const CartScreen()),
+    );
+  }
+
   Widget _buildBottomNavigationBar(CartThemeColors themeColors) {
     return SafeArea(
       child: Container(
@@ -390,21 +401,15 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
         child: RoundedButtonFill(
           textColor: AppThemeData.surface,
-          isEnabled: true,
+          isEnabled: !controller.isProcessingOrder,
           title: "Check Out".tr,
           height: 5,
           color: AppThemeData.primary300,
           fontSizes: 16,
-          onPress: () => _navigateToCartScreen(context),
+          onPress: () => _handleCheckout(context),
         ),
       ),
     );
-  }
-
-  void _navigateToCartScreen(BuildContext context) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (context) => CartScreen()));
   }
 
   @override

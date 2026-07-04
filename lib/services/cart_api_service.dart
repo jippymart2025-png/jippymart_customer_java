@@ -2,13 +2,14 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/models/customer_cart_model.dart';
+import 'package:jippymart_customer/models/customer_checkout_model.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
 class CartApiService {
   CartApiService._();
 
-  static String get _base => AppConst.outletBaseUrl;
+  static String get _base => "http://187.127.156.147:8084/api/";
 
   /// POST /co/cart/update
   static Future<bool> updateCart({
@@ -90,6 +91,52 @@ class CartApiService {
       return CustomerCartModel.fromJson(decoded);
     } catch (e) {
       print('[CartApi] getCart error: $e');
+      return null;
+    }
+  }
+
+  /// POST /co/checkout
+  static Future<CustomerCheckoutModel?> checkout({
+    required int customerId,
+    required int customerAddressId,
+    required int outletId,
+    double couponDiscount = 0,
+    double deliveryTip = 0,
+  }) async {
+    try {
+      final uri = Uri.parse('${_base}co/checkout');
+      final body = {
+        'customerId': customerId,
+        'customerAddressId': 325,
+        'outletId': outletId,
+        'couponDiscount': couponDiscount,
+        'deliveryTip': deliveryTip,
+      };
+
+      print('[CartApi] POST $uri');
+      print('[CartApi] body: $body');
+
+      final response = await http
+          .post(uri, headers: await getHeaders(), body: jsonEncode(body))
+          .timeout(const Duration(seconds: 20));
+
+      print('[CartApi] status: ${response.statusCode}');
+      print('[CartApi] response: ${response.body}');
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        return null;
+      }
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) return null;
+
+      final data = decoded.containsKey('data') && decoded['data'] is Map
+          ? Map<String, dynamic>.from(decoded['data'] as Map)
+          : decoded;
+
+      return CustomerCheckoutModel.fromJson(data);
+    } catch (e) {
+      print('[CartApi] checkout error: $e');
       return null;
     }
   }

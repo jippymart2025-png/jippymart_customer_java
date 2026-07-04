@@ -23,6 +23,7 @@ import 'package:jippymart_customer/models/rating_model.dart';
 import 'package:jippymart_customer/models/review_attribute_model.dart';
 import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
+import 'package:jippymart_customer/models/outlet_details.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
@@ -389,16 +390,38 @@ class FireStoreUtils {
     return null;
   }
 
+  static Map<String, dynamic>? _parseOutletDetailsApiData(
+    dynamic jsonResponse,
+  ) {
+    if (jsonResponse is! Map<String, dynamic>) return null;
+
+    if (jsonResponse['success'] == true &&
+        jsonResponse['data'] is Map<String, dynamic>) {
+      return Map<String, dynamic>.from(jsonResponse['data'] as Map);
+    }
+
+    if (jsonResponse.containsKey('outletId') ||
+        jsonResponse.containsKey('categories')) {
+      return jsonResponse;
+    }
+
+    return null;
+  }
+
   static Future<VendorModel?> _fetchVendorFromApi(String vendorId) async {
     final userId = await SqlStorageConst.getFirebaseId();
 
     try {
-      final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails'
-        '?outletId=$vendorId'
-        '&userType=customer'
-        '&customerId=$userId',
-      );
+      final uri =
+          Uri.parse(
+            '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails',
+          ).replace(
+            queryParameters: {
+              'outletId': vendorId,
+              'userType': 'CUSTOMER',
+              if (userId != null) 'customerId': userId,
+            },
+          );
 
       if (kDebugMode) {
         debugPrint("Vendor API : $uri");
@@ -418,24 +441,17 @@ class FireStoreUtils {
       }
 
       final jsonResponse = jsonDecode(response.body);
+      final data = _parseOutletDetailsApiData(jsonResponse);
 
-      if (jsonResponse["success"] != true) {
-        debugPrint("API Success = false");
+      if (data == null) {
+        if (kDebugMode) debugPrint("Invalid outlet details response");
         return null;
       }
 
-      final data = jsonResponse["data"];
-
-      if (data == null || data is! Map<String, dynamic>) {
-        debugPrint("Invalid vendor data");
-        return null;
-      }
-
-      final vendor = VendorModel.fromJson(data);
+      final vendor = OutletDetails.fromJson(data).toVendorModel();
 
       if (kDebugMode) {
         debugPrint("Vendor Parsed");
-        // debugPrint("Outlet : ${vendor.outletName}");
         debugPrint("OutletId : ${vendor.id}");
         debugPrint("ZoneId : ${vendor.zoneId}");
       }

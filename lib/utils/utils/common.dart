@@ -49,8 +49,6 @@ Future<Map<String, String>> getHeaders() async {
   return {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    if (token != null && token.isNotEmpty)
-      'Authorization':
-          "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJkZXZhZG1pbiIsInJvbGVzIjpbIlJPTEVfREVWQURNSU4iXSwidXNlcklkIjo3NywiaWF0IjoxNzgyODg4NTAwLCJleHAiOjE3ODI5NzQ5MDB9.vdofVrlmKQPf_OuBqAqKBQ_825Mo6EtrDStHQgYhyn8",
+    if (token != null && token.isNotEmpty) 'Authorization': token,
   };
 }

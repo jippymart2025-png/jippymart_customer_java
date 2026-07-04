@@ -26,7 +26,7 @@ class RateProductProvider extends ChangeNotifier {
   RatingModel ratingModel = RatingModel();
   ProductModel productModel = ProductModel();
   VendorModel vendorModel = VendorModel();
-  VendorCategoryModel vendorCategoryModel = VendorCategoryModel();
+  VendorCategoryModel vendorCategoryModel = VendorCategoryModel.empty();
 
   List<ReviewAttributeModel> reviewAttributeList = <ReviewAttributeModel>[];
 

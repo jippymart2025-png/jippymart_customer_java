@@ -324,10 +324,10 @@ class OrderDetailsScreen extends StatelessWidget {
             promoDetails = _promoDetailsCache[cacheKey];
           } else {
             // Fetch from Firestore if not in cache
-            promoDetails = await FireStoreUtils.getActivePromotionForProduct(
-              productId: firstPromoItem.id ?? '',
-              restaurantId: firstPromoItem.vendorID ?? '',
-            );
+            // promoDetails = await FireStoreUtils.getActivePromotionForProduct(
+            //   productId: firstPromoItem.id ?? '',
+            //   restaurantId: firstPromoItem.vendorID ?? '',
+            // );
             if (promoDetails != null) {
               _promoDetailsCache[cacheKey] = promoDetails;
             }

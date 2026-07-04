@@ -1,14 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/cupertino.dart';
+import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/constant/category_config.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
 class ViewAllCategoryProvider extends ChangeNotifier {
+  static const Duration _networkTimeout = Duration(seconds: 12);
+
   bool isLoading = true;
   List<VendorCategoryModel> vendorCategoryModel = <VendorCategoryModel>[];
 
@@ -17,17 +20,27 @@ class ViewAllCategoryProvider extends ChangeNotifier {
   }
 
   Future<void> getCategoryData() async {
+    isLoading = true;
+    notifyListeners();
+
     try {
-      final uri = Uri.parse('${AppConst.baseUrl}categories');
       final headers = await getHeaders();
-      final response = await http.get(uri, headers: headers);
+      final uri = Uri.parse(
+        '${AppConst.outletBaseUrl}fm/getHomeOrAllCategories?filter=ALL',
+      );
+      final response = await http
+          .get(uri, headers: headers)
+          .timeout(_networkTimeout);
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          final List<dynamic> data = responseData['data'];
-          vendorCategoryModel = data.map((categoryJson) {
-            return VendorCategoryModel.fromJson(categoryJson);
-          }).toList();
+          final List<dynamic> data =
+              responseData['data'] as List<dynamic>? ?? [];
+          vendorCategoryModel = data
+              .whereType<Map<String, dynamic>>()
+              .map(VendorCategoryModel.fromJson)
+              .toList();
           _filterCategories();
         } else {
           throw Exception('API returned success: false');
@@ -35,9 +48,11 @@ class ViewAllCategoryProvider extends ChangeNotifier {
       } else {
         throw Exception('Failed to load categories: ${response.statusCode}');
       }
+    } on TimeoutException catch (e) {
+      debugPrint('[CATEGORY_CONTROLLER] Timeout fetching categories: $e');
+      vendorCategoryModel = [];
     } catch (error) {
-      print('[CATEGORY_CONTROLLER] Error fetching categories: $error');
-      // You might want to handle the error state here
+      debugPrint('[CATEGORY_CONTROLLER] Error fetching categories: $error');
       vendorCategoryModel = [];
     } finally {
       isLoading = false;
@@ -54,34 +69,33 @@ class ViewAllCategoryProvider extends ChangeNotifier {
 
     if (CategoryConfig.useTitleFiltering) {
       filteredCategories = vendorCategoryModel.where((category) {
-        return category.title != null &&
-            CategoryConfig.allowedCategoryTitles.contains(category.title);
+        return CategoryConfig.allowedCategoryTitles.contains(
+          category.categoryName,
+        );
       }).toList();
     } else {
-      // Filter by category IDs
       filteredCategories = vendorCategoryModel.where((category) {
-        return category.id != null &&
-            CategoryConfig.allowedCategoryIds.contains(category.id);
+        return CategoryConfig.allowedCategoryIds.contains(
+          category.categoryId.toString(),
+        );
       }).toList();
     }
 
-    // Apply maximum limit if specified
     if (CategoryConfig.maxCategoriesToShow != null) {
       filteredCategories = filteredCategories
           .take(CategoryConfig.maxCategoriesToShow!)
           .toList();
     }
-    // Show only categories with active vendors if enabled
+
     if (CategoryConfig.showOnlyCategoriesWithVendors &&
         Constant.restaurantList != null) {
-      List<String> usedCategoryIds = Constant.restaurantList!
+      final usedCategoryIds = Constant.restaurantList!
           .expand((vendor) => vendor.categoryID ?? [])
           .whereType<String>()
-          .toSet()
-          .toList();
+          .toSet();
 
       filteredCategories = filteredCategories.where((category) {
-        return category.id != null && usedCategoryIds.contains(category.id);
+        return usedCategoryIds.contains(category.categoryId.toString());
       }).toList();
     }
 

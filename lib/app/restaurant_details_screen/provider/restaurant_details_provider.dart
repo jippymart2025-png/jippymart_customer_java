@@ -1658,7 +1658,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     double position = 0;
     for (int i = 0; i < index && i < vendorCategoryList.length; i++) {
       final products = getProductsByCategory(
-        vendorCategoryList[i].id.toString(),
+        vendorCategoryList[i].categoryId.toString(),
       );
       position += 60.0 + (products.length * 100.0);
     }
