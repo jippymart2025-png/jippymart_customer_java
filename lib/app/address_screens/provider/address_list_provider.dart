@@ -93,7 +93,7 @@ class AddressListProvider extends ChangeNotifier {
       // Fetch from API with debouncing
       await _debouncedApiCall(_currentUserId!);
     } catch (e) {
-      print('[ADDRESS_LIST_PROVIDER] Error loading addresses: $e');
+      debugPrint('[ADDRESS_LIST_PROVIDER] Error loading addresses: $e');
       shippingAddressList.clear();
     } finally {
       _isInitializing = false;
@@ -123,7 +123,7 @@ class AddressListProvider extends ChangeNotifier {
         _updateFromDeliveryAddresses(addresses);
         _lastFetchTime = DateTime.now();
       } catch (e) {
-        print('[ADDRESS_LIST_PROVIDER] API call error: $e');
+        debugPrint('[ADDRESS_LIST_PROVIDER] API call error: $e');
         if (_userCache.containsKey(userId)) {
           _loadFromCache(userId);
         }
@@ -147,7 +147,7 @@ class AddressListProvider extends ChangeNotifier {
       _userCache[_currentUserId!] = UserModel.fromJson(userModel.toJson());
     }
 
-    print(
+    debugPrint(
       '[ADDRESS_LIST_PROVIDER] Loaded ${shippingAddressList.length} addresses',
     );
 
@@ -169,7 +169,7 @@ class AddressListProvider extends ChangeNotifier {
         userModel.toJson(),
       ); // Create a deep copy
 
-      print(
+      debugPrint(
         '[ADDRESS_LIST_PROVIDER] Loaded ${shippingAddressList.length} addresses',
       );
     } else {
@@ -186,7 +186,7 @@ class AddressListProvider extends ChangeNotifier {
       shippingAddressList = List<ShippingAddress>.from(
         cachedUser.shippingAddress ?? [],
       );
-      print(
+      debugPrint(
         '[ADDRESS_LIST_PROVIDER] Loaded ${shippingAddressList.length} addresses from cache',
       );
     }
@@ -280,7 +280,7 @@ class AddressListProvider extends ChangeNotifier {
     try {
       final hasConnection = await checkInternet();
       if (!hasConnection) {
-        print('[API] No internet connection');
+        debugPrint('[API] No internet connection');
         return null;
       }
 
@@ -292,7 +292,7 @@ class AddressListProvider extends ChangeNotifier {
           )
           .timeout(const Duration(seconds: 15)); // Reduced timeout
 
-      print("[API] Profile response: ${response.statusCode}");
+      debugPrint("[API] Profile response: ${response.statusCode}");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -303,12 +303,12 @@ class AddressListProvider extends ChangeNotifier {
         }
       } else if (response.statusCode == 304) {
         // Not Modified - use cache
-        print('[API] Using cached data (304)');
+        debugPrint('[API] Using cached data (304)');
       }
 
       return null;
     } catch (e) {
-      print("getUserProfile error: $e");
+      debugPrint("getUserProfile error: $e");
       return null;
     }
   }
@@ -364,7 +364,7 @@ class AddressListProvider extends ChangeNotifier {
       }
       return null;
     } catch (e) {
-      print('Error converting timestamp: $e');
+      debugPrint('Error converting timestamp: $e');
       return null;
     }
   }
@@ -536,7 +536,7 @@ class AddressListProvider extends ChangeNotifier {
         ShowToastDialog.showToast("Failed to save address".tr);
       }
     } catch (e, stackTrace) {
-      print("saveAddressFunction Error: $e");
+      debugPrint("saveAddressFunction Error: $e");
       print(stackTrace);
 
       ShowToastDialog.closeLoader();
@@ -558,38 +558,51 @@ class AddressListProvider extends ChangeNotifier {
 
   Future<bool> deleteShippingAddress(String addressId) async {
     try {
+      debugPrint("========== DELETE START ==========");
+
+      debugPrint("Address ID: $addressId");
+
       final userId = await SqlStorageConst.getFirebaseId();
+      debugPrint("Firebase User ID: $userId");
+
       if (userId == null || userId.isEmpty) {
-        log("❌ No user ID found");
+        debugPrint("❌ No user found");
         return false;
       }
 
       final headers = await getHeaders();
-      final url =
-          '${AppConst.baseUrl}co/customers/deleteCustomerDeliveryAddress?customerAddressId=$addressId';
+      debugPrint("Headers: $headers");
 
-      log("🟢 DELETE URL: $url");
+      final url =
+          '${AppConst.outletBaseUrl}co/customers/deleteCustomerDeliveryAddress?customerAddressId=$addressId';
+
+      debugPrint("DELETE URL: $url");
 
       final response = await http
           .delete(Uri.parse(url), headers: headers)
           .timeout(const Duration(seconds: 30));
-      log("🔵 STATUS: ${response.statusCode}");
-      log("🔵 BODY: ${response.body}");
+
+      debugPrint("Status Code: ${response.statusCode}");
+      debugPrint("Body: ${response.body}");
+
       if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          print('✅ [API] Shipping address deleted successfully');
+        final jsonData = jsonDecode(response.body);
+
+        // Your API format
+        if (jsonData["statusCode"].toString() == "200") {
+          debugPrint("✅ Address deleted successfully");
           return true;
-        } else {
-          log("❌ API responded but success=false");
-          return false;
         }
-      } else {
-        log("❌ Server responded with status: ${response.statusCode}");
+
+        debugPrint("❌ Delete failed: ${jsonData["statusMsg"]}");
         return false;
       }
+
+      debugPrint("❌ HTTP Error: ${response.statusCode}");
+      return false;
     } catch (e, st) {
-      log("❌ Exception during deleteShippingAddress: $e\n$st");
+      debugPrint("❌ DELETE ERROR: $e");
+      debugPrintStack(stackTrace: st);
       return false;
     }
   }
@@ -644,7 +657,7 @@ class AddressListProvider extends ChangeNotifier {
       if (response.statusCode == 200) {
         final responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          print('✅ [API] User shipping address updated successfully');
+          debugPrint('✅ [API] User shipping address updated successfully');
           Constant.userModel = userModel;
           notifyListeners();
           return true;

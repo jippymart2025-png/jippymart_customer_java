@@ -9,7 +9,7 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 class CartApiService {
   CartApiService._();
 
-  static String get _base => "http://187.127.156.147:8084/api/";
+  static String get _base => AppConst.outletBaseUrl;
 
   /// POST /co/cart/update
   static Future<bool> updateCart({
@@ -107,7 +107,7 @@ class CartApiService {
       final uri = Uri.parse('${_base}co/checkout');
       final body = {
         'customerId': customerId,
-        'customerAddressId': 325,
+        'customerAddressId': 205,
         'outletId': outletId,
         'couponDiscount': couponDiscount,
         'deliveryTip': deliveryTip,

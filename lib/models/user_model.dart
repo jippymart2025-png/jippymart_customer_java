@@ -9,32 +9,23 @@ class UserModel {
   String? lastName;
   String? email;
   String? profilePictureURL;
-  String? fcmToken;
   String? countryCode;
   String? firebaseId;
   String? phoneNumber;
   int? walletAmount;
   bool? active;
   bool? isActive;
-  bool? isDocumentVerify;
   Timestamp? createdAt;
   String? role;
   UserLocation? location;
   UserBankDetails? userBankDetails;
   List<ShippingAddress>? shippingAddress;
-  String? carName;
-  String? carNumber;
-  String? carPictureURL;
   List<dynamic>? inProgressOrderID;
   List<dynamic>? orderRequestData;
   String? vendorID;
-  String? zoneId;
   num? rotation;
   String? appIdentifier;
   String? provider;
-  String? subscriptionPlanId;
-  Timestamp? subscriptionExpiryDate;
-  SubscriptionPlanModel? subscriptionPlan;
 
   UserModel({
     this.firebaseId,
@@ -43,10 +34,8 @@ class UserModel {
     this.lastName,
     this.active,
     this.isActive,
-    this.isDocumentVerify,
     this.email,
     this.profilePictureURL,
-    this.fcmToken,
     this.countryCode,
     this.phoneNumber,
     this.walletAmount,
@@ -54,19 +43,10 @@ class UserModel {
     this.role,
     this.location,
     this.shippingAddress,
-    this.carName,
-    this.carNumber,
-    this.carPictureURL,
-    this.inProgressOrderID,
-    this.orderRequestData,
     this.vendorID,
-    this.zoneId,
     this.rotation,
     this.appIdentifier,
     this.provider,
-    this.subscriptionPlanId,
-    this.subscriptionExpiryDate,
-    this.subscriptionPlan,
   });
 
   String fullName() {
@@ -129,7 +109,6 @@ class UserModel {
         firstName: json['firstName']?.toString(),
         lastName: json['lastName']?.toString(),
         profilePictureURL: json['profilePictureURL']?.toString(),
-        fcmToken: json['fcmToken']?.toString(),
         countryCode: json['countryCode']?.toString(),
         phoneNumber: json['phoneNumber']?.toString(),
         walletAmount: (json['wallet_amount'] is num)
@@ -139,9 +118,7 @@ class UserModel {
         active: parseBool(json['active']),
         isActive: parseBool(json['isActive']),
         role: json['role']?.toString(),
-        isDocumentVerify: parseBool(json['isDocumentVerify']),
         // FIXED
-        zoneId: json['zoneId']?.toString(),
         appIdentifier: json['appIdentifier']?.toString(),
         provider: json['provider']?.toString(),
         shippingAddress: addresses,
@@ -258,7 +235,6 @@ class UserModel {
       'firstName': firstName,
       'lastName': lastName,
       'profilePictureURL': profilePictureURL,
-      'fcmToken': fcmToken,
       'countryCode': countryCode,
       'phoneNumber': phoneNumber,
       'wallet_amount': walletAmount,
@@ -266,8 +242,6 @@ class UserModel {
       'active': active,
       'isActive': isActive,
       'role': role,
-      'isDocumentVerify': isDocumentVerify,
-      'zoneId': zoneId,
       'appIdentifier': appIdentifier,
       'provider': provider,
       'shippingAddress': shippingAddress?.map((e) => e.toJson()).toList(),

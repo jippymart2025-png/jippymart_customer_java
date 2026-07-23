@@ -6,11 +6,13 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/services/group_order_api_service.dart';
+import 'package:jippymart_customer/app/home_screen/screen/group_order_section/service/group_order_api_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 
+import '../widgets/buildAddressTile.dart';
+import '../widgets/buildGroupInfoCard.dart';
 import 'GroupOrderDashboardScreen.dart';
 
 class JoinGroupOrderScreen extends StatefulWidget {
@@ -54,7 +56,8 @@ class _JoinGroupOrderScreenState extends State<JoinGroupOrderScreen> {
       await addressProvider.initFunction(context: context, forceRefresh: true);
 
       final fromProvider = addressProvider.shippingAddressList;
-      final fromUser = Constant.userModel?.shippingAddress ?? <ShippingAddress>[];
+      final fromUser =
+          Constant.userModel?.shippingAddress ?? <ShippingAddress>[];
 
       final merged = <ShippingAddress>[
         ...fromProvider,
@@ -140,7 +143,9 @@ class _JoinGroupOrderScreenState extends State<JoinGroupOrderScreen> {
         : _deliveryAddressIdFor(_selectedAddress!)!;
 
     setState(() => _isJoining = true);
-    ShowToastDialog.showLoader(isDropped ? 'Leaving group...' : 'Joining group...');
+    ShowToastDialog.showLoader(
+      isDropped ? 'Leaving group...' : 'Joining group...',
+    );
 
     try {
       final result = await GroupOrderApiService.joinGroupMembers(
@@ -222,7 +227,10 @@ class _JoinGroupOrderScreenState extends State<JoinGroupOrderScreen> {
           : ListView(
               padding: const EdgeInsets.all(20),
               children: [
-                _buildGroupInfoCard(),
+                GroupInfoCard(
+                  invitationCode: widget.invitationCode,
+                  restaurant: widget.restaurant,
+                ),
                 const SizedBox(height: 20),
                 Text(
                   'Select delivery address',
@@ -246,7 +254,19 @@ class _JoinGroupOrderScreenState extends State<JoinGroupOrderScreen> {
                 if (_addresses.isEmpty)
                   _buildEmptyAddressState()
                 else
-                  ..._addresses.map(_buildAddressTile),
+                  ..._addresses.map(
+                    (address) => AddressTile(
+                      address: address,
+                      selectedAddress: _selectedAddress,
+                      isJoining: _isJoining,
+                      addressLabel: _addressLabel,
+                      onSelected: (address) {
+                        setState(() {
+                          _selectedAddress = address;
+                        });
+                      },
+                    ),
+                  ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
                   onPressed: _isJoining ? null : _pickAddressFromList,
@@ -289,53 +309,6 @@ class _JoinGroupOrderScreenState extends State<JoinGroupOrderScreen> {
     );
   }
 
-  Widget _buildGroupInfoCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFEEEEF2)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Group code',
-            style: TextStyle(
-              fontFamily: AppThemeData.medium,
-              color: AppThemeData.grey500,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.invitationCode,
-            style: TextStyle(
-              fontFamily: AppThemeData.extraBold,
-              color: AppThemeData.grey900,
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              letterSpacing: 1.2,
-            ),
-          ),
-          if (widget.restaurant?.title != null) ...[
-            const SizedBox(height: 12),
-            Text(
-              widget.restaurant!.title!,
-              style: TextStyle(
-                fontFamily: AppThemeData.semiBold,
-                color: AppThemeData.grey800,
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
   Widget _buildEmptyAddressState() {
     return Container(
       width: double.infinity,
@@ -347,7 +320,11 @@ class _JoinGroupOrderScreenState extends State<JoinGroupOrderScreen> {
       ),
       child: Column(
         children: [
-          Icon(Icons.location_off_outlined, color: AppThemeData.grey400, size: 36),
+          Icon(
+            Icons.location_off_outlined,
+            color: AppThemeData.grey400,
+            size: 36,
+          ),
           const SizedBox(height: 8),
           Text(
             'No delivery address found',
@@ -367,56 +344,6 @@ class _JoinGroupOrderScreenState extends State<JoinGroupOrderScreen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildAddressTile(ShippingAddress address) {
-    final selected = _selectedAddress?.id == address.id;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: _isJoining ? null : () => setState(() => _selectedAddress = address),
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: selected
-                    ? const Color(0xFFFF6B2C)
-                    : const Color(0xFFEEEEF2),
-                width: selected ? 1.5 : 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  selected
-                      ? Icons.radio_button_checked
-                      : Icons.radio_button_off,
-                  color: selected
-                      ? const Color(0xFFFF6B2C)
-                      : AppThemeData.grey400,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _addressLabel(address),
-                    style: TextStyle(
-                      fontFamily: AppThemeData.medium,
-                      color: AppThemeData.grey900,
-                      fontSize: 13.5,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

@@ -215,7 +215,8 @@ class GlobalSettingsProvider extends ChangeNotifier {
       log('[SETTINGS] ✅ FCM service JSON URL saved to cache');
     }
     // Inline service account JSON (when API returns it instead of URL)
-    final inlineJson = notificationSetting?['serviceAccountJson'] ??
+    final inlineJson =
+        notificationSetting?['serviceAccountJson'] ??
         notificationSetting?['service_account_json'];
     if (inlineJson != null) {
       String jsonStr = '';
@@ -225,10 +226,7 @@ class GlobalSettingsProvider extends ChangeNotifier {
         jsonStr = json.encode(inlineJson);
       }
       if (jsonStr.isNotEmpty && jsonStr.length > 100) {
-        await Preferences.setString(
-          Preferences.fcmServiceAccountJson,
-          jsonStr,
-        );
+        await Preferences.setString(Preferences.fcmServiceAccountJson, jsonStr);
         log('[SETTINGS] ✅ FCM service account JSON (inline) saved to cache');
       }
     }
@@ -301,7 +299,6 @@ class GlobalSettingsProvider extends ChangeNotifier {
         await AddressListProvider.getUserProfile(userId).then((value) {
           if (value != null) {
             UserModel driverUserModel = value;
-            driverUserModel.fcmToken = token;
             EditProfileProvider.updateUserStatic(driverUserModel);
           }
         });

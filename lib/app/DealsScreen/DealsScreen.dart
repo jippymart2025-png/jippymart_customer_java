@@ -10,7 +10,6 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/models/promotion_model.dart';
 import 'package:jippymart_customer/models/BannerModel.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
-import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
@@ -26,10 +25,7 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:jippymart_customer/services/cache_manager.dart';
 import 'package:jippymart_customer/services/api_queue_manager.dart';
-
-import '../../models/user_model.dart';
-import '../wallet_screen/provider/wallet_provider.dart';
-import '../wallet_screen/wallet_home_screen.dart';
+import '../../utils/utils/common.dart';
 import 'bannerdeals.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,23 +33,18 @@ import 'bannerdeals.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 abstract final class _C {
   static const Color brand = Color(0xFFD12477);
-  static const Color brandDark = Color(0xFFA81C5E);
   static const Color brandLight = Color(0xFFFCE8F3);
   static const Color surface = Color(0xFFFFFFFF);
   static const Color bg = Color(0xFFF5F0FA);
   static const Color border = Color(0xFFEEE8F8);
   static const Color text1 = Color(0xFF13111A);
-  static const Color text2 = Color(0xFF5A5668);
   static const Color text3 = Color(0xFF9B95A8);
   static const Color green = Color(0xFF1DB87A);
   static const Color red = Color(0xFFE84040);
-  static const Color amber = Color(0xFFF5A623);
   static const Color overlay = Color(0x55000000);
   static const Color closedPill = Color(0xCC000000);
 
   // Wallet badge
-  static const Color walletBg = Color(0xFFFFF7F0);
-  static const Color walletBorder = Color(0xFFFFE4C0);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -660,13 +651,7 @@ class _DealsScreenState extends State<DealsScreen>
     try {
       final url = '${AppConst.baseUrl}menu-items/banners/deals?zone_id=$zoneId';
       final res = await http
-          .get(
-            Uri.parse(url),
-            headers: const {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-            },
-          )
+          .get(Uri.parse(url), headers: await getHeaders())
           .timeout(_networkTimeout);
 
       if (res.statusCode == 200) {

@@ -169,7 +169,7 @@ class HomeProvider extends ChangeNotifier {
         })
         .catchError((error) {
           _initialLoadCompleter?.completeError(error);
-          print('[HOME_PROVIDER] Initial load error: $error');
+          debugPrint('[HOME_PROVIDER] Initial load error: $error');
         });
 
     return _initialLoadCompleter!.future;
@@ -226,11 +226,11 @@ class HomeProvider extends ChangeNotifier {
       // Initialize other providers in background
       _initializeBackgroundProviders();
 
-      print(
+      debugPrint(
         '[HOME_PROVIDER] Initial load completed in ${stopwatch.elapsedMilliseconds}ms',
       );
     } catch (e, stack) {
-      print('[HOME_PROVIDER] Error in initial load: $e\n$stack');
+      debugPrint('[HOME_PROVIDER] Error in initial load: $e\n$stack');
       ShowToastDialog.showToast(
         "Some data failed to load. Pull to refresh.".tr,
       );
@@ -425,7 +425,7 @@ class HomeProvider extends ChangeNotifier {
             'timestamp': DateTime.now().millisecondsSinceEpoch,
           });
         } catch (e) {
-          print('[HOME_PROVIDER] Error saving location: $e');
+          debugPrint('[HOME_PROVIDER] Error saving location: $e');
         }
       }
 
@@ -436,7 +436,7 @@ class HomeProvider extends ChangeNotifier {
       // Reload data with new location
       await _reloadDataAfterLocationChange(context);
 
-      print(
+      debugPrint(
         '[HOME_PROVIDER] Location change completed in ${stopwatch.elapsedMilliseconds}ms',
       );
 
@@ -449,7 +449,7 @@ class HomeProvider extends ChangeNotifier {
       }
       return true;
     } catch (e) {
-      print('[HOME_PROVIDER] Error changing location: $e');
+      debugPrint('[HOME_PROVIDER] Error changing location: $e');
       ShowToastDialog.showToast("Failed to update location".tr);
       return false;
     } finally {
@@ -470,7 +470,7 @@ class HomeProvider extends ChangeNotifier {
       // Reload categories
       await categoryViewProvider.loadVendorCategories();
     } catch (e) {
-      print('[HOME_PROVIDER] Error reloading data: $e');
+      debugPrint('[HOME_PROVIDER] Error reloading data: $e');
     } finally {
       isLoadingFunction(false);
     }
@@ -525,7 +525,7 @@ class HomeProvider extends ChangeNotifier {
         await _clearZoneState();
       }
     } catch (e) {
-      print('[HOME_PROVIDER] Error checking outlet service: $e');
+      debugPrint('[HOME_PROVIDER] Error checking outlet service: $e');
       await _clearZoneState();
     } finally {
       _removeLoadingTask('getZone');
@@ -592,7 +592,7 @@ class HomeProvider extends ChangeNotifier {
 
   Future<void> _loadOutletsIfCoordinatesAvailable() async {
     if (!_hasCoordinates() || Constant.isZoneAvailable != true) {
-      print(
+      debugPrint(
         '[HOME_PROVIDER] Service unavailable or no coordinates, skipping outlet load',
       );
       bestRestaurantProvider.isLoading = false;
@@ -602,7 +602,7 @@ class HomeProvider extends ChangeNotifier {
     try {
       await bestRestaurantProvider.loadRestaurantsAndRelatedData();
     } catch (e) {
-      print('[HOME_PROVIDER] Restaurant load error: $e');
+      debugPrint('[HOME_PROVIDER] Restaurant load error: $e');
     }
   }
 
@@ -634,7 +634,7 @@ class HomeProvider extends ChangeNotifier {
         });
       }
     } catch (e) {
-      print('[HOME_PROVIDER] Error clearing zone cache: $e');
+      debugPrint('[HOME_PROVIDER] Error clearing zone cache: $e');
     }
   }
 
@@ -677,7 +677,7 @@ class HomeProvider extends ChangeNotifier {
           _addToCache(cacheKeyMiddle, value);
         }),
       ], eagerError: true).catchError((e) {
-        print('[HOME_PROVIDER] Error loading banners: $e');
+        debugPrint('[HOME_PROVIDER] Error loading banners: $e');
       });
 
       // Start timers if banners are loaded
@@ -716,7 +716,7 @@ class HomeProvider extends ChangeNotifier {
       }
       return [];
     } catch (e) {
-      print('[HOME_PROVIDER] Error fetching banners: $e');
+      debugPrint('[HOME_PROVIDER] Error fetching banners: $e');
       return [];
     }
   }
@@ -796,7 +796,7 @@ class HomeProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
-      print('[HOME_PROVIDER] Error loading location from storage: $e');
+      debugPrint('[HOME_PROVIDER] Error loading location from storage: $e');
     }
     return null;
   }
@@ -844,7 +844,7 @@ class HomeProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
-      print('[HOME_PROVIDER] Error getting GPS location: $e');
+      debugPrint('[HOME_PROVIDER] Error getting GPS location: $e');
     }
   }
 
@@ -867,7 +867,7 @@ class HomeProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('[HOME_PROVIDER] Error loading user model: $e');
+      debugPrint('[HOME_PROVIDER] Error loading user model: $e');
     }
   }
 
@@ -893,7 +893,7 @@ class HomeProvider extends ChangeNotifier {
   Future<void> getRefresh(BuildContext context) async {
     isLoadingFunction(true);
 
-    print('[HOME_PROVIDER] 🔄 Starting refresh - clearing all caches...');
+    debugPrint('[HOME_PROVIDER] 🔄 Starting refresh - clearing all caches...');
 
     // Clear provider's internal cache
     _clearCache();
@@ -927,7 +927,7 @@ class HomeProvider extends ChangeNotifier {
       CacheManager().remove('promotions_$zoneId');
     }
 
-    print('[HOME_PROVIDER] ✅ Caches cleared, reloading data...');
+    debugPrint('[HOME_PROVIDER] ✅ Caches cleared, reloading data...');
 
     try {
       await Future.wait([
@@ -938,9 +938,9 @@ class HomeProvider extends ChangeNotifier {
         _loadOutletsIfCoordinatesAvailable(),
       ], eagerError: true);
 
-      print('[HOME_PROVIDER] ✅ Refresh completed successfully');
+      debugPrint('[HOME_PROVIDER] ✅ Refresh completed successfully');
     } catch (e) {
-      print('[HOME_PROVIDER] ❌ Refresh error: $e');
+      debugPrint('[HOME_PROVIDER] ❌ Refresh error: $e');
       ShowToastDialog.showToast("Refresh failed. Please try again.".tr);
     } finally {
       isLoadingFunction(false);
@@ -1000,7 +1000,7 @@ class HomeProvider extends ChangeNotifier {
 
   // Public method to ensure location and zone are checked synchronously
   Future<void> ensureLocationAndZoneChecked() async {
-    print('[HOME_PROVIDER] ensureLocationAndZoneChecked: Starting...');
+    debugPrint('[HOME_PROVIDER] ensureLocationAndZoneChecked: Starting...');
 
     // Set loading state
     isLoadingFunction(true);
@@ -1012,43 +1012,45 @@ class HomeProvider extends ChangeNotifier {
 
     try {
       // Step 1: Ensure user model is loaded
-      print('[HOME_PROVIDER] Step 1 - Loading user model...');
+      debugPrint('[HOME_PROVIDER] Step 1 - Loading user model...');
       await ensureUserModelIsLoaded().timeout(
         const Duration(seconds: 5),
         onTimeout: () {
-          print('[HOME_PROVIDER] User model load timed out');
+          debugPrint('[HOME_PROVIDER] User model load timed out');
         },
       );
 
       // Step 2: Ensure location is set
-      print('[HOME_PROVIDER] Step 2 - Setting location...');
+      debugPrint('[HOME_PROVIDER] Step 2 - Setting location...');
       await _ensureUserLocationIsSet().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          print('[HOME_PROVIDER] Location check timed out');
+          debugPrint('[HOME_PROVIDER] Location check timed out');
         },
       );
 
       // Step 3: Get zone for the location
       if (Constant.selectedLocation.location?.latitude != null &&
           Constant.selectedLocation.location!.latitude != 0.0) {
-        print('[HOME_PROVIDER] Step 3 - Getting zone...');
+        debugPrint('[HOME_PROVIDER] Step 3 - Getting zone...');
         try {
           await getZone().timeout(
             const Duration(seconds: 10),
             onTimeout: () {
-              print(
+              debugPrint(
                 '[HOME_PROVIDER] Zone check timed out, clearing zone state',
               );
               unawaited(_clearZoneState());
             },
           );
         } catch (e) {
-          print('[HOME_PROVIDER] Error getting zone: $e, clearing zone state');
+          debugPrint(
+            '[HOME_PROVIDER] Error getting zone: $e, clearing zone state',
+          );
           await _clearZoneState();
         }
       } else {
-        print('[HOME_PROVIDER] No valid location, clearing zone state');
+        debugPrint('[HOME_PROVIDER] No valid location, clearing zone state');
         await _clearZoneState();
       }
 
@@ -1059,15 +1061,15 @@ class HomeProvider extends ChangeNotifier {
       notifyListeners();
 
       // Reload banners with zone ID after zone check completes
-      print('[HOME_PROVIDER] Reloading banners with zone ID...');
+      debugPrint('[HOME_PROVIDER] Reloading banners with zone ID...');
       unawaited(_loadBanners());
 
-      print(
+      debugPrint(
         '[HOME_PROVIDER] ensureLocationAndZoneChecked: ✅ Completed in ${stopwatch.elapsedMilliseconds}ms. '
         'Zone: ${Constant.selectedZone?.id}, Available: ${Constant.isZoneAvailable}',
       );
     } catch (e) {
-      print('[HOME_PROVIDER] ensureLocationAndZoneChecked: ❌ Error - $e');
+      debugPrint('[HOME_PROVIDER] ensureLocationAndZoneChecked: ❌ Error - $e');
       await _clearZoneState();
 
       zoneCheckCompleted = true;
@@ -1112,26 +1114,26 @@ class HomeProvider extends ChangeNotifier {
         ),
       );
     } catch (e) {
-      print('[HOME_PROVIDER] Outlet service check failed: $e');
+      debugPrint('[HOME_PROVIDER] Outlet service check failed: $e');
       return null;
     }
   }
 
   static Future<String?> detectZoneId(double latitude, double longitude) async {
     try {
-      print('[ZONE_API] Detecting service for: $latitude, $longitude');
+      debugPrint('[ZONE_API] Detecting service for: $latitude, $longitude');
       final zoneModel = await getCurrentZone(latitude, longitude);
       if (zoneModel?.isZoneAvailable == true && zoneModel?.zone?.id != null) {
-        print('[ZONE_API] Service area id: ${zoneModel!.zone!.id}');
+        debugPrint('[ZONE_API] Service area id: ${zoneModel!.zone!.id}');
         return zoneModel.zone!.id;
       }
-      print('[ZONE_API] No service for coordinates');
+      debugPrint('[ZONE_API] No service for coordinates');
       return null;
     } on TimeoutException catch (e) {
-      print('[ZONE_API] Timeout detecting service area: $e');
+      debugPrint('[ZONE_API] Timeout detecting service area: $e');
       return null;
     } catch (e) {
-      print('[ZONE_API] Error detecting service area: $e');
+      debugPrint('[ZONE_API] Error detecting service area: $e');
       return null;
     }
   }

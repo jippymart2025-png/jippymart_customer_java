@@ -8,9 +8,10 @@ class AppThemeData {
   static const Color primary400 = Color(0xFFB24826);
   static const Color primary500 = Color(0xFF662713);
   static const Color primary600 = Color(0xFF1A0600);
-
+  static const Color primary1000 = Color(0xFFFF6B2C);
   static const Color surface = Color(0xFFF9FAFB);
   static const Color surfaceDark = Color(0xFF030712);
+  static const Color primary2000 = Color(0xFFFFCBA8);
 
   // Mart Home screen background color - reusable across all screens
   static const Color homeScreenBackground = Color(0xFFFAF9EE);

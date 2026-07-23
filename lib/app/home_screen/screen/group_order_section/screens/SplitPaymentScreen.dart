@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 
+import '../model/create_group_orders_model.dart';
 import 'OrderConfirmedScreen.dart';
-import 'create_group_orders_model.dart';
 
 class SplitPaymentScreen extends StatefulWidget {
   final double totalAmount;

@@ -273,7 +273,6 @@ class _RestaurantInboxScreenState extends State<RestaurantInboxScreen> {
           "customerId": customer.id,
           "customerProfileImage": customer.profilePictureURL,
           "restaurantProfileImage": vendorModel.photo,
-          "token": restaurantUser.fcmToken,
           "chatType": inboxModel.chatType,
         },
       );

@@ -3,9 +3,11 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/group_order_invitation_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/services/group_order_api_service.dart';
+import 'package:jippymart_customer/app/home_screen/screen/group_order_section/service/group_order_api_service.dart';
 import 'package:jippymart_customer/services/group_order_session.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
+
+import '../../../../Communityscreen/screens/community_home_screen.dart';
 
 import 'GroupOrderDashboardScreen.dart';
 import 'InviteFriendsScreen.dart';
@@ -91,4 +93,8 @@ Future<void> openGroupOrderFlow() async {
     ShowToastDialog.closeLoader();
     ShowToastDialog.showToast('Failed to load group order');
   }
+}
+
+Future<void> openHomeMadeMeals() async {
+  await Get.to(() => const CommunityHomeScreen());
 }

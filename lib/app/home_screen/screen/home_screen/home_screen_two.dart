@@ -1,13 +1,9 @@
-// home_screen_two.dart — Premium redesign (Swiggy-inspired, JippyMart branded)
-// All functionality preserved. Zero breaking changes to providers / models.
-
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/group_order_section/group_order_navigation.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/order_type_View.dart';
 import 'package:provider/provider.dart';
 
@@ -38,6 +34,7 @@ import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
 import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
 
+import '../group_order_section/screens/group_order_navigation.dart';
 import 'widgets/category_view_widget.dart';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -440,9 +437,7 @@ class _ordertypeSection extends StatelessWidget {
         const Padding(padding: EdgeInsets.fromLTRB(20, 0, 20, 12)),
         OrderOptionsView(
           onGroupOrderingTap: openGroupOrderFlow,
-          onHomeMadeMealsTap: () {
-            // TODO: navigate to Home Made Meals screen
-          },
+          onHomeMadeMealsTap: openHomeMadeMeals,
           onDineInTap: () {
             // TODO: navigate to Dine In screen
           },

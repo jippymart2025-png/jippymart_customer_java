@@ -157,7 +157,7 @@ class CartControllerProvider extends ChangeNotifier {
         if (paymentState == 'true') {
           final savedPaymentId = Preferences.getString(_paymentIdKey);
           if (savedPaymentId.isNotEmpty && !_isOrderBeingCreated) {
-            print(
+            debugPrint(
               '🔄 [PERIODIC_RETRY] Found pending payment, attempting to place order...',
             );
             await checkPendingPaymentAndPlaceOrder();
@@ -168,7 +168,7 @@ class CartControllerProvider extends ChangeNotifier {
           _pendingOrderRetryTimer = null;
         }
       } catch (e) {
-        print('❌ [PERIODIC_RETRY] Error in periodic retry: $e');
+        debugPrint('❌ [PERIODIC_RETRY] Error in periodic retry: $e');
       }
     });
   }
@@ -597,7 +597,7 @@ class CartControllerProvider extends ChangeNotifier {
       metric.duration = metric.endTime!.difference(metric.startTime);
 
       if (metric.duration!.inMilliseconds > 200) {
-        print(
+        debugPrint(
           '[PERFORMANCE] ⚠️ $operationId took ${metric.duration!.inMilliseconds}ms',
         );
       }
@@ -607,17 +607,17 @@ class CartControllerProvider extends ChangeNotifier {
   void logPerformance() {
     if (_performanceMetrics.isEmpty) return;
 
-    print('[PERFORMANCE] ==== METRICS REPORT ====');
+    debugPrint('[PERFORMANCE] ==== METRICS REPORT ====');
     _performanceMetrics.forEach((key, metric) {
       if (metric.duration != null) {
         final count = _operationCounts[key] ?? 1;
         final avgTime = metric.duration!.inMilliseconds / count;
-        print(
+        debugPrint(
           '[PERFORMANCE] $key: ${metric.duration!.inMilliseconds}ms (avg: ${avgTime.toStringAsFixed(1)}ms, count: $count)',
         );
       }
     });
-    print('[PERFORMANCE] ========================');
+    debugPrint('[PERFORMANCE] ========================');
   }
 
   void _startCleanupScheduler() {
@@ -688,7 +688,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
     }
 
-    print('[CLEANUP] ✅ Freed up resources');
+    debugPrint('[CLEANUP] ✅ Freed up resources');
   }
 
   void _startBatchUpdateScheduler() {
@@ -728,7 +728,7 @@ class CartControllerProvider extends ChangeNotifier {
       try {
         update();
       } catch (e) {
-        print('[PENDING_UPDATES] ❌ Error: $e');
+        debugPrint('[PENDING_UPDATES] ❌ Error: $e');
       }
     }
 
@@ -784,7 +784,7 @@ class CartControllerProvider extends ChangeNotifier {
           selectedAddress != null &&
           selectedAddress!.location?.latitude != null &&
           selectedAddress!.location?.longitude != null) {
-        print('[ADDRESS] ✅ Already initialized');
+        debugPrint('[ADDRESS] ✅ Already initialized');
         return;
       }
 
@@ -811,7 +811,7 @@ class CartControllerProvider extends ChangeNotifier {
         }
 
         notifyListeners();
-        print('[ADDRESS] ✅ Using home screen location');
+        debugPrint('[ADDRESS] ✅ Using home screen location');
         return;
       }
 
@@ -843,7 +843,7 @@ class CartControllerProvider extends ChangeNotifier {
         }
 
         notifyListeners();
-        print('[ADDRESS] ✅ Using saved address');
+        debugPrint('[ADDRESS] ✅ Using saved address');
         return;
       }
 
@@ -851,7 +851,7 @@ class CartControllerProvider extends ChangeNotifier {
       _addressInitialized = false;
       notifyListeners();
     } catch (e) {
-      print('[ADDRESS] ❌ Error: $e');
+      debugPrint('[ADDRESS] ❌ Error: $e');
       selectedAddress = null;
       _addressInitialized = false;
       notifyListeners();
@@ -909,7 +909,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
       return null;
     } catch (e) {
-      print('[CURRENT_ADDRESS] ❌ Error: $e');
+      debugPrint('[CURRENT_ADDRESS] ❌ Error: $e');
       return null;
     }
   }
@@ -938,7 +938,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
       return null;
     } catch (e) {
-      print('[ZONE_DETECTION] ❌ Error: $e');
+      debugPrint('[ZONE_DETECTION] ❌ Error: $e');
       return null;
     }
   }
@@ -1058,7 +1058,7 @@ class CartControllerProvider extends ChangeNotifier {
         timeout: const Duration(seconds: 5),
       );
     } catch (e) {
-      print('[CART_PRICE] ❌ Calculation failed: $e');
+      debugPrint('[CART_PRICE] ❌ Calculation failed: $e');
       // 🔑 OPTIMIZATION: Notify listeners even on error to update UI state
       notifyListeners();
       rethrow;
@@ -1080,7 +1080,7 @@ class CartControllerProvider extends ChangeNotifier {
         await _loadFreshRestaurantVendor(HomeProvider.cartItem.first.vendorID);
       }
     } catch (e) {
-      print('[CART_VENDOR] ⚠️ Error loading vendor for price: $e');
+      debugPrint('[CART_VENDOR] ⚠️ Error loading vendor for price: $e');
     }
   }
 
@@ -1274,7 +1274,7 @@ class CartControllerProvider extends ChangeNotifier {
       taxableDeliveryFee = originalDeliveryFee > 0
           ? originalDeliveryFee
           : (deliveryCharges > 0 ? deliveryCharges : 0.0);
-      print(
+      debugPrint(
         '[TAX_CALC] Promotional items - Using originalDeliveryFee: ₹$originalDeliveryFee for GST calculation',
       );
     } else {
@@ -1400,7 +1400,9 @@ class CartControllerProvider extends ChangeNotifier {
             (subTotal == 0.0 || totalAmount == 0.0));
 
     if (hasInvalidValues) {
-      print('[CALC_VALIDATION] ⚠️ Invalid values, restoring previous values');
+      debugPrint(
+        '[CALC_VALIDATION] ⚠️ Invalid values, restoring previous values',
+      );
       subTotal = previousSubTotal;
       totalAmount = previousTotalAmount;
       deliveryCharges = previousDeliveryCharges;
@@ -1496,7 +1498,7 @@ class CartControllerProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      print('[CART_CHECKOUT] Error: $e');
+      debugPrint('[CART_CHECKOUT] Error: $e');
       if (!silent) {
         ShowToastDialog.showToast('Failed to calculate checkout'.tr);
       }
@@ -1513,21 +1515,21 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> syncCartPricesInBackground() async {
     if (HomeProvider.cartItem.isEmpty) {
-      print('[PRICE_SYNC] Cart is empty, skipping sync');
+      debugPrint('[PRICE_SYNC] Cart is empty, skipping sync');
       return;
     }
 
     _startOperation('syncCartPrices');
 
     try {
-      print('[PRICE_SYNC] 🔄 Starting optimized price sync...');
+      debugPrint('[PRICE_SYNC] 🔄 Starting optimized price sync...');
 
       // 🔑 OPTIMIZATION: Skip if recently synced
       final lastSyncKey = 'last_full_sync';
       final lastSyncTime = _operationTimestamps[lastSyncKey];
       if (lastSyncTime != null &&
           DateTime.now().difference(lastSyncTime) < Duration(minutes: 1)) {
-        print('[PRICE_SYNC] ⏱️ Skipping - synced recently');
+        debugPrint('[PRICE_SYNC] ⏱️ Skipping - synced recently');
         _endOperation('syncCartPrices');
         return;
       }
@@ -1544,12 +1546,12 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       if (itemsToSync.isEmpty) {
-        print('[PRICE_SYNC] ℹ️ No items need syncing');
+        debugPrint('[PRICE_SYNC] ℹ️ No items need syncing');
         _endOperation('syncCartPrices');
         return;
       }
 
-      print('[PRICE_SYNC] 🔍 Syncing ${itemsToSync.length} items');
+      debugPrint('[PRICE_SYNC] 🔍 Syncing ${itemsToSync.length} items');
 
       // 🔑 OPTIMIZATION: Process in parallel batches
       final batchSize = 5;
@@ -1572,7 +1574,9 @@ class CartControllerProvider extends ChangeNotifier {
       // Process batches in parallel but with rate limiting
       for (int i = 0; i < batches.length; i++) {
         final batch = batches[i];
-        print('[PRICE_SYNC] 📦 Processing batch ${i + 1}/${batches.length}');
+        debugPrint(
+          '[PRICE_SYNC] 📦 Processing batch ${i + 1}/${batches.length}',
+        );
 
         try {
           final batchOutcome = await validateAndUpdateCartPricesForBatch(batch);
@@ -1606,7 +1610,7 @@ class CartControllerProvider extends ChangeNotifier {
                 prefetchedMart: prefetchedMart,
               );
 
-              print(
+              debugPrint(
                 '[PRICE_SYNC] ✅ Updated ${result.productName}: ₹${result.oldPrice} → ₹${result.newPrice}',
               );
             } else {
@@ -1616,7 +1620,7 @@ class CartControllerProvider extends ChangeNotifier {
               );
               if (persisted) {
                 variantMetaChanged = true;
-                print(
+                debugPrint(
                   '[PRICE_SYNC] ✅ Synced variant/option fields for ${result.productId}',
                 );
               }
@@ -1630,7 +1634,7 @@ class CartControllerProvider extends ChangeNotifier {
             await Future.delayed(const Duration(milliseconds: 60));
           }
         } catch (e) {
-          print('[PRICE_SYNC] ❌ Error in batch ${i + 1}: $e');
+          debugPrint('[PRICE_SYNC] ❌ Error in batch ${i + 1}: $e');
         }
       }
 
@@ -1639,12 +1643,14 @@ class CartControllerProvider extends ChangeNotifier {
 
       if (hasUpdates || variantMetaChanged) {
         if (hasUpdates) {
-          print(
+          debugPrint(
             '[PRICE_SYNC] ✅ Sync complete with ${allUpdates.length} line updates',
           );
         }
         if (variantMetaChanged && !hasUpdates) {
-          print('[PRICE_SYNC] ✅ Sync complete (variant/option metadata only)');
+          debugPrint(
+            '[PRICE_SYNC] ✅ Sync complete (variant/option metadata only)',
+          );
         }
 
         _priceSyncVersion++;
@@ -1659,11 +1665,11 @@ class CartControllerProvider extends ChangeNotifier {
           });
         }
       } else {
-        print('[PRICE_SYNC] ℹ️ No price changes detected');
+        debugPrint('[PRICE_SYNC] ℹ️ No price changes detected');
       }
     } catch (e, stackTrace) {
-      print('[PRICE_SYNC] ❌ Error: $e');
-      print('[PRICE_SYNC] Stack trace: $stackTrace');
+      debugPrint('[PRICE_SYNC] ❌ Error: $e');
+      debugPrint('[PRICE_SYNC] Stack trace: $stackTrace');
     } finally {
       _endOperation('syncCartPrices');
     }
@@ -1702,7 +1708,7 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('[PRICE_UPDATE_UI] ❌ Error showing notification: $e');
+      debugPrint('[PRICE_UPDATE_UI] ❌ Error showing notification: $e');
     }
   }
 
@@ -2081,7 +2087,7 @@ class CartControllerProvider extends ChangeNotifier {
         }),
       ]);
     } catch (e) {
-      print('[BATCH_VALIDATE] ❌ Prefetch failed: $e');
+      debugPrint('[BATCH_VALIDATE] ❌ Prefetch failed: $e');
       foodByCatalogId = {};
       martByLineId = {};
     }
@@ -2128,7 +2134,7 @@ class CartControllerProvider extends ChangeNotifier {
           foodByCatalogId[catalogId],
         );
       } catch (e) {
-        print('[BATCH_VALIDATE] ❌ Error validating ${cartItem.id}: $e');
+        debugPrint('[BATCH_VALIDATE] ❌ Error validating ${cartItem.id}: $e');
         return PriceUpdateResult(
           productId: cartItem.id!,
           status: PriceStatus.error,
@@ -2150,7 +2156,7 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('[BATCH_VALIDATE] ❌ Batch validation failed: $e');
+      debugPrint('[BATCH_VALIDATE] ❌ Batch validation failed: $e');
     }
 
     return (
@@ -2195,7 +2201,9 @@ class CartControllerProvider extends ChangeNotifier {
 
           if (attempts < maxAttempts) {
             await Future.delayed(const Duration(seconds: 2));
-            print('[PROFILE] 🔄 Wait completed, proceeding to next attempt');
+            debugPrint(
+              '[PROFILE] 🔄 Wait completed, proceeding to next attempt',
+            );
           }
         }
       }
@@ -2236,7 +2244,7 @@ class CartControllerProvider extends ChangeNotifier {
       //   if (!hasPhoneNumber) missingFields.add('Phone Number (min 10 digits)');
       //   if (!hasEmail) missingFields.add('Valid Email Address');
       //
-      //   print('[PROFILE] ⚠️ Missing fields: ${missingFields.join(', ')}');
+      //   debugPrint('[PROFILE] ⚠️ Missing fields: ${missingFields.join(', ')}');
       // }
 
       notifyListeners();
@@ -2258,35 +2266,35 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       final paymentId = response.paymentId;
       final signature = response.signature;
-      print("✅ [PAYMENT_SUCCESS] Payment received: $paymentId");
+      debugPrint("✅ [PAYMENT_SUCCESS] Payment received: $paymentId");
 
       if (paymentId == null || paymentId.isEmpty) {
-        print('❌ [PAYMENT_SUCCESS] Invalid payment ID, ignoring callback');
+        debugPrint('❌ [PAYMENT_SUCCESS] Invalid payment ID, ignoring callback');
         return;
       }
 
       if (_processedPaymentIds.contains(paymentId)) {
-        print(
+        debugPrint(
           '⚠️ [DUPLICATE_PREVENTION] Payment ID $paymentId already processed, ignoring duplicate callback',
         );
         return;
       }
 
       if (_isOrderBeingCreated) {
-        print(
+        debugPrint(
           '⚠️ [DUPLICATE_PREVENTION] Order is already being created, ignoring duplicate callback',
         );
         return;
       }
 
       if (isPaymentCompleted && _lastPaymentId == paymentId) {
-        print(
+        debugPrint(
           '⚠️ [DUPLICATE_PREVENTION] Payment already completed for ID $paymentId, ignoring duplicate callback',
         );
         return;
       }
 
-      print('✅ [PAYMENT_SUCCESS] Processing payment ID: $paymentId');
+      debugPrint('✅ [PAYMENT_SUCCESS] Processing payment ID: $paymentId');
 
       _processedPaymentIds.add(paymentId);
 
@@ -2315,7 +2323,7 @@ class CartControllerProvider extends ChangeNotifier {
       try {
         ShowToastDialog.showLoader("Placing your order...".tr);
       } catch (e) {
-        print(
+        debugPrint(
           '⚠️ [PAYMENT_SUCCESS] Could not show loader (app may be closing): $e',
         );
       }
@@ -2328,7 +2336,7 @@ class CartControllerProvider extends ChangeNotifier {
         notifyListeners();
         return;
       } catch (firstError) {
-        print(
+        debugPrint(
           '⚠️ [PAYMENT_SUCCESS] First order placement failed, starting background retries: $firstError',
         );
         try {
@@ -2341,8 +2349,8 @@ class CartControllerProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e, stackTrace) {
-      print('❌ [PAYMENT_SUCCESS] Exception in handlePaymentSuccess: $e');
-      print('❌ [PAYMENT_SUCCESS] Stack trace: $stackTrace');
+      debugPrint('❌ [PAYMENT_SUCCESS] Exception in handlePaymentSuccess: $e');
+      debugPrint('❌ [PAYMENT_SUCCESS] Stack trace: $stackTrace');
 
       // Use the unlock method instead of direct assignment
       _unlockGlobal();
@@ -2360,7 +2368,7 @@ class CartControllerProvider extends ChangeNotifier {
           "Payment processing failed. Please try again.".tr,
         );
       } catch (e) {
-        print(
+        debugPrint(
           '⚠️ [PAYMENT_SUCCESS] Could not show toast (app may be closing): $e',
         );
       }
@@ -2461,7 +2469,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Validate calculations
       if (subTotal <= 0 || subTotal.isNaN || subTotal.isInfinite) {
-        print('❌ [ORDER_VALIDATION] Invalid subTotal: $subTotal');
+        debugPrint('❌ [ORDER_VALIDATION] Invalid subTotal: $subTotal');
         ShowToastDialog.showToast(
           "Order calculation error. Please refresh and try again.".tr,
         );
@@ -2470,7 +2478,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       if (totalAmount <= 0 || totalAmount.isNaN || totalAmount.isInfinite) {
-        print('❌ [ORDER_VALIDATION] Invalid totalAmount: $totalAmount');
+        debugPrint('❌ [ORDER_VALIDATION] Invalid totalAmount: $totalAmount');
         ShowToastDialog.showToast(
           "Order total is invalid. Please refresh and try again.".tr,
         );
@@ -2508,7 +2516,7 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
       }
     } catch (e) {
-      print('❌ [PLACE_ORDER] Error: $e');
+      debugPrint('❌ [PLACE_ORDER] Error: $e');
 
       // 🔑 CRITICAL: Always clear processing flag on error
       endOrderProcessing();
@@ -2568,7 +2576,7 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.showLoader("Placing your order...".tr);
       await setOrder();
     } catch (e) {
-      print('❌ [COD_ORDER] Error: $e');
+      debugPrint('❌ [COD_ORDER] Error: $e');
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       ShowToastDialog.showToast("Failed to place order. Please try again.".tr);
@@ -2582,7 +2590,7 @@ class CartControllerProvider extends ChangeNotifier {
     _isOrderBeingCreated = false;
     _isGlobalLocked = false;
 
-    print('✅ [ORDER_PROCESSING] All flags reset');
+    debugPrint('✅ [ORDER_PROCESSING] All flags reset');
 
     notifyListeners();
   }
@@ -2601,7 +2609,7 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.showLoader("Processing your order...".tr);
       await placeOrderAfterPayment();
     } catch (e) {
-      print('❌ [RAZORPAY_ORDER] Error: $e');
+      debugPrint('❌ [RAZORPAY_ORDER] Error: $e');
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       ShowToastDialog.showToast(
@@ -2624,7 +2632,7 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.showLoader("Processing your order...".tr);
       await placeOrderAfterPayment();
     } catch (e) {
-      print('❌ [PAYTM_ORDER] Error: $e');
+      debugPrint('❌ [PAYTM_ORDER] Error: $e');
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       ShowToastDialog.showToast(
@@ -2645,7 +2653,7 @@ class CartControllerProvider extends ChangeNotifier {
         endOrderProcessing();
       }
     } catch (e) {
-      print('❌ [WALLET_ORDER] Error: $e');
+      debugPrint('❌ [WALLET_ORDER] Error: $e');
       ShowToastDialog.closeLoader();
       endOrderProcessing();
       ShowToastDialog.showToast("Failed to place order. Please try again.".tr);
@@ -2663,7 +2671,7 @@ class CartControllerProvider extends ChangeNotifier {
       _lockGlobal();
 
       if (!isPaymentCompleted || _lastPaymentId == null) {
-        print(
+        debugPrint(
           '❌ [ORDER_PLACEMENT] Payment validation failed - no valid payment found',
         );
         try {
@@ -2672,7 +2680,7 @@ class CartControllerProvider extends ChangeNotifier {
             "Payment validation failed. Please try again.".tr,
           );
         } catch (e) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_PLACEMENT] Could not show UI (app may be closing): $e',
           );
         }
@@ -2682,14 +2690,14 @@ class CartControllerProvider extends ChangeNotifier {
 
       // Check if order is already being created
       if (_isOrderBeingCreated || _isOrderCreationInProgress) {
-        print('⚠️ [ORDER_PLACEMENT] Order creation already in progress');
+        debugPrint('⚠️ [ORDER_PLACEMENT] Order creation already in progress');
         try {
           ShowToastDialog.closeLoader();
           ShowToastDialog.showToast(
             "Order is already being processed. Please wait...".tr,
           );
         } catch (e) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_PLACEMENT] Could not show UI (app may be closing): $e',
           );
         }
@@ -2698,20 +2706,20 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       _isOrderBeingCreated = true;
-      print(
+      debugPrint(
         '🚀 [ORDER_PLACEMENT] Starting IMMEDIATE order placement for payment: $_lastPaymentId',
       );
 
       // Validate cart items
       if (HomeProvider.cartItem.isEmpty) {
-        print('❌ [ORDER_PLACEMENT] Cart is empty');
+        debugPrint('❌ [ORDER_PLACEMENT] Cart is empty');
         try {
           ShowToastDialog.closeLoader();
           ShowToastDialog.showToast(
             "Your cart is empty. Please add items before placing order.".tr,
           );
         } catch (e) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_PLACEMENT] Could not show UI (app may be closing): $e',
           );
         }
@@ -2727,7 +2735,7 @@ class CartControllerProvider extends ChangeNotifier {
       try {
         ShowToastDialog.showLoader("Placing your order...".tr);
       } catch (e) {
-        print(
+        debugPrint(
           '⚠️ [ORDER_PLACEMENT] Could not show loader (app may be backgrounded): $e',
         );
         // Continue with order placement even if loader fails
@@ -2735,7 +2743,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       // 🔑 CRITICAL: Call the actual order creation immediately
       // This API call will execute even if app is in background
-      print(
+      debugPrint(
         '🌐 [ORDER_CREATION_FLOW] placeOrderAfterPayment → setOrder (payment_id=$_lastPaymentId)',
       );
       try {
@@ -2745,12 +2753,12 @@ class CartControllerProvider extends ChangeNotifier {
         // 🔑 CRITICAL: Clear persistent payment state after successful order placement
         // This ensures we don't retry placing the same order
         await _clearPersistentPaymentState();
-        print(
+        debugPrint(
           '✅ [ORDER_PLACEMENT] Order placed successfully. Persistent state cleared.',
         );
       } catch (orderError, orderStackTrace) {
-        print('❌ [ORDER_PLACEMENT] Error in setOrder: $orderError');
-        print('❌ [ORDER_PLACEMENT] Stack trace: $orderStackTrace');
+        debugPrint('❌ [ORDER_PLACEMENT] Error in setOrder: $orderError');
+        debugPrint('❌ [ORDER_PLACEMENT] Stack trace: $orderStackTrace');
 
         // Re-throw to be caught by retry mechanism
         rethrow;
@@ -2778,15 +2786,15 @@ class CartControllerProvider extends ChangeNotifier {
           );
         }
       } catch (uiError) {
-        print(
+        debugPrint(
           '⚠️ [ORDER_PLACEMENT] Could not show UI (app may be backgrounded): $uiError',
         );
         // Continue - order placement will retry automatically
       }
       endOrderProcessing();
       _unlockGlobal(); // Unlock on error
-      print('❌ [ORDER_PLACEMENT] Error in placeOrderAfterPayment: $e');
-      print('❌ [ORDER_PLACEMENT] Stack trace: $stackTrace');
+      debugPrint('❌ [ORDER_PLACEMENT] Error in placeOrderAfterPayment: $e');
+      debugPrint('❌ [ORDER_PLACEMENT] Stack trace: $stackTrace');
       rethrow;
     }
   }
@@ -2806,19 +2814,19 @@ class CartControllerProvider extends ChangeNotifier {
         'surge_fee': surgePercent,
         'admin_surge_fee': adminFee,
       };
-      print("billingPayload ${billingPayload} ");
+      debugPrint("billingPayload ${billingPayload} ");
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}order-billing'),
         headers: await getHeaders(),
         body: json.encode(billingPayload),
       );
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Order billing created successfully');
+        debugPrint('✅ Order billing created successfully');
       } else {
-        print('⚠️ Failed to create order billing: ${response.statusCode}');
+        debugPrint('⚠️ Failed to create order billing: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error creating order billing: $e');
+      debugPrint('❌ Error creating order billing: $e');
     }
   }
 
@@ -2857,7 +2865,9 @@ class CartControllerProvider extends ChangeNotifier {
         if (selectedPaymentMethod == PaymentGateway.cod.name &&
             !isCodEnabledForCurrentZone) {
           selectedPaymentMethod = '';
-          print('[PAYMENT_SETTINGS] COD is disabled, clearing COD selection');
+          debugPrint(
+            '[PAYMENT_SETTINGS] COD is disabled, clearing COD selection',
+          );
         }
 
         if (isCodEnabledForCurrentZone &&
@@ -2877,7 +2887,7 @@ class CartControllerProvider extends ChangeNotifier {
 
         checkAndUpdatePaymentMethod();
       } catch (e) {
-        print('[CART_PROVIDER] Error parsing payment settings: $e');
+        debugPrint('[CART_PROVIDER] Error parsing payment settings: $e');
         if (isRazorpayEnabledForCurrentZone) {
           selectedPaymentMethod = PaymentGateway.razorpay.name;
           _preInitializeRazorpay();
@@ -2885,7 +2895,7 @@ class CartControllerProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('[CART_PROVIDER] Error in getPaymentSettings: $e');
+      debugPrint('[CART_PROVIDER] Error in getPaymentSettings: $e');
       if (isRazorpayEnabledForCurrentZone) {
         selectedPaymentMethod = PaymentGateway.razorpay.name;
         _preInitializeRazorpay();
@@ -2998,14 +3008,14 @@ class CartControllerProvider extends ChangeNotifier {
         headers: await getHeaders(),
       );
 
-      print("getAdminSurgeFee ${response.body} ");
+      debugPrint("getAdminSurgeFee ${response.body} ");
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
 
         if (responseData['success'] == true) {
           final adminSurgeFee = responseData['data']['admin_surge_fee']
               .toString();
-          print("Admin Surge Fee: $adminSurgeFee");
+          debugPrint("Admin Surge Fee: $adminSurgeFee");
           return adminSurgeFee;
         } else {
           throw Exception("API returned unsuccessful response");
@@ -3182,7 +3192,7 @@ class CartControllerProvider extends ChangeNotifier {
           HomeProvider.cartItem[i] = cartItem;
         }
       } catch (e) {
-        print('[PRICE_SYNC] variant metadata sync error: $e');
+        debugPrint('[PRICE_SYNC] variant metadata sync error: $e');
       }
     }
     return anyChanged;
@@ -3274,7 +3284,7 @@ class CartControllerProvider extends ChangeNotifier {
         return double.tryParse(product.price ?? "0") ?? 0.0;
       }
     } catch (e) {
-      print('Error getting current product price: $e');
+      debugPrint('Error getting current product price: $e');
     }
 
     return 0.0;
@@ -3365,11 +3375,11 @@ class CartControllerProvider extends ChangeNotifier {
       await DatabaseHelper.instance.updateCartProduct(cartItem);
       HomeProvider.cartItem[cartItemIndex] = cartItem;
 
-      print(
+      debugPrint(
         '[PRICE_UPDATE] ✅ Updated ${result.productName ?? cartItem.name}: ₹${result.oldPrice ?? "N/A"} → ₹${result.newPrice ?? "N/A"}',
       );
     } catch (e) {
-      print('[PRICE_UPDATE] ❌ Error: $e');
+      debugPrint('[PRICE_UPDATE] ❌ Error: $e');
     }
   }
 
@@ -3395,9 +3405,9 @@ class CartControllerProvider extends ChangeNotifier {
       _priceSyncVersion++;
       notifyListeners();
 
-      print('[BATCH_UPDATE] ✅ Applied batch updates');
+      debugPrint('[BATCH_UPDATE] ✅ Applied batch updates');
     } catch (e) {
-      print('[BATCH_UPDATE] ❌ Error: $e');
+      debugPrint('[BATCH_UPDATE] ❌ Error: $e');
     }
   }
 
@@ -3457,7 +3467,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       unawaited(
         _loadNewProductsIncrementally().catchError((e) {
-          print('[CART_DATA] Error loading products: $e');
+          debugPrint('[CART_DATA] Error loading products: $e');
         }),
       );
 
@@ -3594,7 +3604,7 @@ class CartControllerProvider extends ChangeNotifier {
             _productCache[productId] = product;
           }
         } catch (e) {
-          print('[CART_PRODUCT] Error loading product $productId: $e');
+          debugPrint('[CART_PRODUCT] Error loading product $productId: $e');
           _productCache[productId] = null;
         }
       }).toList();
@@ -3603,7 +3613,7 @@ class CartControllerProvider extends ChangeNotifier {
       _productsLoaded = true;
       notifyListeners();
     } catch (e) {
-      print('[CART_PRODUCT] Error preloading products: $e');
+      debugPrint('[CART_PRODUCT] Error preloading products: $e');
     } finally {
       _isLoadingProducts = false;
       _endOperation('preloadCartProducts');
@@ -3680,12 +3690,12 @@ class CartControllerProvider extends ChangeNotifier {
       // Verify cart is actually empty
       final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
       if (remainingItems.isNotEmpty) {
-        print('[CLEAR_CART] ⚠️ Some items still remain in database');
+        debugPrint('[CLEAR_CART] ⚠️ Some items still remain in database');
       }
 
       notifyListeners();
     } catch (e) {
-      print('[CLEAR_CART] ❌ Error: $e');
+      debugPrint('[CLEAR_CART] ❌ Error: $e');
     } finally {
       _endOperation('clearCart');
     }
@@ -3729,7 +3739,9 @@ class CartControllerProvider extends ChangeNotifier {
           await initialLiseSurgeValue(homeLat, homeLng);
           await calculatePrice();
 
-          print('[CART_SYNC] ✅ Synced cart address with home screen location');
+          debugPrint(
+            '[CART_SYNC] ✅ Synced cart address with home screen location',
+          );
           notifyListeners();
         }
       } else if ((selectedAddress?.zoneId == null ||
@@ -3740,7 +3752,7 @@ class CartControllerProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('[CART_SYNC] ❌ Error syncing address with home location: $e');
+      debugPrint('[CART_SYNC] ❌ Error syncing address with home location: $e');
     } finally {
       _endOperation('syncAddressWithHomeLocation');
     }
@@ -3754,7 +3766,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (_lastPaymentTime != null) {
         final timeSincePayment = DateTime.now().difference(_lastPaymentTime!);
         if (timeSincePayment > paymentTimeout) {
-          print('🔑 Payment session expired, clearing state');
+          debugPrint('🔑 Payment session expired, clearing state');
           await _clearPersistentPaymentState();
           _resetPaymentState();
           ShowToastDialog.showToast(
@@ -3851,7 +3863,7 @@ class CartControllerProvider extends ChangeNotifier {
         barrierDismissible: false,
       );
     } catch (e) {
-      print('[PAYMENT_RECOVERY] ❌ Error: $e');
+      debugPrint('[PAYMENT_RECOVERY] ❌ Error: $e');
       await _clearPersistentPaymentState();
       _resetPaymentState();
     } finally {
@@ -3862,7 +3874,9 @@ class CartControllerProvider extends ChangeNotifier {
   // ============ LOAD COUPONS METHOD ============
   Future<void> _loadCoupons({required String restaurantId}) async {
     if (_isLoadingCoupons) {
-      print('[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...');
+      debugPrint(
+        '[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...',
+      );
       if (_couponLoadInFlight != null) {
         await _couponLoadInFlight;
       }
@@ -3870,7 +3884,7 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
-      print('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
+      debugPrint('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
       await _loadGlobalCouponsOnly();
       return;
     }
@@ -3882,7 +3896,7 @@ class CartControllerProvider extends ChangeNotifier {
 
     try {
       _detectCurrentContext();
-      print(
+      debugPrint(
         '[COUPON_LOAD] 🔍 Loading coupons for vendor: $restaurantId, Context: $_currentContext',
       );
 
@@ -3892,7 +3906,7 @@ class CartControllerProvider extends ChangeNotifier {
             ).timeout(
               const Duration(seconds: 10),
               onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
+                debugPrint('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
                 return <CouponModel>[];
               },
             )
@@ -3902,12 +3916,14 @@ class CartControllerProvider extends ChangeNotifier {
             ).timeout(
               const Duration(seconds: 10),
               onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out');
+                debugPrint(
+                  '[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out',
+                );
                 return <CouponModel>[];
               },
             );
 
-      print(
+      debugPrint(
         '[COUPON_LOAD] ✅ Received ${allCoupons.length} coupons from ${_currentContext} API',
       );
 
@@ -3946,7 +3962,7 @@ class CartControllerProvider extends ChangeNotifier {
             fallbackEnabled: true,
           );
 
-      print(
+      debugPrint(
         '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} coupons for context: $_currentContext',
       );
 
@@ -3959,7 +3975,7 @@ class CartControllerProvider extends ChangeNotifier {
       await _markUsedCoupons();
       notifyListeners();
     } on SocketException catch (e) {
-      print('[COUPON_LOAD] ❌ Connection error: $e');
+      debugPrint('[COUPON_LOAD] ❌ Connection error: $e');
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
@@ -3971,7 +3987,7 @@ class CartControllerProvider extends ChangeNotifier {
         notifyListeners();
       }
     } on http.ClientException catch (e) {
-      print('[COUPON_LOAD] ❌ ClientException: $e');
+      debugPrint('[COUPON_LOAD] ❌ ClientException: $e');
       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
         couponList = _cachedCouponList!;
         allCouponList = _cachedCouponList!;
@@ -3983,11 +3999,11 @@ class CartControllerProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('[COUPON_LOAD] ❌ Error loading coupons: $e');
+      debugPrint('[COUPON_LOAD] ❌ Error loading coupons: $e');
       final errorString = e.toString();
       if (errorString.contains('429') ||
           errorString.contains('Status code: 429')) {
-        print('[COUPON_LOAD] ⚠️ Rate limit (429) - using cached coupons');
+        debugPrint('[COUPON_LOAD] ⚠️ Rate limit (429) - using cached coupons');
         if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
           couponList = _cachedCouponList!;
           allCouponList = _cachedCouponList!;
@@ -4024,7 +4040,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _loadGlobalCouponsOnly() async {
     if (_isLoadingCoupons) {
-      print(
+      debugPrint(
         '[COUPON_LOAD] ⚠️ Global coupon load already in progress, skipping...',
       );
       if (_couponLoadInFlight != null) {
@@ -4051,13 +4067,17 @@ class CartControllerProvider extends ChangeNotifier {
 
     try {
       _detectCurrentContext();
-      print('[COUPON_LOAD] 🔍 Global coupon load - Context: $_currentContext');
+      debugPrint(
+        '[COUPON_LOAD] 🔍 Global coupon load - Context: $_currentContext',
+      );
 
       final globalCoupons = _currentContext == "mart"
           ? await RestaurantApiHelper.getMartCoupons(restaurantId: '').timeout(
               const Duration(seconds: 10),
               onTimeout: () {
-                print('[COUPON_LOAD] ⏱️ Global mart coupon API call timed out');
+                debugPrint(
+                  '[COUPON_LOAD] ⏱️ Global mart coupon API call timed out',
+                );
                 return <CouponModel>[];
               },
             )
@@ -4067,7 +4087,7 @@ class CartControllerProvider extends ChangeNotifier {
             ).timeout(
               const Duration(seconds: 10),
               onTimeout: () {
-                print(
+                debugPrint(
                   '[COUPON_LOAD] ⏱️ Global restaurant coupon API call timed out',
                 );
                 return <CouponModel>[];
@@ -7831,8 +7851,6 @@ class CartControllerProvider extends ChangeNotifier {
             }
             return;
           }
-
-          fcmToken = user.fcmToken?.trim() ?? '';
         }
 
         if (fcmToken.isEmpty) {
@@ -8345,7 +8363,6 @@ class CartControllerProvider extends ChangeNotifier {
                 }
                 return;
               }
-              fcmToken = value.fcmToken?.trim() ?? '';
             }
             if (fcmToken.isEmpty) {
               if (kDebugMode) {

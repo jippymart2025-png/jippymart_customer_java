@@ -79,7 +79,7 @@ class BestRestaurantProvider extends ChangeNotifier {
   }
 
   Future<void> _loadRestaurantsAndRelatedDataImpl({String? filter}) async {
-    print('[DEBUG] Loading restaurants from API with filter: $filter');
+    debugPrint('[DEBUG] Loading restaurants from API with filter: $filter');
     final String? zoneId = Constant.selectedZone?.id;
     final double latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
     final double longitude =
@@ -87,7 +87,9 @@ class BestRestaurantProvider extends ChangeNotifier {
     final hasLocation = latitude != 0.0 && longitude != 0.0;
 
     if (!hasLocation && (zoneId == null || zoneId.isEmpty)) {
-      print('[DEBUG] No location or zone available, skipping restaurant fetch');
+      debugPrint(
+        '[DEBUG] No location or zone available, skipping restaurant fetch',
+      );
       isLoading = false;
       notifyListeners();
       return;
@@ -108,7 +110,7 @@ class BestRestaurantProvider extends ChangeNotifier {
 
       applyRestaurants(restaurants, zoneId: zoneId);
     } catch (e) {
-      print('[DEBUG] Error fetching restaurants from API: $e');
+      debugPrint('[DEBUG] Error fetching restaurants from API: $e');
       isLoading = false;
       notifyListeners();
     }
@@ -133,7 +135,7 @@ class BestRestaurantProvider extends ChangeNotifier {
           _scheduleNotify();
         })
         .catchError((e) {
-          print('[DEBUG] Error in distance processing: $e');
+          debugPrint('[DEBUG] Error in distance processing: $e');
           _scheduleNotify();
         });
 
@@ -143,15 +145,15 @@ class BestRestaurantProvider extends ChangeNotifier {
         _scheduleNotify();
       });
       _storiesLoadingTask?.catchError((e) {
-        print('[DEBUG] Error in background story load: $e');
+        debugPrint('[DEBUG] Error in background story load: $e');
       });
 
-      _relatedDataLoadingTask =
-          _loadRelatedDataInParallel(allNearestRestaurant).then((_) {
+      _relatedDataLoadingTask = _loadRelatedDataInParallel(allNearestRestaurant)
+          .then((_) {
             _scheduleNotify();
           });
       _relatedDataLoadingTask?.catchError((e) {
-        print('[DEBUG] Error in background related-data load: $e');
+        debugPrint('[DEBUG] Error in background related-data load: $e');
       });
     }
   }
@@ -159,7 +161,7 @@ class BestRestaurantProvider extends ChangeNotifier {
   // Load stories from API with cache only
   Future<void> _loadStoriesFromAPI(String zoneId) async {
     try {
-      print('[DEBUG] Loading stories from API for zone: $zoneId');
+      debugPrint('[DEBUG] Loading stories from API for zone: $zoneId');
       final storiesKey = 'stories_$zoneId';
       final stories = await CacheManager().getOrSet<List<StoryModel>>(
         storiesKey,
@@ -168,10 +170,10 @@ class BestRestaurantProvider extends ChangeNotifier {
       );
       storyList.clear();
       storyList.addAll(stories);
-      print('[DEBUG] Stories loaded from API: ${storyList.length}');
-      print('[DEBUG] Story enable setting: ${Constant.storyEnable}');
+      debugPrint('[DEBUG] Stories loaded from API: ${storyList.length}');
+      debugPrint('[DEBUG] Story enable setting: ${Constant.storyEnable}');
     } catch (e) {
-      print('[DEBUG] Error loading stories from API: $e');
+      debugPrint('[DEBUG] Error loading stories from API: $e');
     }
   }
 
@@ -185,7 +187,7 @@ class BestRestaurantProvider extends ChangeNotifier {
       String url = '${AppConst.baseUrl}stories?zone_id=$zoneId';
       final uri = Uri.parse(url);
 
-      print('[STORY_API] Fetching stories from: $uri');
+      debugPrint('[STORY_API] Fetching stories from: $uri');
 
       final response = await http
           .get(uri, headers: headers)
@@ -193,7 +195,7 @@ class BestRestaurantProvider extends ChangeNotifier {
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
-        print('[STORY_API] Response: ${response.body}');
+        debugPrint('[STORY_API] Response: ${response.body}');
 
         if (jsonResponse['success'] == true) {
           List<dynamic> data = jsonResponse['data'];
@@ -201,21 +203,23 @@ class BestRestaurantProvider extends ChangeNotifier {
               .map((item) => StoryModel.fromJson(item))
               .toList();
 
-          print('[STORY_API] Stories fetched successfully: ${stories.length}');
+          debugPrint(
+            '[STORY_API] Stories fetched successfully: ${stories.length}',
+          );
           return stories;
         } else {
-          print('[STORY_API] API returned success: false');
+          debugPrint('[STORY_API] API returned success: false');
           return [];
         }
       } else {
-        print('[STORY_API] HTTP error: ${response.statusCode}');
+        debugPrint('[STORY_API] HTTP error: ${response.statusCode}');
         throw Exception('Failed to load stories: ${response.statusCode}');
       }
     } on TimeoutException catch (e) {
-      print('[STORY_API] Timeout fetching stories: $e');
+      debugPrint('[STORY_API] Timeout fetching stories: $e');
       return [];
     } catch (e) {
-      print('[STORY_API] Error fetching stories: $e');
+      debugPrint('[STORY_API] Error fetching stories: $e');
       rethrow;
     }
   }
@@ -253,7 +257,7 @@ class BestRestaurantProvider extends ChangeNotifier {
                 couponRestaurantList.add(restaurant);
               }
             }
-            print('[DEBUG] Coupons loaded: ${couponList.length}');
+            debugPrint('[DEBUG] Coupons loaded: ${couponList.length}');
           }),
     );
 
@@ -275,7 +279,7 @@ class BestRestaurantProvider extends ChangeNotifier {
                   advertisementList.add(ad);
                 }
               }
-              print(
+              debugPrint(
                 '[DEBUG] Advertisements loaded: ${advertisementList.length}',
               );
             }),
@@ -283,7 +287,7 @@ class BestRestaurantProvider extends ChangeNotifier {
     }
 
     await Future.wait(futures);
-    print('[DEBUG] All related data loaded');
+    debugPrint('[DEBUG] All related data loaded');
   }
 
   // Get best restaurants from nearby outlets endpoint
@@ -308,12 +312,14 @@ class BestRestaurantProvider extends ChangeNotifier {
 
   // Process restaurant data (only calculate distances, no sorting since API handles it)
   Future<void> _processRestaurantData(List<VendorModel> restaurants) async {
-    print('[DEBUG] Processing restaurant data - calculating distances only');
+    debugPrint(
+      '[DEBUG] Processing restaurant data - calculating distances only',
+    );
 
     // Calculate distances in batches
     await _calculateDistancesInBatches(restaurants);
 
-    print('[DEBUG] Restaurant data processing completed');
+    debugPrint('[DEBUG] Restaurant data processing completed');
   }
 
   Future<void> _calculateDistancesInBatches(List<VendorModel> vendors) async {
@@ -344,23 +350,23 @@ class BestRestaurantProvider extends ChangeNotifier {
   }
 
   void logRestaurantDiagnostics() {
-    print('\n🔍 RESTAURANT VISIBILITY DIAGNOSTICS:');
-    print('📋 Zone Available: ${Constant.isZoneAvailable}');
-    print(
+    debugPrint('\n🔍 RESTAURANT VISIBILITY DIAGNOSTICS:');
+    debugPrint('📋 Zone Available: ${Constant.isZoneAvailable}');
+    debugPrint(
       '📍 Selected Zone: ${Constant.selectedZone?.name ?? "None"} (ID: ${Constant.selectedZone?.id ?? "None"})',
     );
-    print(
+    debugPrint(
       '🌍 User Location: ${Constant.selectedLocation.location?.latitude}, ${Constant.selectedLocation.location?.longitude}',
     );
-    print('📏 Search Radius: ${Constant.radius}km');
-    print('🏪 Total Restaurants: ${allNearestRestaurant.length}');
-    print('🍽️ Popular Restaurants: ${popularRestaurantList.length}');
-    print('🆕 New Arrivals: ${newArrivalRestaurantList.length}');
-    print('📖 Stories Available: ${storyList.length}');
-    print('💳 Subscription Model: ${Constant.isSubscriptionModelApplied}');
-    print('🔍 Available Filters: $availableFilters');
-    print('🔍 Current Filter: $currentFilter');
-    print('🔍 END RESTAURANT DIAGNOSTICS\n');
+    debugPrint('📏 Search Radius: ${Constant.radius}km');
+    debugPrint('🏪 Total Restaurants: ${allNearestRestaurant.length}');
+    debugPrint('🍽️ Popular Restaurants: ${popularRestaurantList.length}');
+    debugPrint('🆕 New Arrivals: ${newArrivalRestaurantList.length}');
+    debugPrint('📖 Stories Available: ${storyList.length}');
+    debugPrint('💳 Subscription Model: ${Constant.isSubscriptionModelApplied}');
+    debugPrint('🔍 Available Filters: $availableFilters');
+    debugPrint('🔍 Current Filter: $currentFilter');
+    debugPrint('🔍 END RESTAURANT DIAGNOSTICS\n');
   }
 
   // Method to apply filter and reload data

@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 
-import '../../../../../order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
-import 'create_group_orders_model.dart';
+import '../../../../order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
+import '../model/create_group_orders_model.dart';
 
 class OrderConfirmedScreen extends StatelessWidget {
   const OrderConfirmedScreen({super.key});

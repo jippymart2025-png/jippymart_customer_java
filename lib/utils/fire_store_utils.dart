@@ -332,7 +332,7 @@ class FireStoreUtils {
           _lastPaymentSettingsZoneId = normalizedZoneId;
         }
       } catch (e) {
-        print('Error fetching payment settings: $e');
+        debugPrint('Error fetching payment settings: $e');
       } finally {
         _paymentSettingsInFlight = null;
       }
@@ -579,7 +579,7 @@ class FireStoreUtils {
                       vendorModel.subscriptionPlan != null) {
                     if (vendorModel.subscriptionTotalOrders == "-1") {
                       vendorList.add(vendorModel);
-                      print(
+                      debugPrint(
                         '[DEBUG] Restaurant added (unlimited subscription): ${vendorModel.title}',
                       );
                     } else {
@@ -594,21 +594,21 @@ class FireStoreUtils {
                           if (vendorModel.vType == null ||
                               vendorModel.vType!.toLowerCase() != 'mart') {
                             vendorList.add(vendorModel);
-                            print(
+                            debugPrint(
                               '[DEBUG] Restaurant added (valid subscription): ${vendorModel.title}',
                             );
                           } else {
-                            print(
+                            debugPrint(
                               '[DEBUG] Mart vendor excluded from FOOD category: ${vendorModel.title}',
                             );
                           }
                         } else {
-                          print(
+                          debugPrint(
                             '[DEBUG] Restaurant filtered out (subscription orders exhausted): ${vendorModel.title}',
                           );
                         }
                       } else {
-                        print(
+                        debugPrint(
                           '[DEBUG] Restaurant filtered out (subscription expired): ${vendorModel.title}',
                         );
                       }
@@ -618,49 +618,53 @@ class FireStoreUtils {
                     if (vendorModel.vType == null ||
                         vendorModel.vType!.toLowerCase() != 'mart') {
                       vendorList.add(vendorModel);
-                      print(
+                      debugPrint(
                         '[DEBUG] Restaurant added (no subscription filter): ${vendorModel.title}',
                       );
                     } else {
-                      print(
+                      debugPrint(
                         '[DEBUG] Mart vendor excluded from FOOD category: ${vendorModel.title}',
                       );
                     }
                   }
                 } else {
-                  print(
+                  debugPrint(
                     '[DEBUG] Restaurant filtered out (distance $distance km > radius ${Constant.radius} km): ${vendorModel.title}',
                   );
                 }
               } catch (e) {
-                print('[DEBUG] Error parsing restaurant data: $e');
+                debugPrint('[DEBUG] Error parsing restaurant data: $e');
               }
             }
 
-            print(
+            debugPrint(
               '[DEBUG] getAllNearestRestaurant: Final result: ${vendorList.length} restaurants after filtering',
             );
             getNearestVendorController!.sink.add(vendorList);
           } else {
-            print('[DEBUG] API returned success: false');
+            debugPrint('[DEBUG] API returned success: false');
             getNearestVendorController!.sink.add([]);
           }
         } else {
-          print('[DEBUG] API call failed with status: ${response.statusCode}');
+          debugPrint(
+            '[DEBUG] API call failed with status: ${response.statusCode}',
+          );
           getNearestVendorController!.sink.add([]);
         }
       } catch (e) {
-        print('[DEBUG] API call error: $e');
+        debugPrint('[DEBUG] API call error: $e');
         getNearestVendorController!.sink.add([]);
       }
 
       yield* getNearestVendorController!.stream;
     } catch (e) {
-      print('[DEBUG] getAllNearestRestaurant: Error in main try block: $e');
+      debugPrint(
+        '[DEBUG] getAllNearestRestaurant: Error in main try block: $e',
+      );
 
       // **FALLBACK: Try to load restaurants without zone filtering if main query fails**
       try {
-        print(
+        debugPrint(
           '[DEBUG] getAllNearestRestaurant: Attempting fallback query without zone filtering',
         );
         List<VendorModel> fallbackVendorList = [];
@@ -679,7 +683,7 @@ class FireStoreUtils {
 
           if (fallbackData['success'] == true) {
             final List<dynamic> fallbackRestaurants = fallbackData['data'];
-            print(
+            debugPrint(
               '[DEBUG] getAllNearestRestaurant: Fallback query found ${fallbackRestaurants.length} restaurants',
             );
 
@@ -693,16 +697,18 @@ class FireStoreUtils {
                     vendorModel.vType!.toLowerCase() != 'mart') {
                   fallbackVendorList.add(vendorModel);
                 } else {
-                  print(
+                  debugPrint(
                     '[DEBUG] Mart vendor excluded from fallback FOOD category: ${vendorModel.title}',
                   );
                 }
               } catch (e) {
-                print('[DEBUG] Error parsing fallback restaurant data: $e');
+                debugPrint(
+                  '[DEBUG] Error parsing fallback restaurant data: $e',
+                );
               }
             }
 
-            print(
+            debugPrint(
               '[DEBUG] getAllNearestRestaurant: Fallback result: ${fallbackVendorList.length} restaurants',
             );
             getNearestVendorController!.sink.add(fallbackVendorList);
@@ -710,7 +716,7 @@ class FireStoreUtils {
           }
         }
       } catch (fallbackError) {
-        print(
+        debugPrint(
           '[DEBUG] getAllNearestRestaurant: Fallback query also failed: $fallbackError',
         );
         getNearestVendorController!.sink.add([]);
@@ -789,7 +795,7 @@ class FireStoreUtils {
     // Fast validation with early return
     if (!_isValidProductId(productId)) {
       if (kDebugMode) {
-        print('[PRODUCT_API] Invalid product ID: "$productId"');
+        debugPrint('[PRODUCT_API] Invalid product ID: "$productId"');
       }
       return null;
     }
@@ -833,7 +839,9 @@ class FireStoreUtils {
     } catch (error, stackTrace) {
       // Enhanced error handling
       if (kDebugMode) {
-        print('[PRODUCT_API] Failed to fetch product $normalizedId: $error');
+        debugPrint(
+          '[PRODUCT_API] Failed to fetch product $normalizedId: $error',
+        );
         // Optionally log stack trace in debug mode
       }
 
@@ -956,7 +964,7 @@ class FireStoreUtils {
   //   bool forceRefresh = false,
   // }) async {
   //   if (productId.isEmpty || productId == 'null' || productId.trim().isEmpty) {
-  //     print('[PRODUCT_API] Invalid product ID provided: "$productId"');
+  //     debugPrint('[PRODUCT_API] Invalid product ID provided: "$productId"');
   //     return null;
   //   }
   //   if (!forceRefresh) {
@@ -1001,18 +1009,18 @@ class FireStoreUtils {
           }
         } else if (response.statusCode == 429) {
           if (attempt < maxRetries) {
-            print(
+            debugPrint(
               '[PRODUCT_API] Rate limited (429), retrying in ${retryDelay.inSeconds}s (attempt $attempt/$maxRetries)',
             );
             await Future.delayed(retryDelay * attempt); // Exponential backoff
             continue;
           } else {
-            print(
+            debugPrint(
               '[PRODUCT_API] Rate limited (429) after $maxRetries attempts, productId=$productId',
             );
           }
         } else {
-          print(
+          debugPrint(
             '[PRODUCT_API] getProductById failed '
             'status=${response.statusCode} productId=$productId',
           );
@@ -1020,7 +1028,7 @@ class FireStoreUtils {
           return null;
         }
       } on TimeoutException {
-        print(
+        debugPrint(
           '[PRODUCT_API] Timeout fetching product $productId (attempt $attempt/$maxRetries)',
         );
         if (attempt < maxRetries) {
@@ -1028,7 +1036,7 @@ class FireStoreUtils {
           continue;
         }
       } catch (e, s) {
-        print('[PRODUCT_API] Error fetching product $productId: $e');
+        debugPrint('[PRODUCT_API] Error fetching product $productId: $e');
         if (attempt < maxRetries) {
           await Future.delayed(retryDelay);
           continue;
@@ -1086,11 +1094,11 @@ class FireStoreUtils {
   // }
 
   static Future<List<TaxModel>?> getTaxList() async {
-    print(" getTaxList ");
+    debugPrint(" getTaxList ");
     List<TaxModel> taxList = [];
     if (Constant.selectedLocation.location?.latitude == null ||
         Constant.selectedLocation.location?.longitude == null) {
-      print('[API_UTILS] Location not available for tax calculation');
+      debugPrint('[API_UTILS] Location not available for tax calculation');
       return taxList;
     }
     try {
@@ -1099,7 +1107,7 @@ class FireStoreUtils {
         Constant.selectedLocation.location!.longitude!,
       );
       if (placeMarks.isEmpty) {
-        print('[API_UTILS] No placemarks found for coordinates');
+        debugPrint('[API_UTILS] No placemarks found for coordinates');
         return taxList;
       }
       final response = await http.get(
@@ -1121,13 +1129,13 @@ class FireStoreUtils {
             }
           }
         } else {
-          print('[API_UTILS] API returned unsuccessful response');
+          debugPrint('[API_UTILS] API returned unsuccessful response');
         }
       } else {
-        print('[API_UTILS] HTTP error: ${response.statusCode}');
+        debugPrint('[API_UTILS] HTTP error: ${response.statusCode}');
       }
     } catch (e) {
-      print('[API_UTILS] Error getting tax list: $e');
+      debugPrint('[API_UTILS] Error getting tax list: $e');
     }
     return taxList;
   }
@@ -1135,7 +1143,7 @@ class FireStoreUtils {
   static Future<bool> setProduct(ProductModel orderModel) async {
     try {
       final url = "${AppConst.baseUrl}firestore/setProduct?id=${orderModel.id}";
-      print("setProduct $url");
+      debugPrint("setProduct $url");
       final body = jsonEncode(orderModel.toJson());
       final response = await http.post(
         Uri.parse(url),
@@ -1145,11 +1153,11 @@ class FireStoreUtils {
       if (response.statusCode == 200 || response.statusCode == 201) {
         return true;
       } else {
-        print("❌ Failed: ${response.body}");
+        debugPrint("❌ Failed: ${response.body}");
         return false;
       }
     } catch (e) {
-      print("❌ Error: $e");
+      debugPrint("❌ Error: $e");
       return false;
     }
   }
@@ -1168,11 +1176,11 @@ class FireStoreUtils {
   //     currentUid = await SqlStorageConst.getFirebaseId();
   //   }
   //   if (kDebugMode) {
-  //     print('getAllOrder: userId=$currentUid');
+  //     debugPrint('getAllOrder: userId=$currentUid');
   //   }
   //   if (currentUid == null || currentUid.isEmpty) {
   //     if (kDebugMode) {
-  //       print('getAllOrder: No user ID found, returning empty list');
+  //       debugPrint('getAllOrder: No user ID found, returning empty list');
   //     }
   //     return list;
   //   }
@@ -1188,13 +1196,13 @@ class FireStoreUtils {
   //     }
   //   } catch (e, st) {
   //     if (kDebugMode) {
-  //       print('getAllOrder error: $e');
+  //       debugPrint('getAllOrder error: $e');
   //       dev.log('getAllOrder stack: $st');
   //     }
   //   }
   //
   //   if (kDebugMode) {
-  //     print('getAllOrder: Returning ${list.length} orders');
+  //     debugPrint('getAllOrder: Returning ${list.length} orders');
   //   }
   //   return list;
   // }
@@ -1335,11 +1343,11 @@ class FireStoreUtils {
     try {
       final uri = Uri.parse('${AppConst.baseUrl}mobile/orders');
       if (kDebugMode) {
-        print('getAllOrder: mobile/orders URL: $uri');
+        debugPrint('getAllOrder: mobile/orders URL: $uri');
       }
       final response = await http.get(uri, headers: await getHeaders());
       if (kDebugMode) {
-        print('getAllOrder: mobile/orders status: ${response.statusCode}');
+        debugPrint('getAllOrder: mobile/orders status: ${response.statusCode}');
       }
       if (response.statusCode != 200) return list;
 
@@ -1356,7 +1364,9 @@ class FireStoreUtils {
       }
 
       if (kDebugMode) {
-        print('getAllOrder: mobile/orders raw count: ${ordersData.length}');
+        debugPrint(
+          'getAllOrder: mobile/orders raw count: ${ordersData.length}',
+        );
       }
 
       for (var raw in ordersData) {
@@ -1370,7 +1380,7 @@ class FireStoreUtils {
           list.add(orderModel);
         } catch (e) {
           if (kDebugMode) {
-            print('getAllOrder: Skip order parse error: $e');
+            debugPrint('getAllOrder: Skip order parse error: $e');
           }
         }
       }
@@ -1379,7 +1389,7 @@ class FireStoreUtils {
       list.sort((a, b) => b.createdAt!.compareTo(a.createdAt!));
     } catch (e) {
       if (kDebugMode) {
-        print('getAllOrder: mobile/orders error: $e');
+        debugPrint('getAllOrder: mobile/orders error: $e');
       }
     }
     return list;
@@ -1703,7 +1713,7 @@ class FireStoreUtils {
         );
       }
     } catch (e) {
-      print('Error fetching email template: $e');
+      debugPrint('Error fetching email template: $e');
       return null;
     }
   }
@@ -1982,8 +1992,10 @@ class FireStoreUtils {
         Uri.parse('${AppConst.baseUrl}vendor/$vendorId/reviews'),
         headers: await getHeaders(),
       );
-      print("getVendorReviews ${AppConst.baseUrl}vendor/$vendorId/reviews)}");
-      print("getVendorReviews " + response.body);
+      debugPrint(
+        "getVendorReviews ${AppConst.baseUrl}vendor/$vendorId/reviews)}",
+      );
+      debugPrint("getVendorReviews " + response.body);
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
@@ -2026,10 +2038,10 @@ class FireStoreUtils {
           return RatingModel.fromJson(responseData['data']);
         }
       } else {
-        print('API Error: ${response.statusCode} - ${response.body}');
+        debugPrint('API Error: ${response.statusCode} - ${response.body}');
       }
     } catch (error) {
-      print('Error fetching reviews: $error');
+      debugPrint('Error fetching reviews: $error');
     }
     return null;
   }
@@ -2049,12 +2061,12 @@ class FireStoreUtils {
           return Map<String, dynamic>.from(responseData['data'] as Map);
         }
       } else {
-        print(
+        debugPrint(
           'getReviewEligibility API Error: ${response.statusCode} - ${response.body}',
         );
       }
     } catch (e) {
-      print('Error fetching review eligibility: $e');
+      debugPrint('Error fetching review eligibility: $e');
     }
     return null;
   }
@@ -2098,12 +2110,12 @@ class FireStoreUtils {
         return true;
       }
 
-      print(
+      debugPrint(
         'submitOrderReview API Error: ${response.statusCode} - ${response.body}',
       );
       return false;
     } catch (e) {
-      print('Error submitting order review: $e');
+      debugPrint('Error submitting order review: $e');
       return false;
     }
   }
@@ -2150,11 +2162,11 @@ class FireStoreUtils {
         }
       } else {
         // Handle different status codes
-        print('API Error: ${response.statusCode}');
+        debugPrint('API Error: ${response.statusCode}');
         return null;
       }
     } catch (e) {
-      print('Error fetching review attribute: $e');
+      debugPrint('Error fetching review attribute: $e');
       return null;
     }
   }
@@ -2162,7 +2174,7 @@ class FireStoreUtils {
   static Future<bool?> setRatingModel(RatingModel ratingModel) async {
     bool isAdded = false;
     try {
-      print("setRatingModel ${ratingModel.toJson()} ");
+      debugPrint("setRatingModel ${ratingModel.toJson()} ");
       final response = await http.post(
         Uri.parse('${AppConst.baseUrl}firestore/ratings'),
         headers: await getHeaders(),
@@ -2172,11 +2184,11 @@ class FireStoreUtils {
         isAdded = true;
       } else {
         isAdded = false;
-        print('Error: ${response.statusCode} - ${response.body}');
+        debugPrint('Error: ${response.statusCode} - ${response.body}');
       }
     } catch (error) {
       isAdded = false;
-      print('Exception: $error');
+      debugPrint('Exception: $error');
     }
 
     return isAdded;
@@ -2219,7 +2231,7 @@ class FireStoreUtils {
               }
             } catch (e) {
               // Handle individual advertisement parsing errors
-              print('Error parsing advertisement: $e');
+              debugPrint('Error parsing advertisement: $e');
             }
           }
 
@@ -2235,7 +2247,7 @@ class FireStoreUtils {
         );
       }
     } catch (error) {
-      print('Error fetching advertisements: $error');
+      debugPrint('Error fetching advertisements: $error');
       return []; // Return empty list on error, similar to your catchError
     }
   }
@@ -2321,7 +2333,7 @@ class FireStoreUtils {
                 'is_available_now': 1,
               });
             } catch (e) {
-              print('Error parsing promotion: $e');
+              debugPrint('Error parsing promotion: $e');
             }
           }
 
@@ -2333,7 +2345,7 @@ class FireStoreUtils {
         throw Exception('HTTP ${response.statusCode}');
       }
     } catch (e) {
-      print('Error fetching promotions: $e');
+      debugPrint('Error fetching promotions: $e');
       return [];
     }
   }
@@ -2346,7 +2358,9 @@ class FireStoreUtils {
     try {
       // Only make API call if both IDs are provided and not empty
       if (productId.isEmpty || restaurantId.isEmpty) {
-        print('[DEBUG] Skipping API call - productId or restaurantId is empty');
+        debugPrint(
+          '[DEBUG] Skipping API call - productId or restaurantId is empty',
+        );
         return [];
       }
 
@@ -2354,15 +2368,15 @@ class FireStoreUtils {
           '${AppConst.baseUrl}firestore/promotions/by-product?'
           'product_id=$productId&'
           'restaurant_id=$restaurantId';
-      print('fetchActivePromotions: $apiUrl');
+      debugPrint('fetchActivePromotions: $apiUrl');
       // Make API call
       final response = await http.get(
         Uri.parse(apiUrl),
         headers: await getHeaders(),
       );
 
-      print('[DEBUG] API Response Status: ${response.statusCode}');
-      print('[DEBUG] API Response Body: ${response.body}');
+      debugPrint('[DEBUG] API Response Status: ${response.statusCode}');
+      debugPrint('[DEBUG] API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -2407,7 +2421,7 @@ class FireStoreUtils {
                   endTime.compareTo(Timestamp.now()) >= 0;
             }
 
-            print(
+            debugPrint(
               '[DEBUG] Promotion for product ${promo['product_id']}: active=$isActive, available=${processedPromotion['isAvailable']}',
             );
 
@@ -2416,25 +2430,29 @@ class FireStoreUtils {
             }
           }
 
-          print('[DEBUG] Found ${activePromotions.length} active promotions');
-          print('[DEBUG] ===== ULTRA-FAST API FETCH COMPLETE =====');
+          debugPrint(
+            '[DEBUG] Found ${activePromotions.length} active promotions',
+          );
+          debugPrint('[DEBUG] ===== ULTRA-FAST API FETCH COMPLETE =====');
 
           return activePromotions;
         } else {
-          print(
+          debugPrint(
             '[DEBUG] API returned unsuccessful response: ${responseData['message'] ?? 'Unknown error'}',
           );
           return [];
         }
       } else if (response.statusCode == 404) {
-        print('[DEBUG] No promotion found (404) for product $productId');
+        debugPrint('[DEBUG] No promotion found (404) for product $productId');
         return [];
       } else {
-        print('[DEBUG] API Error: ${response.statusCode} - ${response.body}');
+        debugPrint(
+          '[DEBUG] API Error: ${response.statusCode} - ${response.body}',
+        );
         return [];
       }
     } catch (e) {
-      print('[DEBUG] ERROR in ultra-fast API fetch: $e');
+      debugPrint('[DEBUG] ERROR in ultra-fast API fetch: $e');
       return [];
     }
   }
@@ -2448,7 +2466,7 @@ class FireStoreUtils {
         final dateTime = DateTime.parse(timestamp);
         return Timestamp.fromDate(dateTime);
       } catch (e) {
-        print('[DEBUG] Error parsing timestamp: $e');
+        debugPrint('[DEBUG] Error parsing timestamp: $e');
         return null;
       }
     }
@@ -2477,7 +2495,7 @@ class FireStoreUtils {
 
   static Future<List<ProductModel>> getAllProductsInZone({int? limit}) async {
     try {
-      print(
+      debugPrint(
         "🔍 Fetching products from API for zone: ${Constant.selectedZone?.name}",
       );
 
@@ -2514,24 +2532,24 @@ class FireStoreUtils {
               ProductModel product = ProductModel.fromApiJson(productData);
               productList.add(product);
             } catch (e) {
-              print('❌ Error parsing product ${productData['id']}: $e');
+              debugPrint('❌ Error parsing product ${productData['id']}: $e');
             }
           }
 
-          print('✅ Loaded ${productList.length} products from API');
+          debugPrint('✅ Loaded ${productList.length} products from API');
           return productList;
         } else {
-          print('❌ API returned error: ${responseData['message']}');
+          debugPrint('❌ API returned error: ${responseData['message']}');
           return [];
         }
       } else {
-        print('❌ HTTP error ${response.statusCode}: ${response.body}');
+        debugPrint('❌ HTTP error ${response.statusCode}: ${response.body}');
         return [];
       }
     } catch (e) {
-      print('❌ Error loading products from API: $e');
+      debugPrint('❌ Error loading products from API: $e');
       if (e.toString().contains('OutOfMemoryError')) {
-        print(
+        debugPrint(
           '🚨 OutOfMemoryError detected! Returning empty list to prevent crash.',
         );
       }
@@ -2551,17 +2569,17 @@ class FireStoreUtils {
   //           .collection(CollectionName.vendors)
   //           .where('zoneId', isEqualTo: Constant.selectedZone!.id.toString())
   //           .limit(safeLimit);
-  //       print(
+  //       debugPrint(
   //         '🔍 Loading vendors from zone: ${Constant.selectedZone!.name} (${Constant.selectedZone!.id})',
   //       );
   //     } else {
   //       query = FirebaseFirestore.instance
   //           .collection(CollectionName.vendors)
   //           .limit(safeLimit);
-  //       print('🔍 No zone selected, loading all vendors');
+  //       debugPrint('🔍 No zone selected, loading all vendors');
   //     }
   //     QuerySnapshot querySnapshot = await query.get();
-  //     print(
+  //     debugPrint(
   //       '🔍 Found ${querySnapshot.docs.length} vendors in Firestore (limited to $safeLimit for memory safety)',
   //     );
   //     for (var document in querySnapshot.docs) {
@@ -2573,18 +2591,18 @@ class FireStoreUtils {
   //             vendorModel.vType!.toLowerCase() != 'mart') {
   //           vendorList.add(vendorModel);
   //         } else {
-  //           print('🔍 Mart vendor excluded from search: ${vendorModel.title}');
+  //           debugPrint('🔍 Mart vendor excluded from search: ${vendorModel.title}');
   //         }
   //       } catch (e) {
-  //         print('❌ Error parsing vendor ${document.id}: $e');
+  //         debugPrint('❌ Error parsing vendor ${document.id}: $e');
   //       }
   //     }
-  //     print('✅ Loaded ${vendorList.length} vendors for search');
+  //     debugPrint('✅ Loaded ${vendorList.length} vendors for search');
   //     return vendorList;
   //   } catch (e) {
-  //     print('❌ Error loading all vendors: $e');
+  //     debugPrint('❌ Error loading all vendors: $e');
   //     if (e.toString().contains('OutOfMemoryError')) {
-  //       print(
+  //       debugPrint(
   //         '🚨 OutOfMemoryError detected! Returning empty list to prevent crash.',
   //       );
   //     }
@@ -2608,7 +2626,7 @@ class FireStoreUtils {
         queryParams['limit'] = limit.toString();
       }
       final Uri uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
-      print('🌐 Fetching products from API: $uri');
+      debugPrint('🌐 Fetching products from API: $uri');
       // Make API request
       final response = await http
           .get(uri, headers: await getHeaders())
@@ -2621,7 +2639,7 @@ class FireStoreUtils {
           final List<dynamic> productsJson = responseData['data'];
           final Map<String, dynamic> meta = responseData['meta'];
 
-          print(
+          debugPrint(
             '📊 API Response: Loaded ${productsJson.length} products (Page $page of ${meta['last_page']}, Total: ${meta['total']})',
           );
 
@@ -2631,31 +2649,31 @@ class FireStoreUtils {
               ProductModel productModel = ProductModel.fromJson(productJson);
               productList.add(productModel);
             } catch (e) {
-              print('❌ Error parsing product ${productJson['id']}: $e');
+              debugPrint('❌ Error parsing product ${productJson['id']}: $e');
             }
           }
 
-          print(
+          debugPrint(
             '✅ Successfully loaded ${productList.length} products from API',
           );
           return productList;
         } else {
-          print('❌ API returned error: ${responseData['message']}');
+          debugPrint('❌ API returned error: ${responseData['message']}');
           return [];
         }
       } else {
-        print(
+        debugPrint(
           '❌ HTTP Error: ${response.statusCode} - ${response.reasonPhrase}',
         );
         return [];
       }
     } catch (e) {
-      print('❌ Error loading products from API: $e');
+      debugPrint('❌ Error loading products from API: $e');
 
       if (e is http.ClientException) {
-        print('🌐 Network error: ${e.message}');
+        debugPrint('🌐 Network error: ${e.message}');
       } else if (e is TimeoutException) {
-        print('⏰ Request timeout');
+        debugPrint('⏰ Request timeout');
       }
 
       return [];
@@ -2683,7 +2701,7 @@ class FireStoreUtils {
         "Healthy",
       ];
     } catch (e) {
-      print('❌ Error loading trending searches: $e');
+      debugPrint('❌ Error loading trending searches: $e');
       return [];
     }
   }

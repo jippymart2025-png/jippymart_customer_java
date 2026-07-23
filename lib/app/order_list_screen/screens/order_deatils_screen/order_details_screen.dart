@@ -1489,7 +1489,6 @@ class OrderDetailsScreen extends StatelessWidget {
             "customerId": customer.id,
             "customerProfileImage": customer.profilePictureURL,
             "restaurantProfileImage": otherUser.profilePictureURL,
-            "token": otherUser.fcmToken,
             "chatType": isDriver ? "Driver" : "restaurant",
           },
         );

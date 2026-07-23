@@ -812,7 +812,6 @@ class _ProfileScreenState extends State<ProfileScreen>
         positiveString: 'Log out'.tr,
         negativeString: 'Cancel'.tr,
         positiveClick: () async {
-          Constant.userModel!.fcmToken = '';
           await EditProfileProvider.updateUserStatic(Constant.userModel!);
           Constant.userModel = null;
           FireStoreUtils.backendUserId = null;

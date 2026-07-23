@@ -16,7 +16,7 @@ import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/services/cart_api_service.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
-import 'package:jippymart_customer/services/group_order_api_service.dart';
+import 'package:jippymart_customer/app/home_screen/screen/group_order_section/service/group_order_api_service.dart';
 import 'package:jippymart_customer/services/group_order_session.dart';
 import 'package:jippymart_customer/services/promotional_cache_service.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
@@ -393,6 +393,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   int currentPage = 0;
   int selectedCategoryIndex = 0;
   int quantity = 1;
+  int _cartSyncVersion = 0;
 
   // Data collections with initial empty lists
   VendorModel vendorModel = VendorModel();
@@ -1239,6 +1240,19 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     _cartSubscription = cartProvider.cartStream.listen((event) {
       HomeProvider.cartItem.clear();
       HomeProvider.cartItem.addAll(event);
+
+      // Rebuild _serverCartQuantities from local cart so changes from
+      // other screens (e.g. cart screen removal) are reflected immediately.
+      _serverCartQuantities.clear();
+      for (final item in event) {
+        final id = (item.id ?? '').split('~').first;
+        if (id.isEmpty) continue;
+        final qty = item.quantity ?? 0;
+        if (qty > 0) {
+          _serverCartQuantities[id] = (_serverCartQuantities[id] ?? 0) + qty;
+        }
+      }
+
       notifyListeners();
     });
 
@@ -1246,6 +1260,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   Future<void> _syncServerCart() async {
+    final version = ++_cartSyncVersion;
+
     try {
       final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
       if (!isLoggedIn) {
@@ -1259,6 +1275,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       final cart = await CartApiService.getCart(customerId);
       if (cart == null) return;
 
+      // Ignore stale responses
+      if (version != _cartSyncVersion) return;
+
       _serverCartQuantities
         ..clear()
         ..addEntries(
@@ -1266,9 +1285,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
             (item) => MapEntry(item.productId.toString(), item.quantity),
           ),
         );
+
       notifyListeners();
     } catch (e) {
-      print('[RestaurantDetails] _syncServerCart error: $e');
+      debugPrint('_syncServerCart: $e');
     }
   }
 
@@ -1344,21 +1364,28 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   int productQuantityInCart(String productId) {
     if (productId.isEmpty) return 0;
+
     if (isGroupOrderMode) {
       return GroupOrderSession.instance.quantityFor(productId);
     }
 
     final baseId = productId.split('~').first;
-    final serverQty = _serverCartQuantities[baseId];
-    if (serverQty != null) return serverQty;
 
-    return HomeProvider.cartItem
+    // Local cart quantity (UI source of truth)
+    final localQty = HomeProvider.cartItem
         .where(
           (item) =>
               item.id != null &&
               (item.id == productId || item.id!.startsWith('$productId~')),
         )
         .fold<int>(0, (sum, item) => sum + (item.quantity ?? 0));
+
+    if (localQty > 0) {
+      return localQty;
+    }
+
+    // Fallback to server cart
+    return _serverCartQuantities[baseId] ?? 0;
   }
 
   bool isProductInCart(String productId) =>
@@ -1462,6 +1489,15 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     final productId = productModel.id?.toString() ?? '';
     final vendorId = vendorModel.id?.toString() ?? '';
 
+    // Optimistically update UI before the API round-trip
+    final baseId = productId.split('~').first;
+    final previousQty = _serverCartQuantities[baseId];
+    if (quantity <= 0) {
+      _serverCartQuantities.remove(baseId);
+    } else {
+      _serverCartQuantities[baseId] = quantity;
+    }
+
     // Check promotion limits for increment
     if (isIncrement) {
       final cacheKey = '$productId-$vendorId';
@@ -1476,6 +1512,13 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           quantity,
         );
         if (!isAllowed) {
+          // Revert optimistic update
+          if (previousQty != null) {
+            _serverCartQuantities[baseId] = previousQty;
+          } else {
+            _serverCartQuantities.remove(baseId);
+          }
+          notifyListeners();
           final limit = getPromotionalItemLimit(productId, vendorId);
           ShowToastDialog.showToast(
             "Maximum $limit items allowed for this promotional offer".tr,
@@ -1558,11 +1601,18 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       );
 
       if (!apiSuccess) {
+        // Revert optimistic update on failure
+        if (previousQty != null) {
+          _serverCartQuantities[baseId] = previousQty;
+        } else {
+          _serverCartQuantities.remove(baseId);
+        }
+        notifyListeners();
         ShowToastDialog.showToast('Failed to update cart'.tr);
         return;
       }
 
-      await _syncServerCart();
+      Future.microtask(_syncServerCart);
 
       if (isIncrement) {
         ShowToastDialog.showToast('Item added to cart'.tr);

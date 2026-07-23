@@ -246,7 +246,6 @@ class _DriverInboxScreenState extends State<DriverInboxScreen> {
                           "customerProfileImage": customer?.profilePictureURL,
                           "restaurantProfileImage":
                               restaurantUser.profilePictureURL,
-                          "token": restaurantUser.fcmToken,
                           "chatType": inboxModel.chatType,
                         },
                       );

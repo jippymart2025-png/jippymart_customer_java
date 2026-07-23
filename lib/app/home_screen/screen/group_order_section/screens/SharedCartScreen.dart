@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/models/group_order_checkout_model.dart';
-import 'package:jippymart_customer/services/group_order_api_service.dart';
+import 'package:jippymart_customer/app/home_screen/screen/group_order_section/service/group_order_api_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 
 import 'SplitPaymentScreen.dart';
@@ -76,17 +76,20 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
     final rows = _rows;
     final itemCount = checkout?.totalProductCount ?? 0;
     final memberCount = checkout?.memberCount ?? 0;
-    final deliveryTotal = checkout?.deliveryCheckOutItems.fold<double>(
+    final deliveryTotal =
+        checkout?.deliveryCheckOutItems.fold<double>(
           0,
           (sum, item) => sum + item.totalDeliveryCharge,
         ) ??
         0;
-    final foodTax = checkout?.deliveryCheckOutItems.fold<double>(
+    final foodTax =
+        checkout?.deliveryCheckOutItems.fold<double>(
           0,
           (sum, item) => sum + item.foodTax,
         ) ??
         0;
-    final itemsSubtotal = checkout?.deliveryCheckOutItems.fold<double>(
+    final itemsSubtotal =
+        checkout?.deliveryCheckOutItems.fold<double>(
           0,
           (sum, item) => sum + item.itemsTotal,
         ) ??
@@ -95,7 +98,8 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
     final surgeFee = checkout?.surgeFee ?? 0;
     final packagingFee = checkout?.packagingFee ?? 0;
     final taxes = foodTax + platformFee + surgeFee + packagingFee;
-    final total = checkout?.totalNetAmount ?? (itemsSubtotal + deliveryTotal + taxes);
+    final total =
+        checkout?.totalNetAmount ?? (itemsSubtotal + deliveryTotal + taxes);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -218,7 +222,9 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
                 Container(
                   padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
                   decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: AppThemeData.grey100)),
+                    border: Border(
+                      top: BorderSide(color: AppThemeData.grey100),
+                    ),
                   ),
                   child: Column(
                     children: [
