@@ -6,7 +6,6 @@ import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaura
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_product_details_view.dart';
 import 'package:jippymart_customer/constant/constant.dart' show Constant;
 import 'package:jippymart_customer/models/product_model.dart';
-import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
@@ -18,106 +17,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-
 import '../../../constant/show_toast_dialog.dart';
+import '../../../themes/responsive.dart';
 import '../provider/PromotionIndicator.dart';
-
-// ── Responsive sizing helper ───────────────────────────────────────
-class _RS {
-  final double sw;
-  final double sh;
-
-  const _RS({required this.sw, required this.sh});
-
-  bool get isSmall => sw < 360;
-
-  bool get isLarge => sw >= 600;
-
-  // ── Grid ──────────────────────────────────────────────────────
-  // FIXED: Always 2 columns for phones (< 600), 3 for tablets (>= 600)
-  int get gridCols {
-    if (sw >= 600) return 3; // tablets
-    return 2; // ALL phones — 2 columns always
-  }
-
-  double get gridSpacing => isSmall ? 8.0 : 10.0;
-
-  // FIXED: Lower ratio = taller card = no overflow
-  // Width of each card = (screenWidth - hPad*2 - spacing) / 2
-  // We need enough height for: image(1.2 ratio) + veg label + name + price + rating + button + padding
-  // Using 0.72 gives ~40% more height than width → plenty of room
-  double get gridAspectRatio {
-    if (sw >= 600) return 0.78; // tablets
-    if (sw < 360) return 0.68; // small phones — extra tall
-    return 0.68; // all normal phones (Android + iPhone)
-  }
-
-  // Padding
-  double get hPad => isSmall ? 10.0 : (isLarge ? 16.0 : 12.0);
-
-  double get itemPad => isSmall ? 6.0 : (isLarge ? 10.0 : 8.0);
-
-  // Font sizes — slightly larger now that we have 2 cols
-  double get categoryFontSize => isSmall ? 16.0 : (isLarge ? 20.0 : 18.0);
-
-  double get labelFontSize => isSmall ? 9.0 : (isLarge ? 11.0 : 10.0);
-
-  double get nameFontSize => isSmall ? 12.0 : (isLarge ? 14.0 : 13.0);
-
-  double get priceFontSize => isSmall ? 12.0 : (isLarge ? 14.0 : 13.0);
-
-  double get strikethroughFontSize => isSmall ? 10.0 : (isLarge ? 12.0 : 11.0);
-
-  double get ratingFontSize => isSmall ? 11.0 : (isLarge ? 13.0 : 12.0);
-
-  double get unavailableFontSize => isSmall ? 9.0 : (isLarge ? 11.0 : 10.0);
-
-  double get btnFontSize => isSmall ? 13.0 : (isLarge ? 15.0 : 14.0);
-
-  double get btnIconSize => isSmall ? 15.0 : (isLarge ? 19.0 : 17.0);
-
-  double get qtyFontSize => isSmall ? 13.0 : (isLarge ? 15.0 : 14.0);
-
-  double get ratingIconSize => isSmall ? 13.0 : (isLarge ? 17.0 : 15.0);
-
-  // Spacing
-  double get labelGap => isSmall ? 3.0 : 4.0;
-
-  double get nameGap => isSmall ? 1.0 : 2.0;
-
-  double get ratingGap => isSmall ? 2.0 : 3.0;
-
-  double get unavailableTopPad => isSmall ? 1.0 : 2.0;
-
-  // Button — taller now we have room
-  double get btnHeight => isSmall ? 30.0 : (isLarge ? 36.0 : 32.0);
-
-  double get btnRadius => isSmall ? 8.0 : 10.0;
-
-  double get btnInnerPad => isSmall ? 6.0 : 8.0;
-
-  double get qtyHPad => isSmall ? 10.0 : 14.0;
-
-  // Favorite icon
-  double get favIconPos => isSmall ? 6.0 : 8.0;
-
-  // No-products
-  double get emptyVPad => isSmall ? 40.0 : (isLarge ? 80.0 : 60.0);
-
-  double get emptyHPad => isSmall ? 16.0 : (isLarge ? 24.0 : 20.0);
-
-  double get emptyIconSize => isSmall ? 60.0 : (isLarge ? 100.0 : 80.0);
-
-  double get emptyTitleSize => isSmall ? 16.0 : (isLarge ? 20.0 : 18.0);
-
-  double get emptySubSize => isSmall ? 12.0 : (isLarge ? 16.0 : 14.0);
-
-  double get emptyTitleGap => isSmall ? 16.0 : (isLarge ? 24.0 : 20.0);
-
-  double get emptySubGap => isSmall ? 8.0 : (isLarge ? 12.0 : 10.0);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 
 class ProductListView extends StatelessWidget {
   const ProductListView({super.key});
@@ -125,7 +27,7 @@ class ProductListView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final rs = _RS(sw: size.width, sh: size.height);
+    final rs = RS(sw: size.width, sh: size.height);
 
     return Consumer<RestaurantDetailsProvider>(
       builder: (context, controller, _) {
@@ -178,7 +80,7 @@ class ProductListView extends StatelessWidget {
     VendorCategoryModel vendorCategoryModel,
     int index,
     RestaurantDetailsProvider controller,
-    _RS rs,
+    RS rs,
     String categoryKey,
   ) {
     final globalKey = controller.categoryKeys[categoryKey];
@@ -211,7 +113,7 @@ class ProductListView extends StatelessWidget {
     VendorCategoryModel vendorCategoryModel,
     BuildContext context,
     RestaurantDetailsProvider controller,
-    _RS rs,
+    RS rs,
   ) {
     final products = controller.getProductsByCategory(
       vendorCategoryModel.categoryId.toString(),
@@ -254,7 +156,7 @@ class ProductListView extends StatelessWidget {
     VendorCategoryModel vendorCategoryModel,
     int index,
     RestaurantDetailsProvider controller,
-    _RS rs,
+    RS rs,
   ) {
     final isItemAvailable = productModel.isAvailable ?? true;
 
@@ -575,7 +477,7 @@ class _PriceText extends StatelessWidget {
 class _PromoPriceRow extends StatelessWidget {
   final String promoPrice;
   final String originalPrice;
-  final _RS rs;
+  final RS rs;
 
   const _PromoPriceRow({
     required this.promoPrice,
@@ -624,7 +526,7 @@ class _PromoPriceRow extends StatelessWidget {
 class _DiscountPriceRow extends StatelessWidget {
   final String discountPrice;
   final String originalPrice;
-  final _RS rs;
+  final RS rs;
 
   const _DiscountPriceRow({
     required this.discountPrice,
@@ -674,7 +576,7 @@ class _DiscountPriceRow extends StatelessWidget {
 
 class _RatingWidget extends StatelessWidget {
   final ProductModel productModel;
-  final _RS rs;
+  final RS rs;
 
   const _RatingWidget({required this.productModel, required this.rs});
 
@@ -734,7 +636,7 @@ class _AddToCartButton extends StatelessWidget {
   final ProductModel productModel;
   final String basePrice;
   final String baseDisPrice;
-  final _RS rs;
+  final RS rs;
 
   const _AddToCartButton({
     required this.controller,
@@ -1163,7 +1065,7 @@ infoDialog(RestaurantDetailsProvider controller, ProductModel productModel) {
 
 // ── No products empty state ────────────────────────────────────────
 
-Widget _buildNoProductsMessage(BuildContext context, _RS rs) {
+Widget _buildNoProductsMessage(BuildContext context, RS rs) {
   return Container(
     padding: EdgeInsets.symmetric(
       vertical: rs.emptyVPad,

@@ -46,7 +46,7 @@ class RateProductProvider extends ChangeNotifier {
     this.orderModel = orderModel;
     this.productId = productId;
 
-    print("Product ID received: $productId"); // Debug log
+    debugPrint("Product ID received: $productId"); // Debug log
     await FireStoreUtils.getOrderReviewsByID(
       orderModel.id.toString(),
       productId,
@@ -162,7 +162,7 @@ class RateProductProvider extends ChangeNotifier {
   //         ]);
   //       });
   //     }
-  //     print("ratingProduct } ");
+  //     debugPrint("ratingProduct } ");
   //     final userId = await SqlStorageConst.getFirebaseId();
   //     for (int i = 0; i < images.length; i++) {
   //       if (images[i].runtimeType == XFile) {
@@ -189,7 +189,7 @@ class RateProductProvider extends ChangeNotifier {
   //       profile: Constant.userModel!.profilePictureURL,
   //       reviewAttributes: reviewAttribute,
   //     );
-  //     print("ratingProduct2 ${ratingProduct.toJson()} ");
+  //     debugPrint("ratingProduct2 ${ratingProduct.toJson()} ");
   //     await FireStoreUtils.setRatingModel(ratingProduct);
   //     await FireStoreUtils.setProduct(productModel);
   //     ShowToastDialog.closeLoader();
@@ -252,7 +252,7 @@ class RateProductProvider extends ChangeNotifier {
               );
               photoUrls.add(url);
             } catch (e) {
-              print("Error uploading image: $e");
+              debugPrint("Error uploading image: $e");
               // Continue with other images even if one fails
               continue;
             }
@@ -308,7 +308,7 @@ class RateProductProvider extends ChangeNotifier {
       } catch (e) {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast("Error: ${e.toString()}".tr);
-        print("Save rating error: $e");
+        debugPrint("Save rating error: $e");
       }
     } else {
       ShowToastDialog.showToast("Please add rate for food item.".tr);

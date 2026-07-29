@@ -25,17 +25,6 @@ import '../../../../../widgets/app_loading_widget.dart';
 // final _kGradMid = Colors.lightBlueAccent.withOpacity(0.15); // medium
 // final _kGradEnd = Colors.lightBlueAccent.withOpacity(0.05); // stronger (bottom)
 
-final _kSectionGradient = const LinearGradient(
-  begin: Alignment.topCenter,
-  end: Alignment.bottomCenter,
-  colors: [
-    Color(0x3833B5E5), // ~0.45 opacity
-    Color(0x3833B5E5), // ~0.22
-    Color(0x1A33B5E5), // ~0.10
-    Color(0x0D33B5E5), // ~0.05
-  ],
-  stops: [0.0, 0.3, 0.7, 1.0],
-);
 // ─────────────────────────────────────────────────────────────
 //  BEST RESTAURANTS SECTION
 // ─────────────────────────────────────────────────────────────
@@ -76,7 +65,7 @@ class BestRestaurantsSection extends StatelessWidget {
             // ── Entire section sits on the gradient ──────────────
             return Container(
               decoration: BoxDecoration(
-                gradient: _kSectionGradient,
+                gradient: kSectionGradient,
                 borderRadius: BorderRadius.all(Radius.circular(30)),
               ),
               clipBehavior: Clip.antiAlias,

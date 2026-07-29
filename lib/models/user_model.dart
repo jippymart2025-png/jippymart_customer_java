@@ -9,6 +9,7 @@ class UserModel {
   String? lastName;
   String? email;
   String? profilePictureURL;
+  String? fcmToken;
   String? countryCode;
   String? firebaseId;
   String? phoneNumber;

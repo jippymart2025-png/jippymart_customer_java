@@ -16,6 +16,8 @@ import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 
+import '../address_screens/screens/address_list_screen.dart';
+
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
 

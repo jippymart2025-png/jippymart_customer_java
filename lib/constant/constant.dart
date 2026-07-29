@@ -50,6 +50,17 @@ class Constant {
   static String radius = "50";
   static String driverRadios = "50";
   static String distanceType = "km";
+
+  static const double scrollThreshold = 100.0;
+  static const Duration animationDuration = Duration(milliseconds: 300);
+  static const Duration filterAnimationDuration = Duration(milliseconds: 200);
+  static const double bottomModalHeightFactor = 0.35;
+  static const double bottomModalWidthFactor = 0.7;
+  static const double timingSheetHeightFactor = 0.70;
+
+  // Height of the sticky search bar sliver
+  static const double stickySearchBarHeight = 62.0;
+
   static String placeholderImage = "assets/images/food_delivery.jpeg";
   static String googlePlayLink =
       "https://play.google.com/store/apps/details?id=com.jippymart.customer";
@@ -721,9 +732,7 @@ class Constant {
   }) async {
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
-      ShowToastDialog.showToast(
-        "Please turn on location services to continue",
-      );
+      ShowToastDialog.showToast("Please turn on location services to continue");
       return;
     }
 

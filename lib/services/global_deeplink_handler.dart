@@ -117,7 +117,7 @@ class GlobalDeeplinkHandler {
 
     if (uri.scheme == 'jippymart') {
       // Custom scheme: jippymart://product/123 -> host is "product", path is "/123"
-      pathSegments = uri.host.isNotEmpty 
+      pathSegments = uri.host.isNotEmpty
           ? [uri.host, ...uri.pathSegments]
           : uri.pathSegments;
     } else {
@@ -159,12 +159,21 @@ class GlobalDeeplinkHandler {
     if (context == null) return null;
     try {
       return _DashboardProviders(
-        dashBoardProvider: Provider.of<DashBoardProvider>(context, listen: false),
+        dashBoardProvider: Provider.of<DashBoardProvider>(
+          context,
+          listen: false,
+        ),
         homeProvider: Provider.of<HomeProvider>(context, listen: false),
         splashProvider: Provider.of<SplashProvider>(context, listen: false),
-        cartProvider: Provider.of<CartControllerProvider>(context, listen: false),
+        cartProvider: Provider.of<CartControllerProvider>(
+          context,
+          listen: false,
+        ),
         orderProvider: Provider.of<OrderProvider>(context, listen: false),
-        favouriteProvider: Provider.of<FavouriteProvider>(context, listen: false),
+        favouriteProvider: Provider.of<FavouriteProvider>(
+          context,
+          listen: false,
+        ),
       );
     } catch (e) {
       print('⚠️ [GLOBAL_DEEPLINK] Error getting providers: $e');
@@ -176,7 +185,7 @@ class GlobalDeeplinkHandler {
   void _changeDashboardTab(BuildContext context, int tabIndex) {
     final providers = _getDashboardProviders(context);
     if (providers == null) return;
-    
+
     providers.dashBoardProvider.changeNavbar(
       tabIndex,
       providers.homeProvider,
@@ -184,7 +193,6 @@ class GlobalDeeplinkHandler {
       providers.cartProvider,
       providers.orderProvider,
       context,
-      providers.favouriteProvider,
     );
   }
 
@@ -257,17 +265,21 @@ class GlobalDeeplinkHandler {
 
       // Clean restaurant ID
       restaurantId = restaurantId.trim().replaceAll(RegExp(r'[/\s]+$'), '');
-      
+
       // Prevent duplicate navigation
       if (_currentRestaurantId == restaurantId) {
-        print('🔗 [GLOBAL_DEEPLINK] ⚠️ Same restaurant already loaded, skipping');
+        print(
+          '🔗 [GLOBAL_DEEPLINK] ⚠️ Same restaurant already loaded, skipping',
+        );
         return;
       }
       _currentRestaurantId = restaurantId;
 
       // Wait for navigator to be ready
       if (!await _waitForNavigatorReady()) {
-        print('❌ [GLOBAL_DEEPLINK] Navigator not ready, retrying navigation...');
+        print(
+          '❌ [GLOBAL_DEEPLINK] Navigator not ready, retrying navigation...',
+        );
         // Retry after a delay
         await Future.delayed(const Duration(milliseconds: 500));
         if (!await _waitForNavigatorReady()) {
@@ -291,7 +303,7 @@ class GlobalDeeplinkHandler {
       // Ensure context is available
       await Future.delayed(const Duration(milliseconds: 200));
       final ctx = navigatorKey.currentContext ?? context;
-      
+
       if (ctx == null) {
         print('❌ [GLOBAL_DEEPLINK] Context is null, cannot navigate');
         return;
@@ -304,12 +316,10 @@ class GlobalDeeplinkHandler {
 
       while (!navigationSuccess && retryCount < maxRetries) {
         try {
-          final restaurantDetailsProvider = Provider.of<RestaurantDetailsProvider>(
-            ctx,
-            listen: false,
-          );
+          final restaurantDetailsProvider =
+              Provider.of<RestaurantDetailsProvider>(ctx, listen: false);
           restaurantDetailsProvider.initFunction(vendorModels: restaurant);
-          
+
           // Use navigator key for more reliable navigation
           if (navigatorKey.currentState != null) {
             navigatorKey.currentState!.push(
@@ -318,16 +328,22 @@ class GlobalDeeplinkHandler {
               ),
             );
             navigationSuccess = true;
-            print('✅ [GLOBAL_DEEPLINK] Successfully navigated to restaurant details');
+            print(
+              '✅ [GLOBAL_DEEPLINK] Successfully navigated to restaurant details',
+            );
           } else {
             // Fallback to GetX
             Get.to(() => const RestaurantDetailsScreen());
             navigationSuccess = true;
-            print('✅ [GLOBAL_DEEPLINK] Successfully navigated to restaurant details (GetX)');
+            print(
+              '✅ [GLOBAL_DEEPLINK] Successfully navigated to restaurant details (GetX)',
+            );
           }
         } catch (e) {
           retryCount++;
-          print('⚠️ [GLOBAL_DEEPLINK] Navigation attempt $retryCount failed: $e');
+          print(
+            '⚠️ [GLOBAL_DEEPLINK] Navigation attempt $retryCount failed: $e',
+          );
           if (retryCount < maxRetries) {
             await Future.delayed(Duration(milliseconds: 300 * retryCount));
             // Try with arguments as fallback
@@ -337,7 +353,9 @@ class GlobalDeeplinkHandler {
                 arguments: {'vendorModel': restaurant},
               );
               navigationSuccess = true;
-              print('✅ [GLOBAL_DEEPLINK] Successfully navigated using arguments fallback');
+              print(
+                '✅ [GLOBAL_DEEPLINK] Successfully navigated using arguments fallback',
+              );
             } catch (e2) {
               print('⚠️ [GLOBAL_DEEPLINK] Arguments fallback also failed: $e2');
             }
@@ -346,7 +364,9 @@ class GlobalDeeplinkHandler {
       }
 
       if (!navigationSuccess) {
-        print('❌ [GLOBAL_DEEPLINK] Failed to navigate after $maxRetries attempts');
+        print(
+          '❌ [GLOBAL_DEEPLINK] Failed to navigate after $maxRetries attempts',
+        );
         // Reset current restaurant ID so it can be retried
         _currentRestaurantId = null;
         // Last resort: use GetX with arguments
@@ -392,7 +412,8 @@ class GlobalDeeplinkHandler {
 
     if (restaurantZoneId != Constant.selectedZone?.id) {
       ShowToastDialog.showToast(
-        "Sorry, The Zone is not available in your area. Change the other location first.".tr,
+        "Sorry, The Zone is not available in your area. Change the other location first."
+            .tr,
       );
       Get.toNamed('/');
       return false;
@@ -439,7 +460,9 @@ class GlobalDeeplinkHandler {
           );
           _navigateToMart(url, martNavigationProvider, context);
         } catch (e) {
-          print('⚠️ [GLOBAL_DEEPLINK] Could not get MartNavigationProvider: $e');
+          print(
+            '⚠️ [GLOBAL_DEEPLINK] Could not get MartNavigationProvider: $e',
+          );
         }
       } else if (url.contains('/product/')) {
         final productId = _extractProductId(url);
@@ -517,7 +540,9 @@ class GlobalDeeplinkHandler {
       );
 
       if (categoryItems.isEmpty) {
-        print('🔗 [GLOBAL_DEEPLINK] ❌ No items found for category ID: $categoryId');
+        print(
+          '🔗 [GLOBAL_DEEPLINK] ❌ No items found for category ID: $categoryId',
+        );
         Get.toNamed('/');
         return;
       }
@@ -534,8 +559,10 @@ class GlobalDeeplinkHandler {
         categoryNames: categoryName,
       );
       Get.to(() => const MartCategoryDetailScreen());
-      
-      print('🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to category detail screen');
+
+      print(
+        '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to category detail screen',
+      );
     } catch (e) {
       print('❌ [GLOBAL_DEEPLINK] Error navigating to category: $e');
       Get.toNamed('/');

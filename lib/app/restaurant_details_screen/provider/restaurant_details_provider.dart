@@ -16,7 +16,6 @@ import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/services/cart_api_service.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
-import 'package:jippymart_customer/app/home_screen/screen/group_order_section/service/group_order_api_service.dart';
 import 'package:jippymart_customer/services/group_order_session.dart';
 import 'package:jippymart_customer/services/promotional_cache_service.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
@@ -29,6 +28,8 @@ import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:http/http.dart' as http;
+
+import '../../group_order_section/service/group_order_api_service.dart';
 
 /// STATIC HELPER METHODS - Moved outside the class
 class RestaurantApiHelper {

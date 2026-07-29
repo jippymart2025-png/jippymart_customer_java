@@ -34,42 +34,10 @@ import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
 import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
 
-import '../group_order_section/screens/group_order_navigation.dart';
+import '../../../group_order_section/screens/group_order_navigation.dart';
 import 'widgets/category_view_widget.dart';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-
-// Primary gradient — warm food-app red→deep orange
-const _kGradStart = Color(0xFFE8192C);
-const _kGradEnd = Color(0xFFFF6B35);
-
-// Accent & surface palette
-const _kAccentAmber = Color(0xFFFFC107);
-const _kSurfaceWhite = Color(0xFFFFFFFF);
-const _kBgCanvas = Color(0xFFF7F7F8);
-const _kCardShadow = Color(0x14000000);
-const _kCardShadowMd = Color(0x1F000000);
-
-// Status colours
-const _kOpenGreen = Color(0xFF2ECC71);
-const _kClosedRed = Color(0xFFE74C3C);
-
-// Typography scale (used as named constants for clarity)
-const _kFontXS = 9.0;
-const _kFontSM = 11.0;
-const _kFontMD = 13.0;
-const _kFontLG = 15.0;
-const _kFontXL = 18.0;
-const _kFontXXL = 22.0;
-
-// Radius tokens
-const _kRadiusSM = 8.0;
-const _kRadiusMD = 14.0;
-const _kRadiusLG = 20.0;
-const _kRadiusXL = 28.0;
-
-/// How far the banner overlaps INTO the gradient.
-const double _kBannerPeekAbove = 80.0;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HomeScreenTwo
@@ -92,10 +60,10 @@ class HomeScreenTwo extends StatelessWidget {
         systemStatusBarContrastEnforced: false,
       ),
       child: Scaffold(
-        backgroundColor: _kBgCanvas,
+        backgroundColor: AppThemeData.kBgCanvas,
         body: RefreshIndicator(
-          color: _kGradStart,
-          backgroundColor: _kSurfaceWhite,
+          color: AppThemeData.kGradStart,
+          backgroundColor: AppThemeData.kSurfaceWhite,
           strokeWidth: 2.5,
           displacement: 60,
           onRefresh: () async => controller.getRefresh(context),
@@ -162,7 +130,7 @@ class _NoServiceView extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFF5F5), _kBgCanvas],
+          colors: [Color(0xFFFFF5F5), AppThemeData.kBgCanvas],
           stops: [0.0, 0.6],
         ),
       ),
@@ -181,7 +149,7 @@ class _NoServiceView extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: _kGradStart.withOpacity(0.12),
+                    color: AppThemeData.kGradStart.withOpacity(0.12),
                     blurRadius: 40,
                     spreadRadius: 8,
                   ),
@@ -194,7 +162,7 @@ class _NoServiceView extends StatelessWidget {
               title,
               style: const TextStyle(
                 color: Color(0xFF1A1A2E),
-                fontSize: _kFontXXL,
+                fontSize: kFontXXL,
                 fontFamily: AppThemeData.semiBold,
                 height: 1.3,
                 letterSpacing: -0.3,
@@ -207,7 +175,7 @@ class _NoServiceView extends StatelessWidget {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: AppThemeData.grey500,
-                fontSize: _kFontLG,
+                fontSize: kFontLG,
                 fontFamily: AppThemeData.regular,
                 height: 1.6,
               ),
@@ -248,7 +216,7 @@ class _PremiumButton extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [_kGradStart, _kGradEnd],
+              colors: [AppThemeData.kGradStart, AppThemeData.kGradEnd],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -272,7 +240,7 @@ class _PremiumButton extends StatelessWidget {
                   label.tr,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: _kFontLG,
+                    fontSize: kFontLG,
                     fontFamily: AppThemeData.semiBold,
                     letterSpacing: 0.3,
                   ),
@@ -373,7 +341,7 @@ class _HomeMainContentState extends State<_HomeMainContent> {
                     ? Offset.zero
                     : const Offset(0, -0.15),
                 child: Container(
-                  color: _kBgCanvas,
+                  color: AppThemeData.kBgCanvas,
                   padding: EdgeInsets.fromLTRB(16, topPadding, 16, 6),
                   child: const RepaintBoundary(child: HomeSearchBar()),
                 ),
@@ -401,14 +369,14 @@ class _HomeContentCard extends StatelessWidget {
 
     return Container(
       decoration: const BoxDecoration(
-        color: _kBgCanvas,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(_kRadiusXL)),
+        color: AppThemeData.kBgCanvas,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(kRadiusXL)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (hasBanner) const SizedBox(height: _kBannerPeekAbove + 12),
+          if (hasBanner) const SizedBox(height: kBannerPeekAbove + 12),
           // const SizedBox(height: 0),
           _ordertypeSection(),
           _CategorySection(),
@@ -536,7 +504,7 @@ class _AdvertisementCard extends StatelessWidget {
                   height: 18,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [_kGradStart, _kGradEnd],
+                      colors: [AppThemeData.kGradStart, AppThemeData.kGradEnd],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
@@ -549,7 +517,7 @@ class _AdvertisementCard extends StatelessWidget {
                     "Highlights for you".tr,
                     style: const TextStyle(
                       fontFamily: AppThemeData.semiBold,
-                      fontSize: _kFontXL,
+                      fontSize: kFontXL,
                       color: Color(0xFF1A1A2E),
                       letterSpacing: -0.2,
                     ),
@@ -567,15 +535,15 @@ class _AdvertisementCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: _kGradStart.withOpacity(0.08),
+                      color: AppThemeData.kGradStart.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       "See all".tr,
                       style: const TextStyle(
                         fontFamily: AppThemeData.semiBold,
-                        color: _kGradStart,
-                        fontSize: _kFontMD,
+                        color: AppThemeData.kGradStart,
+                        fontSize: kFontMD,
                       ),
                     ),
                   ),
@@ -650,7 +618,10 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
                       height: 18,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [_kGradStart, _kGradEnd],
+                          colors: [
+                            AppThemeData.kGradStart,
+                            AppThemeData.kGradEnd,
+                          ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),
@@ -663,7 +634,7 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
                       style: const TextStyle(
                         fontFamily: AppThemeData.semiBold,
                         color: Color(0xFF1A1A2E),
-                        fontSize: _kFontXL,
+                        fontSize: kFontXL,
                         letterSpacing: -0.2,
                       ),
                     ),
@@ -674,15 +645,15 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: _kGradStart.withOpacity(0.1),
+                        color: AppThemeData.kGradStart.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         '$count',
                         style: const TextStyle(
-                          fontSize: _kFontSM,
+                          fontSize: kFontSM,
                           fontFamily: AppThemeData.semiBold,
-                          color: _kGradStart,
+                          color: AppThemeData.kGradStart,
                         ),
                       ),
                     ),
@@ -827,7 +798,10 @@ class _AllRestaurantsSection extends StatelessWidget {
                     height: 18,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [_kGradStart, _kGradEnd],
+                        colors: [
+                          AppThemeData.kGradStart,
+                          AppThemeData.kGradEnd,
+                        ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
@@ -840,7 +814,7 @@ class _AllRestaurantsSection extends StatelessWidget {
                     style: const TextStyle(
                       fontFamily: AppThemeData.semiBold,
                       color: Color(0xFF1A1A2E),
-                      fontSize: _kFontXL,
+                      fontSize: kFontXL,
                       letterSpacing: -0.2,
                     ),
                   ),
@@ -851,15 +825,15 @@ class _AllRestaurantsSection extends StatelessWidget {
                       vertical: 3,
                     ),
                     decoration: BoxDecoration(
-                      color: _kGradStart.withOpacity(0.1),
+                      color: AppThemeData.kGradStart.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${all.length}',
                       style: const TextStyle(
-                        fontSize: _kFontSM,
+                        fontSize: kFontSM,
                         fontFamily: AppThemeData.semiBold,
-                        color: _kGradStart,
+                        color: AppThemeData.kGradStart,
                       ),
                     ),
                   ),
@@ -967,14 +941,14 @@ class _RestaurantCard extends StatelessWidget {
                 rdp.initFunction(vendorModels: vendorModel);
                 Get.to(() => const RestaurantDetailsScreen());
               },
-        borderRadius: BorderRadius.circular(_kRadiusMD),
+        borderRadius: BorderRadius.circular(kRadiusMD),
         child: Ink(
           decoration: BoxDecoration(
-            color: _kSurfaceWhite,
-            borderRadius: BorderRadius.circular(_kRadiusMD),
+            color: AppThemeData.kSurfaceWhite,
+            borderRadius: BorderRadius.circular(kRadiusMD),
             boxShadow: const [
               BoxShadow(
-                color: _kCardShadow,
+                color: AppThemeData.kCardShadow,
                 blurRadius: 10,
                 spreadRadius: 0,
                 offset: Offset(0, 3),
@@ -993,7 +967,7 @@ class _RestaurantCard extends StatelessWidget {
                       aspectRatio: 1,
                       child: Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(_kRadiusSM + 2),
+                          borderRadius: BorderRadius.circular(kRadiusSM + 2),
                           color: const Color(0xFFF0F0F0),
                         ),
                         child: Stack(
@@ -1001,7 +975,7 @@ class _RestaurantCard extends StatelessWidget {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(
-                                _kRadiusSM + 2,
+                                kRadiusSM + 2,
                               ),
                               child: RestaurantImageWithStatus(
                                 vendorModel: vendorModel,
@@ -1026,7 +1000,7 @@ class _RestaurantCard extends StatelessWidget {
                     Text(
                       vendorModel.title ?? 'Restaurant',
                       style: const TextStyle(
-                        fontSize: _kFontMD,
+                        fontSize: kFontMD,
                         fontFamily: AppThemeData.semiBold,
                         color: Color(0xFF1A1A2E),
                         height: 1.2,
@@ -1077,7 +1051,7 @@ class _ClosedOverlay extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.black.withOpacity(0.38),
-          borderRadius: BorderRadius.circular(_kRadiusMD),
+          borderRadius: BorderRadius.circular(kRadiusMD),
         ),
         child: Center(
           child: Container(
@@ -1090,7 +1064,7 @@ class _ClosedOverlay extends StatelessWidget {
               'CLOSED',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: _kFontXS + 1,
+                fontSize: kFontXS + 1,
                 fontFamily: AppThemeData.bold,
                 letterSpacing: 1.0,
               ),
@@ -1115,8 +1089,8 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final isOpen = RestaurantStatusUtils.canAcceptOrders(vendorModel);
     final bgColor = isOpen
-        ? _kOpenGreen.withOpacity(0.92)
-        : _kClosedRed.withOpacity(0.92);
+        ? AppThemeData.kOpenGreen.withOpacity(0.92)
+        : AppThemeData.kClosedRed.withOpacity(0.92);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -1147,7 +1121,7 @@ class _StatusBadge extends StatelessWidget {
             isOpen ? 'OPEN' : 'CLOSED',
             style: const TextStyle(
               color: Colors.white,
-              fontSize: _kFontXS,
+              fontSize: kFontXS,
               fontFamily: AppThemeData.bold,
               height: 1,
               letterSpacing: 0.5,
@@ -1162,7 +1136,6 @@ class _StatusBadge extends StatelessWidget {
 // ─────────────────────────────────────────────────────────────────────────────
 // _BottomInfoRow  — refined with consistent icon sizing
 // ─────────────────────────────────────────────────────────────────────────────
-
 class _BottomInfoRow extends StatelessWidget {
   final VendorModel vendorModel;
 
@@ -1188,13 +1161,17 @@ class _BottomInfoRow extends StatelessWidget {
         Expanded(
           child: Row(
             children: [
-              const Icon(Icons.star_rounded, size: 11, color: _kAccentAmber),
+              const Icon(
+                Icons.star_rounded,
+                size: 11,
+                color: AppThemeData.kAccentAmber,
+              ),
               const SizedBox(width: 2),
               Expanded(
                 child: Text(
                   _ratingText,
                   style: const TextStyle(
-                    fontSize: _kFontXS + 1,
+                    fontSize: kFontXS + 1,
                     fontFamily: AppThemeData.semiBold,
                     color: Color(0xFF555570),
                   ),
@@ -1231,7 +1208,7 @@ class _BottomInfoRow extends StatelessWidget {
                 child: Text(
                   _distanceText,
                   style: const TextStyle(
-                    fontSize: _kFontXS,
+                    fontSize: kFontXS,
                     fontFamily: AppThemeData.medium,
                     color: Color(0xFF888899),
                   ),
@@ -1338,7 +1315,7 @@ class _OverlapBannerRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final belowHeight = (bannerHeight - _kBannerPeekAbove).clamp(
+    final belowHeight = (bannerHeight - kBannerPeekAbove).clamp(
       0.0,
       double.infinity,
     );
@@ -1372,7 +1349,11 @@ class _GradientPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [_kGradStart, Color(0xFFFF4E1F), _kGradEnd],
+        colors: [
+          AppThemeData.kGradStart,
+          Color(0xFFFF4E1F),
+          AppThemeData.kGradEnd,
+        ],
         stops: [0.0, 0.55, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
@@ -1473,15 +1454,19 @@ class _TimeThenFastDeliveryWidgetState
     key: const ValueKey<String>('fast'),
     mainAxisSize: MainAxisSize.min,
     children: [
-      const Icon(Icons.electric_bolt_rounded, size: 10, color: _kGradStart),
+      const Icon(
+        Icons.electric_bolt_rounded,
+        size: 10,
+        color: AppThemeData.kGradStart,
+      ),
       const SizedBox(width: 2),
       Expanded(
         child: Text(
           'Fast delivery',
           style: const TextStyle(
-            fontSize: _kFontXS + 1,
+            fontSize: kFontXS + 1,
             fontFamily: AppThemeData.semiBold,
-            color: _kGradStart,
+            color: AppThemeData.kGradStart,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -1500,7 +1485,7 @@ class _TimeThenFastDeliveryWidgetState
         child: Text(
           widget.deliveryTime,
           style: TextStyle(
-            fontSize: _kFontXS + 1,
+            fontSize: kFontXS + 1,
             fontFamily: AppThemeData.medium,
             color: AppThemeData.grey500,
           ),
@@ -1542,15 +1527,15 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
         child: InkWell(
           onTap: () =>
               _onAdvertisementTap(context.read<RestaurantDetailsProvider>()),
-          borderRadius: BorderRadius.circular(_kRadiusLG),
+          borderRadius: BorderRadius.circular(kRadiusLG),
           child: Ink(
             width: Responsive.width(68, context),
             decoration: BoxDecoration(
-              color: _kSurfaceWhite,
-              borderRadius: BorderRadius.circular(_kRadiusLG),
+              color: AppThemeData.kSurfaceWhite,
+              borderRadius: BorderRadius.circular(kRadiusLG),
               boxShadow: const [
                 BoxShadow(
-                  color: _kCardShadowMd,
+                  color: AppThemeData.kCardShadowMd,
                   blurRadius: 14,
                   spreadRadius: 0,
                   offset: Offset(0, 4),
@@ -1618,7 +1603,7 @@ class _AdvImageSection extends StatelessWidget {
         model.type == 'restaurant_promotion'
             ? ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(_kRadiusLG),
+                  top: Radius.circular(kRadiusLG),
                 ),
                 child: NetworkImageWidget(
                   imageUrl: model.coverImage ?? '',
@@ -1629,7 +1614,7 @@ class _AdvImageSection extends StatelessWidget {
               )
             : ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(_kRadiusLG),
+                  top: Radius.circular(kRadiusLG),
                 ),
                 child: VideoAdvWidget(
                   url: model.video ?? '',
@@ -1688,22 +1673,30 @@ class _RatingBadge extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: _kSurfaceWhite,
+        color: AppThemeData.kSurfaceWhite,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
-          BoxShadow(color: _kCardShadow, blurRadius: 8, offset: Offset(0, 2)),
+          BoxShadow(
+            color: AppThemeData.kCardShadow,
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
         ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.star_rounded, size: 13, color: _kAccentAmber),
+          const Icon(
+            Icons.star_rounded,
+            size: 13,
+            color: AppThemeData.kAccentAmber,
+          ),
           const SizedBox(width: 4),
           Text(
             '$rating $review'.trim(),
             style: const TextStyle(
-              fontSize: _kFontMD,
+              fontSize: kFontMD,
               color: Color(0xFF1A1A2E),
               fontFamily: AppThemeData.semiBold,
             ),
@@ -1762,7 +1755,7 @@ class _AdvContentSection extends StatelessWidget {
                   model.title ?? '',
                   style: const TextStyle(
                     color: Color(0xFF1A1A2E),
-                    fontSize: _kFontMD,
+                    fontSize: kFontMD,
                     fontFamily: AppThemeData.semiBold,
                     height: 1.2,
                   ),
@@ -1773,7 +1766,7 @@ class _AdvContentSection extends StatelessWidget {
                 Text(
                   model.description ?? '',
                   style: const TextStyle(
-                    fontSize: _kFontXS + 1,
+                    fontSize: kFontXS + 1,
                     fontFamily: AppThemeData.regular,
                     color: Color(0xFF888899),
                     height: 1.4,
@@ -1791,14 +1784,14 @@ class _AdvContentSection extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [_kGradStart, _kGradEnd],
+                colors: [AppThemeData.kGradStart, AppThemeData.kGradEnd],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(_kRadiusSM),
+              borderRadius: BorderRadius.circular(kRadiusSM),
               boxShadow: [
                 BoxShadow(
-                  color: _kGradStart.withOpacity(0.3),
+                  color: AppThemeData.kGradStart.withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),

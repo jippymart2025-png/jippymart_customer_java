@@ -7,13 +7,13 @@ import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_deta
 import 'package:jippymart_customer/models/group_order_checkout_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/app/home_screen/screen/group_order_section/service/group_order_api_service.dart';
 import 'package:jippymart_customer/services/group_order_session.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart';
 
 import '../model/create_group_orders_model.dart';
+import '../service/group_order_api_service.dart';
 import '../widgets/buildActivityRow.dart';
 import '../widgets/buildHeaderCard.dart';
 import 'SharedCartScreen.dart';

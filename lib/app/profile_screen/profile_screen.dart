@@ -4,20 +4,18 @@ import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart'
     show CartControllerProvider;
 import 'package:jippymart_customer/app/edit_profile_screen/edit_profile_screen.dart';
 import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
+import 'package:jippymart_customer/app/profile_screen/widget/buildSliverHeader.dart';
 import 'package:jippymart_customer/app/terms_and_condition/terms_and_condition_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/custom_dialog_box.dart';
-import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
-import 'package:jippymart_customer/utils/utils/common.dart';
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:provider/provider.dart';
@@ -77,22 +75,6 @@ Future rateApp() async {
 }
 
 // ─── Zomato Brand Colors ──────────────────────────────────────────────────────
-class _ZColors {
-  static const _kGradStart = Color(0xFFE8192C);
-  static const _kGradEnd = Color(0xFFFF6B35);
-  static const Color primary = Color(0xFFE74C3C);
-  static const Color primaryLight = Color(0xFFFFF0F1);
-  static const Color primaryDark = Color(0xFFC0000F);
-  static const Color surface = Color(0xFFF8F8F8);
-  static const Color cardBg = Color(0xFFFFFFFF);
-  static const Color textPrimary = Color(0xFF1C1C1E);
-  static const Color textSecondary = Color(0xFF6D6D6D);
-  static const Color textTertiary = Color(0xFFAAAAAA);
-  static const Color divider = Color(0xFFF0F0F0);
-  static const Color iconBg = Color(0xFFFFF4F5);
-  static const Color greenAccent = Color(0xFF26A541);
-  static const Color amberAccent = Color(0xFFF5A623);
-}
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -146,7 +128,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _ZColors.surface,
+      backgroundColor: ZColors.surface,
       body: Consumer<MyProfileProvider>(
         builder: (context, controller, _) {
           if (controller.isLoading.value) {
@@ -158,7 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               position: _slideAnim,
               child: CustomScrollView(
                 slivers: [
-                  _buildSliverHeader(controller),
+                  buildSliverHeader(controller, context),
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -190,7 +172,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             _menuTile(
                               icon: Icons.favorite_border_rounded,
                               label: 'Favourites',
-                              iconColor: _ZColors.primary,
+                              iconColor: ZColors.primary,
                               onTap: () {
                                 if (!controller.isUserLoggedIn &&
                                     Constant.userModel == null) {
@@ -252,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             _menuTile(
                               icon: Icons.star_border_rounded,
                               label: 'Rate the App',
-                              iconColor: _ZColors.amberAccent,
+                              iconColor: ZColors.amberAccent,
                               onTap: () async => await rateApp(),
                             ),
                           ]),
@@ -294,8 +276,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     ? _menuTile(
                                         icon: Icons.login_rounded,
                                         label: 'Log In',
-                                        iconColor: _ZColors.greenAccent,
-                                        labelColor: _ZColors.greenAccent,
+                                        iconColor: ZColors.greenAccent,
+                                        labelColor: ZColors.greenAccent,
                                         showArrow: false,
                                         onTap: () => Get.offAll(
                                           () => PhoneNumberScreen(),
@@ -304,8 +286,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     : _menuTile(
                                         icon: Icons.logout_rounded,
                                         label: 'Log Out',
-                                        iconColor: _ZColors.primary,
-                                        labelColor: _ZColors.primary,
+                                        iconColor: ZColors.primary,
+                                        labelColor: ZColors.primary,
                                         showArrow: false,
                                         onTap: () => _confirmLogout(
                                           context,
@@ -331,7 +313,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               controller.versionText,
                               style: const TextStyle(
                                 fontSize: 12,
-                                color: _ZColors.textTertiary,
+                                color: ZColors.textTertiary,
                                 fontWeight: FontWeight.w400,
                                 letterSpacing: 0.2,
                               ),
@@ -352,196 +334,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   // ─── Sliver Header ──────────────────────────────────────────────────────────
-  Widget _buildSliverHeader(MyProfileProvider controller) {
-    final user = Constant.userModel;
-    final name = user?.firstName ?? 'Guest User';
-    final phone = user?.phoneNumber ?? 'Not logged in';
-    final email = user?.email ?? '';
-    final initials = name.isNotEmpty
-        ? name
-              .trim()
-              .split(' ')
-              .map((e) => e.isNotEmpty ? e[0] : '')
-              .take(2)
-              .join()
-              .toUpperCase()
-        : 'G';
-
-    return SliverAppBar(
-      expandedHeight: 150,
-      pinned: true,
-      backgroundColor: Color(0xFFFF4E1F),
-      elevation: 0,
-      leading: const SizedBox.shrink(),
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                _ZColors._kGradStart,
-                Color(0xFFFF4E1F),
-                _ZColors._kGradEnd,
-              ],
-              stops: [0.0, 0.55, 1.0],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top label
-                  // const Text(
-                  //   'My Account',
-                  //   style: TextStyle(
-                  //     color: Colors.white70,
-                  //     fontSize: 13,
-                  //     fontWeight: FontWeight.w500,
-                  //     letterSpacing: 0.5,
-                  //   ),
-                  // ),
-                  const SizedBox(height: 16),
-                  // Avatar + info row
-                  Row(
-                    children: [
-                      // Avatar
-                      Container(
-                        width: 68,
-                        height: 68,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.18),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: _buildAvatar(user, initials),
-                      ),
-                      const SizedBox(width: 16),
-                      // Name + phone
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: -0.3,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            if (phone.isNotEmpty && phone != 'Not logged in')
-                              Text(
-                                phone,
-                                style: const TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                              ),
-                            if (email.isNotEmpty)
-                              Text(
-                                email,
-                                style: const TextStyle(
-                                  color: Colors.white60,
-                                  fontSize: 12,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                          ],
-                        ),
-                      ),
-                      // Edit button
-                      if (user != null)
-                        GestureDetector(
-                          onTap: () {
-                            context.read<EditProfileProvider>().initFunction();
-                            Get.to(() => const EditProfileScreen());
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.18),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.edit_outlined,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        collapseMode: CollapseMode.pin,
-      ),
-      // Collapsed title
-      // title: const Text(
-      //   'My Account',
-      //   style: TextStyle(
-      //     color: Colors.white,
-      //     fontSize: 18,
-      //     fontWeight: FontWeight.w700,
-      //   ),
-      // ),
-      centerTitle: false,
-    );
-  }
-
-  Widget _buildAvatar(dynamic user, String initials) {
-    // ⚠️ Change 'photo' below to match your actual UserModel field name
-    // e.g. if your model has `userModel.photoURL` → use user?.photoURL
-    String? photoUrl;
-    try {
-      // ignore: avoid_dynamic_calls
-      final val = user?.photo;
-      if (val is String && val.isNotEmpty) photoUrl = val;
-    } catch (_) {}
-
-    if (photoUrl != null) {
-      return ClipOval(
-        child: Image.network(
-          photoUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _avatarInitials(initials),
-        ),
-      );
-    }
-    return _avatarInitials(initials);
-  }
-
-  Widget _avatarInitials(String initials) {
-    return Center(
-      child: Text(
-        initials,
-        style: const TextStyle(
-          color: _ZColors.primary,
-          fontSize: 24,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
 
   // ─── Loading ────────────────────────────────────────────────────────────────
   Widget _buildLoadingState() {
     return Scaffold(
-      backgroundColor: _ZColors.surface,
+      backgroundColor: ZColors.surface,
       body: Column(
         children: [
           Container(
@@ -557,7 +354,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           const Expanded(
             child: Center(
               child: CircularProgressIndicator(
-                color: _ZColors.primary,
+                color: ZColors.primary,
                 strokeWidth: 2.5,
               ),
             ),
@@ -576,7 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         style: const TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.w700,
-          color: _ZColors.textTertiary,
+          color: ZColors.textTertiary,
           letterSpacing: 1.2,
         ),
       ),
@@ -587,7 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildCard(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: _ZColors.cardBg,
+        color: ZColors.cardBg,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -612,7 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     bool showArrow = true,
   }) {
     final ic = iconColor ?? const Color(0xFF555555);
-    final lc = labelColor ?? _ZColors.textPrimary;
+    final lc = labelColor ?? ZColors.textPrimary;
 
     return Material(
       color: Colors.transparent,
@@ -622,8 +419,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           onTap();
         },
         borderRadius: BorderRadius.circular(16),
-        splashColor: _ZColors.primaryLight,
-        highlightColor: _ZColors.primaryLight.withOpacity(0.4),
+        splashColor: ZColors.primaryLight,
+        highlightColor: ZColors.primaryLight.withOpacity(0.4),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
@@ -632,11 +429,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: ic == _ZColors.primary
-                      ? _ZColors.primaryLight
-                      : ic == _ZColors.amberAccent
+                  color: ic == ZColors.primary
+                      ? ZColors.primaryLight
+                      : ic == ZColors.amberAccent
                       ? const Color(0xFFFFF8EC)
-                      : ic == _ZColors.greenAccent
+                      : ic == ZColors.greenAccent
                       ? const Color(0xFFEEFBF1)
                       : const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(10),
@@ -659,7 +456,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   (showArrow
                       ? const Icon(
                           Icons.chevron_right_rounded,
-                          color: _ZColors.textTertiary,
+                          color: ZColors.textTertiary,
                           size: 20,
                         )
                       : const SizedBox.shrink()),
@@ -673,7 +470,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _divider() {
     return const Padding(
       padding: EdgeInsets.only(left: 66),
-      child: Divider(height: 1, color: _ZColors.divider),
+      child: Divider(height: 1, color: ZColors.divider),
     );
   }
 
@@ -687,14 +484,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       children: [
         Icon(
           Icons.account_balance_wallet_rounded,
-          color: hasBalance ? _ZColors.greenAccent : _ZColors.textTertiary,
+          color: hasBalance ? ZColors.greenAccent : ZColors.textTertiary,
           size: 14,
         ),
         const SizedBox(width: 5),
         Text(
           value,
           style: TextStyle(
-            color: hasBalance ? _ZColors.greenAccent : _ZColors.textTertiary,
+            color: hasBalance ? ZColors.greenAccent : ZColors.textTertiary,
             fontSize: 15,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.5,
@@ -703,7 +500,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         const SizedBox(width: 4),
         const Icon(
           Icons.chevron_right_rounded,
-          color: _ZColors.textTertiary,
+          color: ZColors.textTertiary,
           size: 20,
         ),
       ],
@@ -743,24 +540,21 @@ class _ProfileScreenState extends State<ProfileScreen>
         decoration: BoxDecoration(
           color: const Color(0xFFFFF0F1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: _ZColors.primary.withOpacity(0.2),
-            width: 1,
-          ),
+          border: Border.all(color: ZColors.primary.withOpacity(0.2), width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(
               Icons.delete_outline_rounded,
-              color: _ZColors.primary,
+              color: ZColors.primary,
               size: 18,
             ),
             const SizedBox(width: 8),
             Text(
               'Delete Account'.tr,
               style: const TextStyle(
-                color: _ZColors.primary,
+                color: ZColors.primary,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.1,
@@ -812,6 +606,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         positiveString: 'Log out'.tr,
         negativeString: 'Cancel'.tr,
         positiveClick: () async {
+          Constant.userModel!.fcmToken = '';
           await EditProfileProvider.updateUserStatic(Constant.userModel!);
           Constant.userModel = null;
           FireStoreUtils.backendUserId = null;
@@ -820,7 +615,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           } catch (_) {}
           await Preferences.clearSharPreference();
           const FlutterSecureStorage secureStorage = FlutterSecureStorage();
-          await clearAuthToken();
+          await secureStorage.delete(key: 'api_token');
           try {
             await DatabaseHelper.instance.deleteAllCartProducts();
             CartControllerProvider cartControllerProvider =

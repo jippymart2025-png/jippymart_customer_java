@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../home_screen/screen/group_order_section/screens/create_group_order.dart';
+import '../../group_order_section/screens/create_group_order.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';

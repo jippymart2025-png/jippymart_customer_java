@@ -31,7 +31,7 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:provider/provider.dart' show Provider;
 import '../app/category_service/category__service_screen.dart';
-import '../app/home_screen/screen/group_order_section/screens/join_group_order_screen.dart';
+import '../app/group_order_section/screens/join_group_order_screen.dart';
 import 'mart_firestore_service.dart';
 
 class FinalDeepLinkService {
@@ -920,7 +920,6 @@ class FinalDeepLinkService {
       providers.cartProvider,
       providers.orderProvider,
       context,
-      providers.favouriteProvider,
     );
   }
 

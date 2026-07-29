@@ -98,7 +98,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onPressed: isApiCallInprogress
                       ? null
                       : () {
-                          _startTransaction();
+                          // _startTransaction();
                         },
                   child: Text('Start Transcation'),
                 ),
@@ -115,55 +115,55 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Future<void> _startTransaction() async {
-    if (txnToken.isEmpty) {
-      return;
-    }
-    var sendMap = <String, dynamic>{
-      "mid": mid,
-      "orderId": orderId,
-      "amount": amount,
-      "txnToken": txnToken,
-      "callbackUrl": callbackUrl,
-      "isStaging": isStaging,
-      "restrictAppInvoke": restrictAppInvoke,
-      "enableAssist": enableAssist,
-    };
-    print(sendMap);
-    try {
-      var response = AllInOneSdk.startTransaction(
-        mid,
-        orderId,
-        amount,
-        txnToken,
-        callbackUrl,
-        isStaging,
-        restrictAppInvoke,
-        enableAssist,
-      );
-      response
-          .then((value) {
-            print(value);
-            setState(() {
-              result = value.toString();
-            });
-          })
-          .catchError((onError) {
-            if (onError is PlatformException) {
-              setState(() {
-                result =
-                    onError.message.toString() +
-                    " \n  " +
-                    onError.details.toString();
-              });
-            } else {
-              setState(() {
-                result = onError.toString();
-              });
-            }
-          });
-    } catch (err) {
-      result = err.toString();
-    }
-  }
+  // Future<void> _startTransaction() async {
+  //   if (txnToken.isEmpty) {
+  //     return;
+  //   }
+  //   var sendMap = <String, dynamic>{
+  //     "mid": mid,
+  //     "orderId": orderId,
+  //     "amount": amount,
+  //     "txnToken": txnToken,
+  //     "callbackUrl": callbackUrl,
+  //     "isStaging": isStaging,
+  //     "restrictAppInvoke": restrictAppInvoke,
+  //     "enableAssist": enableAssist,
+  //   };
+  //   print(sendMap);
+  //   try {
+  //     var response = AllInOneSdk.startTransaction(
+  //       mid,
+  //       orderId,
+  //       amount,
+  //       txnToken,
+  //       callbackUrl,
+  //       isStaging,
+  //       restrictAppInvoke,
+  //       enableAssist,
+  //     );
+  //     response
+  //         .then((value) {
+  //           print(value);
+  //           setState(() {
+  //             result = value.toString();
+  //           });
+  //         })
+  //         .catchError((onError) {
+  //           if (onError is PlatformException) {
+  //             setState(() {
+  //               result =
+  //                   onError.message.toString() +
+  //                   " \n  " +
+  //                   onError.details.toString();
+  //             });
+  //           } else {
+  //             setState(() {
+  //               result = onError.toString();
+  //             });
+  //           }
+  //         });
+  //   } catch (err) {
+  //     result = err.toString();
+  //   }
+  // }
 }

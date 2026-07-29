@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'package:jippymart_customer/app/address_screens/address_list_screen.dart';
+import 'package:jippymart_customer/app/address_screens/screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
@@ -12,17 +12,27 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../DealsScreen/DealsScreen.dart';
+import '../../../utils/utils/color_const.dart';
 import '../../profile_screen/profile_screen.dart';
 
+class DashboardTab {
+  static const home = 0;
+  static const cart = 1;
+  static const orders = 2;
+  static const profile = 3;
+}
+
 class DashBoardProvider extends ChangeNotifier {
-  DashBoardProvider() {
-    _initializePageList();
-  }
+  // DashBoardProvider() {}
 
   // State
-  int selectedIndex = 0;
-  List<Widget> pageList = [];
+  int selectedIndex = DashboardTab.home;
+  final List<Widget> pageList = const [
+    HomeScreenTwo(),
+    CartCheckOutScreen(),
+    OrderScreen(),
+    ProfileScreen(),
+  ];
   DateTime? currentBackPressTime;
   bool canPopNow = false;
   bool _addressCheckCompleted = false;
@@ -36,33 +46,29 @@ class DashBoardProvider extends ChangeNotifier {
     CartControllerProvider cartControllerProvider,
     OrderProvider orderProvider,
     BuildContext context,
-    FavouriteProvider favouriteProvider,
   ) {
     if (index < 0 || index >= pageList.length) return;
 
-    if (selectedIndex != index) {
-      selectedIndex = index;
-      notifyListeners();
-    }
+    if (selectedIndex == index) return;
+
+    selectedIndex = index;
+    notifyListeners();
 
     // Initialize screen-specific data if needed
     switch (index) {
-      case 0: // Home
-        if (homeProvider.bannerModel.isEmpty) {
-          splashProvider.refreshFunction(context);
-        }
+      case DashboardTab.home:
+        _initializeHome(homeProvider, splashProvider, context);
         break;
-      case 2: // Cart
-        if (!_cartInitialized) {
-          _cartInitialized = true;
-          cartControllerProvider.initFunction(context);
-        }
+
+      case DashboardTab.cart:
+        _initializeCart(cartControllerProvider, context);
         break;
-      case 3: // Orders
-        if (!_ordersInitialized) {
-          _ordersInitialized = true;
-          orderProvider.initFunction();
-        }
+
+      case DashboardTab.orders:
+        _initializeOrders(orderProvider);
+        break;
+
+      case DashboardTab.profile:
         break;
     }
   }
@@ -74,21 +80,30 @@ class DashBoardProvider extends ChangeNotifier {
     unawaited(_loadUserDataInBackground(context));
   }
 
-  String currentTheme = "theme_1";
+  late String currentTheme;
 
-  void _initializePageList() {
-    if (pageList.isNotEmpty) return;
+  void _initializeHome(
+    HomeProvider provider,
+    SplashProvider splashProvider,
+    BuildContext context,
+  ) {
+    if (provider.bannerModel.isNotEmpty) return;
 
-    pageList = [
-      const HomeScreenTwo(),
-      const CartCheckOutScreen(),
-      const DealsScreen(),
-      const OrderScreen(),
-      const ProfileScreen(),
-    ];
+    splashProvider.refreshFunction(context);
+  }
 
-    selectedIndex = selectedIndex.clamp(0, pageList.length - 1);
-    notifyListeners();
+  void _initializeCart(CartControllerProvider provider, BuildContext context) {
+    if (_cartInitialized) return;
+
+    _cartInitialized = true;
+    provider.initFunction(context);
+  }
+
+  void _initializeOrders(OrderProvider provider) {
+    if (_ordersInitialized) return;
+
+    _ordersInitialized = true;
+    provider.initFunction();
   }
 
   Future<void> _loadUserDataInBackground(BuildContext context) async {
@@ -107,22 +122,20 @@ class DashBoardProvider extends ChangeNotifier {
     }
   }
 
+  static const _addressCheckDelay = Duration(seconds: 5);
+
   Future<void> _checkUserShippingAddresses() async {
     try {
       // Wait for app to be fully loaded before checking
-      await Future.delayed(const Duration(seconds: 5));
+      await Future.delayed(_addressCheckDelay);
 
-      if (Constant.userModel != null) {
-        final hasAddresses =
-            Constant.userModel!.shippingAddress != null &&
-            Constant.userModel!.shippingAddress!.isNotEmpty;
+      final addresses = Constant.userModel?.shippingAddress;
 
-        if (!hasAddresses) {
-          _showAddressRequiredAlert();
-        }
+      if (addresses?.isEmpty ?? true) {
+        _showAddressRequiredAlert();
       }
     } catch (e) {
-      debugPrint("[DASHBOARD] Error checking addresses: $e");
+      debugPrint('[DASHBOARD] Error checking addresses: $e');
     }
   }
 
@@ -145,7 +158,7 @@ class DashBoardProvider extends ChangeNotifier {
                 children: [
                   const Icon(
                     Icons.location_on_rounded,
-                    color: Color(0xFFFF6B35),
+                    color: ColorConst.kGradEnd,
                     size: 48,
                   ),
                   const SizedBox(height: 16),
@@ -173,7 +186,7 @@ class DashBoardProvider extends ChangeNotifier {
                         Get.to(() => const AddressListScreen());
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6B35),
+                        backgroundColor: ColorConst.kGradEnd,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),

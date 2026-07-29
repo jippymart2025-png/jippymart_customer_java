@@ -41,13 +41,13 @@ class CommunityQuickLinks extends ConsumerWidget {
           context,
         ).push(MaterialPageRoute(builder: (_) => const EventsScreen())),
       ),
-      _QuickLink(
-        icon: Icons.forum_rounded,
-        label: 'Community Chat',
-        subtitle: 'Connect with all',
-        color: AppColors.accentPurple,
-        onTap: () => _comingSoon(context, 'Community Chat'),
-      ),
+      // _QuickLink(
+      //   icon: Icons.forum_rounded,
+      //   label: 'Community Chat',
+      //   subtitle: 'Connect with all',
+      //   color: AppColors.accentPurple,
+      //   onTap: () => _comingSoon(context, 'Community Chat'),
+      // ),
     ];
 
     return Container(

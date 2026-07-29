@@ -8,10 +8,11 @@ class AppThemeData {
   static const Color primary400 = Color(0xFFB24826);
   static const Color primary500 = Color(0xFF662713);
   static const Color primary600 = Color(0xFF1A0600);
+
   static const Color primary1000 = Color(0xFFFF6B2C);
+  static const Color primary2000 = Color(0xFFFFCBA8);
   static const Color surface = Color(0xFFF9FAFB);
   static const Color surfaceDark = Color(0xFF030712);
-  static const Color primary2000 = Color(0xFFFFCBA8);
 
   // Mart Home screen background color - reusable across all screens
   static const Color homeScreenBackground = Color(0xFFFAF9EE);
@@ -84,6 +85,20 @@ class AppThemeData {
 
   static const String googleSansCode = 'GoogleSansCode';
 
+  static const kGradStart = Color(0xFFE8192C);
+  static const kGradEnd = Color(0xFFFF6B35);
+
+  // Accent & surface palette
+  static const kAccentAmber = Color(0xFFFFC107);
+  static const kSurfaceWhite = Color(0xFFFFFFFF);
+  static const kBgCanvas = Color(0xFFF7F7F8);
+  static const kCardShadow = Color(0x14000000);
+  static const kCardShadowMd = Color(0x1F000000);
+
+  // Status colours
+  static const kOpenGreen = Color(0xFF2ECC71);
+  static const kClosedRed = Color(0xFFE74C3C);
+
   static const Color orange = Color(0xFFFF6B35);
   static const Color orangeLight = Color(0xFFFFF0EB);
   static const Color orangeMid = Color(0xFFFFD4C2);
@@ -101,6 +116,40 @@ class AppThemeData {
   static const String fontSemiBold = AppThemeData.semiBold;
   static const String fontMedium = AppThemeData.medium;
   static const String fontBold = AppThemeData.bold;
+
+  static const kBrand = Color(0xFFFF3008);
+  static const kBrandDeep = Color(0xFFCC1A00);
+  static const kBrandLight = Color(0xFFFF6820);
+  static const kGradEnds = Color(0xFFff5201);
 }
+
+class ZColors {
+  static const kGradStart = Color(0xFFE8192C);
+  static const kGradEnd = Color(0xFFFF6B35);
+  static const Color primary = Color(0xFFE74C3C);
+  static const Color primaryLight = Color(0xFFFFF0F1);
+  static const Color primaryDark = Color(0xFFC0000F);
+  static const Color surface = Color(0xFFF8F8F8);
+  static const Color cardBg = Color(0xFFFFFFFF);
+  static const Color textPrimary = Color(0xFF1C1C1E);
+  static const Color textSecondary = Color(0xFF6D6D6D);
+  static const Color textTertiary = Color(0xFFAAAAAA);
+  static const Color divider = Color(0xFFF0F0F0);
+  static const Color iconBg = Color(0xFFFFF4F5);
+  static const Color greenAccent = Color(0xFF26A541);
+  static const Color amberAccent = Color(0xFFF5A623);
+}
+
+final kSectionGradient = const LinearGradient(
+  begin: Alignment.topCenter,
+  end: Alignment.bottomCenter,
+  colors: [
+    Color(0x3833B5E5), // ~0.45 opacity
+    Color(0x3833B5E5), // ~0.22
+    Color(0x1A33B5E5), // ~0.10
+    Color(0x0D33B5E5), // ~0.05
+  ],
+  stops: [0.0, 0.3, 0.7, 1.0],
+);
 
 class _T {}

@@ -25,92 +25,14 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:jippymart_customer/services/cache_manager.dart';
 import 'package:jippymart_customer/services/api_queue_manager.dart';
+import '../../core/responsive.dart';
 import '../../utils/utils/common.dart';
 import 'bannerdeals.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Brand tokens — single source of truth for every color in this feature.
-// ─────────────────────────────────────────────────────────────────────────────
-abstract final class _C {
-  static const Color brand = Color(0xFFD12477);
-  static const Color brandLight = Color(0xFFFCE8F3);
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color bg = Color(0xFFF5F0FA);
-  static const Color border = Color(0xFFEEE8F8);
-  static const Color text1 = Color(0xFF13111A);
-  static const Color text3 = Color(0xFF9B95A8);
-  static const Color green = Color(0xFF1DB87A);
-  static const Color red = Color(0xFFE84040);
-  static const Color overlay = Color(0x55000000);
-  static const Color closedPill = Color(0xCC000000);
-
-  // Wallet badge
+extension ResponsiveExtension on BuildContext {
+  Responsive get rs => Responsive.of(this);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Responsive sizing — computed once per layout pass and cached.
-// ─────────────────────────────────────────────────────────────────────────────
-@immutable
-final class _RS {
-  final double sw, sh;
-
-  const _RS({required this.sw, required this.sh});
-
-  bool get _xs => sw < 360;
-
-  bool get _lg => sw >= 600;
-
-  // Layout
-  double get hPad => _xs ? 12 : (_lg ? 16 : 12);
-
-  double get cardWidth => _xs ? 120 : (_lg ? 155 : 136);
-
-  double get cardImgH => _xs ? 80 : (_lg ? 108 : 92);
-
-  double get prodScrollH => cardImgH + 120; // img + info area
-
-  // Typography
-  double get nameFs => _xs ? 11.5 : (_lg ? 13.5 : 12.5);
-
-  double get specPriceFs => _xs ? 13 : (_lg ? 15 : 14);
-
-  double get origPriceFs => _xs ? 8 : (_lg ? 10 : 9);
-
-  double get badgeFs => _xs ? 7.5 : (_lg ? 9 : 8);
-
-  double get saveLblFs => _xs ? 7 : (_lg ? 8.5 : 7.5);
-
-  double get qtyFs => _xs ? 12 : (_lg ? 14 : 13);
-
-  double get closedFs => _xs ? 10 : (_lg ? 12 : 11);
-
-  // Add-to-cart button
-  double get btnH => _xs ? 28 : (_lg ? 34 : 30);
-
-  double get btnRadius => _xs ? 7 : (_lg ? 10 : 8);
-
-  double get btnIconSz => _xs ? 13 : (_lg ? 16 : 14);
-
-  // Veg dot
-  double get vegOuter => _xs ? 14 : (_lg ? 17 : 15);
-
-  double get vegInner => _xs ? 8 : (_lg ? 11 : 9.5);
-
-  // Section
-  double get restNameFs => _xs ? 13 : (_lg ? 15 : 14);
-
-  double get metaFs => _xs ? 9 : (_lg ? 11 : 10);
-
-  @override
-  bool operator ==(Object o) => o is _RS && o.sw == sw && o.sh == sh;
-
-  @override
-  int get hashCode => Object.hash(sw, sh);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shimmer mixin — drives a single shared animation across skeleton widgets.
-// ─────────────────────────────────────────────────────────────────────────────
 mixin _ShimmerMixin<T extends StatefulWidget>
     on State<T>, SingleTickerProviderStateMixin<T> {
   late AnimationController shimmerCtrl;
@@ -186,14 +108,14 @@ class _DeliveryTickerState extends State<_DeliveryTicker> {
     key: const ValueKey('fast'),
     mainAxisSize: MainAxisSize.min,
     children: [
-      const Icon(Icons.delivery_dining_rounded, size: 11, color: _C.brand),
+      const Icon(Icons.delivery_dining_rounded, size: 11, color: C.brand),
       const SizedBox(width: 3),
       const Text(
         'Fast delivery',
         style: TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w600,
-          color: _C.brand,
+          color: C.brand,
         ),
         overflow: TextOverflow.ellipsis,
       ),
@@ -204,14 +126,14 @@ class _DeliveryTickerState extends State<_DeliveryTicker> {
     key: const ValueKey('time'),
     mainAxisSize: MainAxisSize.min,
     children: [
-      const Icon(Icons.access_time_rounded, size: 10, color: _C.text3),
+      const Icon(Icons.access_time_rounded, size: 10, color: C.text3),
       const SizedBox(width: 3),
       Text(
         widget.deliveryTime,
         style: const TextStyle(
           fontSize: 10,
           fontWeight: FontWeight.w500,
-          color: _C.text3,
+          color: C.text3,
         ),
         overflow: TextOverflow.ellipsis,
       ),
@@ -254,7 +176,7 @@ class _SkeletonBoxState extends State<_SkeletonBox>
 class _SkeletonRestaurantCard extends StatefulWidget {
   const _SkeletonRestaurantCard({required this.rs});
 
-  final _RS rs;
+  final Responsive rs;
 
   @override
   State<_SkeletonRestaurantCard> createState() =>
@@ -273,9 +195,9 @@ class _SkeletonRestaurantCardState extends State<_SkeletonRestaurantCard>
         return Container(
           margin: EdgeInsets.fromLTRB(rs.hPad, 0, rs.hPad, 14),
           decoration: BoxDecoration(
-            color: _C.surface,
+            color: C.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: _C.border),
+            border: Border.all(color: C.border),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x0F2D1B4E),
@@ -398,7 +320,7 @@ class _DealsScreenState extends State<DealsScreen>
 
   // ── UI state ─────────────────────────────────────────────────────────────
   int _selectedCat = 0;
-  _RS? _cachedRS;
+  Responsive? _cachedRS;
 
   // ── constants ────────────────────────────────────────────────────────────
   static const Duration _networkTimeout = Duration(seconds: 10);
@@ -773,8 +695,7 @@ class _DealsScreenState extends State<DealsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final rs = _RS(sw: size.width, sh: size.height);
+    final rs = context.rs;
     _cachedRS = rs;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
@@ -785,16 +706,13 @@ class _DealsScreenState extends State<DealsScreen>
         systemStatusBarContrastEnforced: false,
       ),
       child: Scaffold(
-        backgroundColor: _C.bg,
+        backgroundColor: C.bg,
         body: Column(
           children: [
             // ── App Bar ──────────────────────────────────────────────────
             SlideTransition(
               position: _headerSlide,
-              child: FadeTransition(
-                opacity: _headerFade,
-                child: _AppBar(rs: rs),
-              ),
+              child: FadeTransition(opacity: _headerFade, child: AppBar()),
             ),
 
             // ── Category Filter Row ──────────────────────────────────────
@@ -811,7 +729,7 @@ class _DealsScreenState extends State<DealsScreen>
                   ? const _EmptyState()
                   : RefreshIndicator(
                       onRefresh: _pullToRefresh,
-                      color: _C.brand,
+                      color: C.brand,
                       child: _ContentList(
                         rs: rs,
                         dealsBanners: _dealsBanners,
@@ -832,57 +750,6 @@ class _DealsScreenState extends State<DealsScreen>
 // ─────────────────────────────────────────────────────────────────────────────
 // App Bar
 // ─────────────────────────────────────────────────────────────────────────────
-class _AppBar extends StatelessWidget {
-  const _AppBar({required this.rs});
-
-  final _RS rs;
-
-  @override
-  Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-    return Container(
-      color: _C.surface,
-      padding: EdgeInsets.fromLTRB(rs.hPad, top + 10, rs.hPad, 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    const Text(
-                      'Jippy Deals',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: _C.text1,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    const Text('🔥', style: TextStyle(fontSize: 20)),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  Constant.selectedZone?.name?.isNotEmpty == true
-                      ? '${Constant.selectedZone!.name} · Best deals, bigger savings!'
-                      : 'Best deals, bigger savings!',
-                  style: const TextStyle(fontSize: 11, color: _C.text3),
-                ),
-              ],
-            ),
-          ),
-          // const SizedBox(width: 12),
-          // _WalletButton(),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Wallet button
@@ -1030,7 +897,7 @@ class _AppBar extends StatelessWidget {
 class _SkeletonBody extends StatelessWidget {
   const _SkeletonBody({required this.rs});
 
-  final _RS rs;
+  final Responsive rs;
 
   @override
   Widget build(BuildContext context) {
@@ -1079,7 +946,7 @@ class _ContentList extends StatelessWidget {
     required this.restaurantStatusCache,
   });
 
-  final _RS rs;
+  final Responsive rs;
   final List<BannerModel> dealsBanners;
   final Map<String, List<PromotionModel>> grouped;
   final Map<String, ProductModel> productCache;
@@ -1128,7 +995,7 @@ class _ContentList extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
-                    color: _C.text1,
+                    color: C.text1,
                     letterSpacing: -0.2,
                   ),
                 ),
@@ -1141,7 +1008,7 @@ class _ContentList extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
-                      color: _C.brand,
+                      color: C.brand,
                     ),
                   ),
                 ),
@@ -1149,7 +1016,7 @@ class _ContentList extends StatelessWidget {
                 const Icon(
                   Icons.chevron_right_rounded,
                   size: 16,
-                  color: _C.brand,
+                  color: C.brand,
                 ),
               ],
             ),
@@ -1201,7 +1068,7 @@ class _EmptyState extends StatelessWidget {
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: _C.brandLight,
+              color: C.brandLight,
               borderRadius: BorderRadius.circular(24),
             ),
             child: const Center(
@@ -1214,13 +1081,13 @@ class _EmptyState extends StatelessWidget {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w700,
-              color: _C.text1,
+              color: C.text1,
             ),
           ),
           const SizedBox(height: 6),
           const Text(
             'Check back soon for exciting offers!',
-            style: TextStyle(fontSize: 13, color: _C.text3),
+            style: TextStyle(fontSize: 13, color: C.text3),
           ),
         ],
       ),
@@ -1251,7 +1118,7 @@ class _RestaurantSection extends StatelessWidget {
   final Map<String, ProductModel> productCache;
   final Map<String, VendorModel> vendorCache;
   final Map<String, bool> restaurantStatusCache;
-  final _RS rs;
+  final Responsive rs;
 
   String get _name =>
       vendor?.title ??
@@ -1265,9 +1132,9 @@ class _RestaurantSection extends StatelessWidget {
     return Container(
       margin: EdgeInsets.fromLTRB(rs.hPad, 0, rs.hPad, 10),
       decoration: BoxDecoration(
-        color: _C.surface,
+        color: C.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _C.border),
+        border: Border.all(color: C.border),
         boxShadow: const [
           BoxShadow(
             color: Color(0x122D1B4E),
@@ -1305,7 +1172,7 @@ class _RestaurantSection extends StatelessWidget {
                           style: TextStyle(
                             fontSize: rs.restNameFs,
                             fontWeight: FontWeight.w800,
-                            color: _C.text1,
+                            color: C.text1,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1323,7 +1190,7 @@ class _RestaurantSection extends StatelessWidget {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: _C.green,
+                                color: C.green,
                                 borderRadius: BorderRadius.circular(5),
                               ),
                               child: const Row(
@@ -1377,7 +1244,7 @@ class _RestaurantSection extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: _C.brandLight,
+                      color: C.brandLight,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -1385,7 +1252,7 @@ class _RestaurantSection extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: _C.brand,
+                        color: C.brand,
                       ),
                     ),
                   ),
@@ -1433,9 +1300,9 @@ class _VendorLogo extends StatelessWidget {
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: _C.brandLight,
+        color: C.brandLight,
         shape: BoxShape.circle,
-        border: Border.all(color: _C.border, width: 1.5),
+        border: Border.all(color: C.border, width: 1.5),
       ),
       child: ClipOval(
         child: vendor?.photo != null && vendor!.photo!.isNotEmpty
@@ -1458,9 +1325,9 @@ class _FoodPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: _C.brandLight,
+      color: C.brandLight,
       alignment: Alignment.center,
-      child: const Icon(Icons.fastfood_rounded, size: 20, color: _C.brand),
+      child: const Icon(Icons.fastfood_rounded, size: 20, color: C.brand),
     );
   }
 }
@@ -1483,7 +1350,7 @@ class _PromotionCard extends StatefulWidget {
   final Map<String, ProductModel> productCache;
   final Map<String, VendorModel> vendorCache;
   final Map<String, bool> restaurantStatusCache;
-  final _RS rs;
+  final Responsive rs;
   final int animIndex;
 
   @override
@@ -1502,7 +1369,7 @@ class _PromotionCardState extends State<_PromotionCard>
   late Animation<double> _entryFade;
   late Animation<Offset> _entrySlide;
 
-  _RS get rs => widget.rs;
+  Responsive get rs => widget.rs;
 
   @override
   void initState() {
@@ -1839,9 +1706,9 @@ class _PromotionCardState extends State<_PromotionCard>
             width: rs.cardWidth,
             child: Container(
               decoration: BoxDecoration(
-                color: _C.surface,
+                color: C.surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _C.border),
+                border: Border.all(color: C.border),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
@@ -1874,7 +1741,7 @@ class _PromotionCardState extends State<_PromotionCard>
                                   style: TextStyle(
                                     fontSize: rs.nameFs,
                                     fontWeight: FontWeight.w700,
-                                    color: _C.text1,
+                                    color: C.text1,
                                     height: 1.15,
                                   ),
                                   maxLines: 2,
@@ -1892,7 +1759,7 @@ class _PromotionCardState extends State<_PromotionCard>
                                       style: TextStyle(
                                         fontSize: rs.specPriceFs,
                                         fontWeight: FontWeight.w800,
-                                        color: _C.text1,
+                                        color: C.text1,
                                       ),
                                     ),
                                     if (origRaw != null &&
@@ -1902,7 +1769,7 @@ class _PromotionCardState extends State<_PromotionCard>
                                         _fmt(origRaw),
                                         style: TextStyle(
                                           fontSize: rs.origPriceFs,
-                                          color: _C.text3,
+                                          color: C.text3,
                                           decoration:
                                               TextDecoration.lineThrough,
                                         ),
@@ -1919,7 +1786,7 @@ class _PromotionCardState extends State<_PromotionCard>
                                     'You save ${_fmt(_calcSave(spec, origRaw))}',
                                     style: TextStyle(
                                       fontSize: rs.saveLblFs,
-                                      color: _C.brand,
+                                      color: C.brand,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
@@ -1946,7 +1813,7 @@ class _PromotionCardState extends State<_PromotionCard>
                     if (closed)
                       Positioned.fill(
                         child: Container(
-                          color: _C.overlay,
+                          color: C.overlay,
                           alignment: Alignment.center,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
@@ -1954,7 +1821,7 @@ class _PromotionCardState extends State<_PromotionCard>
                               vertical: 5,
                             ),
                             decoration: BoxDecoration(
-                              color: _C.closedPill,
+                              color: C.closedPill,
                               borderRadius: BorderRadius.circular(10),
                             ),
                             child: Text(
@@ -1993,7 +1860,7 @@ class _ProductImage extends StatelessWidget {
     required this.closed,
   });
 
-  final _RS rs;
+  final Responsive rs;
   final String? imgUrl;
   final bool loading;
   final bool? isVeg;
@@ -2019,7 +1886,7 @@ class _ProductImage extends StatelessWidget {
                       height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: _C.brand,
+                        color: C.brand,
                       ),
                     ),
                   )
@@ -2034,7 +1901,7 @@ class _ProductImage extends StatelessWidget {
                     child: Icon(
                       Icons.local_offer_rounded,
                       size: 26,
-                      color: _C.brand.withOpacity(0.4),
+                      color: C.brand.withOpacity(0.4),
                     ),
                   ),
           ),
@@ -2076,7 +1943,7 @@ class _ProductImage extends StatelessWidget {
                     width: rs.vegInner,
                     height: rs.vegInner,
                     decoration: BoxDecoration(
-                      color: isVeg! ? _C.green : _C.red,
+                      color: isVeg! ? C.green : C.red,
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -2092,7 +1959,7 @@ class _ProductImage extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _C.brand,
+                  color: C.brand,
                   borderRadius: BorderRadius.circular(5),
                 ),
                 child: Text(
@@ -2147,7 +2014,7 @@ class _AddButton extends StatelessWidget {
     required this.onDecrease,
   });
 
-  final _RS rs;
+  final Responsive rs;
   final bool inCart, closed;
   final int qty;
   final VoidCallback onAdd, onIncrease, onDecrease;
@@ -2166,7 +2033,7 @@ class _AddButton extends StatelessWidget {
         child: Icon(
           Icons.lock_outline_rounded,
           size: rs.btnIconSz,
-          color: _C.text3,
+          color: C.text3,
         ),
       );
     }
@@ -2179,7 +2046,7 @@ class _AddButton extends StatelessWidget {
           height: rs.btnH,
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(color: _C.brand, width: 1.5),
+            border: Border.all(color: C.brand, width: 1.5),
             borderRadius: BorderRadius.circular(rs.btnRadius),
           ),
           alignment: Alignment.center,
@@ -2188,7 +2055,7 @@ class _AddButton extends StatelessWidget {
             style: TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.w800,
-              color: _C.brand,
+              color: C.brand,
             ),
           ),
         ),
@@ -2207,7 +2074,7 @@ class _AddButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(rs.btnRadius),
         boxShadow: [
           BoxShadow(
-            color: _C.brand.withOpacity(0.28),
+            color: C.brand.withOpacity(0.28),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),

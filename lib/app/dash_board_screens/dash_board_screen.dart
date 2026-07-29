@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
@@ -14,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/utils/utils/color_const.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:jippymart_customer/widget/network_status_banner.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
@@ -21,21 +23,17 @@ import 'package:provider/provider.dart';
 
 import '../../services/cart_provider.dart';
 
-// Hero gradient — keep in sync with home_screen_two.dart
-const Color _kGradStart = Color(0xFFFF2D2D);
-const Color _kGradEnd = Color(0xFFFF8C42);
-
-const LinearGradient _kGradient = LinearGradient(
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-  stops: [0.0, 1.0],
-  colors: [_kGradStart, _kGradEnd],
-);
+// const LinearGradient _kGradient = LinearGradient(
+//   begin: Alignment.topLeft,
+//   end: Alignment.bottomRight,
+//   stops: [0.0, 1.0],
+//   colors: [ColorConst.kGradStart, ColorConst.kGradEnd],
+// );
 
 /// Status bar can only be one opaque colour; use a blended tone from
 /// the hero gradient so the transition into home feels smooth.
 Color _statusBarTintFromHeroGradient() {
-  return Color.lerp(_kGradStart, _kGradEnd, 0.18)!;
+  return Color.lerp(ColorConst.kGradStart, ColorConst.kGradEnd, 0.18)!;
 }
 
 class DashBoardScreen extends StatefulWidget {
@@ -114,21 +112,20 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   void _startOrderStatusRefreshTicker() {
     _orderStatusRefreshTimer?.cancel();
-    _orderStatusRefreshTimer = Timer.periodic(_orderStatusRefreshInterval, (
-      _,
-    ) async {
-      if (!mounted) return;
-      if (_activeOrderStartTime == null) return;
-      if (_isOrderRefreshInFlight) return;
-      final orderProvider = context.read<OrderProvider>();
-      _isOrderRefreshInFlight = true;
-      try {
-        await orderProvider.getOrder(forceRefresh: true);
-        if (mounted) _syncActiveOrderCountdown(orderProvider);
-      } finally {
-        _isOrderRefreshInFlight = false;
-      }
-    });
+    _orderStatusRefreshTimer =
+        Timer.periodic(_orderStatusRefreshInterval, (_,) async {
+          if (!mounted) return;
+          if (_activeOrderStartTime == null) return;
+          if (_isOrderRefreshInFlight) return;
+          final orderProvider = context.read<OrderProvider>();
+          _isOrderRefreshInFlight = true;
+          try {
+            await orderProvider.getOrder(forceRefresh: true);
+            if (mounted) _syncActiveOrderCountdown(orderProvider);
+          } finally {
+            _isOrderRefreshInFlight = false;
+          }
+        });
   }
 
   void _startCountdownTicker() {
@@ -225,11 +222,11 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   String _normalizedStatus(String? status) {
     return status
-            ?.toString()
-            .trim()
-            .toLowerCase()
-            .replaceAll('_', ' ')
-            .replaceAll(RegExp(r'\s+'), ' ') ??
+        ?.toString()
+        .trim()
+        .toLowerCase()
+        .replaceAll('_', ' ')
+        .replaceAll(RegExp(r'\s+'), ' ') ??
         '';
   }
 
@@ -284,7 +281,9 @@ class _DashBoardScreenState extends State<DashBoardScreen>
         }),
       );
       // Re-apply status bar style when returning from background
-      final idx = context.read<DashBoardProvider>().selectedIndex;
+      final idx = context
+          .read<DashBoardProvider>()
+          .selectedIndex;
       _applyStatusBarStyle(idx);
 
       final now = DateTime.now();
@@ -318,7 +317,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   Widget build(BuildContext context) {
     final dashBoardProvider = context.read<DashBoardProvider>();
     final dashboardState = context.select<DashBoardProvider, (int, int)>(
-      (p) => (p.pageList.length, p.selectedIndex),
+          (p) => (p.pageList.length, p.selectedIndex),
     );
     if (dashboardState.$1 == 0) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -331,23 +330,23 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     SystemChrome.setSystemUIOverlayStyle(
       tabIndex == 0
           ? SystemUiOverlayStyle(
-              statusBarColor: _statusBarTintFromHeroGradient(),
-              statusBarIconBrightness: Brightness.light,
-              statusBarBrightness: Brightness.dark,
-              systemNavigationBarColor: Colors.white,
-              systemNavigationBarIconBrightness: Brightness.dark,
-              systemStatusBarContrastEnforced: false,
-              systemNavigationBarContrastEnforced: false,
-            )
+        statusBarColor: _statusBarTintFromHeroGradient(),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
+      )
           : const SystemUiOverlayStyle(
-              statusBarColor: Colors.white,
-              statusBarIconBrightness: Brightness.dark,
-              statusBarBrightness: Brightness.light,
-              systemNavigationBarColor: Colors.white,
-              systemNavigationBarIconBrightness: Brightness.dark,
-              systemStatusBarContrastEnforced: false,
-              systemNavigationBarContrastEnforced: false,
-            ),
+        statusBarColor: Colors.white,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemStatusBarContrastEnforced: false,
+        systemNavigationBarContrastEnforced: false,
+      ),
     );
   }
 
@@ -365,7 +364,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
     final cartControllerProvider = context.read<CartControllerProvider>();
     final cartItemCount = context.select<CartProvider, int>(
-      (provider) => provider.totalQuantity,
+          (provider) => provider.totalQuantity,
     );
     final orderProvider = context.read<OrderProvider>();
     final splashProvider = context.read<SplashProvider>();
@@ -376,22 +375,27 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     final hasActiveOrder = _activeOrderStartTime != null;
     return PopScope(
       canPop: dashBoardProvider.canPopNow,
-      onPopInvoked: (didPop) => _handleBackPress(
-        didPop,
-        dashBoardProvider,
-        homeProvider,
-        splashProvider,
-        cartControllerProvider,
-        orderProvider,
-        context,
-        favouriteProvider,
-      ),
+      onPopInvoked: (didPop) =>
+          _handleBackPress(
+            didPop,
+            dashBoardProvider,
+            homeProvider,
+            splashProvider,
+            cartControllerProvider,
+            orderProvider,
+            context,
+            favouriteProvider,
+          ),
       child: Scaffold(
+        extendBody: true,
         body: _buildAnimatedBody(dashBoardProvider, safeIndex),
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (hasActiveOrder) _buildOrderTimerBanner(),
+            if (hasActiveOrder) ...[
+              _buildOrderTimerBanner(),
+              const SizedBox(height: 3), // Adjust to 4, 6, or 8 as needed
+            ],
             _buildOptimizedBottomBar(
               dashBoardProvider,
               cartControllerProvider,
@@ -400,7 +404,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
               context,
               splashProvider,
               homeProvider,
-              favouriteProvider,
+              // favouriteProvider,
             ),
           ],
         ),
@@ -410,12 +414,12 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   Widget _buildOrderTimerBanner() {
     return Container(
-      width: double.infinity,
+      width: 325,
       decoration: BoxDecoration(
         color: AppThemeData.danger300,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(50),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
         children: [
           Icon(Icons.timer_outlined, color: AppThemeData.surface, size: 22),
@@ -459,16 +463,14 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     );
   }
 
-  void _handleBackPress(
-    bool didPop,
-    DashBoardProvider dashBoardProvider,
-    HomeProvider homeProvider,
-    SplashProvider splashProvider,
-    CartControllerProvider cartControllerProvider,
-    OrderProvider orderProvider,
-    BuildContext context,
-    FavouriteProvider favouriteProvider,
-  ) {
+  void _handleBackPress(bool didPop,
+      DashBoardProvider dashBoardProvider,
+      HomeProvider homeProvider,
+      SplashProvider splashProvider,
+      CartControllerProvider cartControllerProvider,
+      OrderProvider orderProvider,
+      BuildContext context,
+      FavouriteProvider favouriteProvider,) {
     if (didPop) return;
 
     if (dashBoardProvider.selectedIndex == 0) {
@@ -492,15 +494,12 @@ class _DashBoardScreenState extends State<DashBoardScreen>
         cartControllerProvider,
         orderProvider,
         context,
-        favouriteProvider,
       );
     }
   }
 
-  Widget _buildAnimatedBody(
-    DashBoardProvider dashBoardProvider,
-    int safeIndex,
-  ) {
+  Widget _buildAnimatedBody(DashBoardProvider dashBoardProvider,
+      int safeIndex,) {
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -532,16 +531,15 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     );
   }
 
-  Widget _buildOptimizedBottomBar(
-    DashBoardProvider controller,
-    CartControllerProvider cartControllerProvider,
-    int cartItemCount,
-    OrderProvider orderProvider,
-    BuildContext context,
-    SplashProvider splashProvider,
-    HomeProvider homeProvider,
-    FavouriteProvider favouriteProvider,
-  ) {
+  Widget _buildOptimizedBottomBar(DashBoardProvider controller,
+      CartControllerProvider cartControllerProvider,
+      int cartItemCount,
+      OrderProvider orderProvider,
+      BuildContext context,
+      SplashProvider splashProvider,
+      HomeProvider homeProvider,
+      // FavouriteProvider favouriteProvider,
+      ) {
     final shouldUpdateBadge = cartItemCount != _lastCartItemCount;
     if (shouldUpdateBadge) {
       _lastCartItemCount = cartItemCount;
@@ -560,7 +558,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
               orderProvider: orderProvider,
               splashProvider: splashProvider,
               homeProvider: homeProvider,
-              favouriteProvider: favouriteProvider,
+              // favouriteProvider: favouriteProvider,
               context: context,
               cartItemCount: cartItemCount,
             ),
@@ -578,7 +576,8 @@ class _BottomNavigationBar extends StatelessWidget {
   final OrderProvider orderProvider;
   final SplashProvider splashProvider;
   final HomeProvider homeProvider;
-  final FavouriteProvider favouriteProvider;
+
+  // final FavouriteProvider favouriteProvider;
   final BuildContext context;
   final int cartItemCount;
 
@@ -588,145 +587,107 @@ class _BottomNavigationBar extends StatelessWidget {
     required this.orderProvider,
     required this.splashProvider,
     required this.homeProvider,
-    required this.favouriteProvider,
+    // required this.favouriteProvider,
     required this.context,
     required this.cartItemCount,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        // White background
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: Container(
-            color: Colors.white,
-            height: 65 + MediaQuery.of(context).padding.bottom,
-          ),
-        ),
-        // Navigation bar
-        SafeArea(
-          top: false,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Background with shadow
-              Container(
-                width: MediaQuery.of(context).size.width,
-                height: 65,
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
-                      blurRadius: 12,
-                      offset: const Offset(0, -3),
-                    ),
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 25, sigmaY: 25),
+            child: Container(
+              height: 55,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(32),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.white.withOpacity(0.22),
+                    Colors.white.withOpacity(0.08),
                   ],
                 ),
-                child: SvgPicture.asset(
-                  'assets/svg/courve3.svg',
-                  fit: BoxFit.fill,
-                  alignment: Alignment.bottomCenter,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
+                border: Border.all(color: Colors.white.withOpacity(0.20)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 30,
+                    offset: const Offset(0, 12),
                   ),
-                ),
+                ],
               ),
-              // Navigation items
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Container(
-                  height: 55,
-                  padding: const EdgeInsets.only(bottom: 4),
-                  child: Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      // Navigation items
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          _NavItem(
-                            index: 0,
-                            svgIcon: ImageConst.homeOne,
-                            label: 'Home'.tr,
-                            controller: controller,
-                            homeProvider: homeProvider,
-                            splashProvider: splashProvider,
-                            cartControllerProvider: cartControllerProvider,
-                            orderProvider: orderProvider,
-                            context: context,
-                            favouriteProvider: favouriteProvider,
-                          ),
-                          _NavItem(
-                            index: 1,
-                            svgIcon: ImageConst.cartOne,
-                            label: 'Cart'.tr,
-                            controller: controller,
-                            homeProvider: homeProvider,
-                            splashProvider: splashProvider,
-                            cartControllerProvider: cartControllerProvider,
-                            orderProvider: orderProvider,
-                            context: context,
-                            favouriteProvider: favouriteProvider,
-                            cartItemCount: cartItemCount,
-                          ),
-                          const SizedBox(width: 60),
-                          _NavItem(
-                            index: 3,
-                            svgIcon: ImageConst.orderOne,
-                            label: 'Orders'.tr,
-                            controller: controller,
-                            homeProvider: homeProvider,
-                            splashProvider: splashProvider,
-                            cartControllerProvider: cartControllerProvider,
-                            orderProvider: orderProvider,
-                            context: context,
-                            favouriteProvider: favouriteProvider,
-                          ),
-                          _NavItem(
-                            index: 4,
-                            svgIcon: ImageConst.profile,
-                            label: 'Profile'.tr,
-                            controller: controller,
-                            homeProvider: homeProvider,
-                            splashProvider: splashProvider,
-                            cartControllerProvider: cartControllerProvider,
-                            orderProvider: orderProvider,
-                            context: context,
-                            favouriteProvider: favouriteProvider,
-                          ),
-                        ],
-                      ),
-                      // Floating deals button
-                      Positioned(
-                        top: -30,
-                        left: 0,
-                        right: 0,
-                        child: _FloatingDealsButton(
-                          controller: controller,
-                          homeProvider: homeProvider,
-                          splashProvider: splashProvider,
-                          cartControllerProvider: cartControllerProvider,
-                          orderProvider: orderProvider,
-                          context: context,
-                          favouriteProvider: favouriteProvider,
-                        ),
-                      ),
-                    ],
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _NavItem(
+                      index: DashboardTab.home,
+                      svgIcon: ImageConst.homeOne,
+                      label: 'Home'.tr,
+                      controller: controller,
+                      homeProvider: homeProvider,
+                      splashProvider: splashProvider,
+                      cartControllerProvider: cartControllerProvider,
+                      orderProvider: orderProvider,
+                      context: context,
+                      // favouriteProvider: favouriteProvider,
+                    ),
                   ),
-                ),
+                  Expanded(
+                    child: _NavItem(
+                      index: DashboardTab.cart,
+                      svgIcon: ImageConst.cartOne,
+                      label: 'Cart'.tr,
+                      controller: controller,
+                      homeProvider: homeProvider,
+                      splashProvider: splashProvider,
+                      cartControllerProvider: cartControllerProvider,
+                      orderProvider: orderProvider,
+                      context: context,
+                      // favouriteProvider: favouriteProvider,
+                      cartItemCount: cartItemCount,
+                    ),
+                  ),
+                  Expanded(
+                    child: _NavItem(
+                      index: DashboardTab.orders,
+                      svgIcon: ImageConst.orderOne,
+                      label: 'Orders'.tr,
+                      controller: controller,
+                      homeProvider: homeProvider,
+                      splashProvider: splashProvider,
+                      cartControllerProvider: cartControllerProvider,
+                      orderProvider: orderProvider,
+                      context: context,
+                      // favouriteProvider: favouriteProvider,
+                    ),
+                  ),
+                  Expanded(
+                    child: _NavItem(
+                      index: DashboardTab.profile,
+                      svgIcon: ImageConst.profile,
+                      label: 'Profile'.tr,
+                      controller: controller,
+                      homeProvider: homeProvider,
+                      splashProvider: splashProvider,
+                      cartControllerProvider: cartControllerProvider,
+                      orderProvider: orderProvider,
+                      context: context,
+                      // favouriteProvider: favouriteProvider,
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -742,7 +703,8 @@ class _NavItem extends StatelessWidget {
   final CartControllerProvider cartControllerProvider;
   final OrderProvider orderProvider;
   final BuildContext context;
-  final FavouriteProvider favouriteProvider;
+
+  // final FavouriteProvider favouriteProvider;
   final int? cartItemCount;
 
   const _NavItem({
@@ -755,7 +717,7 @@ class _NavItem extends StatelessWidget {
     required this.cartControllerProvider,
     required this.orderProvider,
     required this.context,
-    required this.favouriteProvider,
+    // required this.favouriteProvider,
     this.cartItemCount,
   });
 
@@ -780,8 +742,8 @@ class _NavItem extends StatelessWidget {
                 alignment: Alignment.center,
                 children: [
                   Container(
-                    width: 22,
-                    height: 22,
+                    width: 25,
+                    height: 25,
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppThemeData.primary300.withOpacity(0.08)
@@ -795,9 +757,7 @@ class _NavItem extends StatelessWidget {
                         height: 14,
                         width: 14,
                         colorFilter: ColorFilter.mode(
-                          isSelected
-                              ? AppThemeData.primary300
-                              : AppThemeData.grey600,
+                          isSelected ? AppThemeData.primary300 : Colors.black,
                           BlendMode.srcIn,
                         ),
                       ),
@@ -870,7 +830,6 @@ class _NavItem extends StatelessWidget {
       cartControllerProvider,
       orderProvider,
       context,
-      favouriteProvider,
     );
   }
 }
@@ -991,7 +950,6 @@ class _FloatingDealsButton extends StatelessWidget {
       cartControllerProvider,
       orderProvider,
       context,
-      favouriteProvider,
     );
   }
 }
