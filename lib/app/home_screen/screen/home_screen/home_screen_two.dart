@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/order_type_View.dart';
 import 'package:provider/provider.dart';
@@ -25,7 +24,6 @@ import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
-import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
@@ -33,7 +31,6 @@ import 'package:jippymart_customer/widget/filter_bar.dart';
 import 'package:jippymart_customer/widget/restaurant_image_with_status.dart';
 import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
-
 import '../../../group_order_section/screens/group_order_navigation.dart';
 import 'widgets/category_view_widget.dart';
 
@@ -50,7 +47,7 @@ class HomeScreenTwo extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.read<HomeProvider>();
     final _ = context.select<HomeProvider, (bool, bool, int)>(
-      (p) => (p.isLoading, p.zoneCheckCompleted, p.bannerModel.length),
+          (p) => (p.isLoading, p.zoneCheckCompleted, p.bannerModel.length),
     );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -62,7 +59,7 @@ class HomeScreenTwo extends StatelessWidget {
       child: Scaffold(
         backgroundColor: AppThemeData.kBgCanvas,
         body: RefreshIndicator(
-          color: AppThemeData.kGradStart,
+          color: ZColors.kGradStart,
           backgroundColor: AppThemeData.kSurfaceWhite,
           strokeWidth: 2.5,
           displacement: 60,
@@ -121,9 +118,9 @@ class _NoServiceView extends StatelessWidget {
 
     final body = isZoneUnavailable
         ? "We don't currently deliver to your location. Please try a different address within our service area."
-              .tr
+        .tr
         : "Currently, there are no available restaurants in your zone. Try changing your location to find nearby options."
-              .tr;
+        .tr;
 
     return Container(
       decoration: const BoxDecoration(
@@ -149,7 +146,7 @@ class _NoServiceView extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppThemeData.kGradStart.withOpacity(0.12),
+                    color: ZColors.kGradStart.withOpacity(0.12),
                     blurRadius: 40,
                     spreadRadius: 8,
                   ),
@@ -216,7 +213,7 @@ class _PremiumButton extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppThemeData.kGradStart, AppThemeData.kGradEnd],
+              colors: [ZColors.kGradStart, AppThemeData.kGradEnd],
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
             ),
@@ -300,7 +297,10 @@ class _HomeMainContentState extends State<_HomeMainContent> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery.of(context).viewPadding.top;
+    final topPadding = MediaQuery
+        .of(context)
+        .viewPadding
+        .top;
 
     return Stack(
       children: [
@@ -382,7 +382,7 @@ class _HomeContentCard extends StatelessWidget {
           _CategorySection(),
           const SizedBox(height: 8),
           const BestRestaurantsSection(restaurantList: []),
-          _AdvertisementSection(controller: controller),
+          // _AdvertisementSection(controller: controller),
           _BottomBannerSection(controller: controller),
           const SizedBox(height: 12),
         ],
@@ -504,7 +504,7 @@ class _AdvertisementCard extends StatelessWidget {
                   height: 18,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [AppThemeData.kGradStart, AppThemeData.kGradEnd],
+                      colors: [ZColors.kGradStart, AppThemeData.kGradEnd],
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                     ),
@@ -526,7 +526,7 @@ class _AdvertisementCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () {
                     Get.to(
-                      () => AllAdvertisementScreen(),
+                          () => AllAdvertisementScreen(),
                     )?.then((_) => controller.getFavouriteRestaurant());
                   },
                   child: Container(
@@ -535,14 +535,14 @@ class _AdvertisementCard extends StatelessWidget {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: AppThemeData.kGradStart.withOpacity(0.08),
+                      color: ZColors.kGradStart.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       "See all".tr,
                       style: const TextStyle(
                         fontFamily: AppThemeData.semiBold,
-                        color: AppThemeData.kGradStart,
+                        color: ZColors.kGradStart,
                         fontSize: kFontMD,
                       ),
                     ),
@@ -560,12 +560,13 @@ class _AdvertisementCard extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.only(left: 20, right: 4),
               itemCount: visibleAds.length,
-              itemBuilder: (ctx, i) => RepaintBoundary(
-                child: AdvertisementHomeCard(
-                  controller: controller,
-                  model: visibleAds[i],
-                ),
-              ),
+              itemBuilder: (ctx, i) =>
+                  RepaintBoundary(
+                    child: AdvertisementHomeCard(
+                      controller: controller,
+                      model: visibleAds[i],
+                    ),
+                  ),
             ),
           ),
         ],
@@ -618,10 +619,7 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
                       height: 18,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            AppThemeData.kGradStart,
-                            AppThemeData.kGradEnd,
-                          ],
+                          colors: [ZColors.kGradStart, AppThemeData.kGradEnd],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                         ),
@@ -645,7 +643,7 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: AppThemeData.kGradStart.withOpacity(0.1),
+                        color: ZColors.kGradStart.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -653,7 +651,7 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
                         style: const TextStyle(
                           fontSize: kFontSM,
                           fontFamily: AppThemeData.semiBold,
-                          color: AppThemeData.kGradStart,
+                          color: ZColors.kGradStart,
                         ),
                       ),
                     ),
@@ -687,11 +685,9 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
     );
   }
 
-  void _handleFilterToggle(
-    FilterType filter,
-    BestRestaurantProvider prov,
-    BuildContext context,
-  ) {
+  void _handleFilterToggle(FilterType filter,
+      BestRestaurantProvider prov,
+      BuildContext context,) {
     switch (filter) {
       case FilterType.distance:
         prov.applyFilter('distance');
@@ -725,7 +721,9 @@ class _AllRestaurantsGridSliver extends StatelessWidget {
     return Selector<BestRestaurantProvider, int>(
       selector: (_, p) => p.allNearestRestaurant.length,
       builder: (context, count, _) {
-        final all = context.read<BestRestaurantProvider>().allNearestRestaurant;
+        final all = context
+            .read<BestRestaurantProvider>()
+            .allNearestRestaurant;
         if (count == 0) {
           return const SliverToBoxAdapter(child: SizedBox.shrink());
         }
@@ -755,170 +753,6 @@ class _AllRestaurantsGridSliver extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _AllRestaurantsSection  — premium grid redesign
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _AllRestaurantsSection extends StatelessWidget {
-  const _AllRestaurantsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    return Selector<
-      BestRestaurantProvider,
-      (List<VendorModel>, int, bool, String?, List<String>)
-    >(
-      selector: (_, p) => (
-        p.allNearestRestaurant,
-        p.allNearestRestaurant.length,
-        p.isLoading,
-        p.currentFilter,
-        p.availableFilters,
-      ),
-      shouldRebuild: (prev, next) =>
-          prev.$2 != next.$2 ||
-          prev.$3 != next.$3 ||
-          prev.$4 != next.$4 ||
-          prev.$5 != next.$5,
-      builder: (context, data, _) {
-        final all = data.$1;
-        if (all.isEmpty) return const SizedBox.shrink();
-
-        final prov = context.read<BestRestaurantProvider>();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Section header
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [
-                          AppThemeData.kGradStart,
-                          AppThemeData.kGradEnd,
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                      ),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    "All Restaurants".tr,
-                    style: const TextStyle(
-                      fontFamily: AppThemeData.semiBold,
-                      color: Color(0xFF1A1A2E),
-                      fontSize: kFontXL,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppThemeData.kGradStart.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      '${all.length}',
-                      style: const TextStyle(
-                        fontSize: kFontSM,
-                        fontFamily: AppThemeData.semiBold,
-                        color: AppThemeData.kGradStart,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Filter bar
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: FilterBar(
-                selectedFilters: {},
-                onFilterToggled: (f) => _handleFilterToggle(f, prov, context),
-                availableFilters: data.$5,
-                currentFilter: data.$4,
-              ),
-            ),
-
-            // Thin divider
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: Divider(
-                color: AppThemeData.grey200,
-                thickness: 1,
-                height: 1,
-              ),
-            ),
-
-            // Grid
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              child: GridView.builder(
-                shrinkWrap: true,
-                primary: false,
-                padding: const EdgeInsets.only(top: 4, bottom: 8),
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: all.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 8,
-                  mainAxisSpacing: 8,
-                  childAspectRatio: 0.62,
-                ),
-                itemBuilder: (ctx, i) => RepaintBoundary(
-                  child: _RestaurantCard(vendorModel: all[i]),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _handleFilterToggle(
-    FilterType filter,
-    BestRestaurantProvider prov,
-    BuildContext context,
-  ) {
-    switch (filter) {
-      case FilterType.distance:
-        prov.applyFilter('distance');
-        break;
-      case FilterType.rating:
-        prov.applyFilter('rating');
-        break;
-      case FilterType.priceLowToHigh:
-      case FilterType.priceHighToLow:
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('This filter is currently not available'),
-            duration: const Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            backgroundColor: const Color(0xFF1A1A2E),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-    }
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // _RestaurantCard  — premium redesign with better image, spacing & hierarchy
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -938,9 +772,9 @@ class _RestaurantCard extends StatelessWidget {
         onTap: isClosed
             ? null
             : () {
-                rdp.initFunction(vendorModels: vendorModel);
-                Get.to(() => const RestaurantDetailsScreen());
-              },
+          rdp.initFunction(vendorModels: vendorModel);
+          Get.to(() => const RestaurantDetailsScreen());
+        },
         borderRadius: BorderRadius.circular(kRadiusMD),
         child: Ink(
           decoration: BoxDecoration(
@@ -1143,15 +977,18 @@ class _BottomInfoRow extends StatelessWidget {
 
   String get _distanceText {
     if (vendorModel.distance != null && vendorModel.distance! > 0) {
-      return '${vendorModel.distance!.toStringAsFixed(1)} ${Constant.distanceType}';
+      return '${vendorModel.distance!.toStringAsFixed(1)} ${Constant
+          .distanceType}';
     }
-    return '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
+    return '${Constant.getDistanceFromVendor(vendorModel)} ${Constant
+        .distanceType}';
   }
 
-  String get _ratingText => Constant.calculateReview(
-    reviewCount: vendorModel.reviewsCount.toString(),
-    reviewSum: vendorModel.reviewsSum.toString(),
-  );
+  String get _ratingText =>
+      Constant.calculateReview(
+        reviewCount: vendorModel.reviewsCount.toString(),
+        reviewSum: vendorModel.reviewsSum.toString(),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -1349,11 +1186,7 @@ class _GradientPainter extends CustomPainter {
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          AppThemeData.kGradStart,
-          Color(0xFFFF4E1F),
-          AppThemeData.kGradEnd,
-        ],
+        colors: [ZColors.kGradStart, Color(0xFFFF4E1F), AppThemeData.kGradEnd],
         stops: [0.0, 0.55, 1.0],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 
@@ -1362,8 +1195,7 @@ class _GradientPainter extends CustomPainter {
 
     final path = Path()
       ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width, cornerStartY)
+      ..lineTo(size.width, 0)..lineTo(size.width, cornerStartY)
       ..quadraticBezierTo(
         size.width,
         size.height,
@@ -1435,66 +1267,70 @@ class _TimeThenFastDeliveryWidgetState
         duration: _animDuration,
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.3),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        ),
+        transitionBuilder: (child, animation) =>
+            FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.3),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
         child: _showFastDelivery ? _fastDeliveryRow : _timeText,
       ),
     );
   }
 
-  Widget get _fastDeliveryRow => Row(
-    key: const ValueKey<String>('fast'),
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      const Icon(
-        Icons.electric_bolt_rounded,
-        size: 10,
-        color: AppThemeData.kGradStart,
-      ),
-      const SizedBox(width: 2),
-      Expanded(
-        child: Text(
-          'Fast delivery',
-          style: const TextStyle(
-            fontSize: kFontXS + 1,
-            fontFamily: AppThemeData.semiBold,
-            color: AppThemeData.kGradStart,
+  Widget get _fastDeliveryRow =>
+      Row(
+        key: const ValueKey<String>('fast'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.electric_bolt_rounded,
+            size: 10,
+            color: ZColors.kGradStart,
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    ],
-  );
+          const SizedBox(width: 2),
+          Expanded(
+            child: Text(
+              'Fast delivery',
+              style: const TextStyle(
+                fontSize: kFontXS + 1,
+                fontFamily: AppThemeData.semiBold,
+                color: ZColors.kGradStart,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
+      );
 
-  Widget get _timeText => Row(
-    key: const ValueKey<String>('time'),
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(Icons.access_time_rounded, size: 10, color: AppThemeData.grey500),
-      const SizedBox(width: 2),
-      Expanded(
-        child: Text(
-          widget.deliveryTime,
-          style: TextStyle(
-            fontSize: kFontXS + 1,
-            fontFamily: AppThemeData.medium,
-            color: AppThemeData.grey500,
+  Widget get _timeText =>
+      Row(
+        key: const ValueKey<String>('time'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+              Icons.access_time_rounded, size: 10, color: AppThemeData.grey500),
+          const SizedBox(width: 2),
+          Expanded(
+            child: Text(
+              widget.deliveryTime,
+              style: TextStyle(
+                fontSize: kFontXS + 1,
+                fontFamily: AppThemeData.medium,
+                color: AppThemeData.grey500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
-    ],
-  );
+        ],
+      );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1593,8 +1429,8 @@ class _AdvImageSection extends StatelessWidget {
 
   bool get _showRatingOverlay =>
       model.type != 'video_promotion' &&
-      model.vendorId != null &&
-      (model.showRating == true || model.showReview == true);
+          model.vendorId != null &&
+          (model.showRating == true || model.showReview == true);
 
   @override
   Widget build(BuildContext context) {
@@ -1602,26 +1438,26 @@ class _AdvImageSection extends StatelessWidget {
       children: [
         model.type == 'restaurant_promotion'
             ? ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusLG),
-                ),
-                child: NetworkImageWidget(
-                  imageUrl: model.coverImage ?? '',
-                  height: 140,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              )
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(kRadiusLG),
+          ),
+          child: NetworkImageWidget(
+            imageUrl: model.coverImage ?? '',
+            height: 140,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          ),
+        )
             : ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusLG),
-                ),
-                child: VideoAdvWidget(
-                  url: model.video ?? '',
-                  height: 140,
-                  width: double.infinity,
-                ),
-              ),
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(kRadiusLG),
+          ),
+          child: VideoAdvWidget(
+            url: model.video ?? '',
+            height: 140,
+            width: double.infinity,
+          ),
+        ),
         // Gradient overlay for readability
         Positioned(
           bottom: 0,
@@ -1663,9 +1499,9 @@ class _RatingBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final rating = model.showRating == true
         ? Constant.calculateReview(
-            reviewCount: vendor.reviewsCount!.toStringAsFixed(0),
-            reviewSum: vendor.reviewsSum.toString(),
-          )
+      reviewCount: vendor.reviewsCount!.toStringAsFixed(0),
+      reviewSum: vendor.reviewsSum.toString(),
+    )
         : '';
     final review = model.showReview == true
         ? '(${vendor.reviewsCount!.toStringAsFixed(0)})'
@@ -1784,14 +1620,14 @@ class _AdvContentSection extends StatelessWidget {
             height: 32,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [AppThemeData.kGradStart, AppThemeData.kGradEnd],
+                colors: [ZColors.kGradStart, AppThemeData.kGradEnd],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(kRadiusSM),
               boxShadow: [
                 BoxShadow(
-                  color: AppThemeData.kGradStart.withOpacity(0.3),
+                  color: ZColors.kGradStart.withOpacity(0.3),
                   blurRadius: 8,
                   offset: const Offset(0, 3),
                 ),

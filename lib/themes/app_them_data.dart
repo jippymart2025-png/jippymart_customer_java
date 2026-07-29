@@ -85,7 +85,6 @@ class AppThemeData {
 
   static const String googleSansCode = 'GoogleSansCode';
 
-  static const kGradStart = Color(0xFFE8192C);
   static const kGradEnd = Color(0xFFFF6B35);
 
   // Accent & surface palette

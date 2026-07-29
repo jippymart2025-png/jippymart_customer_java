@@ -1,15 +1,9 @@
-import 'package:flutter_svg/svg.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart'
     show CartControllerProvider;
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/themes/text_field_widget.dart';
-import 'package:jippymart_customer/utils/utils/color_const.dart';
-import 'package:jippymart_customer/utils/utils/image_const.dart';
-import 'package:dotted_border/dotted_border.dart';
-import 'package:dotted_border/src/dotted_border_options.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -52,9 +46,17 @@ class _CouponListScreenState extends State<CouponListScreen> {
       ShowToastDialog.showToast('You have already used this coupon'.tr);
       return;
     }
+    if (controller.hasPromotionalItems()) {
+      ShowToastDialog.showToast(
+        'Coupons cannot be applied to promotional items'.tr,
+      );
+      return;
+    }
     // Check if wallet is being used - prevent coupon application
     if (controller.useWalletBalance) {
-      ShowToastDialog.showToast('Cannot apply coupon when wallet amount is being used'.tr);
+      ShowToastDialog.showToast(
+        'Cannot apply coupon when wallet amount is being used'.tr,
+      );
       return;
     }
     final enteredCode = _couponCodeController.text.trim().toLowerCase();
@@ -83,8 +85,95 @@ class _CouponListScreenState extends State<CouponListScreen> {
     // Disable wallet when applying coupon
     controller.useWalletBalance = false;
     controller.calculatePrice();
-    ShowToastDialog.showToast('Coupon applied!'.tr);
-    Get.back();
+    showCouponAppliedDialog(context, coupon, couponAmount);
+  }
+
+  void showCouponAppliedDialog(
+    BuildContext context,
+    CouponModel coupon,
+    double savedAmount,
+  ) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Coupon",
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (_, __, ___) {
+        return Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 30),
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CircleAvatar(
+                    radius: 34,
+                    backgroundColor: Color(0xff2F80ED),
+                    child: Icon(Icons.check, color: Colors.white, size: 40),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  Text(
+                    "'${coupon.code}' applied",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  Text(
+                    "You saved ₹${savedAmount.toStringAsFixed(2)}",
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 28,
+                    ),
+                  ),
+
+                  const SizedBox(height: 28),
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade50,
+                        foregroundColor: Colors.red,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        Get.back();
+                      },
+                      child: const Text(
+                        "Woohoo! Thanks",
+                        style: TextStyle(fontSize: 17),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (_, animation, __, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+          child: child,
+        );
+      },
+    );
   }
 
   void _applyManualCoupon(CartControllerProvider controller) {
@@ -97,20 +186,30 @@ class _CouponListScreenState extends State<CouponListScreen> {
       (c) => (c.code ?? '').trim().toLowerCase() == enteredCode,
       orElse: CouponModel.new,
     );
-    if ((matchedCoupon.id ?? '').isEmpty && (matchedCoupon.code ?? '').isEmpty) {
+    if ((matchedCoupon.id ?? '').isEmpty &&
+        (matchedCoupon.code ?? '').isEmpty) {
       ShowToastDialog.showToast('Invalid coupon code'.tr);
       return;
     }
+
     _applyCoupon(controller, matchedCoupon);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CartControllerProvider>(
-      builder: (context, controller, _) {
-        final coupons = controller.couponList;
-        final isLoading = controller.isLoadingCoupons;
+    return Selector<
+      CartControllerProvider,
+      ({List<CouponModel> coupons, bool isLoading})
+    >(
+      selector: (_, controller) => (
+        coupons: controller.couponList,
+        isLoading: controller.isLoadingCoupons,
+      ),
+      builder: (context, data, _) {
+        final coupons = data.coupons;
+        final isLoading = data.isLoading;
 
+        final controller = context.read<CartControllerProvider>();
         return Scaffold(
           backgroundColor: const Color(0xFFF5F5F5),
           appBar: AppBar(
