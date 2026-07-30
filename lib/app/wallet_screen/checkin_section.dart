@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
 
 /// Returns coin reward for a given streak day (bonus on 10/20/30, else daily amount).
@@ -49,7 +46,7 @@ class CheckinSection extends StatelessWidget {
         final startDay = streakDay > 1 ? (streakDay - 1).clamp(1, 1) : 1;
         final dayNumbers = List<int>.generate(
           _visibleDays,
-          (i) => (startDay + i).clamp(1, 30),
+              (i) => (startDay + i).clamp(1, 30),
         );
 
         return Container(
@@ -189,13 +186,11 @@ class CheckinSection extends StatelessWidget {
     );
   }
 
-  Widget _buildDayRow(
-    BuildContext context,
-    WalletProvider wp,
-    List<int> dayNumbers,
-    int streakDay,
-    bool checkedInToday,
-  ) {
+  Widget _buildDayRow(BuildContext context,
+      WalletProvider wp,
+      List<int> dayNumbers,
+      int streakDay,
+      bool checkedInToday,) {
     // effectiveToday: the day number the user is currently on
     // If streak is 0, they are on day 1 (first day)
     final effectiveToday = streakDay > 0 ? streakDay : 1;
@@ -269,10 +264,10 @@ class _FlameIcon extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: active
             ? const LinearGradient(
-                colors: [Color(0xFFFF6B35), Color(0xFFFFD93D)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              )
+          colors: [Color(0xFFFF6B35), Color(0xFFFFD93D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        )
             : null,
         color: active ? null : Colors.white.withOpacity(0.08),
         borderRadius: BorderRadius.circular(10),
@@ -364,7 +359,9 @@ class _MilestoneBanner extends StatelessWidget {
             child: Text(
               effectiveDaysLeft <= 0
                   ? 'Claim your $bonusCoins coin bonus on day $targetDay!'
-                  : '$effectiveDaysLeft day${effectiveDaysLeft == 1 ? '' : 's'} until $bonusCoins bonus coins on day $targetDay',
+                  : '$effectiveDaysLeft day${effectiveDaysLeft == 1
+                  ? ''
+                  : 's'} until $bonusCoins bonus coins on day $targetDay',
               style: const TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
@@ -396,21 +393,21 @@ class _CheckinButton extends StatelessWidget {
           gradient: checkedInToday
               ? null
               : const LinearGradient(
-                  colors: [Color(0xFF6C63FF), Color(0xFF9C88FF)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
+            colors: [Color(0xFF6C63FF), Color(0xFF9C88FF)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
           color: checkedInToday ? Colors.white.withOpacity(0.07) : null,
           borderRadius: BorderRadius.circular(16),
           boxShadow: checkedInToday
               ? null
               : [
-                  BoxShadow(
-                    color: const Color(0xFF6C63FF).withOpacity(0.4),
-                    blurRadius: 20,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
+            BoxShadow(
+              color: const Color(0xFF6C63FF).withOpacity(0.4),
+              blurRadius: 20,
+              offset: const Offset(0, 6),
+            ),
+          ],
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -613,600 +610,3 @@ class _DayBox extends StatelessWidget {
     );
   }
 }
-
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:provider/provider.dart';
-//
-// import 'package:jippymart_customer/constant/constant.dart';
-// import 'package:jippymart_customer/themes/app_them_data.dart';
-// import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
-//
-// /// Returns coin reward for a given streak day (bonus on 10/20/30, else daily amount).
-// int _coinsForStreakDay(int day) {
-//   final bonus = WalletProvider.streakBonusForDay(day);
-//   return bonus > 0 ? bonus : Constant.checkinCoinsPerDay;
-// }
-//
-// /// Whether this day is a streak bonus goal day (10, 20, 30).
-// bool _isStreakBonusDay(int day) => day == 10 || day == 20 || day == 30;
-//
-// // ── Light theme color palette ─────────────────────────────────────────────────
-// const _kPrimary = Color(0xFF6C63FF);
-// const _kPrimaryLight = Color(0xFFEEEDFF);
-// const _kPrimaryMid = Color(0xFF9C88FF);
-// const _kGold = Color(0xFFFF9500);
-// const _kGoldLight = Color(0xFFFFF4E0);
-// const _kTextPrimary = Color(0xFF111827);
-// const _kTextSecondary = Color(0xFF6B7280);
-// const _kTextMuted = Color(0xFF9CA3AF);
-// const _kBorder = Color(0xFFE5E7EB);
-// const _kPageBg = Color(0xFFF9FAFB);
-//
-// class CheckinSection extends StatelessWidget {
-//   const CheckinSection({super.key, required this.wp});
-//
-//   final WalletProvider wp;
-//
-//   static const int _visibleDays = 30;
-//   static const double _dayBoxWidth = 52;
-//   static const double _dayBoxHeight = 68;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Consumer<WalletProvider>(
-//       builder: (context, wp, _) {
-//         final streakDay = wp.streakDay;
-//         final checkedInToday = wp.checkedInToday;
-//         final displayStreak = streakDay;
-//
-//         final nextBonus = WalletProvider.nextStreakBonusDay(streakDay);
-//         final bonusCoins = nextBonus != null
-//             ? WalletProvider.streakBonusForDay(nextBonus)
-//             : 0;
-//
-//         final startDay = streakDay > 1 ? (streakDay - 1).clamp(1, 99) : 1;
-//         final dayNumbers = List<int>.generate(
-//           _visibleDays,
-//           (i) => (startDay + i).clamp(1, 99),
-//         );
-//
-//         return Container(
-//           decoration: BoxDecoration(
-//             color: Colors.white,
-//             borderRadius: BorderRadius.circular(24),
-//             border: Border.all(color: _kBorder, width: 1),
-//             boxShadow: [
-//               BoxShadow(
-//                 color: Colors.black.withOpacity(0.06),
-//                 blurRadius: 24,
-//                 offset: const Offset(0, 6),
-//               ),
-//             ],
-//           ),
-//           child: Column(
-//             crossAxisAlignment: CrossAxisAlignment.start,
-//             children: [
-//               // ── Header ────────────────────────────────────────────────────
-//               Padding(
-//                 padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-//                 child: Row(
-//                   crossAxisAlignment: CrossAxisAlignment.start,
-//                   children: [
-//                     Expanded(
-//                       child: Column(
-//                         crossAxisAlignment: CrossAxisAlignment.start,
-//                         children: [
-//                           Row(
-//                             crossAxisAlignment: CrossAxisAlignment.end,
-//                             children: [
-//                               _FlameIcon(active: displayStreak > 0),
-//                               const SizedBox(width: 8),
-//                               Text(
-//                                 '$displayStreak',
-//                                 style: const TextStyle(
-//                                   fontSize: 36,
-//                                   fontWeight: FontWeight.w800,
-//                                   color: _kTextPrimary,
-//                                   height: 1,
-//                                 ),
-//                               ),
-//                               const SizedBox(width: 6),
-//                               const Padding(
-//                                 padding: EdgeInsets.only(bottom: 4),
-//                                 child: Text(
-//                                   'day streak',
-//                                   style: TextStyle(
-//                                     fontSize: 14,
-//                                     color: _kTextSecondary,
-//                                     fontWeight: FontWeight.w500,
-//                                   ),
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                           const SizedBox(height: 4),
-//                           Text(
-//                             displayStreak == 0
-//                                 ? 'Start your streak today!'
-//                                 : checkedInToday
-//                                 ? 'Great job — come back tomorrow!'
-//                                 : 'Check in to keep your streak alive!',
-//                             style: const TextStyle(
-//                               fontSize: 12,
-//                               color: _kTextMuted,
-//                             ),
-//                           ),
-//                         ],
-//                       ),
-//                     ),
-//                     _CoinsBadge(coins: Constant.checkinCoinsPerDay),
-//                   ],
-//                 ),
-//               ),
-//
-//               // ── Milestone banner ──────────────────────────────────────────
-//               if (nextBonus != null && bonusCoins > 0) ...[
-//                 const SizedBox(height: 12),
-//                 Padding(
-//                   padding: const EdgeInsets.symmetric(horizontal: 20),
-//                   child: _MilestoneBanner(
-//                     daysLeft: nextBonus - streakDay,
-//                     targetDay: nextBonus,
-//                     bonusCoins: bonusCoins,
-//                     checkedInToday: checkedInToday,
-//                   ),
-//                 ),
-//               ],
-//
-//               const SizedBox(height: 16),
-//
-//               // ── Day scroll row ────────────────────────────────────────────
-//               if (wp.loadingCheckin)
-//                 const Padding(
-//                   padding: EdgeInsets.symmetric(vertical: 24),
-//                   child: Center(
-//                     child: SizedBox(
-//                       height: 28,
-//                       width: 28,
-//                       child: CircularProgressIndicator(
-//                         strokeWidth: 2,
-//                         color: _kPrimary,
-//                       ),
-//                     ),
-//                   ),
-//                 )
-//               else
-//                 _buildDayRow(
-//                   context,
-//                   wp,
-//                   dayNumbers,
-//                   streakDay,
-//                   checkedInToday,
-//                 ),
-//
-//               const SizedBox(height: 16),
-//
-//               // ── CTA button ────────────────────────────────────────────────
-//               if (!wp.loadingCheckin)
-//                 Padding(
-//                   padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-//                   child: _CheckinButton(
-//                     checkedInToday: checkedInToday,
-//                     onTap: () => _doCheckin(context),
-//                   ),
-//                 ),
-//             ],
-//           ),
-//         );
-//       },
-//     );
-//   }
-//
-//   Widget _buildDayRow(
-//     BuildContext context,
-//     WalletProvider wp,
-//     List<int> dayNumbers,
-//     int streakDay,
-//     bool checkedInToday,
-//   ) {
-//     final effectiveToday = streakDay > 0 ? streakDay : 1;
-//     final items = <Widget>[];
-//
-//     for (int i = 0; i < dayNumbers.length; i++) {
-//       final day = dayNumbers[i];
-//       final isCompleted =
-//           day < effectiveToday || (day == effectiveToday && checkedInToday);
-//       final isTodayPending = day == effectiveToday && !checkedInToday;
-//       final isFuture = day > effectiveToday;
-//       final coins = _coinsForStreakDay(day);
-//       final isBonusDay = _isStreakBonusDay(day);
-//
-//       if (i > 0) {
-//         items.add(
-//           SizedBox(
-//             width: 8,
-//             child: Center(
-//               child: Container(
-//                 height: 2,
-//                 decoration: BoxDecoration(
-//                   color: isCompleted ? _kPrimary.withOpacity(0.3) : _kBorder,
-//                   borderRadius: BorderRadius.circular(1),
-//                 ),
-//               ),
-//             ),
-//           ),
-//         );
-//       }
-//
-//       items.add(
-//         _DayBox(
-//           dayNumber: day,
-//           coins: coins,
-//           isCompleted: isCompleted,
-//           isTodayPending: isTodayPending,
-//           isFuture: isFuture,
-//           isBonusDay: isBonusDay,
-//           boxWidth: _dayBoxWidth,
-//           boxHeight: _dayBoxHeight,
-//         ),
-//       );
-//     }
-//
-//     return SingleChildScrollView(
-//       scrollDirection: Axis.horizontal,
-//       padding: const EdgeInsets.symmetric(horizontal: 20),
-//       child: Row(mainAxisSize: MainAxisSize.min, children: items),
-//     );
-//   }
-//
-//   Future<void> _doCheckin(BuildContext context) async {
-//     final wp = context.read<WalletProvider>();
-//     final err = await wp.doCheckin();
-//     if (!context.mounted) return;
-//     if (err != null) {
-//       Get.snackbar('Check-in'.tr, err);
-//     } else {
-//       Get.snackbar(
-//         'Check-in'.tr,
-//         'You earned ${wp.checkinStatus?.coinsAwarded ?? Constant.checkinCoinsPerDay} coins!'
-//             .tr,
-//       );
-//     }
-//   }
-// }
-//
-// // ── Sub-widgets ───────────────────────────────────────────────────────────────
-//
-// class _FlameIcon extends StatelessWidget {
-//   const _FlameIcon({required this.active});
-//
-//   final bool active;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return AnimatedContainer(
-//       duration: const Duration(milliseconds: 300),
-//       padding: const EdgeInsets.all(6),
-//       decoration: BoxDecoration(
-//         gradient: active
-//             ? const LinearGradient(
-//                 colors: [Color(0xFFFF6B35), Color(0xFFFFD93D)],
-//                 begin: Alignment.topLeft,
-//                 end: Alignment.bottomRight,
-//               )
-//             : null,
-//         color: active ? null : _kBorder,
-//         borderRadius: BorderRadius.circular(10),
-//       ),
-//       child: Icon(
-//         Icons.local_fire_department_rounded,
-//         color: active ? Colors.white : _kTextMuted,
-//         size: 22,
-//       ),
-//     );
-//   }
-// }
-//
-// class _CoinsBadge extends StatelessWidget {
-//   const _CoinsBadge({required this.coins});
-//
-//   final int coins;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-//       decoration: BoxDecoration(
-//         color: _kGoldLight,
-//         borderRadius: BorderRadius.circular(12),
-//         border: Border.all(color: _kGold.withOpacity(0.3), width: 1),
-//       ),
-//       child: Column(
-//         children: [
-//           const Icon(Icons.monetization_on_rounded, color: _kGold, size: 20),
-//           const SizedBox(height: 2),
-//           Text(
-//             '+$coins/day',
-//             style: const TextStyle(
-//               fontSize: 11,
-//               fontWeight: FontWeight.w700,
-//               color: _kGold,
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-//
-// class _MilestoneBanner extends StatelessWidget {
-//   const _MilestoneBanner({
-//     required this.daysLeft,
-//     required this.targetDay,
-//     required this.bonusCoins,
-//     required this.checkedInToday,
-//   });
-//
-//   final int daysLeft;
-//   final int targetDay;
-//   final int bonusCoins;
-//   final bool checkedInToday;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-//       decoration: BoxDecoration(
-//         color: _kGoldLight,
-//         borderRadius: BorderRadius.circular(10),
-//         border: Border.all(color: _kGold.withOpacity(0.25), width: 1),
-//       ),
-//       child: Row(
-//         children: [
-//           const Icon(Icons.emoji_events_rounded, color: _kGold, size: 16),
-//           const SizedBox(width: 8),
-//           Expanded(
-//             child: Text(
-//               daysLeft <= 0
-//                   ? 'Claim your $bonusCoins coin bonus on day $targetDay!'
-//                   : '$daysLeft day${daysLeft == 1 ? '' : 's'} until $bonusCoins bonus coins on day $targetDay',
-//               style: const TextStyle(
-//                 fontSize: 12,
-//                 fontWeight: FontWeight.w500,
-//                 color: _kGold,
-//               ),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-//
-// class _CheckinButton extends StatelessWidget {
-//   const _CheckinButton({required this.checkedInToday, required this.onTap});
-//
-//   final bool checkedInToday;
-//   final VoidCallback onTap;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return GestureDetector(
-//       onTap: checkedInToday ? null : onTap,
-//       child: AnimatedContainer(
-//         duration: const Duration(milliseconds: 250),
-//         width: double.infinity,
-//         padding: const EdgeInsets.symmetric(vertical: 16),
-//         decoration: BoxDecoration(
-//           gradient: checkedInToday
-//               ? null
-//               : const LinearGradient(
-//                   colors: [_kPrimary, _kPrimaryMid],
-//                   begin: Alignment.centerLeft,
-//                   end: Alignment.centerRight,
-//                 ),
-//           color: checkedInToday ? _kPageBg : null,
-//           borderRadius: BorderRadius.circular(16),
-//           border: checkedInToday ? Border.all(color: _kBorder, width: 1) : null,
-//           boxShadow: checkedInToday
-//               ? null
-//               : [
-//                   BoxShadow(
-//                     color: _kPrimary.withOpacity(0.35),
-//                     blurRadius: 18,
-//                     offset: const Offset(0, 6),
-//                   ),
-//                 ],
-//         ),
-//         child: Row(
-//           mainAxisAlignment: MainAxisAlignment.center,
-//           children: [
-//             Icon(
-//               checkedInToday
-//                   ? Icons.check_circle_outline_rounded
-//                   : Icons.bolt_rounded,
-//               color: checkedInToday ? _kTextMuted : Colors.white,
-//               size: 20,
-//             ),
-//             const SizedBox(width: 8),
-//             Text(
-//               checkedInToday
-//                   ? "You're done for today!"
-//                   : 'Check in & earn coins',
-//               style: TextStyle(
-//                 fontSize: 15,
-//                 fontWeight: FontWeight.w700,
-//                 color: checkedInToday ? _kTextMuted : Colors.white,
-//                 letterSpacing: 0.3,
-//               ),
-//             ),
-//           ],
-//         ),
-//       ),
-//     );
-//   }
-// }
-//
-// // ── Day Box ───────────────────────────────────────────────────────────────────
-//
-// class _DayBox extends StatelessWidget {
-//   const _DayBox({
-//     required this.dayNumber,
-//     required this.coins,
-//     required this.isCompleted,
-//     required this.isTodayPending,
-//     required this.isFuture,
-//     required this.isBonusDay,
-//     required this.boxWidth,
-//     required this.boxHeight,
-//   });
-//
-//   final int dayNumber;
-//   final int coins;
-//   final bool isCompleted;
-//   final bool isTodayPending;
-//   final bool isFuture;
-//   final bool isBonusDay;
-//   final double boxWidth;
-//   final double boxHeight;
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     final isActive = isTodayPending;
-//
-//     Color boxBg;
-//     Gradient? boxGradient;
-//     Border? boxBorder;
-//     List<BoxShadow>? shadows;
-//     Color iconColor;
-//     Color textColor;
-//     Color labelColor;
-//     IconData icon;
-//
-//     if (isCompleted) {
-//       boxGradient = const LinearGradient(
-//         colors: [_kPrimary, _kPrimaryMid],
-//         begin: Alignment.topLeft,
-//         end: Alignment.bottomRight,
-//       );
-//       boxBg = Colors.transparent;
-//       boxBorder = null;
-//       shadows = [
-//         BoxShadow(
-//           color: _kPrimary.withOpacity(0.3),
-//           blurRadius: 10,
-//           offset: const Offset(0, 4),
-//         ),
-//       ];
-//       iconColor = Colors.white;
-//       textColor = Colors.white;
-//       labelColor = _kTextSecondary;
-//       icon = Icons.check_rounded;
-//     } else if (isBonusDay) {
-//       boxBg = _kGoldLight;
-//       boxBorder = Border.all(color: _kGold, width: 1.5);
-//       shadows = [
-//         BoxShadow(
-//           color: _kGold.withOpacity(0.2),
-//           blurRadius: 12,
-//           offset: const Offset(0, 3),
-//         ),
-//       ];
-//       iconColor = _kGold;
-//       textColor = _kGold;
-//       labelColor = _kGold;
-//       icon = Icons.emoji_events_rounded;
-//     } else if (isActive) {
-//       boxBg = _kPrimaryLight;
-//       boxBorder = Border.all(color: _kPrimary, width: 2);
-//       shadows = [
-//         BoxShadow(
-//           color: _kPrimary.withOpacity(0.2),
-//           blurRadius: 14,
-//           offset: const Offset(0, 4),
-//           spreadRadius: 1,
-//         ),
-//       ];
-//       iconColor = _kPrimary;
-//       textColor = _kPrimary;
-//       labelColor = _kPrimary;
-//       icon = Icons.monetization_on_rounded;
-//     } else {
-//       // Future days
-//       boxBg = _kPageBg;
-//       boxBorder = Border.all(color: _kBorder, width: 1);
-//       shadows = null;
-//       iconColor = _kTextMuted;
-//       textColor = _kTextMuted;
-//       labelColor = _kTextMuted;
-//       icon = Icons.monetization_on_rounded;
-//     }
-//
-//     return SizedBox(
-//       width: boxWidth,
-//       child: Column(
-//         mainAxisSize: MainAxisSize.min,
-//         children: [
-//           // GOAL pill for bonus days
-//           if (isBonusDay && !isCompleted)
-//             Container(
-//               margin: const EdgeInsets.only(bottom: 3),
-//               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-//               decoration: BoxDecoration(
-//                 color: _kGold,
-//                 borderRadius: BorderRadius.circular(6),
-//               ),
-//               child: const Text(
-//                 'GOAL',
-//                 style: TextStyle(
-//                   fontSize: 7,
-//                   fontWeight: FontWeight.w800,
-//                   color: Colors.white,
-//                   letterSpacing: 0.5,
-//                 ),
-//               ),
-//             )
-//           else
-//             const SizedBox(height: 12),
-//
-//           Container(
-//             width: boxWidth,
-//             height: boxWidth,
-//             decoration: BoxDecoration(
-//               gradient: boxGradient,
-//               color: boxBg,
-//               borderRadius: BorderRadius.circular(14),
-//               border: boxBorder,
-//               boxShadow: shadows,
-//             ),
-//             child: Column(
-//               mainAxisAlignment: MainAxisAlignment.center,
-//               children: [
-//                 Icon(icon, color: iconColor, size: isBonusDay ? 20 : 18),
-//                 const SizedBox(height: 2),
-//                 Text(
-//                   '+$coins',
-//                   style: TextStyle(
-//                     fontSize: 10,
-//                     fontWeight: FontWeight.w700,
-//                     color: textColor,
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//           const SizedBox(height: 5),
-//           Text(
-//             isActive ? '▶ Day $dayNumber' : 'Day $dayNumber',
-//             style: TextStyle(
-//               fontSize: 9,
-//               fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-//               color: labelColor,
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }

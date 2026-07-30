@@ -6,7 +6,6 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/order_type_View.dart';
 import 'package:provider/provider.dart';
 
-import 'package:jippymart_customer/app/advertisement_screens/all_advertisement_screen.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart'
     show BestRestaurantProvider;
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
@@ -47,7 +46,7 @@ class HomeScreenTwo extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = context.read<HomeProvider>();
     final _ = context.select<HomeProvider, (bool, bool, int)>(
-          (p) => (p.isLoading, p.zoneCheckCompleted, p.bannerModel.length),
+      (p) => (p.isLoading, p.zoneCheckCompleted, p.bannerModel.length),
     );
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -60,7 +59,7 @@ class HomeScreenTwo extends StatelessWidget {
         backgroundColor: AppThemeData.kBgCanvas,
         body: RefreshIndicator(
           color: ZColors.kGradStart,
-          backgroundColor: AppThemeData.kSurfaceWhite,
+          backgroundColor: AppThemeData.grey50,
           strokeWidth: 2.5,
           displacement: 60,
           onRefresh: () async => controller.getRefresh(context),
@@ -118,9 +117,9 @@ class _NoServiceView extends StatelessWidget {
 
     final body = isZoneUnavailable
         ? "We don't currently deliver to your location. Please try a different address within our service area."
-        .tr
+              .tr
         : "Currently, there are no available restaurants in your zone. Try changing your location to find nearby options."
-        .tr;
+              .tr;
 
     return Container(
       decoration: const BoxDecoration(
@@ -297,10 +296,7 @@ class _HomeMainContentState extends State<_HomeMainContent> {
 
   @override
   Widget build(BuildContext context) {
-    final topPadding = MediaQuery
-        .of(context)
-        .viewPadding
-        .top;
+    final topPadding = MediaQuery.of(context).viewPadding.top;
 
     return Stack(
       children: [
@@ -321,7 +317,50 @@ class _HomeMainContentState extends State<_HomeMainContent> {
             ),
             const _AllRestaurantsHeaderSliver(),
             const _AllRestaurantsGridSliver(),
-            const SliverToBoxAdapter(child: SizedBox(height: 30)),
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Column(
+                  children: [
+                    Divider(
+                      indent: 10,
+                      endIndent: 10,
+                      thickness: 1,
+                      color: AppThemeData.grey300,
+                    ),
+                    Text(
+                      "Thank you for choosing",
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+
+                    SizedBox(height: 8),
+
+                    Text(
+                      "Love Jippy",
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1,
+                        color: AppThemeData.red, // Your brand color
+                      ),
+                    ),
+
+                    SizedBox(height: 8),
+
+                    Text(
+                      "Fast • Fresh • Delivered",
+                      style: TextStyle(fontSize: 13, color: Colors.grey),
+                    ),
+
+                    SizedBox(height: 100),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
         Positioned(
@@ -378,7 +417,7 @@ class _HomeContentCard extends StatelessWidget {
         children: [
           if (hasBanner) const SizedBox(height: kBannerPeekAbove + 12),
           // const SizedBox(height: 0),
-          _ordertypeSection(),
+          _OrdertypeSection(),
           _CategorySection(),
           const SizedBox(height: 8),
           const BestRestaurantsSection(restaurantList: []),
@@ -393,7 +432,7 @@ class _HomeContentCard extends StatelessWidget {
 
 //new impliment of orders
 
-class _ordertypeSection extends StatelessWidget {
+class _OrdertypeSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // final prov = context.watch<CategoryViewProvider>();
@@ -447,133 +486,132 @@ class _CategorySection extends StatelessWidget {
 // _AdvertisementSection
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AdvertisementSection extends StatelessWidget {
-  final HomeProvider controller;
-
-  const _AdvertisementSection({required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    if (Constant.isEnableAdsFeature != true) return const SizedBox.shrink();
-
-    return Selector<BestRestaurantProvider, (bool, List<AdvertisementModel>)>(
-      selector: (_, p) => (p.isLoading, p.advertisementList),
-      builder: (context, data, _) {
-        final isLoading = data.$1;
-        final ads = data.$2;
-
-        if (isLoading && ads.isEmpty) return const RestaurantLoadingWidget();
-        if (ads.isEmpty) return const SizedBox.shrink();
-
-        return _AdvertisementCard(ads: ads, controller: controller);
-      },
-    );
-  }
-}
+// class _AdvertisementSection extends StatelessWidget {
+//   final HomeProvider controller;
+//
+//   const _AdvertisementSection({required this.controller});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     if (Constant.isEnableAdsFeature != true) return const SizedBox.shrink();
+//
+//     return Selector<BestRestaurantProvider, (bool, List<AdvertisementModel>)>(
+//       selector: (_, p) => (p.isLoading, p.advertisementList),
+//       builder: (context, data, _) {
+//         final isLoading = data.$1;
+//         final ads = data.$2;
+//
+//         if (isLoading && ads.isEmpty) return const RestaurantLoadingWidget();
+//         if (ads.isEmpty) return const SizedBox.shrink();
+//
+//         return _AdvertisementCard(ads: ads, controller: controller);
+//       },
+//     );
+//   }
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _AdvertisementCard  — premium redesign
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AdvertisementCard extends StatelessWidget {
-  final List<AdvertisementModel> ads;
-  final HomeProvider controller;
-
-  static const int _maxVisibleAds = 6;
-
-  const _AdvertisementCard({required this.ads, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    final visibleAds = ads.length > _maxVisibleAds
-        ? ads.sublist(0, _maxVisibleAds)
-        : ads;
-
-    return Padding(
-      padding: const EdgeInsets.only(top: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Section header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-            child: Row(
-              children: [
-                Container(
-                  width: 4,
-                  height: 18,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [ZColors.kGradStart, AppThemeData.kGradEnd],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    "Highlights for you".tr,
-                    style: const TextStyle(
-                      fontFamily: AppThemeData.semiBold,
-                      fontSize: kFontXL,
-                      color: Color(0xFF1A1A2E),
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    Get.to(
-                          () => AllAdvertisementScreen(),
-                    )?.then((_) => controller.getFavouriteRestaurant());
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: ZColors.kGradStart.withOpacity(0.08),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      "See all".tr,
-                      style: const TextStyle(
-                        fontFamily: AppThemeData.semiBold,
-                        color: ZColors.kGradStart,
-                        fontSize: kFontMD,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Horizontal carousel
-          SizedBox(
-            height: 230,
-            child: ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.only(left: 20, right: 4),
-              itemCount: visibleAds.length,
-              itemBuilder: (ctx, i) =>
-                  RepaintBoundary(
-                    child: AdvertisementHomeCard(
-                      controller: controller,
-                      model: visibleAds[i],
-                    ),
-                  ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+// class _AdvertisementCard extends StatelessWidget {
+//   final List<AdvertisementModel> ads;
+//   final HomeProvider controller;
+//
+//   static const int _maxVisibleAds = 6;
+//
+//   const _AdvertisementCard({required this.ads, required this.controller});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     final visibleAds = ads.length > _maxVisibleAds
+//         ? ads.sublist(0, _maxVisibleAds)
+//         : ads;
+//
+//     return Padding(
+//       padding: const EdgeInsets.only(top: 24),
+//       child: Column(
+//         crossAxisAlignment: CrossAxisAlignment.start,
+//         children: [
+//           // Section header
+//           Padding(
+//             padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+//             child: Row(
+//               children: [
+//                 Container(
+//                   width: 4,
+//                   height: 18,
+//                   decoration: BoxDecoration(
+//                     gradient: const LinearGradient(
+//                       colors: [ZColors.kGradStart, AppThemeData.kGradEnd],
+//                       begin: Alignment.topCenter,
+//                       end: Alignment.bottomCenter,
+//                     ),
+//                     borderRadius: BorderRadius.circular(2),
+//                   ),
+//                 ),
+//                 const SizedBox(width: 10),
+//                 Expanded(
+//                   child: Text(
+//                     "Highlights for you".tr,
+//                     style: const TextStyle(
+//                       fontFamily: AppThemeData.semiBold,
+//                       fontSize: kFontXL,
+//                       color: Color(0xFF1A1A2E),
+//                       letterSpacing: -0.2,
+//                     ),
+//                   ),
+//                 ),
+//                 GestureDetector(
+//                   onTap: () {
+//                     Get.to(
+//                       () => AllAdvertisementScreen(),
+//                     )?.then((_) => controller.getFavouriteRestaurant());
+//                   },
+//                   child: Container(
+//                     padding: const EdgeInsets.symmetric(
+//                       horizontal: 12,
+//                       vertical: 6,
+//                     ),
+//                     decoration: BoxDecoration(
+//                       color: ZColors.kGradStart.withOpacity(0.08),
+//                       borderRadius: BorderRadius.circular(20),
+//                     ),
+//                     child: Text(
+//                       "See all".tr,
+//                       style: const TextStyle(
+//                         fontFamily: AppThemeData.semiBold,
+//                         color: ZColors.kGradStart,
+//                         fontSize: kFontMD,
+//                       ),
+//                     ),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//
+//           // Horizontal carousel
+//           SizedBox(
+//             height: 230,
+//             child: ListView.builder(
+//               physics: const BouncingScrollPhysics(),
+//               scrollDirection: Axis.horizontal,
+//               padding: const EdgeInsets.only(left: 20, right: 4),
+//               itemCount: visibleAds.length,
+//               itemBuilder: (ctx, i) => RepaintBoundary(
+//                 child: AdvertisementHomeCard(
+//                   controller: controller,
+//                   model: visibleAds[i],
+//                 ),
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _BottomBannerSection
@@ -685,9 +723,11 @@ class _AllRestaurantsHeaderSliver extends StatelessWidget {
     );
   }
 
-  void _handleFilterToggle(FilterType filter,
-      BestRestaurantProvider prov,
-      BuildContext context,) {
+  void _handleFilterToggle(
+    FilterType filter,
+    BestRestaurantProvider prov,
+    BuildContext context,
+  ) {
     switch (filter) {
       case FilterType.distance:
         prov.applyFilter('distance');
@@ -721,9 +761,7 @@ class _AllRestaurantsGridSliver extends StatelessWidget {
     return Selector<BestRestaurantProvider, int>(
       selector: (_, p) => p.allNearestRestaurant.length,
       builder: (context, count, _) {
-        final all = context
-            .read<BestRestaurantProvider>()
-            .allNearestRestaurant;
+        final all = context.read<BestRestaurantProvider>().allNearestRestaurant;
         if (count == 0) {
           return const SliverToBoxAdapter(child: SizedBox.shrink());
         }
@@ -772,13 +810,13 @@ class _RestaurantCard extends StatelessWidget {
         onTap: isClosed
             ? null
             : () {
-          rdp.initFunction(vendorModels: vendorModel);
-          Get.to(() => const RestaurantDetailsScreen());
-        },
+                rdp.initFunction(vendorModels: vendorModel);
+                Get.to(() => const RestaurantDetailsScreen());
+              },
         borderRadius: BorderRadius.circular(kRadiusMD),
         child: Ink(
           decoration: BoxDecoration(
-            color: AppThemeData.kSurfaceWhite,
+            color: AppThemeData.grey50,
             borderRadius: BorderRadius.circular(kRadiusMD),
             boxShadow: const [
               BoxShadow(
@@ -977,18 +1015,15 @@ class _BottomInfoRow extends StatelessWidget {
 
   String get _distanceText {
     if (vendorModel.distance != null && vendorModel.distance! > 0) {
-      return '${vendorModel.distance!.toStringAsFixed(1)} ${Constant
-          .distanceType}';
+      return '${vendorModel.distance!.toStringAsFixed(1)} ${Constant.distanceType}';
     }
-    return '${Constant.getDistanceFromVendor(vendorModel)} ${Constant
-        .distanceType}';
+    return '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
   }
 
-  String get _ratingText =>
-      Constant.calculateReview(
-        reviewCount: vendorModel.reviewsCount.toString(),
-        reviewSum: vendorModel.reviewsSum.toString(),
-      );
+  String get _ratingText => Constant.calculateReview(
+    reviewCount: vendorModel.reviewsCount.toString(),
+    reviewSum: vendorModel.reviewsSum.toString(),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -1195,7 +1230,8 @@ class _GradientPainter extends CustomPainter {
 
     final path = Path()
       ..moveTo(0, 0)
-      ..lineTo(size.width, 0)..lineTo(size.width, cornerStartY)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, cornerStartY)
       ..quadraticBezierTo(
         size.width,
         size.height,
@@ -1267,70 +1303,66 @@ class _TimeThenFastDeliveryWidgetState
         duration: _animDuration,
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) =>
-            FadeTransition(
-              opacity: animation,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.3),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
-              ),
-            ),
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.3),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        ),
         child: _showFastDelivery ? _fastDeliveryRow : _timeText,
       ),
     );
   }
 
-  Widget get _fastDeliveryRow =>
-      Row(
-        key: const ValueKey<String>('fast'),
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.electric_bolt_rounded,
-            size: 10,
+  Widget get _fastDeliveryRow => Row(
+    key: const ValueKey<String>('fast'),
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      const Icon(
+        Icons.electric_bolt_rounded,
+        size: 10,
+        color: ZColors.kGradStart,
+      ),
+      const SizedBox(width: 2),
+      Expanded(
+        child: Text(
+          'Fast delivery',
+          style: const TextStyle(
+            fontSize: kFontXS + 1,
+            fontFamily: AppThemeData.semiBold,
             color: ZColors.kGradStart,
           ),
-          const SizedBox(width: 2),
-          Expanded(
-            child: Text(
-              'Fast delivery',
-              style: const TextStyle(
-                fontSize: kFontXS + 1,
-                fontFamily: AppThemeData.semiBold,
-                color: ZColors.kGradStart,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      );
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
 
-  Widget get _timeText =>
-      Row(
-        key: const ValueKey<String>('time'),
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-              Icons.access_time_rounded, size: 10, color: AppThemeData.grey500),
-          const SizedBox(width: 2),
-          Expanded(
-            child: Text(
-              widget.deliveryTime,
-              style: TextStyle(
-                fontSize: kFontXS + 1,
-                fontFamily: AppThemeData.medium,
-                color: AppThemeData.grey500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+  Widget get _timeText => Row(
+    key: const ValueKey<String>('time'),
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Icon(Icons.access_time_rounded, size: 10, color: AppThemeData.grey500),
+      const SizedBox(width: 2),
+      Expanded(
+        child: Text(
+          widget.deliveryTime,
+          style: TextStyle(
+            fontSize: kFontXS + 1,
+            fontFamily: AppThemeData.medium,
+            color: AppThemeData.grey500,
           ),
-        ],
-      );
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+    ],
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1367,7 +1399,7 @@ class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
           child: Ink(
             width: Responsive.width(68, context),
             decoration: BoxDecoration(
-              color: AppThemeData.kSurfaceWhite,
+              color: AppThemeData.grey50,
               borderRadius: BorderRadius.circular(kRadiusLG),
               boxShadow: const [
                 BoxShadow(
@@ -1429,8 +1461,8 @@ class _AdvImageSection extends StatelessWidget {
 
   bool get _showRatingOverlay =>
       model.type != 'video_promotion' &&
-          model.vendorId != null &&
-          (model.showRating == true || model.showReview == true);
+      model.vendorId != null &&
+      (model.showRating == true || model.showReview == true);
 
   @override
   Widget build(BuildContext context) {
@@ -1438,26 +1470,26 @@ class _AdvImageSection extends StatelessWidget {
       children: [
         model.type == 'restaurant_promotion'
             ? ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(kRadiusLG),
-          ),
-          child: NetworkImageWidget(
-            imageUrl: model.coverImage ?? '',
-            height: 140,
-            width: double.infinity,
-            fit: BoxFit.cover,
-          ),
-        )
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(kRadiusLG),
+                ),
+                child: NetworkImageWidget(
+                  imageUrl: model.coverImage ?? '',
+                  height: 140,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              )
             : ClipRRect(
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(kRadiusLG),
-          ),
-          child: VideoAdvWidget(
-            url: model.video ?? '',
-            height: 140,
-            width: double.infinity,
-          ),
-        ),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(kRadiusLG),
+                ),
+                child: VideoAdvWidget(
+                  url: model.video ?? '',
+                  height: 140,
+                  width: double.infinity,
+                ),
+              ),
         // Gradient overlay for readability
         Positioned(
           bottom: 0,
@@ -1499,9 +1531,9 @@ class _RatingBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final rating = model.showRating == true
         ? Constant.calculateReview(
-      reviewCount: vendor.reviewsCount!.toStringAsFixed(0),
-      reviewSum: vendor.reviewsSum.toString(),
-    )
+            reviewCount: vendor.reviewsCount!.toStringAsFixed(0),
+            reviewSum: vendor.reviewsSum.toString(),
+          )
         : '';
     final review = model.showReview == true
         ? '(${vendor.reviewsCount!.toStringAsFixed(0)})'
@@ -1509,7 +1541,7 @@ class _RatingBadge extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppThemeData.kSurfaceWhite,
+        color: AppThemeData.grey50,
         borderRadius: BorderRadius.circular(20),
         boxShadow: const [
           BoxShadow(

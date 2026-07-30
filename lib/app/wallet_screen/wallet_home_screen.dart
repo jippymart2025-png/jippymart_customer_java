@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
@@ -13,41 +12,15 @@ import 'package:jippymart_customer/app/wallet_screen/checkin_section.dart';
 import 'package:jippymart_customer/utils/coin_sound.dart';
 
 // ─── Design Tokens ────────────────────────────────────────────────────────────
-class _W {
-  // Brand
-  static const Color red = Color(0xFFE23744);
-  static const Color redDark = Color(0xFFC0000F);
-  static const Color redLight = Color(0xFFFFF0F1);
-
-  // Coin gold
-  static const Color gold = Color(0xFFFF9500);
-  static const Color goldLight = Color(0xFFFFF8EC);
-  static const Color goldDark = Color(0xFFD4780A);
-
-  // Money green
-  static const Color green = Color(0xFF26A541);
-  static const Color greenLight = Color(0xFFEEFBF1);
-
-  // Neutrals
-  static const Color bg = Color(0xFFF7F7F7);
-  static const Color card = Color(0xFFFFFFFF);
-  static const Color text1 = Color(0xFF1C1C1E);
-  static const Color text2 = Color(0xFF6D6D6D);
-  static const Color text3 = Color(0xFFAAAAAA);
-  static const Color divider = Color(0xFFF0F0F0);
-
-  static const double radius = 20;
-  static const double cardRadius = 16;
-}
 
 class WalletHomeScreen extends StatefulWidget {
   const WalletHomeScreen({super.key});
 
   @override
-  State<WalletHomeScreen> createState() => _WalletHomeScreenState();
+  State<WalletHomeScreen> createState() => WalletHomeScreenState();
 }
 
-class _WalletHomeScreenState extends State<WalletHomeScreen>
+class WalletHomeScreenState extends State<WalletHomeScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeAnim;
@@ -89,7 +62,7 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _W.bg,
+      backgroundColor: W.bg,
       body: Consumer<WalletProvider>(
         builder: (context, wp, _) {
           // ── Loading ──
@@ -139,8 +112,8 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
                         const SizedBox(height: 12),
                         _NavTile(
                           icon: Icons.receipt_long_rounded,
-                          iconColor: _W.red,
-                          iconBg: _W.redLight,
+                          iconColor: W.red,
+                          iconBg: ZColors.primaryLight,
                           label: 'Coin History',
                           subtitle: 'View all your coin transactions',
                           onTap: () => Get.to(() => const CoinLedgerScreen()),
@@ -148,8 +121,8 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
                         const SizedBox(height: 10),
                         _NavTile(
                           icon: Icons.people_alt_outlined,
-                          iconColor: _W.green,
-                          iconBg: _W.greenLight,
+                          iconColor: ZColors.greenAccent,
+                          iconBg: W.greenLight,
                           label: 'Referral & Rewards',
                           subtitle: 'Invite friends, earn together',
                           onTap: () => Get.to(() => const ReferralScreen()),
@@ -172,14 +145,14 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
     return SliverAppBar(
       pinned: true,
       elevation: 0,
-      backgroundColor: _W.bg,
+      backgroundColor: W.bg,
       surfaceTintColor: Colors.transparent,
       leading: IconButton(
         onPressed: () => Get.back(),
         icon: const Icon(
           Icons.arrow_back_ios_new_rounded,
           size: 18,
-          color: _W.text1,
+          color: ZColors.textPrimary,
         ),
       ),
       title: Text(
@@ -187,7 +160,7 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
         style: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.w700,
-          color: _W.text1,
+          color: ZColors.textPrimary,
           letterSpacing: -0.3,
         ),
       ),
@@ -199,7 +172,11 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
             wp.refreshWallet(force: true);
             wp.refreshCheckinStatus();
           },
-          icon: const Icon(Icons.refresh_rounded, size: 20, color: _W.text2),
+          icon: const Icon(
+            Icons.refresh_rounded,
+            size: 20,
+            color: ZColors.textSecondary,
+          ),
         ),
       ],
     );
@@ -241,8 +218,8 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
         key: 'already_checked_in',
         title: 'Already Checked In',
         message: 'Come back tomorrow for more coins!',
-        backgroundColor: _W.card,
-        textColor: _W.text1,
+        backgroundColor: AppThemeData.grey50,
+        textColor: ZColors.textPrimary,
       );
       return;
     }
@@ -258,8 +235,8 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
         key: 'checkin_failed',
         title: 'Check-in Failed',
         message: err,
-        backgroundColor: _W.redLight,
-        textColor: _W.red,
+        backgroundColor: ZColors.primaryLight,
+        textColor: W.red,
       );
     } else {
       playCoinSound();
@@ -268,8 +245,8 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
         title: '🎉 Checked In!',
         message:
             'You earned ${wp.checkinStatus?.coinsAwarded ?? Constant.checkinCoinsPerDay} coins!',
-        backgroundColor: _W.goldLight,
-        textColor: _W.goldDark,
+        backgroundColor: W.goldLight,
+        textColor: W.goldDark,
       );
     }
   }
@@ -281,8 +258,8 @@ class _WalletHomeScreenState extends State<WalletHomeScreen>
         key: 'not_enough_coins',
         title: 'Not enough coins',
         message: 'Minimum ${Constant.minRedeemCoins} coins required.',
-        backgroundColor: _W.redLight,
-        textColor: _W.red,
+        backgroundColor: ZColors.primaryLight,
+        textColor: W.red,
       );
       return;
     }
@@ -312,7 +289,7 @@ class _BalanceHeroCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(_W.radius),
+        borderRadius: BorderRadius.circular(W.radius),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -390,10 +367,10 @@ class _BalanceHeroCard extends StatelessWidget {
                     Expanded(
                       child: _BalancePill(
                         icon: Icons.monetization_on_rounded,
-                        iconColor: _W.gold,
+                        iconColor: W.gold,
                         label: 'Coins',
                         value: '${wp.coinBalance}',
-                        valueColor: _W.gold,
+                        valueColor: W.gold,
                       ),
                     ),
                     Container(
@@ -404,13 +381,13 @@ class _BalanceHeroCard extends StatelessWidget {
                     ),
                     Expanded(
                       child: _BalancePill(
-                        icon: Icons.account_balance_wallet_rounded,
-                        iconColor: _W.green,
+                        icon: Icons.account_balance_wallet_outlined,
+                        iconColor: ZColors.greenAccent,
                         label: 'Balance',
                         value: Constant.amountShow(
                           amount: wp.moneyBalanceRupees.toStringAsFixed(2),
                         ),
-                        valueColor: _W.green,
+                        valueColor: ZColors.greenAccent,
                       ),
                     ),
                   ],
@@ -493,8 +470,8 @@ class _QuickActionsRow extends StatelessWidget {
           child: _ActionCard(
             icon: Icons.card_giftcard_rounded,
             label: 'Redeem',
-            iconColor: _W.red,
-            bgColor: _W.redLight,
+            iconColor: W.red,
+            bgColor: ZColors.primaryLight,
             onTap: onRedeem,
           ),
         ),
@@ -503,8 +480,8 @@ class _QuickActionsRow extends StatelessWidget {
           child: _ActionCard(
             icon: Icons.today_rounded,
             label: 'Check-in',
-            iconColor: _W.gold,
-            bgColor: _W.goldLight,
+            iconColor: W.gold,
+            bgColor: W.goldLight,
             badge: wp.checkedInToday ? '✓' : null,
             onTap: onCheckin,
           ),
@@ -514,8 +491,8 @@ class _QuickActionsRow extends StatelessWidget {
           child: _ActionCard(
             icon: Icons.person_add_alt_1_rounded,
             label: 'Refer',
-            iconColor: _W.green,
-            bgColor: _W.greenLight,
+            iconColor: ZColors.greenAccent,
+            bgColor: W.greenLight,
             onTap: () => Get.to(() => const ReferralScreen()),
           ),
         ),
@@ -544,17 +521,17 @@ class _ActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _W.card,
-      borderRadius: BorderRadius.circular(_W.cardRadius),
+      color: AppThemeData.grey50,
+      borderRadius: BorderRadius.circular(W.cardRadius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(_W.cardRadius),
+        borderRadius: BorderRadius.circular(W.cardRadius),
         splashColor: bgColor,
         highlightColor: bgColor.withOpacity(0.5),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_W.cardRadius),
+            borderRadius: BorderRadius.circular(W.cardRadius),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),
@@ -609,7 +586,7 @@ class _ActionCard extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: _W.text1,
+                  color: ZColors.textPrimary,
                   letterSpacing: -0.1,
                 ),
               ),
@@ -634,7 +611,7 @@ class _SectionHeader extends StatelessWidget {
       style: const TextStyle(
         fontSize: 11,
         fontWeight: FontWeight.w700,
-        color: _W.text3,
+        color: ZColors.textTertiary,
         letterSpacing: 1.3,
       ),
     );
@@ -662,16 +639,16 @@ class _NavTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _W.card,
-      borderRadius: BorderRadius.circular(_W.cardRadius),
+      color: AppThemeData.grey50,
+      borderRadius: BorderRadius.circular(W.cardRadius),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(_W.cardRadius),
+        borderRadius: BorderRadius.circular(W.cardRadius),
         splashColor: iconBg,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_W.cardRadius),
+            borderRadius: BorderRadius.circular(W.cardRadius),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),
@@ -701,7 +678,7 @@ class _NavTile extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
-                        color: _W.text1,
+                        color: ZColors.textPrimary,
                         letterSpacing: -0.2,
                       ),
                     ),
@@ -710,7 +687,7 @@ class _NavTile extends StatelessWidget {
                       subtitle,
                       style: const TextStyle(
                         fontSize: 12,
-                        color: _W.text3,
+                        color: ZColors.textTertiary,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
@@ -719,7 +696,7 @@ class _NavTile extends StatelessWidget {
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: _W.text3,
+                color: ZColors.textTertiary,
                 size: 20,
               ),
             ],
@@ -739,7 +716,7 @@ class _LoadingView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _W.bg,
+      backgroundColor: W.bg,
       body: SafeArea(
         child: Column(
           children: [
@@ -749,13 +726,13 @@ class _LoadingView extends StatelessWidget {
               margin: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: const Color(0xFF1C1C1E),
-                borderRadius: BorderRadius.circular(_W.radius),
+                borderRadius: BorderRadius.circular(W.radius),
               ),
             ),
             const Expanded(
               child: Center(
                 child: CircularProgressIndicator(
-                  color: _W.red,
+                  color: W.red,
                   strokeWidth: 2.5,
                 ),
               ),
@@ -777,16 +754,16 @@ class _ErrorView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _W.bg,
+      backgroundColor: W.bg,
       appBar: AppBar(
-        backgroundColor: _W.bg,
+        backgroundColor: W.bg,
         elevation: 0,
         leading: IconButton(
           onPressed: () => Get.back(),
           icon: const Icon(
             Icons.arrow_back_ios_new_rounded,
             size: 18,
-            color: _W.text1,
+            color: ZColors.textPrimary,
           ),
         ),
         title: const Text(
@@ -794,7 +771,7 @@ class _ErrorView extends StatelessWidget {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
-            color: _W.text1,
+            color: ZColors.textPrimary,
           ),
         ),
       ),
@@ -808,12 +785,12 @@ class _ErrorView extends StatelessWidget {
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: _W.redLight,
+                  color: ZColors.primaryLight,
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.wifi_off_rounded,
-                  color: _W.red,
+                  color: W.red,
                   size: 32,
                 ),
               ),
@@ -823,20 +800,23 @@ class _ErrorView extends StatelessWidget {
                 style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
-                  color: _W.text1,
+                  color: ZColors.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 13, color: _W.text2),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: ZColors.textSecondary,
+                ),
               ),
               const SizedBox(height: 28),
               ElevatedButton(
                 onPressed: onRetry,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _W.red,
+                  backgroundColor: W.red,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 36,

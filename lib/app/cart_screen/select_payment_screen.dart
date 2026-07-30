@@ -46,7 +46,7 @@ class _SelectPaymentScreenState extends State<SelectPaymentScreen>
   Widget build(BuildContext context) {
     final controller = context.watch<CartControllerProvider>();
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7F7),
+      backgroundColor: W.bg,
       appBar: _buildAppBar(),
       body: FadeTransition(
         opacity: _fadeAnim,

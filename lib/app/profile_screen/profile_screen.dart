@@ -384,7 +384,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildCard(List<Widget> children) {
     return Container(
       decoration: BoxDecoration(
-        color: ZColors.cardBg,
+        color: AppThemeData.grey50,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -434,7 +434,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       : ic == ZColors.amberAccent
                       ? const Color(0xFFFFF8EC)
                       : ic == ZColors.greenAccent
-                      ? const Color(0xFFEEFBF1)
+                      ? W.greenLight
                       : const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(10),
                 ),

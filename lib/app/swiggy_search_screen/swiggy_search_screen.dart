@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/swiggy_search_screen/provider/swiggy_search_provider.dart';
+import 'package:jippymart_customer/app/swiggy_search_screen/widget/buildAppBar.dart';
+import 'package:jippymart_customer/app/swiggy_search_screen/widget/buildCreativeSearchChip.dart';
+import 'package:jippymart_customer/app/swiggy_search_screen/widget/buildRecentSearchesHeader.dart';
+import 'package:jippymart_customer/app/swiggy_search_screen/widget/buildRestaurantCard.dart';
+import 'package:jippymart_customer/app/swiggy_search_screen/widget/getSearchEmoji.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
@@ -14,7 +19,6 @@ import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/utils/restaurant_status_utils.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/product_options_bottom_sheet.dart';
-import 'package:jippymart_customer/app/cart_screen/cart_screen.dart';
 
 class SwiggySearchScreen extends StatefulWidget {
   const SwiggySearchScreen({Key? key}) : super(key: key);
@@ -54,122 +58,9 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     return SafeArea(
       child: Scaffold(
         backgroundColor: AppThemeData.grey50,
-        appBar: _buildAppBar(),
+        appBar: buildAppBar(searchController, searchFocusNode),
         body: _buildBody(),
       ),
-    );
-  }
-
-  PreferredSizeWidget _buildAppBar() {
-    return AppBar(
-      backgroundColor: AppThemeData.grey50,
-      elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back_ios, color: AppThemeData.grey900),
-        onPressed: () => Get.back(),
-      ),
-      title: Selector<SwiggySearchProvider, String>(
-        selector: (_, provider) => provider.searchText,
-        builder: (context, searchText, _) {
-          final controller = context.read<SwiggySearchProvider>();
-          return Container(
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppThemeData.grey100,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: TextField(
-              controller: searchController,
-              focusNode: searchFocusNode,
-              onChanged: controller.updateSearchText,
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
-                  controller.performUnifiedSearch(value.trim());
-                }
-              },
-              style: TextStyle(color: AppThemeData.grey900, fontSize: 16),
-              decoration: InputDecoration(
-                hintText: "Search for restaurants, dishes, or cuisines",
-                hintStyle: TextStyle(color: AppThemeData.grey400, fontSize: 16),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: AppThemeData.grey400,
-                  size: 20,
-                ),
-                suffixIcon: searchText.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(
-                          Icons.clear,
-                          color: AppThemeData.grey400,
-                          size: 20,
-                        ),
-                        onPressed: () {
-                          searchController.clear();
-                          controller.clearSearch();
-                        },
-                      )
-                    : const SizedBox.shrink(),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-      actions: [
-        Selector<CartProvider, int>(
-          selector: (_, provider) => provider.totalQuantity,
-          builder: (context, cartCount, __) {
-            return Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  icon: Icon(
-                    Icons.shopping_cart_outlined,
-                    color: AppThemeData.grey900,
-                  ),
-                  onPressed: () {
-                    Get.to(() => const CartScreen());
-                  },
-                ),
-                if (cartCount > 0)
-                  Positioned(
-                    right: 8,
-                    top: 6,
-                    child: Container(
-                      constraints: const BoxConstraints(
-                        minWidth: 18,
-                        minHeight: 18,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 2,
-                      ),
-                      decoration: const BoxDecoration(
-                        color: Colors.orangeAccent,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        cartCount > 99 ? '99+' : cartCount.toString(),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          height: 1.0,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            );
-          },
-        ),
-        const SizedBox(width: 8),
-      ],
     );
   }
 
@@ -278,61 +169,6 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  void _clearRecentSearches() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            "Clear Recent Searches?",
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppThemeData.grey900,
-            ),
-          ),
-          content: Text(
-            "This will remove all your recent search history. This action cannot be undone.",
-            style: TextStyle(color: AppThemeData.grey400),
-          ),
-          backgroundColor: AppThemeData.grey50,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                "Cancel",
-                style: TextStyle(color: AppThemeData.grey400),
-              ),
-            ),
-            TextButton(
-              onPressed: () {
-                context.read<SwiggySearchProvider>().clearRecentSearches();
-                Navigator.pop(context);
-                Get.snackbar(
-                  "Cleared",
-                  "Recent searches have been cleared",
-                  snackPosition: SnackPosition.BOTTOM,
-                  backgroundColor: AppThemeData.success500,
-                  colorText: AppThemeData.grey50,
-                );
-              },
-              child: Text(
-                "Clear",
-                style: TextStyle(
-                  color: AppThemeData.danger500,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   Widget _buildInitialState() {
     return Selector<SwiggySearchProvider, Map<String, dynamic>>(
       selector: (_, provider) => {
@@ -350,63 +186,25 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               if (recentSearches.isNotEmpty) ...[
-                _buildRecentSearchesHeader(),
+                buildRecentSearchesHeader(context),
                 const SizedBox(height: 16),
-                _buildRecentSearches(recentSearches),
+                _buildRecentSearches(context, searchController, recentSearches),
                 const SizedBox(height: 32),
               ],
               if (trendingSearches.isNotEmpty) ...[
                 _buildSectionHeader("🔥 Trending Now"),
                 const SizedBox(height: 16),
-                _buildTrendingSearches(trendingSearches),
+                _buildTrendingSearches(
+                  context,
+                  searchController,
+                  trendingSearches,
+                ),
                 const SizedBox(height: 16),
               ],
             ],
           ),
         );
       },
-    );
-  }
-
-  Widget _buildRecentSearchesHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          "Recent Searches",
-          style: TextStyle(
-            fontFamily: AppThemeData.semiBold,
-            fontSize: 20,
-            color: AppThemeData.grey900,
-            letterSpacing: 0.3,
-          ),
-        ),
-        GestureDetector(
-          onTap: () => _clearRecentSearches(),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppThemeData.grey200,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.clear_all, color: AppThemeData.grey500, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  "Clear",
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: AppThemeData.grey500,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -438,7 +236,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                     ),
                     child: Center(
                       child: Text(
-                        _getSearchEmoji(suggestion),
+                        getSearchEmoji(suggestion),
                         style: const TextStyle(fontSize: 18),
                       ),
                     ),
@@ -685,12 +483,18 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildRecentSearches(List<String> searches) {
+  Widget _buildRecentSearches(
+    BuildContext context,
+    TextEditingController searchController,
+    List<String> searches,
+  ) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: searches.asMap().entries.map((entry) {
-        return _buildCreativeSearchChip(
+        return buildCreativeSearchChip(
+          context: context,
+          searchController: searchController,
           search: entry.value,
           isRecent: true,
           index: entry.key,
@@ -699,184 +503,24 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     );
   }
 
-  Widget _buildTrendingSearches(List<String> searches) {
+  Widget _buildTrendingSearches(
+    BuildContext context,
+    TextEditingController searchController,
+    List<String> searches,
+  ) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: searches.asMap().entries.map((entry) {
-        return _buildCreativeSearchChip(
+        return buildCreativeSearchChip(
+          context: context,
+          searchController: searchController,
           search: entry.value,
           isRecent: false,
           index: entry.key,
         );
       }).toList(),
     );
-  }
-
-  Widget _buildCreativeSearchChip({
-    required String search,
-    required bool isRecent,
-    required int index,
-  }) {
-    String emoji = _getSearchEmoji(search);
-    Color primaryColor = isRecent
-        ? AppThemeData.primary300
-        : AppThemeData.warning300;
-    Color backgroundColor = isRecent
-        ? AppThemeData.primary50
-        : AppThemeData.warning50;
-    Color borderColor = isRecent
-        ? AppThemeData.primary200
-        : AppThemeData.warning200;
-
-    return GestureDetector(
-      onTap: () {
-        searchController.text = search;
-        context.read<SwiggySearchProvider>().performUnifiedSearch(search);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [backgroundColor, backgroundColor.withOpacity(0.8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: borderColor.withOpacity(0.6), width: 1.2),
-          boxShadow: [
-            BoxShadow(
-              color: primaryColor.withOpacity(0.12),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
-              spreadRadius: 0.5,
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.15),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: primaryColor.withOpacity(0.2),
-                  width: 0.5,
-                ),
-              ),
-              child: Center(
-                child: Text(emoji, style: const TextStyle(fontSize: 11)),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              search,
-              style: TextStyle(
-                color: primaryColor,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.2,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _getSearchEmoji(String search) {
-    // Check cache first
-    if (_emojiCache.containsKey(search)) {
-      return _emojiCache[search]!;
-    }
-
-    final lowerSearch = search.toLowerCase();
-    String emoji = '🍽️'; // Default
-
-    // Food categories
-    if (lowerSearch.contains('pizza'))
-      emoji = '🍕';
-    else if (lowerSearch.contains('biryani'))
-      emoji = '🍛';
-    else if (lowerSearch.contains('burger'))
-      emoji = '🍔';
-    else if (lowerSearch.contains('coffee'))
-      emoji = '☕';
-    else if (lowerSearch.contains('ice cream'))
-      emoji = '🍦';
-    else if (lowerSearch.contains('chicken'))
-      emoji = '🍗';
-    else if (lowerSearch.contains('pasta'))
-      emoji = '🍝';
-    else if (lowerSearch.contains('sushi'))
-      emoji = '🍣';
-    else if (lowerSearch.contains('taco'))
-      emoji = '🌮';
-    else if (lowerSearch.contains('sandwich'))
-      emoji = '🥪';
-    else if (lowerSearch.contains('salad'))
-      emoji = '🥗';
-    else if (lowerSearch.contains('soup'))
-      emoji = '🍲';
-    else if (lowerSearch.contains('noodles'))
-      emoji = '🍜';
-    else if (lowerSearch.contains('rice'))
-      emoji = '🍚';
-    else if (lowerSearch.contains('bread'))
-      emoji = '🍞';
-    else if (lowerSearch.contains('cake'))
-      emoji = '🍰';
-    else if (lowerSearch.contains('dessert'))
-      emoji = '🍮';
-    else if (lowerSearch.contains('sweet'))
-      emoji = '🍭';
-    else if (lowerSearch.contains('spicy'))
-      emoji = '🌶️';
-    else if (lowerSearch.contains('healthy'))
-      emoji = '🥑';
-    else if (lowerSearch.contains('vegetarian') || lowerSearch.contains('veg'))
-      emoji = '🥬';
-    // Cuisines
-    else if (lowerSearch.contains('chinese'))
-      emoji = '🥢';
-    else if (lowerSearch.contains('italian'))
-      emoji = '🍝';
-    else if (lowerSearch.contains('indian'))
-      emoji = '🍛';
-    else if (lowerSearch.contains('mexican'))
-      emoji = '🌮';
-    else if (lowerSearch.contains('japanese'))
-      emoji = '🍣';
-    else if (lowerSearch.contains('thai'))
-      emoji = '🍜';
-    else if (lowerSearch.contains('korean'))
-      emoji = '🥘';
-    else if (lowerSearch.contains('american'))
-      emoji = '🍔';
-    else if (lowerSearch.contains('fast food'))
-      emoji = '🍟';
-    // General food terms
-    else if (lowerSearch.contains('food'))
-      emoji = '🍽️';
-    else if (lowerSearch.contains('restaurant'))
-      emoji = '🍴';
-    else if (lowerSearch.contains('meal'))
-      emoji = '🍽️';
-    else if (lowerSearch.contains('lunch'))
-      emoji = '🍱';
-    else if (lowerSearch.contains('dinner'))
-      emoji = '🍽️';
-    else if (lowerSearch.contains('breakfast'))
-      emoji = '🥞';
-    else if (lowerSearch.contains('snack'))
-      emoji = '🍿';
-
-    // Cache the result
-    _emojiCache[search] = emoji;
-    return emoji;
   }
 
   Widget _buildRestaurantsSliver() {
@@ -886,7 +530,10 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         return SliverList(
           delegate: SliverChildBuilderDelegate((context, index) {
             return RepaintBoundary(
-              child: _buildRestaurantCard(restaurants[index]),
+              child: buildRestaurantCard(
+                restaurants[index],
+                BuildContext as BuildContext,
+              ),
             );
           }, childCount: restaurants.length),
         );
@@ -1013,106 +660,6 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         SizedBox(height: 10),
         Text("Loading more results..."),
       ],
-    );
-  }
-
-  Widget _buildRestaurantCard(VendorModel restaurant) {
-    return RepaintBoundary(
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 16),
-        color: AppThemeData.grey50,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: InkWell(
-          onTap: !RestaurantStatusUtils.canAcceptOrders(restaurant)
-              ? () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text("Restaurant Closed"),
-                      backgroundColor: Colors.red,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-                }
-              : () {
-                  context.read<RestaurantDetailsProvider>().initFunction(
-                    vendorModels: restaurant,
-                  );
-                  Get.to(() => const RestaurantDetailsScreen());
-                },
-          borderRadius: BorderRadius.circular(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(12),
-                      topRight: Radius.circular(12),
-                    ),
-                    child: CachedNetworkImage(
-                      imageUrl: restaurant.photo ?? '',
-                      height: 180,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      placeholder: (context, url) => Container(
-                        height: 180,
-                        color: AppThemeData.grey200,
-                        child: const Center(child: CircularProgressIndicator()),
-                      ),
-                      errorWidget: (context, url, error) => Container(
-                        height: 180,
-                        color: AppThemeData.grey200,
-                        child: const Icon(Icons.restaurant, size: 50),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    child: RestaurantStatusUtils.getStatusWidget(restaurant),
-                  ),
-                ],
-              ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      restaurant.title ?? 'Restaurant',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppThemeData.grey900,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      restaurant.location ?? 'Location not available',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: AppThemeData.grey400,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    if (restaurant.categoryTitle != null &&
-                        restaurant.categoryTitle!.isNotEmpty)
-                      Text(
-                        restaurant.categoryTitle!.join(', '),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: AppThemeData.primary300,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 

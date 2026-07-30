@@ -1,17 +1,13 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
-
 import 'package:jippymart_customer/app/home_screen/screen/category_restaurant_screen/provider/category_resaurant_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/widget/restaurant_image_view.dart';
-
 import '../../../../themes/app_them_data.dart';
 
 class CategoryRestaurantScreen extends StatefulWidget {
@@ -36,7 +32,8 @@ class _CategoryRestaurantScreenState extends State<CategoryRestaurantScreen>
               SliverPersistentHeader(
                 pinned: true,
                 delegate: _StickyHeaderDelegate(
-                  categoryName: controller.vendorCategoryModel.categoryName.isEmpty
+                  categoryName:
+                      controller.vendorCategoryModel.categoryName.isEmpty
                       ? 'Restaurants'
                       : controller.vendorCategoryModel.categoryName,
                   count: controller.allNearestRestaurant.length,
@@ -125,7 +122,7 @@ class _StickyHeaderDelegate extends SliverPersistentHeaderDelegate {
                   _CircleIconButton(
                     icon: Icons.arrow_back_ios_new_rounded,
                     onTap: () => Get.back(),
-                    bgColor: AppThemeData.cardBg,
+                    bgColor: AppThemeData.grey50,
                     iconColor: AppThemeData.textPrimary,
                   ),
                   const SizedBox(width: 12),
@@ -321,7 +318,7 @@ class _RestaurantCardState extends State<_RestaurantCard>
         scale: _scaleAnim,
         child: Container(
           decoration: BoxDecoration(
-            color: AppThemeData.cardBg,
+            color: AppThemeData.grey50,
             borderRadius: BorderRadius.circular(20),
             boxShadow: const [
               BoxShadow(
@@ -809,7 +806,7 @@ class _CircleIconButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           shape: BoxShape.circle,
-          boxShadow: bgColor == AppThemeData.cardBg
+          boxShadow: bgColor == AppThemeData.grey50
               ? [
                   const BoxShadow(
                     color: Color(0x14000000),
@@ -886,7 +883,7 @@ class _ShimmerCard extends StatelessWidget {
         )!;
         return Container(
           decoration: BoxDecoration(
-            color: AppThemeData.cardBg,
+            color: AppThemeData.grey50,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Column(
@@ -969,7 +966,7 @@ class _EmptyView extends StatelessWidget {
               width: 80,
               height: 80,
               decoration: BoxDecoration(
-                color: AppThemeData.cardBg,
+                color: AppThemeData.grey50,
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: const [
                   BoxShadow(

@@ -32,7 +32,7 @@ class OrderOptionsView extends StatelessWidget {
         icon: Icons.home_rounded,
         bgColor: const Color(0xFFFFF1DE),
         iconColor: const Color(0xFFFF9F1C),
-        title: 'Home Made\nMeals',
+        title: 'Community Ordering',
         subtitle: 'Made with love',
         onTap: onHomeMadeMealsTap,
       ),

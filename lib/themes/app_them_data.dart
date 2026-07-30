@@ -89,7 +89,6 @@ class AppThemeData {
 
   // Accent & surface palette
   static const kAccentAmber = Color(0xFFFFC107);
-  static const kSurfaceWhite = Color(0xFFFFFFFF);
   static const kBgCanvas = Color(0xFFF7F7F8);
   static const kCardShadow = Color(0x14000000);
   static const kCardShadowMd = Color(0x1F000000);
@@ -105,7 +104,6 @@ class AppThemeData {
   static const Color greenLight = Color(0xFFE8FDF0);
   static const Color red = Color(0xFFEF4444);
   static const Color pageBg = Color(0xFFF8F6F3);
-  static const Color cardBg = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF1A1208);
   static const Color textMuted = Color(0xFF8B8377);
   static const Color textLight = Color(0xFFC4BFB8);
@@ -129,7 +127,6 @@ class ZColors {
   static const Color primaryLight = Color(0xFFFFF0F1);
   static const Color primaryDark = Color(0xFFC0000F);
   static const Color surface = Color(0xFFF8F8F8);
-  static const Color cardBg = Color(0xFFFFFFFF);
   static const Color textPrimary = Color(0xFF1C1C1E);
   static const Color textSecondary = Color(0xFF6D6D6D);
   static const Color textTertiary = Color(0xFFAAAAAA);
@@ -152,3 +149,21 @@ final kSectionGradient = const LinearGradient(
 );
 
 class _T {}
+
+class W {
+  // Brand
+  static const Color red = Color(0xFFE23744);
+
+  // Coin gold
+  static const Color gold = Color(0xFFFF9500);
+  static const Color goldLight = Color(0xFFFFF8EC);
+  static const Color goldDark = Color(0xFFD4780A);
+
+  // Money green
+  static const Color greenLight = Color(0xFFEEFBF1);
+
+  // Neutrals
+  static const Color bg = Color(0xFFF7F7F7);
+  static const double radius = 20;
+  static const double cardRadius = 16;
+}

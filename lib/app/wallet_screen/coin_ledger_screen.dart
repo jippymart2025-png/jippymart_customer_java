@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-
-import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/coin_ledger_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/app/wallet_screen/provider/wallet_provider.dart';
@@ -111,10 +109,10 @@ class _CoinLedgerScreenState extends State<CoinLedgerScreen>
                       delegate: SliverChildBuilderDelegate((context, i) {
                         final showDateHeader =
                             i == 0 ||
-                            !_isSameDay(
-                              list[i].createdAt,
-                              list[i - 1].createdAt,
-                            );
+                                !_isSameDay(
+                                  list[i].createdAt,
+                                  list[i - 1].createdAt,
+                                );
                         // RepaintBoundary isolates each tile's repaint
                         return RepaintBoundary(
                           child: Column(
