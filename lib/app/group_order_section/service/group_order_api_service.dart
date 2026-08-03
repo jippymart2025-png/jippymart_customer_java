@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/models/group_order_action_response.dart';
 import 'package:jippymart_customer/models/group_order_checkout_model.dart';
@@ -17,11 +18,7 @@ class GroupOrderApiService {
     try {
       final uri = Uri.parse(
         '${AppConst.outletBaseUrl}co/group-orders/getGroupOrderInvitation',
-      ).replace(
-        queryParameters: {
-          'hostCustomerId': hostCustomerId.toString(),
-        },
-      );
+      ).replace(queryParameters: {'hostCustomerId': hostCustomerId.toString()});
 
       print('[GroupOrderApi] GET $uri');
 
@@ -42,9 +39,11 @@ class GroupOrderApiService {
           : decoded;
 
       return GroupOrderInvitationModel.fromJson(data);
-    } catch (e) {
-      print('[GroupOrderApi] getGroupOrderInvitation error: $e');
-      return null;
+    } catch (e, stack) {
+      debugPrint("=========== API ERROR ===========");
+      debugPrint(e.toString());
+      debugPrintStack(stackTrace: stack);
+      rethrow;
     }
   }
 
@@ -54,48 +53,56 @@ class GroupOrderApiService {
     required int orderCloseDurationInMinutes,
     required String paymentResponsibility,
     required int maxMembers,
+    required String orderType,
     required int createdBy,
   }) async {
-    try {
-      final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}co/group-orders/createGroupOrderInvitation',
-      );
+    final uri = Uri.parse(
+      '${AppConst.outletBaseUrl}co/group-orders/createGroupOrderInvitation',
+    );
 
-      final body = {
-        'hostCustomerId': hostCustomerId,
-        'outletId': outletId,
-        'orderCloseDurationInMinutes': orderCloseDurationInMinutes,
-        'paymentResponsibility': paymentResponsibility,
-        'maxMembers': maxMembers,
-        'createdBy': createdBy,
-      };
+    final body = {
+      "hostCustomerId": hostCustomerId,
+      "outletId": outletId,
+      "orderCloseDurationInMinutes": orderCloseDurationInMinutes,
+      "paymentResponsibility": paymentResponsibility,
+      "maxMembers": maxMembers,
+      "orderType": orderType,
+      "createdBy": createdBy,
+    };
 
-      print('[GroupOrderApi] POST $uri');
-      print('[GroupOrderApi] body: $body');
+    debugPrint("POST : $uri");
+    debugPrint("BODY : ${jsonEncode(body)}");
 
-      final response = await http
-          .post(uri, headers: await getHeaders(), body: jsonEncode(body))
-          .timeout(const Duration(seconds: 30));
+    final response = await http.post(
+      uri,
+      headers: await getHeaders(),
+      body: jsonEncode(body),
+    );
 
-      print('[GroupOrderApi] status: ${response.statusCode}');
-      print('[GroupOrderApi] response: ${response.body}');
+    debugPrint("STATUS : ${response.statusCode}");
+    debugPrint("BODY : ${response.body}");
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        return null;
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw Exception(response.body);
+    }
+
+    final decoded = jsonDecode(response.body);
+
+    debugPrint("DECODED TYPE : ${decoded.runtimeType}");
+
+    if (decoded is Map<String, dynamic>) {
+      if (decoded["data"] != null) {
+        debugPrint("Parsing data object...");
+        return GroupOrderInvitationModel.fromJson(
+          Map<String, dynamic>.from(decoded["data"]),
+        );
       }
 
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) return null;
-
-      final data = decoded.containsKey('data') && decoded['data'] is Map
-          ? Map<String, dynamic>.from(decoded['data'] as Map)
-          : decoded;
-
-      return GroupOrderInvitationModel.fromJson(data);
-    } catch (e) {
-      print('[GroupOrderApi] createGroupOrderInvitation error: $e');
-      return null;
+      debugPrint("Parsing root object...");
+      return GroupOrderInvitationModel.fromJson(decoded);
     }
+
+    throw Exception("Unexpected response format");
   }
 
   static Future<GroupOrderJoinResponse?> joinGroupMembers({
@@ -197,14 +204,15 @@ class GroupOrderApiService {
     required int hostCustomerId,
   }) async {
     try {
-      final uri = Uri.parse(
-        '${AppConst.outletBaseUrl}co/group-orders/groupOrderCheckOut',
-      ).replace(
-        queryParameters: {
-          'groupOrdersInvitationId': groupOrdersInvitationId.toString(),
-          'hostCustomerId': hostCustomerId.toString(),
-        },
-      );
+      final uri =
+          Uri.parse(
+            '${AppConst.outletBaseUrl}co/group-orders/groupOrderCheckOut',
+          ).replace(
+            queryParameters: {
+              'groupOrdersInvitationId': groupOrdersInvitationId.toString(),
+              'hostCustomerId': hostCustomerId.toString(),
+            },
+          );
 
       print('[GroupOrderApi] GET $uri');
 
@@ -231,7 +239,9 @@ class GroupOrderApiService {
     }
   }
 
-  static Map<String, int> quantitiesFromCheckout(GroupOrderCheckoutModel? model) {
+  static Map<String, int> quantitiesFromCheckout(
+    GroupOrderCheckoutModel? model,
+  ) {
     final quantities = <String, int>{};
     if (model == null) return quantities;
 

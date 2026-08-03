@@ -6,7 +6,7 @@ import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/services/group_order_session.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 
-import '../../Communityscreen/screens/community_home_screen.dart';
+import '../../Communityscreen/screens/community_list_screen.dart';
 import '../service/group_order_api_service.dart';
 import 'GroupOrderDashboardScreen.dart';
 import 'InviteFriendsScreen.dart';
@@ -95,5 +95,5 @@ Future<void> openGroupOrderFlow() async {
 }
 
 Future<void> openHomeMadeMeals() async {
-  await Get.to(() => const CommunityHomeScreen());
+  await Get.to(() => const CommunityListScreen());
 }

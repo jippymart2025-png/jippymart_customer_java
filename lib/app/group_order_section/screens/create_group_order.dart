@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -16,7 +18,9 @@ import 'InviteFriendsScreen.dart';
 enum GroupPaymentMode { splitIndividually, hostPays }
 
 class CreateGroupOrderScreen extends StatefulWidget {
-  const CreateGroupOrderScreen({super.key});
+  final String orderType;
+
+  const CreateGroupOrderScreen({super.key, this.orderType = "GROUP_ORDER"});
 
   @override
   State<CreateGroupOrderScreen> createState() => _CreateGroupOrderScreenState();
@@ -130,8 +134,11 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
         orderCloseDurationInMinutes: _parseMinutes("$_closingMinutes mins"),
         paymentResponsibility: _paymentResponsibility(),
         maxMembers: _maxMembers,
+        orderType: widget.orderType,
         createdBy: customerId,
       );
+      debugPrint(result?.invitationCode);
+      debugPrint(result?.orderType);
 
       ShowToastDialog.closeLoader();
       if (!mounted) return;

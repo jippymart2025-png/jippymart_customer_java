@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/models.dart';
+import '../../screens/CommunityInfoScreen.dart';
 import '../../theme/app_theme.dart';
 
 /// Matches the "Community Home" reference design:
@@ -91,7 +92,11 @@ class CommunityInfoCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    _InfoPill(onTap: onInfoTap),
+                    _InfoPill(
+                      onTap: onInfoTap,
+                      community:
+                          community, // ✅ Pass the current CommunityData object
+                    ),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -149,17 +154,25 @@ class CommunityInfoCard extends StatelessWidget {
 }
 
 class _InfoPill extends StatelessWidget {
+  final CommunityData community;
   final VoidCallback? onTap;
 
-  const _InfoPill({this.onTap});
+  const _InfoPill({required this.community, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onTap,
         borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => CommunityInfoScreen(community: community),
+            ),
+          );
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(

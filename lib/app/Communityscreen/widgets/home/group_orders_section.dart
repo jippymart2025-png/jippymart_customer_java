@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/models.dart';
 import '../../providers/providers.dart';
 import '../../theme/app_theme.dart';
-import '../common/responsive_grid.dart';
+import '../common/OrderCard.dart';
 
 class GroupOrdersSection extends ConsumerWidget {
   const GroupOrdersSection({super.key});
@@ -21,7 +21,7 @@ class GroupOrdersSection extends ConsumerWidget {
           const _EmptyOrders()
         else
           SizedBox(
-            height: 190,
+            height: 258,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
@@ -30,7 +30,7 @@ class GroupOrdersSection extends ConsumerWidget {
               itemBuilder: (context, index) {
                 return SizedBox(
                   width: 210,
-                  child: _OrderCard(order: orders[index]),
+                  child: OrderCard(order: orders[index], compact: false),
                 );
               },
             ),
@@ -88,155 +88,6 @@ class _OrderTabs extends ConsumerWidget {
           ),
         );
       }).toList(),
-    );
-  }
-}
-
-class _OrderCard extends StatelessWidget {
-  final GroupOrder order;
-
-  const _OrderCard({required this.order});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 210,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(.05),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          /// FOOD IMAGE
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(18),
-                ),
-                child: Image.network(
-                  'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800',
-                  height: 90,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      height: 90,
-                      color: Colors.grey.shade200,
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    );
-                  },
-                  errorBuilder: (_, __, ___) => Container(
-                    height: 90,
-                    color: Colors.grey.shade200,
-                    child: const Icon(Icons.fastfood, size: 40),
-                  ),
-                ),
-              ),
-
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    "${order.joinedCount}/30 Joined",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          Padding(
-            padding: const EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  order.name,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-
-                const SizedBox(height: 3),
-
-                Text(
-                  order.restaurant,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
-
-                const SizedBox(height: 10),
-
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.green.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        order.discount,
-                        style: const TextStyle(
-                          color: Colors.green,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 11,
-                        ),
-                      ),
-                    ),
-
-                    const Spacer(),
-
-                    Icon(
-                      Icons.access_time,
-                      size: 14,
-                      color: Colors.grey.shade600,
-                    ),
-
-                    const SizedBox(width: 4),
-
-                    Text(
-                      "Closes in 2h",
-                      style: TextStyle(
-                        color: Colors.grey.shade600,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

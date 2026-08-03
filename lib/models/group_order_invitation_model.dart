@@ -8,7 +8,13 @@ class GroupOrderInvitationModel {
   final String paymentResponsibility;
   final int maxMembers;
   final String? createdAt;
-  final int createdBy;
+
+  final int? createdBy;
+  final String? orderType;
+  final int? communityEventId;
+  final int? communityId;
+  final String? webSocketEndPoint;
+  final String? webSocketTopic;
 
   GroupOrderInvitationModel({
     required this.groupOrdersInvitationId,
@@ -20,7 +26,12 @@ class GroupOrderInvitationModel {
     required this.paymentResponsibility,
     required this.maxMembers,
     this.createdAt,
-    required this.createdBy,
+    this.createdBy,
+    this.orderType,
+    this.communityEventId,
+    this.communityId,
+    this.webSocketEndPoint,
+    this.webSocketTopic,
   });
 
   factory GroupOrderInvitationModel.fromJson(Map<String, dynamic> json) {
@@ -33,11 +44,21 @@ class GroupOrderInvitationModel {
       status: json['status']?.toString() ?? '',
       orderCloseDurationInMinutes:
           (json['orderCloseDurationInMinutes'] as num?)?.toInt() ?? 0,
-      paymentResponsibility:
-          json['paymentResponsibility']?.toString() ?? '',
+      paymentResponsibility: json['paymentResponsibility']?.toString() ?? '',
       maxMembers: (json['maxMembers'] as num?)?.toInt() ?? 0,
       createdAt: json['createdAt']?.toString(),
-      createdBy: (json['createdBy'] as num?)?.toInt() ?? 0,
+
+      createdBy: (json['createdBy'] as num?)?.toInt(),
+
+      orderType: json['orderType']?.toString(),
+
+      communityEventId: (json['communityEventId'] as num?)?.toInt(),
+
+      communityId: (json['communityId'] as num?)?.toInt(),
+
+      webSocketEndPoint: json['webSocketEndPoint']?.toString(),
+
+      webSocketTopic: json['webSocketTopic']?.toString(),
     );
   }
 }
