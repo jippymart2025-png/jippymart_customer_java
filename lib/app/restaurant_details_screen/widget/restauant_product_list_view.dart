@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/product_options_bottom_sheet.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_without_categories_wiget.dart';
@@ -28,126 +27,121 @@ class ProductListView extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final rs = RS(sw: size.width, sh: size.height);
+    // Rebuild only when menu-related state changes (not every provider notify).
+    context.select<RestaurantDetailsProvider, int>(
+      (p) => p.menuContentSignature,
+    );
+    final controller = context.read<RestaurantDetailsProvider>();
 
-    return Consumer<RestaurantDetailsProvider>(
-      builder: (context, controller, _) {
-        return Container(
-          color: AppThemeData.grey50,
+    if (controller.productList.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
           padding: EdgeInsets.symmetric(horizontal: rs.hPad),
-          child: controller.productList.isEmpty
-              ? _buildNoProductsMessage(context, rs)
-              : controller.vendorCategoryList.isEmpty
-              ? buildProductsWithoutCategories(context, controller)
-              : controller.searchEditingController.value.text.isNotEmpty ||
-                    controller.isVag ||
-                    controller.isNonVag ||
-                    controller.isOfferFilter
-              ? buildProductsWithoutCategories(context, controller)
-              : ListView.builder(
-                  controller: controller.scrollControllerProduct,
-                  shrinkWrap: true,
-                  padding: EdgeInsets.zero,
-                  itemCount: controller.vendorCategoryList.length,
-                  itemBuilder: (context, index) {
-                    final vendorCategoryModel =
-                        controller.vendorCategoryList[index];
-                    final categoryKey =
-                        controller.returnKeyCategories(index: index) ??
-                        'category_$index';
-                    final stableKey = ValueKey<String>(
-                      vendorCategoryModel.categoryId.toString(),
-                    );
-                    return KeyedSubtree(
-                      key: stableKey,
-                      child: _buildCategoryExpansionTile(
-                        context,
-                        vendorCategoryModel,
-                        index,
-                        controller,
-                        rs,
-                        categoryKey,
-                      ),
-                    );
-                  },
-                ),
-        );
-      },
+          child: _buildNoProductsMessage(context, rs),
+        ),
+      );
+    }
+
+    final useFlatList =
+        controller.vendorCategoryList.isEmpty ||
+        controller.searchEditingController.value.text.isNotEmpty ||
+        controller.isVag ||
+        controller.isNonVag ||
+        controller.isOfferFilter;
+
+    if (useFlatList) {
+      // Search/filter sets are typically smaller; still use a lazy sliver list.
+      return SliverPadding(
+        padding: EdgeInsets.symmetric(horizontal: rs.hPad),
+        sliver: SliverToBoxAdapter(
+          child: buildProductsWithoutCategories(context, controller),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: EdgeInsets.symmetric(horizontal: rs.hPad),
+      sliver: SliverMainAxisGroup(
+        slivers: [
+          for (int index = 0;
+              index < controller.vendorCategoryList.length;
+              index++)
+            ..._buildCategorySlivers(
+              context,
+              controller.vendorCategoryList[index],
+              index,
+              controller,
+              rs,
+            ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCategoryExpansionTile(
+  List<Widget> _buildCategorySlivers(
     BuildContext context,
     VendorCategoryModel vendorCategoryModel,
     int index,
     RestaurantDetailsProvider controller,
     RS rs,
-    String categoryKey,
   ) {
+    final categoryKey =
+        controller.returnKeyCategories(index: index) ?? 'category_$index';
     final globalKey = controller.categoryKeys[categoryKey];
-    return ExpansionTile(
-      key: globalKey,
-      childrenPadding: EdgeInsets.zero,
-      tilePadding: EdgeInsets.zero,
-      shape: const Border(),
-      initiallyExpanded: true,
-      title: Text(
-        '${vendorCategoryModel.categoryName}'
-        ' (${controller.getProductsByCategory(vendorCategoryModel.categoryId.toString()).length})',
-        style: TextStyle(
-          fontSize: rs.categoryFontSize,
-          fontFamily: AppThemeData.semiBold,
-          fontWeight: FontWeight.w600,
-          color: AppThemeData.grey900,
-        ),
-      ),
-      children: [
-        Consumer<RestaurantDetailsProvider>(
-          builder: (context, ctrl, _) =>
-              _buildProductsForCategory(vendorCategoryModel, context, ctrl, rs),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProductsForCategory(
-    VendorCategoryModel vendorCategoryModel,
-    BuildContext context,
-    RestaurantDetailsProvider controller,
-    RS rs,
-  ) {
     final products = controller.getProductsByCategory(
       vendorCategoryModel.categoryId.toString(),
     );
 
-    return Consumer<HomeProvider>(
-      builder: (context, _, __) {
-        return GridView.builder(
-          itemCount: products.length,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: EdgeInsets.only(bottom: rs.gridSpacing),
+    return [
+      SliverToBoxAdapter(
+        child: KeyedSubtree(
+          key: ValueKey<String>(vendorCategoryModel.categoryId.toString()),
+          child: Padding(
+            key: globalKey,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Text(
+              '${vendorCategoryModel.categoryName}'
+              ' (${products.length})',
+              style: TextStyle(
+                fontSize: rs.categoryFontSize,
+                fontFamily: AppThemeData.semiBold,
+                fontWeight: FontWeight.w600,
+                color: AppThemeData.grey900,
+              ),
+            ),
+          ),
+        ),
+      ),
+      SliverPadding(
+        padding: EdgeInsets.only(bottom: rs.gridSpacing),
+        sliver: SliverGrid(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: rs.gridCols,
             crossAxisSpacing: rs.gridSpacing,
             mainAxisSpacing: rs.gridSpacing,
             childAspectRatio: rs.gridAspectRatio,
           ),
-          itemBuilder: (context, productIndex) {
-            final productModel = products[productIndex];
-            return RepaintBoundary(
-              child: _buildProductItem(
-                productModel,
-                context,
-                vendorCategoryModel,
-                productIndex,
-                controller,
-                rs,
-              ),
-            );
-          },
-        );
-      },
-    );
+          delegate: SliverChildBuilderDelegate(
+            (context, productIndex) {
+              final productModel = products[productIndex];
+              return RepaintBoundary(
+                child: _buildProductItem(
+                  productModel,
+                  context,
+                  vendorCategoryModel,
+                  productIndex,
+                  controller,
+                  rs,
+                ),
+              );
+            },
+            childCount: products.length,
+            addAutomaticKeepAlives: false,
+            addRepaintBoundaries: false,
+          ),
+        ),
+      ),
+    ];
   }
 
   Widget _buildProductItem(

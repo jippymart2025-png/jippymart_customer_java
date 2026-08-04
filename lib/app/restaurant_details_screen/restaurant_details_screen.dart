@@ -171,46 +171,45 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
   @override
   Widget build(BuildContext context) {
     final bottomSafeArea = MediaQuery.of(context).padding.bottom;
+    final controller = context.read<RestaurantDetailsProvider>();
 
-    return Consumer<RestaurantDetailsProvider>(
-      builder: (context, controller, _) {
-        return Scaffold(
-          backgroundColor: AppThemeData.surface,
-          body: Padding(
-            padding: EdgeInsets.only(
-              bottom: responseToKeyboard
-                  ? (MediaQuery.of(context).viewInsets.bottom > 0
-                        ? 0
-                        : bottomSafeArea)
-                  : bottomSafeArea,
-            ),
-            child: RefreshIndicator(
-              onRefresh: () =>
-                  controller.getArgument(vendorModels: controller.vendorModel),
-              // ── Use a single CustomScrollView instead of NestedScrollView
-              //    + SingleChildScrollView to eliminate the double-scroll
-              //    conflict that caused jank on heavy lists. ──
-              child: CustomScrollView(
+    return Scaffold(
+      backgroundColor: AppThemeData.surface,
+      body: Padding(
+        padding: EdgeInsets.only(
+          bottom: responseToKeyboard
+              ? (MediaQuery.of(context).viewInsets.bottom > 0
+                    ? 0
+                    : bottomSafeArea)
+              : bottomSafeArea,
+        ),
+        child: RefreshIndicator(
+          onRefresh: () =>
+              controller.getArgument(vendorModels: controller.vendorModel),
+          child: Selector<RestaurantDetailsProvider, bool>(
+            selector: (_, p) => p.isLoading,
+            builder: (context, isLoading, _) {
+              return CustomScrollView(
                 controller: _scrollController,
                 physics: const BouncingScrollPhysics(
                   parent: AlwaysScrollableScrollPhysics(),
                 ),
                 slivers: [
-                  // 1. AppBar
                   _buildAppBar(controller),
-
-                  // 2. Loading: full-height area with visible spinner + shimmer (no blank white)
-                  if (_isRestaurantDetailsLoading(controller))
-                    SliverFillRemaining(
+                  if (isLoading)
+                    const SliverFillRemaining(
                       hasScrollBody: false,
                       child: _RestaurantDetailsLoadingView(),
                     )
                   else ...[
-                    // 2. Header card (name, status, coupons)
-                    SliverToBoxAdapter(child: _buildHeaderCard(controller)),
-
-                    // 3. Sticky search bar — zero height when hidden,
-                    //    smoothly pins below AppBar when header scrolls away
+                    SliverToBoxAdapter(
+                      child: Selector<RestaurantDetailsProvider, String?>(
+                        selector: (_, p) =>
+                            '${p.vendorModel.id}|${p.vendorModel.title}|${p.couponList.length}|${p.isRestaurantFavorite}',
+                        builder: (context, _, __) =>
+                            _buildHeaderCard(context.read()),
+                      ),
+                    ),
                     SliverPersistentHeader(
                       pinned: true,
                       delegate: _StickySearchDelegate(
@@ -221,18 +220,15 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
                             _RestaurantScreenConstants.stickySearchBarHeight,
                       ),
                     ),
-
-                    // 4. White content area — search bar + filters + products
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Inline search bar (white bg, dark text)
                             _SearchBarWidget(controller: controller),
                             const SizedBox(height: 10),
-                            PromotionalProductsSection(),
+                            const PromotionalProductsSection(),
                             const SizedBox(height: 10),
                             _MenuSection(controller: controller),
                             const SizedBox(height: 20),
@@ -240,34 +236,33 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
                         ),
                       ),
                     ),
-
-                    // 5. Closed message OR product list
-                    if (!controller.canAcceptOrders())
+                    // canAccept is resolved when loading completes (same rebuild).
+                    if (!context
+                        .read<RestaurantDetailsProvider>()
+                        .canAcceptOrders())
                       SliverToBoxAdapter(
-                        child: _ClosedRestaurantMessage(controller: controller),
+                        child: _ClosedRestaurantMessage(
+                          controller: context.read(),
+                        ),
                       )
                     else
-                      // ProductListView must be a Sliver or wrapped here
-                      const SliverToBoxAdapter(child: ProductListView()),
-
+                      const ProductListView(),
                     const SliverToBoxAdapter(child: SizedBox(height: 20)),
                   ],
                 ],
-              ),
-            ),
+              );
+            },
           ),
-          bottomNavigationBar: _buildBottomNavigationBar(),
-          floatingActionButton: _buildFloatingActionButton(controller),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-        );
-      },
+        ),
+      ),
+      bottomNavigationBar: _buildBottomNavigationBar(),
+      floatingActionButton: _buildFloatingActionButton(controller),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
   /// True only while the provider is loading. Once API returns (with or without products), show content or empty state.
-  bool _isRestaurantDetailsLoading(RestaurantDetailsProvider controller) {
-    return controller.isLoading;
-  }
+  // Loading gate is handled via Selector on isLoading in build().
 
   // ==================== APP BAR ====================
   Widget _buildAppBar(RestaurantDetailsProvider controller) {
@@ -297,21 +292,24 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
         _buildBackButton(),
         const SizedBox(width: 12),
         Expanded(
-          child: AnimatedBuilder(
-            animation: _titleAnimationController,
-            builder: (context, _) => SlideTransition(
-              position: _titleSlideAnimation,
-              child: FadeTransition(
-                opacity: _titleOpacityAnimation,
-                child: Text(
-                  controller.vendorModel.title ?? "",
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AppThemeData.grey50,
-                    fontFamily: AppThemeData.semiBold,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 18,
+          child: Selector<RestaurantDetailsProvider, String>(
+            selector: (_, p) => p.vendorModel.title ?? '',
+            builder: (context, title, _) => AnimatedBuilder(
+              animation: _titleAnimationController,
+              builder: (context, _) => SlideTransition(
+                position: _titleSlideAnimation,
+                child: FadeTransition(
+                  opacity: _titleOpacityAnimation,
+                  child: Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AppThemeData.grey50,
+                      fontFamily: AppThemeData.semiBold,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
               ),

@@ -55,8 +55,8 @@ class RestaurantApiHelper {
         headers: await getHeaders(),
       );
 
-      print("getRestaurantCoupons $url");
-      print("getRestaurantCoupons ${response.body}");
+      debugPrint("getRestaurantCoupons $url");
+      debugPrint("getRestaurantCoupons ${response.body}");
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
@@ -73,41 +73,10 @@ class RestaurantApiHelper {
         );
       }
     } catch (e) {
-      print('Error fetching coupons: $e');
+      debugPrint('Error fetching coupons: $e');
       rethrow;
     }
   }
-
-  // static Future<List<CouponModel>> getRestaurantCoupons({
-  //   required String restaurantId,
-  // }) async {
-  //   try {
-  //     String url =
-  //         "${AppConst.baseUrl}coupons/restaurant${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
-  //     final response = await http.get(
-  //       Uri.parse(url),
-  //       headers: await getHeaders(),
-  //     );
-  //     print("getRestaurantCoupons ${url}");
-  //     print("getRestaurantCoupons ${response.body} ");
-  //     if (response.statusCode == 200) {
-  //       final Map<String, dynamic> responseData = json.decode(response.body);
-  //       if (responseData['success'] == true) {
-  //         List<dynamic> data = responseData['data'];
-  //         return data.map((json) => CouponModel.fromJson(json)).toList();
-  //       } else {
-  //         throw Exception('Failed to load coupons: ${responseData['message']}');
-  //       }
-  //     } else {
-  //       throw Exception(
-  //         'Failed to load coupons. Status code: ${response.statusCode}',
-  //       );
-  //     }
-  //   } catch (e) {
-  //     print('Error fetching coupons: $e');
-  //     rethrow;
-  //   }
-  // }
 
   static Future<List<CouponModel>> getMartCoupons({
     required String restaurantId,
@@ -115,7 +84,7 @@ class RestaurantApiHelper {
     try {
       String url =
           "${AppConst.baseUrl}coupons/mart${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
-      print(" getMartCoupons ${url}");
+      debugPrint(" getMartCoupons ${url}");
       final response = await http.get(
         Uri.parse(url),
         headers: await getHeaders(),
@@ -134,7 +103,7 @@ class RestaurantApiHelper {
         );
       }
     } catch (e) {
-      print('Error fetching mart coupons: $e');
+      debugPrint('Error fetching mart coupons: $e');
       rethrow;
     }
   }
@@ -170,45 +139,80 @@ class RestaurantApiHelper {
       }
 
       final uri = Uri.parse(
-        // '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails',
         '${AppConst.outletBaseUrl}fm/outlets/getOutletDetails',
       ).replace(queryParameters: queryParams);
 
-      print('🔍 API Call: $uri');
+      final stopwatch = Stopwatch()..start();
+      debugPrint('Outlet details API: $uri');
 
       final response = await http
           .get(uri, headers: await getHeaders())
           .timeout(const Duration(seconds: 10));
 
-      print('📦 Response Body: ${response.body}');
+      debugPrint(
+        'Outlet details HTTP ${response.statusCode} in ${stopwatch.elapsedMilliseconds}ms',
+      );
 
       if (response.statusCode == 200) {
-        return _parseOutletDetailsResponse(response.body);
+        // Decode + unwrap JSON off the UI isolate; model hydration happens after.
+        return compute(
+          RestaurantApiHelper.parseOutletDetailsResponse,
+          response.body,
+        );
       }
 
-      throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      throw Exception('HTTP ${response.statusCode}');
     } catch (e) {
-      print('❌ API Error: $e');
+      debugPrint('Outlet details API error: $e');
       rethrow;
     }
   }
 
-  static Map<String, dynamic> _parseOutletDetailsResponse(String body) {
+  /// Top-level-friendly parser for [compute].
+  /// Decodes JSON and normalizes nested product maps off the UI isolate.
+  static Map<String, dynamic> parseOutletDetailsResponse(String body) {
     final decoded = json.decode(body);
 
+    late final Map<String, dynamic> data;
     if (decoded is Map<String, dynamic>) {
       if (decoded['success'] == true &&
           decoded['data'] is Map<String, dynamic>) {
-        return Map<String, dynamic>.from(decoded['data'] as Map);
-      }
-      if (decoded.containsKey('outletId') ||
+        data = Map<String, dynamic>.from(decoded['data'] as Map);
+      } else if (decoded.containsKey('outletId') ||
           decoded.containsKey('categories')) {
-        return decoded;
+        data = decoded;
+      } else {
+        throw Exception(decoded['message']?.toString() ?? 'Unknown API Error');
       }
-      throw Exception(decoded['message']?.toString() ?? 'Unknown API Error');
+    } else {
+      throw Exception('Invalid outlet details response');
     }
 
-    throw Exception('Invalid outlet details response');
+    // Pre-inject category/vendor fields so main-isolate fromApiJson is cheaper
+    final outletId = data['outletId']?.toString() ?? '';
+    final categories = data['categories'];
+    if (categories is List) {
+      for (final raw in categories) {
+        if (raw is! Map) continue;
+        final cat = Map<String, dynamic>.from(raw);
+        final categoryId = cat['categoryId']?.toString() ?? '';
+        final categoryName = cat['categoryName']?.toString() ?? '';
+        final products = cat['products'];
+        if (products is List) {
+          for (var i = 0; i < products.length; i++) {
+            final item = products[i];
+            if (item is! Map) continue;
+            final product = Map<String, dynamic>.from(item);
+            product['categoryId'] = categoryId;
+            product['categoryName'] = categoryName;
+            product['vendorID'] = outletId;
+            products[i] = product;
+          }
+        }
+      }
+    }
+
+    return data;
   }
 
   static List<dynamic> _parseNearbyOutletsList(
@@ -253,21 +257,19 @@ class RestaurantApiHelper {
       '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.415397&lng=78.447721',
     );
 
-    print('[OUTLET_API] Fetching nearby outlets from: $uri');
+    debugPrint('[OUTLET_API] Fetching nearby outlets from: $uri');
 
     final response = await http
         .get(uri, headers: await getHeaders())
         .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
-      print('[OUTLET_API] HTTP error: ${response.statusCode}');
+      debugPrint('[OUTLET_API] HTTP error: ${response.statusCode}');
       return [];
     }
 
     final jsonResponse = json.decode(response.body);
     if (jsonResponse is! Map<String, dynamic>) return [];
-
-    print('[OUTLET_API] Response: ${response.body}');
 
     final outletsList = _parseNearbyOutletsList(jsonResponse);
     final restaurants = outletsList
@@ -276,7 +278,7 @@ class RestaurantApiHelper {
         .map((outlet) => outlet.toVendorModel())
         .toList();
 
-    print('[OUTLET_API] Outlets fetched: ${restaurants.length}');
+    debugPrint('[OUTLET_API] Outlets fetched: ${restaurants.length}');
 
     _nearbyCacheKey = cacheKey;
     _nearbyCache = List<VendorModel>.from(restaurants);
@@ -303,7 +305,7 @@ class RestaurantApiHelper {
 
       return false;
     } catch (e) {
-      print('[OUTLET_SERVICE] unavailable: $e');
+      debugPrint('[OUTLET_SERVICE] unavailable: $e');
       return false;
     }
   }
@@ -343,7 +345,6 @@ class RestaurantCacheData {
   final String restaurantId;
   final List<ProductModel> products;
   final List<VendorCategoryModel> categories;
-  final List<CouponModel> coupons;
   final bool isFavourite;
   final DateTime timestamp;
 
@@ -351,7 +352,6 @@ class RestaurantCacheData {
     required this.restaurantId,
     required this.products,
     required this.categories,
-    required this.coupons,
     this.isFavourite = false,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
@@ -368,7 +368,6 @@ class RestaurantCacheData {
       restaurantId: restaurantId ?? this.restaurantId,
       products: products ?? this.products,
       categories: categories ?? this.categories,
-      coupons: coupons ?? this.coupons,
       isFavourite: isFavourite ?? this.isFavourite,
       timestamp: timestamp ?? this.timestamp,
     );
@@ -433,6 +432,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   final Map<String, bool> _promotionCheckedCache = {};
   final Map<String, int> _serverCartQuantities = {};
 
+  /// Categories start expanded so products are visible immediately.
+  final Set<int> _expandedCategoryIndices = {};
+  bool _expandAllCategoriesByDefault = true;
+
   // Controllers
   StreamSubscription<List<CartProductModel>>? _cartSubscription;
   Timer? _sliderTimer;
@@ -451,6 +454,24 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   int? get activeGroupOrderInvitationId => _groupOrderInvitationId;
 
   int? get activeGroupOrderHostCustomerId => _groupOrderHostCustomerId;
+
+  /// Signature for menu list rebuilds (avoids full-screen Consumer).
+  int get menuContentSignature => Object.hash(
+    productList.length,
+    vendorCategoryList.length,
+    allProductList.length,
+    isVag,
+    isNonVag,
+    isOfferFilter,
+    searchEditingController.text,
+    favoriteProductIds.length,
+    Object.hashAll(_expandedCategoryIndices),
+    Object.hashAll(
+      _serverCartQuantities.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
+    vendorModel.id,
+    vendorModel.title,
+  );
 
   void setGroupOrderContext({
     required int groupOrderInvitationId,
@@ -533,6 +554,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     selectedAddOns.clear();
     quantity = 1;
     _isRestaurantFavorite = false;
+    _expandAllCategoriesByDefault = true;
+    _expandedCategoryIndices.clear();
   }
 
   Future<void> _loadFromCache(RestaurantCacheData cachedData) async {
@@ -540,20 +563,13 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Load cached data
+      // Load cached data immediately so first paint is not blocked
       vendorCategoryList = cachedData.categories;
       allProductList = cachedData.products;
       productList = List.from(allProductList);
-      couponList = cachedData.coupons;
       _isRestaurantFavorite = cachedData.isFavourite;
+      _expandAllCategories();
 
-      // Load product favorites
-      await loadFavorites();
-
-      // Load promotions in background
-      _loadAllPromotionsForRestaurant();
-
-      // Initialize UI
       _buildCategoryProductMapping();
       _initializeCartStreamListener();
       animateSlider();
@@ -562,7 +578,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
 
-      // Load fresh data in background for updates
+      // Non-critical work in background
+      loadFavorites().then((_) {
+        if (hasListeners) notifyListeners();
+      });
+      _loadAttributes();
       _refreshDataInBackground();
     } catch (e) {
       // If cache fails, load fresh data
@@ -602,7 +622,6 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           restaurantId: vendorModel.id!,
           products: freshData.products,
           categories: freshData.categories,
-          coupons: freshData.coupons,
           isFavourite: freshData.isFavourite,
         ),
       );
@@ -612,13 +631,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         allProductList = freshData.products;
         productList = List.from(allProductList);
         vendorCategoryList = freshData.categories;
-        couponList = freshData.coupons;
 
         _buildCategoryProductMapping();
         notifyListeners();
       }
     } catch (e) {
-      print('Background refresh failed: $e');
+      debugPrint('Background refresh failed: $e');
     }
   }
 
@@ -627,42 +645,35 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         vendorCategoryList.length != freshData.categories.length;
   }
 
-  /// PARALLEL DATA LOADING - OPTIMIZED
+  /// Loads outlet details on the critical path; favorites/attributes are background.
   Future<void> _loadCriticalDataInParallel({
     required String restaurantId,
   }) async {
     final stopwatch = Stopwatch()..start();
 
     try {
-      // Fetch all data in parallel
-      final results = await Future.wait([
-        _fetchAllRestaurantData(restaurantId),
-        loadFavorites(),
-        _loadAttributes(),
-      ], eagerError: true);
+      final restaurantData = await _fetchAllRestaurantData(restaurantId);
 
-      final restaurantData = results[0] as RestaurantCacheData;
-
-      // Cache the data
       RestaurantCache.set(restaurantId, restaurantData);
 
-      // Update state
       vendorCategoryList = restaurantData.categories;
       allProductList = restaurantData.products;
       productList = List.from(allProductList);
-      couponList = restaurantData.coupons;
+      _expandAllCategories();
 
-      // Load promotions in background (non-blocking)
-      _loadAllPromotionsForRestaurant();
-
-      // Initialize UI components
       _initializeCartStreamListener();
       animateSlider();
       _buildCategoryProductMapping();
 
-      print('🚀 Data loaded in ${stopwatch.elapsedMilliseconds}ms');
+      // Non-blocking: must not delay isLoading = false
+      loadFavorites().then((_) {
+        if (hasListeners) notifyListeners();
+      });
+      _loadAttributes();
+
+      debugPrint('Data loaded in ${stopwatch.elapsedMilliseconds}ms');
     } catch (e) {
-      print('❌ Parallel loading failed: $e');
+      debugPrint('Critical loading failed: $e');
       rethrow;
     }
   }
@@ -677,17 +688,16 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
       final outletDetails = _applyOutletDetails(apiData);
 
-      final coupons = await _fetchCoupons(restaurantId);
+      // final coupons = await _fetchCoupons(restaurantId);
 
       return RestaurantCacheData(
         restaurantId: restaurantId,
         products: outletDetails.allProducts,
         categories: outletDetails.vendorCategories,
-        coupons: coupons,
         isFavourite: outletDetails.isFavourite,
       );
     } catch (e) {
-      print('❌ Error fetching restaurant data: $e');
+      debugPrint('❌ Error fetching restaurant data: $e');
       rethrow;
     }
   }
@@ -708,27 +718,27 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
     }
 
-    print("Favourite Products: $favoriteProductIds");
+    debugPrint("Favourite Products: $favoriteProductIds");
 
     return outletDetails;
   }
 
   /// OPTIMIZED DATA PARSING
-  Future<List<CouponModel>> _fetchCoupons(String restaurantId) async {
-    try {
-      final coupons = await RestaurantApiHelper.getRestaurantCoupons(
-        restaurantId: restaurantId,
-        zoneId: Constant.selectedZone!.id.toString(),
-      );
-
-      return coupons
-          .where((coupon) => coupon.isEnabled == true && _isCouponValid(coupon))
-          .toList();
-    } catch (e) {
-      print('❌ Error loading coupons: $e');
-      return [];
-    }
-  }
+  // Future<List<CouponModel>> _fetchCoupons(String restaurantId) async {
+  //   try {
+  //     final coupons = await RestaurantApiHelper.getRestaurantCoupons(
+  //       restaurantId: restaurantId,
+  //       zoneId: Constant.selectedZone!.id.toString(),
+  //     );
+  //
+  //     return coupons
+  //         .where((coupon) => coupon.isEnabled == true && _isCouponValid(coupon))
+  //         .toList();
+  //   } catch (e) {
+  //     debugPrint('❌ Error loading coupons: $e');
+  //     return [];
+  //   }
+  // }
 
   bool _isCouponValid(CouponModel coupon) {
     if (coupon.expiresAt == null) return true;
@@ -740,78 +750,78 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   /// PROMOTION LOADING - OPTIMIZED WITH BATCHING
-  Future<void> _loadAllPromotionsForRestaurant() async {
-    if (_isPromotionalLoading || _promotionsLoaded) return;
-
-    _isPromotionalLoading = true;
-
-    final restaurantId = vendorModel.id ?? '';
-    if (restaurantId.isEmpty || allProductList.isEmpty) {
-      _isPromotionalLoading = false;
-      _promotionsLoaded = true;
-      return;
-    }
-
-    try {
-      // Get all product IDs
-      final productIds = allProductList
-          .where((p) => p.id != null && p.id!.isNotEmpty)
-          .map((p) => p.id!)
-          .toList();
-
-      if (productIds.isEmpty) {
-        _promotionsLoaded = true;
-        _isPromotionalLoading = false;
-        return;
-      }
-
-      // Use optimized bulk loading
-      await PromotionalCacheService.loadAllRestaurantPromotions(
-        restaurantId: restaurantId,
-        productIds: productIds,
-      );
-
-      // Get promotional products
-      final promotionalProducts =
-          PromotionalCacheService.getPromotionalProductsForRestaurant(
-            restaurantId,
-          );
-
-      // Update cache
-      _allProductsWithPromotions.clear();
-      _allProductsWithPromotions.addAll(promotionalProducts);
-
-      // Pre-cache promotion data
-      for (final productId in promotionalProducts) {
-        final data = PromotionalCacheService.getCachedPromotionalData(
-          productId,
-          restaurantId,
-        );
-        if (data != null) {
-          final cacheKey = '$productId-$restaurantId';
-          _promotionDataCache[cacheKey] = data;
-          final limit = PromotionalCacheService.getPromotionalLimit(
-            productId,
-            restaurantId,
-          );
-          _promotionLimitCache[cacheKey] = limit;
-        }
-      }
-
-      _promotionsLoaded = true;
-
-      // Sort promotional items to top
-      _sortProductsWithPromotionsFirst();
-
-      // Update UI
-      notifyListeners();
-    } catch (e) {
-      print('❌ Error loading promotions: $e');
-      _promotionsLoaded = true; // Mark as loaded even if failed
-    } finally {
-      _isPromotionalLoading = false;
-    }
-  }
+  // Future<void> _loadAllPromotionsForRestaurant() async {
+  //   if (_isPromotionalLoading || _promotionsLoaded) return;
+  //
+  //   _isPromotionalLoading = true;
+  //
+  //   final restaurantId = vendorModel.id ?? '';
+  //   if (restaurantId.isEmpty || allProductList.isEmpty) {
+  //     _isPromotionalLoading = false;
+  //     _promotionsLoaded = true;
+  //     return;
+  //   }
+  //
+  //   try {
+  //     // Get all product IDs
+  //     final productIds = allProductList
+  //         .where((p) => p.id != null && p.id!.isNotEmpty)
+  //         .map((p) => p.id!)
+  //         .toList();
+  //
+  //     if (productIds.isEmpty) {
+  //       _promotionsLoaded = true;
+  //       _isPromotionalLoading = false;
+  //       return;
+  //     }
+  //
+  //     // Use optimized bulk loading
+  //     await PromotionalCacheService.loadAllRestaurantPromotions(
+  //       restaurantId: restaurantId,
+  //       productIds: productIds,
+  //     );
+  //
+  //     // Get promotional products
+  //     final promotionalProducts =
+  //         PromotionalCacheService.getPromotionalProductsForRestaurant(
+  //           restaurantId,
+  //         );
+  //
+  //     // Update cache
+  //     _allProductsWithPromotions.clear();
+  //     _allProductsWithPromotions.addAll(promotionalProducts);
+  //
+  //     // Pre-cache promotion data
+  //     for (final productId in promotionalProducts) {
+  //       final data = PromotionalCacheService.getCachedPromotionalData(
+  //         productId,
+  //         restaurantId,
+  //       );
+  //       if (data != null) {
+  //         final cacheKey = '$productId-$restaurantId';
+  //         _promotionDataCache[cacheKey] = data;
+  //         final limit = PromotionalCacheService.getPromotionalLimit(
+  //           productId,
+  //           restaurantId,
+  //         );
+  //         _promotionLimitCache[cacheKey] = limit;
+  //       }
+  //     }
+  //
+  //     _promotionsLoaded = true;
+  //
+  //     // Sort promotional items to top
+  //     _sortProductsWithPromotionsFirst();
+  //
+  //     // Update UI
+  //     notifyListeners();
+  //   } catch (e) {
+  //     debugPrint('❌ Error loading promotions: $e');
+  //     _promotionsLoaded = true; // Mark as loaded even if failed
+  //   } finally {
+  //     _isPromotionalLoading = false;
+  //   }
+  // }
 
   void _sortProductsWithPromotionsFirst() {
     if (allProductList.isEmpty) return;
@@ -891,6 +901,33 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     return _categoryProductsMap[categoryId] ?? [];
   }
 
+  bool isCategoryExpanded(int index) {
+    // Categories stay open so products are always visible.
+    if (_expandAllCategoriesByDefault) return true;
+    return _expandedCategoryIndices.contains(index);
+  }
+
+  void _expandAllCategories() {
+    _expandAllCategoriesByDefault = true;
+    _expandedCategoryIndices
+      ..clear()
+      ..addAll(List.generate(vendorCategoryList.length, (i) => i));
+  }
+
+  void toggleCategoryExpanded(int index) {
+    // Keep menus open — do not collapse categories on tap.
+    _expandAllCategoriesByDefault = true;
+    _expandedCategoryIndices.add(index);
+    notifyListeners();
+  }
+
+  void expandCategory(int index) {
+    _expandAllCategoriesByDefault = true;
+    if (_expandedCategoryIndices.add(index)) {
+      notifyListeners();
+    }
+  }
+
   /// SEARCH - OPTIMIZED WITH DEBOUNCE AND CACHE
   void searchProduct(String query) {
     _searchDebounceTimer?.cancel();
@@ -963,7 +1000,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       vendorCategoryList = outletDetails.vendorCategories;
       _buildCategoryProductMapping();
     } catch (e) {
-      print('❌ API search failed: $e');
+      debugPrint('❌ API search failed: $e');
     } finally {
       isSearching = false;
       notifyListeners();
@@ -989,7 +1026,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      print('❌ Background API search failed: $e');
+      debugPrint('❌ Background API search failed: $e');
     }
   }
 
@@ -1076,7 +1113,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           .map((item) => item.id.toString())
           .toList();
     } catch (e) {
-      print('❌ Error loading favorites: $e');
+      debugPrint('❌ Error loading favorites: $e');
     }
   }
 
@@ -1118,7 +1155,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
             : "Removed from favorites",
       );
     } catch (e) {
-      print('❌ Error toggling restaurant favorite: $e');
+      debugPrint('❌ Error toggling restaurant favorite: $e');
       ShowToastDialog.showToast("Failed to update favorites");
     }
   }
@@ -1147,7 +1184,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print("❌ Error toggling product favorite: $e");
+      debugPrint("❌ Error toggling product favorite: $e");
       ShowToastDialog.showToast("Failed to update favorites");
     }
   }
@@ -1432,7 +1469,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         0;
     final onlineUnitPrice = double.tryParse(price) ?? 0;
 
-    print(
+    debugPrint(
       '[GroupOrder] addItemsToGroupCart invitation=$invitationId '
       'customer=$customerId product=$productId qty=$quantity',
     );
@@ -1690,14 +1727,14 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   /// SCROLL METHODS
   void scrollToCategory(int index) {
-    if (!scrollControllerProduct.hasClients) return;
+    expandCategory(index);
 
     final categoryKey = _getCategoryKey(index);
     if (categoryKeys.containsKey(categoryKey)) {
-      final context = categoryKeys[categoryKey]!.currentContext;
-      if (context != null) {
+      final ctx = categoryKeys[categoryKey]!.currentContext;
+      if (ctx != null) {
         Scrollable.ensureVisible(
-          context,
+          ctx,
           duration: const Duration(milliseconds: 400),
           curve: Curves.easeInOut,
         );
@@ -1705,16 +1742,21 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
     }
 
-    // Fallback calculation
+    // Fallback: parent CustomScrollView controller
+    if (!scrollController.hasClients) return;
+
     double position = 0;
     for (int i = 0; i < index && i < vendorCategoryList.length; i++) {
       final products = getProductsByCategory(
         vendorCategoryList[i].categoryId.toString(),
       );
-      position += 60.0 + (products.length * 100.0);
+      position += 60.0;
+      if (isCategoryExpanded(i)) {
+        position += products.length * 100.0;
+      }
     }
 
-    scrollControllerProduct.animateTo(
+    scrollController.animateTo(
       position,
       duration: const Duration(milliseconds: 400),
       curve: Curves.easeInOut,
@@ -1802,12 +1844,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
           productList = List<ProductModel>.from(allProductList);
 
           // Load promotions in background
-          _loadAllPromotionsForRestaurant();
+          // _loadAllPromotionsForRestaurant();
 
           _hasInitialData = true;
           _buildCategoryProductMapping();
         } catch (e) {
-          print('❌ Error loading products: $e');
+          debugPrint('❌ Error loading products: $e');
 
           allProductList = [];
           productList = [];
@@ -1829,7 +1871,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         attributesList = [];
       }
     } catch (e) {
-      print('❌ Error loading attributes: $e');
+      debugPrint('❌ Error loading attributes: $e');
       attributesList = [];
     }
   }
