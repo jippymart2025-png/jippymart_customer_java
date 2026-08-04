@@ -42,6 +42,22 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
     );
 
     if (!mounted) return;
+
+    if (checkout == null) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      Get.snackbar(
+        "Checkout Failed",
+        "Couldn't load the latest cart. Pull down to refresh.",
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
     setState(() {
       _checkout = checkout;
       _isLoading = false;
@@ -49,11 +65,11 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
   }
 
   List<_SharedCartRow> get _rows {
-    final checkout = _checkout;
-    if (checkout == null) return [];
+    if (_checkout == null) return [];
 
     final rows = <_SharedCartRow>[];
-    for (final delivery in checkout.deliveryCheckOutItems) {
+
+    for (final delivery in _checkout!.deliveryCheckOutItems) {
       for (final member in delivery.groupOrderCheckoutItems) {
         for (final product in member.products) {
           rows.add(
@@ -62,11 +78,13 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
               productName: product.productName,
               quantity: product.quantity,
               lineTotal: product.onlinePrice * product.quantity,
+              amountToPay: member.amountToPay,
             ),
           );
         }
       }
     }
+
     return rows;
   }
 
@@ -74,8 +92,20 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
   Widget build(BuildContext context) {
     final checkout = _checkout;
     final rows = _rows;
-    final itemCount = checkout?.totalProductCount ?? 0;
-    final memberCount = checkout?.memberCount ?? 0;
+    int itemCount = 0;
+    int memberCount = 0;
+
+    if (checkout != null) {
+      for (final delivery in checkout.deliveryCheckOutItems) {
+        memberCount += delivery.groupOrderCheckoutItems.length;
+
+        for (final member in delivery.groupOrderCheckoutItems) {
+          for (final product in member.products) {
+            itemCount += product.quantity;
+          }
+        }
+      }
+    }
     final deliveryTotal =
         checkout?.deliveryCheckOutItems.fold<double>(
           0,
@@ -126,7 +156,16 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
         centerTitle: true,
       ),
       body: _isLoading && checkout == null
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 20),
+                  Text("Loading shared cart..."),
+                ],
+              ),
+            )
           : Column(
               children: [
                 Padding(
@@ -146,12 +185,28 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
                 Expanded(
                   child: rows.isEmpty
                       ? Center(
-                          child: Text(
-                            'No items in group cart yet',
-                            style: TextStyle(
-                              fontFamily: AppThemeData.medium,
-                              color: AppThemeData.grey500,
-                            ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.shopping_cart_outlined,
+                                size: 70,
+                                color: Colors.grey.shade400,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                "Shared cart is empty",
+                                style: TextStyle(
+                                  fontFamily: AppThemeData.semiBold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "Ask your friends to add items.",
+                                style: TextStyle(color: AppThemeData.grey500),
+                              ),
+                            ],
                           ),
                         )
                       : RefreshIndicator(
@@ -193,7 +248,7 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
                                           ),
                                         ),
                                         Text(
-                                          '${item.productName}${item.quantity > 1 ? ' x${item.quantity}' : ''}',
+                                          '${item.productName} × ${item.quantity}',
                                           style: TextStyle(
                                             fontFamily: AppThemeData.semiBold,
                                             color: AppThemeData.grey900,
@@ -204,14 +259,27 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
                                       ],
                                     ),
                                   ),
-                                  Text(
-                                    '₹${item.lineTotal.toStringAsFixed(0)}',
-                                    style: TextStyle(
-                                      fontFamily: AppThemeData.semiBold,
-                                      color: AppThemeData.grey900,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '₹${item.amountToPay.toStringAsFixed(0)}',
+                                        style: TextStyle(
+                                          fontFamily: AppThemeData.semiBold,
+                                          color: AppThemeData.grey900,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                      Text(
+                                        'To Pay',
+                                        style: TextStyle(
+                                          fontFamily: AppThemeData.medium,
+                                          color: AppThemeData.grey500,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               );
@@ -229,8 +297,15 @@ class _SharedCartScreenState extends State<SharedCartScreen> {
                   child: Column(
                     children: [
                       _summaryRow('Items subtotal', itemsSubtotal),
+                      _summaryRow('Packaging Fee', packagingFee),
+
+                      _summaryRow('Platform Fee', platformFee),
+
+                      _summaryRow('Surge Fee', surgeFee),
+
+                      _summaryRow('Food Tax', foodTax),
+
                       _summaryRow('Delivery', deliveryTotal),
-                      _summaryRow('Taxes & fees', taxes),
                       const Divider(height: 18),
                       _summaryRow('Total', total, isBold: true),
                       const SizedBox(height: 12),
@@ -331,11 +406,13 @@ class _SharedCartRow {
   final String productName;
   final int quantity;
   final double lineTotal;
+  final double amountToPay;
 
   _SharedCartRow({
     required this.memberName,
     required this.productName,
     required this.quantity,
     required this.lineTotal,
+    required this.amountToPay,
   });
 }

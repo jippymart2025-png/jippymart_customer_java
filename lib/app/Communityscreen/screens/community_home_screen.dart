@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../group_order_section/screens/create_group_order.dart';
+import '../../group_order_section/screens/group_order_navigation.dart';
 import '../providers/providers.dart';
 import '../theme/app_theme.dart';
 import '../theme/responsive.dart';
-import 'create_group_order_screen.dart';
 import 'home_screen.dart';
 
 class CommunityHomeScreen extends ConsumerWidget {
@@ -23,13 +22,15 @@ class CommunityHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final selectedIndex = ref.watch(selectedIndexProvider);
-    final onSelect = (int i) =>
-        ref.read(selectedIndexProvider.notifier).state = i;
+    final onSelect = (int i) {
+      if (i == 1) {
+        openGroupOrderFlow(orderType: 'COMMUNITY_GROUP_ORDER');
+        return;
+      }
+      ref.read(selectedIndexProvider.notifier).state = i;
+    };
 
-    final body = IndexedStack(
-      index: selectedIndex,
-      children: [const HomeScreen(), const CreateGroupOrderScreen()],
-    );
+    final body = const HomeScreen();
 
     // Phones get a bottom bar; tablet/desktop get a side rail — a
     // bottom bar on a wide screen reads like a leftover mobile habit.

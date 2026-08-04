@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../group_order_section/screens/create_group_order.dart';
+import '../../../group_order_section/screens/group_order_navigation.dart';
 import '../../models/models.dart';
 import '../../providers/providers.dart';
 import '../common/OrderCard.dart';
@@ -37,14 +37,7 @@ class GroupOrdersScreen extends ConsumerWidget {
             padding: const EdgeInsets.only(right: 16),
             child: FilledButton.icon(
               onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const CreateGroupOrderScreen(
-                      orderType: "COMMUNITY_GROUP_ORDER",
-                    ),
-                  ),
-                );
+                openGroupOrderFlow(orderType: 'COMMUNITY_GROUP_ORDER');
               },
               style: FilledButton.styleFrom(
                 backgroundColor: Colors.green,
@@ -154,14 +147,7 @@ class _CreateGroupOrderBanner extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(18),
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const CreateGroupOrderScreen(
-                  orderType: "COMMUNITY_GROUP_ORDER",
-                ),
-              ),
-            );
+            openGroupOrderFlow(orderType: 'COMMUNITY_GROUP_ORDER');
           },
           child: Container(
             padding: const EdgeInsets.all(16),

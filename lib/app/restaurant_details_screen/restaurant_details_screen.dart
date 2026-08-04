@@ -1,7 +1,11 @@
+import 'dart:async';
+import 'dart:math';
+
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
-import 'package:jippymart_customer/app/restaurant_details_screen/widget/buildBottomNavigationBar.dart';
-import 'package:jippymart_customer/app/restaurant_details_screen/widget/buildFloatingActionButton.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/widget/PromotionalProductsSection.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/restauant_product_list_view.dart';
+import 'package:jippymart_customer/app/restaurant_details_screen/widget/restaurant_detail_shimmer_widget.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/widget/resturant_cupon_list_view.dart'
     hide resturantDetailsShimmer;
 import 'package:jippymart_customer/app/review_list_screen/review_list_screen.dart';
@@ -9,14 +13,35 @@ import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/themes/responsive.dart' hide kGradEnd;
+import 'package:jippymart_customer/themes/responsive.dart';
+import 'package:jippymart_customer/themes/text_field_widget.dart';
+import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
+
+import '../cart_check_out_page/cart_check_out_screen.dart';
 import '../review_list_screen/provider/review_list_provider.dart';
 
+const _kGradEnd = Color(0xFFff5201);
+
+// ==================== CONSTANTS ====================
+class _RestaurantScreenConstants {
+  static const double scrollThreshold = 100.0;
+  static const Duration animationDuration = Duration(milliseconds: 300);
+  static const Duration filterAnimationDuration = Duration(milliseconds: 200);
+  static const double bottomModalHeightFactor = 0.35;
+  static const double bottomModalWidthFactor = 0.7;
+  static const double timingSheetHeightFactor = 0.70;
+
+  // Height of the sticky search bar sliver
+  static const double stickySearchBarHeight = 62.0;
+}
+
+Timer? _couponTimer;
+int _couponIndex = 0;
 bool responseToKeyboard = true;
 
 // ==================== MAIN SCREEN ====================
@@ -55,14 +80,27 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
   @override
   void initState() {
     super.initState();
+
     _scrollController = ScrollController();
     _initializeAnimations();
     _scrollController.addListener(_onScroll);
+
+    _couponTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+      if (!mounted) return;
+
+      final provider = context.read<RestaurantDetailsProvider>();
+
+      if (provider.couponList.length <= 1) return;
+
+      setState(() {
+        _couponIndex = (_couponIndex + 1) % provider.couponList.length;
+      });
+    });
   }
 
   void _initializeAnimations() {
     _titleAnimationController = AnimationController(
-      duration: Constant.animationDuration,
+      duration: _RestaurantScreenConstants.animationDuration,
       vsync: this,
     );
 
@@ -95,7 +133,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
     if (!_scrollController.hasClients || !mounted) return;
 
     final offset = _scrollController.offset;
-    final shouldShowTitle = offset > Constant.scrollThreshold;
+    final shouldShowTitle = offset > _RestaurantScreenConstants.scrollThreshold;
     final shouldShowSearch = offset > _stickySearchThreshold;
 
     // Batch both state changes into a single setState to avoid double rebuilds
@@ -119,10 +157,14 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
 
   @override
   void dispose() {
+    _couponTimer?.cancel();
+
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+
     _titleAnimationController.stop();
     _titleAnimationController.dispose();
+
     super.dispose();
   }
 
@@ -174,21 +216,24 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
                       delegate: _StickySearchDelegate(
                         controller: controller,
                         visible: _showStickySearch,
-                        backgroundColor: AppThemeData.kGradEnd,
-                        barHeight: Constant.stickySearchBarHeight,
+                        backgroundColor: _kGradEnd,
+                        barHeight:
+                            _RestaurantScreenConstants.stickySearchBarHeight,
                       ),
                     ),
 
                     // 4. White content area — search bar + filters + products
                     SliverToBoxAdapter(
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Inline search bar (white bg, dark text)
                             _SearchBarWidget(controller: controller),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 10),
+                            PromotionalProductsSection(),
+                            const SizedBox(height: 10),
                             _MenuSection(controller: controller),
                             const SizedBox(height: 20),
                           ],
@@ -211,13 +256,8 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
               ),
             ),
           ),
-          bottomNavigationBar: buildBottomNavigationBar(controller),
-          floatingActionButton: buildFloatingActionButton(
-            controller,
-            _showTitle,
-            _scrollController,
-            _MenuModal,
-          ),
+          bottomNavigationBar: _buildBottomNavigationBar(),
+          floatingActionButton: _buildFloatingActionButton(controller),
           floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
@@ -236,9 +276,9 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
       floating: false,
       pinned: true,
       automaticallyImplyLeading: false,
-      backgroundColor: AppThemeData.kGradEnd,
+      backgroundColor: _kGradEnd,
       systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: AppThemeData.kGradEnd,
+        statusBarColor: _kGradEnd,
         statusBarIconBrightness: Brightness.light,
         statusBarBrightness: Brightness.dark,
         systemStatusBarContrastEnforced: false,
@@ -278,7 +318,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
             ),
           ),
         ),
-        if (Constant.userModel != null) _buildFavoriteButton(controller),
+        if (Constant.userModel != null) _buildFavoriteButton(),
       ],
     );
   }
@@ -297,26 +337,38 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
     );
   }
 
-  Widget _buildFavoriteButton(RestaurantDetailsProvider controller) {
-    return AnimatedScale(
-      scale: _showTitle ? 1.0 : 0.95,
-      duration: Constant.animationDuration,
-      child: InkWell(
-        onTap: () => controller.toggleRestaurantFavorite(),
-        child: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
+  Widget _buildFavoriteButton() {
+    return Selector<RestaurantDetailsProvider, bool>(
+      selector: (_, provider) => provider.isRestaurantFavorite,
+      builder: (context, isFavorite, child) {
+        return AnimatedScale(
+          scale: _showTitle ? 1.0 : 0.95,
+          duration: _RestaurantScreenConstants.animationDuration,
+          child: InkWell(
+            onTap: () {
+              context
+                  .read<RestaurantDetailsProvider>()
+                  .toggleRestaurantFavorite();
+            },
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SvgPicture.asset(
+                isFavorite
+                    ? "assets/icons/ic_like_fill.svg"
+                    : "assets/icons/ic_like.svg",
+                colorFilter: const ColorFilter.mode(
+                  AppThemeData.grey50,
+                  BlendMode.srcIn,
+                ),
+              ),
+            ),
           ),
-          child: SvgPicture.asset(
-            controller.isRestaurantFavorite
-                ? "assets/icons/ic_like_fill.svg"
-                : "assets/icons/ic_like.svg",
-            colorFilter: ColorFilter.mode(AppThemeData.grey50, BlendMode.srcIn),
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -327,7 +379,7 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
         key: _headerCardKey,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: AppThemeData.kGradEnd,
+          color: _kGradEnd,
           borderRadius: const BorderRadius.only(
             bottomLeft: Radius.circular(28),
             bottomRight: Radius.circular(28),
@@ -376,8 +428,627 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
   }
 
   // ==================== BOTTOM NAVIGATION ====================
+  // Widget? _buildBottomNavigationBar() {
+  //   if (HomeProvider.cartItem.isEmpty) return null;
+  //
+  //   return Consumer<RestaurantDetailsProvider>(
+  //     builder: (context, controller, _) {
+  //       if (controller.couponList.isNotEmpty &&
+  //           _couponIndex >= controller.couponList.length) {
+  //         _couponIndex = 0;
+  //       }
+  //
+  //       return Column(
+  //         mainAxisSize: MainAxisSize.min,
+  //         children: [
+  //           /// Coupon Strip — compact single line, Zomato style
+  //           if (controller.couponList.isNotEmpty)
+  //             InkWell(
+  //               onTap: () {
+  //                 // Open Coupon BottomSheet
+  //               },
+  //               child: Container(
+  //                 height: 42,
+  //                 margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+  //                 padding: const EdgeInsets.symmetric(horizontal: 12),
+  //                 decoration: BoxDecoration(
+  //                   color: const Color(0xFFE9EEFD),
+  //                   borderRadius: BorderRadius.circular(10),
+  //                 ),
+  //                 child: Row(
+  //                   children: [
+  //                     Container(
+  //                       width: 28,
+  //                       height: 28,
+  //                       decoration: BoxDecoration(
+  //                         shape: BoxShape.circle,
+  //                         color: const Color(0xFF2E7CF6),
+  //                         border: Border.all(
+  //                           color: const Color(0xFF2E7CF6),
+  //                           width: 1.2,
+  //                         ),
+  //                       ),
+  //                       child: Center(
+  //                         child: Image.asset(
+  //                           'assets/svg/deals.gif',
+  //                           // update to your actual asset path
+  //                           width: 27,
+  //                           height: 27,
+  //                           fit: BoxFit.contain,
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     const SizedBox(width: 10),
+  //                     Expanded(
+  //                       child: AnimatedSwitcher(
+  //                         duration: const Duration(milliseconds: 450),
+  //                         transitionBuilder: (child, animation) {
+  //                           return SlideTransition(
+  //                             position: Tween<Offset>(
+  //                               begin: const Offset(0, 1),
+  //                               end: Offset.zero,
+  //                             ).animate(animation),
+  //                             child: FadeTransition(
+  //                               opacity: animation,
+  //                               child: child,
+  //                             ),
+  //                           );
+  //                         },
+  //                         child: Container(
+  //                           key: ValueKey(_couponIndex),
+  //                           alignment: Alignment.centerLeft,
+  //                           child: RichText(
+  //                             maxLines: 1,
+  //                             overflow: TextOverflow.ellipsis,
+  //                             text: TextSpan(
+  //                               children: [
+  //                                 TextSpan(
+  //                                   text:
+  //                                       "${controller.couponList[_couponIndex].code ?? ""}  •  ",
+  //                                   style: const TextStyle(
+  //                                     fontSize: 13,
+  //                                     fontWeight: FontWeight.w700,
+  //                                     color: Color(0xFF1F2937),
+  //                                   ),
+  //                                 ),
+  //                                 TextSpan(
+  //                                   text:
+  //                                       controller
+  //                                           .couponList[_couponIndex]
+  //                                           .description ??
+  //                                       "Special Offer",
+  //                                   style: const TextStyle(
+  //                                     fontSize: 12.5,
+  //                                     color: Colors.grey,
+  //                                     fontWeight: FontWeight.w400,
+  //                                   ),
+  //                                 ),
+  //                               ],
+  //                             ),
+  //                           ),
+  //                         ),
+  //                       ),
+  //                     ),
+  //                     if (controller.couponList.length > 1)
+  //                       Text(
+  //                         "+${controller.couponList.length - 1} more",
+  //                         style: const TextStyle(
+  //                           fontSize: 12,
+  //                           fontWeight: FontWeight.w600,
+  //                           color: Color(0xFF2E7CF6),
+  //                         ),
+  //                       ),
+  //                     const SizedBox(width: 4),
+  //                     const Icon(
+  //                       Icons.chevron_right_rounded,
+  //                       color: Color(0xFF2E7CF6),
+  //                       size: 18,
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             ),
+  //
+  //           /// Cart Bar (unchanged)
+  //           LayoutBuilder(
+  //             builder: (context, constraints) {
+  //               final sw = constraints.maxWidth;
+  //               final isSmall = sw < 360;
+  //
+  //               final fontSize = isSmall ? 14.0 : 15.5;
+  //               final barHeight = isSmall ? 52.0 : 56.0;
+  //
+  //               return InkWell(
+  //                 onTap: () => Get.to(const CartCheckOutScreen()),
+  //                 child: Container(
+  //                   height: barHeight,
+  //                   margin: const EdgeInsets.only(top: 6),
+  //                   padding: const EdgeInsets.symmetric(horizontal: 18),
+  //                   decoration: const BoxDecoration(
+  //                     gradient: LinearGradient(
+  //                       colors: [Color(0xFFF48000), Color(0xFFff0404)],
+  //                     ),
+  //                     borderRadius: BorderRadius.only(
+  //                       topLeft: Radius.circular(18),
+  //                       topRight: Radius.circular(18),
+  //                     ),
+  //                   ),
+  //                   child: Row(
+  //                     children: [
+  //                       Icon(
+  //                         Icons.shopping_bag_outlined,
+  //                         color: Colors.white,
+  //                         size: isSmall ? 18 : 20,
+  //                       ),
+  //
+  //                       const SizedBox(width: 10),
+  //
+  //                       Expanded(
+  //                         child: Text(
+  //                           '${HomeProvider.cartItem.length} ${'items'.tr}',
+  //                           style: TextStyle(
+  //                             color: Colors.white,
+  //                             fontSize: fontSize,
+  //                             fontWeight: FontWeight.w600,
+  //                           ),
+  //                         ),
+  //                       ),
+  //
+  //                       Text(
+  //                         'View Cart'.tr,
+  //                         style: TextStyle(
+  //                           color: Colors.white,
+  //                           fontSize: fontSize,
+  //                           fontWeight: FontWeight.bold,
+  //                         ),
+  //                       ),
+  //
+  //                       const SizedBox(width: 4),
+  //
+  //                       const Icon(
+  //                         Icons.arrow_forward_ios_rounded,
+  //                         color: Colors.white,
+  //                         size: 14,
+  //                       ),
+  //                     ],
+  //                   ),
+  //                 ),
+  //               );
+  //             },
+  //           ),
+  //         ],
+  //       );
+  //     },
+  //   );
+  // }
+
+  // ==================== BOTTOM NAVIGATION ====================
+  Widget? _buildBottomNavigationBar() {
+    if (HomeProvider.cartItem.isEmpty) return null;
+
+    return Consumer<RestaurantDetailsProvider>(
+      builder: (context, controller, _) {
+        if (controller.couponList.isNotEmpty &&
+            _couponIndex >= controller.couponList.length) {
+          _couponIndex = 0;
+        }
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            /// Coupon Strip — compact single line, Zomato style
+            if (controller.couponList.isNotEmpty)
+              InkWell(
+                onTap: () => _showCouponsBottomSheet(context, controller),
+                child: Container(
+                  height: 42,
+                  margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE9EEFD),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF388E3C),
+                          border: Border.all(
+                            color: const Color(0xFF388E3C),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Center(
+                          child: Image.asset(
+                            'assets/svg/deals.gif',
+                            // update to your actual asset path
+                            width: 27,
+                            height: 27,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 450),
+                          transitionBuilder: (child, animation) {
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0, 1),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: FadeTransition(
+                                opacity: animation,
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: Container(
+                            key: ValueKey(_couponIndex),
+                            alignment: Alignment.centerLeft,
+                            child: RichText(
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              text: TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text:
+                                        "${controller.couponList[_couponIndex].code ?? ""}  •  ",
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF1F2937),
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text:
+                                        controller
+                                            .couponList[_couponIndex]
+                                            .description ??
+                                        "Special Offer",
+                                    style: const TextStyle(
+                                      fontSize: 12.5,
+                                      color: Colors.grey,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (controller.couponList.length > 1)
+                        Text(
+                          "+${controller.couponList.length - 1} more",
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF388E3C),
+                          ),
+                        ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: Color(0xFF388E3C),
+                        size: 18,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            /// Cart Bar (unchanged)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final sw = constraints.maxWidth;
+                final isSmall = sw < 360;
+
+                final fontSize = isSmall ? 14.0 : 15.5;
+                final barHeight = isSmall ? 52.0 : 56.0;
+
+                return InkWell(
+                  onTap: () => Get.to(const CartCheckOutScreen()),
+                  child: Container(
+                    height: barHeight,
+                    margin: const EdgeInsets.only(top: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFF48000), Color(0xFFff0404)],
+                      ),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(18),
+                        topRight: Radius.circular(18),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.shopping_bag_outlined,
+                          color: Colors.white,
+                          size: isSmall ? 18 : 20,
+                        ),
+
+                        const SizedBox(width: 10),
+
+                        Expanded(
+                          child: Text(
+                            '${HomeProvider.cartItem.length} ${'items'.tr}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: fontSize,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+
+                        Text(
+                          'View Cart'.tr,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+
+                        const SizedBox(width: 4),
+
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: Colors.white,
+                          size: 14,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // ==================== COUPONS BOTTOM SHEET ====================
+  void _showCouponsBottomSheet(
+    BuildContext context,
+    RestaurantDetailsProvider controller,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.3,
+          maxChildSize: 0.9,
+          expand: false,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20),
+                  topRight: Radius.circular(20),
+                ),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  // Drag handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        Text(
+                          "Available Offers".tr,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF1F2937),
+                          ),
+                        ),
+                        const Spacer(),
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded),
+                          splashRadius: 20,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      itemCount: controller.couponList.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final coupon = controller.couponList[index];
+                        return _buildCouponCard(context, coupon);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildCouponCard(BuildContext context, dynamic coupon) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E9F2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF388E3C),
+            ),
+            child: Center(
+              child: Image.asset(
+                'assets/svg/deals.gif',
+                // update to your actual asset path
+                width: 30,
+                height: 30,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  coupon.code ?? "",
+                  style: const TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1F2937),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  coupon.description ?? "Special Offer",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  "Min Order: ${coupon.itemValue ?? 'N/A'}",
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12.5,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: coupon.code ?? ""));
+
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("Coupon code copied".tr),
+                    duration: const Duration(seconds: 1),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF388E3C),
+              side: const BorderSide(color: Color(0xFF388E3C)),
+              padding: const EdgeInsets.all(8),
+              minimumSize: const Size(38, 38),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Icon(Icons.content_copy_rounded, size: 18),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ==================== FLOATING ACTION BUTTON ====================
+  Widget _buildFloatingActionButton(RestaurantDetailsProvider controller) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        AnimatedOpacity(
+          opacity: _showTitle ? 1.0 : 0.0,
+          duration: _RestaurantScreenConstants.animationDuration,
+          child: IgnorePointer(
+            ignoring: !_showTitle,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Material(
+                color: AppThemeData.primary300,
+                borderRadius: BorderRadius.circular(28),
+                elevation: 4,
+                child: InkWell(
+                  onTap: () {
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeInOutCubic,
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(28),
+                  child: Container(
+                    width: 46,
+                    height: 46,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.keyboard_arrow_up_rounded,
+                      color: AppThemeData.grey50,
+                      size: 32,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        FloatingActionButton(
+          onPressed: () => _MenuModal.show(context),
+          backgroundColor: Colors.black,
+          child: SvgPicture.asset(
+            'assets/images/menu.svg',
+            width: 44,
+            height: 44,
+            colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 // ==================== STICKY SEARCH DELEGATE ====================
@@ -850,7 +1521,7 @@ class _FilterChip extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(120),
       child: AnimatedContainer(
-        duration: Constant.filterAnimationDuration,
+        duration: _RestaurantScreenConstants.filterAnimationDuration,
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
         decoration: isSelected
             ? ShapeDecoration(
@@ -900,7 +1571,7 @@ class _OfferFilterChip extends StatelessWidget {
       onTap: () => controller.toggleOfferFilter(),
       borderRadius: BorderRadius.circular(120),
       child: AnimatedContainer(
-        duration: Constant.animationDuration,
+        duration: _RestaurantScreenConstants.animationDuration,
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: controller.isOfferFilter
@@ -992,7 +1663,7 @@ class _ClearFilterButton extends StatelessWidget {
 
     return AnimatedScale(
       scale: 1.0,
-      duration: Constant.filterAnimationDuration,
+      duration: _RestaurantScreenConstants.filterAnimationDuration,
       child: InkWell(
         onTap: () {
           try {
@@ -1097,10 +1768,10 @@ class _MenuModal {
                 margin: const EdgeInsets.only(bottom: 50, left: 20, right: 40),
                 height:
                     MediaQuery.of(context).size.height *
-                    Constant.bottomModalHeightFactor,
+                    _RestaurantScreenConstants.bottomModalHeightFactor,
                 width:
                     MediaQuery.of(context).size.width *
-                    Constant.bottomModalWidthFactor,
+                    _RestaurantScreenConstants.bottomModalWidthFactor,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -1120,12 +1791,10 @@ class _MenuModal {
                       itemBuilder: (context, index) {
                         final category = controller.vendorCategoryList[index];
                         final productCount = controller
-                            .getProductsByCategory(
-                              category.categoryId.toString(),
-                            )
+                            .getProductsByCategory(category.id.toString())
                             .length;
                         return _MenuItem(
-                          title: category.categoryName ?? "",
+                          title: category.title ?? "",
                           count: productCount,
                           onTap: () {
                             Navigator.pop(context);
@@ -1238,7 +1907,7 @@ class _TimingBottomSheet {
       ),
       clipBehavior: Clip.antiAliasWithSaveLayer,
       builder: (context) => FractionallySizedBox(
-        heightFactor: Constant.timingSheetHeightFactor,
+        heightFactor: _RestaurantScreenConstants.timingSheetHeightFactor,
         child: Scaffold(
           backgroundColor: AppThemeData.surface,
           body: Padding(

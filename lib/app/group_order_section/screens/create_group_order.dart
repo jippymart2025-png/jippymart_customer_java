@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -161,10 +159,24 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
         ),
       );
     } catch (e, stack) {
-      debugPrint(e.toString());
+      debugPrint("ERROR: $e");
       debugPrintStack(stackTrace: stack);
 
-      ShowToastDialog.showToast("Failed to create group");
+      ShowToastDialog.closeLoader();
+
+      if (mounted) {
+        setState(() {
+          _isCreatingGroup = false;
+        });
+      }
+
+      String message = e.toString();
+
+      if (message.startsWith("Exception: ")) {
+        message = message.substring("Exception: ".length);
+      }
+
+      ShowToastDialog.showToast(message);
     }
   }
 

@@ -66,7 +66,7 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
       restaurant: widget.restaurant,
       deliveryAddressId: widget.deliveryAddressId,
     );
-    _loadCheckout();
+    // _loadCheckout();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (_remaining.inSeconds <= 0) {
         _timer?.cancel();
@@ -82,26 +82,26 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
     super.dispose();
   }
 
-  Future<void> _loadCheckout() async {
-    setState(() => _isLoadingCheckout = true);
-
-    final checkout = await GroupOrderApiService.groupOrderCheckOut(
-      groupOrdersInvitationId: widget.groupOrdersInvitationId,
-      hostCustomerId: widget.hostCustomerId,
-    );
-
-    if (!mounted) return;
-
-    final quantities = GroupOrderApiService.quantitiesFromCheckout(checkout);
-    GroupOrderSession.instance.setQuantitiesFromCheckout(quantities);
-
-    setState(() {
-      _checkout = checkout;
-      _cartItemCount = checkout?.totalProductCount ?? 0;
-      _activity = _buildActivityFromCheckout(checkout);
-      _isLoadingCheckout = false;
-    });
-  }
+  // Future<void> _loadCheckout() async {
+  //   setState(() => _isLoadingCheckout = true);
+  //
+  //   final checkout = await GroupOrderApiService.groupOrderCheckOut(
+  //     groupOrdersInvitationId: widget.groupOrdersInvitationId,
+  //     hostCustomerId: widget.hostCustomerId,
+  //   );
+  //
+  //   if (!mounted) return;
+  //
+  //   final quantities = GroupOrderApiService.quantitiesFromCheckout(checkout);
+  //   GroupOrderSession.instance.setQuantitiesFromCheckout(quantities);
+  //
+  //   setState(() {
+  //     _checkout = checkout;
+  //     _cartItemCount = checkout?.totalProductCount ?? 0;
+  //     _activity = _buildActivityFromCheckout(checkout);
+  //     _isLoadingCheckout = false;
+  //   });
+  // }
 
   List<GroupActivityEvent> _buildActivityFromCheckout(
     GroupOrderCheckoutModel? checkout,
@@ -129,6 +129,7 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
 
   void _openRestaurantMenu() async {
     final provider = context.read<RestaurantDetailsProvider>();
+    await provider.initFunction(vendorModels: widget.restaurant);
     provider.setGroupOrderContext(
       groupOrderInvitationId: widget.groupOrdersInvitationId,
       hostCustomerId: widget.hostCustomerId,
@@ -136,9 +137,9 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
       restaurant: widget.restaurant,
       deliveryAddressId: widget.deliveryAddressId,
     );
-    await provider.initFunction(vendorModels: widget.restaurant);
     await Get.to(() => const RestaurantDetailsScreen());
-    await _loadCheckout();
+    provider.clearGroupOrderContext();
+    // await _loadCheckout();
   }
 
   Future<void> _openSharedCart() async {
@@ -149,7 +150,7 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
         initialCheckout: _checkout,
       ),
     );
-    await _loadCheckout();
+    // await _loadCheckout();
   }
 
   Future<void> _leaveGroup() async {
@@ -231,60 +232,58 @@ class _GroupOrderDashboardScreenState extends State<GroupOrderDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF7F7F8),
       body: SafeArea(
-        child: RefreshIndicator(
-          onRefresh: _loadCheckout,
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              GroupOrderHeaderCard(
-                restaurant: widget.restaurant,
-                groupCode: widget.groupCode,
-                minutes: minutes,
-                seconds: seconds,
-                memberCount: memberCount,
-                isLeavingGroup: _isLeavingGroup,
-                memberAvatars: _memberAvatars,
-                onLeaveGroup: _leaveGroup,
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Activity',
-                      style: TextStyle(
-                        fontFamily: AppThemeData.semiBold,
-                        color: AppThemeData.grey900,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            GroupOrderHeaderCard(
+              restaurant: widget.restaurant,
+              groupCode: widget.groupCode,
+              minutes: minutes,
+              seconds: seconds,
+              memberCount: memberCount,
+              isLeavingGroup: _isLeavingGroup,
+              memberAvatars: _memberAvatars,
+              onLeaveGroup: _leaveGroup,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 18, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Activity',
+                    style: TextStyle(
+                      fontFamily: AppThemeData.semiBold,
+                      color: AppThemeData.grey900,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
                     ),
-                    const SizedBox(height: 10),
-                    if (_isLoadingCheckout)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else if (_activity.isEmpty)
-                      Text(
-                        'No items added yet. Tap Add items to start ordering.',
-                        style: TextStyle(
-                          fontFamily: AppThemeData.medium,
-                          color: AppThemeData.grey500,
-                          fontSize: 13,
-                        ),
-                      )
-                    else
-                      ..._activity.map(buildActivityRow),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (_isLoadingCheckout)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 24),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_activity.isEmpty)
+                    Text(
+                      'No items added yet. Tap Add items to start ordering.',
+                      style: TextStyle(
+                        fontFamily: AppThemeData.medium,
+                        color: AppThemeData.grey500,
+                        fontSize: 13,
+                      ),
+                    )
+                  else
+                    ..._activity.map(buildActivityRow),
+                ],
               ),
-              const SizedBox(height: 100),
-            ],
-          ),
+            ),
+            const SizedBox(height: 100),
+          ],
         ),
       ),
+
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),

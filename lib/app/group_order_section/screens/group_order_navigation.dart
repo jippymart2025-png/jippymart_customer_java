@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -9,7 +10,6 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import '../../Communityscreen/screens/community_list_screen.dart';
 import '../service/group_order_api_service.dart';
 import 'GroupOrderDashboardScreen.dart';
-import 'InviteFriendsScreen.dart';
 import 'create_group_order.dart';
 
 VendorModel resolveGroupOrderRestaurant(int outletId) {
@@ -35,28 +35,10 @@ bool _isActiveInvitation(GroupOrderInvitationModel? invitation) {
       invitation.status.toUpperCase() == 'ACTIVE';
 }
 
-Future<void> openGroupOrderFlow() async {
+Future<void> openGroupOrderFlow({String orderType = 'GROUP_ORDER'}) async {
   final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
   if (customerId == null) {
     ShowToastDialog.showToast('Please log in to start a group order');
-    return;
-  }
-
-  final session = GroupOrderSession.instance;
-  if (session.isActive &&
-      session.groupCode != null &&
-      session.restaurant != null &&
-      session.groupOrdersInvitationId != null &&
-      session.hostCustomerId != null) {
-    await Get.to(
-      () => GroupOrderDashboardScreen(
-        groupCode: session.groupCode!,
-        restaurant: session.restaurant!,
-        groupOrdersInvitationId: session.groupOrdersInvitationId!,
-        hostCustomerId: session.hostCustomerId!,
-        deliveryAddressId: session.deliveryAddressId,
-      ),
-    );
     return;
   }
 
@@ -72,13 +54,10 @@ Future<void> openGroupOrderFlow() async {
     if (_isActiveInvitation(invitation)) {
       final activeInvitation = invitation!;
       final restaurant = resolveGroupOrderRestaurant(activeInvitation.outletId);
-      final groupLink =
-          'https://jippymart.in/g/${activeInvitation.groupOrdersInvitationId}/${activeInvitation.invitationCode}/${activeInvitation.hostCustomerId}';
 
       await Get.to(
-        () => InviteFriendsScreen(
+        () => GroupOrderDashboardScreen(
           groupCode: activeInvitation.invitationCode,
-          groupLink: groupLink,
           restaurant: restaurant,
           groupOrdersInvitationId: activeInvitation.groupOrdersInvitationId,
           hostCustomerId: activeInvitation.hostCustomerId,
@@ -87,10 +66,15 @@ Future<void> openGroupOrderFlow() async {
       return;
     }
 
-    await Get.to(() => const CreateGroupOrderScreen());
-  } catch (_) {
+    GroupOrderSession.instance.clear();
+    await Get.to(() => CreateGroupOrderScreen(orderType: orderType));
+  } catch (e) {
     ShowToastDialog.closeLoader();
-    ShowToastDialog.showToast('Failed to load group order');
+
+    debugPrint('Group order invitation failed: $e');
+
+    GroupOrderSession.instance.clear();
+    await Get.to(() => CreateGroupOrderScreen(orderType: orderType));
   }
 }
 

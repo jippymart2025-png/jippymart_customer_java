@@ -448,12 +448,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   bool get isRestaurantFavorite => _isRestaurantFavorite;
 
-  int? get activeGroupOrderInvitationId =>
-      _groupOrderInvitationId ??
-      GroupOrderSession.instance.groupOrdersInvitationId;
+  int? get activeGroupOrderInvitationId => _groupOrderInvitationId;
 
-  int? get activeGroupOrderHostCustomerId =>
-      _groupOrderHostCustomerId ?? GroupOrderSession.instance.hostCustomerId;
+  int? get activeGroupOrderHostCustomerId => _groupOrderHostCustomerId;
 
   void setGroupOrderContext({
     required int groupOrderInvitationId,
@@ -492,6 +489,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   Future<void> getArgument({required VendorModel vendorModels}) async {
+    // Normal restaurant browsing should use the regular cart, not group cart.
+    clearGroupOrderContext();
+
     // Clear previous state and immediately mark as loading so UI shows shimmer
     _clearState();
     isLoading = true;

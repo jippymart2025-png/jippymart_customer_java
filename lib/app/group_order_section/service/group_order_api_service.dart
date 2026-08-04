@@ -9,6 +9,8 @@ import 'package:jippymart_customer/models/group_order_join_response.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
+import '../../../constant/show_toast_dialog.dart';
+
 class GroupOrderApiService {
   GroupOrderApiService._();
 
@@ -20,29 +22,39 @@ class GroupOrderApiService {
         '${AppConst.outletBaseUrl}co/group-orders/getGroupOrderInvitation',
       ).replace(queryParameters: {'hostCustomerId': hostCustomerId.toString()});
 
-      print('[GroupOrderApi] GET $uri');
+      debugPrint('[GroupOrderApi] GET $uri');
 
       final response = await http
           .get(uri, headers: await getHeaders())
           .timeout(const Duration(seconds: 30));
 
-      print('[GroupOrderApi] status: ${response.statusCode}');
-      print('[GroupOrderApi] response: ${response.body}');
+      debugPrint('[GroupOrderApi] status: ${response.statusCode}');
+      debugPrint('[GroupOrderApi] response: ${response.body}');
 
-      if (response.statusCode != 200) return null;
+      if (response.statusCode != 200) {
+        try {
+          final error = jsonDecode(response.body);
+
+          throw Exception(
+            error['errorMessage'] ?? error['message'] ?? 'Something went wrong',
+          );
+        } catch (_) {
+          throw Exception('Something went wrong');
+        }
+      }
 
       final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) return null;
 
-      final data = decoded.containsKey('data') && decoded['data'] is Map
-          ? Map<String, dynamic>.from(decoded['data'] as Map)
+      if (decoded is! Map<String, dynamic>) {
+        throw Exception('Invalid response');
+      }
+
+      final data = decoded['data'] is Map
+          ? Map<String, dynamic>.from(decoded['data'])
           : decoded;
 
       return GroupOrderInvitationModel.fromJson(data);
-    } catch (e, stack) {
-      debugPrint("=========== API ERROR ===========");
-      debugPrint(e.toString());
-      debugPrintStack(stackTrace: stack);
+    } catch (e) {
       rethrow;
     }
   }
@@ -83,7 +95,23 @@ class GroupOrderApiService {
     debugPrint("BODY : ${response.body}");
 
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw Exception(response.body);
+      String message = "Something went wrong";
+
+      try {
+        final error = jsonDecode(response.body);
+
+        if (error is Map<String, dynamic>) {
+          message =
+              error["errorMessage"] ??
+              error["message"] ??
+              error["error"] ??
+              message;
+        }
+      } catch (_) {
+        // Keep default message if response is not valid JSON
+      }
+
+      throw Exception(message);
     }
 
     final decoded = jsonDecode(response.body);
@@ -217,7 +245,7 @@ class GroupOrderApiService {
       print('[GroupOrderApi] GET $uri');
 
       final response = await http
-          .get(uri, headers: await getHeaders())
+          .post(uri, headers: await getHeaders())
           .timeout(const Duration(seconds: 30));
 
       print('[GroupOrderApi] status: ${response.statusCode}');
