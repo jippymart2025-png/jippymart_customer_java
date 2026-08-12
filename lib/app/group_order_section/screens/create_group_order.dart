@@ -49,6 +49,7 @@ class _CreateGroupOrderScreenState extends State<CreateGroupOrderScreen> {
     '10 members',
     '15 members',
     '20 members',
+    '30 members',
   ];
 
   @override

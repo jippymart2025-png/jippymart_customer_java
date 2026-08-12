@@ -2552,12 +2552,11 @@ import '../mart_search_screen.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 
 String _martVendorId(MartItemModel product, MartProvider mart) {
-  final rawVendorId =
-      product.vendorID?.trim().isNotEmpty == true
-          ? product.vendorID!.trim()
-          : (mart.selectedVendorId.trim().isNotEmpty
-                ? mart.selectedVendorId.trim()
-                : 'unknown');
+  final rawVendorId = product.vendorID?.trim().isNotEmpty == true
+      ? product.vendorID!.trim()
+      : (mart.selectedVendorId.trim().isNotEmpty
+            ? mart.selectedVendorId.trim()
+            : 'unknown');
   return 'mart_$rawVendorId';
 }
 
@@ -2823,30 +2822,30 @@ class _MartHomeScreenState extends State<MartHomeScreen> {
   /// Guards against firing loadNextPage() multiple times in one burst
   bool _paginating = false;
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController.addListener(_onScroll);
-  }
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _scrollController.addListener(_onScroll);
+  // }
+  //
+  // @override
+  // void dispose() {
+  //   _scrollController
+  //     ..removeListener(_onScroll)
+  //     ..dispose();
+  //   super.dispose();
+  // }
 
-  @override
-  void dispose() {
-    _scrollController
-      ..removeListener(_onScroll)
-      ..dispose();
-    super.dispose();
-  }
-
-  void _onScroll() {
-    if (_paginating) return;
-    final pos = _scrollController.position;
-    if (pos.pixels >= pos.maxScrollExtent - 400) {
-      _paginating = true;
-      context.read<MartProvider>().loadNextPage().whenComplete(() {
-        _paginating = false;
-      });
-    }
-  }
+  // void _onScroll() {
+  //   if (_paginating) return;
+  //   final pos = _scrollController.position;
+  //   if (pos.pixels >= pos.maxScrollExtent - 400) {
+  //     _paginating = true;
+  //     context.read<MartProvider>().loadNextPage().whenComplete(() {
+  //       _paginating = false;
+  //     });
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {

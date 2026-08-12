@@ -140,89 +140,89 @@ class BestRestaurantProvider extends ChangeNotifier {
         });
 
     final effectiveZoneId = zoneId ?? Constant.selectedZone?.id;
-    if (effectiveZoneId != null && effectiveZoneId.isNotEmpty) {
-      _storiesLoadingTask = _loadStoriesFromAPI(effectiveZoneId).then((_) {
-        _scheduleNotify();
-      });
-      _storiesLoadingTask?.catchError((e) {
-        debugPrint('[DEBUG] Error in background story load: $e');
-      });
-
-      _relatedDataLoadingTask = _loadRelatedDataInParallel(allNearestRestaurant)
-          .then((_) {
-            _scheduleNotify();
-          });
-      _relatedDataLoadingTask?.catchError((e) {
-        debugPrint('[DEBUG] Error in background related-data load: $e');
-      });
-    }
+    // if (effectiveZoneId != null && effectiveZoneId.isNotEmpty) {
+    //   _storiesLoadingTask = _loadStoriesFromAPI(effectiveZoneId).then((_) {
+    //     _scheduleNotify();
+    //   });
+    //   _storiesLoadingTask?.catchError((e) {
+    //     debugPrint('[DEBUG] Error in background story load: $e');
+    //   });
+    //
+    //   _relatedDataLoadingTask = _loadRelatedDataInParallel(allNearestRestaurant)
+    //       .then((_) {
+    //         _scheduleNotify();
+    //       });
+    //   _relatedDataLoadingTask?.catchError((e) {
+    //     debugPrint('[DEBUG] Error in background related-data load: $e');
+    //   });
+    // }
   }
 
-  // Load stories from API with cache only
-  Future<void> _loadStoriesFromAPI(String zoneId) async {
-    try {
-      debugPrint('[DEBUG] Loading stories from API for zone: $zoneId');
-      final storiesKey = 'stories_$zoneId';
-      final stories = await CacheManager().getOrSet<List<StoryModel>>(
-        storiesKey,
-        () => getStoriesFromAPI(zoneId: zoneId),
-        type: CacheType.general,
-      );
-      storyList.clear();
-      storyList.addAll(stories);
-      debugPrint('[DEBUG] Stories loaded from API: ${storyList.length}');
-      debugPrint('[DEBUG] Story enable setting: ${Constant.storyEnable}');
-    } catch (e) {
-      debugPrint('[DEBUG] Error loading stories from API: $e');
-    }
-  }
+  // // Load stories from API with cache only
+  // Future<void> _loadStoriesFromAPI(String zoneId) async {
+  //   try {
+  //     debugPrint('[DEBUG] Loading stories from API for zone: $zoneId');
+  //     final storiesKey = 'stories_$zoneId';
+  //     final stories = await CacheManager().getOrSet<List<StoryModel>>(
+  //       storiesKey,
+  //       () => getStoriesFromAPI(zoneId: zoneId),
+  //       type: CacheType.general,
+  //     );
+  //     storyList.clear();
+  //     storyList.addAll(stories);
+  //     debugPrint('[DEBUG] Stories loaded from API: ${storyList.length}');
+  //     debugPrint('[DEBUG] Story enable setting: ${Constant.storyEnable}');
+  //   } catch (e) {
+  //     debugPrint('[DEBUG] Error loading stories from API: $e');
+  //   }
+  // }
 
-  // API method to get stories
-  static Future<List<StoryModel>> getStoriesFromAPI({
-    required String zoneId,
-  }) async {
-    try {
-      final headers = await getHeaders();
-
-      String url = '${AppConst.baseUrl}stories?zone_id=$zoneId';
-      final uri = Uri.parse(url);
-
-      debugPrint('[STORY_API] Fetching stories from: $uri');
-
-      final response = await http
-          .get(uri, headers: headers)
-          .timeout(_networkTimeout);
-
-      if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        debugPrint('[STORY_API] Response: ${response.body}');
-
-        if (jsonResponse['success'] == true) {
-          List<dynamic> data = jsonResponse['data'];
-          List<StoryModel> stories = data
-              .map((item) => StoryModel.fromJson(item))
-              .toList();
-
-          debugPrint(
-            '[STORY_API] Stories fetched successfully: ${stories.length}',
-          );
-          return stories;
-        } else {
-          debugPrint('[STORY_API] API returned success: false');
-          return [];
-        }
-      } else {
-        debugPrint('[STORY_API] HTTP error: ${response.statusCode}');
-        throw Exception('Failed to load stories: ${response.statusCode}');
-      }
-    } on TimeoutException catch (e) {
-      debugPrint('[STORY_API] Timeout fetching stories: $e');
-      return [];
-    } catch (e) {
-      debugPrint('[STORY_API] Error fetching stories: $e');
-      rethrow;
-    }
-  }
+  // // API method to get stories
+  // static Future<List<StoryModel>> getStoriesFromAPI({
+  //   required String zoneId,
+  // }) async {
+  //   try {
+  //     final headers = await getHeaders();
+  //
+  //     String url = '${AppConst.baseUrl}stories?zone_id=$zoneId';
+  //     final uri = Uri.parse(url);
+  //
+  //     debugPrint('[STORY_API] Fetching stories from: $uri');
+  //
+  //     final response = await http
+  //         .get(uri, headers: headers)
+  //         .timeout(_networkTimeout);
+  //
+  //     if (response.statusCode == 200) {
+  //       final jsonResponse = json.decode(response.body);
+  //       debugPrint('[STORY_API] Response: ${response.body}');
+  //
+  //       if (jsonResponse['success'] == true) {
+  //         List<dynamic> data = jsonResponse['data'];
+  //         List<StoryModel> stories = data
+  //             .map((item) => StoryModel.fromJson(item))
+  //             .toList();
+  //
+  //         debugPrint(
+  //           '[STORY_API] Stories fetched successfully: ${stories.length}',
+  //         );
+  //         return stories;
+  //       } else {
+  //         debugPrint('[STORY_API] API returned success: false');
+  //         return [];
+  //       }
+  //     } else {
+  //       debugPrint('[STORY_API] HTTP error: ${response.statusCode}');
+  //       throw Exception('Failed to load stories: ${response.statusCode}');
+  //     }
+  //   } on TimeoutException catch (e) {
+  //     debugPrint('[STORY_API] Timeout fetching stories: $e');
+  //     return [];
+  //   } catch (e) {
+  //     debugPrint('[STORY_API] Error fetching stories: $e');
+  //     rethrow;
+  //   }
+  // }
 
   // Load related data (coupons, ads) in parallel; O(n) matching via Map
   Future<void> _loadRelatedDataInParallel(List<VendorModel> restaurants) async {
@@ -395,7 +395,7 @@ class BestRestaurantProvider extends ChangeNotifier {
   Future<void> refreshStories() async {
     final String? zoneId = Constant.selectedZone?.id;
     if (zoneId != null && zoneId.isNotEmpty) {
-      await _loadStoriesFromAPI(zoneId);
+      // await _loadStoriesFromAPI(zoneId);
       notifyListeners();
     }
   }

@@ -8,37 +8,37 @@ import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
-Widget groceryComponent(Size size) {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: 20),
-        Consumer<MartProvider>(
-          builder: (context, controller, _) {
-            if (controller.isCategoryLoading && controller.featuredCategories.isEmpty) {
-              return _buildCategoryShimmer();
-            }
-            // Prioritize categories - show grid if we have data (error may be from other loader)
-            if (controller.featuredCategories.isNotEmpty) {
-              return _buildCategoriesGrid(context, controller, size);
-            }
-            if (controller.errorMessage.isNotEmpty) {
-              return _buildErrorState(controller);
-            }
-            if (!controller.isHomepageCategoriesLoaded) {
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                controller.loadHomepageCategoriesStreaming(limit: 24);
-              });
-            }
-            return _buildEmptyState();
-          },
-        ),
-      ],
-    ),
-  );
-}
+// Widget groceryComponent(Size size) {
+//   return Padding(
+//     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+//     child: Column(
+//       crossAxisAlignment: CrossAxisAlignment.start,
+//       children: [
+//         SizedBox(height: 20),
+//         Consumer<MartProvider>(
+//           builder: (context, controller, _) {
+//             if (controller.isCategoryLoading && controller.featuredCategories.isEmpty) {
+//               return _buildCategoryShimmer();
+//             }
+//             // Prioritize categories - show grid if we have data (error may be from other loader)
+//             if (controller.featuredCategories.isNotEmpty) {
+//               return _buildCategoriesGrid(context, controller, size);
+//             }
+//             if (controller.errorMessage.isNotEmpty) {
+//               return _buildErrorState(controller);
+//             }
+//             if (!controller.isHomepageCategoriesLoaded) {
+//               WidgetsBinding.instance.addPostFrameCallback((_) {
+//                 controller.loadHomepageCategoriesStreaming(limit: 24);
+//               });
+//             }
+//             return _buildEmptyState();
+//           },
+//         ),
+//       ],
+//     ),
+//   );
+// }
 
 // Enhanced Shimmer Loading
 Widget _buildCategoryShimmer() {
@@ -150,23 +150,23 @@ Widget _buildErrorState(MartProvider controller) {
             ),
           ),
           const SizedBox(height: 12),
-          ElevatedButton(
-            onPressed: () {
-              controller.errorMessage = '';
-              controller.loadHomepageCategoriesStreaming(limit: 24);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              shadowColor: Colors.red.withOpacity(0.3),
-            ),
-            child: const Text('Retry', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-          ),
+          // ElevatedButton(
+          //   onPressed: () {
+          //     controller.errorMessage = '';
+          //     controller.loadHomepageCategoriesStreaming(limit: 24);
+          //   },
+          //   style: ElevatedButton.styleFrom(
+          //     backgroundColor: Colors.red,
+          //     foregroundColor: Colors.white,
+          //     elevation: 2,
+          //     shape: RoundedRectangleBorder(
+          //       borderRadius: BorderRadius.circular(12),
+          //     ),
+          //     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+          //     shadowColor: Colors.red.withOpacity(0.3),
+          //   ),
+          //   child: const Text('Retry', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          // ),
         ],
       ),
     ),

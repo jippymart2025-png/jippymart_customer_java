@@ -48,7 +48,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
   @override
   void initState() {
     super.initState();
-    _checkMart();
+    // _checkMart();
   }
 
   @override
@@ -62,72 +62,72 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
     }
   }
 
-  Future<void> _checkMart() async {
-    MartZoneUtils.prefetchMartVendors();
-    final available = await MartZoneUtils.isMartAvailableInCurrentZone();
-    if (mounted) setState(() => _martAvailableInZone = available);
-  }
+  // Future<void> _checkMart() async {
+  //   MartZoneUtils.prefetchMartVendors();
+  //   // final available = await MartZoneUtils.isMartAvailableInCurrentZone();
+  //   if (mounted) setState(() => _martAvailableInZone = available);
+  // }
 
   static bool _isMartChecking = false;
 
-  Future<void> _onMartTap() async {
-    if (_isMartChecking) return;
-    _isMartChecking = true;
-    final martProvider = context.read<MartProvider>();
-    final martNav = context.read<MartNavigationProvider>();
-    final location = Constant.selectedLocation.location;
-    final zoneId = Constant.selectedZone?.id;
-    if (location?.latitude == null ||
-        location?.longitude == null ||
-        location!.latitude == 0.0 ||
-        location.longitude == 0.0) {
-      ComingSoonDialogHelper.show(
-        title: "LOCATION REQUIRED".tr,
-        message:
-            "Please set your location to check mart availability in your area.",
-      );
-      _isMartChecking = false;
-      return;
-    }
-    if (zoneId == null || zoneId.isEmpty) {
-      ComingSoonDialogHelper.show(
-        title: "COMING SOON".tr,
-        message:
-            "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-      );
-      _isMartChecking = false;
-      return;
-    }
-    bool loaderShown = false;
-    Future.delayed(const Duration(milliseconds: 150), () {
-      if (_isMartChecking && !loaderShown) {
-        loaderShown = true;
-        ShowToastDialog.showLoader("Checking mart availability...".tr);
-      }
-    });
-    try {
-      final isMartAvailable =
-          await MartZoneUtils.isMartAvailableInCurrentZone();
-      if (loaderShown) ShowToastDialog.closeLoader();
-      if (!isMartAvailable) {
-        ComingSoonDialogHelper.show(
-          title: "COMING SOON".tr,
-          message:
-              "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-        );
-        _isMartChecking = false;
-        return;
-      }
-      martNav.initFunction(context: context);
-      Get.to(() => const MartNavigationScreen());
-      martProvider.initFunction();
-    } catch (_) {
-      if (loaderShown) ShowToastDialog.closeLoader();
-    } finally {
-      ShowToastDialog.closeLoader();
-      _isMartChecking = false;
-    }
-  }
+  // Future<void> _onMartTap() async {
+  //   if (_isMartChecking) return;
+  //   _isMartChecking = true;
+  //   final martProvider = context.read<MartProvider>();
+  //   final martNav = context.read<MartNavigationProvider>();
+  //   final location = Constant.selectedLocation.location;
+  //   final zoneId = Constant.selectedZone?.id;
+  //   if (location?.latitude == null ||
+  //       location?.longitude == null ||
+  //       location!.latitude == 0.0 ||
+  //       location.longitude == 0.0) {
+  //     ComingSoonDialogHelper.show(
+  //       title: "LOCATION REQUIRED".tr,
+  //       message:
+  //           "Please set your location to check mart availability in your area.",
+  //     );
+  //     _isMartChecking = false;
+  //     return;
+  //   }
+  //   if (zoneId == null || zoneId.isEmpty) {
+  //     ComingSoonDialogHelper.show(
+  //       title: "COMING SOON".tr,
+  //       message:
+  //           "We're working hard to bring Jippy Mart to your area. Stay tuned!",
+  //     );
+  //     _isMartChecking = false;
+  //     return;
+  //   }
+  //   bool loaderShown = false;
+  //   Future.delayed(const Duration(milliseconds: 150), () {
+  //     if (_isMartChecking && !loaderShown) {
+  //       loaderShown = true;
+  //       ShowToastDialog.showLoader("Checking mart availability...".tr);
+  //     }
+  //   });
+  //   try {
+  //     final isMartAvailable =
+  //         await MartZoneUtils.isMartAvailableInCurrentZone();
+  //     if (loaderShown) ShowToastDialog.closeLoader();
+  //     if (!isMartAvailable) {
+  //       ComingSoonDialogHelper.show(
+  //         title: "COMING SOON".tr,
+  //         message:
+  //             "We're working hard to bring Jippy Mart to your area. Stay tuned!",
+  //       );
+  //       _isMartChecking = false;
+  //       return;
+  //     }
+  //     martNav.initFunction(context: context);
+  //     Get.to(() => const MartNavigationScreen());
+  //     martProvider.initFunction();
+  //   } catch (_) {
+  //     if (loaderShown) ShowToastDialog.closeLoader();
+  //   } finally {
+  //     ShowToastDialog.closeLoader();
+  //     _isMartChecking = false;
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -467,29 +467,29 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
               ),
             ),
           ),
-          Expanded(
-            child: GestureDetector(
-              onTap: _onMartTap,
-              child: Container(
-                margin: const EdgeInsets.all(3),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(19),
-                ),
-                child: Center(
-                  child: Text(
-                    'MART',
-                    style: TextStyle(
-                      color: Colors.grey[700],
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13.5,
-                      letterSpacing: 0.2,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
+          // Expanded(
+          //   child: GestureDetector(
+          //     // onTap: _onMartTap,
+          //     child: Container(
+          //       margin: const EdgeInsets.all(3),
+          //       decoration: BoxDecoration(
+          //         color: Colors.transparent,
+          //         borderRadius: BorderRadius.circular(19),
+          //       ),
+          //       child: Center(
+          //         child: Text(
+          //           'MART',
+          //           style: TextStyle(
+          //             color: Colors.grey[700],
+          //             fontWeight: FontWeight.w600,
+          //             fontSize: 13.5,
+          //             letterSpacing: 0.2,
+          //           ),
+          //         ),
+          //       ),
+          //     ),
+          //   ),
+          // ),
         ],
       ),
     );

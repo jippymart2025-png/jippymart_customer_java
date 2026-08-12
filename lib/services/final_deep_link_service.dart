@@ -483,41 +483,41 @@ class FinalDeepLinkService {
   }
 
   /// Navigate to category with actual data
-  void _navigateToCategoryWithData(
-    String categoryId,
-    CategoryDetailsProvider categoryDetailsProvider,
-  ) async {
-    try {
-      print('🔥 [NEW HANDLER] ===== CATEGORY DEEP LINK NAVIGATION =====');
-
-      final categories = await MartFirestoreService().getCategories(
-        limit: 1000,
-      );
-      final category = categories.firstWhere(
-        (cat) => cat.id == categoryId,
-        orElse: () => MartCategoryModel(),
-      );
-
-      if (category.id == null) {
-        print('❌ [NEW HANDLER] Category not found for ID: $categoryId');
-        _navigateToDashboard();
-        return;
-      }
-
-      await Future.delayed(const Duration(milliseconds: 500));
-      categoryDetailsProvider.initFunction(
-        categoryIds: categoryId,
-        categoryNames: category.title ?? 'Category',
-      );
-      Get.to(() => const MartCategoryDetailScreen());
-      print(
-        '🔥✅ [NEW HANDLER] Successfully navigated to category detail screen!',
-      );
-    } catch (e) {
-      print('❌ [NEW HANDLER] Error navigating to category: $e');
-      _navigateToDashboard();
-    }
-  }
+  // void _navigateToCategoryWithData(
+  //   String categoryId,
+  //   CategoryDetailsProvider categoryDetailsProvider,
+  // ) async {
+  //   try {
+  //     print('🔥 [NEW HANDLER] ===== CATEGORY DEEP LINK NAVIGATION =====');
+  //
+  //     // final categories = await MartFirestoreService().getCategories(
+  //     //   limit: 1000,
+  //     // );
+  //     final category = categories.firstWhere(
+  //       (cat) => cat.id == categoryId,
+  //       orElse: () => MartCategoryModel(),
+  //     );
+  //
+  //     if (category.id == null) {
+  //       print('❌ [NEW HANDLER] Category not found for ID: $categoryId');
+  //       _navigateToDashboard();
+  //       return;
+  //     }
+  //
+  //     await Future.delayed(const Duration(milliseconds: 500));
+  //     categoryDetailsProvider.initFunction(
+  //       categoryIds: categoryId,
+  //       categoryNames: category.title ?? 'Category',
+  //     );
+  //     Get.to(() => const MartCategoryDetailScreen());
+  //     print(
+  //       '🔥✅ [NEW HANDLER] Successfully navigated to category detail screen!',
+  //     );
+  //   } catch (e) {
+  //     print('❌ [NEW HANDLER] Error navigating to category: $e');
+  //     _navigateToDashboard();
+  //   }
+  // }
 
   // NOTE: _navigateToMartHome was previously used as a fallback when product
   // lookup failed. Deep link routing for products now prefers:
@@ -739,7 +739,7 @@ class FinalDeepLinkService {
         final categoryId = pathSegments[1];
         print('🔥 [NEW HANDLER] HTTPS scheme - Category ID: $categoryId');
         if (categoryDetailsProvider != null) {
-          _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
+          // _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
         } else {
           print(
             '❌ [NEW HANDLER] CategoryDetailsProvider not available yet, skipping category navigation',
@@ -750,7 +750,7 @@ class FinalDeepLinkService {
         final categoryId = pathSegments[1];
         print('🔥 [NEW HANDLER] HTTPS scheme - Category ID: $categoryId');
         if (categoryDetailsProvider != null) {
-          _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
+          // _navigateToCategoryWithData(categoryId, categoryDetailsProvider);
         } else {
           print(
             '❌ [NEW HANDLER] CategoryDetailsProvider not available yet, skipping category navigation',

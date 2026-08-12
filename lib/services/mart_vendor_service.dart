@@ -8,85 +8,85 @@ import 'package:jippymart_customer/services/cache_manager.dart';
 import 'package:jippymart_customer/services/api_queue_manager.dart';
 
 class MartVendorService {
-  static Future<List<MartVendorModel>> getAllMartVendors({
-    String search = 'Jippy mart',
-  }) async {
-    final cacheKey = 'mart_vendors_all_$search';
-    return await CacheManager().getOrSetMartItems<List<MartVendorModel>>(
-      cacheKey,
-      () => ApiQueueManager().enqueue<List<MartVendorModel>>(
-        priority: RequestPriority.normal,
-        key: cacheKey,
-        request: () => _fetchAllMartVendors(search: search),
-      ),
-    );
-  }
+  // static Future<List<MartVendorModel>> getAllMartVendors({
+  //   String search = 'Jippy mart',
+  // }) async {
+  //   final cacheKey = 'mart_vendors_all_$search';
+  //   return await CacheManager().getOrSetMartItems<List<MartVendorModel>>(
+  //     cacheKey,
+  //     () => ApiQueueManager().enqueue<List<MartVendorModel>>(
+  //       priority: RequestPriority.normal,
+  //       key: cacheKey,
+  //       request: () => _fetchAllMartVendors(search: search),
+  //     ),
+  //   );
+  // }
 
-  static Future<List<MartVendorModel>> _fetchAllMartVendors({
-    String search = 'mart',
-  }) async {
-    try {
-      print('🔍 [MART_VENDOR_SERVICE] Querying ALL mart vendors via API');
-      // Build the API URL
-      String apiUrl = '${AppConst.baseUrl}mart-items/getMartVendors';
-      if (search.isNotEmpty) {
-        apiUrl += '?search=$search';
-      }
-      print('🌐 [MART_VENDOR_SERVICE] API Call: $apiUrl');
-      // Make the API call
-      final response = await http.get(
-        Uri.parse(apiUrl),
-        headers: await getHeaders(),
-      );
-      // Check if the request was successful
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          final List<dynamic> vendorsData = responseData['data'];
-          final vendors = <MartVendorModel>[];
-          print(
-            '📊 [MART_VENDOR_SERVICE] Processing ${vendorsData.length} vendors from API',
-          );
-          for (var vendorData in vendorsData) {
-            try {
-              // Convert the API data to match your model structure
-              final processedData = _processApiData(vendorData);
-              print(
-                '🔍 [MART_VENDOR_SERVICE] DEBUG: Processing vendor ${vendorData['id']}:',
-              );
-              print('   zoneId: ${processedData['zoneId']}');
-              print('   vType: ${processedData['vType']}');
-              print('   isOpen: ${processedData['isOpen']}');
-              print('   title: ${processedData['title']}');
-
-              final vendor = MartVendorModel.fromJson(processedData);
-              vendors.add(vendor);
-            } catch (e) {
-              print(
-                '❌ [MART_VENDOR_SERVICE] Error processing vendor ${vendorData['id']}: $e',
-              );
-              print('   Raw data: $vendorData');
-              // Continue with next vendor
-            }
-          }
-          print(
-            '✅ [MART_VENDOR_SERVICE] Successfully processed ${vendors.length} mart vendors',
-          );
-          return vendors;
-        } else {
-          print('❌ [MART_VENDOR_SERVICE] API returned success: false');
-          return [];
-        }
-      } else {
-        print('❌ [MART_VENDOR_SERVICE] HTTP Error: ${response.statusCode}');
-        print('   Response: ${response.body}');
-        return [];
-      }
-    } catch (e) {
-      print('❌ [MART_VENDOR_SERVICE] Error fetching all mart vendors: $e');
-      return [];
-    }
-  }
+  // static Future<List<MartVendorModel>> _fetchAllMartVendors({
+  //   String search = 'mart',
+  // }) async {
+  //   try {
+  //     print('🔍 [MART_VENDOR_SERVICE] Querying ALL mart vendors via API');
+  //     // Build the API URL
+  //     String apiUrl = '${AppConst.baseUrl}mart-items/getMartVendors';
+  //     if (search.isNotEmpty) {
+  //       apiUrl += '?search=$search';
+  //     }
+  //     print('🌐 [MART_VENDOR_SERVICE] API Call: $apiUrl');
+  //     // Make the API call
+  //     final response = await http.get(
+  //       Uri.parse(apiUrl),
+  //       headers: await getHeaders(),
+  //     );
+  //     // Check if the request was successful
+  //     if (response.statusCode == 200) {
+  //       final responseData = json.decode(response.body);
+  //       if (responseData['success'] == true) {
+  //         final List<dynamic> vendorsData = responseData['data'];
+  //         final vendors = <MartVendorModel>[];
+  //         print(
+  //           '📊 [MART_VENDOR_SERVICE] Processing ${vendorsData.length} vendors from API',
+  //         );
+  //         for (var vendorData in vendorsData) {
+  //           try {
+  //             // Convert the API data to match your model structure
+  //             final processedData = _processApiData(vendorData);
+  //             print(
+  //               '🔍 [MART_VENDOR_SERVICE] DEBUG: Processing vendor ${vendorData['id']}:',
+  //             );
+  //             print('   zoneId: ${processedData['zoneId']}');
+  //             print('   vType: ${processedData['vType']}');
+  //             print('   isOpen: ${processedData['isOpen']}');
+  //             print('   title: ${processedData['title']}');
+  //
+  //             final vendor = MartVendorModel.fromJson(processedData);
+  //             vendors.add(vendor);
+  //           } catch (e) {
+  //             print(
+  //               '❌ [MART_VENDOR_SERVICE] Error processing vendor ${vendorData['id']}: $e',
+  //             );
+  //             print('   Raw data: $vendorData');
+  //             // Continue with next vendor
+  //           }
+  //         }
+  //         print(
+  //           '✅ [MART_VENDOR_SERVICE] Successfully processed ${vendors.length} mart vendors',
+  //         );
+  //         return vendors;
+  //       } else {
+  //         print('❌ [MART_VENDOR_SERVICE] API returned success: false');
+  //         return [];
+  //       }
+  //     } else {
+  //       print('❌ [MART_VENDOR_SERVICE] HTTP Error: ${response.statusCode}');
+  //       print('   Response: ${response.body}');
+  //       return [];
+  //     }
+  //   } catch (e) {
+  //     print('❌ [MART_VENDOR_SERVICE] Error fetching all mart vendors: $e');
+  //     return [];
+  //   }
+  // }
 
   // Helper method to process API data and convert it to your model format
   static Map<String, dynamic> _processApiData(Map<String, dynamic> apiData) {

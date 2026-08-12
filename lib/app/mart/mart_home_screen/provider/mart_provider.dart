@@ -2181,8 +2181,8 @@ class MartProvider extends ChangeNotifier {
     notifyListeners();
     try {
       await _loadVendors();
-      await _loadCategories();
-      await _loadProductsPage0();
+      // await _loadCategories();
+      // await _loadProductsPage0();
     } finally {
       isLoading = false;
       notifyListeners();
@@ -2218,34 +2218,34 @@ class MartProvider extends ChangeNotifier {
   }
 
   // ── Categories ───────────────────────────────────────────────────────────────
-  Future<void> _loadCategories() async {
-    try {
-      isCategoryLoading = true;
-      notifyListeners();
-
-      // Try homepage categories first (cheapest query)
-      var cats = await _firestoreService.getHomepageCategories(limit: 50);
-      if (cats.length < 5) {
-        cats = await _firestoreService.getCategories(limit: 50);
-      }
-      if (cats.isEmpty) {
-        cats = await _firestoreService.getFeaturedCategories(
-          martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
-        );
-      }
-
-      if (cats.isNotEmpty) {
-        _applyCategoryOrder(cats);
-        martCategories = cats;
-        featuredCategories = cats;
-        isHomepageCategoriesLoaded = true;
-      }
-    } catch (e) {
-      debugPrint('[MART] categories error: $e');
-    } finally {
-      isCategoryLoading = false;
-    }
-  }
+  // Future<void> _loadCategories() async {
+  //   try {
+  //     isCategoryLoading = true;
+  //     notifyListeners();
+  //
+  //     // Try homepage categories first (cheapest query)
+  //     var cats = await _firestoreService.getHomepageCategories(limit: 50);
+  //     if (cats.length < 5) {
+  //       cats = await _firestoreService.getCategories(limit: 50);
+  //     }
+  //     if (cats.isEmpty) {
+  //       cats = await _firestoreService.getFeaturedCategories(
+  //         martId: selectedVendorId.isNotEmpty ? selectedVendorId : null,
+  //       );
+  //     }
+  //
+  //     if (cats.isNotEmpty) {
+  //       _applyCategoryOrder(cats);
+  //       martCategories = cats;
+  //       featuredCategories = cats;
+  //       isHomepageCategoriesLoaded = true;
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[MART] categories error: $e');
+  //   } finally {
+  //     isCategoryLoading = false;
+  //   }
+  // }
 
   void _applyCategoryOrder(List<MartCategoryModel> cats) {
     void move(String title, int to) {
@@ -2261,97 +2261,97 @@ class MartProvider extends ChangeNotifier {
   }
 
   // ── Products — page 0 ────────────────────────────────────────────────────────
-  Future<void> _loadProductsPage0() async {
-    if (martCategories.isEmpty) return;
-    try {
-      isProductLoading = true;
-      notifyListeners();
-
-      final seen = <String>{};
-      final batch = <MartItemModel>[];
-
-      // Parallel fetch across all categories, limit 10 each
-      final results = await Future.wait(
-        martCategories.map(
-          (cat) => _firestoreService
-              .getItemsByCategoryOnly(
-                categoryId: cat.id ?? '',
-                isAvailable: true,
-                limit: 10,
-              )
-              .catchError((_) => <MartItemModel>[]),
-        ),
-      );
-
-      for (final list in results) {
-        for (final item in list) {
-          if (seen.add(item.id ?? item.name)) batch.add(item);
-        }
-      }
-
-      _allProducts.clear();
-      _allProducts.addAll(batch);
-      _currentPage = 0;
-      _hasMore = batch.isNotEmpty;
-    } catch (e) {
-      debugPrint('[MART] products page 0 error: $e');
-    } finally {
-      isProductLoading = false;
-      notifyListeners();
-    }
-  }
+  // Future<void> _loadProductsPage0() async {
+  //   if (martCategories.isEmpty) return;
+  //   try {
+  //     isProductLoading = true;
+  //     notifyListeners();
+  //
+  //     final seen = <String>{};
+  //     final batch = <MartItemModel>[];
+  //
+  //     // Parallel fetch across all categories, limit 10 each
+  //     final results = await Future.wait(
+  //       martCategories.map(
+  //         (cat) => _firestoreService
+  //             .getItemsByCategoryOnly(
+  //               categoryId: cat.id ?? '',
+  //               isAvailable: true,
+  //               limit: 10,
+  //             )
+  //             .catchError((_) => <MartItemModel>[]),
+  //       ),
+  //     );
+  //
+  //     for (final list in results) {
+  //       for (final item in list) {
+  //         if (seen.add(item.id ?? item.name)) batch.add(item);
+  //       }
+  //     }
+  //
+  //     _allProducts.clear();
+  //     _allProducts.addAll(batch);
+  //     _currentPage = 0;
+  //     _hasMore = batch.isNotEmpty;
+  //   } catch (e) {
+  //     debugPrint('[MART] products page 0 error: $e');
+  //   } finally {
+  //     isProductLoading = false;
+  //     notifyListeners();
+  //   }
+  // }
 
   // ── Pagination ────────────────────────────────────────────────────────────────
-  Future<void> loadNextPage() async {
-    if (!_hasMore || isPaginating || isProductLoading) return;
-
-    final nextEnd = (_currentPage + 2) * _pageSize;
-    if (nextEnd <= _allProducts.length) {
-      // Already have enough data in memory — just advance the page cursor
-      _currentPage++;
-      notifyListeners();
-      return;
-    }
-
-    // Need to fetch more from Firestore
-    try {
-      isPaginating = true;
-      notifyListeners();
-
-      final seen = _allProducts.map((p) => p.id ?? p.name).toSet();
-      final batch = <MartItemModel>[];
-
-      final results = await Future.wait(
-        martCategories.map(
-          (cat) => _firestoreService
-              .getItemsByCategoryOnly(
-                categoryId: cat.id ?? '',
-                isAvailable: true,
-                limit: 20,
-              )
-              .catchError((_) => <MartItemModel>[]),
-        ),
-      );
-
-      for (final list in results) {
-        for (final item in list) {
-          if (seen.add(item.id ?? item.name)) batch.add(item);
-        }
-      }
-
-      if (batch.isEmpty) {
-        _hasMore = false;
-      } else {
-        _allProducts.addAll(batch);
-        _currentPage++;
-      }
-    } catch (e) {
-      debugPrint('[MART] pagination error: $e');
-    } finally {
-      isPaginating = false;
-      notifyListeners();
-    }
-  }
+  // Future<void> loadNextPage() async {
+  //   if (!_hasMore || isPaginating || isProductLoading) return;
+  //
+  //   final nextEnd = (_currentPage + 2) * _pageSize;
+  //   if (nextEnd <= _allProducts.length) {
+  //     // Already have enough data in memory — just advance the page cursor
+  //     _currentPage++;
+  //     notifyListeners();
+  //     return;
+  //   }
+  //
+  //   // Need to fetch more from Firestore
+  //   try {
+  //     isPaginating = true;
+  //     notifyListeners();
+  //
+  //     final seen = _allProducts.map((p) => p.id ?? p.name).toSet();
+  //     final batch = <MartItemModel>[];
+  //
+  //     final results = await Future.wait(
+  //       martCategories.map(
+  //         (cat) => _firestoreService
+  //             .getItemsByCategoryOnly(
+  //               categoryId: cat.id ?? '',
+  //               isAvailable: true,
+  //               limit: 20,
+  //             )
+  //             .catchError((_) => <MartItemModel>[]),
+  //       ),
+  //     );
+  //
+  //     for (final list in results) {
+  //       for (final item in list) {
+  //         if (seen.add(item.id ?? item.name)) batch.add(item);
+  //       }
+  //     }
+  //
+  //     if (batch.isEmpty) {
+  //       _hasMore = false;
+  //     } else {
+  //       _allProducts.addAll(batch);
+  //       _currentPage++;
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[MART] pagination error: $e');
+  //   } finally {
+  //     isPaginating = false;
+  //     notifyListeners();
+  //   }
+  // }
 
   // ── Banners ──────────────────────────────────────────────────────────────────
   // Future<void> loadMartBanners() async {
@@ -2716,33 +2716,34 @@ class MartProvider extends ChangeNotifier {
   // ── Stubs kept for compatibility with other screens ───────────────────────────
   Future<void> loadMartVendors({bool refresh = false}) => _loadVendors();
 
-  Future<void> loadFeaturedCategories() => _loadCategories();
+  // Future<void> loadFeaturedCategories() => _loadCategories();
 
-  Future<void> loadHomepageCategoriesStreaming({int limit = 24}) =>
-      _loadCategories();
+  // Future<void> loadHomepageCategoriesStreaming({int limit = 24}) =>
+  // _loadCategories();
 
-  Future<void> loadCategoryProductsForSections() => _loadProductsPage0();
+  // Future<void> loadCategoryProductsForSections() => _loadProductsPage0();
+  //
+  // Future<void> loadSectionsImmediately() async {}
 
-  Future<void> loadSectionsImmediately() async {}
-
-  Future<void> loadMoreProducts() => loadNextPage();
-
-  Future<void> loadMoreItems() => loadNextPage();
-  List<String> availableSections = [];
-  Map<String, List<MartItemModel>> sectionProducts = {};
-
-  List<MartItemModel> getProductsForSection(String s) =>
-      sectionProducts[s] ?? [];
-
-  void selectVendor(String vendorId) {
-    selectedVendorId = vendorId;
-    currentVendor = martVendors.firstWhereOrNull((v) => v.id == vendorId);
-  }
-
-  void selectCategory(String categoryId) {
-    selectedCategoryId = categoryId;
-    currentCategory = martCategories.firstWhereOrNull(
-      (c) => c.id == categoryId,
-    );
-  }
+  //
+  // Future<void> loadMoreProducts() => loadNextPage();
+  //
+  // Future<void> loadMoreItems() => loadNextPage();
+  // List<String> availableSections = [];
+  // Map<String, List<MartItemModel>> sectionProducts = {};
+  //
+  // List<MartItemModel> getProductsForSection(String s) =>
+  //     sectionProducts[s] ?? [];
+  //
+  // void selectVendor(String vendorId) {
+  //   selectedVendorId = vendorId;
+  //   currentVendor = martVendors.firstWhereOrNull((v) => v.id == vendorId);
+  // }
+  //
+  // void selectCategory(String categoryId) {
+  //   selectedCategoryId = categoryId;
+  //   currentCategory = martCategories.firstWhereOrNull(
+  //     (c) => c.id == categoryId,
+  //   );
+  // }
 }

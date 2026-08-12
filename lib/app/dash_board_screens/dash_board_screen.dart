@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:ui';
-
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
@@ -20,15 +19,7 @@ import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:jippymart_customer/widget/network_status_banner.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:provider/provider.dart';
-
 import '../../services/cart_provider.dart';
-
-// const LinearGradient _kGradient = LinearGradient(
-//   begin: Alignment.topLeft,
-//   end: Alignment.bottomRight,
-//   stops: [0.0, 1.0],
-//   colors: [ColorConst.kGradStart, ColorConst.kGradEnd],
-// );
 
 /// Status bar can only be one opaque colour; use a blended tone from
 /// the hero gradient so the transition into home feels smooth.
@@ -112,20 +103,21 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   void _startOrderStatusRefreshTicker() {
     _orderStatusRefreshTimer?.cancel();
-    _orderStatusRefreshTimer =
-        Timer.periodic(_orderStatusRefreshInterval, (_,) async {
-          if (!mounted) return;
-          if (_activeOrderStartTime == null) return;
-          if (_isOrderRefreshInFlight) return;
-          final orderProvider = context.read<OrderProvider>();
-          _isOrderRefreshInFlight = true;
-          try {
-            await orderProvider.getOrder(forceRefresh: true);
-            if (mounted) _syncActiveOrderCountdown(orderProvider);
-          } finally {
-            _isOrderRefreshInFlight = false;
-          }
-        });
+    _orderStatusRefreshTimer = Timer.periodic(_orderStatusRefreshInterval, (
+      _,
+    ) async {
+      if (!mounted) return;
+      if (_activeOrderStartTime == null) return;
+      if (_isOrderRefreshInFlight) return;
+      final orderProvider = context.read<OrderProvider>();
+      _isOrderRefreshInFlight = true;
+      try {
+        await orderProvider.getOrder(forceRefresh: true);
+        if (mounted) _syncActiveOrderCountdown(orderProvider);
+      } finally {
+        _isOrderRefreshInFlight = false;
+      }
+    });
   }
 
   void _startCountdownTicker() {
@@ -222,11 +214,11 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
   String _normalizedStatus(String? status) {
     return status
-        ?.toString()
-        .trim()
-        .toLowerCase()
-        .replaceAll('_', ' ')
-        .replaceAll(RegExp(r'\s+'), ' ') ??
+            ?.toString()
+            .trim()
+            .toLowerCase()
+            .replaceAll('_', ' ')
+            .replaceAll(RegExp(r'\s+'), ' ') ??
         '';
   }
 
@@ -281,9 +273,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
         }),
       );
       // Re-apply status bar style when returning from background
-      final idx = context
-          .read<DashBoardProvider>()
-          .selectedIndex;
+      final idx = context.read<DashBoardProvider>().selectedIndex;
       _applyStatusBarStyle(idx);
 
       final now = DateTime.now();
@@ -317,7 +307,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   Widget build(BuildContext context) {
     final dashBoardProvider = context.read<DashBoardProvider>();
     final dashboardState = context.select<DashBoardProvider, (int, int)>(
-          (p) => (p.pageList.length, p.selectedIndex),
+      (p) => (p.pageList.length, p.selectedIndex),
     );
     if (dashboardState.$1 == 0) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -330,23 +320,23 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     SystemChrome.setSystemUIOverlayStyle(
       tabIndex == 0
           ? SystemUiOverlayStyle(
-        statusBarColor: _statusBarTintFromHeroGradient(),
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
-        systemStatusBarContrastEnforced: false,
-        systemNavigationBarContrastEnforced: false,
-      )
+              statusBarColor: _statusBarTintFromHeroGradient(),
+              statusBarIconBrightness: Brightness.light,
+              statusBarBrightness: Brightness.dark,
+              systemNavigationBarColor: Colors.white,
+              systemNavigationBarIconBrightness: Brightness.dark,
+              systemStatusBarContrastEnforced: false,
+              systemNavigationBarContrastEnforced: false,
+            )
           : const SystemUiOverlayStyle(
-        statusBarColor: Colors.white,
-        statusBarIconBrightness: Brightness.dark,
-        statusBarBrightness: Brightness.light,
-        systemNavigationBarColor: Colors.white,
-        systemNavigationBarIconBrightness: Brightness.dark,
-        systemStatusBarContrastEnforced: false,
-        systemNavigationBarContrastEnforced: false,
-      ),
+              statusBarColor: Colors.white,
+              statusBarIconBrightness: Brightness.dark,
+              statusBarBrightness: Brightness.light,
+              systemNavigationBarColor: Colors.white,
+              systemNavigationBarIconBrightness: Brightness.dark,
+              systemStatusBarContrastEnforced: false,
+              systemNavigationBarContrastEnforced: false,
+            ),
     );
   }
 
@@ -364,7 +354,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
 
     final cartControllerProvider = context.read<CartControllerProvider>();
     final cartItemCount = context.select<CartProvider, int>(
-          (provider) => provider.totalQuantity,
+      (provider) => provider.totalQuantity,
     );
     final orderProvider = context.read<OrderProvider>();
     final splashProvider = context.read<SplashProvider>();
@@ -375,17 +365,16 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     final hasActiveOrder = _activeOrderStartTime != null;
     return PopScope(
       canPop: dashBoardProvider.canPopNow,
-      onPopInvoked: (didPop) =>
-          _handleBackPress(
-            didPop,
-            dashBoardProvider,
-            homeProvider,
-            splashProvider,
-            cartControllerProvider,
-            orderProvider,
-            context,
-            favouriteProvider,
-          ),
+      onPopInvoked: (didPop) => _handleBackPress(
+        didPop,
+        dashBoardProvider,
+        homeProvider,
+        splashProvider,
+        cartControllerProvider,
+        orderProvider,
+        context,
+        favouriteProvider,
+      ),
       child: Scaffold(
         extendBody: true,
         body: _buildAnimatedBody(dashBoardProvider, safeIndex),
@@ -463,14 +452,16 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     );
   }
 
-  void _handleBackPress(bool didPop,
-      DashBoardProvider dashBoardProvider,
-      HomeProvider homeProvider,
-      SplashProvider splashProvider,
-      CartControllerProvider cartControllerProvider,
-      OrderProvider orderProvider,
-      BuildContext context,
-      FavouriteProvider favouriteProvider,) {
+  void _handleBackPress(
+    bool didPop,
+    DashBoardProvider dashBoardProvider,
+    HomeProvider homeProvider,
+    SplashProvider splashProvider,
+    CartControllerProvider cartControllerProvider,
+    OrderProvider orderProvider,
+    BuildContext context,
+    FavouriteProvider favouriteProvider,
+  ) {
     if (didPop) return;
 
     if (dashBoardProvider.selectedIndex == 0) {
@@ -498,8 +489,10 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     }
   }
 
-  Widget _buildAnimatedBody(DashBoardProvider dashBoardProvider,
-      int safeIndex,) {
+  Widget _buildAnimatedBody(
+    DashBoardProvider dashBoardProvider,
+    int safeIndex,
+  ) {
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
@@ -531,15 +524,16 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     );
   }
 
-  Widget _buildOptimizedBottomBar(DashBoardProvider controller,
-      CartControllerProvider cartControllerProvider,
-      int cartItemCount,
-      OrderProvider orderProvider,
-      BuildContext context,
-      SplashProvider splashProvider,
-      HomeProvider homeProvider,
-      // FavouriteProvider favouriteProvider,
-      ) {
+  Widget _buildOptimizedBottomBar(
+    DashBoardProvider controller,
+    CartControllerProvider cartControllerProvider,
+    int cartItemCount,
+    OrderProvider orderProvider,
+    BuildContext context,
+    SplashProvider splashProvider,
+    HomeProvider homeProvider,
+    // FavouriteProvider favouriteProvider,
+  ) {
     final shouldUpdateBadge = cartItemCount != _lastCartItemCount;
     if (shouldUpdateBadge) {
       _lastCartItemCount = cartItemCount;

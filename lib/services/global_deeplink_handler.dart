@@ -458,7 +458,7 @@ class GlobalDeeplinkHandler {
             context,
             listen: false,
           );
-          _navigateToMart(url, martNavigationProvider, context);
+          // _navigateToMart(url, martNavigationProvider, context);
         } catch (e) {
           print(
             '⚠️ [GLOBAL_DEEPLINK] Could not get MartNavigationProvider: $e',
@@ -471,9 +471,9 @@ class GlobalDeeplinkHandler {
         }
       } else if (url.contains('/category/')) {
         final categoryId = _extractCategoryId(url);
-        if (categoryId != null) {
-          _navigateToCategory(categoryId, context);
-        }
+        // if (categoryId != null) {
+        //   _navigateToCategory(categoryId, context);
+        // }
       } else if (url.contains('/deals') || url.contains('/deals/')) {
         _navigateToDeals();
       }
@@ -512,62 +512,62 @@ class GlobalDeeplinkHandler {
   }
 
   /// Navigate to mart
-  void _navigateToMart(
-    String url,
-    MartNavigationProvider martNavigationProvider,
-    BuildContext context,
-  ) {
-    try {
-      print('🔗 [GLOBAL_DEEPLINK] 🛒 Navigating to mart: $url');
-      // Navigate to mart home screen
-      martNavigationProvider.initFunction(context: context);
-      Get.offAll(() => const MartNavigationScreen());
-    } catch (e) {
-      print('❌ [GLOBAL_DEEPLINK] Error navigating to mart: $e');
-    }
-  }
-
-  /// Navigate to category
-  Future<void> _navigateToCategory(
-    String categoryId,
-    BuildContext context,
-  ) async {
-    try {
-      print('🔗 [GLOBAL_DEEPLINK] 📂 Navigating to category: $categoryId');
-
-      final categoryItems = await MartFirestoreService().getItemsByCategoryOnly(
-        categoryId: categoryId,
-      );
-
-      if (categoryItems.isEmpty) {
-        print(
-          '🔗 [GLOBAL_DEEPLINK] ❌ No items found for category ID: $categoryId',
-        );
-        Get.toNamed('/');
-        return;
-      }
-
-      final categoryName = categoryItems.first.name;
-      await Future.delayed(const Duration(milliseconds: 500));
-
-      final categoryDetailsProvider = Provider.of<CategoryDetailsProvider>(
-        context,
-        listen: false,
-      );
-      categoryDetailsProvider.initFunction(
-        categoryIds: categoryId,
-        categoryNames: categoryName,
-      );
-      Get.to(() => const MartCategoryDetailScreen());
-
-      print(
-        '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to category detail screen',
-      );
-    } catch (e) {
-      print('❌ [GLOBAL_DEEPLINK] Error navigating to category: $e');
-      Get.toNamed('/');
-    }
-  }
+  // void _navigateToMart(
+  //   String url,
+  //   MartNavigationProvider martNavigationProvider,
+  //   BuildContext context,
+  // ) {
+  //   try {
+  //     print('🔗 [GLOBAL_DEEPLINK] 🛒 Navigating to mart: $url');
+  //     // Navigate to mart home screen
+  //     martNavigationProvider.initFunction(context: context);
+  //     Get.offAll(() => const MartNavigationScreen());
+  //   } catch (e) {
+  //     print('❌ [GLOBAL_DEEPLINK] Error navigating to mart: $e');
+  //   }
+  // }
+  //
+  // /// Navigate to category
+  // Future<void> _navigateToCategory(
+  //   String categoryId,
+  //   BuildContext context,
+  // ) async {
+  //   try {
+  //     print('🔗 [GLOBAL_DEEPLINK] 📂 Navigating to category: $categoryId');
+  //
+  //     final categoryItems = await MartFirestoreService().getItemsByCategoryOnly(
+  //       categoryId: categoryId,
+  //     );
+  //
+  //     if (categoryItems.isEmpty) {
+  //       print(
+  //         '🔗 [GLOBAL_DEEPLINK] ❌ No items found for category ID: $categoryId',
+  //       );
+  //       Get.toNamed('/');
+  //       return;
+  //     }
+  //
+  //     final categoryName = categoryItems.first.name;
+  //     await Future.delayed(const Duration(milliseconds: 500));
+  //
+  //     final categoryDetailsProvider = Provider.of<CategoryDetailsProvider>(
+  //       context,
+  //       listen: false,
+  //     );
+  //     categoryDetailsProvider.initFunction(
+  //       categoryIds: categoryId,
+  //       categoryNames: categoryName,
+  //     );
+  //     Get.to(() => const MartCategoryDetailScreen());
+  //
+  //     print(
+  //       '🔗 [GLOBAL_DEEPLINK] ✅ Successfully navigated to category detail screen',
+  //     );
+  //   } catch (e) {
+  //     print('❌ [GLOBAL_DEEPLINK] Error navigating to category: $e');
+  //     Get.toNamed('/');
+  //   }
+  // }
 }
 
 /// Helper class to hold dashboard providers

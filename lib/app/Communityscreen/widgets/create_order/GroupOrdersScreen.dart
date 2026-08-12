@@ -15,7 +15,6 @@ class GroupOrdersScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xffF7F8FA),
-
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,

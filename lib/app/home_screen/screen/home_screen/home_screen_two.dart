@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/WelcomeOfferPopup.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/order_type_View.dart';
 import 'package:provider/provider.dart';
 
@@ -74,13 +75,65 @@ class HomeScreenTwo extends StatelessWidget {
 // _HomeBody
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _HomeBody extends StatelessWidget {
+// class _HomeBody extends StatelessWidget {
+//   final HomeProvider controller;
+//
+//   const _HomeBody({required this.controller});
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     if (controller.isLoading || !controller.zoneCheckCompleted) {
+//       return const RestaurantLoadingWidget();
+//     }
+//
+//     return Selector<BestRestaurantProvider, int>(
+//       selector: (_, p) => p.allNearestRestaurant.length,
+//       builder: (context, outletCount, _) {
+//         if (controller.hasActuallyCheckedZone && outletCount == 0) {
+//           return _NoServiceView(
+//             isZoneUnavailable: Constant.isZoneAvailable == false,
+//           );
+//         }
+//
+//         return _HomeMainContent(controller: controller);
+//       },
+//     );
+//   }
+// }
+
+class _HomeBody extends StatefulWidget {
   final HomeProvider controller;
 
   const _HomeBody({required this.controller});
 
   @override
+  State<_HomeBody> createState() => _HomeBodyState();
+}
+
+class _HomeBodyState extends State<_HomeBody> {
+  bool _popupShown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (!_popupShown &&
+        widget.controller.zoneCheckCompleted &&
+        !widget.controller.isLoading) {
+      _popupShown = true;
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          WelcomeOfferPopup.show();
+        }
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final controller = widget.controller;
+
     if (controller.isLoading || !controller.zoneCheckCompleted) {
       return const RestaurantLoadingWidget();
     }
@@ -417,7 +470,7 @@ class _HomeContentCard extends StatelessWidget {
         children: [
           if (hasBanner) const SizedBox(height: kBannerPeekAbove + 12),
           // const SizedBox(height: 0),
-          _OrdertypeSection(),
+          // _OrdertypeSection(),
           _CategorySection(),
           const SizedBox(height: 8),
           const BestRestaurantsSection(restaurantList: []),

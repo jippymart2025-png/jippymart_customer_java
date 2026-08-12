@@ -117,7 +117,7 @@ class RestaurantApiHelper {
   }) async {
     try {
       final Map<String, String> queryParams = {
-        'outletId': "14",
+        'outletId': "15",
         'userType': 'CUSTOMER',
         'customerId': ?await SqlStorageConst.getFirebaseId(),
       };
@@ -578,10 +578,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
 
-      // Non-critical work in background
-      loadFavorites().then((_) {
-        if (hasListeners) notifyListeners();
-      });
+      // // Non-critical work in background
+      // loadFavorites().then((_) {
+      //   if (hasListeners) notifyListeners();
+      // });
       _loadAttributes();
       _refreshDataInBackground();
     } catch (e) {
@@ -666,10 +666,10 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       _buildCategoryProductMapping();
 
       // Non-blocking: must not delay isLoading = false
-      loadFavorites().then((_) {
-        if (hasListeners) notifyListeners();
-      });
-      _loadAttributes();
+      // loadFavorites().then((_) {
+      //   if (hasListeners) notifyListeners();
+      // });
+      // _loadAttributes();
 
       debugPrint('Data loaded in ${stopwatch.elapsedMilliseconds}ms');
     } catch (e) {
@@ -1103,19 +1103,19 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   /// FAVORITES MANAGEMENT
-  Future<void> loadFavorites() async {
-    try {
-      if (Constant.userModel == null) return;
-
-      final favoriteItems = await FavouriteProvider.getFavouriteFoods();
-      favoriteProductIds = favoriteItems
-          .where((item) => item.id != null)
-          .map((item) => item.id.toString())
-          .toList();
-    } catch (e) {
-      debugPrint('❌ Error loading favorites: $e');
-    }
-  }
+  // Future<void> loadFavorites() async {
+  //   try {
+  //     if (Constant.userModel == null) return;
+  //
+  //     final favoriteItems = await FavouriteProvider.getFavouriteFoods();
+  //     favoriteProductIds = favoriteItems
+  //         .where((item) => item.id != null)
+  //         .map((item) => item.id.toString())
+  //         .toList();
+  //   } catch (e) {
+  //     debugPrint('❌ Error loading favorites: $e');
+  //   }
+  // }
 
   Future<void> toggleRestaurantFavorite() async {
     try {

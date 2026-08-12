@@ -51,51 +51,51 @@ class CategoryDetailsProvider extends ChangeNotifier {
   }
 
   Future<void> _initializeData() async {
-    await loadParentCategoryImage();
+    // await loadParentCategoryImage();
     await loadSubcategories();
   }
 
-  Future<void> loadParentCategoryImage() async {
-    try {
-      print(
-        '[CATEGORY DETAIL] 📸 Loading parent category image for: $categoryId',
-      );
-
-      // Special case for trending category - use default image
-      if (categoryId == 'trending') {
-        print(
-          '[CATEGORY DETAIL] 🔥 Special case: Using default image for trending',
-        );
-        parentCategoryImageUrl =
-            'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop';
-        return;
-      }
-
-      if (categoryId == 'featured') {
-        print(
-          '[CATEGORY DETAIL] ⭐ Special case: Using default image for featured',
-        );
-        parentCategoryImageUrl =
-            'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop';
-        return;
-      }
-      // Use Firestore to get parent category image
-      final categories = await _firestoreService.getCategories(limit: 100);
-      final parentCategory = categories.firstWhere(
-        (cat) => cat.id == categoryId,
-        orElse: () => categories.first,
-      );
-
-      parentCategoryImageUrl = parentCategory.photo ?? '';
-      notifyListeners();
-      print(
-        '[CATEGORY DETAIL] 📸 Parent category image URL: $parentCategoryImageUrl',
-      );
-    } catch (e) {
-      notifyListeners();
-      print('[CATEGORY DETAIL] ❌ Error loading parent category image: $e');
-    }
-  }
+  // Future<void> loadParentCategoryImage() async {
+  //   try {
+  //     print(
+  //       '[CATEGORY DETAIL] 📸 Loading parent category image for: $categoryId',
+  //     );
+  //
+  //     // Special case for trending category - use default image
+  //     if (categoryId == 'trending') {
+  //       print(
+  //         '[CATEGORY DETAIL] 🔥 Special case: Using default image for trending',
+  //       );
+  //       parentCategoryImageUrl =
+  //           'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop';
+  //       return;
+  //     }
+  //
+  //     if (categoryId == 'featured') {
+  //       print(
+  //         '[CATEGORY DETAIL] ⭐ Special case: Using default image for featured',
+  //       );
+  //       parentCategoryImageUrl =
+  //           'https://images.unsplash.com/photo-1556228720-195a672e8a03?w=300&h=300&fit=crop';
+  //       return;
+  //     }
+  //     // Use Firestore to get parent category image
+  //     // final categories = await _firestoreService.getCategories(limit: 100);
+  //     // final parentCategory = categories.firstWhere(
+  //     //   (cat) => cat.id == categoryId,
+  //     //   orElse: () => categories.first,
+  //     // );
+  //
+  //     parentCategoryImageUrl = parentCategory.photo ?? '';
+  //     notifyListeners();
+  //     print(
+  //       '[CATEGORY DETAIL] 📸 Parent category image URL: $parentCategoryImageUrl',
+  //     );
+  //   } catch (e) {
+  //     notifyListeners();
+  //     print('[CATEGORY DETAIL] ❌ Error loading parent category image: $e');
+  //   }
+  // }
 
   /// Load subcategories for compatibility with existing code
   Future<void> loadSubcategories() async {
