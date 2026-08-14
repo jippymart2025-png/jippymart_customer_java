@@ -170,6 +170,34 @@ class _CartScreenState extends State<CartScreen> {
 
   Future<void> _handlePlaceOrder(CartControllerProvider controller) async {
     try {
+      // Check delivery address before starting checkout/payment.
+      if (controller.selectedFoodType != 'TakeAway') {
+        final address = controller.selectedAddress;
+
+        if (address == null ||
+            address.location?.latitude == null ||
+            address.location?.longitude == null) {
+          debugPrint(
+            '📍 No delivery address selected. Opening address selection.',
+          );
+
+          await controller.changeLocationFunctionInCart(context: context);
+
+          // User may have closed the address screen without selecting.
+          if (!mounted) return;
+
+          final updatedAddress = controller.selectedAddress;
+
+          if (updatedAddress == null ||
+              updatedAddress.location?.latitude == null ||
+              updatedAddress.location?.longitude == null) {
+            ShowToastDialog.showToast('Please select a delivery address');
+            return;
+          }
+        }
+      }
+
+      // Address is available → continue checkout/payment.
       await controller.processPayment(controller, context);
     } catch (e) {
       debugPrint('❌ [CART_SCREEN] Error placing order: $e');
@@ -395,7 +423,14 @@ class _CartScreenState extends State<CartScreen> {
   // ─── DELIVERY ADDRESS ──────────────────────────────────────────────────────
 
   Widget _buildDeliveryAddress(CartControllerProvider controller) {
-    if (controller.selectedFoodType == 'TakeAway') return const SizedBox();
+    if (controller.selectedFoodType == 'TakeAway') {
+      return const SizedBox();
+    }
+
+    final hasAddress =
+        controller.selectedAddress != null &&
+        controller.selectedAddress!.location?.latitude != null &&
+        controller.selectedAddress!.location?.longitude != null;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
@@ -412,12 +447,14 @@ class _CartScreenState extends State<CartScreen> {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => controller.changeLocationFunctionInCart(context: context),
+        onTap: () async {
+          await controller.changeLocationFunctionInCart(context: context);
+        },
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
             children: [
-              // Pin icon with colored background
+              // Location icon
               Container(
                 width: 40,
                 height: 40,
@@ -431,8 +468,10 @@ class _CartScreenState extends State<CartScreen> {
                   size: 20,
                 ),
               ),
+
               const SizedBox(width: 12),
-              // Address text
+
+              // Address
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -440,41 +479,52 @@ class _CartScreenState extends State<CartScreen> {
                     Row(
                       children: [
                         Text(
-                          'Delivering to',
+                          hasAddress
+                              ? 'Delivering to'
+                              : 'Select delivery address',
                           style: TextStyle(
                             fontSize: 11,
                             fontFamily: AppThemeData.regular,
                             color: AppThemeData.grey500,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: AppThemeData.primary300,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            CartControllerProvider.homeLocationAddressAs(),
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w600,
+
+                        if (hasAddress) ...[
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppThemeData.primary300,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              CartControllerProvider.homeLocationAddressAs(),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
+
                     const SizedBox(height: 3),
+
                     Text(
-                      CartControllerProvider.homeLocationFullAddress(),
+                      hasAddress
+                          ? CartControllerProvider.homeLocationFullAddress()
+                          : 'Choose an address for delivery',
                       style: TextStyle(
                         fontSize: 13,
                         fontFamily: AppThemeData.medium,
-                        color: AppThemeData.grey800,
+                        color: hasAddress
+                            ? AppThemeData.grey800
+                            : AppThemeData.primary300,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -482,17 +532,21 @@ class _CartScreenState extends State<CartScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(width: 8),
-              // Change label
+
+              // Select / Change
               Text(
-                'Change',
+                hasAddress ? 'Change' : 'Select',
                 style: TextStyle(
                   fontSize: 13,
                   fontFamily: AppThemeData.semiBold,
                   color: AppThemeData.primary300,
                 ),
               ),
+
               const SizedBox(width: 4),
+
               Icon(
                 Icons.keyboard_arrow_down_rounded,
                 color: AppThemeData.primary300,

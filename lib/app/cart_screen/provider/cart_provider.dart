@@ -255,7 +255,7 @@ class CartControllerProvider extends ChangeNotifier {
   DateTime? lastOrderAttempt;
   static const Duration orderDebounceTime = Duration(seconds: 3);
 
-  ShippingAddress? selectedAddress = ShippingAddress();
+  ShippingAddress? selectedAddress;
   VendorModel vendorModel = VendorModel();
   DeliveryCharge deliveryChargeModel = DeliveryCharge();
   UserModel userModel = UserModel();
@@ -1440,9 +1440,12 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<bool> fetchCheckoutFromApi({bool silent = false}) async {
-    if (_isFetchingCheckout || HomeProvider.cartItem.isEmpty) return false;
+    if (_isFetchingCheckout || HomeProvider.cartItem.isEmpty) {
+      return false;
+    }
 
     _isFetchingCheckout = true;
+
     if (!silent) {
       ShowToastDialog.showLoader('Please wait'.tr);
     }
@@ -1453,42 +1456,45 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+
       final customerAddressId = int.tryParse(selectedAddress?.id?.trim() ?? '');
+
       final outletId = _resolveOutletIdForCheckout();
 
+      print('========== CHECKOUT DEBUG ==========');
+      print('customerId: $customerId');
+      print('customerAddressId: $customerAddressId');
+      print('selectedAddress.id: ${selectedAddress?.id}');
+      print('outletId: $outletId');
+      print('couponDiscount: $couponAmount');
+      print('deliveryTip: $deliveryTips');
+      print('====================================');
+
       if (customerId == null) {
-        if (!silent) {
-          ShowToastDialog.showToast('Please log in to continue'.tr);
-        }
+        ShowToastDialog.showToast('Please log in to continue'.tr);
         return false;
       }
 
-      // if (customerAddressId == null) {
-      //   if (!silent) {
-      //     ShowToastDialog.showToast('Please select a delivery address'.tr);
-      //   }
-      //   return false;
-      // }
+      if (customerAddressId == null) {
+        ShowToastDialog.showToast('Please select a delivery address'.tr);
+        return false;
+      }
 
       if (outletId == null) {
-        if (!silent) {
-          ShowToastDialog.showToast('Restaurant not found for this cart'.tr);
-        }
+        ShowToastDialog.showToast('Restaurant not found for this cart'.tr);
         return false;
       }
 
       final checkout = await CartApiService.checkout(
         customerId: customerId,
-        customerAddressId: 325,
+        customerAddressId: customerAddressId,
         outletId: outletId,
         couponDiscount: couponAmount,
         deliveryTip: deliveryTips,
       );
 
       if (checkout == null) {
-        if (!silent) {
-          ShowToastDialog.showToast('Failed to calculate checkout'.tr);
-        }
+        print('[CART_CHECKOUT] API returned NULL');
         return false;
       }
 
@@ -1496,19 +1502,104 @@ class CartControllerProvider extends ChangeNotifier {
       checkAndUpdatePaymentMethod();
       updateCartReadiness();
       notifyListeners();
+
       return true;
-    } catch (e) {
-      debugPrint('[CART_CHECKOUT] Error: $e');
+    } catch (e, stackTrace) {
+      print('========================================');
+      print('[CART_CHECKOUT] BACKEND/API ERROR');
+      print('[CART_CHECKOUT] $e');
+      print('[CART_CHECKOUT] STACK TRACE');
+      print(stackTrace);
+      print('========================================');
+
       if (!silent) {
-        ShowToastDialog.showToast('Failed to calculate checkout'.tr);
+        String message = e.toString();
+
+        if (message.startsWith('Exception: ')) {
+          message = message.substring(11);
+        }
+
+        ShowToastDialog.showToast(message);
       }
+
       return false;
     } finally {
       _isFetchingCheckout = false;
+
       if (!silent) {
         ShowToastDialog.closeLoader();
       }
     }
+  }
+
+  Future<bool> selectAddressAndFetchCheckout(BuildContext context) async {
+    if (HomeProvider.cartItem.isEmpty) {
+      return false;
+    }
+
+    // Open address screen
+    final result = await Get.to(() => const AddressListScreen());
+
+    // If address screen returned an address, use it
+    if (result is ShippingAddress) {
+      selectedAddress = result;
+
+      debugPrint('[ADDRESS] Selected ID: ${selectedAddress?.id}');
+      debugPrint('[ADDRESS] Selected address: ${selectedAddress?.address}');
+      debugPrint('[ADDRESS] Lat: ${selectedAddress?.location?.latitude}');
+      debugPrint('[ADDRESS] Lng: ${selectedAddress?.location?.longitude}');
+    }
+
+    // IMPORTANT:
+    // If AddressListScreen doesn't return the address,
+    // try getting the current selected location from Constant.
+    if (selectedAddress == null) {
+      final location = Constant.selectedLocation;
+
+      if (location.id != null &&
+          location.id!.trim().isNotEmpty &&
+          location.location?.latitude != null &&
+          location.location?.longitude != null) {
+        selectedAddress = ShippingAddress(
+          id: location.id,
+          addressAs: location.addressAs,
+          address: location.address,
+          locality: location.locality,
+          location: UserLocation(
+            latitude: location.location!.latitude!,
+            longitude: location.location!.longitude!,
+          ),
+          zoneId: location.zoneId,
+        );
+
+        debugPrint(
+          '[ADDRESS] Recovered from Constant.selectedLocation: ${selectedAddress?.id}',
+        );
+      }
+    }
+
+    // Final validation
+    final addressId = int.tryParse(selectedAddress?.id?.trim() ?? '');
+
+    debugPrint('[ADDRESS] FINAL selectedAddress ID = ${selectedAddress?.id}');
+    debugPrint('[ADDRESS] FINAL parsed addressId = $addressId');
+
+    if (addressId == null) {
+      ShowToastDialog.showToast('Please select a delivery address'.tr);
+      return false;
+    }
+
+    // Clear distance cache
+    _cachedDistance = null;
+    _cachedCustomerLat = null;
+    _cachedCustomerLng = null;
+    _cachedVendorLat = null;
+    _cachedVendorLng = null;
+
+    notifyListeners();
+
+    // Now checkout API
+    return await fetchCheckoutFromApi();
   }
 
   // ============ PRICE SYNC OPTIMIZATIONS ============

@@ -2060,16 +2060,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/models/mart_banner_model.dart';
 import 'package:jippymart_customer/models/mart_category_model.dart';
 import 'package:jippymart_customer/models/mart_delivery_settings_model.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/models/mart_subcategory_model.dart';
 import 'package:jippymart_customer/models/mart_vendor_model.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
-import 'package:jippymart_customer/services/api_queue_manager.dart';
-import 'package:jippymart_customer/services/cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
@@ -2180,7 +2176,7 @@ class MartProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
     try {
-      await _loadVendors();
+      // await _loadVendors();
       // await _loadCategories();
       // await _loadProductsPage0();
     } finally {
@@ -2199,23 +2195,23 @@ class MartProvider extends ChangeNotifier {
   }
 
   // ── Vendors ──────────────────────────────────────────────────────────────────
-  Future<void> _loadVendors() async {
-    try {
-      isVendorLoading = true;
-      final vendors = await _firestoreService.getMartVendors().timeout(
-        const Duration(seconds: 12),
-      );
-      martVendors = vendors;
-      if (selectedVendorId.isEmpty && vendors.isNotEmpty) {
-        selectedVendorId = vendors.first.id ?? '';
-        currentVendor = vendors.first;
-      }
-    } catch (e) {
-      debugPrint('[MART] vendors error: $e');
-    } finally {
-      isVendorLoading = false;
-    }
-  }
+  // Future<void> _loadVendors() async {
+  //   try {
+  //     isVendorLoading = true;
+  //     final vendors = await _firestoreService.getMartVendors().timeout(
+  //       const Duration(seconds: 12),
+  //     );
+  //     martVendors = vendors;
+  //     if (selectedVendorId.isEmpty && vendors.isNotEmpty) {
+  //       selectedVendorId = vendors.first.id ?? '';
+  //       currentVendor = vendors.first;
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[MART] vendors error: $e');
+  //   } finally {
+  //     isVendorLoading = false;
+  //   }
+  // }
 
   // ── Categories ───────────────────────────────────────────────────────────────
   // Future<void> _loadCategories() async {
@@ -2714,7 +2710,7 @@ class MartProvider extends ChangeNotifier {
   // }
 
   // ── Stubs kept for compatibility with other screens ───────────────────────────
-  Future<void> loadMartVendors({bool refresh = false}) => _loadVendors();
+  // Future<void> loadMartVendors({bool refresh = false}) => _loadVendors();
 
   // Future<void> loadFeaturedCategories() => _loadCategories();
 

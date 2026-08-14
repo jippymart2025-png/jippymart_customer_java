@@ -287,7 +287,8 @@ class AddressListProvider extends ChangeNotifier {
       final headers = await getHeaders();
       final response = await http
           .get(
-            Uri.parse('${AppConst.outletBaseUrl}co/customers/$userId'),
+            // Uri.parse('${AppConst.outletBaseUrl}co/customers/$userId'),
+            Uri.parse('${AppConst.outletBaseUrl}co/customers/46'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 15)); // Reduced timeout

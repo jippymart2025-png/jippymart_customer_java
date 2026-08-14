@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:jippymart_customer/app/address_screens/screens/address_list_screen.dart';
 import 'package:jippymart_customer/app/cart_check_out_page/cart_check_out_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
-import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/home_screen_two.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/order_screen.dart';
@@ -11,7 +10,6 @@ import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.da
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-
 import '../../../utils/utils/color_const.dart';
 import '../../profile_screen/profile_screen.dart';
 

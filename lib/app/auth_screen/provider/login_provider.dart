@@ -149,36 +149,13 @@ class LoginProvider extends ChangeNotifier {
   }
 
   // Debounced OTP sending to prevent spam
-  // Future<void> sendOtp({String countryCode = '+91'}) async {
-  //   // Cancel previous debounce timer
-  //   _debounceTimer?.cancel();
-  //
-  //   // Rate limiting check
-  //   if (_lastOtpRequestTime != null) {
-  //     final now = DateTime.now();
-  //     if (now.difference(_lastOtpRequestTime!) < _otpCooldown) {
-  //       ShowToastDialog.showToast(
-  //         "Please wait before requesting another OTP".tr,
-  //       );
-  //       return;
-  //     }
-  //   }
-  //
-  //   await _sendOtpInternal(countryCode);
-  // }
-
   Future<void> sendOtp({String countryCode = '+91'}) async {
-    // TEMPORARY: Bypass OTP and go directly to Home
-    Get.offAll(() => const HomeScreenTwo());
-
-    return;
-
-    // Existing OTP code
+    // Cancel previous debounce timer
     _debounceTimer?.cancel();
 
+    // Rate limiting check
     if (_lastOtpRequestTime != null) {
       final now = DateTime.now();
-
       if (now.difference(_lastOtpRequestTime!) < _otpCooldown) {
         ShowToastDialog.showToast(
           "Please wait before requesting another OTP".tr,

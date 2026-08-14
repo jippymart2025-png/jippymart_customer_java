@@ -371,8 +371,9 @@ class FireStoreUtils {
   static const Duration _vendorCacheDuration = Duration(minutes: 5);
 
   static bool _isValidVendorId(String vendorId) {
-    if (vendorId.isEmpty || vendorId == 'null') return false;
-    return vendorId.trim().isNotEmpty;
+    final id = vendorId.trim();
+    if (id.isEmpty || id == 'null' || id == '0') return false;
+    return true;
   }
 
   static bool _isVendorCacheValid(_CachedVendor entry) {

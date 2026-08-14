@@ -105,9 +105,10 @@ class CartApiService {
   }) async {
     try {
       final uri = Uri.parse('${_base}co/checkout');
+
       final body = {
         'customerId': customerId,
-        'customerAddressId': 205,
+        'customerAddressId': customerAddressId,
         'outletId': outletId,
         'couponDiscount': couponDiscount,
         'deliveryTip': deliveryTip,
@@ -123,12 +124,39 @@ class CartApiService {
       print('[CartApi] status: ${response.statusCode}');
       print('[CartApi] response: ${response.body}');
 
-      if (response.statusCode != 200 && response.statusCode != 201) {
-        return null;
+      // Decode response first
+      dynamic decoded;
+
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (_) {
+        throw Exception('Backend returned invalid response: ${response.body}');
       }
 
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) return null;
+      // Backend error
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        dynamic decoded;
+
+        try {
+          decoded = jsonDecode(response.body);
+        } catch (_) {
+          throw Exception('Checkout failed: ${response.body}');
+        }
+
+        if (decoded is Map<String, dynamic>) {
+          final errorMessage =
+              decoded['errorMessage']?.toString() ??
+              decoded['message']?.toString() ??
+              decoded['error']?.toString();
+
+          throw Exception(errorMessage ?? 'Checkout failed');
+        }
+
+        throw Exception('Checkout failed');
+      }
+      if (decoded is! Map<String, dynamic>) {
+        throw Exception('Invalid checkout response');
+      }
 
       final data = decoded.containsKey('data') && decoded['data'] is Map
           ? Map<String, dynamic>.from(decoded['data'] as Map)
@@ -137,7 +165,7 @@ class CartApiService {
       return CustomerCheckoutModel.fromJson(data);
     } catch (e) {
       print('[CartApi] checkout error: $e');
-      return null;
+      rethrow;
     }
   }
 }

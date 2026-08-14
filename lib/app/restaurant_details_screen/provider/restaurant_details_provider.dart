@@ -33,6 +33,17 @@ import '../../group_order_section/service/group_order_api_service.dart';
 
 /// STATIC HELPER METHODS - Moved outside the class
 class RestaurantApiHelper {
+  static final Map<String, Future<Map<String, dynamic>>> _pendingOutletDetails =
+      {};
+
+  static bool isValidOutletId(String? outletId) {
+    if (outletId == null) return false;
+    final id = outletId.trim();
+    if (id.isEmpty || id == '0' || id == 'null') return false;
+    final parsed = int.tryParse(id);
+    return parsed != null && parsed > 0;
+  }
+
   static Future<List<CouponModel>> getRestaurantCoupons({
     required String restaurantId,
     required String zoneId,
@@ -115,11 +126,60 @@ class RestaurantApiHelper {
     bool? isNonVeg,
     bool? offerOnly,
   }) async {
+    if (!isValidOutletId(restaurantId)) {
+      debugPrint(
+        'Outlet details skipped: invalid outletId="$restaurantId"',
+      );
+      throw ArgumentError('outletId must be a valid non-zero restaurant id');
+    }
+
+    final normalizedId = restaurantId.trim();
+    final cacheKey = [
+      normalizedId,
+      search ?? '',
+      isVeg == true ? '1' : '0',
+      isNonVeg == true ? '1' : '0',
+      offerOnly == true ? '1' : '0',
+    ].join('|');
+
+    final pending = _pendingOutletDetails[cacheKey];
+    if (pending != null) {
+      debugPrint('Outlet details deduped: $cacheKey');
+      return pending;
+    }
+
+    final request = _fetchRestaurantProducts(
+      restaurantId: normalizedId,
+      search: search,
+      isVeg: isVeg,
+      isNonVeg: isNonVeg,
+      offerOnly: offerOnly,
+    );
+    _pendingOutletDetails[cacheKey] = request;
+
     try {
+      return await request;
+    } finally {
+      _pendingOutletDetails.remove(cacheKey);
+    }
+  }
+
+  static Future<Map<String, dynamic>> _fetchRestaurantProducts({
+    required String restaurantId,
+    String? search,
+    bool? isVeg,
+    bool? isNonVeg,
+    bool? offerOnly,
+  }) async {
+    try {
+      final customerId = await SqlStorageConst.getUserId();
       final Map<String, String> queryParams = {
-        'outletId': "15",
+        'outletId': restaurantId,
         'userType': 'CUSTOMER',
-        'customerId': ?await SqlStorageConst.getFirebaseId(),
+        if (customerId != null &&
+            customerId.isNotEmpty &&
+            customerId != '0')
+          'customerId': customerId,
       };
 
       if (search != null && search.isNotEmpty) {
@@ -272,11 +332,16 @@ class RestaurantApiHelper {
     if (jsonResponse is! Map<String, dynamic>) return [];
 
     final outletsList = _parseNearbyOutletsList(jsonResponse);
-    final restaurants = outletsList
-        .whereType<Map>()
-        .map((e) => Outlet.fromJson(Map<String, dynamic>.from(e)))
-        .map((outlet) => outlet.toVendorModel())
-        .toList();
+    final restaurants = <VendorModel>[];
+    for (final item in outletsList) {
+      if (item is! Map) continue;
+      try {
+        final outlet = Outlet.fromJson(Map<String, dynamic>.from(item));
+        restaurants.add(outlet.toVendorModel());
+      } catch (e) {
+        debugPrint('[OUTLET_API] Skipping invalid outlet: $e');
+      }
+    }
 
     debugPrint('[OUTLET_API] Outlets fetched: ${restaurants.length}');
 
@@ -298,8 +363,8 @@ class RestaurantApiHelper {
       );
       if (restaurants.isNotEmpty) return true;
 
-      if (outletId != null && outletId.isNotEmpty) {
-        await getRestaurantProducts(restaurantId: outletId);
+      if (RestaurantApiHelper.isValidOutletId(outletId)) {
+        await getRestaurantProducts(restaurantId: outletId!);
         return true;
       }
 
@@ -421,6 +486,8 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   bool _shouldScrollToProduct = false;
   int? _groupOrderInvitationId;
   int? _groupOrderHostCustomerId;
+  String? _loadingRestaurantId;
+  Future<void>? _activeLoadFuture;
 
   // Cache maps
   final Map<String, GlobalKey> categoryKeys =
@@ -505,30 +572,93 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   /// INITIALIZATION - OPTIMIZED WITH CACHE
   /// Keep both methods for compatibility
-  Future<void> initFunction({required VendorModel vendorModels}) async {
-    await getArgument(vendorModels: vendorModels);
+  Future<void> initFunction({
+    required VendorModel vendorModels,
+    bool forceRefresh = false,
+  }) async {
+    await getArgument(vendorModels: vendorModels, forceRefresh: forceRefresh);
   }
 
-  Future<void> getArgument({required VendorModel vendorModels}) async {
+  Future<void> getArgument({
+    required VendorModel vendorModels,
+    bool forceRefresh = false,
+  }) async {
     // Normal restaurant browsing should use the regular cart, not group cart.
     clearGroupOrderContext();
+
+    final restaurantId = vendorModels.id?.trim();
+    if (!RestaurantApiHelper.isValidOutletId(restaurantId)) {
+      debugPrint(
+        '🔥 getArgument blocked: invalid restaurant id="$restaurantId"',
+      );
+      ShowToastDialog.showToast("Restaurant unavailable");
+      isLoading = false;
+      notifyListeners();
+      return;
+    }
+
+    // Avoid repeated getOutletDetails calls for the same restaurant.
+    if (!forceRefresh &&
+        _loadingRestaurantId == restaurantId &&
+        _activeLoadFuture != null) {
+      debugPrint('🔥 getArgument deduped for restaurantId=$restaurantId');
+      return _activeLoadFuture!;
+    }
+
+    if (!forceRefresh &&
+        _hasInitialData &&
+        vendorModel.id == restaurantId &&
+        allProductList.isNotEmpty &&
+        !isLoading) {
+      debugPrint(
+        '🔥 getArgument skipped: already loaded restaurantId=$restaurantId',
+      );
+      return;
+    }
 
     // Clear previous state and immediately mark as loading so UI shows shimmer
     _clearState();
     isLoading = true;
+    _loadingRestaurantId = restaurantId;
     notifyListeners();
 
     vendorModel = vendorModels;
+    // Keep a stable non-zero id even if later API payloads omit outletId.
+    vendorModel.id = restaurantId;
 
-    // Try to load from cache first
-    final cachedData = RestaurantCache.get(vendorModel.id ?? '');
-    if (cachedData != null) {
-      await _loadFromCache(cachedData);
-      return;
-    }
+    debugPrint(
+      '🔥 getArgument ASSIGNED => '
+      'id=${vendorModel.id}, '
+      'title=${vendorModel.title}',
+    );
 
-    // If no cache, load fresh data
-    await _loadFreshData();
+    final loadFuture = () async {
+      try {
+        if (forceRefresh) {
+          RestaurantCache.clear(restaurantId!);
+        }
+        final cachedData =
+            forceRefresh ? null : RestaurantCache.get(restaurantId!);
+        if (cachedData != null) {
+          await _loadFromCache(cachedData);
+          return;
+        }
+        debugPrint(
+          '🔥 BEFORE LOAD FRESH => '
+          'id=${vendorModel.id}, '
+          'title=${vendorModel.title}',
+        );
+        await _loadFreshData();
+      } finally {
+        if (_loadingRestaurantId == restaurantId) {
+          _loadingRestaurantId = null;
+          _activeLoadFuture = null;
+        }
+      }
+    }();
+
+    _activeLoadFuture = loadFuture;
+    await loadFuture;
   }
 
   void _clearState() {
@@ -537,6 +667,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     isNonVag = false;
     isOfferFilter = false;
     _lastSearchQuery = '';
+    _hasInitialData = false;
     _allProductsWithPromotions.clear();
     _promotionDataCache.clear();
     _promotionCheckedCache.clear();
@@ -583,9 +714,15 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       //   if (hasListeners) notifyListeners();
       // });
       _loadAttributes();
-      _refreshDataInBackground();
+      // Do not re-call getOutletDetails immediately after serving cache.
+      // Pull-to-refresh uses forceRefresh when a fresh fetch is needed.
     } catch (e) {
       // If cache fails, load fresh data
+      debugPrint(
+        '🔥 BEFORE LOAD FRESH => '
+        'id=${vendorModel.id}, '
+        'title=${vendorModel.title}',
+      );
       await _loadFreshData();
     }
   }
@@ -594,10 +731,16 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
+    final restaurantId = vendorModel.id?.trim();
+    if (!RestaurantApiHelper.isValidOutletId(restaurantId)) {
+      isLoading = false;
+      notifyListeners();
+      throw ArgumentError('Invalid restaurant id: $restaurantId');
+    }
+
     try {
-      await _loadCriticalDataInParallel(
-        restaurantId: vendorModel.id.toString(),
-      );
+      debugPrint('🔥 LOAD FRESH DATA => vendorModel.id=$restaurantId');
+      await _loadCriticalDataInParallel(restaurantId: restaurantId!);
 
       _hasInitialData = true;
       isLoading = false;
@@ -611,15 +754,23 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   Future<void> _refreshDataInBackground() async {
+    final restaurantId = vendorModel.id?.trim();
+    if (!RestaurantApiHelper.isValidOutletId(restaurantId)) {
+      debugPrint(
+        'Background refresh skipped: invalid restaurant id="$restaurantId"',
+      );
+      return;
+    }
+
     try {
       final previousFavorite = _isRestaurantFavorite;
-      final freshData = await _fetchAllRestaurantData(vendorModel.id!);
+      final freshData = await _fetchAllRestaurantData(restaurantId!);
 
       // Update cache with fresh data
       RestaurantCache.set(
-        vendorModel.id!,
+        restaurantId,
         RestaurantCacheData(
-          restaurantId: vendorModel.id!,
+          restaurantId: restaurantId,
           products: freshData.products,
           categories: freshData.categories,
           isFavourite: freshData.isFavourite,
@@ -652,6 +803,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
 
     try {
+      debugPrint('🔥 CRITICAL DATA restaurantId = $restaurantId');
       final restaurantData = await _fetchAllRestaurantData(restaurantId);
 
       RestaurantCache.set(restaurantId, restaurantData);
@@ -681,6 +833,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   Future<RestaurantCacheData> _fetchAllRestaurantData(
     String restaurantId,
   ) async {
+    if (!RestaurantApiHelper.isValidOutletId(restaurantId)) {
+      throw ArgumentError('Invalid restaurant id: $restaurantId');
+    }
+
+    debugPrint('🔥 FETCH ALL RESTAURANT restaurantId = $restaurantId');
     try {
       final apiData = await RestaurantApiHelper.getRestaurantProducts(
         restaurantId: restaurantId,
@@ -703,10 +860,15 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   OutletDetails _applyOutletDetails(Map<String, dynamic> apiData) {
+    final preservedId = vendorModel.id;
     final outletDetails = OutletDetails.fromJson(apiData);
 
-    // Update restaurant details
+    // Update restaurant details without clobbering a valid id with 0.
     vendorModel = outletDetails.toVendorModel(existing: vendorModel);
+    if (!RestaurantApiHelper.isValidOutletId(vendorModel.id) &&
+        RestaurantApiHelper.isValidOutletId(preservedId)) {
+      vendorModel.id = preservedId;
+    }
     _isRestaurantFavorite = outletDetails.isFavourite;
 
     // Initialize product favourites from API response
@@ -986,18 +1148,31 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   Future<void> _performAPISearch(String query) async {
+    final restaurantId = vendorModel.id?.trim();
+    if (!RestaurantApiHelper.isValidOutletId(restaurantId)) {
+      isSearching = false;
+      notifyListeners();
+      return;
+    }
+
     try {
+      debugPrint('🔥 API SEARCH vendorModel.id = $restaurantId');
+
       final apiData = await RestaurantApiHelper.getRestaurantProducts(
-        restaurantId: vendorModel.id!,
+        restaurantId: restaurantId!,
         search: query,
         isVeg: isVag,
         isNonVeg: isNonVag,
         offerOnly: isOfferFilter,
       );
 
+      debugPrint('🔥 API SEARCH COMPLETED vendorModel.id = ${vendorModel.id}');
+
       final outletDetails = _applyOutletDetails(apiData);
+
       productList = outletDetails.allProducts;
       vendorCategoryList = outletDetails.vendorCategories;
+
       _buildCategoryProductMapping();
     } catch (e) {
       debugPrint('❌ API search failed: $e');
@@ -1008,15 +1183,21 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   }
 
   Future<void> _performAPISearchInBackground(String query) async {
+    final restaurantId = vendorModel.id?.trim();
+    if (!RestaurantApiHelper.isValidOutletId(restaurantId)) return;
+
     try {
       final apiData = await RestaurantApiHelper.getRestaurantProducts(
-        restaurantId: vendorModel.id!,
+        restaurantId: restaurantId!,
         search: query,
         isVeg: isVag,
         isNonVeg: isNonVag,
         offerOnly: isOfferFilter,
       );
 
+      debugPrint(
+        '🔥 getRestaurantProducts RECEIVED restaurantId = $restaurantId',
+      );
       final outletDetails = _applyOutletDetails(apiData);
       final apiProducts = outletDetails.allProducts;
       if (_lastSearchQuery == query && apiProducts.isNotEmpty) {
@@ -1823,12 +2004,20 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     return await PerformanceMonitor.monitorOperation(
       'loadProductsViaAPI',
       () async {
+        final restaurantId = vendorModel.id?.trim();
+        if (!RestaurantApiHelper.isValidOutletId(restaurantId)) {
+          debugPrint(
+            'loadProductsViaAPI skipped: invalid restaurant id="$restaurantId"',
+          );
+          return;
+        }
+
         productsLoading = true;
         notifyListeners();
 
         try {
           final apiData = await RestaurantApiHelper.getRestaurantProducts(
-            restaurantId: vendorModel.id!,
+            restaurantId: restaurantId!,
             search: searchEditingController.text.isNotEmpty
                 ? searchEditingController.text
                 : null,

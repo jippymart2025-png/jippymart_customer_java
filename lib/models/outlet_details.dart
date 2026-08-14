@@ -130,8 +130,14 @@ class OutletDetails {
   });
 
   factory OutletDetails.fromJson(Map<String, dynamic> json) {
-    final outletId = json['outletId'] ?? 0;
-    final outletIdStr = outletId.toString();
+    final rawId = json['outletId'];
+    final parsedId = rawId is int
+        ? rawId
+        : int.tryParse(rawId?.toString() ?? '');
+    // Keep 0 only as a sentinel when API omits outletId; callers must not
+    // overwrite a known-good vendor id with this value.
+    final outletId = (parsedId != null && parsedId > 0) ? parsedId : 0;
+    final outletIdStr = outletId > 0 ? outletId.toString() : '';
 
     final timingsJson = json['outletTimings'];
     final outletTimings = <OutletTiming>[];
@@ -154,7 +160,7 @@ class OutletDetails {
     }
 
     return OutletDetails(
-      outletId: outletId is int ? outletId : int.tryParse('$outletId') ?? 0,
+      outletId: outletId,
       outletName: json['outletName']?.toString() ?? '',
       outletPhone: json['outletPhone']?.toString(),
       isFavourite: json['isFavourite'] == true,
@@ -186,8 +192,11 @@ class OutletDetails {
     final isOpenNow = todayTiming?.isOpen ?? true;
 
     if (existing != null) {
-      existing.id = outletId.toString();
-      existing.title = outletName;
+      // Never overwrite a real restaurant id with 0/empty from a partial API payload.
+      if (outletId > 0) {
+        existing.id = outletId.toString();
+      }
+      existing.title = outletName.isNotEmpty ? outletName : existing.title;
       existing.phonenumber = outletPhone ?? existing.phonenumber;
       existing.workingHours = workingHours.isNotEmpty
           ? workingHours
@@ -200,7 +209,7 @@ class OutletDetails {
     }
 
     return VendorModel(
-      id: outletId.toString(),
+      id: outletId > 0 ? outletId.toString() : null,
       title: outletName,
       phonenumber: outletPhone ?? '',
       workingHours: workingHours,

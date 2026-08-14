@@ -36,8 +36,16 @@ class Outlet {
   });
 
   factory Outlet.fromJson(Map<String, dynamic> json) {
+    final rawId = json['outletId'];
+    final parsedId = rawId is int
+        ? rawId
+        : int.tryParse(rawId?.toString() ?? '');
+    if (parsedId == null || parsedId == 0) {
+      throw FormatException('Invalid outletId: $rawId');
+    }
+
     return Outlet(
-      outletId: json['outletId'] ?? 0,
+      outletId: parsedId,
       outletName: json['outletName']?.toString() ?? '',
       cuisineType: json['cuisineType']?.toString(),
       outletPicUrl: json['outletPicUrl']?.toString(),
@@ -56,7 +64,7 @@ class Outlet {
   }
 
   VendorModel toVendorModel() {
-    final rating = review ?? 0.0;
+    final rating = review;
 
     return VendorModel(
       id: outletId.toString(),
@@ -64,7 +72,7 @@ class Outlet {
       photo: outletPicUrl,
       phonenumber: outletPhone ?? '',
       reviewsSum: rating,
-      reviewsCount: rating > 0 ? 1 : 0,
+      reviewsCount: rating != null && rating > 0 ? 1 : null,
       distance: distanceKm,
       isOpen: openNow ?? true,
       isActive: true,

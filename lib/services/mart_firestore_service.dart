@@ -1096,95 +1096,95 @@ class MartFirestoreService extends GetxService {
   //changed here
 
   /// Get mart vendors from API
-  Future<List<MartVendorModel>> getMartVendors({String? search}) async {
-    try {
-      print('[MART API] 🏪 Fetching mart vendors from API...');
-      final Map<String, String> queryParams = {};
-      if (search != null && search.isNotEmpty) {
-        queryParams['search'] = search;
-      }
-      // Build URI
-      final uri = Uri.parse(
-        '${AppConst.baseUrl}mart-items/getMartVendors',
-      ).replace(queryParameters: queryParams);
-
-      // Make API request
-      final response = await http.get(uri, headers: await getHeaders());
-
-      print(
-        '[MART API] 🏪 API request completed with status: ${response.statusCode}',
-      );
-
-      if (response.statusCode != 200) {
-        print(
-          '[MART API] ❌ API request failed with status: ${response.statusCode}',
-        );
-        return [];
-      }
-
-      // Parse response body
-      final responseBody = json.decode(response.body);
-
-      if (responseBody == null || responseBody['success'] != true) {
-        print('[MART API] ⚠️ No vendors found in API response');
-        return [];
-      }
-
-      final List<dynamic> vendorsData = responseBody['data'] ?? [];
-
-      print('[MART API] 🏪 API returned ${vendorsData.length} vendors');
-
-      if (vendorsData.isEmpty) {
-        print('[MART API] ⚠️ No vendors found in API');
-        return [];
-      }
-
-      // Convert API response to MartVendorModel
-      final vendors = vendorsData
-          .map((vendorData) {
-            try {
-              if (vendorData == null) {
-                print('[MART API] ⚠️ Vendor data is null');
-                return null;
-              }
-
-              // Ensure data is a Map<String, dynamic>
-              if (vendorData is! Map<String, dynamic>) {
-                print(
-                  '[MART API] ⚠️ Vendor data is not a Map, type: ${vendorData.runtimeType}',
-                );
-                return null;
-              }
-
-              final Map<String, dynamic> vendorMap = Map<String, dynamic>.from(
-                vendorData,
-              );
-
-              // Handle JSON string fields that need parsing
-              _handleJsonStringFields(vendorMap);
-
-              // Handle numeric and boolean fields
-              _handleNumericAndBooleanFields(vendorMap);
-
-              return MartVendorModel.fromJson(vendorMap);
-            } catch (e) {
-              print('[MART API] ❌ Error parsing API vendor data: $e');
-              return null;
-            }
-          })
-          .whereType<MartVendorModel>()
-          .toList();
-
-      print(
-        '[MART API] ✅ Successfully parsed ${vendors.length} vendors from API',
-      );
-
-      return vendors;
-    } catch (e) {
-      print('[MART API] ❌ Error fetching vendors from API: $e');
-      return [];
-    }
-  }
+  // Future<List<MartVendorModel>> getMartVendors({String? search}) async {
+  //   try {
+  //     print('[MART API] 🏪 Fetching mart vendors from API...');
+  //     final Map<String, String> queryParams = {};
+  //     if (search != null && search.isNotEmpty) {
+  //       queryParams['search'] = search;
+  //     }
+  //     // Build URI
+  //     final uri = Uri.parse(
+  //       '${AppConst.baseUrl}mart-items/getMartVendors',
+  //     ).replace(queryParameters: queryParams);
+  //
+  //     // Make API request
+  //     final response = await http.get(uri, headers: await getHeaders());
+  //
+  //     print(
+  //       '[MART API] 🏪 API request completed with status: ${response.statusCode}',
+  //     );
+  //
+  //     if (response.statusCode != 200) {
+  //       print(
+  //         '[MART API] ❌ API request failed with status: ${response.statusCode}',
+  //       );
+  //       return [];
+  //     }
+  //
+  //     // Parse response body
+  //     final responseBody = json.decode(response.body);
+  //
+  //     if (responseBody == null || responseBody['success'] != true) {
+  //       print('[MART API] ⚠️ No vendors found in API response');
+  //       return [];
+  //     }
+  //
+  //     final List<dynamic> vendorsData = responseBody['data'] ?? [];
+  //
+  //     print('[MART API] 🏪 API returned ${vendorsData.length} vendors');
+  //
+  //     if (vendorsData.isEmpty) {
+  //       print('[MART API] ⚠️ No vendors found in API');
+  //       return [];
+  //     }
+  //
+  //     // Convert API response to MartVendorModel
+  //     final vendors = vendorsData
+  //         .map((vendorData) {
+  //           try {
+  //             if (vendorData == null) {
+  //               print('[MART API] ⚠️ Vendor data is null');
+  //               return null;
+  //             }
+  //
+  //             // Ensure data is a Map<String, dynamic>
+  //             if (vendorData is! Map<String, dynamic>) {
+  //               print(
+  //                 '[MART API] ⚠️ Vendor data is not a Map, type: ${vendorData.runtimeType}',
+  //               );
+  //               return null;
+  //             }
+  //
+  //             final Map<String, dynamic> vendorMap = Map<String, dynamic>.from(
+  //               vendorData,
+  //             );
+  //
+  //             // Handle JSON string fields that need parsing
+  //             _handleJsonStringFields(vendorMap);
+  //
+  //             // Handle numeric and boolean fields
+  //             _handleNumericAndBooleanFields(vendorMap);
+  //
+  //             return MartVendorModel.fromJson(vendorMap);
+  //           } catch (e) {
+  //             print('[MART API] ❌ Error parsing API vendor data: $e');
+  //             return null;
+  //           }
+  //         })
+  //         .whereType<MartVendorModel>()
+  //         .toList();
+  //
+  //     print(
+  //       '[MART API] ✅ Successfully parsed ${vendors.length} vendors from API',
+  //     );
+  //
+  //     return vendors;
+  //   } catch (e) {
+  //     print('[MART API] ❌ Error fetching vendors from API: $e');
+  //     return [];
+  //   }
+  // }
 
   /// Helper method to handle JSON string fields
   void _handleJsonStringFields(Map<String, dynamic> vendorData) {

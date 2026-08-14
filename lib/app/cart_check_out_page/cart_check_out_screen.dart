@@ -15,6 +15,9 @@ import 'package:get/get.dart';
 import 'package:jippymart_customer/utils/utils/image_const.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/user_model.dart';
+import '../address_screens/screens/address_list_screen.dart';
+
 class CartCheckOutScreen extends StatefulWidget {
   final bool hideBackButton;
   final String? source;
@@ -381,12 +384,42 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   Future<void> _handleCheckout(BuildContext context) async {
     if (HomeProvider.cartItem.isEmpty) return;
 
+    // Check whether current address is actually usable
+    final currentAddressId = int.tryParse(
+      controller.selectedAddress?.id?.trim() ?? '',
+    );
+
+    if (currentAddressId == null || currentAddressId <= 0) {
+      final result = await Get.to(() => const AddressListScreen());
+
+      if (result is! ShippingAddress) {
+        return;
+      }
+
+      controller.selectedAddress = result;
+    }
+
+    // Validate again after selection
+    final addressId = int.tryParse(
+      controller.selectedAddress?.id?.trim() ?? '',
+    );
+
+    if (addressId == null || addressId <= 0) {
+      ShowToastDialog.showToast("Please select a valid delivery address".tr);
+      return;
+    }
+
+    print('[CHECKOUT] Address ID = ${controller.selectedAddress?.id}');
+
+    print('[CHECKOUT] Address = ${controller.selectedAddress?.address}');
+
     final success = await controller.fetchCheckoutFromApi();
+
     if (!mounted || !success) return;
 
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const CartScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => const CartScreen()));
   }
 
   Widget _buildBottomNavigationBar(CartThemeColors themeColors) {
