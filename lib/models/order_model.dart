@@ -342,6 +342,6 @@ class OrderModel {
 
   @override
   String toString() {
-    return 'OrderModel(id: $id, status: $status, toPayAmount: $toPayAmount, vendor: ${vendor?.title}, products: ${products?.length})';
+    return 'OrderModel(id: $id, status: $status, toPayAmount: $toPayAmount, vendor: ${vendor?.outletName}, products: ${products?.length})';
   }
 }

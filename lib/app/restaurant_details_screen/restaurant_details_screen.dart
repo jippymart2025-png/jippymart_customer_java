@@ -990,7 +990,7 @@ class _RestaurantHeader extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  controller.vendorModel.title ?? "",
+                  controller.vendorModel.outletName ?? "",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
@@ -1197,11 +1197,14 @@ class _StatusTimingRow extends StatelessWidget {
   }
 
   void _handleViewTimings(BuildContext context) {
-    if (controller.vendorModel.workingHours == null) {
+    final timings = controller.vendorModel.outletTimings;
+
+    if (timings == null || timings.isEmpty) {
       ShowToastDialog.showToast("Timing is not added by restaurant".tr);
-    } else {
-      _TimingBottomSheet.show(context, controller);
+      return;
     }
+
+    _TimingBottomSheet.show(context, controller);
   }
 }
 
@@ -1700,6 +1703,8 @@ class _MenuItem extends StatelessWidget {
 }
 
 // ==================== TIMING BOTTOM SHEET ====================
+// ==================== TIMING BOTTOM SHEET ====================
+
 class _TimingBottomSheet {
   static void show(BuildContext context, RestaurantDetailsProvider controller) {
     showModalBottomSheet(
@@ -1710,21 +1715,23 @@ class _TimingBottomSheet {
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
       clipBehavior: Clip.antiAliasWithSaveLayer,
-      builder: (context) => FractionallySizedBox(
-        heightFactor: _RestaurantScreenConstants.timingSheetHeightFactor,
-        child: Scaffold(
-          backgroundColor: AppThemeData.surface,
-          body: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: [
-                _buildHandle(),
-                Expanded(child: _buildTimingList(controller)),
-              ],
+      builder: (context) {
+        return FractionallySizedBox(
+          heightFactor: _RestaurantScreenConstants.timingSheetHeightFactor,
+          child: Scaffold(
+            backgroundColor: AppThemeData.surface,
+            body: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: [
+                  _buildHandle(),
+                  Expanded(child: _buildTimingList(controller)),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -1747,32 +1754,50 @@ class _TimingBottomSheet {
   }
 
   static Widget _buildTimingList(RestaurantDetailsProvider controller) {
+    final timings = controller.vendorModel.outletTimings;
+
+    if (timings == null || timings.isEmpty) {
+      return const Center(
+        child: Text(
+          'No timings available',
+          style: TextStyle(fontSize: 14, color: Colors.grey),
+        ),
+      );
+    }
+
     return ListView.builder(
       physics: const BouncingScrollPhysics(),
-      itemCount: controller.vendorModel.workingHours?.length ?? 0,
+      itemCount: timings.length,
       itemBuilder: (context, dayIndex) {
-        final workingHours = controller.vendorModel.workingHours![dayIndex];
-        return _TimingDayItem(workingHours: workingHours);
+        final OutletTiming timing = timings[dayIndex];
+
+        return _TimingDayItem(outletTiming: timing);
       },
     );
   }
 }
 
 // ==================== TIMING DAY ITEM ====================
-class _TimingDayItem extends StatelessWidget {
-  final WorkingHours workingHours;
 
-  const _TimingDayItem({required this.workingHours});
+class _TimingDayItem extends StatelessWidget {
+  final OutletTiming outletTiming;
+
+  const _TimingDayItem({required this.outletTiming});
 
   @override
   Widget build(BuildContext context) {
+    final bool isOpen = outletTiming.isOpen;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // --------------------------------------------------
+          // DAY
+          // --------------------------------------------------
           Text(
-            workingHours.day ?? "",
+            outletTiming.day,
             style: TextStyle(
               fontSize: 16,
               fontFamily: AppThemeData.semiBold,
@@ -1780,16 +1805,38 @@ class _TimingDayItem extends StatelessWidget {
               color: AppThemeData.grey900,
             ),
           ),
+
           const SizedBox(height: 10),
-          if (workingHours.timeslot?.isNotEmpty == true)
-            ListView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: workingHours.timeslot!.length,
-              itemBuilder: (context, timeIndex) {
-                final timeSlot = workingHours.timeslot![timeIndex];
-                return _TimeSlotItem(timeSlot: timeSlot);
-              },
+
+          // --------------------------------------------------
+          // CLOSED
+          // --------------------------------------------------
+          if (!isOpen)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppThemeData.grey200),
+              ),
+              child: const Center(
+                child: Text(
+                  'Closed',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            )
+          // --------------------------------------------------
+          // OPEN
+          // --------------------------------------------------
+          else
+            _TimeSlotItem(
+              openingTime: outletTiming.openingTime ?? '',
+              closingTime: outletTiming.closingTime ?? '',
             ),
         ],
       ),
@@ -1798,22 +1845,23 @@ class _TimingDayItem extends StatelessWidget {
 }
 
 // ==================== TIME SLOT ITEM ====================
-class _TimeSlotItem extends StatelessWidget {
-  final Timeslot timeSlot;
 
-  const _TimeSlotItem({required this.timeSlot});
+class _TimeSlotItem extends StatelessWidget {
+  final String openingTime;
+  final String closingTime;
+
+  const _TimeSlotItem({required this.openingTime, required this.closingTime});
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        children: [
-          Expanded(child: _buildTimeBox(timeSlot.from ?? "")),
-          const SizedBox(width: 10),
-          Expanded(child: _buildTimeBox(timeSlot.to ?? "")),
-        ],
-      ),
+    return Row(
+      children: [
+        Expanded(child: _buildTimeBox(openingTime)),
+
+        const SizedBox(width: 10),
+
+        Expanded(child: _buildTimeBox(closingTime)),
+      ],
     );
   }
 
@@ -1826,7 +1874,7 @@ class _TimeSlotItem extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          time,
+          _formatTime(time),
           style: TextStyle(
             fontFamily: AppThemeData.medium,
             fontSize: 14,
@@ -1835,6 +1883,43 @@ class _TimeSlotItem extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  // ==========================================================
+  // FORMAT 24-HOUR TIME
+  // 09:00:00 -> 09:00 AM
+  // 20:00:00 -> 08:00 PM
+  // ==========================================================
+
+  String _formatTime(String time) {
+    if (time.isEmpty) {
+      return '--';
+    }
+
+    try {
+      final parts = time.split(':');
+
+      if (parts.length < 2) {
+        return time;
+      }
+
+      int hour = int.parse(parts[0]);
+      final int minute = int.parse(parts[1]);
+
+      final String period = hour >= 12 ? 'PM' : 'AM';
+
+      if (hour == 0) {
+        hour = 12;
+      } else if (hour > 12) {
+        hour -= 12;
+      }
+
+      return '${hour.toString().padLeft(2, '0')}:'
+          '${minute.toString().padLeft(2, '0')} '
+          '$period';
+    } catch (_) {
+      return time;
+    }
   }
 }
 

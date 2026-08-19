@@ -16,14 +16,26 @@ void showProductOptionsBottomSheet({
   required String disPriceToPass,
   required double buttonFontSize,
 }) {
-  final options = productModel.options ?? [];
-  final hasOptions = options.isNotEmpty;
-  final hasAddOns =
+  // ============================================================
+  // NEW API
+  // Product options = variants
+  // Add-ons = optional legacy fields if your ProductModel keeps them
+  // ============================================================
+
+  final List<ProductVariant> options = productModel.variants ?? [];
+
+  final bool hasOptions = options.isNotEmpty;
+
+  final bool hasAddOns =
       productModel.addOnsTitle != null &&
       productModel.addOnsTitle!.isNotEmpty &&
       productModel.addOnsPrice != null &&
       productModel.addOnsPrice!.isNotEmpty;
-  if (!hasOptions && !hasAddOns) return;
+
+  // Nothing to select.
+  if (!hasOptions && !hasAddOns) {
+    return;
+  }
 
   showModalBottomSheet(
     context: context,
@@ -34,7 +46,9 @@ void showProductOptionsBottomSheet({
     ),
     builder: (ctx) {
       final Set<int> selectedOptionIndices = hasOptions ? {0} : <int>{};
+
       final Set<int> selectedAddonIndices = <int>{};
+
       return StatefulBuilder(
         builder: (context, setState) {
           return AnimatedPadding(
@@ -67,6 +81,9 @@ void showProductOptionsBottomSheet({
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // ==================================================
+                      // HANDLE
+                      // ==================================================
                       Center(
                         child: Container(
                           width: 40,
@@ -78,27 +95,18 @@ void showProductOptionsBottomSheet({
                           ),
                         ),
                       ),
+
+                      // ==================================================
+                      // PRODUCT HEADER
+                      // ==================================================
                       Row(
                         children: [
-                          if (productModel.photo != null &&
-                              productModel.photo!.isNotEmpty) ...[
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: NetworkImageWidget(
-                                imageUrl: productModel.photo!,
-                                width: 48,
-                                height: 48,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                          ],
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  productModel.name ?? '',
+                                  productModel.productName ?? '',
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -108,7 +116,9 @@ void showProductOptionsBottomSheet({
                                     color: AppThemeData.grey900,
                                   ),
                                 ),
+
                                 const SizedBox(height: 4),
+
                                 if (hasOptions)
                                   Text(
                                     'Choose options'.tr,
@@ -121,20 +131,40 @@ void showProductOptionsBottomSheet({
                               ],
                             ),
                           ),
+
                           IconButton(
                             icon: const Icon(Icons.close),
                             onPressed: () => Navigator.of(context).pop(),
                           ),
                         ],
                       ),
+
                       const SizedBox(height: 12),
+
+                      // ==================================================
+                      // CONTENT
+                      // ==================================================
                       ConstrainedBox(
                         constraints: const BoxConstraints(maxHeight: 360),
                         child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              // ==================================================
+                              // VARIANTS / OPTIONS
+                              // ==================================================
                               if (hasOptions) ...[
+                                Text(
+                                  'Options'.tr,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontFamily: AppThemeData.semiBold,
+                                    color: AppThemeData.grey800,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 8),
+
                                 ListView.separated(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
@@ -142,34 +172,44 @@ void showProductOptionsBottomSheet({
                                   separatorBuilder: (_, __) =>
                                       const SizedBox(height: 6),
                                   itemBuilder: (context, index) {
-                                    final option = options[index];
-                                    final priceText = Constant.amountShow(
-                                      amount: Constant.productCommissionPrice(
-                                        controller.vendorModel,
-                                        option.price ?? '0',
-                                      ),
-                                    );
-                                    final disabled =
+                                    final ProductVariant option =
+                                        options[index];
+
+                                    final double optionPrice =
+                                        double.tryParse(
+                                          option.price?.toString() ?? '0',
+                                        ) ??
+                                        0;
+
+                                    final String priceText =
+                                        Constant.amountShow(
+                                          amount:
+                                              Constant.productCommissionPrice(
+                                                controller.vendorModel,
+                                                optionPrice.toString(),
+                                              ),
+                                        );
+
+                                    final bool disabled =
                                         option.isAvailable == false ||
                                         option.price == null;
-                                    final isSelected = selectedOptionIndices
-                                        .contains(index);
+
+                                    final bool isSelected =
+                                        selectedOptionIndices.contains(index);
 
                                     return InkWell(
                                       onTap: disabled
                                           ? null
                                           : () {
                                               setState(() {
-                                                if (selectedOptionIndices
-                                                    .contains(index)) {
-                                                  selectedOptionIndices.remove(
-                                                    index,
-                                                  );
-                                                } else {
-                                                  selectedOptionIndices.add(
-                                                    index,
-                                                  );
-                                                }
+                                                // Keep single
+                                                // selection for
+                                                // product variant.
+                                                selectedOptionIndices.clear();
+
+                                                selectedOptionIndices.add(
+                                                  index,
+                                                );
                                               });
                                             },
                                       borderRadius: BorderRadius.circular(12),
@@ -194,6 +234,7 @@ void showProductOptionsBottomSheet({
                                         ),
                                         child: Row(
                                           children: [
+                                            // Radio
                                             Container(
                                               width: 20,
                                               height: 20,
@@ -205,7 +246,6 @@ void showProductOptionsBottomSheet({
                                                       : AppThemeData.grey400,
                                                   width: 2,
                                                 ),
-                                                color: Colors.transparent,
                                               ),
                                               child: Center(
                                                 child: AnimatedContainer(
@@ -224,14 +264,17 @@ void showProductOptionsBottomSheet({
                                                 ),
                                               ),
                                             ),
+
                                             const SizedBox(width: 10),
+
+                                            // Variant name + price
                                             Expanded(
                                               child: Column(
                                                 crossAxisAlignment:
                                                     CrossAxisAlignment.start,
                                                 children: [
                                                   Text(
-                                                    option.title ?? '',
+                                                    option.variantName ?? '',
                                                     maxLines: 1,
                                                     overflow:
                                                         TextOverflow.ellipsis,
@@ -245,30 +288,9 @@ void showProductOptionsBottomSheet({
                                                                 .grey900,
                                                     ),
                                                   ),
-                                                  if (option
-                                                          .subtitle
-                                                          ?.isNotEmpty ==
-                                                      true) ...[
-                                                    const SizedBox(height: 2),
-                                                    Text(
-                                                      option.subtitle!,
-                                                      maxLines: 1,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                      style: TextStyle(
-                                                        fontSize: 12,
-                                                        fontFamily:
-                                                            AppThemeData
-                                                                .regular,
-                                                        color: disabled
-                                                            ? AppThemeData
-                                                                  .grey400
-                                                            : AppThemeData
-                                                                  .grey600,
-                                                      ),
-                                                    ),
-                                                  ],
+
                                                   const SizedBox(height: 2),
+
                                                   Text(
                                                     priceText,
                                                     style: TextStyle(
@@ -288,8 +310,13 @@ void showProductOptionsBottomSheet({
                                     );
                                   },
                                 ),
+
                                 const SizedBox(height: 12),
                               ],
+
+                              // ==================================================
+                              // ADD-ONS
+                              // ==================================================
                               if (hasAddOns) ...[
                                 Text(
                                   'Add-ons'.tr,
@@ -299,7 +326,9 @@ void showProductOptionsBottomSheet({
                                     color: AppThemeData.grey800,
                                   ),
                                 ),
+
                                 const SizedBox(height: 8),
+
                                 ListView.separated(
                                   shrinkWrap: true,
                                   physics: const NeverScrollableScrollPhysics(),
@@ -310,18 +339,21 @@ void showProductOptionsBottomSheet({
                                     final title = productModel
                                         .addOnsTitle![index]
                                         .toString();
+
                                     final rawPrice =
                                         index < productModel.addOnsPrice!.length
                                         ? productModel.addOnsPrice![index]
                                               .toString()
                                         : '0';
+
                                     final priceText = Constant.amountShow(
                                       amount: Constant.productCommissionPrice(
                                         controller.vendorModel,
                                         rawPrice,
                                       ),
                                     );
-                                    final isSelected = selectedAddonIndices
+
+                                    final bool isSelected = selectedAddonIndices
                                         .contains(index);
 
                                     return InkWell(
@@ -329,12 +361,16 @@ void showProductOptionsBottomSheet({
                                         setState(() {
                                           if (isSelected) {
                                             selectedAddonIndices.remove(index);
+
                                             controller.selectedAddOns.remove(
                                               title,
                                             );
                                           } else {
                                             selectedAddonIndices.add(index);
-                                            controller.selectedAddOns.add(title);
+
+                                            controller.selectedAddOns.add(
+                                              title,
+                                            );
                                           }
                                         });
                                       },
@@ -371,7 +407,6 @@ void showProductOptionsBottomSheet({
                                                       : AppThemeData.grey400,
                                                   width: 2,
                                                 ),
-                                                color: Colors.transparent,
                                               ),
                                               child: Center(
                                                 child: AnimatedContainer(
@@ -390,7 +425,9 @@ void showProductOptionsBottomSheet({
                                                 ),
                                               ),
                                             ),
+
                                             const SizedBox(width: 10),
+
                                             Expanded(
                                               child: Column(
                                                 crossAxisAlignment:
@@ -405,17 +442,19 @@ void showProductOptionsBottomSheet({
                                                       fontSize: 14,
                                                       fontFamily:
                                                           AppThemeData.medium,
-                                                      color: AppThemeData
-                                                          .grey900,
+                                                      color:
+                                                          AppThemeData.grey900,
                                                     ),
                                                   ),
+
                                                   const SizedBox(height: 2),
+
                                                   Text(
                                                     priceText,
                                                     style: TextStyle(
                                                       fontSize: 12,
-                                                      color: AppThemeData
-                                                          .grey700,
+                                                      color:
+                                                          AppThemeData.grey700,
                                                     ),
                                                   ),
                                                 ],
@@ -432,7 +471,12 @@ void showProductOptionsBottomSheet({
                           ),
                         ),
                       ),
+
                       const SizedBox(height: 16),
+
+                      // ==================================================
+                      // ADD BUTTON
+                      // ==================================================
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton(
@@ -445,6 +489,9 @@ void showProductOptionsBottomSheet({
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                           onPressed: () {
+                            // ==================================================
+                            // VALIDATE VARIANT
+                            // ==================================================
                             if (hasOptions && selectedOptionIndices.isEmpty) {
                               ShowToastDialog.showToast(
                                 'Please select at least one option'.tr,
@@ -452,36 +499,62 @@ void showProductOptionsBottomSheet({
                               return;
                             }
 
+                            // ==================================================
+                            // ADD SELECTED VARIANT
+                            // ==================================================
                             if (hasOptions) {
                               for (final index in selectedOptionIndices) {
                                 if (index < 0 || index >= options.length) {
                                   continue;
                                 }
+
                                 final selected = options[index];
+
                                 if (selected.isAvailable == false) {
                                   continue;
                                 }
 
-                                final optionPrice =
+                                final double selectedPrice =
+                                    double.tryParse(
+                                      selected.price?.toString() ?? '0',
+                                    ) ??
+                                    0;
+
+                                if (selectedPrice <= 0) {
+                                  continue;
+                                }
+
+                                final String selectedPriceString = selectedPrice
+                                    .toString();
+
+                                final String optionPrice =
                                     Constant.productCommissionPrice(
                                       controller.vendorModel,
-                                      selected.price ?? '0',
+                                      selectedPriceString,
                                     );
 
+                                // New ProductVariant does
+                                // not have subtitle/title.
+                                // Use variantName.
+                                final String variantName =
+                                    selected.variantName ?? '';
+
+                                final String merchantPrice =
+                                    (selected.merchantPrice ??
+                                            selected.price ??
+                                            0)
+                                        .toString();
+
                                 final variantInfo = VariantInfo(
-                                  variantId: selected.id,
-                                  variantPrice: selected.price ?? '0',
-                                  variantSku:
-                                      selected.subtitle ??
-                                      selected.title ??
-                                      '',
+                                  variantId: selected.variantId?.toString(),
+
+                                  variantPrice: selectedPriceString,
+
+                                  variantSku: variantName,
+
                                   variantOptions: {
-                                    'option':
-                                        selected.subtitle ??
-                                        selected.title ??
-                                        '',
-                                    'merchant_price':
-                                        selected.originalPrice ?? '0',
+                                    'option': variantName,
+                                    'merchant_price': merchantPrice,
                                   },
                                 );
 
@@ -495,6 +568,9 @@ void showProductOptionsBottomSheet({
                                 );
                               }
                             } else {
+                              // ==================================================
+                              // NORMAL PRODUCT
+                              // ==================================================
                               controller.addProductAndRemoveProductFunction(
                                 productModel: productModel,
                                 price: priceToPass,

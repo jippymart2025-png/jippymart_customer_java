@@ -33,11 +33,58 @@ class ProductModel {
   String? categoryTitle;
   List<ProductOption>? options;
   List<ProductAvailabilitySchedule>? availableTimings;
+  dynamic activeDiscountsDto;
+
+  // ============================================================
+  // BACKWARDS / FORWARDS COMPATIBILITY GETTERS & SETTERS
+  // ============================================================
+  String? get productId => id;
+  set productId(dynamic val) => id = val?.toString();
+
+  String? get productName => name;
+  set productName(String? val) => name = val;
+
+  List<ProductOption>? get variants => options;
+  set variants(List<ProductOption>? val) => options = val;
+
+  bool? get isVeg => veg;
+  set isVeg(bool? val) => veg = val;
+
+  bool get hasActiveDiscount {
+    if (activeDiscountsDto == null) return false;
+    if (activeDiscountsDto is Map) {
+      final map = activeDiscountsDto as Map;
+      return map.isNotEmpty &&
+          (map['discountAmount'] != null ||
+              map['offerName'] != null ||
+              map['couponCode'] != null ||
+              map['planType'] != null);
+    }
+    return true;
+  }
+
+  String? get discountTitle {
+    if (activeDiscountsDto is Map) {
+      final map = activeDiscountsDto as Map;
+      final offerName = map['offerName']?.toString();
+      final planType = map['planType']?.toString();
+      final priceType = map['priceType']?.toString();
+      final discountAmount = map['discountAmount'];
+
+      if (offerName != null && offerName.isNotEmpty) return offerName;
+      if (planType != null && planType.isNotEmpty) return planType;
+      if (discountAmount != null && priceType != null) {
+        return priceType == 'FLAT' ? '₹$discountAmount OFF' : '$discountAmount% OFF';
+      }
+    }
+    return 'SPECIAL OFFER';
+  }
 
   ProductModel({
     this.fats,
     this.vendorID,
     this.veg,
+    this.activeDiscountsDto,
     this.publish,
     this.addOnsTitle,
     this.calories,
@@ -70,80 +117,7 @@ class ProductModel {
   });
 
   factory ProductModel.fromApiJson(Map<String, dynamic> json) {
-    try {
-      return ProductModel(
-        id: (json['productId'] ?? json['id'])?.toString(),
-
-        name: json['productName']?.toString() ?? json['name']?.toString() ?? '',
-
-        description: json['description']?.toString() ?? '',
-        isProductFavourite: json['isProductFavourite'] == true,
-        categoryID:
-            json['category_id']?.toString() ?? json['categoryId']?.toString(),
-
-        categoryTitle:
-            json['category_title']?.toString() ??
-            json['categoryName']?.toString(),
-
-        vendorID: json['vendor_id']?.toString() ?? json['vendorID']?.toString(),
-
-        price: json['price']?.toString() ?? '0',
-
-        merchantPrice:
-            json['merchantPrice']?.toString() ??
-            json['merchant_price']?.toString() ??
-            json['price']?.toString() ??
-            '0',
-
-        disPrice:
-            json['discount_price']?.toString() ??
-            json['disPrice']?.toString() ??
-            '0',
-
-        photo: json['thumbnail']?.toString() ?? json['photo']?.toString() ?? '',
-
-        photos: json['photos'] is List ? List<String>.from(json['photos']) : [],
-
-        veg: json['isVeg'] == true || json['veg'] == true || json['veg'] == 1,
-
-        nonveg:
-            json['isVeg'] == false ||
-            json['nonveg'] == true ||
-            json['nonveg'] == 1,
-
-        publish: true,
-
-        isAvailable: true,
-
-        quantity: -1,
-
-        addOnsTitle: [],
-
-        addOnsPrice: [],
-
-        reviewsCount: 0,
-
-        reviewsSum: 0,
-
-        itemAttribute:
-            json['hasProductVariants'] == true &&
-                json['variants'] is Map<String, dynamic>
-            ? ItemAttribute.fromJson(json['variants'] as Map<String, dynamic>)
-            : _parseItemAttribute(json['item_attribute'] ?? json['variants']),
-
-        options: _parseOptions(json['options']),
-
-        availableTimings:
-            _parseProductTimings(json['productTimings']) ??
-            _parseAvailableTimings(
-              json['available_timings'] ?? json['availableTimings'],
-            ),
-      );
-    } catch (e) {
-      print('❌ Product Parse Error: $e');
-      print('❌ JSON: $json');
-      return ProductModel();
-    }
+    return ProductModel.fromJson(json);
   }
 
   // Add helper methods:
@@ -253,6 +227,8 @@ class ProductModel {
       vendorID = _parseString(json['vendorID'] ?? json['vendor_id']);
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
       veg =
+          json['isVeg'] == true ||
+          json['is_veg'] == true ||
           json['veg'] == 1 ||
           json['veg'] == true ||
           json['veg'] == "1" ||
@@ -264,14 +240,14 @@ class ProductModel {
           json['publish'] == "true";
 
       // Parse addOnsTitle - handle both string and list formats
-      addOnsTitle = _parseJsonStringToList(json['addOnsTitle']);
+      addOnsTitle = _parseJsonStringToList(json['addOnsTitle']) ?? [];
 
       // FIX: Use helper method to parse int fields that might come as String
       calories = _parseInt(json['calories']);
       proteins = _parseInt(json['proteins']);
 
       // Parse addOnsPrice - handle both string and list formats
-      addOnsPrice = _parseJsonStringToList(json['addOnsPrice']);
+      addOnsPrice = _parseJsonStringToList(json['addOnsPrice']) ?? [];
 
       reviewsSum = _parseNum(json['reviewsSum']) ?? 0.0;
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
@@ -280,7 +256,7 @@ class ProductModel {
           json['takeawayOption'] == true ||
           json['takeawayOption'] == "1" ||
           json['takeawayOption'] == "true";
-      name = _parseString(json['name']);
+      name = _parseString(json['productName'] ?? json['name'] ?? json['product_name']);
       reviewAttributes = json['reviewAttributes'] is Map<String, dynamic>
           ? json['reviewAttributes']
           : null;
@@ -318,8 +294,8 @@ class ProductModel {
         itemAttribute = null;
       }
       // FIX: Use helper method to parse int fields that might come as String
-      id = _parseString(json['id'] ?? json['product_id']);
-      quantity = _parseInt(json['quantity']);
+      id = _parseString(json['productId'] ?? json['id'] ?? json['product_id']);
+      quantity = _parseInt(json['quantity']) ?? -1;
       grams = _parseInt(json['grams']);
       reviewsCount = _parseNum(json['reviewsCount']) ?? 0.0;
 
@@ -329,34 +305,45 @@ class ProductModel {
           _parsePrice(json['discount_price']) ??
           "0";
       // Parse photos - handle both string and list formats
-      photos = _parseJsonStringToList<String>(json['photos'])?.cast<String>();
+      photos = _parseJsonStringToList<String>(json['photos'])?.cast<String>() ?? [];
       nonveg =
+          json['isVeg'] == false ||
+          json['is_veg'] == false ||
           json['nonveg'] == 1 ||
           json['nonveg'] == true ||
           json['nonveg'] == "1" ||
           json['nonveg'] == "true";
-      photo = _parseString(json['photo']);
+      photo = _parseString(json['photo'] ?? json['thumbnail'] ?? json['image']);
       // FIX: Handle both string and int for price
       price =
           _parsePrice(json['price']) ??
           _parsePrice(json['original_price']) ??
           "0";
       merchantPrice =
-          _parsePrice(json['merchant_price']) ??
           _parsePrice(json['merchantPrice']) ??
+          _parsePrice(json['merchant_price']) ??
           _parsePrice(json['original_price']) ??
           _parsePrice(json['price']) ??
           "0";
-      categoryID = _parseString(json['categoryID'] ?? json['category_id']);
+      categoryID = _parseString(
+        json['categoryId'] ?? json['categoryID'] ?? json['category_id'],
+      );
+      categoryTitle = _parseString(
+        json['categoryName'] ?? json['categoryTitle'] ?? json['category_title'],
+      );
       description = _parseString(json['description']);
       createdAt = _parseDate(json['createdAt']);
+      isProductFavourite = _parseNullableBool(json['isProductFavourite'] ?? json['is_favourite']);
+      activeDiscountsDto = json['activeDiscountsDto'] ?? json['activeDiscounts'];
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
       isAvailable = resolvedIsAvailable;
-      // Parse simple options list if present (defensive - works with both Map and List)
-      options = _parseOptions(json['options']);
-      availableTimings = _parseAvailableTimings(
-        json['available_timings'] ?? json['availableTimings'],
-      );
+      // Parse simple options / variants list if present
+      options = _parseOptions(json['options'] ?? json['variants']);
+      availableTimings =
+          _parseProductTimings(json['productTimings'] ?? json['product_timings']) ??
+          _parseAvailableTimings(
+            json['available_timings'] ?? json['availableTimings'],
+          );
     } catch (e, stackTrace) {
       print('❌ Error parsing ProductModel from JSON: $e');
       print('❌ Stack trace: $stackTrace');
@@ -630,6 +617,8 @@ class ProductAvailabilityTimeslot {
   }
 }
 
+typedef ProductVariant = ProductOption;
+
 class ProductOption {
   String? id;
   String? title;
@@ -638,6 +627,29 @@ class ProductOption {
   bool? isAvailable;
   String? originalPrice;
   bool? isFeatured;
+
+  // Compatibility getters/setters for ProductVariant
+  String? get variantId => id;
+
+  set variantId(dynamic val) => id = val?.toString();
+
+  String? get variantName => subtitle ?? title;
+
+  set variantName(String? val) {
+    title = val;
+    subtitle = val;
+  }
+
+  String? get variantPrice => price;
+
+  set variantPrice(String? val) => price = val;
+
+  String? get merchantPrice => originalPrice ?? price;
+  set merchantPrice(String? val) => originalPrice = val;
+
+  String? get variantSku => subtitle ?? title;
+
+  set variantSku(String? val) => subtitle = val;
 
   ProductOption({
     this.id,
@@ -651,14 +663,13 @@ class ProductOption {
 
   factory ProductOption.fromJson(Map<String, dynamic> json) {
     return ProductOption(
-      id: ProductModel._parseString(json['id']),
-      title: ProductModel._parseString(json['title']),
-      subtitle: ProductModel._parseString(json['subtitle']),
-      price: ProductModel._parsePrice(json['price']) ?? '0',
-      isAvailable: json['is_available'] == true || json['is_available'] == 1,
+      id: ProductModel._parseString(json['variantId'] ?? json['id']),
+      title: ProductModel._parseString(json['variantName'] ?? json['title']),
+      subtitle: ProductModel._parseString(json['subtitle'] ?? json['variantName'] ?? json['title']),
+      price: ProductModel._parsePrice(json['price'] ?? json['variantPrice']) ?? '0',
+      isAvailable: json['isAvailable'] == true || json['is_available'] == true || json['is_available'] == 1,
       originalPrice:
-          ProductModel._parsePrice(json['original_price']) ??
-          ProductModel._parsePrice(json['price']) ??
+          ProductModel._parsePrice(json['merchantPrice'] ?? json['original_price'] ?? json['price'] ?? json['variantPrice']) ??
           '0',
       isFeatured: json['is_featured'] == true || json['is_featured'] == 1,
     );

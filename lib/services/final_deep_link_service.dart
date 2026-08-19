@@ -337,10 +337,10 @@ class FinalDeepLinkService {
 
       print('🔥 [NEW HANDLER] Restaurant found: ${restaurant.title}');
 
-      if (!_validateRestaurantZone(restaurant.zoneId)) {
-        print('❌ [NEW HANDLER] Zone validation failed');
-        return;
-      }
+      // if (!_validateRestaurantZone(restaurant.zoneId)) {
+      //   print('❌ [NEW HANDLER] Zone validation failed');
+      //   return;
+      // }
 
       // Wait a bit more to ensure UI is ready (longer if resumed)
       await Future.delayed(
@@ -834,16 +834,16 @@ class FinalDeepLinkService {
       }
 
       // Ensure zone matches current selected zone
-      if (vendorModel.zoneId != Constant.selectedZone?.id) {
-        print(
-          '⚠️ [DEEP_LINK_PRODUCT] Vendor zone ${vendorModel.zoneId} != selected zone ${Constant.selectedZone?.id}',
-        );
-        ShowToastDialog.showToast(
-          "Sorry, The Zone is not available in your area. Change the other location first."
-              .tr,
-        );
-        return;
-      }
+      // if (vendorModel.zoneId != Constant.selectedZone?.id) {
+      //   print(
+      //     '⚠️ [DEEP_LINK_PRODUCT] Vendor zone ${vendorModel.zoneId} != selected zone ${Constant.selectedZone?.id}',
+      //   );
+      //   ShowToastDialog.showToast(
+      //     "Sorry, The Zone is not available in your area. Change the other location first."
+      //         .tr,
+      //   );
+      //   return;
+      // }
 
       print(
         '✅ [DEEP_LINK_PRODUCT] Navigating to RestaurantDetailsScreen for vendor ${vendorModel.id}',

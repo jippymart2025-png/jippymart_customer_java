@@ -166,23 +166,49 @@ Widget buildProductsWithoutCategories(
                                   productModel.id!.toString(),
                                   productModel.vendorID!,
                                 ))
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  'SPECIAL OFFER',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
+                              Builder(
+                                builder: (context) {
+                                  final promo = controller.getActivePromotionForProduct(
+                                    productId: productModel.id!.toString(),
+                                    restaurantId: productModel.vendorID!,
+                                  );
+                                  String badgeText = productModel.discountTitle ?? 'SPECIAL OFFER';
+                                  if (promo != null) {
+                                    final offerName = promo['offerName'] ?? promo['offer_name'];
+                                    final planType = promo['planType'] ?? promo['plan_type'];
+                                    final discountAmount = promo['discountAmount'] ?? promo['discount'];
+                                    final priceType = promo['priceType'] ?? promo['price_type'];
+
+                                    if (offerName != null && offerName.toString().isNotEmpty) {
+                                      badgeText = offerName.toString();
+                                    } else if (planType != null && planType.toString().isNotEmpty) {
+                                      badgeText = planType.toString();
+                                    } else if (discountAmount != null) {
+                                      badgeText = priceType == 'PERCENTAGE'
+                                          ? '$discountAmount% OFF'
+                                          : '₹$discountAmount OFF';
+                                    }
+                                  }
+
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      badgeText.toUpperCase(),
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                           ],
                         ),

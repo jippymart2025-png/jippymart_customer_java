@@ -1079,28 +1079,7 @@ class Constant {
 
   /// Enhanced distance calculation with better coordinate handling
   static String getDistanceFromVendor(VendorModel vendor) {
-    if (Constant.selectedLocation.location == null) {
-      print('DEBUG: getDistanceFromVendor - No selected location');
-      return "0.0";
-    }
-
-    String vendorLat = _safeCoordinateToString(vendor.latitude);
-    String vendorLng = _safeCoordinateToString(vendor.longitude);
-    String userLat = _safeCoordinateToString(
-      Constant.selectedLocation.location!.latitude,
-    );
-    String userLng = _safeCoordinateToString(
-      Constant.selectedLocation.location!.longitude,
-    );
-
-    String distance = getDistance(
-      lat1: vendorLat,
-      lng1: vendorLng,
-      lat2: userLat,
-      lng2: userLng,
-    );
-
-    return distance;
+    return vendor.roadDistance ?? "0.0";
   }
 
   /// Returns estimated delivery time: "15-20 mins" if under 3 km, else "25-30 mins".

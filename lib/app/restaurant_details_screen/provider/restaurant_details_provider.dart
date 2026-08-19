@@ -127,9 +127,7 @@ class RestaurantApiHelper {
     bool? offerOnly,
   }) async {
     if (!isValidOutletId(restaurantId)) {
-      debugPrint(
-        'Outlet details skipped: invalid outletId="$restaurantId"',
-      );
+      debugPrint('Outlet details skipped: invalid outletId="$restaurantId"');
       throw ArgumentError('outletId must be a valid non-zero restaurant id');
     }
 
@@ -176,9 +174,7 @@ class RestaurantApiHelper {
       final Map<String, String> queryParams = {
         'outletId': restaurantId,
         'userType': 'CUSTOMER',
-        if (customerId != null &&
-            customerId.isNotEmpty &&
-            customerId != '0')
+        if (customerId != null && customerId.isNotEmpty && customerId != '0')
           'customerId': customerId,
       };
 
@@ -335,14 +331,25 @@ class RestaurantApiHelper {
     final restaurants = <VendorModel>[];
     for (final item in outletsList) {
       if (item is! Map) continue;
+
       try {
-        final outlet = Outlet.fromJson(Map<String, dynamic>.from(item));
-        restaurants.add(outlet.toVendorModel());
+        final VendorModel vendor = VendorModel.fromJson(
+          Map<String, dynamic>.from(item),
+        );
+
+        restaurants.add(vendor);
+
+        debugPrint(
+          '[OUTLET_API] Added outlet: '
+          '${vendor.title} '
+          '(ID: ${vendor.id}) '
+          'distance=${vendor.distanceKm} '
+          'roadDistance=${vendor.roadDistance}',
+        );
       } catch (e) {
         debugPrint('[OUTLET_API] Skipping invalid outlet: $e');
       }
     }
-
     debugPrint('[OUTLET_API] Outlets fetched: ${restaurants.length}');
 
     _nearbyCacheKey = cacheKey;
@@ -637,8 +644,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         if (forceRefresh) {
           RestaurantCache.clear(restaurantId!);
         }
-        final cachedData =
-            forceRefresh ? null : RestaurantCache.get(restaurantId!);
+        final cachedData = forceRefresh
+            ? null
+            : RestaurantCache.get(restaurantId!);
         if (cachedData != null) {
           await _loadFromCache(cachedData);
           return;
@@ -869,18 +877,25 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         RestaurantApiHelper.isValidOutletId(preservedId)) {
       vendorModel.id = preservedId;
     }
-    _isRestaurantFavorite = outletDetails.isFavourite;
+    _isRestaurantFavorite = outletDetails.isFavourite ?? false;
 
-    // Initialize product favourites from API response
+    // Initialize product favourites and active discounts from API response
     favoriteProductIds.clear();
+    _allProductsWithPromotions.clear();
 
     for (final product in outletDetails.allProducts) {
-      if (product.id != null && product.isProductFavourite == true) {
-        favoriteProductIds.add(product.id!);
+      if (product.id != null) {
+        if (product.isProductFavourite == true) {
+          favoriteProductIds.add(product.id!);
+        }
+        if (product.hasActiveDiscount) {
+          _allProductsWithPromotions.add(product.id!);
+        }
       }
     }
 
     debugPrint("Favourite Products: $favoriteProductIds");
+    debugPrint("Promotional Products from API: $_allProductsWithPromotions");
 
     return outletDetails;
   }
@@ -1376,7 +1391,17 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
   /// PROMOTION METHODS - OPTIMIZED
   bool hasActivePromotion(String productId, String restaurantId) {
-    if (productId.isEmpty || restaurantId.isEmpty) return false;
+    if (productId.isEmpty) return false;
+
+    // Check direct product object in memory
+    final directProduct = allProductList.firstWhereOrNull(
+      (p) => p.id?.toString() == productId,
+    );
+    if (directProduct != null && directProduct.hasActiveDiscount) {
+      return true;
+    }
+
+    if (restaurantId.isEmpty) return false;
 
     // Check memory cache first
     if (_allProductsWithPromotions.contains(productId)) return true;
@@ -1399,7 +1424,35 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required String productId,
     required String restaurantId,
   }) {
-    if (productId.isEmpty || restaurantId.isEmpty) return null;
+    if (productId.isEmpty) return null;
+
+    // Check if the ProductModel itself has activeDiscountsDto
+    final directProduct = allProductList.firstWhereOrNull(
+      (p) => p.id?.toString() == productId,
+    );
+    if (directProduct != null && directProduct.hasActiveDiscount) {
+      if (directProduct.activeDiscountsDto is Map) {
+        final map = Map<String, dynamic>.from(directProduct.activeDiscountsDto as Map);
+        final rawPrice = double.tryParse(directProduct.price?.toString() ?? '0') ?? 0;
+        final discountAmount = double.tryParse(map['discountAmount']?.toString() ?? '0') ?? 0;
+        final priceType = map['priceType']?.toString();
+
+        double specialPrice = rawPrice;
+        if (priceType == 'PERCENTAGE') {
+          specialPrice = (rawPrice - (rawPrice * (discountAmount / 100))).clamp(0, double.infinity);
+        } else {
+          specialPrice = (rawPrice - discountAmount).clamp(0, double.infinity);
+        }
+
+        map['special_price'] = specialPrice;
+        map['discount'] = discountAmount;
+        map['offer_name'] = map['offerName'];
+        map['plan_type'] = map['planType'];
+        return map;
+      }
+    }
+
+    if (restaurantId.isEmpty) return null;
 
     final cacheKey = '$productId-$restaurantId';
 
@@ -1971,7 +2024,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   void animateSlider() {
     _sliderTimer?.cancel();
 
-    if (vendorModel.photos == null || vendorModel.photos!.isEmpty) return;
+    if (vendorModel.photo == null || vendorModel.photo!.isEmpty) return;
 
     _sliderTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       if (!pageController.hasClients) {
@@ -1980,7 +2033,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         return;
       }
 
-      if (currentPage < vendorModel.photos!.length - 1) {
+      if (currentPage < vendorModel.photo!.length - 1) {
         currentPage++;
       } else {
         currentPage = 0;
@@ -2076,7 +2129,7 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       'statusIcon': isOpen ? Icons.check_circle : Icons.lock,
       'reason': isOpen ? 'Restaurant is open' : 'Restaurant is closed',
       'withinWorkingHours': isOpen,
-      'hasWorkingHours': vendorModel.workingHours?.isNotEmpty ?? false,
+      'hasWorkingHours': vendorModel.outletTimings?.isNotEmpty ?? false,
     };
   }
 

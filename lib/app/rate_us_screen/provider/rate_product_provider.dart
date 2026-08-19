@@ -208,7 +208,7 @@ class RateProductProvider extends ChangeNotifier {
         productModel.reviewsCount = productReviewCount + 1;
         productModel.reviewsSum = productReviewSum + ratings;
         productModel.reviewAttributes = reviewProductAttributes;
-        vendorModel.reviewsCount = vendorReviewCount + 1;
+        vendorModel.reviewsCount = (vendorReviewCount + 1) as int?;
         vendorModel.reviewsSum = vendorReviewSum + ratings;
 
         // Handle review attributes

@@ -64,7 +64,8 @@ class _BottomBannerViewState extends State<BottomBannerView> {
               },
               itemBuilder: (BuildContext context, int index) {
                 BannerModel bannerModel = homeProvider.bannerBottomModel[index];
-                final isLastItem = index == homeProvider.bannerBottomModel.length - 1;
+                final isLastItem =
+                    index == homeProvider.bannerBottomModel.length - 1;
                 return InkWell(
                   onTap: () async {
                     homeProvider.bannerOnTapFunction(
@@ -77,7 +78,7 @@ class _BottomBannerViewState extends State<BottomBannerView> {
                     child: ClipRRect(
                       borderRadius: const BorderRadius.all(Radius.circular(12)),
                       child: NetworkImageWidget(
-                        imageUrl: bannerModel.photo.toString(),
+                        imageUrl: bannerModel.bannerUrl.toString(),
                         width: MediaQuery.of(context).size.width,
                         height: 160,
                         fit: BoxFit.fill,
@@ -93,4 +94,3 @@ class _BottomBannerViewState extends State<BottomBannerView> {
     );
   }
 }
-

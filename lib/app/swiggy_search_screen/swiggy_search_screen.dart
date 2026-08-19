@@ -698,7 +698,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   ),
           ),
           title: Text(
-            product.name ?? 'Product',
+            product.productName ?? 'Product',
             style: TextStyle(
               fontFamily: AppThemeData.semiBold,
               color: AppThemeData.grey900,
@@ -712,33 +712,33 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
           ),
           trailing: Column(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (product.disPrice != null &&
-                  product.disPrice!.isNotEmpty &&
-                  product.disPrice != "0")
-                Text(
-                  "₹${product.disPrice}",
-                  style: TextStyle(
-                    fontFamily: AppThemeData.semiBold,
-                    color: AppThemeData.primary300,
-                    fontSize: 16,
-                  ),
-                )
-              else
-                Text(
-                  "₹${product.price ?? '0'}",
-                  style: TextStyle(
-                    fontFamily: AppThemeData.semiBold,
-                    color: AppThemeData.primary300,
-                    fontSize: 16,
-                  ),
-                ),
-              Icon(
-                Icons.arrow_forward_ios,
-                color: AppThemeData.grey400,
-                size: 16,
-              ),
-            ],
+            // children: [
+            //   if (product.disPrice != null &&
+            //       product.disPrice!.isNotEmpty &&
+            //       product.disPrice != "0")
+            //     Text(
+            //       "₹${product.disPrice}",
+            //       style: TextStyle(
+            //         fontFamily: AppThemeData.semiBold,
+            //         color: AppThemeData.primary300,
+            //         fontSize: 16,
+            //       ),
+            //     )
+            //   else
+            //     Text(
+            //       "₹${product.price ?? '0'}",
+            //       style: TextStyle(
+            //         fontFamily: AppThemeData.semiBold,
+            //         color: AppThemeData.primary300,
+            //         fontSize: 16,
+            //       ),
+            //     ),
+            //   Icon(
+            //     Icons.arrow_forward_ios,
+            //     color: AppThemeData.grey400,
+            //     size: 16,
+            //   ),
+            // ],
           ),
           onTap: () {
             _showProductDetailsBottomSheet(context, product);
@@ -863,14 +863,14 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     final canAcceptOrders =
         vendor != null && RestaurantStatusUtils.canAcceptOrders(vendor);
     final isProductAvailable = product.isAvailable ?? true;
-    final isProductAvailableNow = product.isAvailableAtCurrentTime;
+    // final isProductAvailableNow = product.isAvailableAtCurrentTime;
     final hasOptions = _hasProductOptions(product);
     final hasAddOns = _hasProductAddOns(product);
     final shouldShowOptions = hasOptions || hasAddOns;
     final isButtonEnabled =
         canAcceptOrders &&
         isProductAvailable &&
-        isProductAvailableNow &&
+        // isProductAvailableNow &&
         !isLoading;
 
     return Column(
@@ -899,7 +899,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
         ),
         const SizedBox(height: 20),
         Text(
-          product.name ?? 'Unknown Product',
+          product.productName ?? 'Unknown Product',
           style: TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.bold,
@@ -1016,16 +1016,16 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                                             color: AppThemeData.warning400,
                                           ),
                                           const SizedBox(width: 4),
-                                          Text(
-                                            _calculateRating(
-                                              product.reviewsSum,
-                                              product.reviewsCount,
-                                            ),
-                                            style: TextStyle(
-                                              fontSize: 14,
-                                              color: AppThemeData.grey600,
-                                            ),
-                                          ),
+                                          // Text(
+                                          //   _calculateRating(
+                                          //     product.reviewsSum,
+                                          //     product.reviewsCount,
+                                          //   ),
+                                          //   style: TextStyle(
+                                          //     fontSize: 14,
+                                          //     color: AppThemeData.grey600,
+                                          //   ),
+                                          // ),
                                         ],
                                       ),
                                     ],
@@ -1051,14 +1051,12 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            if (product.disPrice != null &&
-                                product.disPrice!.isNotEmpty &&
-                                product.disPrice != "0")
+                            if (product.price != null && product.price != "0")
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
                                   Text(
-                                    "₹${product.disPrice}",
+                                    "₹${product.price}",
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
@@ -1154,9 +1152,6 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                           message = status['reason'];
                         } else if (!isProductAvailable) {
                           message = "This product is currently unavailable".tr;
-                        } else if (!isProductAvailableNow) {
-                          message =
-                              "This product is not available at this time".tr;
                         } else {
                           message = "Unable to add to cart".tr;
                         }
@@ -1182,7 +1177,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
                   isLoading,
                   canAcceptOrders,
                   isProductAvailable,
-                  isProductAvailableNow,
+                  // isProductAvailableNow,
                   vendor,
                   shouldShowOptions,
                 ),
@@ -1206,7 +1201,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     bool isLoading,
     bool canAcceptOrders,
     bool isProductAvailable,
-    bool isProductAvailableNow,
+    // bool isProductAvailableNow,
     VendorModel? vendor,
     bool shouldShowOptions,
   ) {
@@ -1214,17 +1209,13 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     if (vendor == null) return "Restaurant unavailable".tr;
     if (!canAcceptOrders) return "Restaurant is closed".tr;
     if (!isProductAvailable) return "Product unavailable".tr;
-    if (!isProductAvailableNow) return "Unavailable now".tr;
+    // if (!isProductAvailableNow) return "Unavailable now".tr;
     if (shouldShowOptions) return "Options".tr;
     return "Add to Cart".tr;
   }
 
   bool _hasProductOptions(ProductModel product) {
-    return product.options != null &&
-        product.options!.isNotEmpty &&
-        (product.itemAttribute == null ||
-            product.itemAttribute!.attributes == null ||
-            product.itemAttribute!.attributes!.isEmpty);
+    return product.variants?.isNotEmpty ?? false;
   }
 
   bool _hasProductAddOns(ProductModel product) {
@@ -1243,22 +1234,17 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     restaurantDetailsProvider.vendorModel = vendor;
     restaurantDetailsProvider.selectedAddOns.clear();
 
-    final hasDiscount =
-        product.disPrice != null &&
-        product.disPrice!.isNotEmpty &&
-        product.disPrice != "0";
+    final hasDiscount = product.price != null && product.price != "0";
 
-    final priceToPass = hasDiscount
-        ? product.disPrice!
-        : (product.price ?? "0");
+    final priceToPass = hasDiscount ? product.price! : (product.price ?? "0");
     final disPriceToPass = hasDiscount ? (product.price ?? "0") : "0";
 
     showProductOptionsBottomSheet(
       context: context,
       controller: restaurantDetailsProvider,
       productModel: product,
-      priceToPass: priceToPass,
-      disPriceToPass: disPriceToPass,
+      priceToPass: priceToPass.toString(),
+      disPriceToPass: disPriceToPass.toString(),
       buttonFontSize: 16,
     );
   }
@@ -1309,35 +1295,35 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     final currentContext = context;
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    if (!product.isAvailableAtCurrentTime) {
-      Get.snackbar(
-        "Unavailable",
-        "This product is not available at this time",
-        snackPosition: SnackPosition.BOTTOM,
-        backgroundColor: AppThemeData.danger500,
-        colorText: AppThemeData.grey50,
-        duration: const Duration(seconds: 3),
-      );
-      return;
-    }
+    // if (!product.isAvailableAtCurrentTime) {
+    //   Get.snackbar(
+    //     "Unavailable",
+    //     "This product is not available at this time",
+    //     snackPosition: SnackPosition.BOTTOM,
+    //     backgroundColor: AppThemeData.danger500,
+    //     colorText: AppThemeData.grey50,
+    //     duration: const Duration(seconds: 3),
+    //   );
+    //   return;
+    // }
 
     try {
       final vendor = await _getVendorDetails(product.vendorID ?? '');
 
-      String finalPrice = product.price ?? '0';
+      String finalPrice = product.price.toString();
       String finalDiscountPrice = '0';
 
-      if (product.disPrice != null &&
-          product.disPrice!.isNotEmpty &&
-          product.disPrice != "0") {
-        finalDiscountPrice = product.disPrice!;
-        finalPrice = product.price ?? '0';
-      }
+      // if (product.disPrice != null &&
+      //     product.disPrice!.isNotEmpty &&
+      //     product.disPrice != "0") {
+      //   finalDiscountPrice = product.disPrice!;
+      //   finalPrice = product.price.toString();
+      // }
 
       CartProductModel cartProductModel = CartProductModel(
-        id: product.id.toString(),
-        categoryId: product.categoryID,
-        name: product.name,
+        id: product.productId.toString(),
+        // categoryId: product.OutletCategory,
+        name: product.productName,
         photo: product.photo,
         price: finalPrice,
         discountPrice: finalDiscountPrice,
@@ -1362,7 +1348,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
 
       Get.snackbar(
         "Added to Cart",
-        "${product.name} added. Cart: $cartCount ${cartCount == 1 ? 'item' : 'items'}",
+        "${product.productName} added. Cart: $cartCount ${cartCount == 1 ? 'item' : 'items'}",
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: AppThemeData.success500,
         colorText: AppThemeData.grey50,

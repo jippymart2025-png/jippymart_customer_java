@@ -55,6 +55,7 @@ import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
+import '../../../models/DeliveryCharge.dart';
 import '../../../models/mart_item_model.dart';
 import '../../../services/mart_firestore_service.dart';
 import '../../address_screens/screens/address_list_screen.dart';
@@ -1028,7 +1029,7 @@ class CartControllerProvider extends ChangeNotifier {
           // Calculate delivery charges
           if (HomeProvider.cartItem.isNotEmpty &&
               selectedFoodType == "Delivery") {
-            await _calculateDeliveryCharges();
+            // await _calculateDeliveryCharges();
           }
 
           // Calculate coupons
@@ -1147,54 +1148,54 @@ class CartControllerProvider extends ChangeNotifier {
         normalizedDiscountType.contains("percent");
   }
 
-  Future<void> _calculateDeliveryCharges() async {
-    if (selectedAddress?.location?.latitude != null &&
-        selectedAddress?.location?.longitude != null &&
-        vendorModel.latitude != null &&
-        vendorModel.longitude != null) {
-      final customerLat = selectedAddress?.location!.latitude;
-      final customerLng = selectedAddress?.location!.longitude;
-      final vendorLat = vendorModel.latitude!;
-      final vendorLng = vendorModel.longitude!;
-
-      // 🔑 OPTIMIZATION: Only recalculate distance if coordinates changed
-      if (_cachedDistance == null ||
-          _cachedCustomerLat != customerLat ||
-          _cachedCustomerLng != customerLng ||
-          _cachedVendorLat != vendorLat ||
-          _cachedVendorLng != vendorLng) {
-        final distanceString = Constant.getDistance(
-          lat1: customerLat.toString(),
-          lng1: customerLng.toString(),
-          lat2: vendorLat.toString(),
-          lng2: vendorLng.toString(),
-        );
-
-        _cachedDistance = double.parse(distanceString);
-        _cachedCustomerLat = customerLat;
-        _cachedCustomerLng = customerLng;
-        _cachedVendorLat = vendorLat;
-        _cachedVendorLng = vendorLng;
-      }
-
-      totalDistance = _cachedDistance!;
-    } else {
-      totalDistance = 0.0;
-      _cachedDistance = null;
-    }
-
-    // 🔑 OPTIMIZATION: Use cached cart item type checks
-    final hasPromotionalItems = _getCachedHasPromotionalItems();
-    final hasMartItems = _getCachedHasMartItems();
-
-    if (hasPromotionalItems) {
-      // calculatePromotionalDeliveryChargeFast();
-    } else if (hasMartItems) {
-      calculateMartDeliveryCharge();
-    } else {
-      calculateRegularDeliveryCharge();
-    }
-  }
+  // Future<void> _calculateDeliveryCharges() async {
+  //   if (selectedAddress?.location?.latitude != null &&
+  //       selectedAddress?.location?.longitude != null &&
+  //       vendorModel.latitude != null &&
+  //       vendorModel.longitude != null) {
+  //     final customerLat = selectedAddress?.location!.latitude;
+  //     final customerLng = selectedAddress?.location!.longitude;
+  //     final vendorLat = vendorModel.latitude!;
+  //     final vendorLng = vendorModel.longitude!;
+  //
+  //     // 🔑 OPTIMIZATION: Only recalculate distance if coordinates changed
+  //     if (_cachedDistance == null ||
+  //         _cachedCustomerLat != customerLat ||
+  //         _cachedCustomerLng != customerLng ||
+  //         _cachedVendorLat != vendorLat ||
+  //         _cachedVendorLng != vendorLng) {
+  //       final distanceString = Constant.getDistance(
+  //         lat1: customerLat.toString(),
+  //         lng1: customerLng.toString(),
+  //         lat2: vendorLat.toString(),
+  //         lng2: vendorLng.toString(),
+  //       );
+  //
+  //       _cachedDistance = double.parse(distanceString);
+  //       _cachedCustomerLat = customerLat;
+  //       _cachedCustomerLng = customerLng;
+  //       _cachedVendorLat = vendorLat;
+  //       _cachedVendorLng = vendorLng;
+  //     }
+  //
+  //     totalDistance = _cachedDistance!;
+  //   } else {
+  //     totalDistance = 0.0;
+  //     _cachedDistance = null;
+  //   }
+  //
+  //   // 🔑 OPTIMIZATION: Use cached cart item type checks
+  //   final hasPromotionalItems = _getCachedHasPromotionalItems();
+  //   final hasMartItems = _getCachedHasMartItems();
+  //
+  //   if (hasPromotionalItems) {
+  //     // calculatePromotionalDeliveryChargeFast();
+  //   } else if (hasMartItems) {
+  //     calculateMartDeliveryCharge();
+  //   } else {
+  //     calculateRegularDeliveryCharge();
+  //   }
+  // }
 
   Future<void> _calculateCoupons() async {
     CouponModel? activeCoupon;
@@ -3574,11 +3575,11 @@ class CartControllerProvider extends ChangeNotifier {
     );
 
     // Run independent operations in parallel to reduce total time
-    await Future.wait([
-      if (userModel.id == null) _loadUserProfileForCart(),
-      if (_cachedDeliveryCharge == null || !_isCacheValid())
-        _loadDeliveryChargeForCart(),
-    ]);
+    // await Future.wait([
+    //   if (userModel.id == null) _loadUserProfileForCart(),
+    //   if (_cachedDeliveryCharge == null || !_isCacheValid())
+    //     // _loadDeliveryChargeForCart(),
+    // ]);
 
     _detectCurrentContext();
 
@@ -3624,18 +3625,18 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> _loadDeliveryChargeForCart() async {
-    try {
-      // Use delivery charge cache utility for dynamic delivery charges
-      final value = await DeliveryChargeCache.instance.getDeliveryCharge();
-      if (value != null) {
-        deliveryChargeModel = value;
-        _cachedDeliveryCharge = value;
-        _updateCacheTime();
-        calculatePrice();
-      }
-    } catch (_) {}
-  }
+  // Future<void> _loadDeliveryChargeForCart() async {
+  //   try {
+  //     // Use delivery charge cache utility for dynamic delivery charges
+  //     final value = await DeliveryChargeCache.instance.getDeliveryCharge();
+  //     if (value != null) {
+  //       deliveryChargeModel = value;
+  //       _cachedDeliveryCharge = value;
+  //       _updateCacheTime();
+  //       calculatePrice();
+  //     }
+  //   } catch (_) {}
+  // }
 
   Future<void> preloadCartProducts({bool forceRefresh = false}) async {
     if (_isLoadingProducts && !forceRefresh) return;
@@ -5073,8 +5074,8 @@ class CartControllerProvider extends ChangeNotifier {
           longitude: martVendor.longitude,
           isSelfDelivery: false,
           vType: martVendor.vType,
-          zoneId: finalZoneId,
-          isOpen: martVendor.isOpen,
+          // zoneId: finalZoneId,
+          // isOpen: martVendor.isOpen,
         );
       }
       if (!_isCalculatingPrice) notifyListeners();
@@ -6128,26 +6129,26 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
 
-      if (address.zoneId != vendorModel.zoneId) {
-        DeliveryZoneAlertDialog.showZoneMismatchError();
-        return false;
-      }
-
-      if (vendorModel.latitude != null && vendorModel.longitude != null) {
-        final distance = Constant.calculateDistance(
-          address.location!.latitude!,
-          address.location!.longitude!,
-          vendorModel.latitude!,
-          vendorModel.longitude!,
-        );
-
-        const maxDeliveryDistance = 16.0;
-
-        if (distance > maxDeliveryDistance) {
-          DeliveryZoneAlertDialog.showDistanceTooFarError();
-          return false;
-        }
-      }
+      // if (address.zoneId != vendorModel.zoneId) {
+      //   DeliveryZoneAlertDialog.showZoneMismatchError();
+      //   return false;
+      // }
+      //
+      // if (vendorModel.latitude != null && vendorModel.longitude != null) {
+      //   final distance = Constant.calculateDistance(
+      //     address.location!.latitude!,
+      //     address.location!.longitude!,
+      //     vendorModel.latitude!,
+      //     vendorModel.longitude!,
+      //   );
+      //
+      //   const maxDeliveryDistance = 16.0;
+      //
+      //   if (distance > maxDeliveryDistance) {
+      //     DeliveryZoneAlertDialog.showDistanceTooFarError();
+      //     return false;
+      //   }
+      // }
 
       return true;
     } catch (e) {

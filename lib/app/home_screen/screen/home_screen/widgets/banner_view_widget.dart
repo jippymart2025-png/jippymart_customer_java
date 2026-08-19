@@ -32,7 +32,7 @@ class _BannerViewState extends State<BannerView> {
       if (homeProvider.bannerModel.isNotEmpty) {
         // Precache first image for iOS
         final firstBanner = homeProvider.bannerModel.first;
-        final imageUrl = firstBanner.photo.toString();
+        final imageUrl = firstBanner.bannerUrl.toString();
         if (imageUrl.isNotEmpty && imageUrl != "null") {
           try {
             final image = Image.network(imageUrl, fit: BoxFit.cover);
@@ -119,7 +119,7 @@ class _BannerViewState extends State<BannerView> {
                     child: ClipRRect(
                       borderRadius: const BorderRadius.all(Radius.circular(12)),
                       child: NetworkImageWidget(
-                        imageUrl: bannerModel.photo.toString(),
+                        imageUrl: bannerModel.bannerUrl.toString(),
                         width: MediaQuery.of(context).size.width,
                         height: 160,
                         fit: BoxFit.fill,

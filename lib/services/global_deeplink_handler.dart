@@ -296,9 +296,9 @@ class GlobalDeeplinkHandler {
       }
 
       // Validate zone
-      if (!_validateRestaurantZone(restaurant.zoneId)) {
-        return;
-      }
+      // if (!_validateRestaurantZone(restaurant.zoneId)) {
+      //   return;
+      // }
 
       // Ensure context is available
       await Future.delayed(const Duration(milliseconds: 200));

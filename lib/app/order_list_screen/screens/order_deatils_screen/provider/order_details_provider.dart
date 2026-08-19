@@ -109,16 +109,16 @@ class OrderDetailsProvider extends ChangeNotifier {
 
           // If promotional items and customer paid delivery charge (above free km),
           // add base charge for GST calculation
-          if (hasPromotionalItems && deliveryChargePaid > 0) {
-            final baseCharge =
-                orderModel.vendor?.deliveryCharge?.baseDeliveryCharge
-                    ?.toDouble() ??
-                21.0;
-            taxableDeliveryFee = baseCharge + deliveryChargePaid;
-            print(
-              'DEBUG: Order Details Controller - Promotional item: GST on base charge (₹$baseCharge) + delivery charge (₹$deliveryChargePaid) = ₹$taxableDeliveryFee',
-            );
-          }
+          // if (hasPromotionalItems && deliveryChargePaid > 0) {
+          //   final baseCharge =
+          //       orderModel.vendor?.deliveryCharge?.baseDeliveryCharge
+          //           ?.toDouble() ??
+          //       21.0;
+          //   taxableDeliveryFee = baseCharge + deliveryChargePaid;
+          //   print(
+          //     'DEBUG: Order Details Controller - Promotional item: GST on base charge (₹$baseCharge) + delivery charge (₹$deliveryChargePaid) = ₹$taxableDeliveryFee',
+          //   );
+          // }
 
           gst = Constant.calculateTax(
             amount: taxableDeliveryFee.toString(),

@@ -17,6 +17,13 @@ class RestaurantCard extends StatelessWidget {
 
   const RestaurantCard({required this.vendorModel});
 
+  bool _hasActiveDiscount(VendorModel vendor) {
+    return vendor.offerName != null ||
+        vendor.discountAmount != null ||
+        vendor.couponCode != null ||
+        vendor.promotionScheduleId != null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final rdp = context.read<RestaurantDetailsProvider>();
@@ -74,11 +81,15 @@ class RestaurantCard extends StatelessWidget {
                               ),
                             ),
                             // Status badge top-left
-                            Positioned(
-                              top: 5,
-                              left: 5,
-                              child: _StatusBadge(vendorModel: vendorModel),
-                            ),
+                            // Status badge top-left
+                            // Status badge top-left
+                            // Offer badge bottom-left
+                            if (_hasActiveDiscount(vendorModel))
+                              Positioned(
+                                left: 5,
+                                bottom: 5,
+                                child: _OfferBadge(vendorModel: vendorModel),
+                              ),
                           ],
                         ),
                       ),
@@ -166,6 +177,63 @@ class _ClosedOverlay extends StatelessWidget {
   }
 }
 
+class _OfferBadge extends StatelessWidget {
+  final VendorModel vendorModel;
+
+  const _OfferBadge({required this.vendorModel});
+
+  @override
+  Widget build(BuildContext context) {
+    String text = 'OFFER';
+
+    if (vendorModel.discountAmount != null) {
+      if (vendorModel.priceType?.toUpperCase() == 'FLAT') {
+        text = '₹${vendorModel.discountAmount!.toStringAsFixed(0)} OFF';
+      } else {
+        text = '${vendorModel.discountAmount!.toStringAsFixed(0)}% OFF';
+      }
+    } else if (vendorModel.offerName != null &&
+        vendorModel.offerName!.isNotEmpty) {
+      text = vendorModel.offerName!;
+    }
+
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 120),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.22),
+            blurRadius: 7,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.local_offer_rounded, size: 12, color: Colors.red),
+          const SizedBox(width: 4),
+          Flexible(
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: kFontXS,
+                fontFamily: AppThemeData.bold,
+                height: 1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // _StatusBadge  — sharper pill badge
 // ─────────────────────────────────────────────────────────────────────────────
@@ -232,31 +300,38 @@ class _BottomInfoRow extends StatelessWidget {
   const _BottomInfoRow({required this.vendorModel});
 
   String get _distanceText {
-    if (vendorModel.distance != null && vendorModel.distance! > 0) {
-      return '${vendorModel.distance!.toStringAsFixed(1)} ${Constant.distanceType}';
+    final distance = vendorModel.distanceKm;
+
+    if (distance != null && distance >= 0) {
+      if (distance < 1.0) {
+        final meters = (distance * 1000).round();
+        return '$meters m';
+      }
+
+      return '${distance.toStringAsFixed(1)} ${Constant.distanceType}';
     }
+
     return '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
   }
 
-  String get _ratingText => Constant.calculateReview(
-    reviewCount: vendorModel.reviewsCount.toString(),
-    reviewSum: vendorModel.reviewsSum.toString(),
-  );
+  String get _ratingText {
+    return vendorModel.review?.toString() ?? '4.0';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        // Rating
+        // ⭐ Rating / Review
         Expanded(
           child: Row(
             children: [
               const Icon(
                 Icons.star_rounded,
-                size: 11,
+                size: 12,
                 color: AppThemeData.kAccentAmber,
               ),
-              const SizedBox(width: 2),
+              const SizedBox(width: 3),
               Expanded(
                 child: Text(
                   _ratingText,
@@ -273,24 +348,13 @@ class _BottomInfoRow extends StatelessWidget {
           ),
         ),
 
-        // Dot separator
-        Container(
-          width: 3,
-          height: 3,
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          decoration: const BoxDecoration(
-            color: Color(0xFFCCCCCC),
-            shape: BoxShape.circle,
-          ),
-        ),
-
-        // Distance
+        // 📍 Distance
         Expanded(
           child: Row(
             children: [
               Icon(
                 Icons.near_me_rounded,
-                size: 10,
+                size: 11,
                 color: AppThemeData.grey400,
               ),
               const SizedBox(width: 2),
@@ -298,7 +362,7 @@ class _BottomInfoRow extends StatelessWidget {
                 child: Text(
                   _distanceText,
                   style: const TextStyle(
-                    fontSize: kFontXS,
+                    fontSize: kFontXS + 1,
                     fontFamily: AppThemeData.medium,
                     color: Color(0xFF888899),
                   ),
@@ -313,7 +377,6 @@ class _BottomInfoRow extends StatelessWidget {
     );
   }
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // _TimeThenFastDeliveryWidget  — refined with better icon & colours
 // ─────────────────────────────────────────────────────────────────────────────

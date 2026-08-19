@@ -67,8 +67,6 @@ import 'app/mart/provider/category_details_provider.dart';
 import 'app/mart/provider/mart_search_provider.dart';
 import 'app/mart/screens/mart_edit_profile_screen/provider/mart_edit_profile_provider.dart';
 import 'app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
-import 'app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart'
-    show LiveTrackingProvider;
 import 'app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
 import 'app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'app/profile_screen/provider/my_profile_provider.dart';
@@ -76,7 +74,6 @@ import 'app/wallet_screen/provider/wallet_provider.dart';
 import 'app/rate_us_screen/provider/rate_product_provider.dart';
 import 'app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'app/review_list_screen/provider/review_list_provider.dart';
-import 'app/search_screen/provider/search_provider.dart';
 import 'app/splash_screen/provider/splash_provider.dart';
 import 'app/swiggy_search_screen/provider/swiggy_search_provider.dart';
 import 'app/splash_screen/splash_home.dart';
@@ -184,12 +181,12 @@ void _runDeferredInits(BuildContext context) {
     } catch (e) {
       if (kDebugMode) print('⚠️ Facebook App Events init failed: $e');
     }
-    try {
-      DeliveryChargeCache.instance.initializeOnAppLaunch();
-      if (kDebugMode) print('✅ Delivery charge cache initialized');
-    } catch (e) {
-      if (kDebugMode) print('⚠️ Delivery charge cache init failed: $e');
-    }
+    // try {
+    //   DeliveryChargeCache.instance.initializeOnAppLaunch();
+    //   if (kDebugMode) print('✅ Delivery charge cache initialized');
+    // } catch (e) {
+    //   if (kDebugMode) print('⚠️ Delivery charge cache init failed: $e');
+    // }
     // ANR / monitoring (non-blocking)
     try {
       ANRMonitor.startMonitoring();
@@ -445,11 +442,14 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       if (!mounted) return;
       final dialogContext = GlobalDeeplinkHandler.navigatorKey.currentContext;
       if (dialogContext != null) {
-        await OrderReviewService.instance.checkAndShowReviewPopup(dialogContext);
+        await OrderReviewService.instance.checkAndShowReviewPopup(
+          dialogContext,
+        );
       } else {
         // Navigator may not be ready on very first frame; retry shortly.
         Future.delayed(const Duration(seconds: 1), () async {
-          final retryContext = GlobalDeeplinkHandler.navigatorKey.currentContext;
+          final retryContext =
+              GlobalDeeplinkHandler.navigatorKey.currentContext;
           if (retryContext == null) return;
           await OrderReviewService.instance.checkAndShowReviewPopup(
             retryContext,
@@ -492,7 +492,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         prv.ChangeNotifierProvider(create: (_) => MartCategoryProvider()),
         prv.ChangeNotifierProvider(create: (_) => MartNavigationProvider()),
         prv.ChangeNotifierProvider(create: (_) => OrderProvider()),
-        prv.ChangeNotifierProvider(create: (_) => SearchScreenProvider()),
         prv.ChangeNotifierProvider(create: (_) => CategoryDetailsProvider()),
         prv.ChangeNotifierProvider(create: (_) => MapViewProvider()),
         prv.ChangeNotifierProvider(create: (_) => CategoryViewProvider()),
@@ -507,7 +506,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         prv.ChangeNotifierProvider(create: (_) => ChatProvider()),
         prv.ChangeNotifierProvider(create: (_) => EditProfileProvider()),
         prv.ChangeNotifierProvider(create: (_) => MartEditProfileProvider()),
-        prv.ChangeNotifierProvider(create: (_) => LiveTrackingProvider()),
         prv.ChangeNotifierProvider(create: (_) => OrderDetailsProvider()),
         prv.ChangeNotifierProvider(create: (_) => MyProfileProvider()),
         prv.ChangeNotifierProvider(create: (_) => RateProductProvider()),

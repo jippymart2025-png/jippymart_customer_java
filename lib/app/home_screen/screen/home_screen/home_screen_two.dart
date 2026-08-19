@@ -436,7 +436,7 @@ class _HomeContentCard extends StatelessWidget {
           // _OrdertypeSection(),
           _CategorySection(),
           const SizedBox(height: 8),
-          const BestRestaurantsSection(restaurantList: []),
+          // const BestRestaurantsSection(restaurantList: []),
           // _AdvertisementSection(controller: controller),
           _BottomBannerSection(controller: controller),
           const SizedBox(height: 12),

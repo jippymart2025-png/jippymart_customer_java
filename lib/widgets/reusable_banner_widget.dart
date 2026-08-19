@@ -16,7 +16,9 @@ import 'package:jippymart_customer/app/mart/screens/mart_categorhy_details_scree
 import 'package:jippymart_customer/app/mart/screens/mart_product_details_screen/mart_product_details_screen.dart';
 import 'package:jippymart_customer/models/mart_item_model.dart';
 import 'package:jippymart_customer/services/mart_firestore_service.dart';
-import 'dart:async'; // Add this for Timer
+import 'dart:async';
+
+import '../app/home_screen/screen/home_screen/provider/home_provider.dart'; // Add this for Timer
 
 /// Reusable banner widget that works with both BannerModel and MartBannerModel
 class ReusableBannerWidget extends StatefulWidget {
@@ -165,15 +167,23 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
     String? title;
     String? text;
     String? description;
+
+    // New BannerModel from FM API
+    int? outletId;
+    String? bannerType;
+
+    // Old MartBannerModel fields
     String? redirectType;
     String? redirectId;
-    // Handle both BannerModel and MartBannerModel
+
     if (banner is BannerModel) {
-      imageUrl = banner.photo;
-      title = banner.title;
-      redirectType = banner.redirectType;
-      redirectId = banner.redirectId;
+      // NEW API
+      imageUrl = banner.bannerUrl;
+      title = banner.outletName;
+      outletId = banner.outletId;
+      bannerType = banner.bannerType;
     } else if (banner is MartBannerModel) {
+      // OLD API
       imageUrl = banner.photo;
       title = banner.title;
       text = banner.text;
@@ -185,7 +195,15 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
     return Consumer<RestaurantDetailsProvider>(
       builder: (context, restaurantDetailsProvider, _) {
         return InkWell(
-          onTap: () => _handleBannerTap(context, redirectType, redirectId),
+          onTap: () {
+            if (banner is BannerModel) {
+              // NEW API banner
+              _handleNewBannerTap(context, banner);
+            } else if (banner is MartBannerModel) {
+              // OLD API banner
+              _handleBannerTap(context, redirectType, redirectId);
+            }
+          },
           child: Container(
             margin: const EdgeInsets.symmetric(horizontal: 8.0),
             decoration: BoxDecoration(
@@ -203,7 +221,7 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  // Banner Image
+                  // Banner image
                   if (imageUrl != null && imageUrl.isNotEmpty)
                     Image.network(
                       imageUrl,
@@ -221,8 +239,16 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
                         );
                       },
                       loadingBuilder: (context, child, loadingProgress) {
-                        // Lazy loading - show placeholder immediately while image loads in background
-                        return Container(color: Colors.grey[50], child: child);
+                        if (loadingProgress == null) {
+                          return child;
+                        }
+
+                        return Container(
+                          color: Colors.grey[50],
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
                       },
                     )
                   else
@@ -235,7 +261,7 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
                       ),
                     ),
 
-                  // Gradient overlay for better text readability
+                  // Gradient overlay
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -249,8 +275,10 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
                     ),
                   ),
 
-                  // Banner text content
-                  if (title != null || text != null || description != null)
+                  // Banner text
+                  if ((title != null && title.isNotEmpty) ||
+                      (text != null && text.isNotEmpty) ||
+                      (description != null && description.isNotEmpty))
                     Positioned(
                       bottom: 0,
                       left: 0,
@@ -261,7 +289,22 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // Title removed - only show text and description
+                            // Outlet name for new API
+                            if (banner is BannerModel &&
+                                title != null &&
+                                title.isNotEmpty)
+                              Text(
+                                title,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+
+                            // Old banner text
                             if (text != null && text.isNotEmpty)
                               Text(
                                 text,
@@ -273,8 +316,10 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
+
                             if (description != null && description.isNotEmpty)
                               const SizedBox(height: 4),
+
                             if (description != null && description.isNotEmpty)
                               Text(
                                 description,
@@ -296,6 +341,13 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
         );
       },
     );
+  }
+
+  void _handleNewBannerTap(BuildContext context, BannerModel banner) {
+    final homeProvider = context.read<HomeProvider>();
+    final restaurantDetailsProvider = context.read<RestaurantDetailsProvider>();
+
+    homeProvider.bannerOnTapFunction(banner, restaurantDetailsProvider);
   }
 
   Future<void> _handleBannerTap(
@@ -348,27 +400,27 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
     try {
       VendorModel? vendorModel = await FireStoreUtils.getVendorById(storeId);
 
-      if (vendorModel != null) {
-        if (vendorModel.zoneId == Constant.selectedZone?.id) {
-          ShowToastDialog.closeLoader();
-          RestaurantDetailsProvider restaurantDetailsProvider =
-              Provider.of<RestaurantDetailsProvider>(context, listen: false);
-          restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
-          Get.to(
-            const RestaurantDetailsScreen(),
-            arguments: {"vendorModel": vendorModel},
-          );
-        } else {
-          ShowToastDialog.closeLoader();
-          ShowToastDialog.showToast(
-            "Sorry, The Zone is not available in your area. Change the other location first."
-                .tr,
-          );
-        }
-      } else {
-        ShowToastDialog.closeLoader();
-        ShowToastDialog.showToast("Store not found".tr);
-      }
+      // if (vendorModel != null) {
+      //   if (vendorModel.zoneId == Constant.selectedZone?.id) {
+      //     ShowToastDialog.closeLoader();
+      //     RestaurantDetailsProvider restaurantDetailsProvider =
+      //         Provider.of<RestaurantDetailsProvider>(context, listen: false);
+      //     restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+      //     Get.to(
+      //       const RestaurantDetailsScreen(),
+      //       arguments: {"vendorModel": vendorModel},
+      //     );
+      //   } else {
+      //     ShowToastDialog.closeLoader();
+      //     ShowToastDialog.showToast(
+      //       "Sorry, The Zone is not available in your area. Change the other location first."
+      //           .tr,
+      //     );
+      //   }
+      // } else {
+      //   ShowToastDialog.closeLoader();
+      //   ShowToastDialog.showToast("Store not found".tr);
+      // }
     } catch (e) {
       ShowToastDialog.closeLoader();
       ShowToastDialog.showToast("Error loading store details".tr);
@@ -399,25 +451,25 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
             productModel.vendorID.toString(),
           );
           if (vendorModel != null) {
-            if (vendorModel.zoneId == Constant.selectedZone?.id) {
-              ShowToastDialog.closeLoader();
-              RestaurantDetailsProvider restaurantDetailsProvider =
-                  Provider.of<RestaurantDetailsProvider>(
-                    context,
-                    listen: false,
-                  );
-              restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
-              Get.to(
-                const RestaurantDetailsScreen(),
-                arguments: {"vendorModel": vendorModel},
-              );
-            } else {
-              ShowToastDialog.closeLoader();
-              ShowToastDialog.showToast(
-                "Sorry, The Zone is not available in your area. Change the other location first."
-                    .tr,
-              );
-            }
+            // if (vendorModel.zoneId == Constant.selectedZone?.id) {
+            //   ShowToastDialog.closeLoader();
+            //   RestaurantDetailsProvider restaurantDetailsProvider =
+            //       Provider.of<RestaurantDetailsProvider>(
+            //         context,
+            //         listen: false,
+            //       );
+            //   restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+            //   Get.to(
+            //     const RestaurantDetailsScreen(),
+            //     arguments: {"vendorModel": vendorModel},
+            //   );
+            // } else {
+            //   ShowToastDialog.closeLoader();
+            //   ShowToastDialog.showToast(
+            //     "Sorry, The Zone is not available in your area. Change the other location first."
+            //         .tr,
+            //   );
+            // }
           } else {
             ShowToastDialog.closeLoader();
             ShowToastDialog.showToast("Store not found".tr);

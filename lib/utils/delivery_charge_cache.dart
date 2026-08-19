@@ -1,5 +1,5 @@
 import 'package:flutter/foundation.dart';
-import 'package:jippymart_customer/models/vendor_model.dart';
+import 'package:jippymart_customer/models/DeliveryCharge.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -56,11 +56,6 @@ class DeliveryChargeCache {
       return _cachedDeliveryCharge;
     }
 
-    // If cache is invalid or force refresh, fetch from API
-    if (forceRefresh || !isCacheValid()) {
-      // return await _fetchAndCacheDeliveryCharge();
-    }
-
     // If cache exists but needs validation, return cached value and validate in background
     if (_cachedDeliveryCharge != null && needsValidation()) {
       debugPrint(
@@ -73,43 +68,12 @@ class DeliveryChargeCache {
     return _cachedDeliveryCharge;
   }
 
-  /// Fetch delivery charge from API and cache it
-  // Future<DeliveryCharge?> _fetchAndCacheDeliveryCharge() async {
-  //   if (_isValidating) {
-  //     debugPrint('[DELIVERY_CACHE] ⏳ Already validating, returning cached value');
-  //     return _cachedDeliveryCharge;
-  //   }
-  //
-  //   _isValidating = true;
-  //   try {
-  //     debugPrint('[DELIVERY_CACHE] 🔍 Fetching delivery charge from API...');
-  //     final deliveryCharge = await FireStoreUtils.getDeliveryCharge();
-  //
-  //     if (deliveryCharge != null) {
-  //       _cachedDeliveryCharge = deliveryCharge;
-  //       _lastFetchTime = DateTime.now();
-  //       await _saveToSharedPreferences(deliveryCharge);
-  //       debugPrint('[DELIVERY_CACHE] ✅ Delivery charge cached successfully');
-  //     } else {
-  //       debugPrint('[DELIVERY_CACHE] ⚠️ API returned null, using cached value if available');
-  //     }
-  //
-  //     return _cachedDeliveryCharge;
-  //   } catch (e) {
-  //     debugPrint('[DELIVERY_CACHE] ❌ Error fetching delivery charge: $e');
-  //     // Return cached value even if fetch fails
-  //     return _cachedDeliveryCharge;
-  //   } finally {
-  //     _isValidating = false;
-  //   }
-  // }
-
   /// Validate cache in background without blocking
   void _validateCacheInBackground() {
     if (_isValidating) return;
 
     Future.microtask(() async {
-      // await _fetchAndCacheDeliveryCharge();
+      // Background validation if needed
     });
   }
 
@@ -124,8 +88,6 @@ class DeliveryChargeCache {
         final timestamp = DateTime.tryParse(timestampStr);
         if (timestamp != null &&
             DateTime.now().difference(timestamp) < _cacheExpiry) {
-          // Parse cached delivery charge (simplified - you may need to adjust based on your model)
-          // For now, we'll fetch fresh data on launch but use cache during session
           debugPrint(
             '[DELIVERY_CACHE] 📦 Cache found in storage, will validate in background',
           );
@@ -143,8 +105,6 @@ class DeliveryChargeCache {
       final prefs = await SharedPreferences.getInstance();
       // Save timestamp
       await prefs.setString(_timestampKey, DateTime.now().toIso8601String());
-      // Note: DeliveryCharge model needs toJson() method for full serialization
-      // For now, we'll just cache in memory and validate on launch
       debugPrint('[DELIVERY_CACHE] 💾 Cache timestamp saved');
     } catch (e) {
       debugPrint('[DELIVERY_CACHE] ❌ Error saving cache to storage: $e');
@@ -166,7 +126,6 @@ class DeliveryChargeCache {
   }
 
   /// Initialize cache on app launch (non-blocking)
-  /// Call this in your app initialization
   Future<void> initializeOnAppLaunch() async {
     debugPrint(
       '[DELIVERY_CACHE] 🚀 Initializing delivery charge cache on app launch...',

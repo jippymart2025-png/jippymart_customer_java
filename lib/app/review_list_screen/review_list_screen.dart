@@ -124,7 +124,7 @@ class ReviewListScreen extends StatelessWidget {
                                         } else {
                                           ProductModel model = snapshot.data!;
                                           return Text(
-                                            '${'Rate for'.tr} - ${model.name ?? ''}',
+                                            '${'Rate for'.tr} - ${model.productName ?? ''}',
                                             style: TextStyle(
                                               color: AppThemeData.grey900,
                                               fontSize: 14,

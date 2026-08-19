@@ -454,7 +454,7 @@ class FireStoreUtils {
       if (kDebugMode) {
         debugPrint("Vendor Parsed");
         debugPrint("OutletId : ${vendor.id}");
-        debugPrint("ZoneId : ${vendor.zoneId}");
+        // debugPrint("ZoneId : ${vendor.zoneId}");
       }
 
       return vendor;
@@ -535,196 +535,196 @@ class FireStoreUtils {
 
   StreamController<List<VendorModel>>? getNearestVendorController;
 
-  Stream<List<VendorModel>> getAllNearestRestaurant({bool? isDining}) async* {
-    try {
-      getNearestVendorController =
-          StreamController<List<VendorModel>>.broadcast();
-      List<VendorModel> vendorList = [];
-      if (Constant.selectedZone == null) {
-        getNearestVendorController!.sink.add([]);
-        yield* getNearestVendorController!.stream;
-        return;
-      }
-      // **REPLACED FIREBASE WITH API CALL**
-      try {
-        final response = await http.get(
-          Uri.parse(
-            '${AppConst.baseUrl}restaurants/by-zone/${Constant.selectedZone!.id}',
-          ),
-          headers: await getHeaders(),
-        );
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseData = json.decode(response.body);
-
-          if (responseData['success'] == true) {
-            final List<dynamic> restaurantData = responseData['data'];
-
-            // Filter restaurants based on distance from user location
-            for (var restaurant in restaurantData) {
-              try {
-                VendorModel vendorModel = VendorModel.fromJson(restaurant);
-
-                // Calculate distance between user and restaurant
-                double distance = _calculateDistance(
-                  Constant.selectedLocation.location!.latitude ?? 0.0,
-                  Constant.selectedLocation.location!.longitude ?? 0.0,
-                  vendorModel.latitude ?? 0.0,
-                  vendorModel.longitude ?? 0.0,
-                );
-
-                // Filter by radius
-                if (distance <= double.parse(Constant.radius)) {
-                  // Apply subscription filtering logic
-                  if ((Constant.isSubscriptionModelApplied == true ||
-                          Constant.adminCommission?.isEnabled == true) &&
-                      vendorModel.subscriptionPlan != null) {
-                    if (vendorModel.subscriptionTotalOrders == "-1") {
-                      vendorList.add(vendorModel);
-                      debugPrint(
-                        '[DEBUG] Restaurant added (unlimited subscription): ${vendorModel.title}',
-                      );
-                    } else {
-                      if ((vendorModel.subscriptionExpiryDate != null &&
-                              vendorModel.subscriptionExpiryDate!
-                                      .toDate()
-                                      .isBefore(DateTime.now()) ==
-                                  false) ||
-                          vendorModel.subscriptionPlan?.expiryDay == "-1") {
-                        if (vendorModel.subscriptionTotalOrders != '0') {
-                          // **FOOD CATEGORY FILTERING: Exclude mart vendors**
-                          if (vendorModel.vType == null ||
-                              vendorModel.vType!.toLowerCase() != 'mart') {
-                            vendorList.add(vendorModel);
-                            debugPrint(
-                              '[DEBUG] Restaurant added (valid subscription): ${vendorModel.title}',
-                            );
-                          } else {
-                            debugPrint(
-                              '[DEBUG] Mart vendor excluded from FOOD category: ${vendorModel.title}',
-                            );
-                          }
-                        } else {
-                          debugPrint(
-                            '[DEBUG] Restaurant filtered out (subscription orders exhausted): ${vendorModel.title}',
-                          );
-                        }
-                      } else {
-                        debugPrint(
-                          '[DEBUG] Restaurant filtered out (subscription expired): ${vendorModel.title}',
-                        );
-                      }
-                    }
-                  } else {
-                    // **FOOD CATEGORY FILTERING: Exclude mart vendors**
-                    if (vendorModel.vType == null ||
-                        vendorModel.vType!.toLowerCase() != 'mart') {
-                      vendorList.add(vendorModel);
-                      debugPrint(
-                        '[DEBUG] Restaurant added (no subscription filter): ${vendorModel.title}',
-                      );
-                    } else {
-                      debugPrint(
-                        '[DEBUG] Mart vendor excluded from FOOD category: ${vendorModel.title}',
-                      );
-                    }
-                  }
-                } else {
-                  debugPrint(
-                    '[DEBUG] Restaurant filtered out (distance $distance km > radius ${Constant.radius} km): ${vendorModel.title}',
-                  );
-                }
-              } catch (e) {
-                debugPrint('[DEBUG] Error parsing restaurant data: $e');
-              }
-            }
-
-            debugPrint(
-              '[DEBUG] getAllNearestRestaurant: Final result: ${vendorList.length} restaurants after filtering',
-            );
-            getNearestVendorController!.sink.add(vendorList);
-          } else {
-            debugPrint('[DEBUG] API returned success: false');
-            getNearestVendorController!.sink.add([]);
-          }
-        } else {
-          debugPrint(
-            '[DEBUG] API call failed with status: ${response.statusCode}',
-          );
-          getNearestVendorController!.sink.add([]);
-        }
-      } catch (e) {
-        debugPrint('[DEBUG] API call error: $e');
-        getNearestVendorController!.sink.add([]);
-      }
-
-      yield* getNearestVendorController!.stream;
-    } catch (e) {
-      debugPrint(
-        '[DEBUG] getAllNearestRestaurant: Error in main try block: $e',
-      );
-
-      // **FALLBACK: Try to load restaurants without zone filtering if main query fails**
-      try {
-        debugPrint(
-          '[DEBUG] getAllNearestRestaurant: Attempting fallback query without zone filtering',
-        );
-        List<VendorModel> fallbackVendorList = [];
-
-        // Fallback API call - you might need to adjust this endpoint
-        final fallbackResponse = await http.get(
-          Uri.parse('${AppConst.baseUrl}restaurants'),
-          // Adjust endpoint as needed
-          headers: await getHeaders(),
-        );
-
-        if (fallbackResponse.statusCode == 200) {
-          final Map<String, dynamic> fallbackData = json.decode(
-            fallbackResponse.body,
-          );
-
-          if (fallbackData['success'] == true) {
-            final List<dynamic> fallbackRestaurants = fallbackData['data'];
-            debugPrint(
-              '[DEBUG] getAllNearestRestaurant: Fallback query found ${fallbackRestaurants.length} restaurants',
-            );
-
-            for (var restaurant in fallbackRestaurants) {
-              try {
-                final data = restaurant;
-                VendorModel vendorModel = VendorModel.fromJson(data);
-
-                // **FOOD CATEGORY FILTERING: Exclude mart vendors from fallback query too**
-                if (vendorModel.vType == null ||
-                    vendorModel.vType!.toLowerCase() != 'mart') {
-                  fallbackVendorList.add(vendorModel);
-                } else {
-                  debugPrint(
-                    '[DEBUG] Mart vendor excluded from fallback FOOD category: ${vendorModel.title}',
-                  );
-                }
-              } catch (e) {
-                debugPrint(
-                  '[DEBUG] Error parsing fallback restaurant data: $e',
-                );
-              }
-            }
-
-            debugPrint(
-              '[DEBUG] getAllNearestRestaurant: Fallback result: ${fallbackVendorList.length} restaurants',
-            );
-            getNearestVendorController!.sink.add(fallbackVendorList);
-            yield* getNearestVendorController!.stream;
-          }
-        }
-      } catch (fallbackError) {
-        debugPrint(
-          '[DEBUG] getAllNearestRestaurant: Fallback query also failed: $fallbackError',
-        );
-        getNearestVendorController!.sink.add([]);
-        yield* getNearestVendorController!.stream;
-      }
-    }
-  }
+  // Stream<List<VendorModel>> getAllNearestRestaurant({bool? isDining}) async* {
+  //   try {
+  //     getNearestVendorController =
+  //         StreamController<List<VendorModel>>.broadcast();
+  //     List<VendorModel> vendorList = [];
+  //     if (Constant.selectedZone == null) {
+  //       getNearestVendorController!.sink.add([]);
+  //       yield* getNearestVendorController!.stream;
+  //       return;
+  //     }
+  //     // **REPLACED FIREBASE WITH API CALL**
+  //     try {
+  //       final response = await http.get(
+  //         Uri.parse(
+  //           '${AppConst.baseUrl}restaurants/by-zone/${Constant.selectedZone!.id}',
+  //         ),
+  //         headers: await getHeaders(),
+  //       );
+  //       if (response.statusCode == 200) {
+  //         final Map<String, dynamic> responseData = json.decode(response.body);
+  //
+  //         if (responseData['success'] == true) {
+  //           final List<dynamic> restaurantData = responseData['data'];
+  //
+  //           // Filter restaurants based on distance from user location
+  //           for (var restaurant in restaurantData) {
+  //             try {
+  //               VendorModel vendorModel = VendorModel.fromJson(restaurant);
+  //
+  //               // Calculate distance between user and restaurant
+  //               double distance = _calculateDistance(
+  //                 Constant.selectedLocation.location!.latitude ?? 0.0,
+  //                 Constant.selectedLocation.location!.longitude ?? 0.0,
+  //                 // vendorModel.latitude ?? 0.0,
+  //                 // vendorModel.longitude ?? 0.0,
+  //               );
+  //
+  //               // Filter by radius
+  //               if (distance <= double.parse(Constant.radius)) {
+  //                 // Apply subscription filtering logic
+  //                 if ((Constant.isSubscriptionModelApplied == true ||
+  //                         Constant.adminCommission?.isEnabled == true) &&
+  //                     vendorModel.subscriptionPlan != null) {
+  //                   if (vendorModel.subscriptionTotalOrders == "-1") {
+  //                     vendorList.add(vendorModel);
+  //                     debugPrint(
+  //                       '[DEBUG] Restaurant added (unlimited subscription): ${vendorModel.title}',
+  //                     );
+  //                   } else {
+  //                     if ((vendorModel.subscriptionExpiryDate != null &&
+  //                             vendorModel.subscriptionExpiryDate!
+  //                                     .toDate()
+  //                                     .isBefore(DateTime.now()) ==
+  //                                 false) ||
+  //                         vendorModel.subscriptionPlan?.expiryDay == "-1") {
+  //                       if (vendorModel.subscriptionTotalOrders != '0') {
+  //                         // **FOOD CATEGORY FILTERING: Exclude mart vendors**
+  //                         if (vendorModel.vType == null ||
+  //                             vendorModel.vType!.toLowerCase() != 'mart') {
+  //                           vendorList.add(vendorModel);
+  //                           debugPrint(
+  //                             '[DEBUG] Restaurant added (valid subscription): ${vendorModel.title}',
+  //                           );
+  //                         } else {
+  //                           debugPrint(
+  //                             '[DEBUG] Mart vendor excluded from FOOD category: ${vendorModel.title}',
+  //                           );
+  //                         }
+  //                       } else {
+  //                         debugPrint(
+  //                           '[DEBUG] Restaurant filtered out (subscription orders exhausted): ${vendorModel.title}',
+  //                         );
+  //                       }
+  //                     } else {
+  //                       debugPrint(
+  //                         '[DEBUG] Restaurant filtered out (subscription expired): ${vendorModel.title}',
+  //                       );
+  //                     }
+  //                   }
+  //                 } else {
+  //                   // **FOOD CATEGORY FILTERING: Exclude mart vendors**
+  //                   if (vendorModel.vType == null ||
+  //                       vendorModel.vType!.toLowerCase() != 'mart') {
+  //                     vendorList.add(vendorModel);
+  //                     debugPrint(
+  //                       '[DEBUG] Restaurant added (no subscription filter): ${vendorModel.title}',
+  //                     );
+  //                   } else {
+  //                     debugPrint(
+  //                       '[DEBUG] Mart vendor excluded from FOOD category: ${vendorModel.title}',
+  //                     );
+  //                   }
+  //                 }
+  //               } else {
+  //                 debugPrint(
+  //                   '[DEBUG] Restaurant filtered out (distance $distance km > radius ${Constant.radius} km): ${vendorModel.title}',
+  //                 );
+  //               }
+  //             } catch (e) {
+  //               debugPrint('[DEBUG] Error parsing restaurant data: $e');
+  //             }
+  //           }
+  //
+  //           debugPrint(
+  //             '[DEBUG] getAllNearestRestaurant: Final result: ${vendorList.length} restaurants after filtering',
+  //           );
+  //           getNearestVendorController!.sink.add(vendorList);
+  //         } else {
+  //           debugPrint('[DEBUG] API returned success: false');
+  //           getNearestVendorController!.sink.add([]);
+  //         }
+  //       } else {
+  //         debugPrint(
+  //           '[DEBUG] API call failed with status: ${response.statusCode}',
+  //         );
+  //         getNearestVendorController!.sink.add([]);
+  //       }
+  //     } catch (e) {
+  //       debugPrint('[DEBUG] API call error: $e');
+  //       getNearestVendorController!.sink.add([]);
+  //     }
+  //
+  //     yield* getNearestVendorController!.stream;
+  //   } catch (e) {
+  //     debugPrint(
+  //       '[DEBUG] getAllNearestRestaurant: Error in main try block: $e',
+  //     );
+  //
+  //     // **FALLBACK: Try to load restaurants without zone filtering if main query fails**
+  //     try {
+  //       debugPrint(
+  //         '[DEBUG] getAllNearestRestaurant: Attempting fallback query without zone filtering',
+  //       );
+  //       List<VendorModel> fallbackVendorList = [];
+  //
+  //       // Fallback API call - you might need to adjust this endpoint
+  //       final fallbackResponse = await http.get(
+  //         Uri.parse('${AppConst.baseUrl}restaurants'),
+  //         // Adjust endpoint as needed
+  //         headers: await getHeaders(),
+  //       );
+  //
+  //       if (fallbackResponse.statusCode == 200) {
+  //         final Map<String, dynamic> fallbackData = json.decode(
+  //           fallbackResponse.body,
+  //         );
+  //
+  //         if (fallbackData['success'] == true) {
+  //           final List<dynamic> fallbackRestaurants = fallbackData['data'];
+  //           debugPrint(
+  //             '[DEBUG] getAllNearestRestaurant: Fallback query found ${fallbackRestaurants.length} restaurants',
+  //           );
+  //
+  //           for (var restaurant in fallbackRestaurants) {
+  //             try {
+  //               final data = restaurant;
+  //               VendorModel vendorModel = VendorModel.fromJson(data);
+  //
+  //               // **FOOD CATEGORY FILTERING: Exclude mart vendors from fallback query too**
+  //               if (vendorModel.vType == null ||
+  //                   vendorModel.vType!.toLowerCase() != 'mart') {
+  //                 fallbackVendorList.add(vendorModel);
+  //               } else {
+  //                 debugPrint(
+  //                   '[DEBUG] Mart vendor excluded from fallback FOOD category: ${vendorModel.title}',
+  //                 );
+  //               }
+  //             } catch (e) {
+  //               debugPrint(
+  //                 '[DEBUG] Error parsing fallback restaurant data: $e',
+  //               );
+  //             }
+  //           }
+  //
+  //           debugPrint(
+  //             '[DEBUG] getAllNearestRestaurant: Fallback result: ${fallbackVendorList.length} restaurants',
+  //           );
+  //           getNearestVendorController!.sink.add(fallbackVendorList);
+  //           yield* getNearestVendorController!.stream;
+  //         }
+  //       }
+  //     } catch (fallbackError) {
+  //       debugPrint(
+  //         '[DEBUG] getAllNearestRestaurant: Fallback query also failed: $fallbackError',
+  //       );
+  //       getNearestVendorController!.sink.add([]);
+  //       yield* getNearestVendorController!.stream;
+  //     }
+  //   }
+  // }
 
   // Helper function to calculate distance between two coordinates
   double _calculateDistance(
@@ -1143,7 +1143,8 @@ class FireStoreUtils {
 
   static Future<bool> setProduct(ProductModel orderModel) async {
     try {
-      final url = "${AppConst.baseUrl}firestore/setProduct?id=${orderModel.id}";
+      final url =
+          "${AppConst.baseUrl}firestore/setProduct?id=${orderModel.productId}";
       debugPrint("setProduct $url");
       final body = jsonEncode(orderModel.toJson());
       final response = await http.post(
@@ -1452,46 +1453,71 @@ class FireStoreUtils {
     return false;
   }
 
-  static ProductOption? _matchProductOptionForReorder(
+  static ProductVariant? _matchProductOptionForReorder(
     ProductModel product,
     VariantInfo? vi,
   ) {
-    if (vi == null || product.options == null || product.options!.isEmpty) {
+    if (vi == null || product.variants == null || product.variants!.isEmpty) {
       return null;
     }
+
     final vid = vi.variantId?.trim();
+
+    // Match variant ID
     if (vid != null && vid.isNotEmpty && vid != '0') {
-      for (final o in product.options!) {
-        if (_idsLooselyEqual(o.id, vid)) return o;
+      for (final variant in product.variants!) {
+        if (variant.variantId?.toString() == vid) {
+          return variant;
+        }
       }
     }
+
+    // Match variant name / SKU
     final sku = vi.variantSku?.trim();
+
     if (sku != null && sku.isNotEmpty) {
-      for (final o in product.options!) {
-        if (o.subtitle == sku || o.title == sku) return o;
+      for (final variant in product.variants!) {
+        if (variant.variantName == sku) {
+          return variant;
+        }
       }
     }
+
     return null;
   }
 
-  static Variants? _matchItemAttributeVariantForReorder(
+  static ProductVariant? _matchProductVariantForReorder(
     ProductModel product,
     VariantInfo? vi,
   ) {
-    if (vi == null || product.itemAttribute?.variants == null) return null;
-    final vars = product.itemAttribute!.variants!;
-    final vid = vi.variantId?.trim();
-    if (vid != null && vid.isNotEmpty && vid != '0') {
-      for (final v in vars) {
-        if (_idsLooselyEqual(v.variantId, vid)) return v;
+    if (vi == null || product.variants == null || product.variants!.isEmpty) {
+      return null;
+    }
+
+    final variants = product.variants!;
+
+    // 1. Match by variant ID
+    final variantId = vi.variantId?.trim();
+
+    if (variantId != null && variantId.isNotEmpty && variantId != '0') {
+      for (final variant in variants) {
+        if (variant.variantId?.toString() == variantId) {
+          return variant;
+        }
       }
     }
+
+    // 2. Match by SKU/name
     final sku = vi.variantSku?.trim();
+
     if (sku != null && sku.isNotEmpty) {
-      for (final v in vars) {
-        if (v.variantSku == sku) return v;
+      for (final variant in variants) {
+        if (variant.variantName?.trim() == sku) {
+          return variant;
+        }
       }
     }
+
     return null;
   }
 
@@ -1532,12 +1558,17 @@ class FireStoreUtils {
       final vendorId = element.vendorID ?? '';
       final v = vendor ?? VendorModel(id: vendorId);
 
+      // ============================================================
+      // 1. PRODUCT NOT FOUND
+      // ============================================================
       if (product == null) {
         final unit = _fallbackUnitFromOrderSnapshot(
           element.price,
           element.discountPrice,
         );
+
         final hasVariant = element.variantInfo != null;
+
         return ProductPriceInfo(
           currentPrice: unit,
           discountPrice: hasVariant ? 0.0 : unit,
@@ -1546,88 +1577,136 @@ class FireStoreUtils {
         );
       }
 
+      // ============================================================
+      // 2. VENDOR VALIDATION
+      // ============================================================
       final productVendorId = product.vendorID ?? '';
+
       if (productVendorId.isNotEmpty &&
           vendorId.isNotEmpty &&
           productVendorId != vendorId) {
         return null;
       }
-      if (product.publish == false || product.isAvailable == false) {
+
+      // ============================================================
+      // 3. PRODUCT AVAILABILITY
+      // ============================================================
+      if (product.isAvailable == false) {
         return null;
       }
 
       final variantInfo = element.variantInfo;
       final promoId = element.promoId;
+
+      // ============================================================
+      // 4. VARIANT PRODUCT
+      // ============================================================
       if (variantInfo != null) {
-        final opt = _matchProductOptionForReorder(product, variantInfo);
-        if (opt != null && opt.price != null) {
-          if (opt.isAvailable == false) {
+        final variant = _matchProductVariantForReorder(product, variantInfo);
+
+        // ----------------------------------------------------------
+        // Variant found in current API
+        // ----------------------------------------------------------
+        if (variant != null) {
+          // Variant is explicitly unavailable
+          if (variant.isAvailable == false) {
             return null;
           }
+
+          final double? variantPrice =
+              double.tryParse(variant.price?.toString() ?? '') ??
+              double.tryParse(product.price?.toString() ?? '');
+
+          final String? variantMerchantPrice =
+              variant.merchantPrice?.toString() ??
+              variant.price?.toString() ??
+              product.merchantPrice?.toString() ??
+              product.price?.toString();
+
+          if (variantPrice != null && variantPrice > 0) {
+            return _reorderVariantPriceInfo(
+              unit: _commissionUnitPrice(v, variantPrice.toString()),
+              merchantPrice: variantMerchantPrice,
+              promoId: promoId,
+            );
+          }
+        }
+
+        // ----------------------------------------------------------
+        // Variant not found in current product.
+        // Use the price stored in the old order.
+        // ----------------------------------------------------------
+        final rawVariantPrice = variantInfo.variantPrice?.trim();
+
+        final parsedVariantPrice = rawVariantPrice != null
+            ? double.tryParse(rawVariantPrice)
+            : null;
+
+        if (parsedVariantPrice != null && parsedVariantPrice > 0) {
           return _reorderVariantPriceInfo(
-            unit: _commissionUnitPrice(v, opt.price),
-            merchantPrice: opt.originalPrice ?? opt.price,
+            unit: _commissionUnitPrice(v, parsedVariantPrice.toString()),
+            merchantPrice: parsedVariantPrice.toString(),
             promoId: promoId,
           );
         }
 
-        final varRow = _matchItemAttributeVariantForReorder(
-          product,
-          variantInfo,
-        );
-        if (varRow != null && varRow.variantPrice != null) {
-          return _reorderVariantPriceInfo(
-            unit: _commissionUnitPrice(
-              v,
-              varRow.variantPrice ?? product.price ?? '0',
-            ),
-            merchantPrice:
-                varRow.variantPrice ?? product.merchantPrice ?? product.price,
-            promoId: promoId,
-          );
-        }
-
-        final rawVp = variantInfo.variantPrice?.trim();
-        final rawParsed = rawVp != null ? double.tryParse(rawVp) : null;
-        if (rawParsed != null && rawParsed > 0) {
-          return _reorderVariantPriceInfo(
-            unit: _commissionUnitPrice(v, rawVp),
-            merchantPrice: rawVp,
-            promoId: promoId,
-          );
-        }
-
-        final fb = _fallbackUnitFromOrderSnapshot(
+        // ----------------------------------------------------------
+        // Final fallback for variant
+        // ----------------------------------------------------------
+        final fallbackUnit = _fallbackUnitFromOrderSnapshot(
           element.price,
           element.discountPrice,
         );
+
         return _reorderVariantPriceInfo(
-          unit: fb,
+          unit: fallbackUnit,
           merchantPrice: element.merchantPrice ?? element.price,
           promoId: promoId,
         );
       }
 
-      final reg = double.tryParse(product.price ?? '0') ?? 0.0;
-      final dis = double.tryParse(product.disPrice ?? '0') ?? 0.0;
-      if (dis > 0 && dis < reg) {
+      // ============================================================
+      // 5. NORMAL PRODUCT
+      // ============================================================
+      final double regularPrice =
+          double.tryParse(product.price?.toString() ?? '0') ?? 0;
+
+      final String merchantPrice =
+          product.merchantPrice?.toString() ?? regularPrice.toString();
+
+      if (regularPrice <= 0) {
+        // Product has no valid current price.
+        // Try the old order snapshot.
+        final fallbackUnit = _fallbackUnitFromOrderSnapshot(
+          element.price,
+          element.discountPrice,
+        );
+
         return ProductPriceInfo(
-          currentPrice: _commissionUnitPrice(v, product.price),
-          discountPrice: _commissionUnitPrice(v, product.disPrice),
-          merchantPrice: product.merchantPrice ?? product.price,
+          currentPrice: fallbackUnit,
+          discountPrice: fallbackUnit,
+          merchantPrice: element.merchantPrice ?? element.price,
           promoId: promoId,
         );
       }
 
-      final unit = _commissionUnitPrice(v, product.price);
+      // ============================================================
+      // 6. CURRENT PRODUCT PRICE
+      // ============================================================
+      final unit = _commissionUnitPrice(v, product.price?.toString());
+
       return ProductPriceInfo(
         currentPrice: unit,
         discountPrice: unit,
-        merchantPrice: product.merchantPrice ?? product.price,
+        merchantPrice: merchantPrice,
         promoId: promoId,
       );
-    } catch (e) {
-      dev.log('Error building price info for reorder: $e');
+    } catch (e, stackTrace) {
+      dev.log(
+        'Error building price info for reorder: $e',
+        stackTrace: stackTrace,
+      );
+
       return null;
     }
   }
@@ -2494,69 +2573,69 @@ class FireStoreUtils {
     return promo.isNotEmpty ? promo : null;
   }
 
-  static Future<List<ProductModel>> getAllProductsInZone({int? limit}) async {
-    try {
-      debugPrint(
-        "🔍 Fetching products from API for zone: ${Constant.selectedZone?.name}",
-      );
-
-      // Prepare API parameters
-      final Map<String, String> queryParams = {};
-
-      // Add zone_id if selected
-      if (Constant.selectedZone != null) {
-        queryParams['zone_id'] = Constant.selectedZone!.id.toString();
-      }
-      // Add limit if provided
-      if (limit != null) {
-        queryParams['limit'] = limit.toString();
-      }
-
-      // Make API call
-      final response = await http.get(
-        Uri.parse(
-          '${AppConst.baseUrl}firestore/search/products',
-        ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null),
-        headers: await getHeaders(),
-      );
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-
-        if (responseData['success'] == true) {
-          final List<dynamic> productsData = responseData['data']['products'];
-          final List<ProductModel> productList = [];
-
-          for (var productData in productsData) {
-            try {
-              // Use the API JSON factory constructor
-              ProductModel product = ProductModel.fromApiJson(productData);
-              productList.add(product);
-            } catch (e) {
-              debugPrint('❌ Error parsing product ${productData['id']}: $e');
-            }
-          }
-
-          debugPrint('✅ Loaded ${productList.length} products from API');
-          return productList;
-        } else {
-          debugPrint('❌ API returned error: ${responseData['message']}');
-          return [];
-        }
-      } else {
-        debugPrint('❌ HTTP error ${response.statusCode}: ${response.body}');
-        return [];
-      }
-    } catch (e) {
-      debugPrint('❌ Error loading products from API: $e');
-      if (e.toString().contains('OutOfMemoryError')) {
-        debugPrint(
-          '🚨 OutOfMemoryError detected! Returning empty list to prevent crash.',
-        );
-      }
-      return [];
-    }
-  }
+  // static Future<List<ProductModel>> getAllProductsInZone({int? limit}) async {
+  //   try {
+  //     debugPrint(
+  //       "🔍 Fetching products from API for zone: ${Constant.selectedZone?.name}",
+  //     );
+  //
+  //     // Prepare API parameters
+  //     final Map<String, String> queryParams = {};
+  //
+  //     // Add zone_id if selected
+  //     if (Constant.selectedZone != null) {
+  //       queryParams['zone_id'] = Constant.selectedZone!.id.toString();
+  //     }
+  //     // Add limit if provided
+  //     if (limit != null) {
+  //       queryParams['limit'] = limit.toString();
+  //     }
+  //
+  //     // Make API call
+  //     final response = await http.get(
+  //       Uri.parse(
+  //         '${AppConst.baseUrl}firestore/search/products',
+  //       ).replace(queryParameters: queryParams.isNotEmpty ? queryParams : null),
+  //       headers: await getHeaders(),
+  //     );
+  //
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //
+  //       if (responseData['success'] == true) {
+  //         final List<dynamic> productsData = responseData['data']['products'];
+  //         final List<ProductModel> productList = [];
+  //
+  //         for (var productData in productsData) {
+  //           try {
+  //             // Use the API JSON factory constructor
+  //             ProductModel product = ProductModel.fromApiJson(productData);
+  //             productList.add(product);
+  //           } catch (e) {
+  //             debugPrint('❌ Error parsing product ${productData['id']}: $e');
+  //           }
+  //         }
+  //
+  //         debugPrint('✅ Loaded ${productList.length} products from API');
+  //         return productList;
+  //       } else {
+  //         debugPrint('❌ API returned error: ${responseData['message']}');
+  //         return [];
+  //       }
+  //     } else {
+  //       debugPrint('❌ HTTP error ${response.statusCode}: ${response.body}');
+  //       return [];
+  //     }
+  //   } catch (e) {
+  //     debugPrint('❌ Error loading products from API: $e');
+  //     if (e.toString().contains('OutOfMemoryError')) {
+  //       debugPrint(
+  //         '🚨 OutOfMemoryError detected! Returning empty list to prevent crash.',
+  //       );
+  //     }
+  //     return [];
+  //   }
+  // }
 
   /// Get all vendors for search indexing - MEMORY OPTIMIZED
   // static Future<List<VendorModel>> getAllVendors({int? limit}) async {

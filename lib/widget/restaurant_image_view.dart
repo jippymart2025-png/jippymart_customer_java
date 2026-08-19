@@ -36,9 +36,9 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
   }
 
   void animateSlider() {
-    if (widget.vendorModel.photos != null &&
-        widget.vendorModel.photos!.isNotEmpty) {
-      if (widget.vendorModel.photos!.length > 1) {
+    if (widget.vendorModel.photo != null &&
+        widget.vendorModel.photo!.isNotEmpty) {
+      if (widget.vendorModel.photo!.length > 1) {
         _animationTimer = Timer.periodic(const Duration(seconds: 2), (
           Timer timer,
         ) {
@@ -48,7 +48,7 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
             return;
           }
 
-          if (currentPage < widget.vendorModel.photos!.length - 1) {
+          if (currentPage < widget.vendorModel.photo!.length - 1) {
             currentPage++;
           } else {
             currentPage = 0;
@@ -80,8 +80,7 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
     return SizedBox(
       height: Responsive.height(20, context),
       child:
-          widget.vendorModel.photos == null ||
-              widget.vendorModel.photos!.isEmpty
+          widget.vendorModel.photo == null || widget.vendorModel.photo!.isEmpty
           ? _buildSingleImage(isRestaurantClosed)
           : _buildImageCarousel(isRestaurantClosed),
     );
@@ -141,11 +140,11 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
                   controller: pageController,
                   scrollDirection: Axis.horizontal,
                   allowImplicitScrolling: true,
-                  itemCount: widget.vendorModel.photos!.length,
+                  itemCount: widget.vendorModel.photo!.length,
                   padEnds: false,
                   pageSnapping: true,
                   itemBuilder: (BuildContext context, int index) {
-                    String image = widget.vendorModel.photos![index];
+                    String image = widget.vendorModel.photo![index];
                     return NetworkImageWidget(
                       imageUrl: image.toString(),
                       fit: BoxFit.cover,
@@ -169,11 +168,11 @@ class _RestaurantImageViewState extends State<RestaurantImageView> {
             controller: pageController,
             scrollDirection: Axis.horizontal,
             allowImplicitScrolling: true,
-            itemCount: widget.vendorModel.photos!.length,
+            itemCount: widget.vendorModel.photo!.length,
             padEnds: false,
             pageSnapping: true,
             itemBuilder: (BuildContext context, int index) {
-              String image = widget.vendorModel.photos![index];
+              String image = widget.vendorModel.photo![index];
               return NetworkImageWidget(
                 imageUrl: image.toString(),
                 fit: BoxFit.cover,

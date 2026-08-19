@@ -2,8 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:jippymart_customer/app/auth_screen/login_screen.dart';
-import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/live_tracking_screen.dart';
-import 'package:jippymart_customer/app/order_list_screen/screens/live_tracking_screen/provider/live_tracking_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/order_details_screen.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_deatils_screen/provider/order_details_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
@@ -585,9 +583,6 @@ class _OrderScreenState extends State<OrderScreen>
           Expanded(
             child: InkWell(
               onTap: () {
-                context.read<LiveTrackingProvider>().initFunction(
-                  orderModel: orderModel,
-                );
                 Get.to(const OrderDetailsScreen());
               },
               child: Text(

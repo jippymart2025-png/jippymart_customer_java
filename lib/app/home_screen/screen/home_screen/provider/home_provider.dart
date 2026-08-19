@@ -643,80 +643,209 @@ class HomeProvider extends ChangeNotifier {
     await _loadBanners();
   }
 
-  // Banner loading with cache
   Future<void> _loadBanners() async {
     if (_isTaskRunning('loadBanners')) return;
     _addLoadingTask('loadBanners');
 
     try {
-      final zoneId =
-          Constant.selectedZone?.id ??
-          Constant.selectedLocation.zoneId ??
-          Preferences.getString(Preferences.selectedZoneId);
+      final latitude = Constant.selectedLocation.latitude;
+      final longitude = Constant.selectedLocation.longitude;
 
-      final cacheKeyTop = 'banners_top_$zoneId';
-      final cacheKeyMiddle = 'banners_middle_$zoneId';
+      if (latitude == null || longitude == null) {
+        debugPrint('[HOME_PROVIDER] Location not available');
+        return;
+      }
 
-      final cachedTop = _getFromCache(cacheKeyTop) as List<BannerModel>?;
-      final cachedMiddle = _getFromCache(cacheKeyMiddle) as List<BannerModel>?;
+      final cacheKey =
+          'active_banners_${latitude.toStringAsFixed(4)}_${longitude.toStringAsFixed(4)}';
 
-      if (cachedTop != null && cachedMiddle != null) {
-        bannerModel = cachedTop;
-        bannerBottomModel = cachedMiddle;
+      final cachedBanners = _getFromCache(cacheKey) as List<BannerModel>?;
+
+      if (cachedBanners != null) {
+        _setBannersByType(cachedBanners);
+
+        if (bannerModel.isNotEmpty) {
+          startBannerTimer();
+        }
+
+        if (bannerBottomModel.isNotEmpty) {
+          startBottomBannerTimer();
+        }
+
         notifyListeners();
         return;
       }
 
-      await Future.wait([
-        getHomeTopBanner("top").then((value) {
-          bannerModel = value;
-          _addToCache(cacheKeyTop, value);
-        }),
-        getHomeTopBanner("middle").then((value) {
-          bannerBottomModel = value;
-          _addToCache(cacheKeyMiddle, value);
-        }),
-      ], eagerError: true).catchError((e) {
-        debugPrint('[HOME_PROVIDER] Error loading banners: $e');
-      });
+      final banners = await getActiveBanners(
+        latitude: latitude,
+        longitude: longitude,
+      );
 
-      // Start timers if banners are loaded
-      if (bannerModel.isNotEmpty) startBannerTimer();
-      if (bannerBottomModel.isNotEmpty) startBottomBannerTimer();
+      _addToCache(cacheKey, banners);
+
+      _setBannersByType(banners);
+
+      if (bannerModel.isNotEmpty) {
+        startBannerTimer();
+      }
+
+      if (bannerBottomModel.isNotEmpty) {
+        startBottomBannerTimer();
+      }
 
       notifyListeners();
+    } catch (e, stackTrace) {
+      debugPrint('[HOME_PROVIDER] Error loading banners: $e');
+      debugPrint('$stackTrace');
     } finally {
       _removeLoadingTask('loadBanners');
     }
   }
 
-  static Future<List<BannerModel>> getHomeTopBanner(String type) async {
-    try {
-      String? zoneId =
-          Constant.selectedZone?.id ??
-          Constant.selectedLocation.zoneId ??
-          Preferences.getString(Preferences.selectedZoneId);
+  // Banner loading with cache
+  // Future<void> _loadBanners() async {
+  //   if (_isTaskRunning('loadBanners')) return;
+  //   _addLoadingTask('loadBanners');
+  //
+  //   try {
+  //     final zoneId =
+  //         Constant.selectedZone?.id ??
+  //         Constant.selectedLocation.zoneId ??
+  //         Preferences.getString(Preferences.selectedZoneId);
+  //
+  //     final cacheKeyTop = 'banners_top_$zoneId';
+  //     final cacheKeyMiddle = 'banners_middle_$zoneId';
+  //
+  //     final cachedTop = _getFromCache(cacheKeyTop) as List<BannerModel>?;
+  //     final cachedMiddle = _getFromCache(cacheKeyMiddle) as List<BannerModel>?;
+  //
+  //     if (cachedTop != null && cachedMiddle != null) {
+  //       bannerModel = cachedTop;
+  //       bannerBottomModel = cachedMiddle;
+  //       notifyListeners();
+  //       return;
+  //     }
+  //
+  //     await Future.wait([
+  //       getHomeTopBanner("top").then((value) {
+  //         bannerModel = value;
+  //         _addToCache(cacheKeyTop, value);
+  //       }),
+  //       getHomeTopBanner("middle").then((value) {
+  //         bannerBottomModel = value;
+  //         _addToCache(cacheKeyMiddle, value);
+  //       }),
+  //     ], eagerError: true).catchError((e) {
+  //       debugPrint('[HOME_PROVIDER] Error loading banners: $e');
+  //     });
+  //
+  //     // Start timers if banners are loaded
+  //     if (bannerModel.isNotEmpty) startBannerTimer();
+  //     if (bannerBottomModel.isNotEmpty) startBottomBannerTimer();
+  //
+  //     notifyListeners();
+  //   } finally {
+  //     _removeLoadingTask('loadBanners');
+  //   }
+  // }
 
-      String url = '${AppConst.baseUrl}menu-items/banners/$type';
-      if (zoneId != null && zoneId.isNotEmpty) {
-        url += '?zone_id=$zoneId';
-      }
+  // static Future<List<BannerModel>> getHomeTopBanner(String type) async {
+  //   try {
+  //     String? zoneId =
+  //         Constant.selectedZone?.id ??
+  //         Constant.selectedLocation.zoneId ??
+  //         Preferences.getString(Preferences.selectedZoneId);
+  //
+  //     String url = '${AppConst.baseUrl}menu-items/banners/$type';
+  //     if (zoneId != null && zoneId.isNotEmpty) {
+  //       url += '?zone_id=$zoneId';
+  //     }
+  //
+  //     final headers = await getHeaders();
+  //     final response = await http
+  //         .get(Uri.parse(url), headers: headers)
+  //         .timeout(_networkTimeout);
+  //
+  //     if (response.statusCode == 200) {
+  //       final jsonResponse = json.decode(response.body);
+  //       if (jsonResponse['success'] == true) {
+  //         List<dynamic> data = jsonResponse['data'];
+  //         return data.map((item) => BannerModel.fromJson(item)).toList();
+  //       }
+  //     }
+  //     return [];
+  //   } catch (e) {
+  //     debugPrint('[HOME_PROVIDER] Error fetching banners: $e');
+  //     return [];
+  //   }
+  // }
+
+  void _setBannersByType(List<BannerModel> banners) {
+    bannerModel = banners.where((banner) {
+      final type = banner.bannerType?.toLowerCase().trim();
+
+      return type == 'top' || type == 'top_banner' || type == 'topbanner';
+    }).toList();
+
+    bannerBottomModel = banners.where((banner) {
+      final type = banner.bannerType?.toLowerCase().trim();
+
+      return type == 'middle' ||
+          type == 'middle_banner' ||
+          type == 'middlebanner';
+    }).toList();
+  }
+
+  static Future<List<BannerModel>> getActiveBanners({
+    required double latitude,
+    required double longitude,
+  }) async {
+    try {
+      final url = Uri.parse(
+        '${AppConst.baseUrl}api/fm/banners/getActiveBanners'
+        '?lat=$latitude&lng=$longitude',
+      );
+
+      debugPrint('[HOME_PROVIDER] Banner API: $url');
 
       final headers = await getHeaders();
+
       final response = await http
-          .get(Uri.parse(url), headers: headers)
+          .get(url, headers: headers)
           .timeout(_networkTimeout);
 
+      debugPrint(
+        '[HOME_PROVIDER] Banner response: '
+        '${response.statusCode} ${response.body}',
+      );
+
       if (response.statusCode == 200) {
-        final jsonResponse = json.decode(response.body);
-        if (jsonResponse['success'] == true) {
-          List<dynamic> data = jsonResponse['data'];
-          return data.map((item) => BannerModel.fromJson(item)).toList();
+        final dynamic jsonResponse = json.decode(response.body);
+
+        if (jsonResponse is List) {
+          return jsonResponse
+              .map((item) => BannerModel.fromJson(item))
+              .toList();
+        }
+
+        if (jsonResponse is Map &&
+            jsonResponse['success'] == true &&
+            jsonResponse['data'] is List) {
+          return (jsonResponse['data'] as List)
+              .map((item) => BannerModel.fromJson(item))
+              .toList();
         }
       }
+
+      debugPrint(
+        '[HOME_PROVIDER] Banner API failed: '
+        '${response.statusCode}',
+      );
+
       return [];
     } catch (e) {
-      debugPrint('[HOME_PROVIDER] Error fetching banners: $e');
+      debugPrint('[HOME_PROVIDER] Error fetching active banners: $e');
+
       return [];
     }
   }
@@ -960,6 +1089,44 @@ class HomeProvider extends ChangeNotifier {
     }
   }
 
+  // void bannerOnTapFunction(
+  //   BannerModel bannerModel,
+  //   RestaurantDetailsProvider restaurantDetailsProvider,
+  // ) async {
+  //   stopBannerTimer();
+  //
+  //   try {
+  //     if (bannerModel.redirectType == "store") {
+  //       ShowToastDialog.showLoader("Please wait");
+  //       VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+  //         bannerModel.redirectId.toString(),
+  //       );
+  //
+  //       ShowToastDialog.closeLoader();
+  //       if (vendorModel?.zoneId == Constant.selectedZone?.id) {
+  //         restaurantDetailsProvider.initFunction(
+  //           vendorModels: vendorModel ?? VendorModel(),
+  //         );
+  //         Get.to(() => const RestaurantDetailsScreen());
+  //       } else {
+  //         ShowToastDialog.showToast(
+  //           "Sorry, The Zone is not available in your area. change the other location first.",
+  //         );
+  //       }
+  //     } else if (bannerModel.redirectType == "external_link") {
+  //       final uri = Uri.parse(bannerModel.redirectId.toString());
+  //       if (await canLaunchUrl(uri)) {
+  //         await launchUrl(uri);
+  //       } else {
+  //         ShowToastDialog.showToast("Could not launch".tr);
+  //       }
+  //     }
+  //   } catch (e) {
+  //     ShowToastDialog.closeLoader();
+  //     ShowToastDialog.showToast("Failed to process banner".tr);
+  //   }
+  // }
+
   void bannerOnTapFunction(
     BannerModel bannerModel,
     RestaurantDetailsProvider restaurantDetailsProvider,
@@ -967,33 +1134,54 @@ class HomeProvider extends ChangeNotifier {
     stopBannerTimer();
 
     try {
-      if (bannerModel.redirectType == "store") {
+      // Open restaurant/store
+      if (bannerModel.outletId != null && bannerModel.outletId! > 0) {
         ShowToastDialog.showLoader("Please wait");
+
         VendorModel? vendorModel = await FireStoreUtils.getVendorById(
-          bannerModel.redirectId.toString(),
+          bannerModel.outletId.toString(),
         );
 
         ShowToastDialog.closeLoader();
-        if (vendorModel?.zoneId == Constant.selectedZone?.id) {
-          restaurantDetailsProvider.initFunction(
-            vendorModels: vendorModel ?? VendorModel(),
-          );
+
+        if (vendorModel == null) {
+          ShowToastDialog.showToast("Restaurant not found".tr);
+          return;
+        }
+
+        if (vendorModel.zoneId == Constant.selectedZone?.id) {
+          restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+
           Get.to(() => const RestaurantDetailsScreen());
         } else {
           ShowToastDialog.showToast(
-            "Sorry, The Zone is not available in your area. change the other location first.",
+            "Sorry, The Zone is not available in your area. "
+            "Change the location first.",
           );
         }
-      } else if (bannerModel.redirectType == "external_link") {
-        final uri = Uri.parse(bannerModel.redirectId.toString());
-        if (await canLaunchUrl(uri)) {
-          await launchUrl(uri);
+
+        return;
+      }
+
+      // Open banner URL
+      if (bannerModel.bannerUrl != null && bannerModel.bannerUrl!.isNotEmpty) {
+        final uri = Uri.tryParse(bannerModel.bannerUrl!);
+
+        if (uri != null && await canLaunchUrl(uri)) {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
         } else {
           ShowToastDialog.showToast("Could not launch".tr);
         }
+
+        return;
       }
+
+      ShowToastDialog.showToast("No action available for this banner".tr);
     } catch (e) {
       ShowToastDialog.closeLoader();
+
+      debugPrint('[HOME_PROVIDER] Banner tap error: $e');
+
       ShowToastDialog.showToast("Failed to process banner".tr);
     }
   }

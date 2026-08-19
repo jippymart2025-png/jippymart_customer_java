@@ -84,7 +84,7 @@ Widget buildRestaurantCard(VendorModel restaurant, BuildContext context) {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    restaurant.location ?? 'Location not available',
+                    restaurant.distance as String ?? 'Location not available',
                     style: TextStyle(fontSize: 14, color: AppThemeData.grey400),
                   ),
                   const SizedBox(height: 8),

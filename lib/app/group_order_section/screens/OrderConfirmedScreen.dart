@@ -167,24 +167,24 @@ class OrderConfirmedScreen extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   height: 50,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: AppThemeData.grey100),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () => Get.to(() => const LiveTrackingScreen()),
-                    icon: Icon(Icons.map_outlined, color: AppThemeData.grey800),
-                    label: Text(
-                      'Track on map',
-                      style: TextStyle(
-                        fontFamily: AppThemeData.semiBold,
-                        color: AppThemeData.grey900,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
+                  // child: OutlinedButton.icon(
+                  //   style: OutlinedButton.styleFrom(
+                  //     side: BorderSide(color: AppThemeData.grey100),
+                  //     shape: RoundedRectangleBorder(
+                  //       borderRadius: BorderRadius.circular(12),
+                  //     ),
+                  //   ),
+                  //   // onPressed: () => Get.to(() => const LiveTrackingScreen()),
+                  //   icon: Icon(Icons.map_outlined, color: AppThemeData.grey800),
+                  //   label: Text(
+                  //     'Track on map',
+                  //     style: TextStyle(
+                  //       fontFamily: AppThemeData.semiBold,
+                  //       color: AppThemeData.grey900,
+                  //       fontWeight: FontWeight.w700,
+                  //     ),
+                  //   ),
+                  // ),
                 ),
               ],
             ),

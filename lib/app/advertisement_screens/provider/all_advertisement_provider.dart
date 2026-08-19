@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
+import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/favourite_model.dart';
@@ -18,22 +19,27 @@ class AllAdvertisementProvider extends ChangeNotifier {
 
   getAdvertisementList() async {
     advertisementList.clear();
-    List<VendorModel> allNearestRestaurant = <VendorModel>[];
-    FireStoreUtils().getAllNearestRestaurant().listen((event) async {
-      allNearestRestaurant.addAll(event);
-      await FireStoreUtils.getAllAdvertisement().then((value) {
-        List<AdvertisementModel> adsList = value;
-        advertisementList.addAll(
-          adsList.where(
-            (ads) => allNearestRestaurant.any(
-              (restaurant) => restaurant.id == ads.vendorId,
-            ),
+    try {
+      final lat = Constant.selectedLocation.location?.latitude ?? 0.0;
+      final lng = Constant.selectedLocation.location?.longitude ?? 0.0;
+      final allNearestRestaurant = await BestRestaurantProvider.getNearestRestaurants(
+        latitude: lat,
+        longitude: lng,
+      );
+      final adsList = await FireStoreUtils.getAllAdvertisement();
+      advertisementList.addAll(
+        adsList.where(
+          (ads) => allNearestRestaurant.any(
+            (restaurant) => restaurant.id == ads.vendorId,
           ),
-        );
-      });
+        ),
+      );
+    } catch (e) {
+      debugPrint('[AllAdvertisementProvider] Error: $e');
+    } finally {
       isLoading = false;
-    });
-    notifyListeners();
+      notifyListeners();
+    }
   }
 
   List<FavouriteModel> favouriteList = <FavouriteModel>[];
