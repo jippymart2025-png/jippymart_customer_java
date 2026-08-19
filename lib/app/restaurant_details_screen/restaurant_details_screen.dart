@@ -1015,7 +1015,7 @@ class _RestaurantHeader extends StatelessWidget {
                       Expanded(
                         child: Text(
                           (Constant.selectedZone?.name?.isNotEmpty == true)
-                              ? "${Constant.selectedZone!.name}, Locality"
+                              ? "${controller.vendorModel.location}, Locality"
                               : "Select Zone",
                           style: const TextStyle(
                             fontFamily: AppThemeData.medium,
@@ -1076,10 +1076,8 @@ class _RatingSection extends StatelessWidget {
               Text(
                 Constant.calculateReview(
                   reviewCount:
-                      controller.vendorModel.reviewsCount?.toStringAsFixed(0) ??
-                      "0",
-                  reviewSum:
-                      controller.vendorModel.reviewsSum?.toString() ?? "0",
+                      controller.vendorModel.review?.toStringAsFixed(0) ?? "0",
+                  reviewSum: controller.vendorModel.review?.toString() ?? "0",
                 ),
                 style: const TextStyle(
                   color: AppThemeData.grey900,
@@ -1099,7 +1097,7 @@ class _RatingSection extends StatelessWidget {
               Get.to(const ReviewListScreen());
             },
             child: Text(
-              "${controller.vendorModel.reviewsCount ?? 0} ${'Ratings'.tr}",
+              "${controller.vendorModel.review ?? 0} ${'Ratings'.tr}",
               style: const TextStyle(
                 decoration: TextDecoration.underline,
                 decorationColor: AppThemeData.grey500,

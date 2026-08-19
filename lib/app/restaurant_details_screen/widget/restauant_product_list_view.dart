@@ -481,38 +481,16 @@ class _PromoPriceRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Flexible(
-          child: Text(
-            Constant.amountShow(amount: promoPrice),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: rs.priceFontSize,
-              color: Colors.red,
-              fontFamily: AppThemeData.semiBold,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        SizedBox(width: rs.labelGap),
-        Flexible(
-          child: Text(
-            Constant.amountShow(amount: originalPrice),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: rs.strikethroughFontSize,
-              decoration: TextDecoration.lineThrough,
-              decorationColor: AppThemeData.grey300,
-              color: AppThemeData.grey300,
-              fontFamily: AppThemeData.semiBold,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      ],
+    return Text(
+      Constant.amountShow(amount: promoPrice),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: rs.priceFontSize,
+        color: AppThemeData.grey900,
+        fontFamily: AppThemeData.semiBold,
+        fontWeight: FontWeight.w600,
+      ),
     );
   }
 }

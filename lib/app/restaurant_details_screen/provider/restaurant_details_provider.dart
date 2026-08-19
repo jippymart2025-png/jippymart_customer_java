@@ -884,6 +884,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     _allProductsWithPromotions.clear();
 
     for (final product in outletDetails.allProducts) {
+      // Ensure vendorID is always set so that promotions and cart work correctly
+      if (product.vendorID == null || product.vendorID!.isEmpty) {
+        product.vendorID = vendorModel.id;
+      }
+
       if (product.id != null) {
         if (product.isProductFavourite == true) {
           favoriteProductIds.add(product.id!);
@@ -1438,11 +1443,12 @@ class RestaurantDetailsProvider extends ChangeNotifier {
         final priceType = map['priceType']?.toString();
 
         double specialPrice = rawPrice;
-        if (priceType == 'PERCENTAGE') {
-          specialPrice = (rawPrice - (rawPrice * (discountAmount / 100))).clamp(0, double.infinity);
-        } else {
-          specialPrice = (rawPrice - discountAmount).clamp(0, double.infinity);
-        }
+        // DO NOT REDUCE PRICE FOR PROMOTIONS PER USER REQUEST
+        // if (priceType == 'PERCENTAGE') {
+        //   specialPrice = (rawPrice - (rawPrice * (discountAmount / 100))).clamp(0, double.infinity);
+        // } else {
+        //   specialPrice = (rawPrice - discountAmount).clamp(0, double.infinity);
+        // }
 
         map['special_price'] = specialPrice;
         map['discount'] = discountAmount;

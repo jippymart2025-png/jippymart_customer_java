@@ -168,20 +168,32 @@ Widget buildProductsWithoutCategories(
                                 ))
                               Builder(
                                 builder: (context) {
-                                  final promo = controller.getActivePromotionForProduct(
-                                    productId: productModel.id!.toString(),
-                                    restaurantId: productModel.vendorID!,
-                                  );
-                                  String badgeText = productModel.discountTitle ?? 'SPECIAL OFFER';
+                                  final promo = controller
+                                      .getActivePromotionForProduct(
+                                        productId: productModel.id!.toString(),
+                                        restaurantId: productModel.vendorID!,
+                                      );
+                                  String badgeText =
+                                      productModel.discountTitle ??
+                                      'SPECIAL OFFER';
                                   if (promo != null) {
-                                    final offerName = promo['offerName'] ?? promo['offer_name'];
-                                    final planType = promo['planType'] ?? promo['plan_type'];
-                                    final discountAmount = promo['discountAmount'] ?? promo['discount'];
-                                    final priceType = promo['priceType'] ?? promo['price_type'];
+                                    final offerName =
+                                        promo['offerName'] ??
+                                        promo['offer_name'];
+                                    final planType =
+                                        promo['planType'] ?? promo['plan_type'];
+                                    final discountAmount =
+                                        promo['discountAmount'] ??
+                                        promo['discount'];
+                                    final priceType =
+                                        promo['priceType'] ??
+                                        promo['price_type'];
 
-                                    if (offerName != null && offerName.toString().isNotEmpty) {
+                                    if (offerName != null &&
+                                        offerName.toString().isNotEmpty) {
                                       badgeText = offerName.toString();
-                                    } else if (planType != null && planType.toString().isNotEmpty) {
+                                    } else if (planType != null &&
+                                        planType.toString().isNotEmpty) {
                                       badgeText = planType.toString();
                                     } else if (discountAmount != null) {
                                       badgeText = priceType == 'PERCENTAGE'
@@ -246,28 +258,6 @@ Widget buildProductsWithoutCategories(
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: AppThemeData.grey900,
-                                      fontFamily: AppThemeData.semiBold,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 5),
-                                // Show original price with strikethrough
-                                Flexible(
-                                  child: Text(
-                                    Constant.amountShow(
-                                      amount: Constant.productCommissionPrice(
-                                        controller.vendorModel,
-                                        productModel.price.toString(),
-                                      ),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      decoration: TextDecoration.lineThrough,
-                                      decorationColor: AppThemeData.grey400,
-                                      color: AppThemeData.grey400,
                                       fontFamily: AppThemeData.semiBold,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -606,9 +596,11 @@ Widget buildProductsWithoutCategories(
                                                       finalDiscountPrice,
                                                   isIncrement: false,
                                                   quantity:
-                                                      controller.productQuantityInCart(
-                                                        productModel.id ?? '',
-                                                      ) -
+                                                      controller
+                                                          .productQuantityInCart(
+                                                            productModel.id ??
+                                                                '',
+                                                          ) -
                                                       1,
                                                 );
                                               },
@@ -655,7 +647,8 @@ Widget buildProductsWithoutCategories(
                                           Flexible(
                                             child: InkWell(
                                               onTap: () async {
-                                                if ((controller.productQuantityInCart(
+                                                if ((controller
+                                                            .productQuantityInCart(
                                                               productModel.id ??
                                                                   '',
                                                             )) <=
@@ -689,10 +682,10 @@ Widget buildProductsWithoutCategories(
                                                                   .vendorID ??
                                                               '',
                                                           controller.productQuantityInCart(
-                                                                  productModel
-                                                                          .id ??
-                                                                      '',
-                                                                ) +
+                                                                productModel
+                                                                        .id ??
+                                                                    '',
+                                                              ) +
                                                               1,
                                                         );
 
