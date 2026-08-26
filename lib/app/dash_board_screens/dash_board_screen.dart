@@ -648,6 +648,22 @@ class _BottomNavigationBar extends StatelessWidget {
                       cartItemCount: cartItemCount,
                     ),
                   ),
+
+                  Expanded(
+                    child: _NavItem(
+                      index: DashboardTab.offers,
+                      svgIcon: ImageConst.home,
+                      label: 'Offers'.tr,
+                      controller: controller,
+                      homeProvider: homeProvider,
+                      splashProvider: splashProvider,
+                      cartControllerProvider: cartControllerProvider,
+                      orderProvider: orderProvider,
+                      context: context,
+                      // favouriteProvider: favouriteProvider,
+                      cartItemCount: cartItemCount,
+                    ),
+                  ),
                   Expanded(
                     child: _NavItem(
                       index: DashboardTab.orders,

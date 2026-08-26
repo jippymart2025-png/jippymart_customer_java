@@ -13,7 +13,6 @@ import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/services/cache_manager.dart';
 
-import '../../../../../models/outlet.dart';
 import '../../../../../utils/restaurant_status_utils.dart';
 import '../../../../restaurant_details_screen/provider/restaurant_details_provider.dart';
 

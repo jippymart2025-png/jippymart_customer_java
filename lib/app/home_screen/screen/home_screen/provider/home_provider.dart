@@ -1,10 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart'
     show AddressListProvider;
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
@@ -13,7 +10,6 @@ import 'package:jippymart_customer/app/home_screen/model/zone_model.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/best_restaurants_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
@@ -21,7 +17,6 @@ import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.da
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
-import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/utils/fire_store_utils.dart';
@@ -38,7 +33,6 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:jippymart_customer/services/cache_manager.dart';
 import 'package:jippymart_customer/utils/location_zone_navigation.dart';
 import 'package:jippymart_customer/utils/mart_zone_utils.dart';
 import 'package:jippymart_customer/app/location_permission_screen/provider/location_permission_provider.dart';
@@ -84,7 +78,13 @@ class HomeProvider extends ChangeNotifier {
   var selectedIndex = 0;
 
   // Data lists
+  // Main home banners
   List<BannerModel> bannerModel = <BannerModel>[];
+
+  // Best restaurant banners
+  List<BannerModel> bestRestaurantBannerModel = <BannerModel>[];
+
+  // Deals / bottom banners
   List<BannerModel> bannerBottomModel = <BannerModel>[];
   List<VendorModel> favouriteList = <VendorModel>[];
 
@@ -200,40 +200,71 @@ class HomeProvider extends ChangeNotifier {
     final stopwatch = Stopwatch()..start();
 
     try {
-      // Start cart listener
+      // ------------------------------------------------------------
+      // CART
+      // ------------------------------------------------------------
       getCartData();
 
-      // Load user model in background if needed
+      // ------------------------------------------------------------
+      // USER
+      // ------------------------------------------------------------
       if (Constant.userModel == null) {
         unawaited(ensureUserModelIsLoaded());
       }
 
-      // Load location and zone in parallel with other data
-      final locationFuture = _ensureUserLocationIsSet().then((_) => getZone());
-      final bannersFuture = _loadBanners();
-      final categoryFuture = categoryViewProvider.loadVendorCategories();
+      // ------------------------------------------------------------
+      // LOCATION MUST FINISH FIRST
+      // ------------------------------------------------------------
+      debugPrint('[HOME_PROVIDER] Setting user location...');
 
-      await Future.wait([
-        locationFuture.timeout(const Duration(seconds: 8)),
-        bannersFuture.timeout(const Duration(seconds: 15)),
-        categoryFuture.timeout(const Duration(seconds: 15)),
-      ], eagerError: true).catchError((_) {
-        // Continue even if some requests fail
-      });
+      await _ensureUserLocationIsSet().timeout(const Duration(seconds: 8));
 
-      // Outlets load inside getZone() when service is available.
+      debugPrint(
+        '[HOME_PROVIDER] Location ready: '
+        '${Constant.selectedLocation.location?.latitude}, '
+        '${Constant.selectedLocation.location?.longitude}',
+      );
 
-      // Initialize other providers in background
+      // ------------------------------------------------------------
+      // ZONE MUST FINISH BEFORE BANNERS
+      // ------------------------------------------------------------
+      debugPrint('[HOME_PROVIDER] Checking zone...');
+
+      await getZone().timeout(const Duration(seconds: 8));
+
+      debugPrint(
+        '[HOME_PROVIDER] Zone check completed: '
+        'available=${Constant.isZoneAvailable}, '
+        'zone=${Constant.selectedZone?.id}',
+      );
+
+      // ------------------------------------------------------------
+      // NOW LOAD BANNERS
+      // ------------------------------------------------------------
+      debugPrint('[HOME_PROVIDER] Starting banner API...');
+
+      await _loadBanners().timeout(const Duration(seconds: 15));
+
+      debugPrint('[HOME_PROVIDER] Banner loading completed');
+
+      // ------------------------------------------------------------
+      // CATEGORY CAN LOAD AFTER LOCATION/ZONE
+      // ------------------------------------------------------------
+      await categoryViewProvider.loadVendorCategories().timeout(
+        const Duration(seconds: 15),
+      );
+
+      // ------------------------------------------------------------
+      // BACKGROUND PROVIDERS
+      // ------------------------------------------------------------
       _initializeBackgroundProviders();
 
       debugPrint(
-        '[HOME_PROVIDER] Initial load completed in ${stopwatch.elapsedMilliseconds}ms',
+        '[HOME_PROVIDER] Initial load completed in '
+        '${stopwatch.elapsedMilliseconds}ms',
       );
     } catch (e, stack) {
-      debugPrint('[HOME_PROVIDER] Error in initial load: $e\n$stack');
-      ShowToastDialog.showToast(
-        "Some data failed to load. Pull to refresh.".tr,
-      );
+      debugPrint('[HOME_PROVIDER] Initial load error: $e\n$stack');
     } finally {
       stopwatch.stop();
     }
@@ -274,32 +305,44 @@ class HomeProvider extends ChangeNotifier {
   @override
   void dispose() {
     _cartSubscription?.cancel();
+
     _bannerTimer?.cancel();
+
     _bottomBannerTimer?.cancel();
+
+    pageController.dispose();
+
+    pageBottomController.dispose();
+
     super.dispose();
   }
 
   // Banner timer management
   void startBannerTimer() {
     _bannerTimer?.cancel();
-    if (bannerModel.isEmpty || !pageController.hasClients) return;
+
+    if (bannerModel.length <= 1) {
+      return;
+    }
 
     _bannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (!pageController.hasClients) {
-        timer.cancel();
-        return;
-      }
       if (bannerModel.isEmpty) {
         timer.cancel();
         return;
       }
 
+      if (!pageController.hasClients) {
+        return;
+      }
+
       int nextPage = currentPage + 1;
+
       if (nextPage >= bannerModel.length) {
         nextPage = 0;
       }
 
       currentPage = nextPage;
+
       try {
         pageController.animateToPage(
           currentPage,
@@ -307,6 +350,8 @@ class HomeProvider extends ChangeNotifier {
           curve: Curves.easeInOut,
         );
       } catch (e) {
+        debugPrint('[HOME_PROVIDER] Banner animation error: $e');
+
         timer.cancel();
       }
     });
@@ -326,24 +371,29 @@ class HomeProvider extends ChangeNotifier {
 
   void startBottomBannerTimer() {
     _bottomBannerTimer?.cancel();
-    if (bannerBottomModel.isEmpty || !pageBottomController.hasClients) return;
+
+    if (bannerBottomModel.length <= 1) {
+      return;
+    }
 
     _bottomBannerTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
-      if (!pageBottomController.hasClients) {
-        timer.cancel();
-        return;
-      }
       if (bannerBottomModel.isEmpty) {
         timer.cancel();
         return;
       }
 
+      if (!pageBottomController.hasClients) {
+        return;
+      }
+
       int nextPage = currentBottomPage + 1;
+
       if (nextPage >= bannerBottomModel.length) {
         nextPage = 0;
       }
 
       currentBottomPage = nextPage;
+
       try {
         pageBottomController.animateToPage(
           currentBottomPage,
@@ -351,9 +401,21 @@ class HomeProvider extends ChangeNotifier {
           curve: Curves.easeInOut,
         );
       } catch (e) {
+        debugPrint('[HOME_PROVIDER] Bottom banner animation error: $e');
+
         timer.cancel();
       }
     });
+  }
+
+  void _startBannerTimers() {
+    if (bannerModel.length > 1) {
+      startBannerTimer();
+    }
+
+    if (bannerBottomModel.length > 1) {
+      startBottomBannerTimer();
+    }
   }
 
   void stopBottomBannerTimer() {
@@ -477,61 +539,95 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<void> getZone() async {
-    if (_isTaskRunning('getZone')) return;
+    debugPrint('========== GET ZONE START ==========');
+
+    if (_isTaskRunning('getZone')) {
+      debugPrint('[ZONE] Already running');
+      return;
+    }
+
     _addLoadingTask('getZone');
 
     try {
-      final double latitude =
-          Constant.selectedLocation.location?.latitude ?? 0.0;
-      final double longitude =
-          Constant.selectedLocation.location?.longitude ?? 0.0;
+      final latitude = Constant.selectedLocation.location?.latitude ?? 0.0;
+
+      final longitude = Constant.selectedLocation.location?.longitude ?? 0.0;
+
+      debugPrint('[ZONE] latitude: $latitude');
+      debugPrint('[ZONE] longitude: $longitude');
 
       if (latitude == 0.0 || longitude == 0.0) {
+        debugPrint('[ZONE] ❌ No valid coordinates');
         await _clearZoneState();
         return;
       }
 
       final cacheKey = 'service_${latitude}_$longitude';
+
+      debugPrint('[ZONE] cacheKey: $cacheKey');
+
       final cachedAvailable = _getFromCache(cacheKey) as bool?;
 
+      debugPrint('[ZONE] cachedAvailable: $cachedAvailable');
+
       if (cachedAvailable == true) {
+        debugPrint('[ZONE] Using cached service availability');
+
         _markServiceAvailable();
+
         if (bestRestaurantProvider.allNearestRestaurant.isEmpty) {
           await _loadOutletsIfCoordinatesAvailable();
         }
+
         return;
       }
 
       if (cachedAvailable == false) {
+        debugPrint('[ZONE] Cached as unavailable');
         await _clearZoneState();
         return;
       }
+
+      debugPrint('[ZONE] Calling restaurant API...');
 
       final restaurants = await RestaurantApiHelper.fetchNearbyOutlets(
         latitude: latitude,
         longitude: longitude,
       );
 
+      debugPrint('[ZONE] Restaurant API returned: ${restaurants.length}');
+
       final isServiceAvailable = restaurants.isNotEmpty;
+
       _addToCache(cacheKey, isServiceAvailable);
 
       if (isServiceAvailable) {
+        debugPrint('[ZONE] ✅ Service available');
+
         _markServiceAvailable();
+
         bestRestaurantProvider.applyRestaurants(
           restaurants,
           zoneId: Constant.selectedZone?.id,
         );
       } else {
+        debugPrint('[ZONE] ❌ No restaurants');
         await _clearZoneState();
       }
-    } catch (e) {
-      debugPrint('[HOME_PROVIDER] Error checking outlet service: $e');
+    } catch (e, stack) {
+      debugPrint('[ZONE] ❌ ERROR: $e');
+      debugPrint('[ZONE] STACK: $stack');
+
       await _clearZoneState();
     } finally {
       _removeLoadingTask('getZone');
+
       zoneCheckCompleted = true;
       hasActuallyCheckedZone = true;
+
       notifyListeners();
+
+      debugPrint('========== GET ZONE END ==========');
     }
   }
 
@@ -644,61 +740,103 @@ class HomeProvider extends ChangeNotifier {
   }
 
   Future<void> _loadBanners() async {
-    if (_isTaskRunning('loadBanners')) return;
+    debugPrint('========== BANNER LOAD START ==========');
+
+    if (_isTaskRunning('loadBanners')) {
+      debugPrint('[BANNER] Already running -> RETURN');
+      return;
+    }
+
     _addLoadingTask('loadBanners');
 
     try {
-      final latitude = Constant.selectedLocation.latitude;
-      final longitude = Constant.selectedLocation.longitude;
+      // LOCATION
+      final selectedLocation = Constant.selectedLocation;
+
+      debugPrint('[BANNER] selectedLocation: $selectedLocation');
+      debugPrint('[BANNER] location object: ${selectedLocation.location}');
+
+      final latitude = selectedLocation.location?.latitude;
+      final longitude = selectedLocation.location?.longitude;
+
+      debugPrint('[BANNER] latitude: $latitude');
+      debugPrint('[BANNER] longitude: $longitude');
 
       if (latitude == null || longitude == null) {
-        debugPrint('[HOME_PROVIDER] Location not available');
+        debugPrint('[BANNER] ❌ Location is NULL');
         return;
       }
 
+      if (latitude == 0.0 || longitude == 0.0) {
+        debugPrint('[BANNER] ❌ Invalid location: $latitude, $longitude');
+        return;
+      }
+
+      // CACHE KEY
       final cacheKey =
-          'active_banners_${latitude.toStringAsFixed(4)}_${longitude.toStringAsFixed(4)}';
+          'active_banners_'
+          '${latitude.toStringAsFixed(4)}_'
+          '${longitude.toStringAsFixed(4)}';
 
-      final cachedBanners = _getFromCache(cacheKey) as List<BannerModel>?;
+      debugPrint('[BANNER] cacheKey: $cacheKey');
 
-      if (cachedBanners != null) {
-        _setBannersByType(cachedBanners);
+      // CACHE
+      final cachedData = _getFromCache(cacheKey);
 
-        if (bannerModel.isNotEmpty) {
-          startBannerTimer();
-        }
+      debugPrint('[BANNER] cachedData type: ${cachedData?.runtimeType}');
 
-        if (bannerBottomModel.isNotEmpty) {
-          startBottomBannerTimer();
-        }
+      if (cachedData is BannerResponse) {
+        debugPrint('[BANNER] ✅ USING CACHE');
+
+        _setBannersFromResponse(cachedData);
+
+        // debugPrint('[BANNER] banners after cache: ${banners.length}');
+
+        _startBannerTimers();
 
         notifyListeners();
+
         return;
       }
 
-      final banners = await getActiveBanners(
+      // API
+      debugPrint('[BANNER] 🚀 Calling getActiveBanners...');
+
+      final response = await getActiveBanners(
         latitude: latitude,
         longitude: longitude,
       );
 
-      _addToCache(cacheKey, banners);
+      debugPrint('[BANNER] API response type: ${response.runtimeType}');
 
-      _setBannersByType(banners);
+      debugPrint('[BANNER] API response: $response');
 
-      if (bannerModel.isNotEmpty) {
-        startBannerTimer();
+      // CACHE
+      if (response.isNotEmpty) {
+        _addToCache(cacheKey, response);
+
+        debugPrint('[BANNER] ✅ Response cached');
+      } else {
+        debugPrint('[BANNER] ⚠️ API returned EMPTY response');
       }
 
-      if (bannerBottomModel.isNotEmpty) {
-        startBottomBannerTimer();
-      }
+      // SET DATA
+      _setBannersFromResponse(response);
+
+      // debugPrint('[BANNER] banners after set: ${banners.length}');
+
+      // TIMER
+      _startBannerTimers();
 
       notifyListeners();
+
+      debugPrint('========== BANNER LOAD END ==========');
     } catch (e, stackTrace) {
-      debugPrint('[HOME_PROVIDER] Error loading banners: $e');
-      debugPrint('$stackTrace');
+      debugPrint('[BANNER] ❌ ERROR: $e');
+      debugPrint('[BANNER] STACK TRACE: $stackTrace');
     } finally {
       _removeLoadingTask('loadBanners');
+      debugPrint('[BANNER] Loading task removed');
     }
   }
 
@@ -780,33 +918,74 @@ class HomeProvider extends ChangeNotifier {
   //   }
   // }
 
-  void _setBannersByType(List<BannerModel> banners) {
-    bannerModel = banners.where((banner) {
-      final type = banner.bannerType?.toLowerCase().trim();
+  // void _setBannersByType(List<BannerModel> banners) {
+  //   bannerModel = banners.where((banner) {
+  //     final type = banner.bannerType?.toLowerCase().trim();
+  //
+  //     return type == 'top' || type == 'top_banner' || type == 'topbanner';
+  //   }).toList();
+  //
+  //   bannerBottomModel = banners.where((banner) {
+  //     final type = banner.bannerType?.toLowerCase().trim();
+  //
+  //     return type == 'middle' ||
+  //         type == 'middle_banner' ||
+  //         type == 'middlebanner';
+  //   }).toList();
+  // }
 
-      return type == 'top' || type == 'top_banner' || type == 'topbanner';
-    }).toList();
+  void _setBannersFromResponse(BannerResponse response) {
+    // Main banners
+    bannerModel = List<BannerModel>.from(response.mainBannerInfoDtos);
 
-    bannerBottomModel = banners.where((banner) {
-      final type = banner.bannerType?.toLowerCase().trim();
+    // Best restaurant banners
+    bestRestaurantBannerModel = List<BannerModel>.from(
+      response.bestRestaurantBannerInfoDtos,
+    );
 
-      return type == 'middle' ||
-          type == 'middle_banner' ||
-          type == 'middlebanner';
-    }).toList();
+    // Deals / bottom banners
+    bannerBottomModel = List<BannerModel>.from(response.dealsBannerInfoDtos);
+
+    // Reset page positions after new data
+    currentPage = 0;
+    currentBottomPage = 0;
+
+    debugPrint(
+      '[HOME_PROVIDER] Main banners: '
+      '${bannerModel.length}',
+    );
+
+    debugPrint(
+      '[HOME_PROVIDER] Best restaurant banners: '
+      '${bestRestaurantBannerModel.length}',
+    );
+
+    debugPrint(
+      '[HOME_PROVIDER] Deals banners: '
+      '${bannerBottomModel.length}',
+    );
   }
 
-  static Future<List<BannerModel>> getActiveBanners({
+  static Future<BannerResponse> getActiveBanners({
     required double latitude,
     required double longitude,
   }) async {
     try {
-      final url = Uri.parse(
-        '${AppConst.baseUrl}api/fm/banners/getActiveBanners'
-        '?lat=$latitude&lng=$longitude',
-      );
+      final url =
+          Uri.parse(
+            '${AppConst.outletBaseUrl}fm/banners/getActiveBanners',
+          ).replace(
+            queryParameters: {
+              'lat': latitude.toString(),
+              'lng': longitude.toString(),
+            },
+          );
 
-      debugPrint('[HOME_PROVIDER] Banner API: $url');
+      debugPrint('========================================');
+      debugPrint('[BANNER API] CALLING');
+      debugPrint('[BANNER API] URL: $url');
+      debugPrint('[BANNER API] LAT: $latitude');
+      debugPrint('[BANNER API] LNG: $longitude');
 
       final headers = await getHeaders();
 
@@ -814,39 +993,56 @@ class HomeProvider extends ChangeNotifier {
           .get(url, headers: headers)
           .timeout(_networkTimeout);
 
-      debugPrint(
-        '[HOME_PROVIDER] Banner response: '
-        '${response.statusCode} ${response.body}',
-      );
+      debugPrint('[BANNER API] STATUS: ${response.statusCode}');
+      debugPrint('[BANNER API] BODY: ${response.body}');
+      debugPrint('========================================');
 
-      if (response.statusCode == 200) {
-        final dynamic jsonResponse = json.decode(response.body);
-
-        if (jsonResponse is List) {
-          return jsonResponse
-              .map((item) => BannerModel.fromJson(item))
-              .toList();
-        }
-
-        if (jsonResponse is Map &&
-            jsonResponse['success'] == true &&
-            jsonResponse['data'] is List) {
-          return (jsonResponse['data'] as List)
-              .map((item) => BannerModel.fromJson(item))
-              .toList();
-        }
+      if (response.statusCode != 200) {
+        return const BannerResponse();
       }
 
-      debugPrint(
-        '[HOME_PROVIDER] Banner API failed: '
-        '${response.statusCode}',
-      );
+      if (response.body.trim().isEmpty) {
+        return const BannerResponse();
+      }
 
-      return [];
-    } catch (e) {
-      debugPrint('[HOME_PROVIDER] Error fetching active banners: $e');
+      final dynamic jsonResponse = json.decode(response.body);
 
-      return [];
+      if (jsonResponse is Map<String, dynamic>) {
+        final result = BannerResponse.fromJson(jsonResponse);
+
+        debugPrint('[BANNER API] MAIN: ${result.mainBannerInfoDtos.length}');
+
+        debugPrint(
+          '[BANNER API] BEST: '
+          '${result.bestRestaurantBannerInfoDtos.length}',
+        );
+
+        debugPrint(
+          '[BANNER API] DEALS: '
+          '${result.dealsBannerInfoDtos.length}',
+        );
+
+        return result;
+      }
+
+      if (jsonResponse is List) {
+        final banners = jsonResponse
+            .whereType<Map>()
+            .map(
+              (item) => BannerModel.fromJson(Map<String, dynamic>.from(item)),
+            )
+            .where((banner) => banner.isValid)
+            .toList();
+
+        return BannerResponse(mainBannerInfoDtos: banners);
+      }
+
+      return const BannerResponse();
+    } catch (e, stackTrace) {
+      debugPrint('[BANNER API] ERROR: $e');
+      debugPrint('[BANNER API] STACK: $stackTrace');
+
+      return const BannerResponse();
     }
   }
 
@@ -1022,55 +1218,30 @@ class HomeProvider extends ChangeNotifier {
   Future<void> getRefresh(BuildContext context) async {
     isLoadingFunction(true);
 
-    debugPrint('[HOME_PROVIDER] 🔄 Starting refresh - clearing all caches...');
+    debugPrint('[HOME_PROVIDER] 🔄 Refresh started');
 
-    // Clear provider's internal cache
     _clearCache();
 
-    // Clear global CacheManager caches for home screen data
-    // This ensures fresh data is fetched on refresh
-    final zoneId = Constant.selectedZone?.id;
-
-    // Clear restaurant caches
-    if (zoneId != null && zoneId.isNotEmpty) {
-      CacheManager().remove('best_restaurants_$zoneId');
-      CacheManager().clearByPattern('nearest_restaurants_$zoneId');
-      CacheManager().remove('stories_$zoneId');
-    }
-    CacheManager().clearByPattern('nearest_outlets_v2_');
-
-    // Clear category cache
-    CacheManager().remove('categories_home');
-
-    // Clear banner caches
-    CacheManager().clearByPattern('banners_');
-    CacheManager().clearByPattern('mart_banners_');
-
-    // Clear coupon and advertisement caches
-    CacheManager().remove('restaurant_coupons_all');
-    CacheManager().remove('advertisements_all');
-
-    // Clear deals screen caches if zone exists
-    if (zoneId != null && zoneId.isNotEmpty) {
-      CacheManager().remove('deals_banners_$zoneId');
-      CacheManager().remove('promotions_$zoneId');
-    }
-
-    debugPrint('[HOME_PROVIDER] ✅ Caches cleared, reloading data...');
-
     try {
-      await Future.wait([
-        _ensureUserLocationIsSet(),
-        getZone(),
-        _loadBanners(),
-        categoryViewProvider.loadVendorCategories(),
-        _loadOutletsIfCoordinatesAvailable(),
-      ], eagerError: true);
+      // 1. Location first
+      await _ensureUserLocationIsSet();
 
-      debugPrint('[HOME_PROVIDER] ✅ Refresh completed successfully');
-    } catch (e) {
+      // 2. Zone second
+      await getZone();
+
+      // 3. Banner API third
+      await _loadBanners();
+
+      // 4. Categories
+      await categoryViewProvider.loadVendorCategories();
+
+      // 5. Restaurants
+      await _loadOutletsIfCoordinatesAvailable();
+
+      debugPrint('[HOME_PROVIDER] ✅ Refresh completed');
+    } catch (e, stack) {
       debugPrint('[HOME_PROVIDER] ❌ Refresh error: $e');
-      ShowToastDialog.showToast("Refresh failed. Please try again.".tr);
+      debugPrint('$stack');
     } finally {
       isLoadingFunction(false);
     }

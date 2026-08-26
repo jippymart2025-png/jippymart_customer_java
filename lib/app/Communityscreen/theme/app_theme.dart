@@ -13,6 +13,7 @@ class AppColors {
   static const Color background = Color(0xFFF6F8FB);
   static const Color surface = Colors.white;
   static const Color border = Color(0xFFE9EDF3);
+  static const bannerGradient = [Color(0xFFFFF4EC), Color(0xFFFFF9F3)];
 
   static const Color textPrimary = Color(0xFF10202F);
   static const Color textSecondary = Color(0xFF5C7085);
@@ -22,6 +23,8 @@ class AppColors {
   static const Color successSoft = Color(0xFFE4F6EA);
   static const Color warning = Color(0xFFF0A93B);
   static const Color error = Color(0xFFE5484D);
+  static const chipBackground = Color(0xFFF4F5F7);
+  static const borderLight = Color(0xFFE9EAED);
 
   // Category accent colors — one per cuisine/order type, kept in a
   // single palette so new categories stay visually consistent.
@@ -29,6 +32,7 @@ class AppColors {
   static const Color accentRed = Color(0xFFE5484D);
   static const Color accentGreen = Color(0xFF1F9254);
   static const Color accentPurple = Color(0xFF8B5CF6);
+  static const bannerGradientAlt = [Color(0xFFFFF0E7), Color(0xFFFFF8F3)];
   static const Color accentYellow = Color(0xFFF0B429);
 }
 

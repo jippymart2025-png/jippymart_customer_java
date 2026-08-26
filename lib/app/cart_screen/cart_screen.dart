@@ -333,6 +333,9 @@ class _CartScreenState extends State<CartScreen> {
             child: cartProductDetailsImageWidget(controller),
           ),
         ),
+
+        SliverToBoxAdapter(child: _buildRemarks(controller)),
+
         const SliverToBoxAdapter(child: SizedBox(height: 8)),
         SliverToBoxAdapter(
           child: Consumer<CartControllerProvider>(
@@ -347,7 +350,6 @@ class _CartScreenState extends State<CartScreen> {
         const SliverToBoxAdapter(child: SizedBox(height: 8)),
         SliverToBoxAdapter(child: _buildDeliveryTips(controller)),
         const SliverToBoxAdapter(child: SizedBox(height: 8)),
-        SliverToBoxAdapter(child: _buildRemarks(controller)),
         const SliverToBoxAdapter(child: SizedBox(height: 100)),
       ],
     );

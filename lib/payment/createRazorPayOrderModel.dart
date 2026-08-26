@@ -1,12 +1,10 @@
-// To parse this JSON data, do
-//
-//     final createRazorPayOrderModel = createRazorPayOrderModelFromJson(jsonString);
-
 import 'dart:convert';
 
-CreateRazorPayOrderModel createRazorPayOrderModelFromJson(String str) => CreateRazorPayOrderModel.fromJson(json.decode(str));
+CreateRazorPayOrderModel createRazorPayOrderModelFromJson(String str) =>
+    CreateRazorPayOrderModel.fromJson(json.decode(str));
 
-String createRazorPayOrderModelToJson(CreateRazorPayOrderModel data) => json.encode(data.toJson());
+String createRazorPayOrderModelToJson(CreateRazorPayOrderModel data) =>
+    json.encode(data.toJson());
 
 class CreateRazorPayOrderModel {
   CreateRazorPayOrderModel({
@@ -37,7 +35,8 @@ class CreateRazorPayOrderModel {
   Notes notes;
   int createdAt;
 
-  factory CreateRazorPayOrderModel.fromJson(Map<String, dynamic> json) => CreateRazorPayOrderModel(
+  factory CreateRazorPayOrderModel.fromJson(Map<String, dynamic> json) =>
+      CreateRazorPayOrderModel(
         id: json["id"],
         entity: json["entity"],
         amount: json["amount"],
@@ -53,19 +52,19 @@ class CreateRazorPayOrderModel {
       );
 
   Map<String, dynamic> toJson() => {
-        "id": id,
-        "entity": entity,
-        "amount": amount,
-        "amount_paid": amountPaid,
-        "amount_due": amountDue,
-        "currency": currency,
-        "receipt": receipt,
-        "offer_id": offerId,
-        "status": status,
-        "attempts": attempts,
-        "notes": notes.toJson(),
-        "created_at": createdAt,
-      };
+    "id": id,
+    "entity": entity,
+    "amount": amount,
+    "amount_paid": amountPaid,
+    "amount_due": amountDue,
+    "currency": currency,
+    "receipt": receipt,
+    "offer_id": offerId,
+    "status": status,
+    "attempts": attempts,
+    "notes": notes.toJson(),
+    "created_at": createdAt,
+  };
 }
 
 class Notes {

@@ -38,6 +38,7 @@ class VendorModel {
 
   bool? subscriptionStatus;
   bool? promotionStatus;
+  bool isveg;
 
   // ============================================================
   // OUTLET TIMINGS
@@ -108,6 +109,7 @@ class VendorModel {
     this.isOpen = false,
     this.isActive = true,
     this.isFavourite = false,
+    this.isveg = false,
 
     this.vType,
     this.categoryTitle,
@@ -240,6 +242,8 @@ class VendorModel {
       phonenumber: parsedPhone ?? json['phonenumber']?.toString() ?? '',
 
       reviewsSum: _toDouble(json['reviewsSum']) ?? _toDouble(json['review']),
+
+      isveg: _toBool(json['isveg']) ?? true,
 
       reviewsCount: _toInt(json['reviewsCount']),
 
@@ -439,6 +443,7 @@ class VendorModel {
       'isOpen': isOpen,
       'isActive': isActive,
       'isFavourite': isFavourite,
+      'isveg': isveg,
 
       'vType': vType,
       'categoryTitle': categoryTitle,

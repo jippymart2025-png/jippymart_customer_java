@@ -55,13 +55,13 @@ class RestaurantCard extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: const EdgeInsets.all(7),
+                padding: const EdgeInsets.all(6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Image container with aspect ratio
                     AspectRatio(
-                      aspectRatio: 1,
+                      aspectRatio: 1.5,
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(kRadiusSM + 2),
@@ -80,7 +80,44 @@ class RestaurantCard extends StatelessWidget {
                                 width: double.infinity,
                               ),
                             ),
-                            // Status badge top-left
+
+                            Positioned(
+                              top: 6,
+                              left: 6,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 7,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.95),
+                                  borderRadius: BorderRadius.circular(8),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: _RatingInfo(vendorModel: vendorModel),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: Container(
+                                width: 14,
+                                height: 14,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.rectangle,
+                                ),
+                                padding: const EdgeInsets.all(4),
+                                child: _VegInfo(isVeg: vendorModel.isveg),
+                              ),
+                            ),
                             // Status badge top-left
                             // Status badge top-left
                             // Offer badge bottom-left
@@ -114,17 +151,27 @@ class RestaurantCard extends StatelessWidget {
                     const SizedBox(height: 3),
 
                     // Delivery time / fast delivery toggle
-                    SizedBox(
-                      height: 14,
-                      child: TimeThenFastDeliveryWidget(
-                        deliveryTime: Constant.getDeliveryTimeText(vendorModel),
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: SizedBox(
+                            height: 14,
+                            child: TimeThenFastDeliveryWidget(
+                              deliveryTime: vendorModel.deliveryTime.toString(),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(width: 6),
+
+                        _DistanceInfo(vendorModel: vendorModel),
+                      ],
                     ),
-
-                    const SizedBox(height: 4),
-
-                    // Rating + distance row
-                    _BottomInfoRow(vendorModel: vendorModel),
+                    // const SizedBox(height: 4),
+                    //
+                    // // Rating + distance row
+                    // _DistanceInfo(vendorModel: vendorModel),
                   ],
                 ),
               ),
@@ -291,28 +338,31 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
+class _VegInfo extends StatelessWidget {
+  final bool isVeg;
+
+  const _VegInfo({required this.isVeg});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 10,
+      height: 10,
+      decoration: BoxDecoration(
+        color: isVeg ? Colors.green : Colors.red,
+        shape: BoxShape.circle,
+      ),
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // _BottomInfoRow  — refined with consistent icon sizing
 // ─────────────────────────────────────────────────────────────────────────────
-class _BottomInfoRow extends StatelessWidget {
+class _RatingInfo extends StatelessWidget {
   final VendorModel vendorModel;
 
-  const _BottomInfoRow({required this.vendorModel});
-
-  String get _distanceText {
-    final distance = vendorModel.distanceKm;
-
-    if (distance != null && distance >= 0) {
-      if (distance < 1.0) {
-        final meters = (distance * 1000).round();
-        return '$meters m';
-      }
-
-      return '${distance.toStringAsFixed(1)} ${Constant.distanceType}';
-    }
-
-    return '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
-  }
+  const _RatingInfo({required this.vendorModel});
 
   String get _ratingText {
     return vendorModel.review?.toString() ?? '4.0';
@@ -321,62 +371,66 @@ class _BottomInfoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        // ⭐ Rating / Review
-        Expanded(
-          child: Row(
-            children: [
-              const Icon(
-                Icons.star_rounded,
-                size: 12,
-                color: AppThemeData.kAccentAmber,
-              ),
-              const SizedBox(width: 3),
-              Expanded(
-                child: Text(
-                  _ratingText,
-                  style: const TextStyle(
-                    fontSize: kFontXS + 1,
-                    fontFamily: AppThemeData.semiBold,
-                    color: Color(0xFF555570),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
+        const Icon(
+          Icons.star_rounded,
+          size: 12,
+          color: AppThemeData.kAccentAmber,
         ),
-
-        // 📍 Distance
-        Expanded(
-          child: Row(
-            children: [
-              Icon(
-                Icons.near_me_rounded,
-                size: 11,
-                color: AppThemeData.grey400,
-              ),
-              const SizedBox(width: 2),
-              Expanded(
-                child: Text(
-                  _distanceText,
-                  style: const TextStyle(
-                    fontSize: kFontXS + 1,
-                    fontFamily: AppThemeData.medium,
-                    color: Color(0xFF888899),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
+        const SizedBox(width: 3),
+        Text(
+          _ratingText,
+          style: const TextStyle(
+            fontSize: kFontXS + 1,
+            fontFamily: AppThemeData.semiBold,
+            color: Color(0xFF555570),
           ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
   }
 }
+
+class _DistanceInfo extends StatelessWidget {
+  final VendorModel vendorModel;
+
+  const _DistanceInfo({required this.vendorModel});
+
+  String get _distanceText {
+    final distance = vendorModel.distanceKm;
+
+    if (distance != null && distance >= 0) {
+      return '${distance.toStringAsFixed(1)} ${Constant.distanceType}';
+    }
+
+    return '${Constant.getDistanceFromVendor(vendorModel)} ${Constant.distanceType}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.near_me_rounded, size: 11, color: AppThemeData.grey400),
+        const SizedBox(width: 2),
+        Text(
+          _distanceText,
+          style: const TextStyle(
+            fontSize: kFontXS + 1,
+            fontFamily: AppThemeData.medium,
+            color: Color(0xFF888899),
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // _TimeThenFastDeliveryWidget  — refined with better icon & colours
 // ─────────────────────────────────────────────────────────────────────────────
@@ -384,7 +438,7 @@ class _BottomInfoRow extends StatelessWidget {
 class TimeThenFastDeliveryWidget extends StatefulWidget {
   final String deliveryTime;
 
-  const TimeThenFastDeliveryWidget({required this.deliveryTime});
+  const TimeThenFastDeliveryWidget({super.key, required this.deliveryTime});
 
   @override
   State<TimeThenFastDeliveryWidget> createState() =>
@@ -396,58 +450,66 @@ class TimeThenFastDeliveryWidgetState
   bool _showFastDelivery = false;
   Timer? _timer;
 
-  static const _switchDuration = Duration(seconds: 4);
-  static const _animDuration = Duration(milliseconds: 350);
+  static const Duration _switchDuration = Duration(seconds: 4);
+  static const Duration _animDuration = Duration(milliseconds: 350);
 
   @override
   void initState() {
     super.initState();
+
     _timer = Timer.periodic(_switchDuration, (_) {
-      if (mounted) setState(() => _showFastDelivery = !_showFastDelivery);
+      if (!mounted) return;
+
+      setState(() {
+        _showFastDelivery = !_showFastDelivery;
+      });
     });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _timer = null;
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
+    return Align(
+      alignment: Alignment.centerLeft,
       child: AnimatedSwitcher(
         duration: _animDuration,
         switchInCurve: Curves.easeOutCubic,
         switchOutCurve: Curves.easeInCubic,
-        transitionBuilder: (child, animation) => FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, 0.3),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
-          ),
-        ),
+        transitionBuilder: (child, animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.3),
+                end: Offset.zero,
+              ).animate(animation),
+              child: child,
+            ),
+          );
+        },
         child: _showFastDelivery ? _fastDeliveryRow : _timeText,
       ),
     );
   }
 
-  Widget get _fastDeliveryRow => Row(
-    key: const ValueKey<String>('fast'),
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      const Icon(
-        Icons.electric_bolt_rounded,
-        size: 10,
-        color: ZColors.kGradStart,
-      ),
-      const SizedBox(width: 2),
-      Expanded(
-        child: Text(
+  Widget get _fastDeliveryRow {
+    return Row(
+      key: const ValueKey<String>('fast'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(
+          Icons.electric_bolt_rounded,
+          size: 10,
+          color: ZColors.kGradStart,
+        ),
+        const SizedBox(width: 2),
+        Text(
           'Fast delivery',
           style: const TextStyle(
             fontSize: kFontXS + 1,
@@ -457,18 +519,18 @@ class TimeThenFastDeliveryWidgetState
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 
-  Widget get _timeText => Row(
-    key: const ValueKey<String>('time'),
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(Icons.access_time_rounded, size: 10, color: AppThemeData.grey500),
-      const SizedBox(width: 2),
-      Expanded(
-        child: Text(
+  Widget get _timeText {
+    return Row(
+      key: const ValueKey<String>('time'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(Icons.access_time_rounded, size: 10, color: AppThemeData.grey500),
+        const SizedBox(width: 2),
+        Text(
           widget.deliveryTime,
           style: TextStyle(
             fontSize: kFontXS + 1,
@@ -478,7 +540,7 @@ class TimeThenFastDeliveryWidgetState
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }

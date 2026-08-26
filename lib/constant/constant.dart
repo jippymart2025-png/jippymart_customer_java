@@ -1079,7 +1079,7 @@ class Constant {
 
   /// Enhanced distance calculation with better coordinate handling
   static String getDistanceFromVendor(VendorModel vendor) {
-    return vendor.roadDistance ?? "0.0";
+    return vendor.deliveryTime.toString() ?? "0.0";
   }
 
   /// Returns estimated delivery time: "15-20 mins" if under 3 km, else "25-30 mins".

@@ -99,67 +99,72 @@ class _ViewAllCategoryScreenState extends State<ViewAllCategoryScreen> {
       builder: (context, categoryRestaurantProvider, _) {
         return Card(
           elevation: 0,
+          margin: EdgeInsets.zero,
           shadowColor: Colors.grey.withOpacity(0.3),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
           color: AppThemeData.grey50,
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () {
-              print(" _buildCategoryItem");
               categoryRestaurantProvider.initFunction(
                 vendorCategoryModels: category,
                 context: context,
               );
+
               Get.to(const CategoryRestaurantScreen());
             },
-            borderRadius: BorderRadius.circular(16),
-            child: Container(
-              padding: const EdgeInsets.all(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Category Image
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.grey.shade100,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.2),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: SizedBox(
-                        width: 70,
-                        height: 70,
+                  // Category image
+                  SizedBox(
+                    width: 58,
+                    height: 58,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.grey.shade100,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withOpacity(0.2),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
                         child: NetworkImageWidget(
                           imageUrl: category.categoryImageUrl,
-                          width: 70,
-                          height: 70,
+                          width: 58,
+                          height: 58,
                           fit: BoxFit.cover,
                         ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 8),
-                  Text(
-                    category.categoryName,
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AppThemeData.grey900,
-                      fontFamily: AppThemeData.medium,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      height: 1.2,
+                  const SizedBox(height: 4),
+
+                  // Category name
+                  SizedBox(
+                    width: double.infinity,
+                    child: Text(
+                      category.categoryName,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: AppThemeData.grey900,
+                        fontFamily: AppThemeData.medium,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        height: 1.1,
+                      ),
                     ),
                   ),
                 ],

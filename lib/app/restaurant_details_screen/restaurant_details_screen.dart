@@ -1097,7 +1097,7 @@ class _RatingSection extends StatelessWidget {
               Get.to(const ReviewListScreen());
             },
             child: Text(
-              "${controller.vendorModel.review ?? 0} ${'Ratings'.tr}",
+              "${controller.vendorModel.reviewsCount ?? 0} ${'Ratings'.tr}",
               style: const TextStyle(
                 decoration: TextDecoration.underline,
                 decorationColor: AppThemeData.grey500,

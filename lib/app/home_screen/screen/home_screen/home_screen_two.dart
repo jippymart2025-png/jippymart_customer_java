@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -10,22 +9,16 @@ import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/b
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/category_view_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/banner_view_widget.dart';
-import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/best_restaurant_section_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/bottom_banner_view_widget.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/widgets/home_header_widget.dart';
 import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
-import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
-import 'package:jippymart_customer/app/restaurant_details_screen/restaurant_details_screen.dart';
 import 'package:jippymart_customer/constant/constant.dart';
-import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/advertisement_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/themes/responsive.dart';
-import 'package:jippymart_customer/utils/fire_store_utils.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
 import 'package:jippymart_customer/widget/filter_bar.dart';
-import 'package:jippymart_customer/widget/video_widget.dart';
 import 'package:jippymart_customer/widgets/app_loading_widget.dart';
 import 'widgets/category_view_widget.dart';
 
@@ -642,7 +635,7 @@ class _BottomBannerSection extends StatelessWidget {
   Widget build(BuildContext context) {
     if (controller.bannerBottomModel.isEmpty) return const SizedBox.shrink();
     return Padding(
-      padding: const EdgeInsets.only(top: 24, left: 16, right: 16),
+      padding: const EdgeInsets.only(top: 10, left: 16, right: 16),
       child: BottomBannerView(),
     );
   }
@@ -788,10 +781,10 @@ class _AllRestaurantsGridSliver extends StatelessWidget {
             padding: const EdgeInsets.only(top: 4, bottom: 8),
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 0.62,
+                crossAxisCount: 2,
+                crossAxisSpacing: 6,
+                mainAxisSpacing: 6,
+                childAspectRatio: 0.99,
               ),
               delegate: SliverChildBuilderDelegate((ctx, i) {
                 return RepaintBoundary(
@@ -973,153 +966,153 @@ class _GradientPainter extends CustomPainter {
 // AdvertisementHomeCard  — premium card with refined layout
 // ─────────────────────────────────────────────────────────────────────────────
 
-class AdvertisementHomeCard extends StatefulWidget {
-  final AdvertisementModel model;
-  final HomeProvider controller;
-
-  const AdvertisementHomeCard({
-    super.key,
-    required this.controller,
-    required this.model,
-  });
-
-  @override
-  State<AdvertisementHomeCard> createState() => _AdvertisementHomeCardState();
-}
-
-class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
-  VendorModel? _cachedVendor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 14),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () =>
-              _onAdvertisementTap(context.read<RestaurantDetailsProvider>()),
-          borderRadius: BorderRadius.circular(kRadiusLG),
-          child: Ink(
-            width: Responsive.width(68, context),
-            decoration: BoxDecoration(
-              color: AppThemeData.grey50,
-              borderRadius: BorderRadius.circular(kRadiusLG),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppThemeData.kCardShadowMd,
-                  blurRadius: 14,
-                  spreadRadius: 0,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _AdvImageSection(
-                  model: widget.model,
-                  cachedVendor: _cachedVendor,
-                ),
-                _AdvContentSection(
-                  model: widget.model,
-                  controller: widget.controller,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _onAdvertisementTap(RestaurantDetailsProvider rdp) async {
-    ShowToastDialog.showLoader("Please wait".tr);
-    try {
-      VendorModel? v = _cachedVendor;
-      if (v == null && widget.model.vendorId != null) {
-        v = await FireStoreUtils.getVendorById(widget.model.vendorId!);
-        if (mounted) _cachedVendor = v;
-      }
-      ShowToastDialog.closeLoader();
-      if (v != null) {
-        rdp.initFunction(vendorModels: v);
-        Get.to(() => const RestaurantDetailsScreen());
-      }
-    } catch (_) {
-      ShowToastDialog.closeLoader();
-      ShowToastDialog.showToast("Failed to load restaurant details".tr);
-    }
-  }
-}
+// class AdvertisementHomeCard extends StatefulWidget {
+//   final AdvertisementModel model;
+//   final HomeProvider controller;
+//
+//   const AdvertisementHomeCard({
+//     super.key,
+//     required this.controller,
+//     required this.model,
+//   });
+//
+//   @override
+//   State<AdvertisementHomeCard> createState() => _AdvertisementHomeCardState();
+// }
+//
+// class _AdvertisementHomeCardState extends State<AdvertisementHomeCard> {
+//   VendorModel? _cachedVendor;
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Padding(
+//       padding: const EdgeInsets.only(right: 14),
+//       child: Material(
+//         color: Colors.transparent,
+//         child: InkWell(
+//           onTap: () =>
+//               _onAdvertisementTap(context.read<RestaurantDetailsProvider>()),
+//           borderRadius: BorderRadius.circular(kRadiusLG),
+//           child: Ink(
+//             width: Responsive.width(68, context),
+//             decoration: BoxDecoration(
+//               color: AppThemeData.grey50,
+//               borderRadius: BorderRadius.circular(kRadiusLG),
+//               boxShadow: const [
+//                 BoxShadow(
+//                   color: AppThemeData.kCardShadowMd,
+//                   blurRadius: 14,
+//                   spreadRadius: 0,
+//                   offset: Offset(0, 4),
+//                 ),
+//               ],
+//             ),
+//             child: Column(
+//               crossAxisAlignment: CrossAxisAlignment.start,
+//               children: [
+//                 // _AdvImageSection(
+//                 //   model: widget.model,
+//                 //   cachedVendor: _cachedVendor,
+//                 // ),
+//                 _AdvContentSection(
+//                   model: widget.model,
+//                   controller: widget.controller,
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ),
+//       ),
+//     );
+//   }
+//
+//   Future<void> _onAdvertisementTap(RestaurantDetailsProvider rdp) async {
+//     ShowToastDialog.showLoader("Please wait".tr);
+//     try {
+//       VendorModel? v = _cachedVendor;
+//       if (v == null && widget.model.vendorId != null) {
+//         v = await FireStoreUtils.getVendorById(widget.model.vendorId!);
+//         if (mounted) _cachedVendor = v;
+//       }
+//       ShowToastDialog.closeLoader();
+//       if (v != null) {
+//         rdp.initFunction(vendorModels: v);
+//         Get.to(() => const RestaurantDetailsScreen());
+//       }
+//     } catch (_) {
+//       ShowToastDialog.closeLoader();
+//       ShowToastDialog.showToast("Failed to load restaurant details".tr);
+//     }
+//   }
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _AdvImageSection
 // ─────────────────────────────────────────────────────────────────────────────
 
-class _AdvImageSection extends StatelessWidget {
-  final AdvertisementModel model;
-  final VendorModel? cachedVendor;
-
-  const _AdvImageSection({required this.model, required this.cachedVendor});
-
-  bool get _showRatingOverlay =>
-      model.type != 'video_promotion' &&
-      model.vendorId != null &&
-      (model.showRating == true || model.showReview == true);
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        model.type == 'restaurant_promotion'
-            ? ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusLG),
-                ),
-                child: NetworkImageWidget(
-                  imageUrl: model.coverImage ?? '',
-                  height: 140,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              )
-            : ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusLG),
-                ),
-                child: VideoAdvWidget(
-                  url: model.video ?? '',
-                  height: 140,
-                  width: double.infinity,
-                ),
-              ),
-        // Gradient overlay for readability
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: Container(
-            height: 60,
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.bottomCenter,
-                end: Alignment.topCenter,
-                colors: [Color(0xCC000000), Colors.transparent],
-              ),
-            ),
-          ),
-        ),
-        if (_showRatingOverlay && cachedVendor != null)
-          Positioned(
-            bottom: 10,
-            right: 10,
-            child: _RatingBadge(model: model, vendor: cachedVendor!),
-          ),
-      ],
-    );
-  }
-}
+// class _AdvImageSection extends StatelessWidget {
+//   final AdvertisementModel model;
+//   final VendorModel? cachedVendor;
+//
+//   const _AdvImageSection({required this.model, required this.cachedVendor});
+//
+//   bool get _showRatingOverlay =>
+//       model.type != 'video_promotion' &&
+//       model.vendorId != null &&
+//       (model.showRating == true || model.showReview == true);
+//
+//   @override
+//   Widget build(BuildContext context) {
+//     return Stack(
+//       children: [
+//         model.type == 'restaurant_promotion'
+//             ? ClipRRect(
+//                 borderRadius: const BorderRadius.vertical(
+//                   top: Radius.circular(kRadiusLG),
+//                 ),
+//                 child: NetworkImageWidget(
+//                   imageUrl: model.coverImage ?? '',
+//                   height: 140,
+//                   width: double.infinity,
+//                   fit: BoxFit.cover,
+//                 ),
+//               )
+//             : ClipRRect(
+//                 borderRadius: const BorderRadius.vertical(
+//                   top: Radius.circular(kRadiusLG),
+//                 ),
+//                 child: VideoAdvWidget(
+//                   url: model.video ?? '',
+//                   height: 140,
+//                   width: double.infinity,
+//                 ),
+//               ),
+//         // Gradient overlay for readability
+//         Positioned(
+//           bottom: 0,
+//           left: 0,
+//           right: 0,
+//           child: Container(
+//             height: 60,
+//             decoration: const BoxDecoration(
+//               gradient: LinearGradient(
+//                 begin: Alignment.bottomCenter,
+//                 end: Alignment.topCenter,
+//                 colors: [Color(0xCC000000), Colors.transparent],
+//               ),
+//             ),
+//           ),
+//         ),
+//         if (_showRatingOverlay && cachedVendor != null)
+//           Positioned(
+//             bottom: 10,
+//             right: 10,
+//             child: _RatingBadge(model: model, vendor: cachedVendor!),
+//           ),
+//       ],
+//     );
+//   }
+// }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // _RatingBadge  — compact pill with amber star

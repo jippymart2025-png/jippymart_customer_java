@@ -228,6 +228,22 @@ class LoginProvider extends ChangeNotifier {
     }
   }
 
+  // Future<void> verifyOtp(
+  //   BuildContext context,
+  //   SplashProvider splashProvider,
+  //   String otps,
+  // ) async {
+  //   // Skip OTP verification completely
+  //
+  //   ShowToastDialog.closeLoader();
+  //
+  //   isVerifying = false;
+  //   notifyListeners();
+  //
+  //   // Directly go to Dashboard
+  //   Get.offAll(() => const DashBoardScreen());
+  // }
+
   Future<void> verifyOtp(
     BuildContext context,
     SplashProvider splashProvider,
@@ -310,22 +326,52 @@ class LoginProvider extends ChangeNotifier {
     Map<String, dynamic> response,
     SignupProvider signupProvider,
   ) async {
+    // ============================================================
+    // SAVE AUTH TOKEN
+    // ============================================================
+
     authToken = response['accessToken']?.toString() ?? '';
+
     await saveAuthToken(
       authToken,
       tokenType: response['tokenType']?.toString() ?? 'Bearer',
     );
 
-    final customerId = response['customerId']?.toString();
+    // ============================================================
+    // SAVE CUSTOMER ID
+    // ============================================================
+
+    final customerId = response['customerId']?.toString().trim();
+
     if (customerId != null && customerId.isNotEmpty) {
       await secureStorage.write(key: 'user_id', value: customerId);
     }
 
-    final firstName = response['firstName']?.toString().trim() ?? '';
-    final lastName = response['lastName']?.toString().trim() ?? '';
-    final mobileNumber = response['mobileNumber']?.toString() ?? phoneNumber;
+    // ============================================================
+    // GET USER DATA
+    // ============================================================
 
-    final isRegistered = firstName.isNotEmpty && lastName.isNotEmpty;
+    final email = response['email']?.toString().trim() ?? '';
+
+    final firstName = response['firstName']?.toString().trim() ?? '';
+
+    final lastName = response['lastName']?.toString().trim() ?? '';
+
+    final mobileNumber =
+        response['mobileNumber']?.toString().trim() ?? phoneNumber;
+
+    // ============================================================
+    // REGISTERED USER CHECK
+    //
+    // EMAIL IS REQUIRED
+    // ============================================================
+
+    final isRegistered =
+        email.isNotEmpty && firstName.isNotEmpty && lastName.isNotEmpty;
+
+    // ============================================================
+    // REGISTERED USER
+    // ============================================================
 
     if (isRegistered) {
       final userData = <String, dynamic>{
@@ -333,19 +379,35 @@ class LoginProvider extends ChangeNotifier {
         'firstName': firstName,
         'lastName': lastName,
         'phoneNumber': mobileNumber,
+        'email': email,
       };
+
       await _handleRegisteredUser(context, userData, customerId);
-    } else {
+    }
+    // ============================================================
+    // NEW / INCOMPLETE USER
+    //
+    // IF EMAIL IS EMPTY → SIGNUP
+    // ============================================================
+    else {
       ShowToastDialog.closeLoader();
+
       signupProvider.authToken = authToken;
+
       signupProvider.initFunction(
-        phoneNumber: phoneEditingController.value.text.trim(),
+        phoneNumber: phoneEditingController.text.trim(),
         countryCode: countryCode,
       );
+
       Get.offAll(() => SignupScreen());
     }
 
+    // ============================================================
+    // FINISHED
+    // ============================================================
+
     isVerifying = false;
+
     notifyListeners();
   }
 

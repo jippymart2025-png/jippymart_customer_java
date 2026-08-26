@@ -2333,99 +2333,182 @@ class FireStoreUtils {
   }
 
   /// **FETCH ALL ACTIVE PROMOTIONS**
+  // static Future<List<Map<String, dynamic>>> getAllActivePromotions({
+  //   required String zoneId,
+  // }) async {
+  //   try {
+  //     final uri = Uri.parse('${AppConst.baseUrl}firestore/promotions/active')
+  //         .replace(
+  //           queryParameters: {
+  //             'zoneId': "BmSTwRFzmP13PnVNFJZJ", // ✅ SEND ZONE ID
+  //           },
+  //         );
+  //
+  //     final response = await http.get(uri, headers: await getHeaders());
+  //
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //
+  //       if (responseData['success'] == true && responseData['data'] != null) {
+  //         final List<dynamic> promotionsData =
+  //             responseData['data']['promotions'] ?? [];
+  //
+  //         final now = DateTime.now();
+  //         List<Map<String, dynamic>> promotionsList = [];
+  //
+  //         for (final promo in promotionsData) {
+  //           try {
+  //             final dynamic isAvailableNowRaw = promo['is_available_now'];
+  //             final dynamic isAvailableLegacyRaw =
+  //                 promo['isAvailable'] ?? promo['is_available'];
+  //
+  //             bool? parseAvailability(dynamic value) {
+  //               if (value == null) return null;
+  //               if (value is bool) return value;
+  //               if (value is num) return value == 1;
+  //               if (value is String) {
+  //                 final normalized = value.trim().toLowerCase();
+  //                 if (normalized == '1' || normalized == 'true') return true;
+  //                 if (normalized == '0' || normalized == 'false') return false;
+  //               }
+  //               return null;
+  //             }
+  //
+  //             final isAvailableNow = parseAvailability(isAvailableNowRaw);
+  //             final isAvailableLegacy = parseAvailability(isAvailableLegacyRaw);
+  //             // If backend omits availability flags, keep promotions visible.
+  //             final isPromotionAvailable =
+  //                 isAvailableNow ?? isAvailableLegacy ?? true;
+  //
+  //             // ⏱ Time validation
+  //             final startTime = DateTime.parse(promo['start_time']);
+  //             final endTime = DateTime.parse(promo['end_time']);
+  //
+  //             // 🗺 Zone validation (extra safety)
+  //             final promoZoneId = promo['zoneId']?.toString();
+  //
+  //             if (!isPromotionAvailable ||
+  //                 promoZoneId != zoneId ||
+  //                 now.isBefore(startTime) ||
+  //                 now.isAfter(endTime)) {
+  //               continue;
+  //             }
+  //
+  //             promotionsList.add({
+  //               'id': promo['id'],
+  //               'payment_mode': promo['payment_mode'],
+  //               'product_title': promo['product_title'],
+  //               'extra_km_charge': promo['extra_km_charge'],
+  //               'product_id': promo['product_id'],
+  //               'end_time': promo['end_time'],
+  //               'restaurant_id': promo['restaurant_id'],
+  //               'start_time': promo['start_time'],
+  //               'item_limit': promo['item_limit'],
+  //               'restaurant_title': promo['restaurant_title'],
+  //               'vType': promo['vType'],
+  //               'zoneId': promoZoneId,
+  //               'free_delivery_km': promo['free_delivery_km'],
+  //               'special_price': promo['special_price'],
+  //               'isAvailable': true,
+  //               'is_available_now': 1,
+  //             });
+  //           } catch (e) {
+  //             debugPrint('Error parsing promotion: $e');
+  //           }
+  //         }
+  //
+  //         return promotionsList;
+  //       } else {
+  //         throw Exception(responseData['message'] ?? 'API failed');
+  //       }
+  //     } else {
+  //       throw Exception('HTTP ${response.statusCode}');
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error fetching promotions: $e');
+  //     return [];
+  //   }
+  // }
+
   static Future<List<Map<String, dynamic>>> getAllActivePromotions({
     required String zoneId,
   }) async {
     try {
-      final uri = Uri.parse('${AppConst.baseUrl}firestore/promotions/active')
-          .replace(
-            queryParameters: {
-              'zoneId': zoneId, // ✅ SEND ZONE ID
-            },
-          );
+      final uri = Uri.parse(
+        '${AppConst.baseUrl}firestore/promotions/active',
+        // ).replace(queryParameters: {'zoneId': zoneId});
+      ).replace(queryParameters: {'zoneId': "BmSTwRFzmP13PnVNFJZJ"});
 
-      final response = await http.get(uri, headers: await getHeaders());
+      debugPrint('[PROMOTIONS API] URL: $uri');
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 10));
 
-        if (responseData['success'] == true && responseData['data'] != null) {
-          final List<dynamic> promotionsData =
-              responseData['data']['promotions'] ?? [];
+      debugPrint('[PROMOTIONS API] STATUS: ${response.statusCode}');
 
-          final now = DateTime.now();
-          List<Map<String, dynamic>> promotionsList = [];
+      debugPrint('[PROMOTIONS API] RESPONSE: ${response.body}');
 
-          for (final promo in promotionsData) {
-            try {
-              final dynamic isAvailableNowRaw = promo['is_available_now'];
-              final dynamic isAvailableLegacyRaw =
-                  promo['isAvailable'] ?? promo['is_available'];
-
-              bool? parseAvailability(dynamic value) {
-                if (value == null) return null;
-                if (value is bool) return value;
-                if (value is num) return value == 1;
-                if (value is String) {
-                  final normalized = value.trim().toLowerCase();
-                  if (normalized == '1' || normalized == 'true') return true;
-                  if (normalized == '0' || normalized == 'false') return false;
-                }
-                return null;
-              }
-
-              final isAvailableNow = parseAvailability(isAvailableNowRaw);
-              final isAvailableLegacy = parseAvailability(isAvailableLegacyRaw);
-              // If backend omits availability flags, keep promotions visible.
-              final isPromotionAvailable =
-                  isAvailableNow ?? isAvailableLegacy ?? true;
-
-              // ⏱ Time validation
-              final startTime = DateTime.parse(promo['start_time']);
-              final endTime = DateTime.parse(promo['end_time']);
-
-              // 🗺 Zone validation (extra safety)
-              final promoZoneId = promo['zoneId']?.toString();
-
-              if (!isPromotionAvailable ||
-                  promoZoneId != zoneId ||
-                  now.isBefore(startTime) ||
-                  now.isAfter(endTime)) {
-                continue;
-              }
-
-              promotionsList.add({
-                'id': promo['id'],
-                'payment_mode': promo['payment_mode'],
-                'product_title': promo['product_title'],
-                'extra_km_charge': promo['extra_km_charge'],
-                'product_id': promo['product_id'],
-                'end_time': promo['end_time'],
-                'restaurant_id': promo['restaurant_id'],
-                'start_time': promo['start_time'],
-                'item_limit': promo['item_limit'],
-                'restaurant_title': promo['restaurant_title'],
-                'vType': promo['vType'],
-                'zoneId': promoZoneId,
-                'free_delivery_km': promo['free_delivery_km'],
-                'special_price': promo['special_price'],
-                'isAvailable': true,
-                'is_available_now': 1,
-              });
-            } catch (e) {
-              debugPrint('Error parsing promotion: $e');
-            }
-          }
-
-          return promotionsList;
-        } else {
-          throw Exception(responseData['message'] ?? 'API failed');
-        }
-      } else {
+      if (response.statusCode != 200) {
         throw Exception('HTTP ${response.statusCode}');
       }
-    } catch (e) {
-      debugPrint('Error fetching promotions: $e');
+
+      final Map<String, dynamic> responseData = json.decode(response.body);
+
+      if (responseData['success'] != true) {
+        throw Exception(responseData['message']?.toString() ?? 'API failed');
+      }
+
+      final data = responseData['data'];
+
+      if (data is! Map<String, dynamic>) {
+        debugPrint('[PROMOTIONS API] ❌ data is not an object');
+        return [];
+      }
+
+      final promotionsData = data['promotions'];
+
+      if (promotionsData is! List) {
+        debugPrint('[PROMOTIONS API] ❌ promotions is not a list');
+        return [];
+      }
+
+      debugPrint(
+        '[PROMOTIONS API] Promotions received: ${promotionsData.length}',
+      );
+
+      final List<Map<String, dynamic>> promotions = [];
+
+      for (final item in promotionsData) {
+        if (item is! Map) {
+          continue;
+        }
+
+        final promo = Map<String, dynamic>.from(item);
+
+        debugPrint(
+          '[PROMOTION] '
+          'id=${promo['id']} '
+          'product=${promo['product_title']} '
+          'restaurant=${promo['restaurant_title']} '
+          'restaurantId=${promo['restaurant_id']} '
+          'zone=${promo['zoneId']} '
+          'available=${promo['is_available_now']}',
+        );
+
+        promotions.add(promo);
+      }
+
+      debugPrint(
+        '[PROMOTIONS API] ✅ Returning ${promotions.length} promotions',
+      );
+
+      return promotions;
+    } catch (e, stackTrace) {
+      debugPrint('[PROMOTIONS API] ❌ ERROR: $e');
+
+      debugPrint('$stackTrace');
+
       return [];
     }
   }

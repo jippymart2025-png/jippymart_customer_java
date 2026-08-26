@@ -1,108 +1,124 @@
-// class BannerModel {
-//   String? id;
-//   int? setOrder;
-//   String? photo;
-//   String? title;
-//   bool? isPublish;
-//   String? position;
-//   String? redirectType;
-//   String? redirectId;
-//   String? zoneId;
-//   String? zoneTitle;
-//
-//   BannerModel({
-//     this.id,
-//     this.setOrder,
-//     this.photo,
-//     this.title,
-//     this.isPublish,
-//     this.position,
-//     this.redirectType,
-//     this.redirectId,
-//     this.zoneId,
-//     this.zoneTitle,
-//   });
-//
-//   BannerModel.fromJson(Map<String, dynamic> json) {
-//     id = json['id']?.toString();
-//     setOrder = json['set_order'];
-//     photo = json['photo'];
-//     title = json['title'];
-//     isPublish = json['is_publish'];
-//     position = json['position'];
-//     redirectType = json['redirect_type'];
-//     redirectId = json['redirect_id'];
-//     zoneId = json['zoneId']?.toString();
-//     zoneTitle = json['zoneTitle']?.toString();
-//   }
-//
-//   Map<String, dynamic> toJson() {
-//     final Map<String, dynamic> data = <String, dynamic>{};
-//     data['id'] = id;
-//     data['set_order'] = setOrder;
-//     data['photo'] = photo;
-//     data['title'] = title;
-//     data['is_publish'] = isPublish;
-//     data['position'] = position;
-//     data['redirect_type'] = redirectType;
-//     data['redirect_id'] = redirectId;
-//     data['zoneId'] = zoneId;
-//     data['zoneTitle'] = zoneTitle;
-//     return data;
-//   }
-// }
-
 class BannerModel {
-  final int? areaId;
   final int? outletId;
   final String? outletName;
   final int? slotNumber;
   final String? bannerType;
   final String? bannerUrl;
-  final String? priceModelType;
-  final double? offerAmount;
-  final double? radiusInKms;
-  final double? latitude;
-  final double? longitude;
-  final List<int> mealTypeTimingIds;
-  final String? bannerFromDate;
-  final String? bannerToDate;
 
-  BannerModel({
-    this.areaId,
+  const BannerModel({
     this.outletId,
     this.outletName,
     this.slotNumber,
     this.bannerType,
     this.bannerUrl,
-    this.priceModelType,
-    this.offerAmount,
-    this.radiusInKms,
-    this.latitude,
-    this.longitude,
-    this.mealTypeTimingIds = const [],
-    this.bannerFromDate,
-    this.bannerToDate,
   });
 
   factory BannerModel.fromJson(Map<String, dynamic> json) {
     return BannerModel(
-      areaId: json['areaId'],
-      outletId: json['outletId'],
-      outletName: json['outletName'],
-      slotNumber: json['slotNumber'],
-      bannerType: json['bannerType'],
-      bannerUrl: json['bannerUrl'],
-      priceModelType: json['priceModelType'],
-      offerAmount: (json['offerAmount'] as num?)?.toDouble(),
-      radiusInKms: (json['radiusInKms'] as num?)?.toDouble(),
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
-      mealTypeTimingIds:
-          (json['mealTypeTimingIds'] as List?)?.map((e) => e as int).toList() ??
-          [],
-      bannerFromDate: json['bannerFromDate'],
-      bannerToDate: json['bannerToDate'],
+      outletId: _toInt(json['outletId']),
+      outletName: json['outletName'] as String?,
+      slotNumber: _toInt(json['slotNumber']),
+      bannerType: json['bannerType'] as String?,
+      bannerUrl: _getBannerUrl(json),
     );
+  }
+
+  static String? _getBannerUrl(Map<String, dynamic> json) {
+    final bannerUrl = json['bannerUrl']?.toString().trim();
+
+    if (bannerUrl != null && bannerUrl.isNotEmpty) {
+      return bannerUrl;
+    }
+
+    final photo = json['photo']?.toString().trim();
+
+    if (photo != null && photo.isNotEmpty) {
+      return photo;
+    }
+
+    return null;
+  }
+
+  static int? _toInt(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is int) {
+      return value;
+    }
+
+    if (value is num) {
+      return value.toInt();
+    }
+
+    return int.tryParse(value.toString());
+  }
+
+  bool get isValid {
+    return bannerUrl != null && bannerUrl!.isNotEmpty;
+  }
+
+  bool get isDefaultBanner {
+    return bannerType?.toUpperCase() == 'DEFAULT';
+  }
+
+  bool get isOutletBanner {
+    return outletId != null;
+  }
+
+  @override
+  String toString() {
+    return 'BannerModel('
+        'slotNumber: $slotNumber, '
+        'bannerType: $bannerType, '
+        'outletId: $outletId, '
+        'outletName: $outletName, '
+        'bannerUrl: $bannerUrl'
+        ')';
+  }
+}
+
+class BannerResponse {
+  final List<BannerModel> mainBannerInfoDtos;
+  final List<BannerModel> bestRestaurantBannerInfoDtos;
+  final List<BannerModel> dealsBannerInfoDtos;
+
+  const BannerResponse({
+    this.mainBannerInfoDtos = const [],
+    this.bestRestaurantBannerInfoDtos = const [],
+    this.dealsBannerInfoDtos = const [],
+  });
+
+  factory BannerResponse.fromJson(Map<String, dynamic> json) {
+    return BannerResponse(
+      mainBannerInfoDtos: _parseBannerList(json['mainBannerInfoDtos']),
+      bestRestaurantBannerInfoDtos: _parseBannerList(
+        json['bestRestaurantBannerInfoDtos'],
+      ),
+      dealsBannerInfoDtos: _parseBannerList(json['dealsBannerInfoDtos']),
+    );
+  }
+
+  static List<BannerModel> _parseBannerList(dynamic value) {
+    if (value is! List) {
+      return const [];
+    }
+
+    return value
+        .whereType<Map>()
+        .map((item) => BannerModel.fromJson(Map<String, dynamic>.from(item)))
+        .where((banner) => banner.isValid)
+        .toList();
+  }
+
+  bool get isEmpty {
+    return mainBannerInfoDtos.isEmpty &&
+        bestRestaurantBannerInfoDtos.isEmpty &&
+        dealsBannerInfoDtos.isEmpty;
+  }
+
+  bool get isNotEmpty {
+    return !isEmpty;
   }
 }

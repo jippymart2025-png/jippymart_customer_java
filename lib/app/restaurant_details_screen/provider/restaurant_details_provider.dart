@@ -10,7 +10,6 @@ import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/coupon_model.dart';
 import 'package:jippymart_customer/models/favourite_item_model.dart';
 import 'package:jippymart_customer/models/outlet_details.dart';
-import 'package:jippymart_customer/models/outlet.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
@@ -1437,9 +1436,13 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     );
     if (directProduct != null && directProduct.hasActiveDiscount) {
       if (directProduct.activeDiscountsDto is Map) {
-        final map = Map<String, dynamic>.from(directProduct.activeDiscountsDto as Map);
-        final rawPrice = double.tryParse(directProduct.price?.toString() ?? '0') ?? 0;
-        final discountAmount = double.tryParse(map['discountAmount']?.toString() ?? '0') ?? 0;
+        final map = Map<String, dynamic>.from(
+          directProduct.activeDiscountsDto as Map,
+        );
+        final rawPrice =
+            double.tryParse(directProduct.price?.toString() ?? '0') ?? 0;
+        final discountAmount =
+            double.tryParse(map['discountAmount']?.toString() ?? '0') ?? 0;
         final priceType = map['priceType']?.toString();
 
         double specialPrice = rawPrice;

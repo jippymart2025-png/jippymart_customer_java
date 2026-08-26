@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
-import 'package:jippymart_customer/models/BannerModel.dart';
 import 'package:provider/provider.dart';
-
 import '../../../../../utils/network_image_widget.dart';
 
 class BottomBannerView extends StatefulWidget {
@@ -16,12 +14,16 @@ class BottomBannerView extends StatefulWidget {
 class _BottomBannerViewState extends State<BottomBannerView> {
   bool _timerStarted = false;
 
+  static const double bannerHeight = 110;
+
   @override
   void initState() {
     super.initState();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_timerStarted && mounted) {
         final homeProvider = Provider.of<HomeProvider>(context, listen: false);
+
         if (homeProvider.bannerBottomModel.isNotEmpty &&
             homeProvider.pageBottomController.hasClients) {
           homeProvider.startBottomBannerTimer();
@@ -34,10 +36,9 @@ class _BottomBannerViewState extends State<BottomBannerView> {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 160,
+      height: bannerHeight,
       child: Consumer2<RestaurantDetailsProvider, HomeProvider>(
         builder: (context, restaurantDetailsProvider, homeProvider, _) {
-          // Ensure timer starts when banners become available and PageController is ready
           if (!_timerStarted &&
               homeProvider.bannerBottomModel.isNotEmpty &&
               homeProvider.pageBottomController.hasClients) {
@@ -50,8 +51,12 @@ class _BottomBannerViewState extends State<BottomBannerView> {
           }
 
           return GestureDetector(
-            onPanStart: (_) => homeProvider.stopBottomBannerTimer(),
-            onPanEnd: (_) => homeProvider.startBottomBannerTimer(),
+            onPanStart: (_) {
+              homeProvider.stopBottomBannerTimer();
+            },
+            onPanEnd: (_) {
+              homeProvider.startBottomBannerTimer();
+            },
             child: PageView.builder(
               physics: const BouncingScrollPhysics(),
               controller: homeProvider.pageBottomController,
@@ -62,12 +67,14 @@ class _BottomBannerViewState extends State<BottomBannerView> {
               onPageChanged: (value) {
                 homeProvider.changeBottomBannerPage(value);
               },
-              itemBuilder: (BuildContext context, int index) {
-                BannerModel bannerModel = homeProvider.bannerBottomModel[index];
+              itemBuilder: (context, index) {
+                final bannerModel = homeProvider.bannerBottomModel[index];
+
                 final isLastItem =
                     index == homeProvider.bannerBottomModel.length - 1;
+
                 return InkWell(
-                  onTap: () async {
+                  onTap: () {
                     homeProvider.bannerOnTapFunction(
                       bannerModel,
                       restaurantDetailsProvider,
@@ -76,12 +83,12 @@ class _BottomBannerViewState extends State<BottomBannerView> {
                   child: Padding(
                     padding: EdgeInsets.only(right: isLastItem ? 0 : 8),
                     child: ClipRRect(
-                      borderRadius: const BorderRadius.all(Radius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
                       child: NetworkImageWidget(
                         imageUrl: bannerModel.bannerUrl.toString(),
                         width: MediaQuery.of(context).size.width,
-                        height: 160,
-                        fit: BoxFit.fill,
+                        height: bannerHeight,
+                        fit: BoxFit.fitWidth,
                       ),
                     ),
                   ),
