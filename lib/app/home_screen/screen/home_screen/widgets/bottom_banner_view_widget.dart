@@ -74,12 +74,12 @@ class _BottomBannerViewState extends State<BottomBannerView> {
                     index == homeProvider.bannerBottomModel.length - 1;
 
                 return InkWell(
-                  onTap: () {
-                    homeProvider.bannerOnTapFunction(
-                      bannerModel,
-                      restaurantDetailsProvider,
-                    );
-                  },
+                  // onTap: () {
+                  //   homeProvider.bannerOnTapFunction(
+                  //     bannerModel,
+                  //     restaurantDetailsProvider,
+                  //   );
+                  // },
                   child: Padding(
                     padding: EdgeInsets.only(right: isLastItem ? 0 : 8),
                     child: ClipRRect(
@@ -88,7 +88,7 @@ class _BottomBannerViewState extends State<BottomBannerView> {
                         imageUrl: bannerModel.bannerUrl.toString(),
                         width: MediaQuery.of(context).size.width,
                         height: bannerHeight,
-                        fit: BoxFit.fitWidth,
+                        fit: BoxFit.cover,
                       ),
                     ),
                   ),

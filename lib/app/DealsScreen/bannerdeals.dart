@@ -1,17 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
-import '../../constant/constant.dart';
-import '../../constant/show_toast_dialog.dart';
 import '../../models/BannerModel.dart';
-import '../../models/product_model.dart';
-import '../../models/vendor_model.dart';
-import '../../utils/fire_store_utils.dart';
 import '../../utils/network_image_widget.dart';
-import '../restaurant_details_screen/provider/restaurant_details_provider.dart';
-import '../restaurant_details_screen/restaurant_details_screen.dart';
 
 // ── Fallback gradient configs for banners without images ──────────
 const List<List<Color>> _kBannerGradients = [

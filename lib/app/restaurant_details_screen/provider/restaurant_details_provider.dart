@@ -309,7 +309,7 @@ class RestaurantApiHelper {
     }
 
     final uri = Uri.parse(
-      '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.415397&lng=78.447721',
+      '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=78.447721&lng=17.415397',
     );
 
     debugPrint('[OUTLET_API] Fetching nearby outlets from: $uri');

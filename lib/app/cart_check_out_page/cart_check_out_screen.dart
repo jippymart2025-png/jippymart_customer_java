@@ -382,44 +382,50 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
   }
 
   Future<void> _handleCheckout(BuildContext context) async {
-    if (HomeProvider.cartItem.isEmpty) return;
+    // Don't checkout if cart is empty
+    if (HomeProvider.cartItem.isEmpty) {
+      ShowToastDialog.showToast("Your cart is empty".tr);
+      return;
+    }
 
-    // Check whether current address is actually usable
-    final currentAddressId = int.tryParse(
-      controller.selectedAddress?.id?.trim() ?? '',
-    );
+    // Check current address
+    int? addressId = int.tryParse(controller.selectedAddress?.id?.trim() ?? '');
 
-    if (currentAddressId == null || currentAddressId <= 0) {
-      final result = await Get.to(() => const AddressListScreen());
+    // No valid address -> open address screen
+    if (addressId == null || addressId <= 0) {
+      final result = await Get.to<ShippingAddress>(
+        () => const AddressListScreen(),
+      );
 
-      if (result is! ShippingAddress) {
+      if (result == null) {
         return;
       }
 
       controller.selectedAddress = result;
+
+      // Get newly selected address ID
+      addressId = int.tryParse(result.id?.trim() ?? '');
     }
 
-    // Validate again after selection
-    final addressId = int.tryParse(
-      controller.selectedAddress?.id?.trim() ?? '',
-    );
-
+    // Validate address again
     if (addressId == null || addressId <= 0) {
       ShowToastDialog.showToast("Please select a valid delivery address".tr);
       return;
     }
 
-    print('[CHECKOUT] Address ID = ${controller.selectedAddress?.id}');
+    debugPrint('[CHECKOUT] Address ID = $addressId');
+    debugPrint('[CHECKOUT] Address = ${controller.selectedAddress?.address}');
 
-    print('[CHECKOUT] Address = ${controller.selectedAddress?.address}');
-
+    // Call checkout API ONLY here
     final success = await controller.fetchCheckoutFromApi();
 
-    if (!mounted || !success) return;
+    if (!mounted || !success) {
+      return;
+    }
 
     await Navigator.of(
       context,
-    ).push(MaterialPageRoute(builder: (context) => const CartScreen()));
+    ).push(MaterialPageRoute(builder: (_) => const CartScreen()));
   }
 
   Widget _buildBottomNavigationBar(CartThemeColors themeColors) {
