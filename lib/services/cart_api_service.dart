@@ -104,6 +104,8 @@ class CartApiService {
     required int customerId,
     required int customerAddressId,
     required int outletId,
+    int? couponId,
+    double walletAmount = 0,
     double couponDiscount = 0,
     double deliveryTip = 0,
   }) async {
@@ -114,6 +116,8 @@ class CartApiService {
         'customerId': customerId,
         'customerAddressId': customerAddressId,
         'outletId': outletId,
+        'couponId': couponId,
+        'walletAmount': walletAmount,
         'couponDiscount': couponDiscount,
         'deliveryTip': deliveryTip,
       };

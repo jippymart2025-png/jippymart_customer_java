@@ -1467,7 +1467,9 @@ class CartControllerProvider extends ChangeNotifier {
       print('customerAddressId: $customerAddressId');
       print('selectedAddress.id: ${selectedAddress?.id}');
       print('outletId: $outletId');
+      print('couponId: ${selectedCouponModel?.id}');
       print('couponDiscount: $couponAmount');
+      print('walletAmount: ${useWalletBalance ? walletToUse : 0.0}');
       print('deliveryTip: $deliveryTips');
       print('====================================');
 
@@ -1490,6 +1492,8 @@ class CartControllerProvider extends ChangeNotifier {
         customerId: customerId,
         customerAddressId: customerAddressId,
         outletId: outletId,
+        couponId: int.tryParse(selectedCouponModel?.id ?? ''),
+        walletAmount: useWalletBalance ? walletToUse : 0.0,
         couponDiscount: couponAmount,
         deliveryTip: deliveryTips,
       );
@@ -3964,6 +3968,65 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // ============ LOAD COUPONS METHOD ============
+  // Prefer the new `GET /api/div/coupons/active` endpoint; fall back to the
+  // legacy mart/restaurant endpoints when it fails or returns nothing.
+  Future<List<CouponModel>> _fetchCouponsForContext({
+    required String restaurantId,
+    String? contextOverride,
+  }) async {
+    final context = contextOverride ?? _currentContext;
+    try {
+      final active = await RestaurantApiHelper.getActiveCoupons().timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint(
+            '[COUPON_LOAD] ⏱️ Active coupons API call timed out',
+          );
+          return <CouponModel>[];
+        },
+      );
+      if (active.isNotEmpty) {
+        debugPrint(
+          '[COUPON_LOAD] ✅ Received ${active.length} active coupons from /div/coupons/active',
+        );
+        return active;
+      }
+      debugPrint(
+        '[COUPON_LOAD] ⚠️ Active coupons API returned empty, falling back to legacy',
+      );
+    } catch (e) {
+      debugPrint(
+        '[COUPON_LOAD] ⚠️ Active coupons API failed: $e, falling back to legacy',
+      );
+    }
+
+    if (context == "mart") {
+      return await RestaurantApiHelper.getMartCoupons(
+        restaurantId: restaurantId,
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint(
+            '[COUPON_LOAD] ⏱️ Legacy mart coupon API call timed out',
+          );
+          return <CouponModel>[];
+        },
+      );
+    }
+    return await RestaurantApiHelper.getRestaurantCoupons(
+      restaurantId: restaurantId,
+      zoneId: Constant.selectedZone!.id.toString(),
+    ).timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        debugPrint(
+          '[COUPON_LOAD] ⏱️ Legacy restaurant coupon API call timed out',
+        );
+        return <CouponModel>[];
+      },
+    );
+  }
+
   Future<void> _loadCoupons({required String restaurantId}) async {
     if (_isLoadingCoupons) {
       debugPrint(
@@ -3992,28 +4055,9 @@ class CartControllerProvider extends ChangeNotifier {
         '[COUPON_LOAD] 🔍 Loading coupons for vendor: $restaurantId, Context: $_currentContext',
       );
 
-      final allCoupons = _currentContext == "mart"
-          ? await RestaurantApiHelper.getMartCoupons(
-              restaurantId: restaurantId,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                debugPrint('[COUPON_LOAD] ⏱️ Mart coupon API call timed out');
-                return <CouponModel>[];
-              },
-            )
-          : await RestaurantApiHelper.getRestaurantCoupons(
-              restaurantId: restaurantId,
-              zoneId: Constant.selectedZone!.id.toString(),
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                debugPrint(
-                  '[COUPON_LOAD] ⏱️ Restaurant coupon API call timed out',
-                );
-                return <CouponModel>[];
-              },
-            );
+      final allCoupons = await _fetchCouponsForContext(
+        restaurantId: restaurantId,
+      );
 
       debugPrint(
         '[COUPON_LOAD] ✅ Received ${allCoupons.length} coupons from ${_currentContext} API',
@@ -4163,28 +4207,9 @@ class CartControllerProvider extends ChangeNotifier {
         '[COUPON_LOAD] 🔍 Global coupon load - Context: $_currentContext',
       );
 
-      final globalCoupons = _currentContext == "mart"
-          ? await RestaurantApiHelper.getMartCoupons(restaurantId: '').timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                debugPrint(
-                  '[COUPON_LOAD] ⏱️ Global mart coupon API call timed out',
-                );
-                return <CouponModel>[];
-              },
-            )
-          : await RestaurantApiHelper.getRestaurantCoupons(
-              restaurantId: '',
-              zoneId: Constant.selectedZone!.id.toString(),
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                debugPrint(
-                  '[COUPON_LOAD] ⏱️ Global restaurant coupon API call timed out',
-                );
-                return <CouponModel>[];
-              },
-            );
+      final globalCoupons = await _fetchCouponsForContext(
+        restaurantId: '',
+      );
 
       print(
         '[COUPON_LOAD] ✅ Received ${globalCoupons.length} global coupons from ${_currentContext} API',
@@ -4314,35 +4339,10 @@ class CartControllerProvider extends ChangeNotifier {
         '[COUPON_LOAD] 🔍 Fallback: Loading coupons for vendor: $restaurantId, Context: $_currentContext',
       );
 
-      final List<CouponModel> allCoupons;
-      if (_currentContext == "mart") {
-        allCoupons =
-            await RestaurantApiHelper.getMartCoupons(
-              restaurantId: restaurantId,
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print(
-                  '[COUPON_LOAD] ⏱️ Fallback: Mart coupon API call timed out',
-                );
-                return <CouponModel>[];
-              },
-            );
-      } else {
-        allCoupons =
-            await RestaurantApiHelper.getRestaurantCoupons(
-              restaurantId: restaurantId,
-              zoneId: Constant.selectedZone!.id.toString(),
-            ).timeout(
-              const Duration(seconds: 10),
-              onTimeout: () {
-                print(
-                  '[COUPON_LOAD] ⏱️ Fallback: Restaurant coupon API call timed out',
-                );
-                return <CouponModel>[];
-              },
-            );
-      }
+      final List<CouponModel> allCoupons =
+          await _fetchCouponsForContext(
+        restaurantId: restaurantId,
+      );
 
       print(
         '[COUPON_LOAD] ✅ Fallback: Received ${allCoupons.length} coupons from ${_currentContext} API',

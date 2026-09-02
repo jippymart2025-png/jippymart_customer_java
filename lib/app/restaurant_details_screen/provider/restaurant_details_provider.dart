@@ -118,6 +118,46 @@ class RestaurantApiHelper {
     }
   }
 
+  /// Fetches active coupons from `GET /api/div/coupons/active`.
+  ///
+  /// The response is a bare JSON list (e.g. `[{couponId, couponCode, ...}]`)
+  /// rather than the `{success, data}` envelope used by the legacy endpoints.
+  /// For robustness the `{success, data}` wrapper is also tolerated.
+  static Future<List<CouponModel>> getActiveCoupons() async {
+    try {
+      String url = "${AppConst.baseUrl}div/coupons/active";
+      debugPrint("getActiveCoupons $url");
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await getHeaders(),
+      );
+      debugPrint("getActiveCoupons ${response.body}");
+
+      List<dynamic> data;
+      if (response.statusCode == 200) {
+        final decoded = json.decode(response.body);
+        if (decoded is List) {
+          data = decoded;
+        } else if (decoded is Map<String, dynamic> &&
+            decoded['success'] == true &&
+            decoded['data'] is List) {
+          data = decoded['data'];
+        } else {
+          throw Exception('Failed to load active coupons: unexpected response');
+        }
+      } else {
+        throw Exception(
+          'Failed to load active coupons. Status code: ${response.statusCode}',
+        );
+      }
+
+      return data.map((json) => CouponModel.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Error fetching active coupons: $e');
+      rethrow;
+    }
+  }
+
   static Future<Map<String, dynamic>> getRestaurantProducts({
     required String restaurantId,
     String? search,
