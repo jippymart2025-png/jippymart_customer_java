@@ -1037,7 +1037,15 @@ void _showOptionsBottomSheet({
                                     );
                                   },
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 16),
+
+                                const Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: AppThemeData.grey200,
+                                ),
+
+                                const SizedBox(height: 16),
                               ],
                               if (hasAddOns) ...[
                                 Text(

@@ -352,7 +352,51 @@ class ProductModel {
       // Convert int (0/1) to bool for boolean fields - handle string "1"/"0" as well
       isAvailable = resolvedIsAvailable;
       // Parse simple options / variants list if present
-      options = _parseOptions(json['options'] ?? json['variants']);
+      final parsedOptions = _parseOptions(json['options'] ?? json['variants']);
+      options = parsedOptions;
+
+      // New API: variants may mix MAIN options and ADD add-ons.
+      // Split add-on variants into addOnsTitle/addOnsPrice so the existing
+      // add-ons flow (selection + pricing + cart extras) keeps working.
+      if (parsedOptions != null && parsedOptions.isNotEmpty) {
+        final mainOptions = <ProductOption>[];
+        final addOnOptions = <ProductOption>[];
+        for (final option in parsedOptions) {
+          if (option.isAddOn) {
+            addOnOptions.add(option);
+          } else {
+            mainOptions.add(option);
+          }
+        }
+        options = mainOptions.isNotEmpty ? mainOptions : null;
+        if (addOnOptions.isNotEmpty) {
+          final mergedTitles =
+              json['addOnsTitle'] == null ||
+                  json['addOnsTitle'].toString().isEmpty
+              ? <dynamic>[]
+              : List<dynamic>.from(
+                  _parseJsonStringToList(json['addOnsTitle']) ?? [],
+                );
+          final mergedPrices =
+              json['addOnsPrice'] == null ||
+                  json['addOnsPrice'].toString().isEmpty
+              ? <dynamic>[]
+              : List<dynamic>.from(
+                  _parseJsonStringToList(json['addOnsPrice']) ?? [],
+                );
+          for (final addOn in addOnOptions) {
+            if (addOn.variantName == null || addOn.variantName!.isEmpty)
+              continue;
+            if (!mergedTitles.contains(addOn.variantName)) {
+              mergedTitles.add(addOn.variantName);
+              mergedPrices.add(addOn.price ?? '0');
+            }
+          }
+          addOnsTitle = mergedTitles;
+          addOnsPrice = mergedPrices;
+        }
+      }
+
       availableTimings =
           _parseProductTimings(
             json['productTimings'] ?? json['product_timings'],
@@ -643,6 +687,8 @@ class ProductOption {
   bool? isAvailable;
   String? originalPrice;
   bool? isFeatured;
+  String? groupName;
+  String? priceType;
 
   // Compatibility getters/setters for ProductVariant
   String? get variantId => id;
@@ -668,6 +714,14 @@ class ProductOption {
 
   set variantSku(String? val) => subtitle = val;
 
+  /// True when this variant is an add-on (priceType ADD or "Add-ons" group).
+  bool get isAddOn =>
+      (priceType?.toUpperCase() == 'ADD') ||
+      (groupName?.toLowerCase().contains('add') ?? false);
+
+  /// True when this variant is a main selectable option.
+  bool get isMain => !isAddOn;
+
   ProductOption({
     this.id,
     this.title,
@@ -676,6 +730,8 @@ class ProductOption {
     this.isAvailable,
     this.originalPrice,
     this.isFeatured,
+    this.groupName,
+    this.priceType,
   });
 
   factory ProductOption.fromJson(Map<String, dynamic> json) {
@@ -721,6 +777,12 @@ class ProductOption {
             json['isFeatured'] ?? json['is_featured'],
           ) ??
           false,
+      groupName: ProductModel._parseString(
+        json['groupName'] ?? json['group_name'],
+      ),
+      priceType: ProductModel._parseString(
+        json['priceType'] ?? json['price_type'],
+      ),
     );
   }
 
@@ -733,6 +795,8 @@ class ProductOption {
       'is_available': isAvailable,
       'original_price': originalPrice,
       'is_featured': isFeatured,
+      'group_name': groupName,
+      'price_type': priceType,
     };
   }
 }
