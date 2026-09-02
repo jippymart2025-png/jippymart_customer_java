@@ -15,16 +15,20 @@ class CartApiService {
   static Future<bool> updateCart({
     required int customerId,
     required int productId,
+    int? variantOptionId,
     required int quantity,
     required double unitPrice,
+    required int outletId,
   }) async {
     try {
       final uri = Uri.parse('${_base}co/cart/update');
       final body = {
         'customerId': customerId,
         'productId': productId,
+        'variantOptionId': variantOptionId,
         'quantity': quantity,
         'unitPrice': unitPrice,
+        'outletId': outletId, // ✅ fixed
       };
 
       print('[CartApi] POST $uri');

@@ -6,7 +6,6 @@ import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/network_image_widget.dart';
 
 void showProductOptionsBottomSheet({
   required BuildContext context,
@@ -45,7 +44,7 @@ void showProductOptionsBottomSheet({
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
     builder: (ctx) {
-      final Set<int> selectedOptionIndices = hasOptions ? {0} : <int>{};
+      final Set<int> selectedOptionIndices = <int>{};
 
       final Set<int> selectedAddonIndices = <int>{};
 
@@ -311,7 +310,15 @@ void showProductOptionsBottomSheet({
                                   },
                                 ),
 
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 16),
+
+                                const Divider(
+                                  height: 1,
+                                  thickness: 1,
+                                  color: AppThemeData.grey200,
+                                ),
+
+                                const SizedBox(height: 16),
                               ],
 
                               // ==================================================
@@ -488,39 +495,42 @@ void showProductOptionsBottomSheet({
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
-                          onPressed: () {
-                            // ==================================================
-                            // VALIDATE VARIANT
-                            // ==================================================
-                            if (hasOptions && selectedOptionIndices.isEmpty) {
-                              ShowToastDialog.showToast(
-                                'Please select at least one option'.tr,
-                              );
-                              return;
-                            }
+                          onPressed: () async {
+                            bool added = false;
 
-                            // ==================================================
-                            // ADD SELECTED VARIANT
-                            // ==================================================
                             if (hasOptions) {
                               for (final index in selectedOptionIndices) {
-                                if (index < 0 || index >= options.length) {
-                                  continue;
-                                }
-
                                 final selected = options[index];
 
                                 if (selected.isAvailable == false) {
                                   continue;
                                 }
 
-                                final double selectedPrice =
+                                final int? variantOptionId = int.tryParse(
+                                  selected.variantId ?? '',
+                                );
+                                if (variantOptionId == null) {
+                                  ShowToastDialog.showToast(
+                                    'Invalid variant selected'.tr,
+                                  );
+                                  continue;
+                                }
+
+                                double selectedPrice =
                                     double.tryParse(
                                       selected.price?.toString() ?? '0',
                                     ) ??
                                     0;
 
                                 if (selectedPrice <= 0) {
+                                  selectedPrice =
+                                      double.tryParse(priceToPass) ?? 0;
+                                }
+
+                                if (selectedPrice <= 0) {
+                                  ShowToastDialog.showToast(
+                                    'Invalid product price'.tr,
+                                  );
                                   continue;
                                 }
 
@@ -533,28 +543,20 @@ void showProductOptionsBottomSheet({
                                       selectedPriceString,
                                     );
 
-                                // New ProductVariant does
-                                // not have subtitle/title.
-                                // Use variantName.
                                 final String variantName =
                                     selected.variantName ?? '';
 
-                                final String merchantPrice =
-                                    (selected.merchantPrice ??
-                                            selected.price ??
-                                            0)
-                                        .toString();
-
                                 final variantInfo = VariantInfo(
-                                  variantId: selected.variantId?.toString(),
-
+                                  variantId: variantOptionId.toString(),
                                   variantPrice: selectedPriceString,
-
                                   variantSku: variantName,
-
                                   variantOptions: {
                                     'option': variantName,
-                                    'merchant_price': merchantPrice,
+                                    'merchant_price':
+                                        (selected.merchantPrice ??
+                                                selected.price ??
+                                                0)
+                                            .toString(),
                                   },
                                 );
 
@@ -566,15 +568,19 @@ void showProductOptionsBottomSheet({
                                   quantity: 1,
                                   variantInfo: variantInfo,
                                 );
+                                added = true;
                               }
-                            } else {
-                              // ==================================================
-                              // NORMAL PRODUCT
-                              // ==================================================
-                              controller.addProductAndRemoveProductFunction(
+                            }
+
+                            // No variant selected (add-ons only / no options).
+                            // variantOptionId is sent as null by addToCart.
+                            if (!added) {
+                              controller.addToCart(
                                 productModel: productModel,
                                 price: priceToPass,
-                                disPrice: disPriceToPass,
+                                discountPrice: disPriceToPass,
+                                isIncrement: true,
+                                quantity: 1,
                               );
                             }
 

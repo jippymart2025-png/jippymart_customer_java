@@ -1872,17 +1872,25 @@ class RestaurantDetailsProvider extends ChangeNotifier {
 
     final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
     final numericProductId = _resolveNumericProductId(productModel);
-    if (customerId != null && numericProductId != null) {
+    final outletId = int.tryParse(vendorId);
+
+    final int? variantOptionId = int.tryParse(
+      cartProductModel.variantInfo?.variantId ?? '',
+    );
+
+    if (customerId != null && numericProductId != null && outletId != null) {
       final unitPrice = double.tryParse(price) ?? 0;
+
       final apiSuccess = await CartApiService.updateCart(
         customerId: customerId,
         productId: numericProductId,
+        variantOptionId: variantOptionId,
         quantity: quantity,
         unitPrice: unitPrice,
+        outletId: outletId,
       );
 
       if (!apiSuccess) {
-        // Revert optimistic update on failure
         if (previousQty != null) {
           _serverCartQuantities[baseId] = previousQty;
         } else {
@@ -1898,6 +1906,14 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       if (isIncrement) {
         ShowToastDialog.showToast('Item added to cart'.tr);
       }
+    } else {
+      // API skipped -> surface the reason so the silent failure is diagnosable.
+      debugPrint(
+        '[addToCart] API skipped: '
+        'customerId=$customerId, '
+        'productId=$numericProductId, '
+        'outletId=$outletId',
+      );
     }
 
     // Keep local cart in sync for checkout flow

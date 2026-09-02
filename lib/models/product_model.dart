@@ -327,7 +327,7 @@ class ProductModel {
       );
       // FIX: Handle both string and int for price
       price =
-          _parsePrice(json['price']) ??
+          _parsePrice(json['onlinePrice']) ??
           _parsePrice(json['original_price']) ??
           "0";
       merchantPrice =
@@ -680,27 +680,47 @@ class ProductOption {
 
   factory ProductOption.fromJson(Map<String, dynamic> json) {
     return ProductOption(
-      id: ProductModel._parseString(json['variantId'] ?? json['id']),
+      id: ProductModel._parseString(
+        json['variantId'] ??
+            json['variant_id'] ??
+            json['optionId'] ??
+            json['option_id'] ??
+            json['id'],
+      ),
       title: ProductModel._parseString(json['variantName'] ?? json['title']),
       subtitle: ProductModel._parseString(
         json['subtitle'] ?? json['variantName'] ?? json['title'],
       ),
       price:
-          ProductModel._parsePrice(json['price'] ?? json['variantPrice']) ??
+          ProductModel._parsePrice(
+            json['onlinePrice'] ??
+                json['variantPrice'] ??
+                json['variant_price'] ??
+                json['optionPrice'] ??
+                json['price'],
+          ) ??
           '0',
       isAvailable:
-          json['isAvailable'] == true ||
-          json['is_available'] == true ||
-          json['is_available'] == 1,
+          ProductModel._parseNullableBool(
+            json['isAvailable'] ?? json['is_available'],
+          ) ??
+          true,
       originalPrice:
           ProductModel._parsePrice(
             json['merchantPrice'] ??
+                json['merchant_price'] ??
                 json['original_price'] ??
+                json['originalPrice'] ??
                 json['price'] ??
-                json['variantPrice'],
+                json['variantPrice'] ??
+                json['variant_price'],
           ) ??
           '0',
-      isFeatured: json['is_featured'] == true || json['is_featured'] == 1,
+      isFeatured:
+          ProductModel._parseNullableBool(
+            json['isFeatured'] ?? json['is_featured'],
+          ) ??
+          false,
     );
   }
 

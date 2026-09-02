@@ -5687,15 +5687,33 @@ class CartControllerProvider extends ChangeNotifier {
     required int quantity,
   }) async {
     final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+
     final productId = _resolveNumericProductId(cartProductModel);
-    if (customerId == null || productId == null) return true;
+
+    final outletId = int.tryParse(cartProductModel.vendorID ?? '');
+    final variantOptionId = int.tryParse(
+      cartProductModel.variantInfo?.variantId ?? '',
+    );
+
+    if (customerId == null || productId == null || outletId == null) {
+      print(
+        '[Cart] Invalid IDs: '
+        'customerId=$customerId, '
+        'productId=$productId, '
+        'outletId=$outletId',
+      );
+      return false;
+    }
 
     final unitPrice = double.tryParse(cartProductModel.price ?? '0') ?? 0;
+
     return CartApiService.updateCart(
       customerId: customerId,
       productId: productId,
+      variantOptionId: variantOptionId,
       quantity: quantity,
       unitPrice: unitPrice,
+      outletId: outletId,
     );
   }
 

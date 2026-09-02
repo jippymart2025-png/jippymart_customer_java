@@ -428,10 +428,12 @@ class _RestaurantDetailsScreenState extends State<RestaurantDetailsScreen>
   }
 
   Widget? _buildBottomNavigationBar() {
-    if (HomeProvider.cartItem.isEmpty) return null;
-
     return Consumer<RestaurantDetailsProvider>(
       builder: (context, controller, _) {
+        if (controller.isGroupOrderMode || HomeProvider.cartItem.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
         if (controller.couponList.isNotEmpty &&
             _couponIndex >= controller.couponList.length) {
           _couponIndex = 0;

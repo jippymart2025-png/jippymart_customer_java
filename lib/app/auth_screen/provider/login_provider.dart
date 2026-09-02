@@ -367,7 +367,8 @@ class LoginProvider extends ChangeNotifier {
     // ============================================================
 
     final isRegistered =
-        email.isNotEmpty && firstName.isNotEmpty && lastName.isNotEmpty;
+        // email.isNotEmpty && firstName.isNotEmpty && lastName.isNotEmpty;
+        firstName.isNotEmpty && lastName.isNotEmpty;
 
     // ============================================================
     // REGISTERED USER
@@ -379,7 +380,6 @@ class LoginProvider extends ChangeNotifier {
         'firstName': firstName,
         'lastName': lastName,
         'phoneNumber': mobileNumber,
-        'email': email,
       };
 
       await _handleRegisteredUser(context, userData, customerId);
