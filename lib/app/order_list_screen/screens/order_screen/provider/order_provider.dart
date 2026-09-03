@@ -410,61 +410,61 @@ class OrderProvider extends ChangeNotifier {
   }
 
   /// Add to cart - fetches current price before adding (for other flows)
-  Future<void> addToCart({
-    required CartProductModel cartProductModel,
-    BuildContext? context,
-  }) async {
-    try {
-      final cartProvider = CartProvider();
-
-      final live = await FireStoreUtils.getCurrentProductPrice(
-        productId: cartProductModel.id ?? '',
-        vendorId: cartProductModel.vendorID ?? '',
-        variantInfo: cartProductModel.variantInfo,
-        vendorModel: VendorModel(id: cartProductModel.vendorID),
-        fallbackPrice: cartProductModel.price,
-        fallbackDiscountPrice: cartProductModel.discountPrice,
-        forceRefresh: true,
-      );
-
-      CartProductModel productToAdd;
-      if (live != null) {
-        productToAdd = CartProductModel(
-          id: cartProductModel.id,
-          name: cartProductModel.name,
-          photo: cartProductModel.photo,
-          price: live.currentPrice.toStringAsFixed(2),
-          discountPrice: live.discountPrice.toStringAsFixed(2),
-          promoId: live.promoId ?? cartProductModel.promoId,
-          quantity: cartProductModel.quantity,
-          vendorID: cartProductModel.vendorID,
-          categoryId: cartProductModel.categoryId,
-          merchantPrice: cartProductModel.merchantPrice,
-          extrasPrice: cartProductModel.extrasPrice,
-          extras: cartProductModel.extras,
-          variantInfo: cartProductModel.variantInfo,
-        );
-      } else {
-        productToAdd = cartProductModel;
-      }
-
-      final ctx = context ?? Get.context;
-      if (ctx == null) {
-        log('Error in addToCart: No context available');
-        return;
-      }
-      await cartProvider.addToCart(
-        ctx,
-        productToAdd,
-        productToAdd.quantity ?? 1,
-      );
-
-      notifyListeners();
-    } catch (e) {
-      log('Error in addToCart: $e');
-      rethrow;
-    }
-  }
+  // Future<void> addToCart({
+  //   required CartProductModel cartProductModel,
+  //   BuildContext? context,
+  // }) async {
+  //   try {
+  //     final cartProvider = CartProvider();
+  //
+  //     // final live = await FireStoreUtils.getCurrentProductPrice(
+  //     //   productId: cartProductModel.id ?? '',
+  //     //   vendorId: cartProductModel.vendorID ?? '',
+  //     //   variantInfo: cartProductModel.variantInfo,
+  //     //   vendorModel: VendorModel(id: cartProductModel.vendorID),
+  //     //   fallbackPrice: cartProductModel.price,
+  //     //   fallbackDiscountPrice: cartProductModel.discountPrice,
+  //     //   forceRefresh: true,
+  //     // );
+  //
+  //     CartProductModel productToAdd;
+  //     if (live != null) {
+  //       productToAdd = CartProductModel(
+  //         id: cartProductModel.id,
+  //         name: cartProductModel.name,
+  //         photo: cartProductModel.photo,
+  //         price: live.currentPrice.toStringAsFixed(2),
+  //         discountPrice: live.discountPrice.toStringAsFixed(2),
+  //         promoId: live.promoId ?? cartProductModel.promoId,
+  //         quantity: cartProductModel.quantity,
+  //         vendorID: cartProductModel.vendorID,
+  //         categoryId: cartProductModel.categoryId,
+  //         merchantPrice: cartProductModel.merchantPrice,
+  //         extrasPrice: cartProductModel.extrasPrice,
+  //         extras: cartProductModel.extras,
+  //         variantInfo: cartProductModel.variantInfo,
+  //       );
+  //     } else {
+  //       productToAdd = cartProductModel;
+  //     }
+  //
+  //     final ctx = context ?? Get.context;
+  //     if (ctx == null) {
+  //       log('Error in addToCart: No context available');
+  //       return;
+  //     }
+  //     await cartProvider.addToCart(
+  //       ctx,
+  //       productToAdd,
+  //       productToAdd.quantity ?? 1,
+  //     );
+  //
+  //     notifyListeners();
+  //   } catch (e) {
+  //     log('Error in addToCart: $e');
+  //     rethrow;
+  //   }
+  // }
 
   bool _isMartOrderLine(CartProductModel element) {
     final vid = element.vendorID ?? '';
@@ -600,165 +600,165 @@ class OrderProvider extends ChangeNotifier {
   //   }
   // }
 
-  Future<void> reorderOrder(OrderModel order, BuildContext context) async {
-    if (order.products == null || order.products!.isEmpty) {
-      ShowToastDialog.showToast("No items to reorder".tr);
-      return;
-    }
-
-    ShowToastDialog.showLoader("Fetching current prices...".tr);
-
-    try {
-      int addedCount = 0;
-      int failedCount = 0;
-      int unavailableCount = 0;
-
-      final vendor = order.vendor;
-      final lines = order.products!;
-
-      /// Fetch all food products first
-      final foodCatalogIds = <String>{};
-
-      for (final e in lines) {
-        if (_isMartOrderLine(e)) continue;
-
-        final cid = FireStoreUtils.catalogIdFromOrderLine(e.id);
-
-        if (cid.isNotEmpty) {
-          foodCatalogIds.add(cid);
-        }
-      }
-
-      Map<String, ProductModel?> foodByCatalogId = {};
-
-      if (foodCatalogIds.isNotEmpty) {
-        foodByCatalogId = await FireStoreUtils.getProductsByIds(
-          foodCatalogIds.toList(),
-          forceRefresh: true,
-        );
-      }
-
-      /// Process each order item
-      for (final element in lines) {
-        try {
-          final isMartLine = _isMartOrderLine(element);
-
-          ProductModel? product;
-
-          if (!isMartLine) {
-            final cid = FireStoreUtils.catalogIdFromOrderLine(element.id);
-
-            if (cid.isEmpty) {
-              unavailableCount++;
-              continue;
-            }
-
-            product = foodByCatalogId[cid];
-
-            /// Product exists check
-            if (product == null) {
-              unavailableCount++;
-              continue;
-            }
-
-            /// Existing reorder validation
-            if (!_isLiveFoodProductReorderable(product)) {
-              unavailableCount++;
-              continue;
-            }
-
-            /// Available days + timing check
-            if (!isProductAvailableNow(product)) {
-              unavailableCount++;
-              continue;
-            }
-          }
-
-          /// Get latest pricing info
-          var info = FireStoreUtils.priceInfoForReorderLine(
-            product: product,
-            element: element,
-            vendor: vendor,
-          );
-
-          if (info == null && isMartLine) {
-            info = FireStoreUtils.priceInfoForReorderLine(
-              product: null,
-              element: element,
-              vendor: vendor,
-            );
-          }
-
-          if (info == null) {
-            unavailableCount++;
-            continue;
-          }
-
-          /// Create cart item
-          final productToAdd = CartProductModel(
-            id: element.id,
-            name: element.name,
-            photo: element.photo,
-            price: info.currentPrice.toStringAsFixed(2),
-            discountPrice: info.discountPrice.toStringAsFixed(2),
-            promoId: info.promoId ?? element.promoId,
-            quantity: element.quantity ?? 1,
-            vendorID: element.vendorID,
-            categoryId: element.categoryId,
-            merchantPrice: info.merchantPrice ?? element.merchantPrice,
-            extrasPrice: element.extrasPrice,
-            extras: element.extras,
-            variantInfo: element.variantInfo,
-          );
-
-          /// Add to cart
-          await addToCartWithLivePrices(
-            cartProductModel: productToAdd,
-            context: context,
-          );
-
-          addedCount++;
-        } catch (e) {
-          failedCount++;
-          log('Error adding item ${element.id}: $e');
-        }
-      }
-
-      ShowToastDialog.closeLoader();
-
-      /// Result messages
-      if (addedCount > 0 && unavailableCount == 0 && failedCount == 0) {
-        ShowToastDialog.showToast("$addedCount item(s) added to cart".tr);
-      } else if (addedCount > 0) {
-        final parts = <String>["$addedCount item(s) added to cart".tr];
-
-        if (unavailableCount > 0) {
-          parts.add(
-            "$unavailableCount item(s) were no longer available and were skipped"
-                .tr,
-          );
-        }
-
-        if (failedCount > 0) {
-          parts.add("$failedCount item(s) could not be added".tr);
-        }
-
-        ShowToastDialog.showToast(parts.join(". "));
-      } else if (unavailableCount > 0 && failedCount == 0) {
-        ShowToastDialog.showToast("These items are currently unavailable".tr);
-      } else if (failedCount > 0) {
-        ShowToastDialog.showToast(
-          "$failedCount item(s) could not be added. Please try again.".tr,
-        );
-      }
-    } catch (e) {
-      ShowToastDialog.closeLoader();
-
-      log("Reorder error: $e");
-
-      ShowToastDialog.showToast("Error fetching current prices".tr);
-    }
-  }
+  // Future<void> reorderOrder(OrderModel order, BuildContext context) async {
+  //   if (order.products == null || order.products!.isEmpty) {
+  //     ShowToastDialog.showToast("No items to reorder".tr);
+  //     return;
+  //   }
+  //
+  //   ShowToastDialog.showLoader("Fetching current prices...".tr);
+  //
+  //   try {
+  //     int addedCount = 0;
+  //     int failedCount = 0;
+  //     int unavailableCount = 0;
+  //
+  //     final vendor = order.vendor;
+  //     final lines = order.products!;
+  //
+  //     /// Fetch all food products first
+  //     final foodCatalogIds = <String>{};
+  //
+  //     for (final e in lines) {
+  //       if (_isMartOrderLine(e)) continue;
+  //
+  //       final cid = FireStoreUtils.catalogIdFromOrderLine(e.id);
+  //
+  //       if (cid.isNotEmpty) {
+  //         foodCatalogIds.add(cid);
+  //       }
+  //     }
+  //
+  //     Map<String, ProductModel?> foodByCatalogId = {};
+  //
+  //     if (foodCatalogIds.isNotEmpty) {
+  //       foodByCatalogId = await FireStoreUtils.getProductsByIds(
+  //         foodCatalogIds.toList(),
+  //         forceRefresh: true,
+  //       );
+  //     }
+  //
+  //     /// Process each order item
+  //     for (final element in lines) {
+  //       try {
+  //         final isMartLine = _isMartOrderLine(element);
+  //
+  //         ProductModel? product;
+  //
+  //         if (!isMartLine) {
+  //           final cid = FireStoreUtils.catalogIdFromOrderLine(element.id);
+  //
+  //           if (cid.isEmpty) {
+  //             unavailableCount++;
+  //             continue;
+  //           }
+  //
+  //           product = foodByCatalogId[cid];
+  //
+  //           /// Product exists check
+  //           if (product == null) {
+  //             unavailableCount++;
+  //             continue;
+  //           }
+  //
+  //           /// Existing reorder validation
+  //           if (!_isLiveFoodProductReorderable(product)) {
+  //             unavailableCount++;
+  //             continue;
+  //           }
+  //
+  //           /// Available days + timing check
+  //           if (!isProductAvailableNow(product)) {
+  //             unavailableCount++;
+  //             continue;
+  //           }
+  //         }
+  //
+  //         /// Get latest pricing info
+  //         var info = FireStoreUtils.priceInfoForReorderLine(
+  //           product: product,
+  //           element: element,
+  //           vendor: vendor,
+  //         );
+  //
+  //         if (info == null && isMartLine) {
+  //           info = FireStoreUtils.priceInfoForReorderLine(
+  //             product: null,
+  //             element: element,
+  //             vendor: vendor,
+  //           );
+  //         }
+  //
+  //         if (info == null) {
+  //           unavailableCount++;
+  //           continue;
+  //         }
+  //
+  //         /// Create cart item
+  //         final productToAdd = CartProductModel(
+  //           id: element.id,
+  //           name: element.name,
+  //           photo: element.photo,
+  //           price: info.currentPrice.toStringAsFixed(2),
+  //           discountPrice: info.discountPrice.toStringAsFixed(2),
+  //           promoId: info.promoId ?? element.promoId,
+  //           quantity: element.quantity ?? 1,
+  //           vendorID: element.vendorID,
+  //           categoryId: element.categoryId,
+  //           merchantPrice: info.merchantPrice ?? element.merchantPrice,
+  //           extrasPrice: element.extrasPrice,
+  //           extras: element.extras,
+  //           variantInfo: element.variantInfo,
+  //         );
+  //
+  //         /// Add to cart
+  //         await addToCartWithLivePrices(
+  //           cartProductModel: productToAdd,
+  //           context: context,
+  //         );
+  //
+  //         addedCount++;
+  //       } catch (e) {
+  //         failedCount++;
+  //         log('Error adding item ${element.id}: $e');
+  //       }
+  //     }
+  //
+  //     ShowToastDialog.closeLoader();
+  //
+  //     /// Result messages
+  //     if (addedCount > 0 && unavailableCount == 0 && failedCount == 0) {
+  //       ShowToastDialog.showToast("$addedCount item(s) added to cart".tr);
+  //     } else if (addedCount > 0) {
+  //       final parts = <String>["$addedCount item(s) added to cart".tr];
+  //
+  //       if (unavailableCount > 0) {
+  //         parts.add(
+  //           "$unavailableCount item(s) were no longer available and were skipped"
+  //               .tr,
+  //         );
+  //       }
+  //
+  //       if (failedCount > 0) {
+  //         parts.add("$failedCount item(s) could not be added".tr);
+  //       }
+  //
+  //       ShowToastDialog.showToast(parts.join(". "));
+  //     } else if (unavailableCount > 0 && failedCount == 0) {
+  //       ShowToastDialog.showToast("These items are currently unavailable".tr);
+  //     } else if (failedCount > 0) {
+  //       ShowToastDialog.showToast(
+  //         "$failedCount item(s) could not be added. Please try again.".tr,
+  //       );
+  //     }
+  //   } catch (e) {
+  //     ShowToastDialog.closeLoader();
+  //
+  //     log("Reorder error: $e");
+  //
+  //     ShowToastDialog.showToast("Error fetching current prices".tr);
+  //   }
+  // }
 
   bool isProductAvailableNow(ProductModel? product) {
     if (product == null) return false;

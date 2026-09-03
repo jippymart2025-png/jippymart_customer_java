@@ -157,7 +157,7 @@ class _CartScreenState extends State<CartScreen> {
         await controller.initializeAddress(context);
       }
       controller.checkAndUpdatePaymentMethod();
-      await controller.syncCartPricesInBackground();
+      // await controller.syncCartPricesInBackground();
     } catch (e) {
       try {
         await controller.getCartData();

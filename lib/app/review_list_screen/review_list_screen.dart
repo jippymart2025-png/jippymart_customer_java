@@ -107,35 +107,35 @@ class ReviewListScreen extends StatelessWidget {
                                     fontFamily: AppThemeData.semiBold,
                                   ),
                                 ),
-                                Visibility(
-                                  visible: ratingModel.productId != null,
-                                  child: FutureBuilder(
-                                    future: FireStoreUtils.getProductById(
-                                      ratingModel.productId!.split('~').first,
-                                    ),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.connectionState ==
-                                          ConnectionState.waiting) {
-                                        return const Text('');
-                                      } else {
-                                        if (snapshot.hasError ||
-                                            snapshot.data == null) {
-                                          return const Text('');
-                                        } else {
-                                          ProductModel model = snapshot.data!;
-                                          return Text(
-                                            '${'Rate for'.tr} - ${model.productName ?? ''}',
-                                            style: TextStyle(
-                                              color: AppThemeData.grey900,
-                                              fontSize: 14,
-                                              fontFamily: AppThemeData.semiBold,
-                                            ),
-                                          );
-                                        }
-                                      }
-                                    },
-                                  ),
-                                ),
+                                // Visibility(
+                                //   visible: ratingModel.productId != null,
+                                //   child: FutureBuilder(
+                                //     future: FireStoreUtils.getProductById(
+                                //       ratingModel.productId!.split('~').first,
+                                //     ),
+                                //     builder: (context, snapshot) {
+                                //       if (snapshot.connectionState ==
+                                //           ConnectionState.waiting) {
+                                //         return const Text('');
+                                //       } else {
+                                //         if (snapshot.hasError ||
+                                //             snapshot.data == null) {
+                                //           return const Text('');
+                                //         } else {
+                                //           ProductModel model = snapshot.data!;
+                                //           return Text(
+                                //             '${'Rate for'.tr} - ${model.productName ?? ''}',
+                                //             style: TextStyle(
+                                //               color: AppThemeData.grey900,
+                                //               fontSize: 14,
+                                //               fontFamily: AppThemeData.semiBold,
+                                //             ),
+                                //           );
+                                //         }
+                                //       }
+                                //     },
+                                //   ),
+                                // ),
                                 const SizedBox(height: 5),
                                 RatingBar.builder(
                                   ignoreGestures: true,

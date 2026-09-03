@@ -783,155 +783,155 @@ class FireStoreUtils {
   }
 
   // Added: Validation helper
-  static bool _isValidProductId(String productId) {
-    if (productId.isEmpty || productId == 'null') return false;
-    return productId.trim().isNotEmpty;
-  }
-
-  // Main optimized method
-  static Future<ProductModel?> getProductById(
-    String productId, {
-    bool forceRefresh = false,
-  }) async {
-    // Fast validation with early return
-    if (!_isValidProductId(productId)) {
-      if (kDebugMode) {
-        debugPrint('[PRODUCT_API] Invalid product ID: "$productId"');
-      }
-      return null;
-    }
-
-    // Normalize ID once
-    final normalizedId = productId.trim();
-
-    // Cache-first approach (unless forced)
-    if (!forceRefresh) {
-      // Check cache
-      final cachedProduct = _getCachedProduct(normalizedId);
-      if (cachedProduct != null) {
-        return cachedProduct;
-      }
-
-      // Check pending requests to prevent duplicate API calls
-      final existingRequest = _pendingProductRequests[normalizedId];
-      if (existingRequest != null) {
-        return existingRequest;
-      }
-    }
-
-    // Create and track the API request
-    final completer = Completer<ProductModel?>();
-    _pendingProductRequests[normalizedId] = completer.future;
-
-    // Execute API call
-    try {
-      final productModel = await _fetchProductFromApi(normalizedId);
-
-      // Cache successful responses
-      if (productModel != null) {
-        _productCache[normalizedId] = _CachedProduct(
-          product: productModel,
-          fetchedAt: DateTime.now(),
-        );
-      }
-
-      completer.complete(productModel);
-      return productModel;
-    } catch (error, stackTrace) {
-      // Enhanced error handling
-      if (kDebugMode) {
-        debugPrint(
-          '[PRODUCT_API] Failed to fetch product $normalizedId: $error',
-        );
-        // Optionally log stack trace in debug mode
-      }
-
-      // Complete with null on error (or rethrow if preferred)
-      completer.complete(null);
-      return null;
-    } finally {
-      // Always clean up pending requests
-      _pendingProductRequests.remove(normalizedId);
-    }
-  }
+  // static bool _isValidProductId(String productId) {
+  //   if (productId.isEmpty || productId == 'null') return false;
+  //   return productId.trim().isNotEmpty;
+  // }
+  //
+  // // Main optimized method
+  // static Future<ProductModel?> getProductById(
+  //   String productId, {
+  //   bool forceRefresh = false,
+  // }) async {
+  //   // Fast validation with early return
+  //   if (!_isValidProductId(productId)) {
+  //     if (kDebugMode) {
+  //       debugPrint('[PRODUCT_API] Invalid product ID: "$productId"');
+  //     }
+  //     return null;
+  //   }
+  //
+  //   // Normalize ID once
+  //   final normalizedId = productId.trim();
+  //
+  //   // Cache-first approach (unless forced)
+  //   if (!forceRefresh) {
+  //     // Check cache
+  //     final cachedProduct = _getCachedProduct(normalizedId);
+  //     if (cachedProduct != null) {
+  //       return cachedProduct;
+  //     }
+  //
+  //     // Check pending requests to prevent duplicate API calls
+  //     final existingRequest = _pendingProductRequests[normalizedId];
+  //     if (existingRequest != null) {
+  //       return existingRequest;
+  //     }
+  //   }
+  //
+  //   // Create and track the API request
+  //   final completer = Completer<ProductModel?>();
+  //   _pendingProductRequests[normalizedId] = completer.future;
+  //
+  //   // Execute API call
+  //   try {
+  //     final productModel = await _fetchProductFromApi(normalizedId);
+  //
+  //     // Cache successful responses
+  //     if (productModel != null) {
+  //       _productCache[normalizedId] = _CachedProduct(
+  //         product: productModel,
+  //         fetchedAt: DateTime.now(),
+  //       );
+  //     }
+  //
+  //     completer.complete(productModel);
+  //     return productModel;
+  //   } catch (error, stackTrace) {
+  //     // Enhanced error handling
+  //     if (kDebugMode) {
+  //       debugPrint(
+  //         '[PRODUCT_API] Failed to fetch product $normalizedId: $error',
+  //       );
+  //       // Optionally log stack trace in debug mode
+  //     }
+  //
+  //     // Complete with null on error (or rethrow if preferred)
+  //     completer.complete(null);
+  //     return null;
+  //   } finally {
+  //     // Always clean up pending requests
+  //     _pendingProductRequests.remove(normalizedId);
+  //   }
+  // }
 
   // Optional: Batch fetch for multiple products
-  static Future<Map<String, ProductModel?>> getProductsByIds(
-    List<String> productIds, {
-    bool forceRefresh = false,
-  }) async {
-    final results = <String, ProductModel?>{};
-    final uniqueProductIds = productIds.toSet().toList();
-
-    // Group IDs by status
-    final cachedProducts = <String, ProductModel>{};
-    final pendingRequests = <String, Future<ProductModel?>>{};
-    final idsToFetch = <String>[];
-
-    for (final id in uniqueProductIds) {
-      if (!_isValidProductId(id)) continue;
-
-      final normalizedId = id.trim();
-
-      if (!forceRefresh) {
-        final cached = _getCachedProduct(normalizedId);
-        if (cached != null) {
-          cachedProducts[normalizedId] = cached;
-          continue;
-        }
-
-        final pending = _pendingProductRequests[normalizedId];
-        if (pending != null) {
-          pendingRequests[normalizedId] = pending;
-          continue;
-        }
-      }
-
-      idsToFetch.add(normalizedId);
-    }
-
-    // Add cached results
-    results.addAll(cachedProducts);
-
-    // Wait for pending requests
-    final pendingResults = await Future.wait(
-      pendingRequests.entries.map((e) async {
-        return MapEntry(e.key, await e.value);
-      }),
-    );
-
-    for (final entry in pendingResults) {
-      results[entry.key] = entry.value;
-    }
-
-    // Fetch new products in parallel (using the existing method)
-    final fetchFutures = idsToFetch.map(
-      (id) => getProductById(id, forceRefresh: forceRefresh),
-    );
-    final fetchResults = await Future.wait(fetchFutures);
-
-    for (var i = 0; i < idsToFetch.length; i++) {
-      results[idsToFetch[i]] = fetchResults[i];
-    }
-
-    return results;
-  }
-
-  // Cache management methods
-  static void clearProductCache() {
-    _productCache.clear();
-  }
-
-  static void removeFromCache(String productId) {
-    _productCache.remove(productId.trim());
-  }
-
-  static void cleanupExpiredCache() {
-    final now = DateTime.now();
-    _productCache.removeWhere((key, value) {
-      return now.difference(value.fetchedAt) > _productCacheDuration;
-    });
-  }
+  // static Future<Map<String, ProductModel?>> getProductsByIds(
+  //   List<String> productIds, {
+  //   bool forceRefresh = false,
+  // }) async {
+  //   final results = <String, ProductModel?>{};
+  //   final uniqueProductIds = productIds.toSet().toList();
+  //
+  //   // Group IDs by status
+  //   final cachedProducts = <String, ProductModel>{};
+  //   final pendingRequests = <String, Future<ProductModel?>>{};
+  //   final idsToFetch = <String>[];
+  //
+  //   for (final id in uniqueProductIds) {
+  //     if (!_isValidProductId(id)) continue;
+  //
+  //     final normalizedId = id.trim();
+  //
+  //     if (!forceRefresh) {
+  //       final cached = _getCachedProduct(normalizedId);
+  //       if (cached != null) {
+  //         cachedProducts[normalizedId] = cached;
+  //         continue;
+  //       }
+  //
+  //       final pending = _pendingProductRequests[normalizedId];
+  //       if (pending != null) {
+  //         pendingRequests[normalizedId] = pending;
+  //         continue;
+  //       }
+  //     }
+  //
+  //     idsToFetch.add(normalizedId);
+  //   }
+  //
+  //   // Add cached results
+  //   results.addAll(cachedProducts);
+  //
+  //   // Wait for pending requests
+  //   final pendingResults = await Future.wait(
+  //     pendingRequests.entries.map((e) async {
+  //       return MapEntry(e.key, await e.value);
+  //     }),
+  //   );
+  //
+  //   for (final entry in pendingResults) {
+  //     results[entry.key] = entry.value;
+  //   }
+  //
+  //   // Fetch new products in parallel (using the existing method)
+  //   final fetchFutures = idsToFetch.map(
+  //     (id) => getProductById(id, forceRefresh: forceRefresh),
+  //   );
+  //   final fetchResults = await Future.wait(fetchFutures);
+  //
+  //   for (var i = 0; i < idsToFetch.length; i++) {
+  //     results[idsToFetch[i]] = fetchResults[i];
+  //   }
+  //
+  //   return results;
+  // }
+  //
+  // // Cache management methods
+  // static void clearProductCache() {
+  //   _productCache.clear();
+  // }
+  //
+  // static void removeFromCache(String productId) {
+  //   _productCache.remove(productId.trim());
+  // }
+  //
+  // static void cleanupExpiredCache() {
+  //   final now = DateTime.now();
+  //   _productCache.removeWhere((key, value) {
+  //     return now.difference(value.fetchedAt) > _productCacheDuration;
+  //   });
+  // }
 
   // Optional: Add cache statistics
   static Map<String, dynamic> getCacheStats() {
@@ -991,62 +991,62 @@ class FireStoreUtils {
   //   }
   // }
 
-  static Future<ProductModel?> _fetchProductFromApi(String productId) async {
-    const maxRetries = 3;
-    const retryDelay = Duration(seconds: 2);
-    const timeoutDuration = Duration(seconds: 10);
-    for (int attempt = 1; attempt <= maxRetries; attempt++) {
-      try {
-        final response = await http
-            .get(
-              Uri.parse('${AppConst.baseUrl}products/$productId'),
-              headers: await getHeaders(),
-            )
-            .timeout(timeoutDuration);
-        if (response.statusCode == 200) {
-          final jsonResponse = json.decode(response.body);
-          if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-            return ProductModel.fromJson(jsonResponse['data']);
-          }
-        } else if (response.statusCode == 429) {
-          if (attempt < maxRetries) {
-            debugPrint(
-              '[PRODUCT_API] Rate limited (429), retrying in ${retryDelay.inSeconds}s (attempt $attempt/$maxRetries)',
-            );
-            await Future.delayed(retryDelay * attempt); // Exponential backoff
-            continue;
-          } else {
-            debugPrint(
-              '[PRODUCT_API] Rate limited (429) after $maxRetries attempts, productId=$productId',
-            );
-          }
-        } else {
-          debugPrint(
-            '[PRODUCT_API] getProductById failed '
-            'status=${response.statusCode} productId=$productId',
-          );
-          // Don't retry for non-429 errors
-          return null;
-        }
-      } on TimeoutException {
-        debugPrint(
-          '[PRODUCT_API] Timeout fetching product $productId (attempt $attempt/$maxRetries)',
-        );
-        if (attempt < maxRetries) {
-          await Future.delayed(retryDelay);
-          continue;
-        }
-      } catch (e, s) {
-        debugPrint('[PRODUCT_API] Error fetching product $productId: $e');
-        if (attempt < maxRetries) {
-          await Future.delayed(retryDelay);
-          continue;
-        }
-        print(s);
-      }
-    }
-    return null;
-  }
+  // static Future<ProductModel?> _fetchProductFromApi(String productId) async {
+  //   const maxRetries = 3;
+  //   const retryDelay = Duration(seconds: 2);
+  //   const timeoutDuration = Duration(seconds: 10);
+  //   for (int attempt = 1; attempt <= maxRetries; attempt++) {
+  //     try {
+  //       final response = await http
+  //           .get(
+  //             Uri.parse('${AppConst.baseUrl}products/$productId'),
+  //             headers: await getHeaders(),
+  //           )
+  //           .timeout(timeoutDuration);
+  //       if (response.statusCode == 200) {
+  //         final jsonResponse = json.decode(response.body);
+  //         if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
+  //           return ProductModel.fromJson(jsonResponse['data']);
+  //         }
+  //       } else if (response.statusCode == 429) {
+  //         if (attempt < maxRetries) {
+  //           debugPrint(
+  //             '[PRODUCT_API] Rate limited (429), retrying in ${retryDelay.inSeconds}s (attempt $attempt/$maxRetries)',
+  //           );
+  //           await Future.delayed(retryDelay * attempt); // Exponential backoff
+  //           continue;
+  //         } else {
+  //           debugPrint(
+  //             '[PRODUCT_API] Rate limited (429) after $maxRetries attempts, productId=$productId',
+  //           );
+  //         }
+  //       } else {
+  //         debugPrint(
+  //           '[PRODUCT_API] getProductById failed '
+  //           'status=${response.statusCode} productId=$productId',
+  //         );
+  //         // Don't retry for non-429 errors
+  //         return null;
+  //       }
+  //     } on TimeoutException {
+  //       debugPrint(
+  //         '[PRODUCT_API] Timeout fetching product $productId (attempt $attempt/$maxRetries)',
+  //       );
+  //       if (attempt < maxRetries) {
+  //         await Future.delayed(retryDelay);
+  //         continue;
+  //       }
+  //     } catch (e, s) {
+  //       debugPrint('[PRODUCT_API] Error fetching product $productId: $e');
+  //       if (attempt < maxRetries) {
+  //         await Future.delayed(retryDelay);
+  //         continue;
+  //       }
+  //       print(s);
+  //     }
+  //   }
+  //   return null;
+  // }
 
   static Future<List<AttributesModel>> getAttributes() async {
     try {
@@ -1712,40 +1712,40 @@ class FireStoreUtils {
   }
 
   /// Fetch current product price from API for reorder / add flows (live, variant-aware).
-  static Future<ProductPriceInfo?> getCurrentProductPrice({
-    required String productId,
-    required String vendorId,
-    VariantInfo? variantInfo,
-    VendorModel? vendorModel,
-    String? fallbackPrice,
-    String? fallbackDiscountPrice,
-    bool forceRefresh = true,
-  }) async {
-    try {
-      final catalogId = _catalogIdFromCartOrOrderRow(productId);
-      if (catalogId.isEmpty) return null;
-
-      final product = await getProductById(
-        catalogId,
-        forceRefresh: forceRefresh,
-      );
-      final synthetic = CartProductModel(
-        id: productId,
-        vendorID: vendorId,
-        variantInfo: variantInfo,
-        price: fallbackPrice,
-        discountPrice: fallbackDiscountPrice,
-      );
-      return priceInfoForReorderLine(
-        product: product,
-        element: synthetic,
-        vendor: vendorModel,
-      );
-    } catch (e) {
-      dev.log('Error fetching current product price: $e');
-      return null;
-    }
-  }
+  // static Future<ProductPriceInfo?> getCurrentProductPrice({
+  //   required String productId,
+  //   required String vendorId,
+  //   VariantInfo? variantInfo,
+  //   VendorModel? vendorModel,
+  //   String? fallbackPrice,
+  //   String? fallbackDiscountPrice,
+  //   bool forceRefresh = true,
+  // }) async {
+  //   try {
+  //     final catalogId = _catalogIdFromCartOrOrderRow(productId);
+  //     if (catalogId.isEmpty) return null;
+  //
+  //     final product = await getProductById(
+  //       catalogId,
+  //       forceRefresh: forceRefresh,
+  //     );
+  //     final synthetic = CartProductModel(
+  //       id: productId,
+  //       vendorID: vendorId,
+  //       variantInfo: variantInfo,
+  //       price: fallbackPrice,
+  //       discountPrice: fallbackDiscountPrice,
+  //     );
+  //     return priceInfoForReorderLine(
+  //       product: product,
+  //       element: synthetic,
+  //       vendor: vendorModel,
+  //     );
+  //   } catch (e) {
+  //     dev.log('Error fetching current product price: $e');
+  //     return null;
+  //   }
+  // }
 
   /// Fetch single order by ID from API
   static Future<OrderModel?> getOrderById(String orderId) async {

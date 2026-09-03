@@ -77,7 +77,7 @@ Widget cartProductDetailsImageWidget(CartControllerProvider controller) {
                       !isMartItem &&
                       !cartController.productsLoaded) {
                     if (!cartController.isLoadingProducts) {
-                      cartController.preloadCartProducts();
+                      // cartController.preloadCartProducts();
                     }
                     if (cartController.isLoadingProducts) {
                       itemChild = _buildProductShimmer(cartProductModel);

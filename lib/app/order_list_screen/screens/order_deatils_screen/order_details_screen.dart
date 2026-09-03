@@ -3886,7 +3886,7 @@ class OrderDetailsScreen extends StatelessWidget {
                       context,
                       listen: false,
                     );
-                    await orderProvider.reorderOrder(order, context);
+                    // await orderProvider.reorderOrder(order, context);
                   },
                 ),
         ),

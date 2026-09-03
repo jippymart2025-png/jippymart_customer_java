@@ -106,7 +106,7 @@ class CartApiService {
     required int outletId,
     int? couponId,
     double walletAmount = 0,
-    double couponDiscount = 0,
+    String couponDiscount = "0",
     double deliveryTip = 0,
   }) async {
     try {

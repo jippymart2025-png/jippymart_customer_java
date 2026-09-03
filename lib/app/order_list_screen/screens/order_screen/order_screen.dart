@@ -627,7 +627,7 @@ class _OrderScreenState extends State<OrderScreen>
     OrderModel orderModel,
     OrderProvider controller,
   ) async {
-    await controller.reorderOrder(orderModel, context);
+    // await controller.reorderOrder(orderModel, context);
   }
 
   Future<void> _navigateToOrderDetails(

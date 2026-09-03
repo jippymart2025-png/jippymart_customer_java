@@ -152,7 +152,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
 
       // Start background price sync only if cart has items
       if (HomeProvider.cartItem.isNotEmpty) {
-        _startBackgroundPriceSync();
+        // _startBackgroundPriceSync();
       }
     } catch (e) {
       print('[CART_CHECKOUT] ❌ Error refreshing cart: $e');
@@ -162,14 +162,14 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     }
   }
 
-  void _startBackgroundPriceSync() {
-    // Only sync prices in background, don't wait for it
-    unawaited(
-      controller.syncCartPricesInBackground().catchError((error) {
-        print('[CART_CHECKOUT] ❌ Error in background price sync: $error');
-      }),
-    );
-  }
+  // void _startBackgroundPriceSync() {
+  //   // Only sync prices in background, don't wait for it
+  //   unawaited(
+  //     controller.syncCartPricesInBackground().catchError((error) {
+  //       print('[CART_CHECKOUT] ❌ Error in background price sync: $error');
+  //     }),
+  //   );
+  // }
 
   void _handleTabChange(int newIndex) {
     final now = DateTime.now();

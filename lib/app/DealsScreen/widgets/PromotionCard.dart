@@ -111,7 +111,7 @@ class _PromotionCardState extends State<PromotionCard>
       _imgUrl = _safeImgUrl(_product!.photo);
       _loadingProduct = false;
     } else if (widget.promotion.productId.isNotEmpty) {
-      _fetchProduct();
+      // _fetchProduct();
     } else {
       _loadingProduct = false;
     }
@@ -134,26 +134,26 @@ class _PromotionCardState extends State<PromotionCard>
     }
   }
 
-  Future<void> _fetchProduct() async {
-    final id = widget.promotion.productId;
-    if (id.isEmpty) {
-      if (mounted) setState(() => _loadingProduct = false);
-      return;
-    }
-    try {
-      final p = await FireStoreUtils.getProductById(id);
-      if (mounted) {
-        if (p != null) widget.productCache[id] = p;
-        setState(() {
-          _product = p;
-          _imgUrl = p != null ? _safeImgUrl(p.photo) : null;
-          _loadingProduct = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingProduct = false);
-    }
-  }
+  // Future<void> _fetchProduct() async {
+  //   final id = widget.promotion.productId;
+  //   if (id.isEmpty) {
+  //     if (mounted) setState(() => _loadingProduct = false);
+  //     return;
+  //   }
+  //   try {
+  //     final p = await FireStoreUtils.getProductById(id);
+  //     if (mounted) {
+  //       if (p != null) widget.productCache[id] = p;
+  //       setState(() {
+  //         _product = p;
+  //         _imgUrl = p != null ? _safeImgUrl(p.photo) : null;
+  //         _loadingProduct = false;
+  //       });
+  //     }
+  //   } catch (_) {
+  //     if (mounted) setState(() => _loadingProduct = false);
+  //   }
+  // }
 
   Future<void> _fetchVendor() async {
     final id = widget.promotion.restaurantId;

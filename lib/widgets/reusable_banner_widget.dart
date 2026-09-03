@@ -371,7 +371,7 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
           break;
         case 'product':
           print('[BANNER NAVIGATION] 🛍️ Product redirect');
-          await _handleProductRedirect(redirectId, context);
+          // await _handleProductRedirect(redirectId, context);
           break;
         case 'category':
         case 'mart_category':
@@ -427,63 +427,63 @@ class _ReusableBannerWidgetState extends State<ReusableBannerWidget> {
     }
   }
 
-  Future<void> _handleProductRedirect(
-    String productId,
-    BuildContext context,
-  ) async {
-    ShowToastDialog.showLoader("Please wait".tr);
-
-    try {
-      // Try to get mart item first
-      final martService = Get.find<MartFirestoreService>();
-      MartItemModel? martItem = await martService.getItemById(productId);
-
-      if (martItem != null) {
-        // This is a mart product
-        ShowToastDialog.closeLoader();
-        Get.to(MartProductDetailsScreen(product: martItem));
-      } else {
-        ProductModel? productModel = await FireStoreUtils.getProductById(
-          productId,
-        );
-        if (productModel != null) {
-          VendorModel? vendorModel = await FireStoreUtils.getVendorById(
-            productModel.vendorID.toString(),
-          );
-          if (vendorModel != null) {
-            // if (vendorModel.zoneId == Constant.selectedZone?.id) {
-            //   ShowToastDialog.closeLoader();
-            //   RestaurantDetailsProvider restaurantDetailsProvider =
-            //       Provider.of<RestaurantDetailsProvider>(
-            //         context,
-            //         listen: false,
-            //       );
-            //   restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
-            //   Get.to(
-            //     const RestaurantDetailsScreen(),
-            //     arguments: {"vendorModel": vendorModel},
-            //   );
-            // } else {
-            //   ShowToastDialog.closeLoader();
-            //   ShowToastDialog.showToast(
-            //     "Sorry, The Zone is not available in your area. Change the other location first."
-            //         .tr,
-            //   );
-            // }
-          } else {
-            ShowToastDialog.closeLoader();
-            ShowToastDialog.showToast("Store not found".tr);
-          }
-        } else {
-          ShowToastDialog.closeLoader();
-          ShowToastDialog.showToast("Product not found".tr);
-        }
-      }
-    } catch (e) {
-      ShowToastDialog.closeLoader();
-      ShowToastDialog.showToast("Error loading product details".tr);
-    }
-  }
+  // Future<void> _handleProductRedirect(
+  //   String productId,
+  //   BuildContext context,
+  // ) async {
+  //   ShowToastDialog.showLoader("Please wait".tr);
+  //
+  //   try {
+  //     // Try to get mart item first
+  //     final martService = Get.find<MartFirestoreService>();
+  //     MartItemModel? martItem = await martService.getItemById(productId);
+  //
+  //     if (martItem != null) {
+  //       // This is a mart product
+  //       ShowToastDialog.closeLoader();
+  //       Get.to(MartProductDetailsScreen(product: martItem));
+  //     } else {
+  //       ProductModel? productModel = await FireStoreUtils.getProductById(
+  //         productId,
+  //       );
+  //       if (productModel != null) {
+  //         VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+  //           productModel.vendorID.toString(),
+  //         );
+  //         if (vendorModel != null) {
+  //           // if (vendorModel.zoneId == Constant.selectedZone?.id) {
+  //           //   ShowToastDialog.closeLoader();
+  //           //   RestaurantDetailsProvider restaurantDetailsProvider =
+  //           //       Provider.of<RestaurantDetailsProvider>(
+  //           //         context,
+  //           //         listen: false,
+  //           //       );
+  //           //   restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+  //           //   Get.to(
+  //           //     const RestaurantDetailsScreen(),
+  //           //     arguments: {"vendorModel": vendorModel},
+  //           //   );
+  //           // } else {
+  //           //   ShowToastDialog.closeLoader();
+  //           //   ShowToastDialog.showToast(
+  //           //     "Sorry, The Zone is not available in your area. Change the other location first."
+  //           //         .tr,
+  //           //   );
+  //           // }
+  //         } else {
+  //           ShowToastDialog.closeLoader();
+  //           ShowToastDialog.showToast("Store not found".tr);
+  //         }
+  //       } else {
+  //         ShowToastDialog.closeLoader();
+  //         ShowToastDialog.showToast("Product not found".tr);
+  //       }
+  //     }
+  //   } catch (e) {
+  //     ShowToastDialog.closeLoader();
+  //     ShowToastDialog.showToast("Error loading product details".tr);
+  //   }
+  // }
 
   late CategoryDetailsProvider categoryDetailsProvider;
 

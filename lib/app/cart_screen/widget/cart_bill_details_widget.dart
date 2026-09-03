@@ -85,16 +85,23 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
                 const SizedBox(height: 10),
               ],
 
-              // Platform fee – Free
-              _billRow(
-                label: 'Platform fee',
-                value: 'Free',
-                strikeValue: '₹15',
-                valueColor: AppThemeData.success400,
-                controller: controller,
-              ),
+              // Platform fee
+              _buildPlatformFeeRow(controller),
 
               const SizedBox(height: 10),
+
+              // Packaging fee (server may include this)
+              if (controller.useServerCheckoutPricing &&
+                  controller.packagingFee > 0) ...[
+                _billRow(
+                  label: 'Packaging fee',
+                  value: Constant.amountShow(
+                    amount: controller.packagingFee.toString(),
+                  ),
+                  controller: controller,
+                ),
+                const SizedBox(height: 10),
+              ],
 
               // Surge fee
               _buildSurgeFeeRow(controller),
@@ -274,6 +281,25 @@ Widget _buildDashedDivider() {
         ),
       ),
     ),
+  );
+}
+
+Widget _buildPlatformFeeRow(CartControllerProvider controller) {
+  // When the checkout API has responded, use the server's platform fee
+  if (controller.useServerCheckoutPricing && controller.platformFee > 0) {
+    return _billRow(
+      label: 'Platform fee',
+      value: Constant.amountShow(amount: controller.platformFee.toString()),
+      controller: controller,
+    );
+  }
+  // Default display
+  return _billRow(
+    label: 'Platform fee',
+    value: 'Free',
+    strikeValue: '₹15',
+    valueColor: AppThemeData.success400,
+    controller: controller,
   );
 }
 
@@ -614,7 +640,24 @@ Widget _buildDeliveryFeeSection(
     }
   }
 
-  // Regular items
+  // When checkout API has responded, use its delivery charge directly
+  if (controller.useServerCheckoutPricing) {
+    final fee = controller.deliveryCharges;
+    if (fee <= 0) {
+      return buildDeliveryFeeUI(
+        isFreeDelivery: true,
+        originalFee: 0.0,
+        currentFee: 0.0,
+      );
+    }
+    return buildDeliveryFeeUI(
+      isFreeDelivery: false,
+      originalFee: 0.0,
+      currentFee: fee,
+    );
+  }
+
+  // Regular items – local calculation fallback
   final dc = controller.deliveryChargeModel;
   final threshold = dc.itemTotalThreshold?.toDouble() ?? 299.0;
   final freeKm = dc.freeDeliveryDistanceKm?.toDouble() ?? 7.0;

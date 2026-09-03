@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/order_model.dart';
@@ -64,38 +63,38 @@ class RateProductProvider extends ChangeNotifier {
       }
     });
 
-    await FireStoreUtils.getProductById(productId.split('~').first).then((
-      value,
-    ) {
-      if (value != null) {
-        productModel = value;
-        if (ratingModel.id != null) {
-          productReviewCount = value.reviewsCount! - 1;
-          productReviewSum = value.reviewsSum! - ratings;
-
-          if (value.reviewAttributes != null) {
-            value.reviewAttributes!.forEach((key, value) {
-              ReviewsAttribute reviewsAttributeModel =
-                  ReviewsAttribute.fromJson(value);
-              reviewsAttributeModel.reviewsCount =
-                  reviewsAttributeModel.reviewsCount! - 1;
-              reviewsAttributeModel.reviewsSum =
-                  reviewsAttributeModel.reviewsSum! - reviewAttribute[key];
-              reviewProductAttributes.addEntries([
-                MapEntry(key, reviewsAttributeModel.toJson()),
-              ]);
-            });
-          }
-        } else {
-          productReviewCount = double.parse(value.reviewsCount.toString());
-          productReviewSum = double.parse(value.reviewsSum.toString());
-          if (value.reviewAttributes != null) {
-            reviewProductAttributes = value.reviewAttributes!;
-          }
-        }
-      }
-      notifyListeners();
-    });
+    // await FireStoreUtils.getProductById(productId.split('~').first).then((
+    //   value,
+    // ) {
+    //   if (value != null) {
+    //     productModel = value;
+    //     if (ratingModel.id != null) {
+    //       productReviewCount = value.reviewsCount! - 1;
+    //       productReviewSum = value.reviewsSum! - ratings;
+    //
+    //       if (value.reviewAttributes != null) {
+    //         value.reviewAttributes!.forEach((key, value) {
+    //           ReviewsAttribute reviewsAttributeModel =
+    //               ReviewsAttribute.fromJson(value);
+    //           reviewsAttributeModel.reviewsCount =
+    //               reviewsAttributeModel.reviewsCount! - 1;
+    //           reviewsAttributeModel.reviewsSum =
+    //               reviewsAttributeModel.reviewsSum! - reviewAttribute[key];
+    //           reviewProductAttributes.addEntries([
+    //             MapEntry(key, reviewsAttributeModel.toJson()),
+    //           ]);
+    //         });
+    //       }
+    //     } else {
+    //       productReviewCount = double.parse(value.reviewsCount.toString());
+    //       productReviewSum = double.parse(value.reviewsSum.toString());
+    //       if (value.reviewAttributes != null) {
+    //         reviewProductAttributes = value.reviewAttributes!;
+    //       }
+    //     }
+    //   }
+    //   notifyListeners();
+    // });
 
     await FireStoreUtils.getVendorById(productModel.vendorID.toString()).then((
       value,

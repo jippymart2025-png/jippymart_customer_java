@@ -554,7 +554,7 @@ class CartControllerProvider extends ChangeNotifier {
     // 🔑 START OPTIMIZATION TIMERS
     _startCleanupScheduler();
     _startBatchUpdateScheduler();
-    _startPriceSyncScheduler();
+    // _startPriceSyncScheduler();
 
     Future.delayed(const Duration(seconds: 3), () {
       _restorePaymentState().then((_) {
@@ -705,18 +705,18 @@ class CartControllerProvider extends ChangeNotifier {
     });
   }
 
-  void _startPriceSyncScheduler() {
-    _priceSyncTimer = Timer.periodic(const Duration(minutes: 2), (timer) {
-      if (!_isPriceSyncScheduled) {
-        _isPriceSyncScheduled = true;
-
-        Future.delayed(const Duration(seconds: 1), () {
-          unawaited(syncCartPricesInBackground());
-          _isPriceSyncScheduled = false;
-        });
-      }
-    });
-  }
+  // void _startPriceSyncScheduler() {
+  //   _priceSyncTimer = Timer.periodic(const Duration(minutes: 2), (timer) {
+  //     if (!_isPriceSyncScheduled) {
+  //       _isPriceSyncScheduled = true;
+  //
+  //       Future.delayed(const Duration(seconds: 1), () {
+  //         unawaited(syncCartPricesInBackground());
+  //         _isPriceSyncScheduled = false;
+  //       });
+  //     }
+  //   });
+  // }
 
   void _processPendingUpdates() {
     if (_pendingUpdates.isEmpty) return;
@@ -1494,7 +1494,7 @@ class CartControllerProvider extends ChangeNotifier {
         outletId: outletId,
         couponId: int.tryParse(selectedCouponModel?.id ?? ''),
         walletAmount: useWalletBalance ? walletToUse : 0.0,
-        couponDiscount: couponAmount,
+        couponDiscount: selectedCouponModel.discount.toString(),
         deliveryTip: deliveryTips,
       );
 
@@ -1609,167 +1609,167 @@ class CartControllerProvider extends ChangeNotifier {
 
   // ============ PRICE SYNC OPTIMIZATIONS ============
 
-  Future<void> syncCartPricesInBackground() async {
-    if (HomeProvider.cartItem.isEmpty) {
-      debugPrint('[PRICE_SYNC] Cart is empty, skipping sync');
-      return;
-    }
-
-    _startOperation('syncCartPrices');
-
-    try {
-      debugPrint('[PRICE_SYNC] 🔄 Starting optimized price sync...');
-
-      // 🔑 OPTIMIZATION: Skip if recently synced
-      final lastSyncKey = 'last_full_sync';
-      final lastSyncTime = _operationTimestamps[lastSyncKey];
-      if (lastSyncTime != null &&
-          DateTime.now().difference(lastSyncTime) < Duration(minutes: 1)) {
-        debugPrint('[PRICE_SYNC] ⏱️ Skipping - synced recently');
-        _endOperation('syncCartPrices');
-        return;
-      }
-
-      // 🔑 OPTIMIZATION: Process in smaller batches
-      final List<CartProductModel> itemsToSync = [];
-      for (var item in HomeProvider.cartItem) {
-        // Skip recently synced items
-        final itemLastSync = _operationTimestamps['sync_${item.id}'];
-        if (itemLastSync == null ||
-            DateTime.now().difference(itemLastSync) > Duration(minutes: 5)) {
-          itemsToSync.add(item);
-        }
-      }
-
-      if (itemsToSync.isEmpty) {
-        debugPrint('[PRICE_SYNC] ℹ️ No items need syncing');
-        _endOperation('syncCartPrices');
-        return;
-      }
-
-      debugPrint('[PRICE_SYNC] 🔍 Syncing ${itemsToSync.length} items');
-
-      // 🔑 OPTIMIZATION: Process in parallel batches
-      final batchSize = 5;
-      final List<List<CartProductModel>> batches = [];
-      for (int i = 0; i < itemsToSync.length; i += batchSize) {
-        batches.add(
-          itemsToSync.sublist(
-            i,
-            i + batchSize > itemsToSync.length
-                ? itemsToSync.length
-                : i + batchSize,
-          ),
-        );
-      }
-
-      bool hasUpdates = false;
-      bool variantMetaChanged = false;
-      List<PriceUpdateResult> allUpdates = [];
-
-      // Process batches in parallel but with rate limiting
-      for (int i = 0; i < batches.length; i++) {
-        final batch = batches[i];
-        debugPrint(
-          '[PRICE_SYNC] 📦 Processing batch ${i + 1}/${batches.length}',
-        );
-
-        try {
-          final batchOutcome = await validateAndUpdateCartPricesForBatch(batch);
-          final batchUpdates = batchOutcome.results;
-          final foodByCatalogId = batchOutcome.foodByCatalogId;
-          final martByLineId = batchOutcome.martByLineId;
-
-          for (var entry in batchUpdates.entries) {
-            final result = entry.value;
-
-            if (result.status == PriceStatus.error ||
-                result.status == PriceStatus.productNotFound) {
-              continue;
-            }
-
-            final catalogId = _catalogProductIdForFetch(result.productId);
-            final prefetchedFood = catalogId.isNotEmpty
-                ? foodByCatalogId[catalogId]
-                : null;
-            final prefetchedMart = martByLineId[result.productId];
-
-            if (result.hasPriceChange &&
-                result.oldPrice != null &&
-                result.newPrice != null) {
-              hasUpdates = true;
-              allUpdates.add(result);
-
-              await _updateCartItemPrice(
-                result,
-                prefetchedFood: prefetchedFood,
-                prefetchedMart: prefetchedMart,
-              );
-
-              debugPrint(
-                '[PRICE_SYNC] ✅ Updated ${result.productName}: ₹${result.oldPrice} → ₹${result.newPrice}',
-              );
-            } else {
-              final persisted = await _persistVariantInfoSyncForProductId(
-                result.productId,
-                prefetchedFood: prefetchedFood,
-              );
-              if (persisted) {
-                variantMetaChanged = true;
-                debugPrint(
-                  '[PRICE_SYNC] ✅ Synced variant/option fields for ${result.productId}',
-                );
-              }
-            }
-
-            _operationTimestamps['sync_${result.productId}'] = DateTime.now();
-            _recentlySyncedItems.add(result.productId);
-          }
-
-          if (i < batches.length - 1) {
-            await Future.delayed(const Duration(milliseconds: 60));
-          }
-        } catch (e) {
-          debugPrint('[PRICE_SYNC] ❌ Error in batch ${i + 1}: $e');
-        }
-      }
-
-      // Update timestamp
-      _operationTimestamps[lastSyncKey] = DateTime.now();
-
-      if (hasUpdates || variantMetaChanged) {
-        if (hasUpdates) {
-          debugPrint(
-            '[PRICE_SYNC] ✅ Sync complete with ${allUpdates.length} line updates',
-          );
-        }
-        if (variantMetaChanged && !hasUpdates) {
-          debugPrint(
-            '[PRICE_SYNC] ✅ Sync complete (variant/option metadata only)',
-          );
-        }
-
-        _priceSyncVersion++;
-        notifyListeners();
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          unawaited(calculatePrice());
-        });
-
-        if (allUpdates.isNotEmpty) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _showEnhancedPriceUpdateDialog(allUpdates);
-          });
-        }
-      } else {
-        debugPrint('[PRICE_SYNC] ℹ️ No price changes detected');
-      }
-    } catch (e, stackTrace) {
-      debugPrint('[PRICE_SYNC] ❌ Error: $e');
-      debugPrint('[PRICE_SYNC] Stack trace: $stackTrace');
-    } finally {
-      _endOperation('syncCartPrices');
-    }
-  }
+  // Future<void> syncCartPricesInBackground() async {
+  //   if (HomeProvider.cartItem.isEmpty) {
+  //     debugPrint('[PRICE_SYNC] Cart is empty, skipping sync');
+  //     return;
+  //   }
+  //
+  //   _startOperation('syncCartPrices');
+  //
+  //   try {
+  //     debugPrint('[PRICE_SYNC] 🔄 Starting optimized price sync...');
+  //
+  //     // 🔑 OPTIMIZATION: Skip if recently synced
+  //     final lastSyncKey = 'last_full_sync';
+  //     final lastSyncTime = _operationTimestamps[lastSyncKey];
+  //     if (lastSyncTime != null &&
+  //         DateTime.now().difference(lastSyncTime) < Duration(minutes: 1)) {
+  //       debugPrint('[PRICE_SYNC] ⏱️ Skipping - synced recently');
+  //       _endOperation('syncCartPrices');
+  //       return;
+  //     }
+  //
+  //     // 🔑 OPTIMIZATION: Process in smaller batches
+  //     final List<CartProductModel> itemsToSync = [];
+  //     for (var item in HomeProvider.cartItem) {
+  //       // Skip recently synced items
+  //       final itemLastSync = _operationTimestamps['sync_${item.id}'];
+  //       if (itemLastSync == null ||
+  //           DateTime.now().difference(itemLastSync) > Duration(minutes: 5)) {
+  //         itemsToSync.add(item);
+  //       }
+  //     }
+  //
+  //     if (itemsToSync.isEmpty) {
+  //       debugPrint('[PRICE_SYNC] ℹ️ No items need syncing');
+  //       _endOperation('syncCartPrices');
+  //       return;
+  //     }
+  //
+  //     debugPrint('[PRICE_SYNC] 🔍 Syncing ${itemsToSync.length} items');
+  //
+  //     // 🔑 OPTIMIZATION: Process in parallel batches
+  //     final batchSize = 5;
+  //     final List<List<CartProductModel>> batches = [];
+  //     for (int i = 0; i < itemsToSync.length; i += batchSize) {
+  //       batches.add(
+  //         itemsToSync.sublist(
+  //           i,
+  //           i + batchSize > itemsToSync.length
+  //               ? itemsToSync.length
+  //               : i + batchSize,
+  //         ),
+  //       );
+  //     }
+  //
+  //     bool hasUpdates = false;
+  //     bool variantMetaChanged = false;
+  //     List<PriceUpdateResult> allUpdates = [];
+  //
+  //     // Process batches in parallel but with rate limiting
+  //     for (int i = 0; i < batches.length; i++) {
+  //       final batch = batches[i];
+  //       debugPrint(
+  //         '[PRICE_SYNC] 📦 Processing batch ${i + 1}/${batches.length}',
+  //       );
+  //
+  //       try {
+  //         final batchOutcome = await validateAndUpdateCartPricesForBatch(batch);
+  //         final batchUpdates = batchOutcome.results;
+  //         final foodByCatalogId = batchOutcome.foodByCatalogId;
+  //         final martByLineId = batchOutcome.martByLineId;
+  //
+  //         for (var entry in batchUpdates.entries) {
+  //           final result = entry.value;
+  //
+  //           if (result.status == PriceStatus.error ||
+  //               result.status == PriceStatus.productNotFound) {
+  //             continue;
+  //           }
+  //
+  //           final catalogId = _catalogProductIdForFetch(result.productId);
+  //           final prefetchedFood = catalogId.isNotEmpty
+  //               ? foodByCatalogId[catalogId]
+  //               : null;
+  //           final prefetchedMart = martByLineId[result.productId];
+  //
+  //           if (result.hasPriceChange &&
+  //               result.oldPrice != null &&
+  //               result.newPrice != null) {
+  //             hasUpdates = true;
+  //             allUpdates.add(result);
+  //
+  //             await _updateCartItemPrice(
+  //               result,
+  //               prefetchedFood: prefetchedFood,
+  //               prefetchedMart: prefetchedMart,
+  //             );
+  //
+  //             debugPrint(
+  //               '[PRICE_SYNC] ✅ Updated ${result.productName}: ₹${result.oldPrice} → ₹${result.newPrice}',
+  //             );
+  //           } else {
+  //             final persisted = await _persistVariantInfoSyncForProductId(
+  //               result.productId,
+  //               prefetchedFood: prefetchedFood,
+  //             );
+  //             if (persisted) {
+  //               variantMetaChanged = true;
+  //               debugPrint(
+  //                 '[PRICE_SYNC] ✅ Synced variant/option fields for ${result.productId}',
+  //               );
+  //             }
+  //           }
+  //
+  //           _operationTimestamps['sync_${result.productId}'] = DateTime.now();
+  //           _recentlySyncedItems.add(result.productId);
+  //         }
+  //
+  //         if (i < batches.length - 1) {
+  //           await Future.delayed(const Duration(milliseconds: 60));
+  //         }
+  //       } catch (e) {
+  //         debugPrint('[PRICE_SYNC] ❌ Error in batch ${i + 1}: $e');
+  //       }
+  //     }
+  //
+  //     // Update timestamp
+  //     _operationTimestamps[lastSyncKey] = DateTime.now();
+  //
+  //     if (hasUpdates || variantMetaChanged) {
+  //       if (hasUpdates) {
+  //         debugPrint(
+  //           '[PRICE_SYNC] ✅ Sync complete with ${allUpdates.length} line updates',
+  //         );
+  //       }
+  //       if (variantMetaChanged && !hasUpdates) {
+  //         debugPrint(
+  //           '[PRICE_SYNC] ✅ Sync complete (variant/option metadata only)',
+  //         );
+  //       }
+  //
+  //       _priceSyncVersion++;
+  //       notifyListeners();
+  //       WidgetsBinding.instance.addPostFrameCallback((_) {
+  //         unawaited(calculatePrice());
+  //       });
+  //
+  //       if (allUpdates.isNotEmpty) {
+  //         WidgetsBinding.instance.addPostFrameCallback((_) {
+  //           _showEnhancedPriceUpdateDialog(allUpdates);
+  //         });
+  //       }
+  //     } else {
+  //       debugPrint('[PRICE_SYNC] ℹ️ No price changes detected');
+  //     }
+  //   } catch (e, stackTrace) {
+  //     debugPrint('[PRICE_SYNC] ❌ Error: $e');
+  //     debugPrint('[PRICE_SYNC] Stack trace: $stackTrace');
+  //   } finally {
+  //     _endOperation('syncCartPrices');
+  //   }
+  // }
 
   void _showEnhancedPriceUpdateDialog(List<PriceUpdateResult> updates) {
     try {
@@ -2089,178 +2089,178 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   /// Compares [cartItem] with already-fetched catalog [currentProduct] (no I/O).
-  PriceUpdateResult _priceUpdateResultFromFetchedProduct(
-    CartProductModel cartItem,
-    dynamic currentProduct,
-  ) {
-    if (currentProduct == null) {
-      return PriceUpdateResult(
-        productId: cartItem.id!,
-        status: PriceStatus.productNotFound,
-        oldPrice: cartItem.price,
-        productName: cartItem.name,
-      );
-    }
-
-    final currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
-
-    final storedDiscountPrice =
-        double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
-    final storedRegularPrice = double.tryParse(cartItem.price ?? "0") ?? 0.0;
-    final storedDisplayPrice =
-        storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
-        ? storedDiscountPrice
-        : storedRegularPrice;
-
-    if ((currentPrice - storedDisplayPrice).abs() > 0.01) {
-      return PriceUpdateResult(
-        productId: cartItem.id!,
-        status: PriceStatus.priceChanged,
-        oldPrice: storedDisplayPrice.toStringAsFixed(2),
-        newPrice: currentPrice.toStringAsFixed(2),
-        productName: cartItem.name,
-      );
-    }
-    return PriceUpdateResult(
-      productId: cartItem.id!,
-      status: PriceStatus.noChange,
-      oldPrice: storedDisplayPrice.toStringAsFixed(2),
-      newPrice: currentPrice.toStringAsFixed(2),
-    );
-  }
-
-  /// One HTTP round-trip per unique catalog id + parallel mart reads.
-  /// Returns maps so callers can apply updates without re-fetching each product.
-  Future<
-    ({
-      Map<String, PriceUpdateResult> results,
-      Map<String, ProductModel?> foodByCatalogId,
-      Map<String, MartItemModel?> martByLineId,
-    })
-  >
-  validateAndUpdateCartPricesForBatch(List<CartProductModel> batch) async {
-    final Map<String, PriceUpdateResult> results = {};
-
-    final foodCatalogIds = <String>{};
-    final martLineIds = <String>{};
-
-    for (final cartItem in batch) {
-      if (cartItem.id == null || cartItem.id!.isEmpty) continue;
-      if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
-      if (_isMartItem(cartItem)) {
-        martLineIds.add(cartItem.id!);
-      } else {
-        final cid = _catalogProductIdForFetch(cartItem.id!);
-        if (cid.isNotEmpty) foodCatalogIds.add(cid);
-      }
-    }
-
-    var foodByCatalogId = <String, ProductModel?>{};
-    var martByLineId = <String, MartItemModel?>{};
-
-    try {
-      await Future.wait([
-        Future(() async {
-          if (foodCatalogIds.isEmpty) return;
-          final fetched = await FireStoreUtils.getProductsByIds(
-            foodCatalogIds.toList(),
-            forceRefresh: true,
-          );
-          foodByCatalogId.addAll(fetched);
-        }),
-        Future(() async {
-          if (martLineIds.isEmpty) return;
-          final martService = Get.find<MartFirestoreService>();
-          await Future.wait(
-            martLineIds.map((lineId) async {
-              try {
-                martByLineId[lineId] = await martService.getItemById(lineId);
-              } catch (_) {
-                martByLineId[lineId] = null;
-              }
-            }),
-          );
-        }),
-      ]);
-    } catch (e) {
-      debugPrint('[BATCH_VALIDATE] ❌ Prefetch failed: $e');
-      foodByCatalogId = {};
-      martByLineId = {};
-    }
-
-    Future<PriceUpdateResult?> validateOne(CartProductModel cartItem) async {
-      try {
-        if (cartItem.id == null || cartItem.id!.isEmpty) {
-          return PriceUpdateResult(
-            productId: cartItem.id ?? 'unknown',
-            status: PriceStatus.error,
-            error: 'Invalid product ID',
-          );
-        }
-
-        if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) {
-          return PriceUpdateResult(
-            productId: cartItem.id!,
-            status: PriceStatus.noChange,
-            oldPrice: cartItem.price,
-            newPrice: cartItem.price,
-            productName: cartItem.name,
-          );
-        }
-
-        if (_isMartItem(cartItem)) {
-          return _priceUpdateResultFromFetchedProduct(
-            cartItem,
-            martByLineId[cartItem.id!],
-          );
-        }
-
-        final catalogId = _catalogProductIdForFetch(cartItem.id!);
-        if (catalogId.isEmpty) {
-          return PriceUpdateResult(
-            productId: cartItem.id!,
-            status: PriceStatus.error,
-            oldPrice: cartItem.price,
-            productName: cartItem.name,
-            error: 'Invalid catalog product id',
-          );
-        }
-        return _priceUpdateResultFromFetchedProduct(
-          cartItem,
-          foodByCatalogId[catalogId],
-        );
-      } catch (e) {
-        debugPrint('[BATCH_VALIDATE] ❌ Error validating ${cartItem.id}: $e');
-        return PriceUpdateResult(
-          productId: cartItem.id!,
-          status: PriceStatus.error,
-          oldPrice: cartItem.price,
-          error: e.toString(),
-        );
-      }
-    }
-
-    try {
-      final batchResults = await Future.wait(
-        batch.map(validateOne),
-        eagerError: false,
-      );
-
-      for (var result in batchResults) {
-        if (result != null) {
-          results[result.productId] = result;
-        }
-      }
-    } catch (e) {
-      debugPrint('[BATCH_VALIDATE] ❌ Batch validation failed: $e');
-    }
-
-    return (
-      results: results,
-      foodByCatalogId: foodByCatalogId,
-      martByLineId: martByLineId,
-    );
-  }
+  // PriceUpdateResult _priceUpdateResultFromFetchedProduct(
+  //   CartProductModel cartItem,
+  //   dynamic currentProduct,
+  // ) {
+  //   if (currentProduct == null) {
+  //     return PriceUpdateResult(
+  //       productId: cartItem.id!,
+  //       status: PriceStatus.productNotFound,
+  //       oldPrice: cartItem.price,
+  //       productName: cartItem.name,
+  //     );
+  //   }
+  //
+  //   final currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
+  //
+  //   final storedDiscountPrice =
+  //       double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
+  //   final storedRegularPrice = double.tryParse(cartItem.price ?? "0") ?? 0.0;
+  //   final storedDisplayPrice =
+  //       storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
+  //       ? storedDiscountPrice
+  //       : storedRegularPrice;
+  //
+  //   if ((currentPrice - storedDisplayPrice).abs() > 0.01) {
+  //     return PriceUpdateResult(
+  //       productId: cartItem.id!,
+  //       status: PriceStatus.priceChanged,
+  //       oldPrice: storedDisplayPrice.toStringAsFixed(2),
+  //       newPrice: currentPrice.toStringAsFixed(2),
+  //       productName: cartItem.name,
+  //     );
+  //   }
+  //   return PriceUpdateResult(
+  //     productId: cartItem.id!,
+  //     status: PriceStatus.noChange,
+  //     oldPrice: storedDisplayPrice.toStringAsFixed(2),
+  //     newPrice: currentPrice.toStringAsFixed(2),
+  //   );
+  // }
+  //
+  // /// One HTTP round-trip per unique catalog id + parallel mart reads.
+  // /// Returns maps so callers can apply updates without re-fetching each product.
+  // Future<
+  //   ({
+  //     Map<String, PriceUpdateResult> results,
+  //     Map<String, ProductModel?> foodByCatalogId,
+  //     Map<String, MartItemModel?> martByLineId,
+  //   })
+  // >
+  // validateAndUpdateCartPricesForBatch(List<CartProductModel> batch) async {
+  //   final Map<String, PriceUpdateResult> results = {};
+  //
+  //   final foodCatalogIds = <String>{};
+  //   final martLineIds = <String>{};
+  //
+  //   for (final cartItem in batch) {
+  //     if (cartItem.id == null || cartItem.id!.isEmpty) continue;
+  //     if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
+  //     if (_isMartItem(cartItem)) {
+  //       martLineIds.add(cartItem.id!);
+  //     } else {
+  //       final cid = _catalogProductIdForFetch(cartItem.id!);
+  //       if (cid.isNotEmpty) foodCatalogIds.add(cid);
+  //     }
+  //   }
+  //
+  //   var foodByCatalogId = <String, ProductModel?>{};
+  //   var martByLineId = <String, MartItemModel?>{};
+  //
+  //   try {
+  //     await Future.wait([
+  //       Future(() async {
+  //         if (foodCatalogIds.isEmpty) return;
+  //         final fetched = await FireStoreUtils.getProductsByIds(
+  //           foodCatalogIds.toList(),
+  //           forceRefresh: true,
+  //         );
+  //         foodByCatalogId.addAll(fetched);
+  //       }),
+  //       Future(() async {
+  //         if (martLineIds.isEmpty) return;
+  //         final martService = Get.find<MartFirestoreService>();
+  //         await Future.wait(
+  //           martLineIds.map((lineId) async {
+  //             try {
+  //               martByLineId[lineId] = await martService.getItemById(lineId);
+  //             } catch (_) {
+  //               martByLineId[lineId] = null;
+  //             }
+  //           }),
+  //         );
+  //       }),
+  //     ]);
+  //   } catch (e) {
+  //     debugPrint('[BATCH_VALIDATE] ❌ Prefetch failed: $e');
+  //     foodByCatalogId = {};
+  //     martByLineId = {};
+  //   }
+  //
+  //   Future<PriceUpdateResult?> validateOne(CartProductModel cartItem) async {
+  //     try {
+  //       if (cartItem.id == null || cartItem.id!.isEmpty) {
+  //         return PriceUpdateResult(
+  //           productId: cartItem.id ?? 'unknown',
+  //           status: PriceStatus.error,
+  //           error: 'Invalid product ID',
+  //         );
+  //       }
+  //
+  //       if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) {
+  //         return PriceUpdateResult(
+  //           productId: cartItem.id!,
+  //           status: PriceStatus.noChange,
+  //           oldPrice: cartItem.price,
+  //           newPrice: cartItem.price,
+  //           productName: cartItem.name,
+  //         );
+  //       }
+  //
+  //       if (_isMartItem(cartItem)) {
+  //         return _priceUpdateResultFromFetchedProduct(
+  //           cartItem,
+  //           martByLineId[cartItem.id!],
+  //         );
+  //       }
+  //
+  //       final catalogId = _catalogProductIdForFetch(cartItem.id!);
+  //       if (catalogId.isEmpty) {
+  //         return PriceUpdateResult(
+  //           productId: cartItem.id!,
+  //           status: PriceStatus.error,
+  //           oldPrice: cartItem.price,
+  //           productName: cartItem.name,
+  //           error: 'Invalid catalog product id',
+  //         );
+  //       }
+  //       return _priceUpdateResultFromFetchedProduct(
+  //         cartItem,
+  //         foodByCatalogId[catalogId],
+  //       );
+  //     } catch (e) {
+  //       debugPrint('[BATCH_VALIDATE] ❌ Error validating ${cartItem.id}: $e');
+  //       return PriceUpdateResult(
+  //         productId: cartItem.id!,
+  //         status: PriceStatus.error,
+  //         oldPrice: cartItem.price,
+  //         error: e.toString(),
+  //       );
+  //     }
+  //   }
+  //
+  //   try {
+  //     final batchResults = await Future.wait(
+  //       batch.map(validateOne),
+  //       eagerError: false,
+  //     );
+  //
+  //     for (var result in batchResults) {
+  //       if (result != null) {
+  //         results[result.productId] = result;
+  //       }
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[BATCH_VALIDATE] ❌ Batch validation failed: $e');
+  //   }
+  //
+  //   return (
+  //     results: results,
+  //     foodByCatalogId: foodByCatalogId,
+  //     martByLineId: martByLineId,
+  //   );
+  // }
 
   // ============ PROFILE VALIDATION METHODS ============
 
@@ -2546,11 +2546,11 @@ class CartControllerProvider extends ChangeNotifier {
       lastOrderAttempt = DateTime.now();
 
       // Validate before proceeding
-      if (!await validateOrderBeforePayment(context)) {
-        // 🔑 CRITICAL: Clear processing flag on validation failure
-        endOrderProcessing();
-        return;
-      }
+      // if (!await validateOrderBeforePayment(context)) {
+      //   // 🔑 CRITICAL: Clear processing flag on validation failure
+      //   endOrderProcessing();
+      //   return;
+      // }
 
       if (HomeProvider.cartItem.isEmpty) {
         ShowToastDialog.showToast(
@@ -3244,55 +3244,55 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Persists `variant_info` (option price, merchant_price in variant_options map, etc.)
   /// for all cart rows with [productId], when line price was already correct.
-  Future<bool> _persistVariantInfoSyncForProductId(
-    String productId, {
-    ProductModel? prefetchedFood,
-  }) async {
-    bool anyChanged = false;
-    for (int i = 0; i < HomeProvider.cartItem.length; i++) {
-      final cartItem = HomeProvider.cartItem[i];
-      if (cartItem.id != productId) continue;
-      if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
-      if (cartItem.variantInfo == null) continue;
-      if (_isMartItem(cartItem)) continue;
-      if (cartItem.id == null || cartItem.id!.isEmpty) continue;
-
-      try {
-        final catalogId = _catalogProductIdForFetch(cartItem.id!);
-        if (catalogId.isEmpty) continue;
-        ProductModel? currentProduct = prefetchedFood;
-        currentProduct ??= await FireStoreUtils.getProductById(
-          catalogId,
-          forceRefresh: true,
-        );
-        if (currentProduct is! ProductModel) continue;
-        bool rowChanged = _syncVariantInfoFieldsFromProduct(
-          cartItem.variantInfo!,
-          currentProduct,
-        );
-        final live = _getCurrentProductPrice(currentProduct, cartItem);
-        final storedDiscount =
-            double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
-        final storedReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
-        final storedDisplay = storedDiscount > 0 && storedDiscount < storedReg
-            ? storedDiscount
-            : storedReg;
-        if ((live - storedDisplay).abs() > 0.01) {
-          cartItem.price = live.toStringAsFixed(2);
-          cartItem.discountPrice = '0';
-          rowChanged = true;
-        }
-        if (rowChanged) {
-          anyChanged = true;
-          await DatabaseHelper.instance.updateCartProduct(cartItem);
-          HomeProvider.cartItem[i] = cartItem;
-        }
-      } catch (e) {
-        debugPrint('[PRICE_SYNC] variant metadata sync error: $e');
-      }
-    }
-    return anyChanged;
-  }
+  // Future<bool> _persistVariantInfoSyncForProductId(
+  //   String productId, {
+  //   ProductModel? prefetchedFood,
+  // }) async {
+  //   bool anyChanged = false;
+  //   for (int i = 0; i < HomeProvider.cartItem.length; i++) {
+  //     final cartItem = HomeProvider.cartItem[i];
+  //     if (cartItem.id != productId) continue;
+  //     if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
+  //     if (cartItem.variantInfo == null) continue;
+  //     if (_isMartItem(cartItem)) continue;
+  //     if (cartItem.id == null || cartItem.id!.isEmpty) continue;
+  //
+  //     try {
+  //       final catalogId = _catalogProductIdForFetch(cartItem.id!);
+  //       if (catalogId.isEmpty) continue;
+  //       ProductModel? currentProduct = prefetchedFood;
+  //       currentProduct ??= await FireStoreUtils.getProductById(
+  //         catalogId,
+  //         forceRefresh: true,
+  //       );
+  //       if (currentProduct is! ProductModel) continue;
+  //       bool rowChanged = _syncVariantInfoFieldsFromProduct(
+  //         cartItem.variantInfo!,
+  //         currentProduct,
+  //       );
+  //       final live = _getCurrentProductPrice(currentProduct, cartItem);
+  //       final storedDiscount =
+  //           double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
+  //       final storedReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
+  //       final storedDisplay = storedDiscount > 0 && storedDiscount < storedReg
+  //           ? storedDiscount
+  //           : storedReg;
+  //       if ((live - storedDisplay).abs() > 0.01) {
+  //         cartItem.price = live.toStringAsFixed(2);
+  //         cartItem.discountPrice = '0';
+  //         rowChanged = true;
+  //       }
+  //       if (rowChanged) {
+  //         anyChanged = true;
+  //         await DatabaseHelper.instance.updateCartProduct(cartItem);
+  //         HomeProvider.cartItem[i] = cartItem;
+  //       }
+  //     } catch (e) {
+  //       debugPrint('[PRICE_SYNC] variant metadata sync error: $e');
+  //     }
+  //   }
+  //   return anyChanged;
+  // }
 
   double _getCurrentProductPrice(dynamic product, CartProductModel cartItem) {
     try {
@@ -3386,126 +3386,126 @@ class CartControllerProvider extends ChangeNotifier {
     return 0.0;
   }
 
-  Future<void> _updateCartItemPrice(
-    PriceUpdateResult result, {
-    ProductModel? prefetchedFood,
-    MartItemModel? prefetchedMart,
-  }) async {
-    try {
-      final cartItemIndex = HomeProvider.cartItem.indexWhere(
-        (item) => item.id == result.productId,
-      );
+  // Future<void> _updateCartItemPrice(
+  //   PriceUpdateResult result, {
+  //   ProductModel? prefetchedFood,
+  //   MartItemModel? prefetchedMart,
+  // }) async {
+  //   try {
+  //     final cartItemIndex = HomeProvider.cartItem.indexWhere(
+  //       (item) => item.id == result.productId,
+  //     );
+  //
+  //     if (cartItemIndex < 0) return;
+  //
+  //     final cartItem = HomeProvider.cartItem[cartItemIndex];
+  //     final isMart = _isMartItem(cartItem);
+  //
+  //     dynamic currentProduct;
+  //
+  //     if (isMart) {
+  //       currentProduct = prefetchedMart;
+  //       if (currentProduct == null) {
+  //         final martService = Get.find<MartFirestoreService>();
+  //         currentProduct = await martService.getItemById(cartItem.id!);
+  //       }
+  //     } else {
+  //       final catalogId = _catalogProductIdForFetch(cartItem.id!);
+  //       currentProduct = prefetchedFood;
+  //       if (currentProduct == null && catalogId.isNotEmpty) {
+  //         currentProduct = await FireStoreUtils.getProductById(
+  //           catalogId,
+  //           forceRefresh: true,
+  //         );
+  //       }
+  //     }
+  //
+  //     if (currentProduct != null) {
+  //       if (currentProduct is MartItemModel) {
+  //         cartItem.price = currentProduct.price.toStringAsFixed(2);
+  //         if (currentProduct.disPrice != null &&
+  //             currentProduct.disPrice! < currentProduct.price &&
+  //             currentProduct.disPrice! > 0) {
+  //           cartItem.discountPrice = currentProduct.disPrice!.toStringAsFixed(
+  //             2,
+  //           );
+  //         } else {
+  //           cartItem.discountPrice = "0";
+  //         }
+  //       } else if (currentProduct is ProductModel) {
+  //         cartItem.price = result.newPrice;
+  //         if (cartItem.variantInfo != null) {
+  //           cartItem.discountPrice = "0";
+  //         } else if (currentProduct.disPrice != null &&
+  //             double.tryParse(currentProduct.disPrice!) != null &&
+  //             double.tryParse(currentProduct.price ?? "0") != null) {
+  //           final disPrice = double.parse(currentProduct.disPrice!);
+  //           final regPrice = double.parse(currentProduct.price ?? "0");
+  //           if (disPrice > 0 && disPrice < regPrice) {
+  //             if (vendorModel.id != null) {
+  //               cartItem.discountPrice = Constant.productCommissionPrice(
+  //                 vendorModel,
+  //                 currentProduct.disPrice ?? "0",
+  //               );
+  //             } else {
+  //               cartItem.discountPrice = currentProduct.disPrice;
+  //             }
+  //           } else {
+  //             cartItem.discountPrice = "0";
+  //           }
+  //         } else {
+  //           cartItem.discountPrice = "0";
+  //         }
+  //       }
+  //     } else {
+  //       cartItem.price = result.newPrice;
+  //     }
+  //
+  //     if (cartItem.variantInfo != null && currentProduct is ProductModel) {
+  //       _syncVariantInfoFieldsFromProduct(
+  //         cartItem.variantInfo!,
+  //         currentProduct,
+  //       );
+  //     }
+  //
+  //     await DatabaseHelper.instance.updateCartProduct(cartItem);
+  //     HomeProvider.cartItem[cartItemIndex] = cartItem;
+  //
+  //     debugPrint(
+  //       '[PRICE_UPDATE] ✅ Updated ${result.productName ?? cartItem.name}: ₹${result.oldPrice ?? "N/A"} → ₹${result.newPrice ?? "N/A"}',
+  //     );
+  //   } catch (e) {
+  //     debugPrint('[PRICE_UPDATE] ❌ Error: $e');
+  //   }
+  // }
 
-      if (cartItemIndex < 0) return;
-
-      final cartItem = HomeProvider.cartItem[cartItemIndex];
-      final isMart = _isMartItem(cartItem);
-
-      dynamic currentProduct;
-
-      if (isMart) {
-        currentProduct = prefetchedMart;
-        if (currentProduct == null) {
-          final martService = Get.find<MartFirestoreService>();
-          currentProduct = await martService.getItemById(cartItem.id!);
-        }
-      } else {
-        final catalogId = _catalogProductIdForFetch(cartItem.id!);
-        currentProduct = prefetchedFood;
-        if (currentProduct == null && catalogId.isNotEmpty) {
-          currentProduct = await FireStoreUtils.getProductById(
-            catalogId,
-            forceRefresh: true,
-          );
-        }
-      }
-
-      if (currentProduct != null) {
-        if (currentProduct is MartItemModel) {
-          cartItem.price = currentProduct.price.toStringAsFixed(2);
-          if (currentProduct.disPrice != null &&
-              currentProduct.disPrice! < currentProduct.price &&
-              currentProduct.disPrice! > 0) {
-            cartItem.discountPrice = currentProduct.disPrice!.toStringAsFixed(
-              2,
-            );
-          } else {
-            cartItem.discountPrice = "0";
-          }
-        } else if (currentProduct is ProductModel) {
-          cartItem.price = result.newPrice;
-          if (cartItem.variantInfo != null) {
-            cartItem.discountPrice = "0";
-          } else if (currentProduct.disPrice != null &&
-              double.tryParse(currentProduct.disPrice!) != null &&
-              double.tryParse(currentProduct.price ?? "0") != null) {
-            final disPrice = double.parse(currentProduct.disPrice!);
-            final regPrice = double.parse(currentProduct.price ?? "0");
-            if (disPrice > 0 && disPrice < regPrice) {
-              if (vendorModel.id != null) {
-                cartItem.discountPrice = Constant.productCommissionPrice(
-                  vendorModel,
-                  currentProduct.disPrice ?? "0",
-                );
-              } else {
-                cartItem.discountPrice = currentProduct.disPrice;
-              }
-            } else {
-              cartItem.discountPrice = "0";
-            }
-          } else {
-            cartItem.discountPrice = "0";
-          }
-        }
-      } else {
-        cartItem.price = result.newPrice;
-      }
-
-      if (cartItem.variantInfo != null && currentProduct is ProductModel) {
-        _syncVariantInfoFieldsFromProduct(
-          cartItem.variantInfo!,
-          currentProduct,
-        );
-      }
-
-      await DatabaseHelper.instance.updateCartProduct(cartItem);
-      HomeProvider.cartItem[cartItemIndex] = cartItem;
-
-      debugPrint(
-        '[PRICE_UPDATE] ✅ Updated ${result.productName ?? cartItem.name}: ₹${result.oldPrice ?? "N/A"} → ₹${result.newPrice ?? "N/A"}',
-      );
-    } catch (e) {
-      debugPrint('[PRICE_UPDATE] ❌ Error: $e');
-    }
-  }
-
-  Future<void> _applyBatchUpdates() async {
-    try {
-      await cartProvider.refreshCart();
-
-      final updatedItems = await DatabaseHelper.instance.fetchCartProducts();
-
-      if (updatedItems.length == HomeProvider.cartItem.length) {
-        for (int i = 0; i < updatedItems.length; i++) {
-          HomeProvider.cartItem[i] = updatedItems[i];
-        }
-      } else {
-        HomeProvider.cartItem
-          ..clear()
-          ..addAll(updatedItems);
-      }
-
-      cartProvider.forceStreamUpdate();
-      await _calculatePriceInternal();
-
-      _priceSyncVersion++;
-      notifyListeners();
-
-      debugPrint('[BATCH_UPDATE] ✅ Applied batch updates');
-    } catch (e) {
-      debugPrint('[BATCH_UPDATE] ❌ Error: $e');
-    }
-  }
+  // Future<void> _applyBatchUpdates() async {
+  //   try {
+  //     await cartProvider.refreshCart();
+  //
+  //     final updatedItems = await DatabaseHelper.instance.fetchCartProducts();
+  //
+  //     if (updatedItems.length == HomeProvider.cartItem.length) {
+  //       for (int i = 0; i < updatedItems.length; i++) {
+  //         HomeProvider.cartItem[i] = updatedItems[i];
+  //       }
+  //     } else {
+  //       HomeProvider.cartItem
+  //         ..clear()
+  //         ..addAll(updatedItems);
+  //     }
+  //
+  //     cartProvider.forceStreamUpdate();
+  //     await _calculatePriceInternal();
+  //
+  //     _priceSyncVersion++;
+  //     notifyListeners();
+  //
+  //     debugPrint('[BATCH_UPDATE] ✅ Applied batch updates');
+  //   } catch (e) {
+  //     debugPrint('[BATCH_UPDATE] ❌ Error: $e');
+  //   }
+  // }
 
   // ============ CART OPERATIONS ============
 
@@ -3515,7 +3515,7 @@ class CartControllerProvider extends ChangeNotifier {
     _invalidateCartRelatedCaches();
     await cartProvider.refreshCart();
     await _loadFreshVendorForCart();
-    await preloadCartProducts(forceRefresh: true);
+    // await preloadCartProducts(forceRefresh: true);
 
     deliveryTips = 0.0;
     await calculatePrice();
@@ -3560,12 +3560,12 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       // await _loadCalculationCache();
-
-      unawaited(
-        _loadNewProductsIncrementally().catchError((e) {
-          debugPrint('[CART_DATA] Error loading products: $e');
-        }),
-      );
+      //
+      // unawaited(
+      //   _loadNewProductsIncrementally().catchError((e) {
+      //     debugPrint('[CART_DATA] Error loading products: $e');
+      //   }),
+      // );
 
       await calculatePrice();
       checkAndUpdatePaymentMethod();
@@ -3642,79 +3642,79 @@ class CartControllerProvider extends ChangeNotifier {
   //   } catch (_) {}
   // }
 
-  Future<void> preloadCartProducts({bool forceRefresh = false}) async {
-    if (_isLoadingProducts && !forceRefresh) return;
-
-    if (forceRefresh) {
-      _productCache.clear();
-      _productsLoaded = false;
-    }
-
-    _isLoadingProducts = true;
-    _startOperation('preloadCartProducts');
-
-    try {
-      final Set<String> productIds = {};
-
-      for (final cartItem in HomeProvider.cartItem) {
-        if (cartItem.id != null &&
-            cartItem.id!.isNotEmpty &&
-            cartItem.id!.toLowerCase() != 'null') {
-          final parts = cartItem.id!.split('~');
-          if (parts.isNotEmpty &&
-              parts.first.isNotEmpty &&
-              parts.first.toLowerCase() != 'null') {
-            productIds.add(parts.first);
-          }
-        }
-      }
-
-      final Set<String> productsToLoad = forceRefresh
-          ? productIds
-          : productIds.where((id) => !_productCache.containsKey(id)).toSet();
-      final Map<String, CartProductModel> cartItemsByProductId = {
-        for (final item in HomeProvider.cartItem)
-          if (item.id != null && item.id!.isNotEmpty)
-            item.id!.split('~').first: item,
-      };
-
-      if (productsToLoad.isEmpty) {
-        _productsLoaded = true;
-        notifyListeners();
-        return;
-      }
-
-      final List<Future<void>> loadFutures = productsToLoad.map((
-        productId,
-      ) async {
-        try {
-          final cartItem =
-              cartItemsByProductId[productId] ?? CartProductModel();
-
-          final isMartItem = _isMartItem(cartItem);
-
-          if (isMartItem) {
-            _productCache[productId] = null;
-          } else {
-            final product = await FireStoreUtils.getProductById(productId);
-            _productCache[productId] = product;
-          }
-        } catch (e) {
-          debugPrint('[CART_PRODUCT] Error loading product $productId: $e');
-          _productCache[productId] = null;
-        }
-      }).toList();
-
-      await Future.wait(loadFutures);
-      _productsLoaded = true;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('[CART_PRODUCT] Error preloading products: $e');
-    } finally {
-      _isLoadingProducts = false;
-      _endOperation('preloadCartProducts');
-    }
-  }
+  // Future<void> preloadCartProducts({bool forceRefresh = false}) async {
+  //   if (_isLoadingProducts && !forceRefresh) return;
+  //
+  //   if (forceRefresh) {
+  //     _productCache.clear();
+  //     _productsLoaded = false;
+  //   }
+  //
+  //   _isLoadingProducts = true;
+  //   _startOperation('preloadCartProducts');
+  //
+  //   try {
+  //     final Set<String> productIds = {};
+  //
+  //     for (final cartItem in HomeProvider.cartItem) {
+  //       if (cartItem.id != null &&
+  //           cartItem.id!.isNotEmpty &&
+  //           cartItem.id!.toLowerCase() != 'null') {
+  //         final parts = cartItem.id!.split('~');
+  //         if (parts.isNotEmpty &&
+  //             parts.first.isNotEmpty &&
+  //             parts.first.toLowerCase() != 'null') {
+  //           productIds.add(parts.first);
+  //         }
+  //       }
+  //     }
+  //
+  //     final Set<String> productsToLoad = forceRefresh
+  //         ? productIds
+  //         : productIds.where((id) => !_productCache.containsKey(id)).toSet();
+  //     final Map<String, CartProductModel> cartItemsByProductId = {
+  //       for (final item in HomeProvider.cartItem)
+  //         if (item.id != null && item.id!.isNotEmpty)
+  //           item.id!.split('~').first: item,
+  //     };
+  //
+  //     if (productsToLoad.isEmpty) {
+  //       _productsLoaded = true;
+  //       notifyListeners();
+  //       return;
+  //     }
+  //
+  //     final List<Future<void>> loadFutures = productsToLoad.map((
+  //       productId,
+  //     ) async {
+  //       try {
+  //         final cartItem =
+  //             cartItemsByProductId[productId] ?? CartProductModel();
+  //
+  //         final isMartItem = _isMartItem(cartItem);
+  //
+  //         if (isMartItem) {
+  //           _productCache[productId] = null;
+  //         } else {
+  //           final product = await FireStoreUtils.getProductById(productId);
+  //           _productCache[productId] = product;
+  //         }
+  //       } catch (e) {
+  //         debugPrint('[CART_PRODUCT] Error loading product $productId: $e');
+  //         _productCache[productId] = null;
+  //       }
+  //     }).toList();
+  //
+  //     await Future.wait(loadFutures);
+  //     _productsLoaded = true;
+  //     notifyListeners();
+  //   } catch (e) {
+  //     debugPrint('[CART_PRODUCT] Error preloading products: $e');
+  //   } finally {
+  //     _isLoadingProducts = false;
+  //     _endOperation('preloadCartProducts');
+  //   }
+  // }
 
   // ============ HELPER METHODS ============
 
@@ -3979,9 +3979,7 @@ class CartControllerProvider extends ChangeNotifier {
       final active = await RestaurantApiHelper.getActiveCoupons().timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          debugPrint(
-            '[COUPON_LOAD] ⏱️ Active coupons API call timed out',
-          );
+          debugPrint('[COUPON_LOAD] ⏱️ Active coupons API call timed out');
           return <CouponModel>[];
         },
       );
@@ -4006,9 +4004,7 @@ class CartControllerProvider extends ChangeNotifier {
       ).timeout(
         const Duration(seconds: 10),
         onTimeout: () {
-          debugPrint(
-            '[COUPON_LOAD] ⏱️ Legacy mart coupon API call timed out',
-          );
+          debugPrint('[COUPON_LOAD] ⏱️ Legacy mart coupon API call timed out');
           return <CouponModel>[];
         },
       );
@@ -4207,9 +4203,7 @@ class CartControllerProvider extends ChangeNotifier {
         '[COUPON_LOAD] 🔍 Global coupon load - Context: $_currentContext',
       );
 
-      final globalCoupons = await _fetchCouponsForContext(
-        restaurantId: '',
-      );
+      final globalCoupons = await _fetchCouponsForContext(restaurantId: '');
 
       print(
         '[COUPON_LOAD] ✅ Received ${globalCoupons.length} global coupons from ${_currentContext} API',
@@ -4339,8 +4333,7 @@ class CartControllerProvider extends ChangeNotifier {
         '[COUPON_LOAD] 🔍 Fallback: Loading coupons for vendor: $restaurantId, Context: $_currentContext',
       );
 
-      final List<CouponModel> allCoupons =
-          await _fetchCouponsForContext(
+      final List<CouponModel> allCoupons = await _fetchCouponsForContext(
         restaurantId: restaurantId,
       );
 
@@ -5778,7 +5771,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   Future<void> _incrementalCartUpdate() async {
     try {
-      await _loadNewProductsIncrementally();
+      // await _loadNewProductsIncrementally();
       await calculatePrice();
       checkAndUpdatePaymentMethod();
       updateCartReadiness();
@@ -5789,60 +5782,60 @@ class CartControllerProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _loadNewProductsIncrementally() async {
-    try {
-      final Set<String> productIds = {};
-
-      for (final cartItem in HomeProvider.cartItem) {
-        if (cartItem.id != null &&
-            cartItem.id!.isNotEmpty &&
-            cartItem.id!.toLowerCase() != 'null') {
-          final parts = cartItem.id!.split('~');
-          if (parts.isNotEmpty &&
-              parts.first.isNotEmpty &&
-              parts.first.toLowerCase() != 'null') {
-            productIds.add(parts.first);
-          }
-        }
-      }
-
-      final Set<String> productsToLoad = productIds
-          .where((id) => !_productCache.containsKey(id))
-          .toSet();
-
-      if (productsToLoad.isEmpty) return;
-
-      final List<Future<void>> loadFutures = productsToLoad.map((
-        productId,
-      ) async {
-        try {
-          final isMartItem = _isMartItem(
-            HomeProvider.cartItem.firstWhere(
-              (item) => item.id?.split('~').first == productId,
-              orElse: () => CartProductModel(),
-            ),
-          );
-
-          if (isMartItem) {
-            _productCache[productId] = null;
-          } else {
-            final product = await FireStoreUtils.getProductById(productId);
-            _productCache[productId] = product;
-          }
-          notifyListeners();
-        } catch (e) {
-          print('[INCREMENTAL_LOAD] ❌ Error: $e');
-          _productCache[productId] = null;
-        }
-      }).toList();
-
-      await Future.wait(loadFutures);
-      _productsLoaded = true;
-      notifyListeners();
-    } catch (e) {
-      print('[INCREMENTAL_LOAD] ❌ Error: $e');
-    }
-  }
+  // Future<void> _loadNewProductsIncrementally() async {
+  //   try {
+  //     final Set<String> productIds = {};
+  //
+  //     for (final cartItem in HomeProvider.cartItem) {
+  //       if (cartItem.id != null &&
+  //           cartItem.id!.isNotEmpty &&
+  //           cartItem.id!.toLowerCase() != 'null') {
+  //         final parts = cartItem.id!.split('~');
+  //         if (parts.isNotEmpty &&
+  //             parts.first.isNotEmpty &&
+  //             parts.first.toLowerCase() != 'null') {
+  //           productIds.add(parts.first);
+  //         }
+  //       }
+  //     }
+  //
+  //     final Set<String> productsToLoad = productIds
+  //         .where((id) => !_productCache.containsKey(id))
+  //         .toSet();
+  //
+  //     if (productsToLoad.isEmpty) return;
+  //
+  //     final List<Future<void>> loadFutures = productsToLoad.map((
+  //       productId,
+  //     ) async {
+  //       try {
+  //         final isMartItem = _isMartItem(
+  //           HomeProvider.cartItem.firstWhere(
+  //             (item) => item.id?.split('~').first == productId,
+  //             orElse: () => CartProductModel(),
+  //           ),
+  //         );
+  //
+  //         if (isMartItem) {
+  //           _productCache[productId] = null;
+  //         } else {
+  //           final product = await FireStoreUtils.getProductById(productId);
+  //           _productCache[productId] = product;
+  //         }
+  //         notifyListeners();
+  //       } catch (e) {
+  //         print('[INCREMENTAL_LOAD] ❌ Error: $e');
+  //         _productCache[productId] = null;
+  //       }
+  //     }).toList();
+  //
+  //     await Future.wait(loadFutures);
+  //     _productsLoaded = true;
+  //     notifyListeners();
+  //   } catch (e) {
+  //     print('[INCREMENTAL_LOAD] ❌ Error: $e');
+  //   }
+  // }
 
   void _showLoginRequiredDialog(BuildContext context) {
     showDialog(
@@ -6991,134 +6984,134 @@ class CartControllerProvider extends ChangeNotifier {
   // Add this method if it's missing:
 
   // Add this method if validateOrderBeforePayment is missing:
-  Future<bool> validateOrderBeforePayment(BuildContext context) async {
-    try {
-      if (HomeProvider.cartItem.isEmpty) {
-        ShowToastDialog.showToast(
-          "Your cart is empty. Please add items before placing order.".tr,
-        );
-        return false;
-      }
-
-      try {
-        await validateMinimumOrderValue();
-      } catch (e) {
-        return false;
-      }
-
-      final addressValid = await _validateAddressBulletproof(context);
-      if (!addressValid) {
-        return false;
-      }
-
-      if (vendorModel.id != null) {
-        final latestVendor = await FireStoreUtils.getVendorById(
-          vendorModel.id!,
-        );
-        if (latestVendor != null) {
-          if (latestVendor.vType == 'mart') {
-            if (latestVendor.isOpen == false) {
-              ShowToastDialog.showToast(
-                "Jippy Mart is temporarily closed. Please try again later.",
-              );
-              return false;
-            }
-          } else {
-            if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
-              ShowToastDialog.showToast("Restaurant Closed");
-              return false;
-            }
-          }
-        }
-      }
-
-      // Validate all items in cart for availability
-      for (var item in HomeProvider.cartItem) {
-        bool isMartItem = item.vendorID?.startsWith('mart_') == true;
-
-        if (isMartItem) {
-          try {
-            final martItems = await MartFirestoreService().getMartItems();
-            final martItem = martItems.firstWhere(
-              (mart) => mart.id == item.id!,
-              orElse: () => MartItemModel(
-                id: '',
-                name: '',
-                description: '',
-                price: 0,
-                photo: '',
-                isAvailable: false,
-                publish: false,
-                veg: false,
-                nonveg: false,
-                quantity: 0,
-              ),
-            );
-
-            final availableQuantity = martItem.quantity;
-            final orderedQuantity = item.quantity ?? 0;
-            if (availableQuantity != -1 &&
-                availableQuantity < orderedQuantity) {
-              final itemName = martItem.displayName;
-              ShowToastDialog.showToast(
-                "$itemName is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity",
-              );
-              return false;
-            }
-          } catch (e) {
-            print('[ORDER VALIDATION] ❌ Error validating mart items: $e');
-            ShowToastDialog.showToast(
-              "Error validating mart items. Please try again.",
-            );
-            return false;
-          }
-        } else {
-          final productId = item.id;
-          if (productId == null ||
-              productId.isEmpty ||
-              productId == 'null' ||
-              productId.trim().isEmpty) {
-            print('[CART_VALIDATION] Invalid product ID: $productId');
-            ShowToastDialog.showToast(
-              "Some items in your cart have invalid product information.".tr,
-            );
-            return false;
-          }
-
-          final baseProductId = productId.contains('~')
-              ? productId.split('~').first
-              : productId;
-
-          final product = await FireStoreUtils.getProductById(baseProductId);
-          if (product == null) {
-            ShowToastDialog.showToast(
-              "Some items in your cart are no longer available.".tr,
-            );
-            return false;
-          }
-
-          if (product.quantity != -1) {
-            int availableQuantity = product.quantity ?? 0;
-            int orderedQuantity = item.quantity ?? 0;
-
-            if (availableQuantity < orderedQuantity) {
-              ShowToastDialog.showToast(
-                "${product.name} is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity"
-                    .tr,
-              );
-              return false;
-            }
-          }
-        }
-      }
-
-      return true;
-    } catch (e) {
-      print('[ORDER_VALIDATION] ❌ Error: $e');
-      ShowToastDialog.showToast("Error validating order. Please try again.".tr);
-      return false;
-    }
-  }
+  // Future<bool> validateOrderBeforePayment(BuildContext context) async {
+  //   try {
+  //     if (HomeProvider.cartItem.isEmpty) {
+  //       ShowToastDialog.showToast(
+  //         "Your cart is empty. Please add items before placing order.".tr,
+  //       );
+  //       return false;
+  //     }
+  //
+  //     try {
+  //       await validateMinimumOrderValue();
+  //     } catch (e) {
+  //       return false;
+  //     }
+  //
+  //     final addressValid = await _validateAddressBulletproof(context);
+  //     if (!addressValid) {
+  //       return false;
+  //     }
+  //
+  //     if (vendorModel.id != null) {
+  //       final latestVendor = await FireStoreUtils.getVendorById(
+  //         vendorModel.id!,
+  //       );
+  //       if (latestVendor != null) {
+  //         if (latestVendor.vType == 'mart') {
+  //           if (latestVendor.isOpen == false) {
+  //             ShowToastDialog.showToast(
+  //               "Jippy Mart is temporarily closed. Please try again later.",
+  //             );
+  //             return false;
+  //           }
+  //         } else {
+  //           if (!RestaurantStatusUtils.canAcceptOrders(latestVendor)) {
+  //             ShowToastDialog.showToast("Restaurant Closed");
+  //             return false;
+  //           }
+  //         }
+  //       }
+  //     }
+  //
+  //     // Validate all items in cart for availability
+  //     for (var item in HomeProvider.cartItem) {
+  //       bool isMartItem = item.vendorID?.startsWith('mart_') == true;
+  //
+  //       if (isMartItem) {
+  //         try {
+  //           final martItems = await MartFirestoreService().getMartItems();
+  //           final martItem = martItems.firstWhere(
+  //             (mart) => mart.id == item.id!,
+  //             orElse: () => MartItemModel(
+  //               id: '',
+  //               name: '',
+  //               description: '',
+  //               price: 0,
+  //               photo: '',
+  //               isAvailable: false,
+  //               publish: false,
+  //               veg: false,
+  //               nonveg: false,
+  //               quantity: 0,
+  //             ),
+  //           );
+  //
+  //           final availableQuantity = martItem.quantity;
+  //           final orderedQuantity = item.quantity ?? 0;
+  //           if (availableQuantity != -1 &&
+  //               availableQuantity < orderedQuantity) {
+  //             final itemName = martItem.displayName;
+  //             ShowToastDialog.showToast(
+  //               "$itemName is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity",
+  //             );
+  //             return false;
+  //           }
+  //         } catch (e) {
+  //           print('[ORDER VALIDATION] ❌ Error validating mart items: $e');
+  //           ShowToastDialog.showToast(
+  //             "Error validating mart items. Please try again.",
+  //           );
+  //           return false;
+  //         }
+  //       } else {
+  //         final productId = item.id;
+  //         if (productId == null ||
+  //             productId.isEmpty ||
+  //             productId == 'null' ||
+  //             productId.trim().isEmpty) {
+  //           print('[CART_VALIDATION] Invalid product ID: $productId');
+  //           ShowToastDialog.showToast(
+  //             "Some items in your cart have invalid product information.".tr,
+  //           );
+  //           return false;
+  //         }
+  //
+  //         final baseProductId = productId.contains('~')
+  //             ? productId.split('~').first
+  //             : productId;
+  //
+  //         final product = await FireStoreUtils.getProductById(baseProductId);
+  //         if (product == null) {
+  //           ShowToastDialog.showToast(
+  //             "Some items in your cart are no longer available.".tr,
+  //           );
+  //           return false;
+  //         }
+  //
+  //         if (product.quantity != -1) {
+  //           int availableQuantity = product.quantity ?? 0;
+  //           int orderedQuantity = item.quantity ?? 0;
+  //
+  //           if (availableQuantity < orderedQuantity) {
+  //             ShowToastDialog.showToast(
+  //               "${product.name} is out of stock. Available: $availableQuantity, Ordered: $orderedQuantity"
+  //                   .tr,
+  //             );
+  //             return false;
+  //           }
+  //         }
+  //       }
+  //     }
+  //
+  //     return true;
+  //   } catch (e) {
+  //     print('[ORDER_VALIDATION] ❌ Error: $e');
+  //     ShowToastDialog.showToast("Error validating order. Please try again.".tr);
+  //     return false;
+  //   }
+  // }
 
   // ============ SET ORDER METHOD ============
   // Add this method if it's missing:
@@ -8750,206 +8743,206 @@ class CartControllerProvider extends ChangeNotifier {
     return _productCache[productId];
   }
 
-  Future<Map<String, PriceUpdateResult>> validateAndUpdateCartPrices() async {
-    final Map<String, PriceUpdateResult> results = {};
-    final items = List<CartProductModel>.from(HomeProvider.cartItem);
-
-    print(
-      '[PRICE_SYNC] 🔍 Starting IMMEDIATE price validation for ${items.length} items',
-    );
-
-    final foodCatalogIds = <String>{};
-    final martLineIds = <String>{};
-    for (final cartItem in items) {
-      if (cartItem.id == null || cartItem.id!.isEmpty) continue;
-      if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
-      if (_isMartItem(cartItem)) {
-        martLineIds.add(cartItem.id!);
-      } else {
-        final cid = _catalogProductIdForFetch(cartItem.id!);
-        if (cid.isNotEmpty) foodCatalogIds.add(cid);
-      }
-    }
-
-    var foodByCatalogId = <String, ProductModel?>{};
-    var martByLineId = <String, MartItemModel?>{};
-
-    try {
-      await Future.wait([
-        Future(() async {
-          if (foodCatalogIds.isEmpty) return;
-          foodByCatalogId.addAll(
-            await FireStoreUtils.getProductsByIds(
-              foodCatalogIds.toList(),
-              forceRefresh: true,
-            ),
-          );
-        }),
-        Future(() async {
-          if (martLineIds.isEmpty) return;
-          final martService = Get.find<MartFirestoreService>();
-          await Future.wait(
-            martLineIds.map((lineId) async {
-              try {
-                martByLineId[lineId] = await martService.getItemById(lineId);
-              } catch (_) {
-                martByLineId[lineId] = null;
-              }
-            }),
-          );
-        }),
-      ]);
-    } catch (e) {
-      print('[PRICE_SYNC] ❌ Prefetch failed: $e');
-    }
-
-    var cartDirty = false;
-
-    for (var cartItem in items) {
-      try {
-        if (cartItem.id == null || cartItem.id!.isEmpty) {
-          continue;
-        }
-
-        final isPromotionalItem =
-            cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
-
-        if (isPromotionalItem) {
-          print('[PRICE_SYNC] 🎯 Skipping promotional item: ${cartItem.name}');
-          continue;
-        }
-
-        final isMart = _isMartItem(cartItem);
-        final itemType = isMart ? 'MART' : 'FOOD';
-
-        final storedDiscountPrice =
-            double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
-        final storedRegularPrice =
-            double.tryParse(cartItem.price ?? "0") ?? 0.0;
-        final storedPrice =
-            storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
-            ? storedDiscountPrice
-            : storedRegularPrice;
-
-        print(
-          '[PRICE_SYNC] [$itemType] Checking ${cartItem.name}: Stored price in cart = ₹$storedPrice',
-        );
-
-        dynamic currentProduct;
-        double currentPrice = 0.0;
-
-        try {
-          if (isMart) {
-            currentProduct = martByLineId[cartItem.id!];
-            if (currentProduct != null && currentProduct is MartItemModel) {
-              currentPrice = currentProduct.finalPrice;
-            }
-          } else {
-            final catalogId = _catalogProductIdForFetch(cartItem.id!);
-            currentProduct = catalogId.isEmpty
-                ? null
-                : foodByCatalogId[catalogId];
-            if (currentProduct != null && currentProduct is ProductModel) {
-              currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
-            }
-          }
-
-          print(
-            '[PRICE_SYNC] [$itemType] Current price from DB = ₹$currentPrice',
-          );
-
-          final priceDifference = (currentPrice - storedPrice).abs();
-          const tolerance = 0.01;
-
-          if (priceDifference > tolerance) {
-            print(
-              '[PRICE_SYNC] ✅✅✅ PRICE CHANGE DETECTED for ${cartItem.name}: ₹$storedPrice → ₹$currentPrice (difference: ₹$priceDifference)',
-            );
-
-            results[cartItem.id!] = PriceUpdateResult(
-              productId: cartItem.id!,
-              status: PriceStatus.priceChanged,
-              oldPrice: storedPrice.toStringAsFixed(2),
-              newPrice: currentPrice.toStringAsFixed(2),
-              productName: cartItem.name,
-            );
-
-            cartItem.price = currentPrice.toStringAsFixed(2);
-            cartItem.discountPrice = "0";
-            if (currentProduct is ProductModel &&
-                cartItem.variantInfo != null) {
-              _syncVariantInfoFieldsFromProduct(
-                cartItem.variantInfo!,
-                currentProduct,
-              );
-            }
-
-            await DatabaseHelper.instance.updateCartProduct(cartItem);
-            cartDirty = true;
-          } else {
-            print(
-              '[PRICE_SYNC] ℹ️ No significant price change for ${cartItem.name} (difference: ₹$priceDifference)',
-            );
-
-            results[cartItem.id!] = PriceUpdateResult(
-              productId: cartItem.id!,
-              status: PriceStatus.noChange,
-              oldPrice: storedPrice.toStringAsFixed(2),
-              newPrice: currentPrice.toStringAsFixed(2),
-            );
-
-            if (!isMart &&
-                currentProduct is ProductModel &&
-                cartItem.variantInfo != null) {
-              bool needSave = _syncVariantInfoFieldsFromProduct(
-                cartItem.variantInfo!,
-                currentProduct,
-              );
-              final liveLine = _getCurrentProductPrice(
-                currentProduct,
-                cartItem,
-              );
-              final sdDisc =
-                  double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
-              final sdReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
-              final sdDisplay = sdDisc > 0 && sdDisc < sdReg ? sdDisc : sdReg;
-              if ((liveLine - sdDisplay).abs() > 0.01) {
-                cartItem.price = liveLine.toStringAsFixed(2);
-                cartItem.discountPrice = '0';
-                needSave = true;
-              }
-              if (needSave) {
-                await DatabaseHelper.instance.updateCartProduct(cartItem);
-                cartDirty = true;
-              }
-            }
-          }
-        } catch (e) {
-          print(
-            '[PRICE_SYNC] ❌ Error fetching current price for ${cartItem.id}: $e',
-          );
-          results[cartItem.id!] = PriceUpdateResult(
-            productId: cartItem.id!,
-            status: PriceStatus.error,
-            oldPrice: storedPrice.toStringAsFixed(2),
-            error: e.toString(),
-          );
-        }
-      } catch (e) {
-        print('[PRICE_SYNC] ❌ General error for item ${cartItem.id}: $e');
-      }
-    }
-
-    if (cartDirty) {
-      _priceSyncVersion++;
-      notifyListeners();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(calculatePrice());
-      });
-    }
-
-    return results;
-  }
+  // Future<Map<String, PriceUpdateResult>> validateAndUpdateCartPrices() async {
+  //   final Map<String, PriceUpdateResult> results = {};
+  //   final items = List<CartProductModel>.from(HomeProvider.cartItem);
+  //
+  //   print(
+  //     '[PRICE_SYNC] 🔍 Starting IMMEDIATE price validation for ${items.length} items',
+  //   );
+  //
+  //   final foodCatalogIds = <String>{};
+  //   final martLineIds = <String>{};
+  //   for (final cartItem in items) {
+  //     if (cartItem.id == null || cartItem.id!.isEmpty) continue;
+  //     if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
+  //     if (_isMartItem(cartItem)) {
+  //       martLineIds.add(cartItem.id!);
+  //     } else {
+  //       final cid = _catalogProductIdForFetch(cartItem.id!);
+  //       if (cid.isNotEmpty) foodCatalogIds.add(cid);
+  //     }
+  //   }
+  //
+  //   var foodByCatalogId = <String, ProductModel?>{};
+  //   var martByLineId = <String, MartItemModel?>{};
+  //
+  //   try {
+  //     await Future.wait([
+  //       Future(() async {
+  //         if (foodCatalogIds.isEmpty) return;
+  //         foodByCatalogId.addAll(
+  //           await FireStoreUtils.getProductsByIds(
+  //             foodCatalogIds.toList(),
+  //             forceRefresh: true,
+  //           ),
+  //         );
+  //       }),
+  //       Future(() async {
+  //         if (martLineIds.isEmpty) return;
+  //         final martService = Get.find<MartFirestoreService>();
+  //         await Future.wait(
+  //           martLineIds.map((lineId) async {
+  //             try {
+  //               martByLineId[lineId] = await martService.getItemById(lineId);
+  //             } catch (_) {
+  //               martByLineId[lineId] = null;
+  //             }
+  //           }),
+  //         );
+  //       }),
+  //     ]);
+  //   } catch (e) {
+  //     print('[PRICE_SYNC] ❌ Prefetch failed: $e');
+  //   }
+  //
+  //   var cartDirty = false;
+  //
+  //   for (var cartItem in items) {
+  //     try {
+  //       if (cartItem.id == null || cartItem.id!.isEmpty) {
+  //         continue;
+  //       }
+  //
+  //       final isPromotionalItem =
+  //           cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
+  //
+  //       if (isPromotionalItem) {
+  //         print('[PRICE_SYNC] 🎯 Skipping promotional item: ${cartItem.name}');
+  //         continue;
+  //       }
+  //
+  //       final isMart = _isMartItem(cartItem);
+  //       final itemType = isMart ? 'MART' : 'FOOD';
+  //
+  //       final storedDiscountPrice =
+  //           double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
+  //       final storedRegularPrice =
+  //           double.tryParse(cartItem.price ?? "0") ?? 0.0;
+  //       final storedPrice =
+  //           storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
+  //           ? storedDiscountPrice
+  //           : storedRegularPrice;
+  //
+  //       print(
+  //         '[PRICE_SYNC] [$itemType] Checking ${cartItem.name}: Stored price in cart = ₹$storedPrice',
+  //       );
+  //
+  //       dynamic currentProduct;
+  //       double currentPrice = 0.0;
+  //
+  //       try {
+  //         if (isMart) {
+  //           currentProduct = martByLineId[cartItem.id!];
+  //           if (currentProduct != null && currentProduct is MartItemModel) {
+  //             currentPrice = currentProduct.finalPrice;
+  //           }
+  //         } else {
+  //           final catalogId = _catalogProductIdForFetch(cartItem.id!);
+  //           currentProduct = catalogId.isEmpty
+  //               ? null
+  //               : foodByCatalogId[catalogId];
+  //           if (currentProduct != null && currentProduct is ProductModel) {
+  //             currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
+  //           }
+  //         }
+  //
+  //         print(
+  //           '[PRICE_SYNC] [$itemType] Current price from DB = ₹$currentPrice',
+  //         );
+  //
+  //         final priceDifference = (currentPrice - storedPrice).abs();
+  //         const tolerance = 0.01;
+  //
+  //         if (priceDifference > tolerance) {
+  //           print(
+  //             '[PRICE_SYNC] ✅✅✅ PRICE CHANGE DETECTED for ${cartItem.name}: ₹$storedPrice → ₹$currentPrice (difference: ₹$priceDifference)',
+  //           );
+  //
+  //           results[cartItem.id!] = PriceUpdateResult(
+  //             productId: cartItem.id!,
+  //             status: PriceStatus.priceChanged,
+  //             oldPrice: storedPrice.toStringAsFixed(2),
+  //             newPrice: currentPrice.toStringAsFixed(2),
+  //             productName: cartItem.name,
+  //           );
+  //
+  //           cartItem.price = currentPrice.toStringAsFixed(2);
+  //           cartItem.discountPrice = "0";
+  //           if (currentProduct is ProductModel &&
+  //               cartItem.variantInfo != null) {
+  //             _syncVariantInfoFieldsFromProduct(
+  //               cartItem.variantInfo!,
+  //               currentProduct,
+  //             );
+  //           }
+  //
+  //           await DatabaseHelper.instance.updateCartProduct(cartItem);
+  //           cartDirty = true;
+  //         } else {
+  //           print(
+  //             '[PRICE_SYNC] ℹ️ No significant price change for ${cartItem.name} (difference: ₹$priceDifference)',
+  //           );
+  //
+  //           results[cartItem.id!] = PriceUpdateResult(
+  //             productId: cartItem.id!,
+  //             status: PriceStatus.noChange,
+  //             oldPrice: storedPrice.toStringAsFixed(2),
+  //             newPrice: currentPrice.toStringAsFixed(2),
+  //           );
+  //
+  //           if (!isMart &&
+  //               currentProduct is ProductModel &&
+  //               cartItem.variantInfo != null) {
+  //             bool needSave = _syncVariantInfoFieldsFromProduct(
+  //               cartItem.variantInfo!,
+  //               currentProduct,
+  //             );
+  //             final liveLine = _getCurrentProductPrice(
+  //               currentProduct,
+  //               cartItem,
+  //             );
+  //             final sdDisc =
+  //                 double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
+  //             final sdReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
+  //             final sdDisplay = sdDisc > 0 && sdDisc < sdReg ? sdDisc : sdReg;
+  //             if ((liveLine - sdDisplay).abs() > 0.01) {
+  //               cartItem.price = liveLine.toStringAsFixed(2);
+  //               cartItem.discountPrice = '0';
+  //               needSave = true;
+  //             }
+  //             if (needSave) {
+  //               await DatabaseHelper.instance.updateCartProduct(cartItem);
+  //               cartDirty = true;
+  //             }
+  //           }
+  //         }
+  //       } catch (e) {
+  //         print(
+  //           '[PRICE_SYNC] ❌ Error fetching current price for ${cartItem.id}: $e',
+  //         );
+  //         results[cartItem.id!] = PriceUpdateResult(
+  //           productId: cartItem.id!,
+  //           status: PriceStatus.error,
+  //           oldPrice: storedPrice.toStringAsFixed(2),
+  //           error: e.toString(),
+  //         );
+  //       }
+  //     } catch (e) {
+  //       print('[PRICE_SYNC] ❌ General error for item ${cartItem.id}: $e');
+  //     }
+  //   }
+  //
+  //   if (cartDirty) {
+  //     _priceSyncVersion++;
+  //     notifyListeners();
+  //     WidgetsBinding.instance.addPostFrameCallback((_) {
+  //       unawaited(calculatePrice());
+  //     });
+  //   }
+  //
+  //   return results;
+  // }
 
   Future<void> markCouponAsUsed(String couponId) async {
     try {

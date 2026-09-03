@@ -769,7 +769,7 @@ class FinalDeepLinkService {
 
     if (productId != null) {
       print('🔥 [NEW HANDLER] Handling product deep link for ID: $productId');
-      await _handleProductDeepLink(productId, context);
+      // await _handleProductDeepLink(productId, context);
     } else {
       print('❌ [NEW HANDLER] No product ID found in URL');
     }
@@ -779,98 +779,98 @@ class FinalDeepLinkService {
   /// 1) Try mart item (MartItemModel) via MartFirestoreService.
   /// 2) Fallback to restaurant product (ProductModel) via FireStoreUtils,
   ///    then navigate to the corresponding restaurant details.
-  Future<void> _handleProductDeepLink(
-    String productId,
-    BuildContext context,
-  ) async {
-    try {
-      // Try mart item first
-      MartItemModel? martItem;
-      try {
-        final martService = Get.find<MartFirestoreService>();
-        martItem = await martService.getItemById(productId);
-      } catch (e) {
-        print(
-          '❌ [DEEP_LINK_PRODUCT] Error fetching mart item, will try restaurant product: $e',
-        );
-      }
-
-      if (martItem != null) {
-        print(
-          '✅ [DEEP_LINK_PRODUCT] Found mart item for ID: $productId, navigating to MartProductDetailsScreen',
-        );
-        GlobalDeeplinkHandler.navigatorKey.currentState?.push(
-          MaterialPageRoute(
-            builder: (ctx) => MartProductDetailsScreen(product: martItem),
-          ),
-        );
-        return;
-      }
-
-      // Fallback to restaurant product
-      print(
-        '🔍 [DEEP_LINK_PRODUCT] Mart item not found, trying restaurant product for ID: $productId',
-      );
-      ProductModel? productModel = await FireStoreUtils.getProductById(
-        productId,
-      );
-      if (productModel == null) {
-        print(
-          '❌ [DEEP_LINK_PRODUCT] No product (mart or restaurant) found for ID: $productId',
-        );
-        ShowToastDialog.showToast("Product not found".tr);
-        return;
-      }
-
-      VendorModel? vendorModel = await FireStoreUtils.getVendorById(
-        productModel.vendorID.toString(),
-      );
-      if (vendorModel == null) {
-        print(
-          '❌ [DEEP_LINK_PRODUCT] Vendor not found for product ID: $productId',
-        );
-        ShowToastDialog.showToast("Store not found".tr);
-        return;
-      }
-
-      // Ensure zone matches current selected zone
-      // if (vendorModel.zoneId != Constant.selectedZone?.id) {
-      //   print(
-      //     '⚠️ [DEEP_LINK_PRODUCT] Vendor zone ${vendorModel.zoneId} != selected zone ${Constant.selectedZone?.id}',
-      //   );
-      //   ShowToastDialog.showToast(
-      //     "Sorry, The Zone is not available in your area. Change the other location first."
-      //         .tr,
-      //   );
-      //   return;
-      // }
-
-      print(
-        '✅ [DEEP_LINK_PRODUCT] Navigating to RestaurantDetailsScreen for vendor ${vendorModel.id}',
-      );
-      try {
-        final ctx =
-            GlobalDeeplinkHandler.navigatorKey.currentContext ?? context;
-        final restaurantDetailsProvider =
-            Provider.of<RestaurantDetailsProvider>(ctx, listen: false);
-        restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
-      } catch (e) {
-        print(
-          '⚠️ [DEEP_LINK_PRODUCT] Could not initialize RestaurantDetailsProvider: $e',
-        );
-      }
-
-      Get.to(
-        () => const RestaurantDetailsScreen(),
-        arguments: {"vendorModel": vendorModel},
-      );
-    } catch (e) {
-      print(
-        '❌ [DEEP_LINK_PRODUCT] Error handling product deep link for ID $productId: $e',
-      );
-      ShowToastDialog.showToast("Error loading product details".tr);
-    }
-  }
+  // Future<void> _handleProductDeepLink(
+  //   String productId,
+  //   BuildContext context,
+  // ) async {
+  //   try {
+  //     // Try mart item first
+  //     MartItemModel? martItem;
+  //     try {
+  //       final martService = Get.find<MartFirestoreService>();
+  //       martItem = await martService.getItemById(productId);
+  //     } catch (e) {
+  //       print(
+  //         '❌ [DEEP_LINK_PRODUCT] Error fetching mart item, will try restaurant product: $e',
+  //       );
+  //     }
+  //
+  //     if (martItem != null) {
+  //       print(
+  //         '✅ [DEEP_LINK_PRODUCT] Found mart item for ID: $productId, navigating to MartProductDetailsScreen',
+  //       );
+  //       GlobalDeeplinkHandler.navigatorKey.currentState?.push(
+  //         MaterialPageRoute(
+  //           builder: (ctx) => MartProductDetailsScreen(product: martItem),
+  //         ),
+  //       );
+  //       return;
+  //     }
+  //
+  //     // Fallback to restaurant product
+  //     print(
+  //       '🔍 [DEEP_LINK_PRODUCT] Mart item not found, trying restaurant product for ID: $productId',
+  //     );
+  //     ProductModel? productModel = await FireStoreUtils.getProductById(
+  //       productId,
+  //     );
+  //     if (productModel == null) {
+  //       print(
+  //         '❌ [DEEP_LINK_PRODUCT] No product (mart or restaurant) found for ID: $productId',
+  //       );
+  //       ShowToastDialog.showToast("Product not found".tr);
+  //       return;
+  //     }
+  //
+  //     VendorModel? vendorModel = await FireStoreUtils.getVendorById(
+  //       productModel.vendorID.toString(),
+  //     );
+  //     if (vendorModel == null) {
+  //       print(
+  //         '❌ [DEEP_LINK_PRODUCT] Vendor not found for product ID: $productId',
+  //       );
+  //       ShowToastDialog.showToast("Store not found".tr);
+  //       return;
+  //     }
+  //
+  //     // Ensure zone matches current selected zone
+  //     // if (vendorModel.zoneId != Constant.selectedZone?.id) {
+  //     //   print(
+  //     //     '⚠️ [DEEP_LINK_PRODUCT] Vendor zone ${vendorModel.zoneId} != selected zone ${Constant.selectedZone?.id}',
+  //     //   );
+  //     //   ShowToastDialog.showToast(
+  //     //     "Sorry, The Zone is not available in your area. Change the other location first."
+  //     //         .tr,
+  //     //   );
+  //     //   return;
+  //     // }
+  //
+  //     print(
+  //       '✅ [DEEP_LINK_PRODUCT] Navigating to RestaurantDetailsScreen for vendor ${vendorModel.id}',
+  //     );
+  //     try {
+  //       final ctx =
+  //           GlobalDeeplinkHandler.navigatorKey.currentContext ?? context;
+  //       final restaurantDetailsProvider =
+  //           Provider.of<RestaurantDetailsProvider>(ctx, listen: false);
+  //       restaurantDetailsProvider.initFunction(vendorModels: vendorModel);
+  //     } catch (e) {
+  //       print(
+  //         '⚠️ [DEEP_LINK_PRODUCT] Could not initialize RestaurantDetailsProvider: $e',
+  //       );
+  //     }
+  //
+  //     Get.to(
+  //       () => const RestaurantDetailsScreen(),
+  //       arguments: {"vendorModel": vendorModel},
+  //     );
+  //   } catch (e) {
+  //     print(
+  //       '❌ [DEEP_LINK_PRODUCT] Error handling product deep link for ID $productId: $e',
+  //     );
+  //     ShowToastDialog.showToast("Error loading product details".tr);
+  //   }
+  // }
 
   void _navigateToCatering() {
     try {
