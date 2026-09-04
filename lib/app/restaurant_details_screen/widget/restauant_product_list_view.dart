@@ -896,6 +896,13 @@ class _AddToCartButton extends StatelessWidget {
   }
 
   Widget _buildAddButton(BuildContext context) {
+    final hasOptions =
+        productModel.options != null && productModel.options!.isNotEmpty;
+    final hasItemAttributes =
+        productModel.itemAttribute != null &&
+        productModel.itemAttribute!.attributes != null &&
+        productModel.itemAttribute!.attributes!.isNotEmpty;
+
     return SizedBox(
       width: double.infinity,
       height: rs.btnHeight,
@@ -910,22 +917,40 @@ class _AddToCartButton extends StatelessWidget {
                 _showLoginDialog(context);
                 return;
               }
-              controller.addProductAndRemoveProductFunction(
-                productModel: productModel,
-                price: _priceToPass,
-                disPrice: _disPriceToPass,
-              );
+              if (hasItemAttributes) {
+                controller.selectedVariants.clear();
+                controller.selectedIndexVariants.clear();
+                controller.selectedIndexArray.clear();
+                controller.selectedAddOns.clear();
+                controller.quantity = 1;
+                controller.calculatePrice(productModel);
+                productDetailsBottomSheet(context, productModel);
+              } else if (hasOptions) {
+                controller.selectedAddOns.clear();
+                showProductOptionsBottomSheet(
+                  context: context,
+                  controller: controller,
+                  productModel: productModel,
+                  priceToPass: _priceToPass,
+                  disPriceToPass: _disPriceToPass,
+                  buttonFontSize: rs.btnFontSize,
+                );
+              } else {
+                controller.addProductAndRemoveProductFunction(
+                  productModel: productModel,
+                  price: _priceToPass,
+                  disPrice: _disPriceToPass,
+                );
+              }
             },
             borderRadius: BorderRadius.circular(rs.btnRadius),
             child: Center(
               child: Text(
-                (productModel.options != null &&
-                        productModel.options!.isNotEmpty &&
-                        (productModel.itemAttribute == null ||
-                            productModel.itemAttribute!.attributes == null ||
-                            productModel.itemAttribute!.attributes!.isEmpty))
+                hasOptions
                     ? 'Options'.tr
-                    : 'Add'.tr,
+                    : hasItemAttributes
+                        ? 'Add'.tr
+                        : 'Add'.tr,
                 style: TextStyle(
                   fontSize: rs.btnFontSize,
                   fontFamily: AppThemeData.semiBold,

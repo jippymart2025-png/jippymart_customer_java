@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/models/customer_cart_model.dart';
 import 'package:jippymart_customer/models/customer_checkout_model.dart';
@@ -15,54 +16,56 @@ class CartApiService {
   static Future<bool> updateCart({
     required int customerId,
     required int productId,
-    int? variantOptionId,
-    required int quantity,
-    required double unitPrice,
     required int outletId,
+    required List<Map<String, dynamic>> variants,
   }) async {
     try {
       final uri = Uri.parse('${_base}co/cart/update');
+
       final body = {
         'customerId': customerId,
+        'outletId': outletId,
         'productId': productId,
-        'variantOptionId': variantOptionId,
-        'quantity': quantity,
-        'unitPrice': unitPrice,
-        'outletId': outletId, // ✅ fixed
+        'variants': variants,
       };
 
-      print('[CartApi] POST $uri');
-      print('[CartApi] body: $body');
+      debugPrint('[CartApi] POST $uri');
+      debugPrint('[CartApi] body: ${jsonEncode(body)}');
 
       final response = await http
           .post(uri, headers: await getHeaders(), body: jsonEncode(body))
           .timeout(const Duration(seconds: 15));
 
-      print('[CartApi] status: ${response.statusCode}');
-      print('[CartApi] response: ${response.body}');
+      debugPrint('[CartApi] status: ${response.statusCode}');
+
+      debugPrint('[CartApi] response: ${response.body}');
 
       if (response.statusCode != 200 && response.statusCode != 201) {
         return false;
       }
 
-      final bodyText = response.body.trim();
-      if (bodyText.isEmpty) return true;
+      final responseBody = response.body.trim();
+
+      if (responseBody.isEmpty) {
+        return true;
+      }
 
       try {
-        final decoded = jsonDecode(bodyText);
+        final decoded = jsonDecode(responseBody);
+
         if (decoded is Map<String, dynamic>) {
           if (decoded.containsKey('success')) {
             return decoded['success'] == true;
           }
         }
       } catch (_) {
-        return bodyText.toLowerCase().contains('item added to cart') ||
-            bodyText.toLowerCase().contains('cart');
+        // Response is not JSON.
       }
 
       return true;
     } catch (e) {
-      print('[CartApi] updateCart error: $e');
+      debugPrint('[CartApi] updateCart error: $e');
+
       return false;
     }
   }

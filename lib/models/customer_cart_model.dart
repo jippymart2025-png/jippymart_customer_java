@@ -1,5 +1,6 @@
 class CustomerCartItemModel {
   final int productId;
+  final int? variantOptionId;
   final String productName;
   final String? productImage;
   final int quantity;
@@ -7,6 +8,7 @@ class CustomerCartItemModel {
 
   const CustomerCartItemModel({
     required this.productId,
+    this.variantOptionId,
     required this.productName,
     this.productImage,
     required this.quantity,
@@ -18,6 +20,9 @@ class CustomerCartItemModel {
       productId: json['productId'] is int
           ? json['productId'] as int
           : int.tryParse(json['productId']?.toString() ?? '') ?? 0,
+      variantOptionId: json['variantOptionId'] is int
+          ? json['variantOptionId'] as int
+          : int.tryParse(json['variantOptionId']?.toString() ?? ''),
       productName: json['productName']?.toString() ?? '',
       productImage: json['productImage']?.toString(),
       quantity: json['quantity'] is int
@@ -32,11 +37,13 @@ class CustomerCartItemModel {
 
 class CustomerCartModel {
   final int customerId;
+  final int? outletId;
   final List<CustomerCartItemModel> items;
   final double grandTotal;
 
   const CustomerCartModel({
     required this.customerId,
+    this.outletId,
     required this.items,
     required this.grandTotal,
   });
@@ -58,6 +65,9 @@ class CustomerCartModel {
       customerId: json['customerId'] is int
           ? json['customerId'] as int
           : int.tryParse(json['customerId']?.toString() ?? '') ?? 0,
+      outletId: json['outletId'] is int
+          ? json['outletId'] as int
+          : int.tryParse(json['outletId']?.toString() ?? ''),
       items: items,
       grandTotal: json['grandTotal'] is num
           ? (json['grandTotal'] as num).toDouble()

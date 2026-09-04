@@ -128,10 +128,7 @@ class FavouriteProvider extends ChangeNotifier {
     });
   }
 
-  static String _firstNonEmptyId(
-    Map<String, dynamic> json,
-    List<String> keys,
-  ) {
+  static String _firstNonEmptyId(Map<String, dynamic> json, List<String> keys) {
     for (final key in keys) {
       final value = json[key];
       if (value == null) continue;
@@ -396,26 +393,26 @@ class FavouriteProvider extends ChangeNotifier {
 
   static Future<void> addFavouriteFood(String productId) async {
     try {
-      print("===== addFavouriteFood called =====");
+      debugPrint("===== addFavouriteFood called =====");
 
       final userId = await SqlStorageConst.getFirebaseId();
-      print("userId: $userId");
-      print("productId: $productId");
+      debugPrint("userId: $userId");
+      debugPrint("productId: $productId");
 
       if (userId == null) {
-        print("userId is null");
+        debugPrint("userId is null");
         return;
       }
 
       if (productId.isEmpty) {
-        print("productId is empty");
+        debugPrint("productId is empty");
         return;
       }
 
       final url =
           '${AppConst.outletBaseUrl}fm/customer/favorites/toggleFavouriteOutletOrProduct';
 
-      print("URL: $url");
+      debugPrint("URL: $url");
 
       final body = {
         "customerId": userId,
@@ -423,7 +420,7 @@ class FavouriteProvider extends ChangeNotifier {
         "favouriteType": "PRODUCT",
       };
 
-      print("BODY: ${jsonEncode(body)}");
+      debugPrint("BODY: ${jsonEncode(body)}");
 
       final response = await http.post(
         Uri.parse(url),
@@ -431,10 +428,10 @@ class FavouriteProvider extends ChangeNotifier {
         body: jsonEncode(body),
       );
 
-      print("STATUS: ${response.statusCode}");
-      print("RESPONSE: ${response.body}");
+      debugPrint("STATUS: ${response.statusCode}");
+      debugPrint("RESPONSE: ${response.body}");
     } catch (e, s) {
-      print("ERROR: $e");
+      debugPrint("ERROR: $e");
       print(s);
     }
   }
@@ -491,16 +488,16 @@ class FavouriteProvider extends ChangeNotifier {
   }
 
   Future<void> removeFavoriteFoodUI(String productId, int index) async {
-    print("1. removeFavoriteFoodUI called");
-    print("2. productId = $productId");
-    print("3. index = $index");
+    debugPrint("1. removeFavoriteFoodUI called");
+    debugPrint("2. productId = $productId");
+    debugPrint("3. index = $index");
 
     try {
-      print("4. Before API");
+      debugPrint("4. Before API");
 
       await addFavouriteFood(productId);
 
-      print("5. After API");
+      debugPrint("5. After API");
 
       if (index >= 0 && index < favouriteFoodList.length) {
         favouriteFoodList.removeAt(index);
@@ -508,7 +505,7 @@ class FavouriteProvider extends ChangeNotifier {
 
       notifyListeners();
 
-      print("6. UI updated");
+      debugPrint("6. UI updated");
     } catch (e, s) {
       print(e);
       print(s);

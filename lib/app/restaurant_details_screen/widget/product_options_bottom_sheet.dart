@@ -201,14 +201,16 @@ void showProductOptionsBottomSheet({
                                           ? null
                                           : () {
                                               setState(() {
-                                                // Keep single
-                                                // selection for
-                                                // product variant.
-                                                selectedOptionIndices.clear();
-
-                                                selectedOptionIndices.add(
-                                                  index,
-                                                );
+                                                if (selectedOptionIndices
+                                                    .contains(index)) {
+                                                  selectedOptionIndices.remove(
+                                                    index,
+                                                  );
+                                                } else {
+                                                  selectedOptionIndices.add(
+                                                    index,
+                                                  );
+                                                }
                                               });
                                             },
                                       borderRadius: BorderRadius.circular(12),
@@ -233,35 +235,31 @@ void showProductOptionsBottomSheet({
                                         ),
                                         child: Row(
                                           children: [
-                                            // Radio
+                                            // Checkbox
                                             Container(
                                               width: 20,
                                               height: 20,
                                               decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
+                                                shape: BoxShape.rectangle,
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
                                                 border: Border.all(
                                                   color: isSelected
                                                       ? AppThemeData.primary300
                                                       : AppThemeData.grey400,
                                                   width: 2,
                                                 ),
+                                                color: isSelected
+                                                    ? AppThemeData.primary300
+                                                    : Colors.transparent,
                                               ),
-                                              child: Center(
-                                                child: AnimatedContainer(
-                                                  duration: const Duration(
-                                                    milliseconds: 150,
-                                                  ),
-                                                  width: 10,
-                                                  height: 10,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                    color: isSelected
-                                                        ? AppThemeData
-                                                              .primary300
-                                                        : Colors.transparent,
-                                                  ),
-                                                ),
-                                              ),
+                                              child: isSelected
+                                                  ? const Icon(
+                                                      Icons.check,
+                                                      size: 14,
+                                                      color: Colors.white,
+                                                    )
+                                                  : null,
                                             ),
 
                                             const SizedBox(width: 10),
@@ -499,6 +497,9 @@ void showProductOptionsBottomSheet({
                             bool added = false;
 
                             if (hasOptions) {
+                              final List<VariantInfo> allVariantInfo = [];
+                              String optionPrice = priceToPass;
+
                               for (final index in selectedOptionIndices) {
                                 final selected = options[index];
 
@@ -527,21 +528,20 @@ void showProductOptionsBottomSheet({
                                       double.tryParse(priceToPass) ?? 0;
                                 }
 
-                                if (selectedPrice <= 0) {
-                                  ShowToastDialog.showToast(
-                                    'Invalid product price'.tr,
-                                  );
-                                  continue;
-                                }
+                                // if (selectedPrice <= 0) {
+                                //   ShowToastDialog.showToast(
+                                //     'Invalid product price'.tr,
+                                //   );
+                                //   continue;
+                                // }
 
                                 final String selectedPriceString = selectedPrice
                                     .toString();
 
-                                final String optionPrice =
-                                    Constant.productCommissionPrice(
-                                      controller.vendorModel,
-                                      selectedPriceString,
-                                    );
+                                optionPrice = Constant.productCommissionPrice(
+                                  controller.vendorModel,
+                                  selectedPriceString,
+                                );
 
                                 final String variantName =
                                     selected.variantName ?? '';
@@ -560,13 +560,17 @@ void showProductOptionsBottomSheet({
                                   },
                                 );
 
+                                allVariantInfo.add(variantInfo);
+                              }
+
+                              if (allVariantInfo.isNotEmpty) {
                                 controller.addToCart(
                                   productModel: productModel,
                                   price: optionPrice,
                                   discountPrice: '0',
                                   isIncrement: true,
                                   quantity: 1,
-                                  variantInfo: variantInfo,
+                                  variantInfo: allVariantInfo,
                                 );
                                 added = true;
                               }

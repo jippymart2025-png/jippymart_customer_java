@@ -36,7 +36,7 @@ class OrderPlacingProvider extends ChangeNotifier {
 
   getArgument({required OrderModel orderModels}) async {
     try {
-      await DatabaseHelper.instance.deleteAllCartProducts();
+      // await DatabaseHelper.instance.deleteAllCartProducts();
       orderModel = orderModels;
       print('DEBUG: Order received: ${orderModel.id}');
       isLoading = false;

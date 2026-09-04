@@ -3529,6 +3529,47 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> getCartData() async {
     _startOperation('getCartData');
 
+    // Fetch server cart directly so the stream gets populated
+    try {
+      final isLoggedIn = await SqlStorageConst.isUserLoggedIn();
+      if (isLoggedIn) {
+        final customerId =
+            int.tryParse(await SqlStorageConst.getUserId() ?? '');
+        if (customerId != null) {
+          final cart = await CartApiService.getCart(customerId);
+          if (cart != null && cart.items.isNotEmpty) {
+            final List<CartProductModel> serverCartItems = [];
+            for (final item in cart.items) {
+              final unitPrice =
+                  item.quantity > 0 ? item.totalPrice / item.quantity : 0.0;
+              serverCartItems.add(CartProductModel(
+                id: item.variantOptionId != null
+                    ? '${item.productId}~${item.variantOptionId}'
+                    : item.productId.toString(),
+                name: item.productName,
+                photo: item.productImage,
+                price: unitPrice.toStringAsFixed(2),
+                discountPrice: '0.0',
+                quantity: item.quantity,
+                vendorID: cart.outletId?.toString(),
+                variantInfo: item.variantOptionId != null
+                    ? VariantInfo(
+                        variantId: item.variantOptionId.toString(),
+                        variantPrice: unitPrice.toStringAsFixed(2),
+                      )
+                    : null,
+              ));
+            }
+            cartProvider.loadServerItems(serverCartItems);
+          } else {
+            cartProvider.loadServerItems([]);
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('[CartControllerProvider] getCartData fetch error: $e');
+    }
+
     _cartStreamSubscription ??= cartProvider.cartStream.listen((event) async {
       final newProductSetHash = _generateProductSetHashFromItems(event);
       final productSetChanged =
@@ -3762,7 +3803,7 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       // Clear cart items from memory
       HomeProvider.cartItem.clear();
-      await DatabaseHelper.instance.deleteAllCartProducts();
+      // await DatabaseHelper.instance.deleteAllCartProducts();
 
       // Reset all values
       subTotal = 0.0;
@@ -3784,10 +3825,10 @@ class CartControllerProvider extends ChangeNotifier {
       _addressInitialized = false;
 
       // Verify cart is actually empty
-      final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
-      if (remainingItems.isNotEmpty) {
-        debugPrint('[CLEAR_CART] ⚠️ Some items still remain in database');
-      }
+      // final remainingItems = await DatabaseHelper.instance.fetchCartProducts();
+      // if (remainingItems.isNotEmpty) {
+      //   debugPrint('[CLEAR_CART] ⚠️ Some items still remain in database');
+      // }
 
       notifyListeners();
     } catch (e) {
@@ -5684,9 +5725,6 @@ class CartControllerProvider extends ChangeNotifier {
     final productId = _resolveNumericProductId(cartProductModel);
 
     final outletId = int.tryParse(cartProductModel.vendorID ?? '');
-    final variantOptionId = int.tryParse(
-      cartProductModel.variantInfo?.variantId ?? '',
-    );
 
     if (customerId == null || productId == null || outletId == null) {
       print(
@@ -5698,15 +5736,47 @@ class CartControllerProvider extends ChangeNotifier {
       return false;
     }
 
+    // ------------------------------------------------------------
+    // Unit price
+    // ------------------------------------------------------------
     final unitPrice = double.tryParse(cartProductModel.price ?? '0') ?? 0;
 
+    // ------------------------------------------------------------
+    // Variant option ID
+    // ------------------------------------------------------------
+    final variantOptionId = int.tryParse(
+      cartProductModel.variantInfo?.variantId ?? '',
+    );
+
+    if (variantOptionId == null) {
+      print(
+        '[Cart] Invalid variantOptionId: '
+        '${cartProductModel.variantInfo?.variantId}',
+      );
+      return false;
+    }
+
+    // ------------------------------------------------------------
+    // Build variants
+    // ------------------------------------------------------------
+    final List<Map<String, dynamic>> variants = [
+      {
+        'variantOptionId': variantOptionId,
+        'quantity': quantity,
+        'unitPrice': unitPrice,
+      },
+    ];
+
+    print('[Cart] variants=$variants');
+
+    // ------------------------------------------------------------
+    // Update server cart
+    // ------------------------------------------------------------
     return CartApiService.updateCart(
       customerId: customerId,
       productId: productId,
-      variantOptionId: variantOptionId,
-      quantity: quantity,
-      unitPrice: unitPrice,
       outletId: outletId,
+      variants: variants,
     );
   }
 

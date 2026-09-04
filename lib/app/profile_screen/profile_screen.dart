@@ -617,7 +617,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           const FlutterSecureStorage secureStorage = FlutterSecureStorage();
           await secureStorage.delete(key: 'api_token');
           try {
-            await DatabaseHelper.instance.deleteAllCartProducts();
+            // await DatabaseHelper.instance.deleteAllCartProducts();
             CartControllerProvider cartControllerProvider =
                 Provider.of<CartControllerProvider>(context, listen: false);
             await cartControllerProvider.clearCart();

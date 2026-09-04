@@ -67,7 +67,7 @@ class CartProvider with ChangeNotifier {
       if (kDebugMode) {
         print('DEBUG: CartProvider _initCart() called');
       }
-      _cartItems = await DatabaseHelper.instance.fetchCartProducts();
+      // _cartItems = await DatabaseHelper.instance.fetchCartProducts();
       if (kDebugMode) {
         print(
           'DEBUG: CartProvider - Fetched ${_cartItems.length} items from database',
@@ -126,7 +126,7 @@ class CartProvider with ChangeNotifier {
       _locationSaved = true;
       _lastLocationSaveTime = now;
     }
-    _cartItems = await DatabaseHelper.instance.fetchCartProducts();
+    // _cartItems = await DatabaseHelper.instance.fetchCartProducts();
     print(
       'DEBUG: CartProvider - Fetched ${_cartItems.length} items from database',
     );
@@ -146,9 +146,9 @@ class CartProvider with ChangeNotifier {
         _cartItems[existingItemIndex].extras = [];
         _cartItems[existingItemIndex].extrasPrice = "0";
       }
-      await DatabaseHelper.instance.updateCartProduct(
-        _cartItems[existingItemIndex],
-      );
+      // await DatabaseHelper.instance.updateCartProduct(
+      //   _cartItems[existingItemIndex],
+      // );
     } else {
       bool isMartItem =
           product.vendorID?.startsWith("demo_") == true ||
@@ -166,7 +166,7 @@ class CartProvider with ChangeNotifier {
               cartHasFoodItems &&
               _cartItems.every((item) => item.vendorID == product.vendorID))) {
         product.quantity = quantity;
-        await DatabaseHelper.instance.insertCartProduct(product);
+        // await DatabaseHelper.instance.insertCartProduct(product);
         _cartItems.add(product);
       } else {
         if (isMartItem && cartHasFoodItems) {
@@ -241,29 +241,29 @@ class CartProvider with ChangeNotifier {
   }
 
   /// Returns true if any cart item is a promo item (for COD restriction)
-  Future<bool> cartContainsPromoItem() async {
-    final cartItems = await DatabaseHelper.instance.fetchCartProducts();
-    return cartItems.any(
-      (item) => item.promoId != null && item.promoId!.isNotEmpty,
-    );
-  }
+  // Future<bool> cartContainsPromoItem() async {
+  //   // final cartItems = await DatabaseHelper.instance.fetchCartProducts();
+  //   return cartItems.any(
+  //     (item) => item.promoId != null && item.promoId!.isNotEmpty,
+  //   );
+  // }
 
   Future<void> removeFromCart(CartProductModel product, int quantity) async {
     print(
       'DEBUG: CartProvider removeFromCart called for: ${product.name}, quantity: $quantity',
     );
-    _cartItems = await DatabaseHelper.instance.fetchCartProducts();
+    // _cartItems = await DatabaseHelper.instance.fetchCartProducts();
     var index = _cartItems.indexWhere((item) => item.id == product.id);
     if (index >= 0) {
       _cartItems[index].quantity = quantity;
       if (_cartItems[index].quantity == 0) {
-        await DatabaseHelper.instance.deleteCartProduct(product.id!);
+        // await DatabaseHelper.instance.deleteCartProduct(product.id!);
         _cartItems.removeAt(index);
         print(
           'DEBUG: CartProvider - Item removed from cart, remaining items: ${_cartItems.length}',
         );
       } else {
-        await DatabaseHelper.instance.updateCartProduct(_cartItems[index]);
+        // await DatabaseHelper.instance.updateCartProduct(_cartItems[index]);
         print('DEBUG: CartProvider - Item quantity updated to: $quantity');
       }
     }
@@ -274,10 +274,10 @@ class CartProvider with ChangeNotifier {
   // New method to remove item by product ID
   Future<void> removeFromCartById(String productId) async {
     print('DEBUG: CartProvider removeFromCartById called for: $productId');
-    _cartItems = await DatabaseHelper.instance.fetchCartProducts();
+    // _cartItems = await DatabaseHelper.instance.fetchCartProducts();
     var index = _cartItems.indexWhere((item) => item.id == productId);
     if (index >= 0) {
-      await DatabaseHelper.instance.deleteCartProduct(productId);
+      // await DatabaseHelper.instance.deleteCartProduct(productId);
       _cartItems.removeAt(index);
       print(
         'DEBUG: CartProvider - Item removed, remaining items: ${_cartItems.length}',
@@ -292,16 +292,16 @@ class CartProvider with ChangeNotifier {
     print(
       'DEBUG: CartProvider updateCartItemQuantity called for: $productId, quantity: $newQuantity',
     );
-    _cartItems = await DatabaseHelper.instance.fetchCartProducts();
+    // _cartItems = await DatabaseHelper.instance.fetchCartProducts();
     var index = _cartItems.indexWhere((item) => item.id == productId);
     if (index >= 0) {
       if (newQuantity <= 0) {
-        await DatabaseHelper.instance.deleteCartProduct(productId);
+        // await DatabaseHelper.instance.deleteCartProduct(productId);
         _cartItems.removeAt(index);
         print('DEBUG: CartProvider - Item removed due to quantity 0');
       } else {
         _cartItems[index].quantity = newQuantity;
-        await DatabaseHelper.instance.updateCartProduct(_cartItems[index]);
+        // await DatabaseHelper.instance.updateCartProduct(_cartItems[index]);
         print('DEBUG: CartProvider - Item quantity updated to: $newQuantity');
       }
     }
@@ -312,7 +312,7 @@ class CartProvider with ChangeNotifier {
   Future<void> clearDatabase() async {
     _cartItems.clear();
     HomeProvider.cartItem.clear();
-    await DatabaseHelper.instance.deleteAllCartProducts();
+    // await DatabaseHelper.instance.deleteAllCartProducts();
     _cartStreamController.sink.add(_cartItems);
     notifyListeners();
   }
@@ -327,6 +327,20 @@ class CartProvider with ChangeNotifier {
   void forceStreamUpdate() {
     print('DEBUG: CartProvider forceStreamUpdate() called');
     _cartStreamController.sink.add(_cartItems);
+  }
+
+  /// Load server cart items directly into the in-memory cart
+  void loadServerItems(List<CartProductModel> items) {
+    _cartItems = items;
+    HomeProvider.cartItem
+      ..clear()
+      ..addAll(_cartItems);
+    _rebuildQuantityCache();
+    _cartStreamController.sink.add(_cartItems);
+    notifyListeners();
+    print(
+      'DEBUG: CartProvider - Loaded ${_cartItems.length} server items into cart',
+    );
   }
 
   void _rebuildQuantityCache() {
@@ -353,17 +367,17 @@ class CartProvider with ChangeNotifier {
   // Method to check cart persistence
   Future<void> checkCartPersistence() async {
     print('DEBUG: CartProvider checkCartPersistence() called');
-    final dbItems = await DatabaseHelper.instance.fetchCartProducts();
-    print('DEBUG: CartProvider - Database has ${dbItems.length} items');
+    // final dbItems = await DatabaseHelper.instance.fetchCartProducts();
+    // print('DEBUG: CartProvider - Database has ${dbItems.length} items');
     print('DEBUG: CartProvider - Memory has ${_cartItems.length} items');
     print(
       'DEBUG: CartProvider - Global cartItem has ${HomeProvider.cartItem.length} items',
     );
 
-    if (dbItems.length != _cartItems.length) {
-      print('DEBUG: CartProvider - Syncing cart with database...');
-      await initCart();
-    }
+    // if (dbItems.length != _cartItems.length) {
+    //   print('DEBUG: CartProvider - Syncing cart with database...');
+    //   await initCart();
+    // }
   }
 
   // Show dialog when trying to add items from different restaurants
@@ -412,11 +426,11 @@ class CartProvider with ChangeNotifier {
           negativeString: "Cancel".tr,
           positiveClick: () async {
             // Clear existing cart items
-            await DatabaseHelper.instance.deleteAllCartProducts();
+            // await DatabaseHelper.instance.deleteAllCartProducts();
             _cartItems.clear();
             // Add the new item
             product.quantity = quantity;
-            await DatabaseHelper.instance.insertCartProduct(product);
+            // await DatabaseHelper.instance.insertCartProduct(product);
             _cartItems.add(product);
             await initCart();
             Get.back(); // Close dialog
@@ -455,10 +469,10 @@ class CartProvider with ChangeNotifier {
           positiveString: "Replace".tr,
           negativeString: "Cancel".tr,
           positiveClick: () async {
-            await DatabaseHelper.instance.deleteAllCartProducts();
+            // await DatabaseHelper.instance.deleteAllCartProducts();
             _cartItems.clear();
             product.quantity = quantity;
-            await DatabaseHelper.instance.insertCartProduct(product);
+            // await DatabaseHelper.instance.insertCartProduct(product);
             _cartItems.add(product);
             await initCart();
             Get.back();

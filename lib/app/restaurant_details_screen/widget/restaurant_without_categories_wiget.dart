@@ -1168,6 +1168,9 @@ void _showOptionsBottomSheet({
                             }
 
                             if (hasOptions) {
+                              final List<VariantInfo> allVariants = [];
+                              String optionPrice = '0';
+
                               for (final index in selectedOptionIndices) {
                                 if (index < 0 || index >= options.length) {
                                   continue;
@@ -1177,7 +1180,7 @@ void _showOptionsBottomSheet({
                                   continue;
                                 }
 
-                                final optionPrice =
+                                optionPrice =
                                     Constant.productCommissionPrice(
                                       controller.vendorModel,
                                       selected.price ?? '0',
@@ -1198,13 +1201,17 @@ void _showOptionsBottomSheet({
                                   },
                                 );
 
+                                allVariants.add(variantInfo);
+                              }
+
+                              if (allVariants.isNotEmpty) {
                                 controller.addToCart(
                                   productModel: productModel,
                                   price: optionPrice,
                                   discountPrice: '0',
                                   isIncrement: true,
                                   quantity: 1,
-                                  variantInfo: variantInfo,
+                                  variantInfo: allVariants,
                                 );
                               }
                             } else {

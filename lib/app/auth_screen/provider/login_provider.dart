@@ -228,22 +228,6 @@ class LoginProvider extends ChangeNotifier {
     }
   }
 
-  // Future<void> verifyOtp(
-  //   BuildContext context,
-  //   SplashProvider splashProvider,
-  //   String otps,
-  // ) async {
-  //   // Skip OTP verification completely
-  //
-  //   ShowToastDialog.closeLoader();
-  //
-  //   isVerifying = false;
-  //   notifyListeners();
-  //
-  //   // Directly go to Dashboard
-  //   Get.offAll(() => const DashBoardScreen());
-  // }
-
   Future<void> verifyOtp(
     BuildContext context,
     SplashProvider splashProvider,
