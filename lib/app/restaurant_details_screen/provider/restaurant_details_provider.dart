@@ -349,7 +349,7 @@ class RestaurantApiHelper {
     }
 
     final uri = Uri.parse(
-      '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=$latitude&lng=$longitude',
+      '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.4156&lng=78.4479',
     );
 
     debugPrint('[OUTLET_API] Fetching nearby outlets from: $uri');
@@ -1610,8 +1610,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       // Convert server cart items to CartProductModel and load into local cart
       final List<CartProductModel> serverCartItems = [];
       for (final item in cart.items) {
-        final unitPrice =
-            item.quantity > 0 ? item.totalPrice / item.quantity : 0.0;
+        final unitPrice = item.quantity > 0
+            ? item.totalPrice / item.quantity
+            : 0.0;
 
         final cartProduct = CartProductModel(
           id: item.variantOptionId != null

@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/models/customer_cart_model.dart';
 import 'package:jippymart_customer/models/customer_checkout_model.dart';
+import 'package:jippymart_customer/models/payment_model/active_payment_mode_model.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
@@ -177,6 +178,45 @@ class CartApiService {
     } catch (e) {
       print('[CartApi] checkout error: $e');
       rethrow;
+    }
+  }
+
+  /// GET /co/order-settings/getActivePaymentModes
+  static Future<List<ActivePaymentModeModel>> getActivePaymentModes() async {
+    try {
+      final uri = Uri.parse('${_base}co/order-settings/getActivePaymentModes');
+
+      print('[CartApi] GET $uri');
+
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 15));
+
+      print('[CartApi] status: ${response.statusCode}');
+      print('[CartApi] response: ${response.body}');
+
+      if (response.statusCode != 200) return [];
+
+      final decoded = jsonDecode(response.body);
+
+      List<dynamic> list;
+      if (decoded is List) {
+        list = decoded;
+      } else if (decoded is Map<String, dynamic>) {
+        final data = decoded['data'];
+        if (data is List) {
+          list = data;
+        } else {
+          return [];
+        }
+      } else {
+        return [];
+      }
+
+      return ActivePaymentModeModel.listFromJson(list);
+    } catch (e) {
+      print('[CartApi] getActivePaymentModes error: $e');
+      return [];
     }
   }
 }

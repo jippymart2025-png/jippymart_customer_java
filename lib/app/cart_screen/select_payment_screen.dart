@@ -520,39 +520,82 @@ class _PaymentMethodsCard extends StatelessWidget {
 
   final CartControllerProvider controller;
 
-  bool get _isCodEnabledByZone => controller.isCodEnabledForCurrentZone;
+  bool get _amountWithinCodMax => controller.useWalletBalance
+      ? controller.amountToChargeViaGateway <=
+            controller.codMaxAmountForCurrentZone
+      : controller.subTotal <= controller.codMaxAmountForCurrentZone;
 
-  bool get _isCodVisible {
-    final amt = controller.useWalletBalance
-        ? controller.amountToChargeViaGateway
-        : controller.subTotal;
-    return _isCodEnabledByZone &&
-        amt <= controller.codMaxAmountForCurrentZone &&
-        !controller.hasPromotionalItems();
+  /// True when the server checkout response is available, making its
+  /// per-order `codAvailable` the source of truth for COD.
+  bool get _serverAuthority => controller.checkoutSummary != null;
+
+  List<String> get _codReasons {
+    final reasons = <String>[];
+    if (_serverAuthority) {
+      if (!controller.checkoutCodAvailable) {
+        reasons.add('Temporarily unavailable for this order');
+      } else if (controller.hasPromotionalItems()) {
+        reasons.add('Unavailable for promotional items');
+      }
+      return reasons;
+    }
+    if (!controller.isCodEnabledForCurrentZone) {
+      reasons.add('Disabled for your delivery zone');
+    } else if (!controller.isCodActiveFromApi) {
+      reasons.add('Unavailable at this time');
+    } else if (!controller.checkoutCodAvailable) {
+      reasons.add('Temporarily unavailable for this order');
+    } else if (!_amountWithinCodMax) {
+      reasons.add(
+        'Not available above ₹${controller.codMaxAmountForCurrentZone.toStringAsFixed(0)}',
+      );
+    } else if (controller.hasPromotionalItems()) {
+      reasons.add('Unavailable for promotional items');
+    }
+    return reasons;
   }
 
-  bool get _showCodDisabledByZone => !_isCodEnabledByZone;
-
-  bool get _showCodMaxMsg {
-    final amt = controller.useWalletBalance
-        ? controller.amountToChargeViaGateway
-        : controller.subTotal;
-    return _isCodEnabledByZone && amt > controller.codMaxAmountForCurrentZone;
-  }
-
-  bool get _showCodPromoMsg {
-    final amt = controller.useWalletBalance
-        ? controller.amountToChargeViaGateway
-        : controller.subTotal;
-    return _isCodEnabledByZone &&
-        amt <= controller.codMaxAmountForCurrentZone &&
-        controller.hasPromotionalItems();
-  }
-
-  bool get _hasOnline => controller.isRazorpayEnabledForCurrentZone;
+  bool get _codEnabled => _codReasons.isEmpty;
 
   @override
   Widget build(BuildContext context) {
+    final hasCod = _serverAuthority
+        ? controller.checkoutCodAvailable
+        : (controller.isCodEnabledForCurrentZone ||
+            controller.isCodActiveFromApi);
+    final showCodTile = hasCod;
+
+    final showPaytm = controller.isPaytmActiveFromApi;
+    final showRazorpay = controller.isRazorpayActiveFromApi;
+    final showPayu = controller.isPayuActiveFromApi;
+    final showOnline = showPaytm || showRazorpay;
+
+    Widget? codTile;
+    Widget? warning;
+
+    if (showCodTile) {
+      codTile = _PaymentTile(
+        controller: controller,
+        value: PaymentGateway.cod,
+        icon: Icons.payments_outlined,
+        iconBgColor: const Color(0xFFE8F5E9),
+        iconColor: const Color(0xFF388E3C),
+        title: 'Cash on Delivery',
+        subtitle: _codReasons.isNotEmpty
+            ? _codReasons.first
+            : 'Pay in cash when order arrives',
+        roundTop: true,
+        roundBottom: !showOnline,
+        showDivider: showOnline,
+        isEnabled: _codEnabled,
+      );
+      if (!_codEnabled) {
+        warning = _WarningBanner(
+          message: 'COD not available — ${_codReasons.first}',
+        );
+      }
+    }
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -567,32 +610,9 @@ class _PaymentMethodsCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          if (_isCodVisible || _showCodDisabledByZone)
-            _PaymentTile(
-              controller: controller,
-              value: PaymentGateway.cod,
-              icon: Icons.payments_outlined,
-              iconBgColor: const Color(0xFFE8F5E9),
-              iconColor: const Color(0xFF388E3C),
-              title: 'Cash on Delivery',
-              subtitle: _showCodDisabledByZone
-                  ? 'Disabled for your delivery zone'
-                  : 'Pay in cash when order arrives',
-              roundTop: true,
-              roundBottom: !_hasOnline,
-              showDivider: _hasOnline,
-              isEnabled: !_showCodDisabledByZone,
-            ),
-          if (_showCodMaxMsg)
-            _WarningBanner(
-              message:
-                  'COD not available for orders above ₹${controller.codMaxAmountForCurrentZone.toStringAsFixed(0)}',
-            ),
-          if (_showCodPromoMsg)
-            const _WarningBanner(
-              message: 'COD unavailable for promotional items',
-            ),
-          if (_hasOnline) ...[
+          if (codTile != null) codTile,
+          if (warning != null) warning,
+          if (showPaytm)
             _PaymentTile(
               controller: controller,
               value: PaymentGateway.paytm,
@@ -601,10 +621,11 @@ class _PaymentMethodsCard extends StatelessWidget {
               iconColor: const Color(0xFF3F51B5),
               title: 'Pay via Paytm',
               subtitle: 'UPI · Wallet · Cards',
-              roundTop: !_isCodVisible,
-              roundBottom: false,
-              showDivider: true,
+              roundTop: codTile == null,
+              roundBottom: !showRazorpay,
+              showDivider: showRazorpay,
             ),
+          if (showRazorpay)
             _PaymentTile(
               controller: controller,
               value: PaymentGateway.razorpay,
@@ -613,11 +634,23 @@ class _PaymentMethodsCard extends StatelessWidget {
               iconColor: const Color(0xFF1565C0),
               title: 'Pay Online (Razorpay)',
               subtitle: 'UPI · Cards · Net Banking',
-              roundTop: false,
+              roundTop: codTile == null && !showPaytm,
               roundBottom: true,
               showDivider: false,
             ),
-          ],
+          if (showPayu)
+            _PaymentTile(
+              controller: controller,
+              value: PaymentGateway.payu,
+              icon: Icons.payments,
+              iconBgColor: const Color(0xFFE3F2FD),
+              iconColor: const Color(0xFF1565C0),
+              title: 'Pay Online (Payu)',
+              subtitle: 'UPI · Cards · Net Banking',
+              roundTop: codTile == null && !showPaytm,
+              roundBottom: true,
+              showDivider: false,
+            ),
         ],
       ),
     );
@@ -818,6 +851,10 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
 
   bool get isCod => controller.selectedPaymentMethod == PaymentGateway.cod.name;
 
+  bool get hasOnlinePayment =>
+      controller.isRazorpayEnabledForCurrentZone &&
+      controller.isAnyOnlinePaymentActive;
+
   bool get _canPay =>
       controller.isFullyPaidByWallet ||
       controller.selectedPaymentMethod.isNotEmpty;
@@ -1008,7 +1045,9 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
           if (!_canPay) ...[
             const SizedBox(height: 8),
             Text(
-              'Choose Cash on Delivery or Online Payment above',
+              hasOnlinePayment
+                  ? 'Choose Cash on Delivery or Online Payment above'
+                  : 'Choose a payment method above',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 11, color: AppThemeData.grey400),
             ),
