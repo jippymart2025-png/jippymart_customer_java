@@ -151,45 +151,49 @@ class AppUpdateService {
   static String getPlatformUpdateUrl(Map<String, dynamic> versionInfo) {
     String platformUrl = '';
     if (Platform.isAndroid) {
-      // Check if android_update_url is a valid URL (not a placeholder)
-      String androidUrl = versionInfo['android_update_url'] ?? '';
+      // Check if googlePlayLink is a valid URL (not a placeholder)
+      String androidUrl =
+          versionInfo['googlePlayLink'] ??
+          versionInfo['android_update_url'] ??
+          '';
       if (androidUrl.isNotEmpty &&
           androidUrl != "update_url" &&
           androidUrl.startsWith('http')) {
         platformUrl = androidUrl;
-        print('[UPDATE DEBUG]   Using android_update_url: "$androidUrl"');
+        print('[UPDATE DEBUG]   Using googlePlayLink: "$androidUrl"');
       } else {
         platformUrl =
             versionInfo['update_url'] ??
             "https://play.google.com/store/apps/details?id=com.jippymart.customer";
         print(
-          '[UPDATE DEBUG]   android_update_url is placeholder, using update_url: "$platformUrl"',
+          '[UPDATE DEBUG]   googlePlayLink is placeholder, using update_url: "$platformUrl"',
         );
       }
       print(
-        '[UPDATE DEBUG]   android_update_url from Firestore: "${versionInfo['android_update_url']}"',
+        '[UPDATE DEBUG]   googlePlayLink from Firestore: "${versionInfo['googlePlayLink']}"',
       );
       print(
         '[UPDATE DEBUG]   update_url from Firestore: "${versionInfo['update_url']}"',
       );
     } else if (Platform.isIOS) {
-      // Check if ios_update_url is a valid URL (not a placeholder)
-      String iosUrl = versionInfo['ios_update_url'] ?? '';
+      // Check if appStoreLink is a valid URL (not a placeholder)
+      String iosUrl =
+          versionInfo['appStoreLink'] ?? versionInfo['ios_update_url'] ?? '';
       if (iosUrl.isNotEmpty &&
           iosUrl != "update_url" &&
           iosUrl.startsWith('http')) {
         platformUrl = iosUrl;
-        print('[UPDATE DEBUG]   Using ios_update_url: "$iosUrl"');
+        print('[UPDATE DEBUG]   Using appStoreLink: "$iosUrl"');
       } else {
         platformUrl =
             versionInfo['update_url'] ??
             "https://apps.apple.com/app/jippy-mart/id123456789";
         print(
-          '[UPDATE DEBUG]   ios_update_url is placeholder, using update_url: "$platformUrl"',
+          '[UPDATE DEBUG]   appStoreLink is placeholder, using update_url: "$platformUrl"',
         );
       }
       print(
-        '[UPDATE DEBUG]   ios_update_url from Firestore: "${versionInfo['ios_update_url']}"',
+        '[UPDATE DEBUG]   appStoreLink from Firestore: "${versionInfo['appStoreLink']}"',
       );
       print(
         '[UPDATE DEBUG]   update_url from Firestore: "${versionInfo['update_url']}"',
@@ -209,10 +213,14 @@ class AppUpdateService {
   static Future<Map<String, dynamic>?> getLatestVersionInfo() async {
     try {
       print('[UPDATE DEBUG] Fetching version info from API...');
-      print('[UPDATE DEBUG] Endpoint: {{baseURL}}mobile/app/version');
+      print(
+        '[UPDATE DEBUG] Endpoint: ${AppConst.baseUrl}fm/app-settings/getApplicationVersionByAppType?appType=customer',
+      );
 
       final response = await SafeHttpClient.safeGet(
-        Uri.parse('${AppConst.baseUrl}mobile/app/version'),
+        Uri.parse(
+          'http://192.168.0.14:8084/api/fm/app-settings/getApplicationVersionByAppType?appType=customer',
+        ),
         headers: await getHeaders(),
         timeout: const Duration(seconds: 10),
       );
@@ -226,18 +234,22 @@ class AppUpdateService {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
 
-        if (responseData['success'] == true) {
-          final Map<String, dynamic> data = responseData['data'];
-          print('[UPDATE DEBUG] API response successful!');
-          print('[UPDATE DEBUG] Version data:');
-          data.forEach((key, value) {
-            print('[UPDATE DEBUG]   $key: "$value" (${value.runtimeType})');
-          });
-          return data;
-        } else {
-          print('[UPDATE DEBUG] API returned unsuccessful response');
+        // The app-settings endpoint returns the settings object directly.
+        // Also support a { success: true, data: {...} } envelope.
+        dynamic data = responseData['data'] ?? responseData;
+        if (data is! Map) {
+          print('[UPDATE DEBUG] API response did not contain a version object');
           return null;
         }
+        final Map<String, dynamic> versionData = Map<String, dynamic>.from(
+          data,
+        );
+        print('[UPDATE DEBUG] API response successful!');
+        print('[UPDATE DEBUG] Version data:');
+        versionData.forEach((key, value) {
+          print('[UPDATE DEBUG]   $key: "$value" (${value.runtimeType})');
+        });
+        return versionData;
       } else {
         print(
           '[UPDATE DEBUG] API request failed with status: ${response.statusCode}',

@@ -103,6 +103,9 @@ class CartControllerProvider extends ChangeNotifier {
   final Map<String, PerformanceMetric> _performanceMetrics = {};
   final Map<String, int> _operationCounts = {};
   static const Duration _rateLimitDuration = Duration(milliseconds: 100);
+  bool _isCutleryNeeded = false;
+
+  bool get isCutleryNeeded => _isCutleryNeeded;
   Timer? _cleanupTimer;
   Timer? _batchUpdateTimer;
   Timer? _priceSyncTimer;
@@ -144,6 +147,11 @@ class CartControllerProvider extends ChangeNotifier {
 
   // 🔑 ORDER PROCESSING
   bool _isOrderBeingCreated = false;
+
+  void toggleCutleryNeeded() {
+    _isCutleryNeeded = !_isCutleryNeeded;
+    notifyListeners();
+  }
 
   /// 🔑 CRITICAL: Start periodic retry for pending orders
   void _startPendingOrderRetryTimer() {

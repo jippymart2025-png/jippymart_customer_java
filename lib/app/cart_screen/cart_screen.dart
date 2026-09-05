@@ -1001,70 +1001,148 @@ class _CartScreenState extends State<CartScreen> {
   // ─── REMARKS ───────────────────────────────────────────────────────────────
 
   Widget _buildRemarks(CartControllerProvider controller) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          Expanded(child: _buildCookingRequestButton(controller)),
+          const SizedBox(width: 10),
+          Expanded(child: _buildCutleryToggle(controller)),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
+    );
+  }
+
+  Widget _buildCookingRequestButton(CartControllerProvider controller) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => _showCookingInstructionsSheet(controller),
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppThemeData.grey300, width: 1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.edit_note_outlined,
+              color: AppThemeData.grey600,
+              size: 18,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Cooking requests'.tr,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontFamily: AppThemeData.medium,
+                  color: AppThemeData.grey700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCutleryToggle(CartControllerProvider controller) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () {
+        controller.toggleCutleryNeeded(); // your provider method
+      },
+      child: Container(
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppThemeData.grey300, width: 1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 16,
+              height: 16,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(color: AppThemeData.grey400, width: 1.4),
+                color: controller.isCutleryNeeded
+                    ? AppThemeData.primary50
+                    : Colors.transparent,
+              ),
+              child: controller.isCutleryNeeded
+                  ? const Icon(Icons.check, size: 12, color: Colors.white)
+                  : null,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                'Cutlery Needed'.tr,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontFamily: AppThemeData.medium,
+                  color: AppThemeData.grey700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCookingInstructionsSheet(CartControllerProvider controller) {
+    Get.bottomSheet(
+      Container(
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: MediaQuery.of(Get.context!).viewInsets.bottom + 16,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.edit_note_outlined,
-                  color: AppThemeData.grey500,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Add Cooking Instructions',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontFamily: AppThemeData.semiBold,
-                    color: AppThemeData.grey900,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 6,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppThemeData.grey100,
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    'Optional',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontFamily: AppThemeData.regular,
-                      color: AppThemeData.grey500,
-                    ),
-                  ),
-                ),
-              ],
+            Text(
+              'Add Cooking Instructions'.tr,
+              style: TextStyle(
+                fontSize: 16,
+                fontFamily: AppThemeData.semiBold,
+                color: AppThemeData.grey900,
+              ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             TextFieldWidget(
               controller: controller.reMarkController,
               hintText: 'e.g. Less spicy, extra napkins...'.tr,
               maxLine: 3,
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Get.back(),
+                child: Text('Save'.tr),
+              ),
+            ),
           ],
         ),
       ),
+      isScrollControlled: true,
     );
   }
 }
