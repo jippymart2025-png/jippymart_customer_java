@@ -285,11 +285,19 @@ Widget _buildDashedDivider() {
 }
 
 Widget _buildPlatformFeeRow(CartControllerProvider controller) {
-  // When the checkout API has responded, use the server's platform fee
+  // When the checkout API has responded, use the server's platform fee.
+  // If platformFeeToggle is false, the fee is waived → show it struck out.
   if (controller.useServerCheckoutPricing && controller.platformFee > 0) {
+    final isFree = !controller.platformFeeToggle;
     return _billRow(
       label: 'Platform fee',
-      value: Constant.amountShow(amount: controller.platformFee.toString()),
+      value: isFree
+          ? 'Free'
+          : Constant.amountShow(amount: controller.platformFee.toString()),
+      strikeValue: isFree
+          ? Constant.amountShow(amount: controller.platformFee.toString())
+          : null,
+      valueColor: isFree ? AppThemeData.success400 : null,
       controller: controller,
     );
   }
@@ -640,14 +648,26 @@ Widget _buildDeliveryFeeSection(
     }
   }
 
-  // When checkout API has responded, use its delivery charge directly
+  // When checkout API has responded, use its delivery charges directly.
+  // Gross charge is struck out whenever a free-distance benefit applies.
   if (controller.useServerCheckoutPricing) {
-    final fee = controller.deliveryCharges;
+    final gross = controller.customerGrossDeliveryCharge;
+    final benefit = controller.customerFreeDistanceBenefit;
+    final fee = controller.customerDeliveryCharge > 0
+        ? controller.customerDeliveryCharge
+        : controller.deliveryCharges;
     if (fee <= 0) {
       return buildDeliveryFeeUI(
         isFreeDelivery: true,
-        originalFee: 0.0,
+        originalFee: gross > 0 ? gross : 0.0,
         currentFee: 0.0,
+      );
+    }
+    if (benefit > 0 && gross > 0) {
+      return buildDeliveryFeeWithBenefitUI(
+        grossFee: gross,
+        benefit: benefit,
+        currentFee: fee,
       );
     }
     return buildDeliveryFeeUI(

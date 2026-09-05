@@ -1181,6 +1181,22 @@ class HomeProvider extends ChangeNotifier {
       final userId = await SqlStorageConst.getFirebaseId();
       if (userId == null || userId.isEmpty) return;
 
+      // 1) Rehydrate from locally saved profile data (no network call).
+      final cachedUser = await SqlStorageConst.getUserModelFromCache();
+      if (cachedUser != null) {
+        Constant.userModel = cachedUser;
+        if (cachedUser.shippingAddress != null &&
+            cachedUser.shippingAddress!.isNotEmpty &&
+            addressListProvider.shippingAddressList.isEmpty) {
+          addressListProvider.shippingAddressList =
+              cachedUser.shippingAddress!;
+          notifyListeners();
+        }
+        return;
+      }
+
+      // 2) Fetch from the server only when nothing is stored locally.
+      //    (Result is also persisted inside getUserProfile.)
       final userModel = await AddressListProvider.getUserProfile(userId);
       if (userModel != null) {
         Constant.userModel = userModel;

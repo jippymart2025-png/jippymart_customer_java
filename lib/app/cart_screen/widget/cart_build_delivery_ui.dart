@@ -62,6 +62,36 @@ Widget buildDeliveryFeeUI({
   }
 }
 
+/// Delivery fee display when the checkout API grants a free-distance benefit:
+/// gross charge struck out, benefit shown as a discount, net payable shown.
+Widget buildDeliveryFeeWithBenefitUI({
+  required double grossFee,
+  required double benefit,
+  required double currentFee,
+}) {
+  return Wrap(
+    spacing: 4,
+    crossAxisAlignment: WrapCrossAlignment.center,
+    children: [
+      _strikeText(Constant.amountShow(amount: grossFee.toString())),
+      if (benefit > 0)
+        _discountText('- ${Constant.amountShow(amount: benefit.toString())}')
+      else
+        const SizedBox.shrink(),
+      _normalPriceText(Constant.amountShow(amount: currentFee.toString())),
+    ],
+  );
+}
+
+Widget _discountText(String text) => Text(
+  text,
+  style: TextStyle(
+    fontSize: 12,
+    fontWeight: FontWeight.w600,
+    color: AppThemeData.success400,
+  ),
+);
+
 Widget _freeTag() => Container(
   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
   decoration: BoxDecoration(

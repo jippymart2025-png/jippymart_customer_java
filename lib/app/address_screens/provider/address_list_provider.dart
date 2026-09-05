@@ -275,8 +275,29 @@ class AddressListProvider extends ChangeNotifier {
     }
   }
 
+  // In-memory profile cache so the co/customers/{id} API is not hit
+  // again and again by multiple providers (home/profile/cart/chat...).
+  static UserModel? _cachedProfile;
+  static String? _cachedProfileKey;
+  static DateTime? _cachedProfileAt;
+  static const Duration _profileCacheLifetime = Duration(seconds: 20);
+
   // Optimized API call with connection check
   static Future<UserModel?> getUserProfile(String userId) async {
+    final effectiveId = await _resolveCustomerId(userId);
+    if (effectiveId == null) {
+      debugPrint('[API] No usable customer id for profile fetch');
+      return null;
+    }
+
+    // Serve from in-memory cache when the same customer was fetched recently.
+    if (_cachedProfile != null &&
+        _cachedProfileKey == effectiveId &&
+        _cachedProfileAt != null &&
+        DateTime.now().difference(_cachedProfileAt!) < _profileCacheLifetime) {
+      return _cachedProfile;
+    }
+
     try {
       final hasConnection = await checkInternet();
       if (!hasConnection) {
@@ -287,8 +308,7 @@ class AddressListProvider extends ChangeNotifier {
       final headers = await getHeaders();
       final response = await http
           .get(
-            // Uri.parse('${AppConst.outletBaseUrl}co/customers/$userId'),
-            Uri.parse('${AppConst.outletBaseUrl}co/customers/46'),
+            Uri.parse('${AppConst.outletBaseUrl}co/customers/$effectiveId'),
             headers: headers,
           )
           .timeout(const Duration(seconds: 15)); // Reduced timeout
@@ -298,9 +318,26 @@ class AddressListProvider extends ChangeNotifier {
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = json.decode(response.body);
         if (responseData['success'] == true) {
-          final Map<String, dynamic> userData = responseData['data'];
+          final dynamic raw = responseData['data'];
+          final Map<String, dynamic> userData = raw is Map
+              ? Map<String, dynamic>.from(raw)
+              : <String, dynamic>{};
+          if (userData.isEmpty) {
+            userData.addAll(<String, dynamic>{
+              for (final entry in responseData.entries)
+                if (entry.key != 'success' && entry.key != 'message')
+                  entry.key: entry.value,
+            });
+          }
           final processedData = _processApiUserData(userData);
-          return UserModel.fromJson(processedData);
+          final model = UserModel.fromJson(processedData);
+
+          // Persist (name/email/phone/id) + cache so the API isn't re-hammered.
+          _cachedProfile = model;
+          _cachedProfileKey = effectiveId;
+          _cachedProfileAt = DateTime.now();
+          await SqlStorageConst.storeUserData(model);
+          return model;
         }
       } else if (response.statusCode == 304) {
         // Not Modified - use cache
@@ -314,19 +351,57 @@ class AddressListProvider extends ChangeNotifier {
     }
   }
 
+  /// Resolves the numeric backend customer id used by `co/customers/{id}`.
+  /// Prefers an already-numeric value, then the saved `user_id` from storage,
+  /// and finally falls back to whatever was passed in.
+  static Future<String?> _resolveCustomerId(String userId) async {
+    final passed = userId.trim();
+    if (passed.isNotEmpty && int.tryParse(passed) != null) {
+      return passed;
+    }
+    try {
+      final stored = await SqlStorageConst.getUserId();
+      if (stored != null && stored.isNotEmpty && int.tryParse(stored) != null) {
+        return stored;
+      }
+    } catch (_) {}
+    if (passed.isNotEmpty) return passed;
+    try {
+      return await SqlStorageConst.getFirebaseId();
+    } catch (_) {
+      return null;
+    }
+  }
+
   // Add this static method to process API data
   static Map<String, dynamic> _processApiUserData(
     Map<String, dynamic> apiData,
   ) {
+    final id = apiData['id'] ??
+        apiData['customerId'] ??
+        apiData['customer_id'] ??
+        apiData['userId'];
+    final firstName =
+        apiData['firstName'] ?? apiData['firstname'] ?? apiData['name'];
+    final phoneNumber = apiData['phoneNumber'] ??
+        apiData['phonenumber'] ??
+        apiData['mobile'] ??
+        apiData['phone'];
+    final email = apiData['email'] ?? apiData['mail'];
+    final profilePic = apiData['profilePictureURL'] ??
+        apiData['profilePicUrl'] ??
+        apiData['profile_picture_url'] ??
+        apiData['profilePicture'];
+
     return {
-      'id': apiData['id']?.toString(),
-      'firstName': apiData['firstName'],
+      'id': id?.toString(),
+      'firstName': firstName,
       'lastName': apiData['lastName'],
-      'email': apiData['email'],
-      'profilePictureURL': apiData['profilePictureURL'] ?? '',
+      'email': email,
+      'profilePictureURL': profilePic ?? '',
       'fcmToken': apiData['fcmToken'] ?? '',
       'countryCode': apiData['countryCode'] ?? '+91',
-      'phoneNumber': apiData['phoneNumber'] ?? '',
+      'phoneNumber': phoneNumber ?? '',
       'wallet_amount': apiData['wallet_amount'] ?? 0,
       'active': apiData['active'] ?? false,
       'isActive': apiData['isActive'] ?? false,

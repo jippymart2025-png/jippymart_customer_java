@@ -1,13 +1,10 @@
-import 'dart:convert';
 import 'package:jippymart_customer/constant/constant.dart';
+import 'package:jippymart_customer/services/terms_api_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/utils/utils/app_constant.dart';
-import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
 import 'package:get/get.dart';
-import 'package:http/http.dart' as http;
 
 class TermsAndConditionScreen extends StatefulWidget {
   final String? type;
@@ -32,7 +29,7 @@ class _TermsAndConditionScreenState extends State<TermsAndConditionScreen> {
 
   Future<void> _loadContent() async {
     try {
-      // First, try to get from Constant
+      // First, try the content cached by the app at startup.
       String content = widget.type == "privacy"
           ? Constant.privacyPolicy
           : Constant.termsAndConditions;
@@ -42,7 +39,7 @@ class _TermsAndConditionScreenState extends State<TermsAndConditionScreen> {
         print('[TERMS] Content from Constant length: ${content.length}');
       }
 
-      // If content is empty, fetch directly from API
+      // If content is empty, fetch directly from the dedicated API.
       if (content.isEmpty) {
         if (kDebugMode) {
           print('[TERMS] Content empty, fetching from API...');
@@ -79,67 +76,27 @@ class _TermsAndConditionScreenState extends State<TermsAndConditionScreen> {
   }
 
   Future<String> _fetchContentFromApi() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}settings/mobile'),
-        headers: await getHeaders(),
-      ).timeout(const Duration(seconds: 10));
+    final isPrivacy = widget.type == "privacy";
+    final content = await TermsApiService.getContent(
+      appType: TermsApiService.appTypeCustomer,
+      appPolicyType: isPrivacy
+          ? TermsApiService.policyTypePrivacy
+          : TermsApiService.policyTypeTerms,
+    );
 
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        if (data['success'] == true) {
-          final Map<String, dynamic> documents = data['data']['documents'];
-
-          String content = '';
-          if (widget.type == "privacy") {
-            // Try different possible field names
-            content = documents['privacyPolicy']?['privacy_policy'] ??
-                documents['privacyPolicy']?['privacyPolicy'] ??
-                documents['privacy_policy']?['privacy_policy'] ??
-                documents['privacy_policy']?['privacyPolicy'] ??
-                '';
-
-            if (kDebugMode && content.isEmpty) {
-              print(
-                '[TERMS] Privacy Policy field not found. Available fields: ${documents['privacyPolicy']?.keys}',
-              );
-            }
-          } else {
-            // Try different possible field names
-            content = documents['termsAndConditions']?['termsAndConditions'] ??
-                documents['termsAndConditions']?['terms_and_conditions'] ??
-                documents['terms_and_conditions']?['termsAndConditions'] ??
-                documents['terms_and_conditions']?['terms_and_conditions'] ??
-                '';
-
-            if (kDebugMode && content.isEmpty) {
-              print(
-                '[TERMS] Terms & Conditions field not found. Available fields: ${documents['termsAndConditions']?.keys}',
-              );
-            }
-          }
-
-          // Update Constant for future use
-          if (widget.type == "privacy") {
-            Constant.privacyPolicy = content;
-          } else {
-            Constant.termsAndConditions = content;
-          }
-
-          return content;
-        }
+    // Cache for future visits.
+    if (content.isNotEmpty) {
+      if (isPrivacy) {
+        Constant.privacyPolicy = content;
+      } else {
+        Constant.termsAndConditions = content;
       }
-
-      if (kDebugMode) {
-        print('[TERMS] API request failed: ${response.statusCode}');
-      }
-      return '';
-    } catch (e) {
-      if (kDebugMode) {
-        print('[TERMS] Error fetching from API: $e');
-      }
-      return '';
     }
+
+    if (kDebugMode) {
+      print('[TERMS] Fetched content length: ${content.length}');
+    }
+    return content;
   }
 
   @override

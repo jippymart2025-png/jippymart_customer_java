@@ -1,13 +1,13 @@
 import 'dart:convert';
 import 'dart:developer';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/edit_profile_screen/provider/edit_profile_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/models/admin_commission.dart';
 import 'package:jippymart_customer/models/user_model.dart';
+import 'package:jippymart_customer/services/terms_api_service.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/utils/notification_service.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
@@ -234,32 +234,9 @@ class GlobalSettingsProvider extends ChangeNotifier {
     Constant.selectedMapType =
         documents['DriverNearBy']?['selectedMapType'] ?? 'google';
     Constant.mapType = documents['DriverNearBy']?['mapType'];
-    // Privacy policy and terms
-    Constant.privacyPolicy =
-        documents['privacyPolicy']?['privacy_policy'] ?? '';
-    Constant.termsAndConditions =
-        documents['termsAndConditions']?['termsAndConditions'] ?? '';
-
-    if (kDebugMode) {
-      print(
-        '[SETTINGS] Privacy Policy length: ${Constant.privacyPolicy.length}',
-      );
-      print(
-        '[SETTINGS] Terms & Conditions length: ${Constant.termsAndConditions.length}',
-      );
-      if (Constant.privacyPolicy.isEmpty) {
-        print(
-          '[SETTINGS] ⚠️ Privacy Policy is empty - check API data structure',
-        );
-        print('[SETTINGS] Privacy Policy data: ${documents['privacyPolicy']}');
-      }
-      if (Constant.termsAndConditions.isEmpty) {
-        print(
-          '[SETTINGS] ⚠️ Terms & Conditions is empty - check API data structure',
-        );
-        print('[SETTINGS] Terms data: ${documents['termsAndConditions']}');
-      }
-    }
+    // Privacy policy and terms (background prefetch from the dedicated API
+    // so the Legal section opens instantly without a second call).
+    _prefetchLegalDocuments();
 
     // Wallet settings
     Constant.walletSetting = documents['walletSettings']?['isEnabled'] ?? false;
@@ -289,6 +266,21 @@ class GlobalSettingsProvider extends ChangeNotifier {
   }
 
   NotificationService notificationService = NotificationService();
+
+  void _prefetchLegalDocuments() {
+    TermsApiService.getContent(
+      appType: TermsApiService.appTypeCustomer,
+      appPolicyType: TermsApiService.policyTypePrivacy,
+    ).then((content) {
+      if (content.isNotEmpty) Constant.privacyPolicy = content;
+    });
+    TermsApiService.getContent(
+      appType: TermsApiService.appTypeCustomer,
+      appPolicyType: TermsApiService.policyTypeTerms,
+    ).then((content) {
+      if (content.isNotEmpty) Constant.termsAndConditions = content;
+    });
+  }
 
   notificationInit() {
     notificationService.initInfo().then((value) async {

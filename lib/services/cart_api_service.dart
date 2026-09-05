@@ -219,4 +219,60 @@ class CartApiService {
       return [];
     }
   }
+
+  /// POST /div/payment/initiate
+  ///
+  /// Initiates a payment record on the backend for the current order.
+  /// Returns the decoded JSON on success, otherwise `null`.
+  static Future<Map<String, dynamic>?> initiatePayment({
+    required Map<String, dynamic> payload,
+  }) async {
+    try {
+      final uri = Uri.parse('${_base}div/payment/initiate');
+
+      print('[CartApi] POST $uri');
+      print('[CartApi] body: ${jsonEncode(payload)}');
+
+      final response = await http
+          .post(uri, headers: await getHeaders(), body: jsonEncode(payload))
+          .timeout(const Duration(seconds: 20));
+
+      print('[CartApi] status: ${response.statusCode}');
+      print('[CartApi] response: ${response.body}');
+
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(response.body);
+      } catch (_) {
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          return <String, dynamic>{'success': true};
+        }
+        throw Exception('Invalid initiate payment response: ${response.body}');
+      }
+
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        if (decoded is Map<String, dynamic>) {
+          final errorMessage =
+              decoded['errorMessage']?.toString() ??
+              decoded['message']?.toString() ??
+              decoded['error']?.toString();
+          throw Exception(errorMessage ?? 'Payment initiation failed');
+        }
+        throw Exception('Payment initiation failed');
+      }
+
+      if (decoded is! Map<String, dynamic>) {
+        return <String, dynamic>{'success': true};
+      }
+
+      final data = decoded.containsKey('data') && decoded['data'] is Map
+          ? Map<String, dynamic>.from(decoded['data'] as Map)
+          : decoded;
+
+      return Map<String, dynamic>.from(data);
+    } catch (e) {
+      print('[CartApi] initiatePayment error: $e');
+      rethrow;
+    }
+  }
 }

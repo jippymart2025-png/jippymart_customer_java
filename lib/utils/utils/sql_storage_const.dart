@@ -42,16 +42,83 @@ class SqlStorageConst {
     UserModel user, {
     String? countryCode,
   }) async {
-    print(" storeUserData ${user.firebaseId}");
     final storage = FlutterSecureStorage();
-    await storage.write(key: 'user_id', value: user.id);
+
+    // Read existing values so required fields (firstName/email/phoneNumber)
+    // are never clobbered with empty/null data.
+    final existingId = await storage.read(key: 'user_id');
+    final existingFirstName = await storage.read(key: 'user_firstName');
+    final existingLastName = await storage.read(key: 'user_lastName');
+    final existingEmail = await storage.read(key: 'user_email');
+    final existingPhone = await storage.read(key: 'user_phone');
+    final existingCountryCode = await storage.read(key: 'user_countryCode');
+    final existingProfilePic = await storage.read(key: 'user_profilePicUrl');
+
+    final storedId = user.id ?? existingId;
+    final storedFirstName = _valueOr(user.firstName, existingFirstName);
+    final storedLastName = _valueOr(user.lastName, existingLastName);
+    final storedEmail = _valueOr(user.email, existingEmail);
+    final storedPhone = _valueOr(user.phoneNumber, existingPhone);
+    final storedProfilePic =
+        _valueOr(user.profilePictureURL, existingProfilePic);
+
+    if (storedId == null && user.id == null && storedFirstName == null) {
+      return;
+    }
+
+    await storage.write(key: 'user_id', value: storedId);
     await storage.write(key: 'firebase_id', value: user.firebaseId);
-    await storage.write(key: 'user_firstName', value: user.firstName);
-    await storage.write(key: 'user_lastName', value: user.lastName);
-    await storage.write(key: 'user_email', value: user.email);
-    await storage.write(key: 'user_phone', value: user.phoneNumber);
-    await storage.write(key: 'user_countryCode', value: countryCode);
-    await storage.write(key: 'user_countryCode', value: countryCode);
-    print(" storeUserData ${user.firebaseId}");
+    await storage.write(key: 'user_firstName', value: storedFirstName);
+    await storage.write(key: 'user_lastName', value: storedLastName);
+    await storage.write(key: 'user_email', value: storedEmail);
+    await storage.write(key: 'user_phone', value: storedPhone);
+    await storage.write(
+      key: 'user_countryCode',
+      value: countryCode ?? user.countryCode ?? existingCountryCode,
+    );
+    await storage.write(key: 'user_profilePicUrl', value: storedProfilePic);
+  }
+
+  static String? _valueOr(String? value, String? fallback) {
+    final v = value?.trim();
+    if (v != null && v.isNotEmpty) return v;
+    return fallback;
+  }
+
+  /// Rehydrates the logged-in user's profile from locally saved data
+  /// (id, name, email, phone, etc.) without making a network call.
+  static Future<UserModel?> getUserModelFromCache() async {
+    try {
+      final storage = FlutterSecureStorage();
+      final id = await storage.read(key: 'user_id');
+      final firebaseId = await storage.read(key: 'firebase_id');
+      final firstName = await storage.read(key: 'user_firstName');
+      final lastName = await storage.read(key: 'user_lastName');
+      final email = await storage.read(key: 'user_email');
+      final phone = await storage.read(key: 'user_phone');
+      final countryCode = await storage.read(key: 'user_countryCode');
+      final profilePic = await storage.read(key: 'user_profilePicUrl');
+
+      if ((id == null || id.isEmpty) &&
+          (firebaseId == null || firebaseId.isEmpty) &&
+          (firstName == null || firstName.isEmpty)) {
+        return null;
+      }
+
+      return UserModel(
+        id: id,
+        firebaseId: firebaseId,
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        phoneNumber: phone,
+        countryCode: countryCode,
+        profilePictureURL: profilePic,
+        role: 'customer',
+        active: true,
+      );
+    } catch (e) {
+      return null;
+    }
   }
 }

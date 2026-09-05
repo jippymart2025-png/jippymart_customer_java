@@ -898,6 +898,16 @@ class _ConfirmPayBarState extends State<_ConfirmPayBar> {
     try {
       if (controller.isFullyPaidByWallet) {
         controller.setSelectedPaymentMethod(PaymentGateway.wallet.name);
+        final initiated = await controller.initiatePaymentIfNeeded();
+        if (!initiated) {
+          if (context.mounted) {
+            ShowToastDialog.showToast(
+              'Payment could not be initiated. Please try again.'.tr,
+            );
+          }
+          _syncTapLockWithPaymentConfig();
+          return;
+        }
         await controller.placeOrder(context);
         // Do not Get.back() here: on success, placeOrder → setOrder already
         // navigates with Get.off(OrderPlacingScreen). Popping would close the order-placed screen.
