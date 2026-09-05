@@ -143,7 +143,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
         if (_isDisposed || !mounted) return;
       } else {
         // Sync address but don't wait for completion
-        unawaited(controller.syncAddressWithHomeLocation(context));
+        (controller.syncAddressWithHomeLocation(context));
       }
 
       if (_isDisposed || !mounted) return;
@@ -313,7 +313,7 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
                 (_lastRefreshTime == null ||
                     now.difference(_lastRefreshTime!) >
                         const Duration(seconds: 10))) {
-              unawaited(controller.forceRefreshCart());
+              (controller.forceRefreshCart());
             }
 
             return true;

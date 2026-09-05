@@ -38,11 +38,11 @@ class CategoryViewProvider extends ChangeNotifier {
       final url = Uri.parse(
         '${AppConst.outletBaseUrl}fm/getHomeOrAllCategories?filter=HOME',
       );
-      print('[CATEGORY_API] Fetching home categories from: $url');
+      debugPrint('[CATEGORY_API] Fetching home categories from: $url');
       final response = await http
           .get(url, headers: headers)
           .timeout(_networkTimeout);
-      print("getHomeVendorCategory ${response.body}");
+      debugPrint("getHomeVendorCategory ${response.body}");
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
         if (jsonResponse['success'] == true) {
@@ -53,18 +53,18 @@ class CategoryViewProvider extends ChangeNotifier {
             );
             list.add(categoryModel);
           }
-          print('[CATEGORY_API] Home categories loaded: ${list.length}');
+          debugPrint('[CATEGORY_API] Home categories loaded: ${list.length}');
         } else {
-          print('[CATEGORY_API] API returned success: false');
+          debugPrint('[CATEGORY_API] API returned success: false');
         }
       } else {
-        print('[CATEGORY_API] HTTP error: ${response.statusCode}');
+        debugPrint('[CATEGORY_API] HTTP error: ${response.statusCode}');
         throw Exception('Failed to load categories: ${response.statusCode}');
       }
     } on TimeoutException catch (e) {
-      print('[CATEGORY_API] Timeout fetching categories: $e');
+      debugPrint('[CATEGORY_API] Timeout fetching categories: $e');
     } catch (e) {
-      print('[CATEGORY_API] Error fetching categories: $e');
+      debugPrint('[CATEGORY_API] Error fetching categories: $e');
     }
     return list;
   }

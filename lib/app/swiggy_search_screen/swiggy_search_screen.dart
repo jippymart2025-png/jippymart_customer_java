@@ -1266,7 +1266,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
       _vendorCache[vendorID] = vendor;
       return vendor;
     } catch (e) {
-      print("Error getting vendor details: $e");
+      debugPrint("Error getting vendor details: $e");
       _vendorCache[vendorID] = null;
       return null;
     } finally {
@@ -1278,7 +1278,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
     try {
       return await FireStoreUtils.getVendorById(vendorID);
     } catch (e) {
-      print("Error fetching vendor details: $e");
+      debugPrint("Error fetching vendor details: $e");
       return null;
     }
   }
@@ -1357,7 +1357,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
 
       Navigator.pop(currentContext);
     } catch (e) {
-      print("Error adding to cart: $e");
+      debugPrint("Error adding to cart: $e");
 
       Get.snackbar(
         "Error",

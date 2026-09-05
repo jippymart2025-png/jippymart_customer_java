@@ -334,7 +334,16 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ),
 
-        SliverToBoxAdapter(child: _buildRemarks(controller)),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: Consumer<CartControllerProvider>(
+              builder: (context, controller, child) {
+                return _buildRemarks(controller);
+              },
+            ),
+          ),
+        ),
 
         const SliverToBoxAdapter(child: SizedBox(height: 8)),
         SliverToBoxAdapter(
@@ -998,31 +1007,44 @@ class _CartScreenState extends State<CartScreen> {
     );
   }
 
-  // ─── REMARKS ───────────────────────────────────────────────────────────────
-
   Widget _buildRemarks(CartControllerProvider controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          Expanded(child: _buildCookingRequestButton(controller)),
-          const SizedBox(width: 10),
-          Expanded(child: _buildCutleryToggle(controller)),
-        ],
-      ),
+    return Consumer<CartControllerProvider>(
+      builder: (context, cartController, _) {
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 0),
+          child: Container(
+            decoration: ShapeDecoration(
+              color: AppThemeData.grey50,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+              child: Row(
+                children: [
+                  Expanded(child: _buildCookingRequestButton(cartController)),
+                  const SizedBox(width: 10),
+                  Expanded(child: _buildCutleryToggle(cartController)),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   Widget _buildCookingRequestButton(CartControllerProvider controller) {
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(8),
       onTap: () => _showCookingInstructionsSheet(controller),
       child: Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppThemeData.grey300, width: 1),
         ),
         child: Row(
@@ -1030,7 +1052,7 @@ class _CartScreenState extends State<CartScreen> {
           children: [
             Icon(
               Icons.edit_note_outlined,
-              color: AppThemeData.grey600,
+              color: AppThemeData.grey500,
               size: 18,
             ),
             const SizedBox(width: 6),
@@ -1053,16 +1075,16 @@ class _CartScreenState extends State<CartScreen> {
 
   Widget _buildCutleryToggle(CartControllerProvider controller) {
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(8),
       onTap: () {
-        controller.toggleCutleryNeeded(); // your provider method
+        controller.toggleCutleryNeeded();
       },
       child: Container(
-        height: 44,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: AppThemeData.grey300, width: 1),
         ),
         child: Row(
@@ -1075,7 +1097,7 @@ class _CartScreenState extends State<CartScreen> {
                 borderRadius: BorderRadius.circular(3),
                 border: Border.all(color: AppThemeData.grey400, width: 1.4),
                 color: controller.isCutleryNeeded
-                    ? AppThemeData.primary50
+                    ? AppThemeData.primary300
                     : Colors.transparent,
               ),
               child: controller.isCutleryNeeded
@@ -1145,8 +1167,8 @@ class _CartScreenState extends State<CartScreen> {
       isScrollControlled: true,
     );
   }
-}
 
-void unawaited(Future<void> future) {
-  future.then((_) {}).catchError((e) {});
+  void unawaited(Future<void> future) {
+    future.then((_) {}).catchError((e) {});
+  }
 }

@@ -37,13 +37,13 @@ class RemoteConfigService {
         // AppConst.baseUrl = "http://192.168.88.25:8082/api/";
         // AppConst.baseUrl = _normalizeUrl(fetchedUrl);
         if (kDebugMode) {
-          print('[RemoteConfig] base_url fetched: $fetchedUrl');
-          print('[RemoteConfig] base_url applied: ${AppConst.baseUrl}');
+          debugPrint('[RemoteConfig] base_url fetched: $fetchedUrl');
+          debugPrint('[RemoteConfig] base_url applied: ${AppConst.baseUrl}');
         }
       } else {
         AppConst.baseUrl = AppConst.defaultBaseUrl;
         if (kDebugMode) {
-          print(
+          debugPrint(
             '[RemoteConfig] base_url empty or contains template, fallback to default ${AppConst.baseUrl}',
           );
         }
@@ -51,7 +51,7 @@ class RemoteConfigService {
     } catch (e) {
       AppConst.baseUrl = AppConst.defaultBaseUrl;
       if (kDebugMode) {
-        print('[RemoteConfig] Failed to load, using default: $e');
+        debugPrint('[RemoteConfig] Failed to load, using default: $e');
       }
     }
   }

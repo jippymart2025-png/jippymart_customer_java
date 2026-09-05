@@ -483,7 +483,7 @@ class CartControllerProvider extends ChangeNotifier {
 
     return <String, dynamic>{
       'cookingInstructions': reMarkController.text.trim(),
-      'isCutleryRequired': false,
+      'isCutleryRequired': _isCutleryNeeded,
       'outletId': outletId,
       'customerId': customerId,
       'customerDeliveryAddressId': customerAddressId,

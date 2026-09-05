@@ -18,9 +18,9 @@ class AppUpdateService {
   /// Check if a version is older than another version
   static bool isVersionOlder(String current, String latest) {
     try {
-      print('[UPDATE DEBUG] Comparing versions:');
-      print('[UPDATE DEBUG]   Current: "$current"');
-      print('[UPDATE DEBUG]   Latest: "$latest"');
+      debugPrint('[UPDATE DEBUG] Comparing versions:');
+      debugPrint('[UPDATE DEBUG]   Current: "$current"');
+      debugPrint('[UPDATE DEBUG]   Latest: "$latest"');
 
       List<int> currentParts = current
           .split('.')
@@ -31,8 +31,8 @@ class AppUpdateService {
           .map((e) => int.tryParse(e) ?? 0)
           .toList();
 
-      print('[UPDATE DEBUG]   Current parts: $currentParts');
-      print('[UPDATE DEBUG]   Latest parts: $latestParts');
+      debugPrint('[UPDATE DEBUG]   Current parts: $currentParts');
+      debugPrint('[UPDATE DEBUG]   Latest parts: $latestParts');
 
       // Pad with zeros if needed
       while (currentParts.length < latestParts.length) {
@@ -42,27 +42,33 @@ class AppUpdateService {
         latestParts.add(0);
       }
 
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   After padding - Current: $currentParts, Latest: $latestParts',
       );
 
       for (int i = 0; i < latestParts.length; i++) {
-        print(
+        debugPrint(
           '[UPDATE DEBUG]   Comparing part $i: ${currentParts[i]} vs ${latestParts[i]}',
         );
         if (i >= currentParts.length || currentParts[i] < latestParts[i]) {
-          print('[UPDATE DEBUG]   Result: Current is OLDER (returning true)');
+          debugPrint(
+            '[UPDATE DEBUG]   Result: Current is OLDER (returning true)',
+          );
           return true;
         }
         if (currentParts[i] > latestParts[i]) {
-          print('[UPDATE DEBUG]   Result: Current is NEWER (returning false)');
+          debugPrint(
+            '[UPDATE DEBUG]   Result: Current is NEWER (returning false)',
+          );
           return false;
         }
       }
-      print('[UPDATE DEBUG]   Result: Versions are EQUAL (returning false)');
+      debugPrint(
+        '[UPDATE DEBUG]   Result: Versions are EQUAL (returning false)',
+      );
       return false;
     } catch (e) {
-      print('[UPDATE] Version comparison error: $e');
+      debugPrint('[UPDATE] Version comparison error: $e');
       return false;
     }
   }
@@ -72,10 +78,10 @@ class AppUpdateService {
     try {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
       String version = packageInfo.version;
-      print('[UPDATE DEBUG] Current app version: "$version"');
+      debugPrint('[UPDATE DEBUG] Current app version: "$version"');
       return version;
     } catch (e) {
-      print('[UPDATE] Error getting current version: $e');
+      debugPrint('[UPDATE] Error getting current version: $e');
       return '1.0.0';
     }
   }
@@ -85,10 +91,10 @@ class AppUpdateService {
     try {
       PackageInfo packageInfo = await PackageInfo.fromPlatform();
       String buildNumber = packageInfo.buildNumber;
-      print('[UPDATE DEBUG] Current app build number: "$buildNumber"');
+      debugPrint('[UPDATE DEBUG] Current app build number: "$buildNumber"');
       return buildNumber;
     } catch (e) {
-      print('[UPDATE] Error getting current build number: $e');
+      debugPrint('[UPDATE] Error getting current build number: $e');
       return '1';
     }
   }
@@ -99,32 +105,38 @@ class AppUpdateService {
     if (Platform.isAndroid) {
       platformVersion =
           versionInfo['android_version'] ?? versionInfo['latest_version'] ?? '';
-      print('[UPDATE DEBUG] Platform: Android');
-      print(
+      debugPrint('[UPDATE DEBUG] Platform: Android');
+      debugPrint(
         '[UPDATE DEBUG]   android_version from Firestore: "${versionInfo['android_version']}"',
       );
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   latest_version from Firestore: "${versionInfo['latest_version']}"',
       );
-      print('[UPDATE DEBUG]   Selected platform version: "$platformVersion"');
+      debugPrint(
+        '[UPDATE DEBUG]   Selected platform version: "$platformVersion"',
+      );
     } else if (Platform.isIOS) {
       platformVersion =
           versionInfo['ios_version'] ?? versionInfo['latest_version'] ?? '';
-      print('[UPDATE DEBUG] Platform: iOS');
-      print(
+      debugPrint('[UPDATE DEBUG] Platform: iOS');
+      debugPrint(
         '[UPDATE DEBUG]   ios_version from Firestore: "${versionInfo['ios_version']}"',
       );
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   latest_version from Firestore: "${versionInfo['latest_version']}"',
       );
-      print('[UPDATE DEBUG]   Selected platform version: "$platformVersion"');
+      debugPrint(
+        '[UPDATE DEBUG]   Selected platform version: "$platformVersion"',
+      );
     } else {
       platformVersion = versionInfo['latest_version'] ?? '';
-      print('[UPDATE DEBUG] Platform: Unknown');
-      print(
+      debugPrint('[UPDATE DEBUG] Platform: Unknown');
+      debugPrint(
         '[UPDATE DEBUG]   latest_version from Firestore: "${versionInfo['latest_version']}"',
       );
-      print('[UPDATE DEBUG]   Selected platform version: "$platformVersion"');
+      debugPrint(
+        '[UPDATE DEBUG]   Selected platform version: "$platformVersion"',
+      );
     }
     return platformVersion;
   }
@@ -134,16 +146,16 @@ class AppUpdateService {
     String platformBuild = '';
     if (Platform.isAndroid) {
       platformBuild = versionInfo['android_build'] ?? '';
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   android_build from Firestore: "${versionInfo['android_build']}"',
       );
     } else if (Platform.isIOS) {
       platformBuild = versionInfo['ios_build'] ?? '';
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   ios_build from Firestore: "${versionInfo['ios_build']}"',
       );
     }
-    print('[UPDATE DEBUG]   Selected platform build: "$platformBuild"');
+    debugPrint('[UPDATE DEBUG]   Selected platform build: "$platformBuild"');
     return platformBuild;
   }
 
@@ -160,19 +172,19 @@ class AppUpdateService {
           androidUrl != "update_url" &&
           androidUrl.startsWith('http')) {
         platformUrl = androidUrl;
-        print('[UPDATE DEBUG]   Using googlePlayLink: "$androidUrl"');
+        debugPrint('[UPDATE DEBUG]   Using googlePlayLink: "$androidUrl"');
       } else {
         platformUrl =
             versionInfo['update_url'] ??
             "https://play.google.com/store/apps/details?id=com.jippymart.customer";
-        print(
+        debugPrint(
           '[UPDATE DEBUG]   googlePlayLink is placeholder, using update_url: "$platformUrl"',
         );
       }
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   googlePlayLink from Firestore: "${versionInfo['googlePlayLink']}"',
       );
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   update_url from Firestore: "${versionInfo['update_url']}"',
       );
     } else if (Platform.isIOS) {
@@ -183,43 +195,43 @@ class AppUpdateService {
           iosUrl != "update_url" &&
           iosUrl.startsWith('http')) {
         platformUrl = iosUrl;
-        print('[UPDATE DEBUG]   Using appStoreLink: "$iosUrl"');
+        debugPrint('[UPDATE DEBUG]   Using appStoreLink: "$iosUrl"');
       } else {
         platformUrl =
             versionInfo['update_url'] ??
             "https://apps.apple.com/app/jippy-mart/id123456789";
-        print(
+        debugPrint(
           '[UPDATE DEBUG]   appStoreLink is placeholder, using update_url: "$platformUrl"',
         );
       }
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   appStoreLink from Firestore: "${versionInfo['appStoreLink']}"',
       );
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   update_url from Firestore: "${versionInfo['update_url']}"',
       );
     } else {
       platformUrl =
           versionInfo['update_url'] ??
           "https://play.google.com/store/apps/details?id=com.jippymart.customer";
-      print(
+      debugPrint(
         '[UPDATE DEBUG]   update_url from Firestore: "${versionInfo['update_url']}"',
       );
     }
-    print('[UPDATE DEBUG]   Selected platform URL: "$platformUrl"');
+    debugPrint('[UPDATE DEBUG]   Selected platform URL: "$platformUrl"');
     return platformUrl;
   }
 
   static Future<Map<String, dynamic>?> getLatestVersionInfo() async {
     try {
-      print('[UPDATE DEBUG] Fetching version info from API...');
-      print(
+      debugPrint('[UPDATE DEBUG] Fetching version info from API...');
+      debugPrint(
         '[UPDATE DEBUG] Endpoint: ${AppConst.baseUrl}fm/app-settings/getApplicationVersionByAppType?appType=customer',
       );
 
       final response = await SafeHttpClient.safeGet(
         Uri.parse(
-          'http://192.168.0.14:8084/api/fm/app-settings/getApplicationVersionByAppType?appType=customer',
+          '${AppConst.baseUrl}fm/app-settings/getApplicationVersionByAppType?appType=customer',
         ),
         headers: await getHeaders(),
         timeout: const Duration(seconds: 10),
@@ -227,7 +239,7 @@ class AppUpdateService {
 
       if (response == null) {
         // Network error - return null gracefully
-        print('[UPDATE] Network error - unable to fetch version info');
+        debugPrint('[UPDATE] Network error - unable to fetch version info');
         return null;
       }
 
@@ -238,32 +250,34 @@ class AppUpdateService {
         // Also support a { success: true, data: {...} } envelope.
         dynamic data = responseData['data'] ?? responseData;
         if (data is! Map) {
-          print('[UPDATE DEBUG] API response did not contain a version object');
+          debugPrint(
+            '[UPDATE DEBUG] API response did not contain a version object',
+          );
           return null;
         }
         final Map<String, dynamic> versionData = Map<String, dynamic>.from(
           data,
         );
-        print('[UPDATE DEBUG] API response successful!');
-        print('[UPDATE DEBUG] Version data:');
+        debugPrint('[UPDATE DEBUG] API response successful!');
+        debugPrint('[UPDATE DEBUG] Version data:');
         versionData.forEach((key, value) {
-          print('[UPDATE DEBUG]   $key: "$value" (${value.runtimeType})');
+          debugPrint('[UPDATE DEBUG]   $key: "$value" (${value.runtimeType})');
         });
         return versionData;
       } else {
-        print(
+        debugPrint(
           '[UPDATE DEBUG] API request failed with status: ${response.statusCode}',
         );
         return null;
       }
     } on SocketException catch (e) {
-      print('[UPDATE] Network error: $e');
+      debugPrint('[UPDATE] Network error: $e');
       return null;
     } on TimeoutException catch (e) {
-      print('[UPDATE] Timeout error: $e');
+      debugPrint('[UPDATE] Timeout error: $e');
       return null;
     } catch (e) {
-      print('[UPDATE] Error fetching version info: $e');
+      debugPrint('[UPDATE] Error fetching version info: $e');
       return null;
     }
   }
@@ -276,12 +290,12 @@ class AppUpdateService {
     String? currentVersion,
     String? updateMessage,
   }) {
-    print('[UPDATE DEBUG] Showing update dialog:');
-    print('[UPDATE DEBUG]   Latest version: "$latestVersion"');
-    print('[UPDATE DEBUG]   Force update: $forceUpdate');
-    print('[UPDATE DEBUG]   Update URL: "$updateUrl"');
-    print('[UPDATE DEBUG]   Current version: "$currentVersion"');
-    print('[UPDATE DEBUG]   Update message: "$updateMessage"');
+    debugPrint('[UPDATE DEBUG] Showing update dialog:');
+    debugPrint('[UPDATE DEBUG]   Latest version: "$latestVersion"');
+    debugPrint('[UPDATE DEBUG]   Force update: $forceUpdate');
+    debugPrint('[UPDATE DEBUG]   Update URL: "$updateUrl"');
+    debugPrint('[UPDATE DEBUG]   Current version: "$currentVersion"');
+    debugPrint('[UPDATE DEBUG]   Update message: "$updateMessage"');
 
     Get.dialog(
       WillPopScope(
@@ -379,7 +393,7 @@ class AppUpdateService {
             if (!forceUpdate)
               TextButton(
                 onPressed: () async {
-                  print('[UPDATE DEBUG] User clicked "Later"');
+                  debugPrint('[UPDATE DEBUG] User clicked "Later"');
                   Get.back();
                   // Navigate to main app after dismissing dialog
                   await _navigateAfterUpdate();
@@ -391,15 +405,17 @@ class AppUpdateService {
               ),
             ElevatedButton(
               onPressed: () async {
-                print('[UPDATE DEBUG] User clicked "Update Now"');
+                debugPrint('[UPDATE DEBUG] User clicked "Update Now"');
                 try {
                   final uri = Uri.parse(updateUrl);
-                  print('[UPDATE DEBUG] Attempting to launch URL: $updateUrl');
+                  debugPrint(
+                    '[UPDATE DEBUG] Attempting to launch URL: $updateUrl',
+                  );
                   if (await canLaunchUrl(uri)) {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    print('[UPDATE DEBUG] Successfully launched URL');
+                    debugPrint('[UPDATE DEBUG] Successfully launched URL');
                   } else {
-                    print(
+                    debugPrint(
                       '[UPDATE DEBUG] Could not launch URL, trying fallback',
                     );
                     // Fallback to Play Store
@@ -411,13 +427,13 @@ class AppUpdateService {
                         fallbackUri,
                         mode: LaunchMode.externalApplication,
                       );
-                      print(
+                      debugPrint(
                         '[UPDATE DEBUG] Successfully launched fallback URL',
                       );
                     }
                   }
                 } catch (e) {
-                  print('[UPDATE] Error launching URL: $e');
+                  debugPrint('[UPDATE] Error launching URL: $e');
                   // Show error message
                   Get.snackbar(
                     "Error",
@@ -448,20 +464,22 @@ class AppUpdateService {
   /// Check for app updates
   static Future<bool> checkForUpdate() async {
     try {
-      print('[UPDATE DEBUG] ==========================================');
-      print('[UPDATE DEBUG] STARTING UPDATE CHECK');
-      print('[UPDATE DEBUG] ==========================================');
+      debugPrint('[UPDATE DEBUG] ==========================================');
+      debugPrint('[UPDATE DEBUG] STARTING UPDATE CHECK');
+      debugPrint('[UPDATE DEBUG] ==========================================');
 
       // Get current version
       String currentVersion = await getCurrentVersion();
       String currentBuild = await getCurrentBuildNumber();
-      print(
+      debugPrint(
         '[UPDATE DEBUG] Current version: $currentVersion (build: $currentBuild)',
       );
       // Get latest version info from Firestore
       Map<String, dynamic>? versionInfo = await getLatestVersionInfo();
       if (versionInfo == null) {
-        print('[UPDATE DEBUG] No version info found in Firestore - EXITING');
+        debugPrint(
+          '[UPDATE DEBUG] No version info found in Firestore - EXITING',
+        );
         return false;
       }
       // Get platform-specific version info
@@ -471,20 +489,20 @@ class AppUpdateService {
       String updateUrl = getPlatformUpdateUrl(versionInfo);
       String updateMessage = versionInfo['update_message'] ?? '';
 
-      print('[UPDATE DEBUG] ==========================================');
-      print('[UPDATE DEBUG] VERSION COMPARISON SUMMARY');
-      print('[UPDATE DEBUG] ==========================================');
-      print('[UPDATE DEBUG] Current version: "$currentVersion"');
-      print('[UPDATE DEBUG] Latest version: "$latestVersion"');
-      print('[UPDATE DEBUG] Current build: "$currentBuild"');
-      print('[UPDATE DEBUG] Latest build: "$latestBuild"');
-      print('[UPDATE DEBUG] Force update: $forceUpdate');
-      print('[UPDATE DEBUG] Update URL: "$updateUrl"');
-      print('[UPDATE DEBUG] Update message: "$updateMessage"');
+      debugPrint('[UPDATE DEBUG] ==========================================');
+      debugPrint('[UPDATE DEBUG] VERSION COMPARISON SUMMARY');
+      debugPrint('[UPDATE DEBUG] ==========================================');
+      debugPrint('[UPDATE DEBUG] Current version: "$currentVersion"');
+      debugPrint('[UPDATE DEBUG] Latest version: "$latestVersion"');
+      debugPrint('[UPDATE DEBUG] Current build: "$currentBuild"');
+      debugPrint('[UPDATE DEBUG] Latest build: "$latestBuild"');
+      debugPrint('[UPDATE DEBUG] Force update: $forceUpdate');
+      debugPrint('[UPDATE DEBUG] Update URL: "$updateUrl"');
+      debugPrint('[UPDATE DEBUG] Update message: "$updateMessage"');
 
       // Check if latest version is empty or invalid
       if (latestVersion.isEmpty) {
-        print('[UPDATE DEBUG] Latest version is empty - EXITING');
+        debugPrint('[UPDATE DEBUG] Latest version is empty - EXITING');
         return false;
       }
 
@@ -493,20 +511,20 @@ class AppUpdateService {
           latestVersion == "Android build number" ||
           latestVersion == "iOS build number" ||
           latestVersion == "update_url") {
-        print(
+        debugPrint(
           '[UPDATE DEBUG] Latest version is a placeholder string - EXITING',
         );
-        print(
+        debugPrint(
           '[UPDATE DEBUG] This means your Firestore document has placeholder values instead of real version numbers',
         );
         return false;
       }
 
       bool isUpdateAvailable = isVersionOlder(currentVersion, latestVersion);
-      print('[UPDATE DEBUG] Is update available? $isUpdateAvailable');
+      debugPrint('[UPDATE DEBUG] Is update available? $isUpdateAvailable');
 
       if (isUpdateAvailable) {
-        print('[UPDATE DEBUG] Update available! Showing dialog...');
+        debugPrint('[UPDATE DEBUG] Update available! Showing dialog...');
         showUpdateDialog(
           latestVersion: latestVersion,
           forceUpdate: forceUpdate,
@@ -514,26 +532,28 @@ class AppUpdateService {
           currentVersion: currentVersion,
           updateMessage: updateMessage,
         );
-        print('[UPDATE DEBUG] ==========================================');
-        print('[UPDATE DEBUG] UPDATE CHECK COMPLETED - UPDATE REQUIRED');
-        print('[UPDATE DEBUG] ==========================================');
+        debugPrint('[UPDATE DEBUG] ==========================================');
+        debugPrint('[UPDATE DEBUG] UPDATE CHECK COMPLETED - UPDATE REQUIRED');
+        debugPrint('[UPDATE DEBUG] ==========================================');
         return true; // Update is required
       } else {
-        print('[UPDATE DEBUG] App is up to date - no dialog shown');
-        print('[UPDATE DEBUG] ==========================================');
-        print('[UPDATE DEBUG] UPDATE CHECK COMPLETED - NO UPDATE REQUIRED');
-        print('[UPDATE DEBUG] ==========================================');
+        debugPrint('[UPDATE DEBUG] App is up to date - no dialog shown');
+        debugPrint('[UPDATE DEBUG] ==========================================');
+        debugPrint(
+          '[UPDATE DEBUG] UPDATE CHECK COMPLETED - NO UPDATE REQUIRED',
+        );
+        debugPrint('[UPDATE DEBUG] ==========================================');
         return false; // No update required
       }
     } catch (e) {
-      print('[UPDATE] Error checking for updates: $e');
+      debugPrint('[UPDATE] Error checking for updates: $e');
       return false; // Allow navigation on error
     }
   }
 
   /// Navigate to main app after update dialog is dismissed
   static Future<void> _navigateAfterUpdate() async {
-    print(
+    debugPrint(
       '[UPDATE DEBUG] Navigating to main app after update dialog dismissed',
     );
     // Check if user is logged in and navigate accordingly
@@ -559,32 +579,34 @@ class AppUpdateService {
   /// Check if app meets minimum required version
   static Future<bool> checkMinimumVersion() async {
     try {
-      print('[UPDATE DEBUG] Checking minimum required version...');
+      debugPrint('[UPDATE DEBUG] Checking minimum required version...');
       String currentVersion = await getCurrentVersion();
       Map<String, dynamic>? versionInfo = await getLatestVersionInfo();
 
       if (versionInfo == null) {
-        print('[UPDATE DEBUG] No version info found - allowing access');
+        debugPrint('[UPDATE DEBUG] No version info found - allowing access');
         return true; // Allow if no version info
       }
 
       String minRequiredVersion = versionInfo['min_required_version'] ?? '';
-      print('[UPDATE DEBUG] Minimum required version: "$minRequiredVersion"');
+      debugPrint(
+        '[UPDATE DEBUG] Minimum required version: "$minRequiredVersion"',
+      );
 
       if (minRequiredVersion.isNotEmpty &&
           isVersionOlder(currentVersion, minRequiredVersion)) {
-        print(
+        debugPrint(
           '[UPDATE DEBUG] App version below minimum required version - BLOCKING ACCESS',
         );
         return false;
       }
 
-      print(
+      debugPrint(
         '[UPDATE DEBUG] App version meets minimum requirement - ALLOWING ACCESS',
       );
       return true;
     } catch (e) {
-      print('[UPDATE] Error checking minimum version: $e');
+      debugPrint('[UPDATE] Error checking minimum version: $e');
       return true; // Allow if error
     }
   }

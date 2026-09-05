@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
 /// Fetches the legal documents (privacy policy / terms & conditions) from:
@@ -29,7 +30,7 @@ class TermsApiService {
   }) async {
     try {
       final uri = Uri.parse(
-        'http://192.168.0.14:8084/api/fm/terms-and-conditions/'
+        '${AppConst.baseUrl}fm/terms-and-conditions/'
         'getTermsAndConditionsForAppType'
         '?appType=$appType&appPolicyType=$appPolicyType',
       );
@@ -178,10 +179,9 @@ class TermsApiService {
         final whole = match.group(0)!;
         final code = match.group(1)!;
         if (code.startsWith('#')) {
-          final numString =
-              code.startsWith('#x')
-                  ? code.substring(2)
-                  : code.substring(1);
+          final numString = code.startsWith('#x')
+              ? code.substring(2)
+              : code.substring(1);
           final radix = code.startsWith('#x') ? 16 : 10;
           final value = int.tryParse(numString, radix: radix);
           if (value != null && value > 0 && value <= 0x10FFFF) {
