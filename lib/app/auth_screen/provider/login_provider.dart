@@ -9,7 +9,6 @@ import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provide
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/signup_screen.dart';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/dash_board_screen.dart';
-import 'package:jippymart_customer/app/location_permission_screen/location_permission_screen.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
@@ -24,15 +23,10 @@ import 'package:jippymart_customer/utils/utils/sql_storage_const.dart'
     show SqlStorageConst;
 import 'package:jippymart_customer/utils/safe_http_client.dart';
 import 'package:provider/provider.dart';
-import 'package:http/http.dart' as http;
 import 'dart:io';
-
-import '../../Communityscreen/screens/home_screen.dart';
-import '../../home_screen/screen/home_screen/home_screen_two.dart';
 
 class LoginProvider extends ChangeNotifier {
   static const Duration _authTimeout = Duration(seconds: 20);
-  static const Duration _debounceDuration = Duration(milliseconds: 500);
 
   // Controllers
   TextEditingController emailEditingController = TextEditingController();
@@ -49,9 +43,7 @@ class LoginProvider extends ChangeNotifier {
   int resendSeconds = 0;
   bool resendTimerStarted = false;
 
-  // Caching
-  Map<String, dynamic> _apiResponseCache = {};
-  Timer? _debounceTimer;
+  // Rate limiting
   Timer? _resendCountdownTimer;
   DateTime? _lastOtpRequestTime;
   static const Duration _otpCooldown = Duration(seconds: 30);
@@ -72,87 +64,15 @@ class LoginProvider extends ChangeNotifier {
         return;
       }
       resendSeconds--;
-      if (resendSeconds % 5 == 0 || resendSeconds <= 0) {
-        notifyListeners();
-      }
+      // Notify every second for smooth countdown display
+      notifyListeners();
     });
 
     notifyListeners();
   }
 
-  // Optimized API call with caching
-  Future<Map<String, dynamic>> _makeApiCall(
-    String endpoint,
-    Map<String, dynamic> data,
-    String method, {
-    bool cacheable = false,
-    Duration cacheDuration = const Duration(minutes: 5),
-  }) async {
-    // Check cache first for GET-like requests (not for OTP/verification)
-    if (cacheable &&
-        method == 'POST' &&
-        _apiResponseCache.containsKey(endpoint)) {
-      final cached = _apiResponseCache[endpoint];
-      if (cached['timestamp'] != null) {
-        final now = DateTime.now();
-        final cachedTime = DateTime.parse(cached['timestamp']);
-        if (now.difference(cachedTime) < cacheDuration) {
-          return cached['data'];
-        }
-      }
-    }
-
-    try {
-      final url = Uri.parse('${AppConst.baseUrl}$endpoint');
-      final headers = await getHeaders();
-
-      http.Response? response;
-      if (method == 'POST') {
-        response = await SafeHttpClient.safePost(
-          url,
-          headers: headers,
-          body: json.encode(data),
-          timeout: _authTimeout,
-        );
-      } else {
-        throw Exception('Unsupported HTTP method');
-      }
-
-      if (response == null) {
-        throw SocketException('No internet connection');
-      }
-
-      if (response.statusCode == 200) {
-        final result = json.decode(response.body);
-
-        // Cache successful responses
-        if (cacheable && result['success'] == true) {
-          _apiResponseCache[endpoint] = {
-            'data': result,
-            'timestamp': DateTime.now().toIso8601String(),
-          };
-        }
-
-        return result;
-      } else {
-        throw Exception('HTTP ${response.statusCode}: ${response.body}');
-      }
-    } on SocketException {
-      throw Exception(
-        'No internet connection. Please check your network and try again.',
-      );
-    } on TimeoutException {
-      throw Exception('Request timed out. Please try again.');
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   // Debounced OTP sending to prevent spam
   Future<void> sendOtp({String countryCode = '+91'}) async {
-    // Cancel previous debounce timer
-    _debounceTimer?.cancel();
-
     // Rate limiting check
     if (_lastOtpRequestTime != null) {
       final now = DateTime.now();
@@ -328,8 +248,6 @@ class LoginProvider extends ChangeNotifier {
     // GET USER DATA
     // ============================================================
 
-    final email = response['email']?.toString().trim() ?? '';
-
     final firstName = response['firstName']?.toString().trim() ?? '';
 
     final lastName = response['lastName']?.toString().trim() ?? '';
@@ -388,14 +306,6 @@ class LoginProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  String? _extractFirebaseId(Map<String, dynamic> userData) {
-    return (userData['firebase_id'] ??
-            userData['firebaseId'] ??
-            userData['firebaseID'] ??
-            userData['id'])
-        ?.toString();
-  }
-
   Future<void> _handleRegisteredUser(
     BuildContext context,
     Map<String, dynamic> userData,
@@ -451,12 +361,14 @@ class LoginProvider extends ChangeNotifier {
 
   Future<void> _performBackgroundInitialization(BuildContext context) async {
     // Use isolate-like approach with Future.wait for parallel execution
-    await Future.wait([
-      _initializeHomeProvider(context),
-      _initializeAddressList(context),
-    ], eagerError: false).catchError((e) {
+    try {
+      await Future.wait([
+        _initializeHomeProvider(context),
+        _initializeAddressList(context),
+      ], eagerError: false);
+    } catch (e) {
       print('[LOGIN] Background initialization error: $e');
-    });
+    }
 
     // Process deep links after everything else
     _processDeepLinks(context);
@@ -597,11 +509,6 @@ class LoginProvider extends ChangeNotifier {
   }
 
   Future<void> logout(BuildContext context) async {
-    print('DEBUG: LoginController logout - Starting cart clearing process');
-
-    // Clear cache on logout
-    _apiResponseCache.clear();
-
     CartControllerProvider cartControllerProvider =
         Provider.of<CartControllerProvider>(context, listen: false);
     await cartControllerProvider.clearCart();
@@ -623,7 +530,6 @@ class LoginProvider extends ChangeNotifier {
 
   @override
   void dispose() {
-    _debounceTimer?.cancel();
     _resendCountdownTimer?.cancel();
     emailEditingController.dispose();
     passwordEditingController.dispose();

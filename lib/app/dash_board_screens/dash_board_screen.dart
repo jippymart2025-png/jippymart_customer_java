@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:ui';
 import 'package:jippymart_customer/app/cart_screen/provider/cart_provider.dart';
 import 'package:jippymart_customer/app/dash_board_screens/provider/dash_board_provider.dart';
-import 'package:jippymart_customer/app/favourite_screens/provider/favorite_provider.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/app/order_list_screen/screens/order_screen/provider/order_provider.dart';
 import 'package:jippymart_customer/models/order_model.dart';
@@ -53,7 +52,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   bool _isOrderRefreshInFlight = false;
   final NotificationService _notificationService = NotificationService();
   int _lastCartItemCount = 0;
-  int _lastSelectedIndex = -1;
   DateTime? _lastBackPressTime;
 
   @override
@@ -359,7 +357,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     final orderProvider = context.read<OrderProvider>();
     final splashProvider = context.read<SplashProvider>();
     final homeProvider = context.read<HomeProvider>();
-    final favouriteProvider = context.read<FavouriteProvider>();
     final _ = context.select<DashBoardProvider, bool>((p) => p.canPopNow);
 
     final hasActiveOrder = _activeOrderStartTime != null;
@@ -373,7 +370,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
         cartControllerProvider,
         orderProvider,
         context,
-        favouriteProvider,
       ),
       child: Scaffold(
         extendBody: true,
@@ -393,7 +389,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
               context,
               splashProvider,
               homeProvider,
-              // favouriteProvider,
             ),
           ],
         ),
@@ -460,7 +455,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     CartControllerProvider cartControllerProvider,
     OrderProvider orderProvider,
     BuildContext context,
-    FavouriteProvider favouriteProvider,
   ) {
     if (didPop) return;
 
@@ -532,7 +526,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     BuildContext context,
     SplashProvider splashProvider,
     HomeProvider homeProvider,
-    // FavouriteProvider favouriteProvider,
   ) {
     final shouldUpdateBadge = cartItemCount != _lastCartItemCount;
     if (shouldUpdateBadge) {
@@ -552,7 +545,6 @@ class _DashBoardScreenState extends State<DashBoardScreen>
               orderProvider: orderProvider,
               splashProvider: splashProvider,
               homeProvider: homeProvider,
-              // favouriteProvider: favouriteProvider,
               context: context,
               cartItemCount: cartItemCount,
             ),
@@ -570,8 +562,6 @@ class _BottomNavigationBar extends StatelessWidget {
   final OrderProvider orderProvider;
   final SplashProvider splashProvider;
   final HomeProvider homeProvider;
-
-  // final FavouriteProvider favouriteProvider;
   final BuildContext context;
   final int cartItemCount;
 
@@ -581,7 +571,6 @@ class _BottomNavigationBar extends StatelessWidget {
     required this.orderProvider,
     required this.splashProvider,
     required this.homeProvider,
-    // required this.favouriteProvider,
     required this.context,
     required this.cartItemCount,
   });
@@ -630,7 +619,6 @@ class _BottomNavigationBar extends StatelessWidget {
                       cartControllerProvider: cartControllerProvider,
                       orderProvider: orderProvider,
                       context: context,
-                      // favouriteProvider: favouriteProvider,
                     ),
                   ),
                   Expanded(
@@ -644,26 +632,9 @@ class _BottomNavigationBar extends StatelessWidget {
                       cartControllerProvider: cartControllerProvider,
                       orderProvider: orderProvider,
                       context: context,
-                      // favouriteProvider: favouriteProvider,
                       cartItemCount: cartItemCount,
                     ),
                   ),
-
-                  // Expanded(
-                  //   child: _NavItem(
-                  //     index: DashboardTab.offers,
-                  //     svgIcon: ImageConst.home,
-                  //     label: 'Offers'.tr,
-                  //     controller: controller,
-                  //     homeProvider: homeProvider,
-                  //     splashProvider: splashProvider,
-                  //     cartControllerProvider: cartControllerProvider,
-                  //     orderProvider: orderProvider,
-                  //     context: context,
-                  //     // favouriteProvider: favouriteProvider,
-                  //     cartItemCount: cartItemCount,
-                  //   ),
-                  // ),
                   Expanded(
                     child: _NavItem(
                       index: DashboardTab.orders,
@@ -675,7 +646,6 @@ class _BottomNavigationBar extends StatelessWidget {
                       cartControllerProvider: cartControllerProvider,
                       orderProvider: orderProvider,
                       context: context,
-                      // favouriteProvider: favouriteProvider,
                     ),
                   ),
                   Expanded(
@@ -689,7 +659,6 @@ class _BottomNavigationBar extends StatelessWidget {
                       cartControllerProvider: cartControllerProvider,
                       orderProvider: orderProvider,
                       context: context,
-                      // favouriteProvider: favouriteProvider,
                     ),
                   ),
                 ],
@@ -713,8 +682,6 @@ class _NavItem extends StatelessWidget {
   final CartControllerProvider cartControllerProvider;
   final OrderProvider orderProvider;
   final BuildContext context;
-
-  // final FavouriteProvider favouriteProvider;
   final int? cartItemCount;
 
   const _NavItem({
@@ -727,7 +694,6 @@ class _NavItem extends StatelessWidget {
     required this.cartControllerProvider,
     required this.orderProvider,
     required this.context,
-    // required this.favouriteProvider,
     this.cartItemCount,
   });
 
@@ -835,126 +801,6 @@ class _NavItem extends StatelessWidget {
   void _handleTap() {
     controller.changeNavbar(
       index,
-      homeProvider,
-      splashProvider,
-      cartControllerProvider,
-      orderProvider,
-      context,
-    );
-  }
-}
-
-// Extracted floating deals button
-class _FloatingDealsButton extends StatelessWidget {
-  final DashBoardProvider controller;
-  final HomeProvider homeProvider;
-  final SplashProvider splashProvider;
-  final CartControllerProvider cartControllerProvider;
-  final OrderProvider orderProvider;
-  final BuildContext context;
-  final FavouriteProvider favouriteProvider;
-
-  const _FloatingDealsButton({
-    required this.controller,
-    required this.homeProvider,
-    required this.splashProvider,
-    required this.cartControllerProvider,
-    required this.orderProvider,
-    required this.context,
-    required this.favouriteProvider,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isSelected = controller.selectedIndex == 2;
-
-    return GestureDetector(
-      onTap: () => _handleTap(),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Floating button
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.purple,
-                  AppThemeData.primary300.withOpacity(0.8),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppThemeData.primary300.withOpacity(0.4),
-                  blurRadius: isSelected ? 20 : 15,
-                  spreadRadius: isSelected ? 2 : 1,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                if (isSelected)
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                // Deals icon
-                Opacity(
-                  opacity: 0.9,
-                  child: Image.asset(
-                    ImageConst.deals,
-                    height: 45,
-                    width: 45,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 2),
-          // Deals label
-          Text(
-            'Deals'.tr,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-              color: isSelected
-                  ? AppThemeData.primary300
-                  : AppThemeData.grey600,
-              fontFamily: AppThemeData.extraBold,
-            ),
-          ),
-          // Selection indicator dot
-          const SizedBox(height: 1),
-          Container(
-            width: isSelected ? 3 : 0,
-            height: 3,
-            decoration: BoxDecoration(
-              color: AppThemeData.primary300,
-              shape: BoxShape.circle,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _handleTap() {
-    controller.changeNavbar(
-      2,
       homeProvider,
       splashProvider,
       cartControllerProvider,

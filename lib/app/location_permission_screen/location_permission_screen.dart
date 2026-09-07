@@ -134,7 +134,7 @@ class LocationPermissionScreen extends StatelessWidget {
     }
   }
 
-  Future<void> updateLocationInLocal(UserLocation location) async {
+  static Future<void> updateLocationInLocal(UserLocation location) async {
     final box = GetStorage();
     box.write('user_location', {
       'latitude': location.latitude,
@@ -151,7 +151,7 @@ class LocationPermissionScreen extends StatelessWidget {
     );
   }
 
-  ShippingAddress? findExistingAddress(
+  static ShippingAddress? findExistingAddress(
     double latitude,
     double longitude,
     List<ShippingAddress>? existingAddresses,
@@ -183,7 +183,7 @@ class LocationPermissionScreen extends StatelessWidget {
     return true;
   }
 
-  Future<void> _handleMapSelection(
+  static Future<void> _handleMapSelection(
     BuildContext context,
     dynamic result,
     List<ShippingAddress>? existingAddresses,
@@ -328,7 +328,7 @@ class LocationPermissionScreen extends StatelessWidget {
         return Scaffold(
           backgroundColor: Colors.black,
           extendBodyBehindAppBar: true,
-          body: _LocationBody(controller: controller, screen: this),
+          body: _LocationBody(controller: controller),
         );
       },
     );
@@ -341,9 +341,8 @@ class LocationPermissionScreen extends StatelessWidget {
 
 class _LocationBody extends StatefulWidget {
   final LocationPermissionProvider controller;
-  final LocationPermissionScreen screen;
 
-  const _LocationBody({required this.controller, required this.screen});
+  const _LocationBody({required this.controller});
 
   @override
   State<_LocationBody> createState() => _LocationBodyState();
@@ -406,10 +405,7 @@ class _LocationBodyState extends State<_LocationBody> {
           bottom: 0,
           left: 0,
           right: 0,
-          child: _BottomPanel(
-            controller: widget.controller,
-            screen: widget.screen,
-          ),
+          child: _BottomPanel(controller: widget.controller),
         ),
       ],
     );
@@ -422,9 +418,8 @@ class _LocationBodyState extends State<_LocationBody> {
 
 class _BottomPanel extends StatelessWidget {
   final LocationPermissionProvider controller;
-  final LocationPermissionScreen screen;
 
-  const _BottomPanel({required this.controller, required this.screen});
+  const _BottomPanel({required this.controller});
 
   @override
   Widget build(BuildContext context) {
@@ -614,7 +609,7 @@ class _BottomPanel extends StatelessWidget {
                           if (Constant.selectedMapType == 'osm') {
                             final result = await Get.to(() => MapPickerPage());
                             if (result != null) {
-                              await screen._handleMapSelection(
+                              await LocationPermissionScreen._handleMapSelection(
                                 Get.context ?? context,
                                 result,
                                 existingAddresses,
@@ -628,14 +623,12 @@ class _BottomPanel extends StatelessWidget {
                                 builder: (context) => PlacePicker(
                                   apiKey: Constant.mapAPIKey,
                                   onPlacePicked: (result) async {
-                                    if (result != null) {
-                                      await screen._handleMapSelection(
-                                        Get.context ?? context,
-                                        result,
-                                        existingAddresses,
-                                        splashProvider,
-                                      );
-                                    }
+                                    await LocationPermissionScreen._handleMapSelection(
+                                      Get.context ?? context,
+                                      result,
+                                      existingAddresses,
+                                      splashProvider,
+                                    );
                                   },
                                   initialPosition: const LatLng(
                                     -33.8567844,
@@ -711,55 +704,6 @@ class _BottomPanel extends StatelessWidget {
                 ),
               ],
             ],
-          ),
-
-          const SizedBox(height: 12),
-
-          // ── Change Location (outlined/ghost button) ──
-          _GhostLocationButton(
-            label: "Change Location".tr,
-            onTap: () async {
-              if (!LocationPermissionScreen._shouldProcessTap()) return;
-              Constant.checkPermission(
-                context: context,
-                onTap: () async {
-                  try {
-                    bool success =
-                        await LocationService.updateLocationAndNavigate(
-                          showLoader: true,
-                          showError: true,
-                        );
-                    if (success) {
-                      final ctx = Get.context ?? context;
-                      final inZone =
-                          await LocationPermissionScreen.finalizeLocationWithZoneCheck(
-                            ctx,
-                          );
-                      if (inZone) {
-                        final splashProvider = Provider.of<SplashProvider>(
-                          ctx,
-                          listen: false,
-                        );
-                        await LocationPermissionScreen.navigateAfterLocationSet(
-                          ctx,
-                          splashProvider,
-                        );
-                      } else {
-                        ShowToastDialog.showToast(
-                          "Service is not available at this location. Please choose a different address."
-                              .tr,
-                        );
-                      }
-                    }
-                  } catch (e) {
-                    print('[CHANGE_LOCATION] Error: $e');
-                    ShowToastDialog.showToast(
-                      "Failed to change location. Please try again.".tr,
-                    );
-                  }
-                },
-              );
-            },
           ),
         ],
       ),
@@ -876,42 +820,6 @@ class _SecondaryLocationButton extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _GhostLocationButton  — full-width, outlined, subtle
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _GhostLocationButton extends StatelessWidget {
-  final String label;
-  final VoidCallback onTap;
-
-  const _GhostLocationButton({required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFFDDDDDD), width: 1.5),
-        ),
-        child: Center(
-          child: Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF666666),
-            ),
-          ),
         ),
       ),
     );

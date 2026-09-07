@@ -37,11 +37,8 @@ class SplashProvider extends ChangeNotifier {
       // Check if context is still mounted before navigating
       if (context.mounted) {
         _navigateToMainApp(context);
-      } else {
-        print('[SPLASH] Context not mounted after delay, cannot navigate');
       }
     } catch (e) {
-      print('[SPLASH] Error in _initializeLogo: $e');
       // Try to navigate anyway if context is mounted
       if (context.mounted) {
         _navigateToMainApp(context);
@@ -49,23 +46,11 @@ class SplashProvider extends ChangeNotifier {
     }
   }
 
-  // Future<void> refreshFunction(BuildContext context) async {
-  //   print(" refreshFunction");
-  //   if (context.mounted) {
-  //     await _loadUserDataFromStorage();
-  //     WidgetsBinding.instance.addPostFrameCallback((_) {
-  //       if (context.mounted) {
-  //         homeProvider.initFunction(context: context);
-  //       }
-  //     });
-  //   }
-  // }
   void refreshFunction(BuildContext context) async {
     try {
       await _loadUserDataFromStorage();
 
       // Initialize home provider in background (non-blocking)
-      // This ensures the provider is ready but doesn't block navigation
       homeProvider
           .initFunction(context: context)
           .timeout(
@@ -91,13 +76,10 @@ class SplashProvider extends ChangeNotifier {
   void _navigateToMainApp(BuildContext context) async {
     // Prevent multiple navigations
     if (_hasNavigated) {
-      print('[SPLASH] Navigation already completed, skipping...');
       return;
     }
 
     try {
-      print('[SPLASH] Starting navigation process...');
-
       // FIRST: Check if user is logged in (for first install, skip location check)
       String? apiToken;
       String? userId;
@@ -114,7 +96,6 @@ class SplashProvider extends ChangeNotifier {
 
       // Get providers
       if (!context.mounted) {
-        print('[SPLASH] Context not mounted, cannot proceed');
         return;
       }
 
@@ -129,9 +110,6 @@ class SplashProvider extends ChangeNotifier {
           apiToken.isEmpty ||
           userId == null ||
           userId.isEmpty) {
-        print(
-          '[SPLASH] User not logged in (first install), navigating to login screen',
-        );
         if (context.mounted && !_hasNavigated) {
           _hasNavigated = true;
           Get.offAll(
@@ -145,7 +123,6 @@ class SplashProvider extends ChangeNotifier {
       }
 
       // User is logged in, NOW check location permission
-      print('[SPLASH] User is logged in, checking location permission...');
       LocationPermission locationPermission;
       try {
         locationPermission = await Geolocator.checkPermission().timeout(
@@ -158,7 +135,6 @@ class SplashProvider extends ChangeNotifier {
 
       // If location permission is denied, request it
       if (locationPermission == LocationPermission.denied) {
-        print('[SPLASH] Location permission denied, requesting permission...');
         try {
           locationPermission = await Geolocator.requestPermission().timeout(
             const Duration(seconds: 5),
@@ -171,9 +147,6 @@ class SplashProvider extends ChangeNotifier {
       // If permission is not granted (denied or deniedForever), show location permission screen
       if (locationPermission != LocationPermission.whileInUse &&
           locationPermission != LocationPermission.always) {
-        print(
-          '[SPLASH] Location permission not granted, showing permission screen',
-        );
         if (context.mounted && !_hasNavigated) {
           _hasNavigated = true;
           Get.offAll(
@@ -187,47 +160,32 @@ class SplashProvider extends ChangeNotifier {
       }
 
       // User is logged in, proceed to dashboard
-      print('[SPLASH] User is logged in, loading user data...');
       try {
         await _loadUserDataFromStorage().timeout(const Duration(seconds: 5));
       } catch (e) {
-        print('[SPLASH] Error loading user data: $e');
         // Continue anyway
       }
 
       if (!context.mounted) {
-        print('[SPLASH] Context not mounted after loading user data');
         return;
       }
 
       // IMPORTANT: Initialize home provider first
-      print('[SPLASH] Initializing home provider...');
       await homeProvider.initFunction(context: context);
 
       // CRITICAL: Wait for location and zone check before navigating
-      // This ensures we have location and zone before showing home screen
-      print('[SPLASH] Waiting for location and zone detection...');
       try {
         await homeProvider.ensureLocationAndZoneChecked().timeout(
           const Duration(seconds: 20),
           onTimeout: () {
-            print(
-              '[SPLASH] ⚠️ Location and zone check timed out after 20s, continuing to dashboard',
-            );
-            // Set flags so UI doesn't hang
             homeProvider.zoneCheckCompleted = true;
             homeProvider.hasActuallyCheckedZone = true;
             homeProvider.isLoadingFunction(false);
             homeProvider.notifyListeners();
           },
         );
-
-        print(
-          '[SPLASH] ✅ Location and zone check completed. Zone: ${Constant.selectedZone?.id}, Available: ${Constant.isZoneAvailable}',
-        );
       } catch (e) {
         print('[SPLASH] ❌ Error during location/zone check: $e');
-        // Set flags so UI doesn't hang
         homeProvider.zoneCheckCompleted = true;
         homeProvider.hasActuallyCheckedZone = true;
         homeProvider.isLoadingFunction(false);
@@ -235,7 +193,6 @@ class SplashProvider extends ChangeNotifier {
       }
 
       if (!context.mounted || _hasNavigated) {
-        print('[SPLASH] Context not mounted or already navigated');
         return;
       }
 
@@ -266,10 +223,6 @@ class SplashProvider extends ChangeNotifier {
       final zoneIdFromPrefs = Preferences.getString(Preferences.selectedZoneId);
       final hasZoneIdFromPrefs = zoneIdFromPrefs.isNotEmpty;
 
-      // Only show location permission screen if:
-      // 1. No cached location AND no location in Constant
-      // 2. AND no cached zone data AND no zone ID in Preferences
-      // If location/zone exists (cached or in Constant), allow to dashboard
       final bool hasAnyLocation = hasCachedLocation || hasLocationInConstant;
       final bool hasAnyZone =
           hasCachedZone ||
@@ -278,15 +231,7 @@ class SplashProvider extends ChangeNotifier {
           (Constant.selectedLocation.zoneId != null &&
               Constant.selectedLocation.zoneId!.isNotEmpty);
 
-      final bool inZone =
-          Constant.isZoneAvailable == true &&
-          Constant.selectedZone?.id != null &&
-          hasLocationInConstant;
-
       if (!hasAnyLocation && !hasAnyZone) {
-        print(
-          '[SPLASH] No location/zone found (cached or in Constant), showing location permission screen',
-        );
         _hasNavigated = true;
         Get.offAll(
           () => const LocationPermissionScreen(),
@@ -298,7 +243,6 @@ class SplashProvider extends ChangeNotifier {
       }
 
       // Navigate to dashboard — home screen loads outlets and shows no-service if needed.
-      print('[SPLASH] Navigating to dashboard after location/zone check...');
       _hasNavigated = true;
       try {
         Get.offAll(
@@ -306,7 +250,6 @@ class SplashProvider extends ChangeNotifier {
           transition: Transition.fadeIn,
           duration: const Duration(milliseconds: 800),
         );
-        print('[SPLASH] Navigation completed successfully');
 
         // Load address list in background after navigation (with timeout)
         Future.microtask(() async {
@@ -355,7 +298,6 @@ class SplashProvider extends ChangeNotifier {
             duration: const Duration(milliseconds: 800),
           );
         } catch (e2) {
-          print('[SPLASH] Error with Get.offAll fallback: $e2');
           if (context.mounted) {
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:jippymart_customer/app/auth_screen/provider/login_provider.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/constant.dart';
@@ -21,26 +19,35 @@ class OtpScreen extends StatefulWidget {
 }
 
 class _OtpScreenState extends State<OtpScreen> {
-  final TextEditingController otpController = TextEditingController();
-  late LoginProvider _controller;
-  Timer? _resendTimer;
+  final TextEditingController _otpController = TextEditingController();
+  late final LoginProvider _controller;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller = Provider.of<LoginProvider>(context, listen: false);
-      if (!_controller.resendTimerStarted) {
-        _controller.startResendTimer();
-      }
-    });
+    _controller = Provider.of<LoginProvider>(context, listen: false);
+    if (!_controller.resendTimerStarted) {
+      _controller.startResendTimer();
+    }
   }
 
   @override
   void dispose() {
-    _resendTimer?.cancel();
-    otpController.dispose();
+    _otpController.dispose();
     super.dispose();
+  }
+
+  void _verifyOtp() {
+    final otp = _otpController.text.trim();
+    if (otp.length < 6) {
+      ShowToastDialog.showToast("Please enter 6-digit OTP".tr);
+      return;
+    }
+    _controller.verifyOtp(
+      context,
+      Provider.of<SplashProvider>(context, listen: false),
+      otp,
+    );
   }
 
   @override
@@ -52,32 +59,28 @@ class _OtpScreenState extends State<OtpScreen> {
         elevation: 0,
         automaticallyImplyLeading: false,
       ),
-      body: _buildBody(context),
-    );
-  }
-
-  Widget _buildBody(BuildContext context) {
-    return Stack(
-      children: [
-        _buildBackgroundDecorations(),
-        SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeader(),
-                const SizedBox(height: 60),
-                _buildOtpField(),
-                const SizedBox(height: 50),
-                _buildVerifyButton(),
-                const SizedBox(height: 40),
-                _buildResendSection(),
-              ],
+      body: Stack(
+        children: [
+          _buildBackgroundDecorations(),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildHeader(),
+                  const SizedBox(height: 60),
+                  _buildOtpField(),
+                  const SizedBox(height: 50),
+                  _buildVerifyButton(),
+                  const SizedBox(height: 40),
+                  _buildResendSection(),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -123,8 +126,10 @@ class _OtpScreenState extends State<OtpScreen> {
   }
 
   Widget _buildHeader() {
-    return Consumer<LoginProvider>(
-      builder: (context, controller, _) {
+    return Selector<LoginProvider, ({String countryCode, String phoneNumber})>(
+      selector: (_, p) =>
+          (countryCode: p.countryCode, phoneNumber: p.phoneNumber),
+      builder: (context, data, _) {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -139,8 +144,8 @@ class _OtpScreenState extends State<OtpScreen> {
             const SizedBox(height: 8),
             Text(
               "${'Enter the OTP sent to your mobile number.'.tr} "
-              "${controller.countryCode} "
-              "${Constant.maskingString(controller.phoneNumber, 3)}",
+              "${data.countryCode} "
+              "${Constant.maskingString(data.phoneNumber, 3)}",
               style: TextStyle(
                 color: AppThemeData.grey700,
                 fontSize: 16,
@@ -161,7 +166,7 @@ class _OtpScreenState extends State<OtpScreen> {
         appContext: context,
         keyboardType: TextInputType.phone,
         hintCharacter: "-",
-        controller: otpController,
+        controller: _otpController,
         textStyle: TextStyle(
           color: AppThemeData.grey900,
           fontFamily: AppThemeData.regular,
@@ -179,40 +184,30 @@ class _OtpScreenState extends State<OtpScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
         enableActiveFill: true,
-        onChanged: (value) {}, // Minimal callback
+        onChanged: (value) {},
       ),
     );
   }
 
   Widget _buildVerifyButton() {
-    return Consumer2<LoginProvider, SplashProvider>(
-      builder: (context, controller, splashProvider, _) {
+    return Selector<LoginProvider, bool>(
+      selector: (_, p) => p.isVerifying,
+      builder: (context, isVerifying, _) {
         return RoundedButtonFill(
-          title: controller.isVerifying
-              ? "Verifying...".tr
-              : "Verify & Next".tr,
+          title: isVerifying ? "Verifying...".tr : "Verify & Next".tr,
           color: AppThemeData.primary300,
           textColor: AppThemeData.grey50,
-          onPress: controller.isVerifying
-              ? null
-              : () => _verifyOtp(controller, splashProvider),
+          onPress: isVerifying ? null : _verifyOtp,
         );
       },
     );
   }
 
-  void _verifyOtp(LoginProvider controller, SplashProvider splashProvider) {
-    final otp = otpController.text.trim();
-    if (otp.length < 6) {
-      ShowToastDialog.showToast("Please enter 6-digit OTP".tr);
-      return;
-    }
-    controller.verifyOtp(context, splashProvider, otp);
-  }
-
   Widget _buildResendSection() {
-    return Consumer<LoginProvider>(
-      builder: (context, controller, _) {
+    return Selector<LoginProvider, ({int resendSeconds, bool isVerifying})>(
+      selector: (_, p) =>
+          (resendSeconds: p.resendSeconds, isVerifying: p.isVerifying),
+      builder: (context, data, _) {
         return Text.rich(
           TextSpan(
             text: "Didn't receive any code?".tr,
@@ -224,21 +219,17 @@ class _OtpScreenState extends State<OtpScreen> {
             ),
             children: [
               TextSpan(
-                text: controller.resendSeconds > 0
-                    ? '  Resend in ${controller.resendSeconds}s'
+                text: data.resendSeconds > 0
+                    ? '  Resend in ${data.resendSeconds}s'
                     : '  Send Again'.tr,
-                recognizer:
-                    controller.resendSeconds > 0 || controller.isVerifying
+                recognizer: data.resendSeconds > 0 || data.isVerifying
                     ? null
-                    : (TapGestureRecognizer()
-                        ..onTap = () {
-                          controller.resendOtp();
-                        }),
+                    : (TapGestureRecognizer()..onTap = _controller.resendOtp),
                 style: TextStyle(
-                  color: controller.resendSeconds > 0
+                  color: data.resendSeconds > 0
                       ? AppThemeData.grey400
                       : AppThemeData.primary300,
-                  decoration: controller.resendSeconds > 0
+                  decoration: data.resendSeconds > 0
                       ? null
                       : TextDecoration.underline,
                   fontFamily: AppThemeData.medium,
