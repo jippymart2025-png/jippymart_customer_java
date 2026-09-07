@@ -265,10 +265,7 @@ class LoginProvider extends ChangeNotifier {
       );
 
       final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/verify-otp');
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
+      final headers = await getHeaders();
       final httpResponse = await SafeHttpClient.safePost(
         url,
         headers: headers,
@@ -310,10 +307,6 @@ class LoginProvider extends ChangeNotifier {
     Map<String, dynamic> response,
     SignupProvider signupProvider,
   ) async {
-    // ============================================================
-    // SAVE AUTH TOKEN
-    // ============================================================
-
     authToken = response['accessToken']?.toString() ?? '';
 
     await saveAuthToken(
@@ -539,10 +532,7 @@ class LoginProvider extends ChangeNotifier {
     ShowToastDialog.showLoader("Resending OTP...".tr);
     try {
       final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/resend-otp');
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
+      final headers = await getHeaders();
       final httpResponse = await SafeHttpClient.safePost(
         url,
         headers: headers,
