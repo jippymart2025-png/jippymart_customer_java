@@ -3259,7 +3259,7 @@ class CartControllerProvider extends ChangeNotifier {
   getPaymentSettings() async {
     try {
       await Future.wait([
-        FireStoreUtils.getPaymentSettingsData(),
+        // FireStoreUtils.getPaymentSettingsData(),
         fetchActivePaymentModes(),
       ]);
 
@@ -6078,26 +6078,20 @@ class CartControllerProvider extends ChangeNotifier {
     final unitPrice = double.tryParse(cartProductModel.price ?? '0') ?? 0;
 
     // ------------------------------------------------------------
-    // Variant option ID
+    // Variant option ID (may be absent for variant-less items,
+    // e.g. mart products) - mirror the initiate payload convention
+    // and omit the key instead of failing.
     // ------------------------------------------------------------
     final variantOptionId = int.tryParse(
       cartProductModel.variantInfo?.variantId ?? '',
     );
-
-    if (variantOptionId == null) {
-      print(
-        '[Cart] Invalid variantOptionId: '
-        '${cartProductModel.variantInfo?.variantId}',
-      );
-      return false;
-    }
 
     // ------------------------------------------------------------
     // Build variants
     // ------------------------------------------------------------
     final List<Map<String, dynamic>> variants = [
       {
-        'variantOptionId': variantOptionId,
+        if (variantOptionId != null) 'variantOptionId': variantOptionId,
         'quantity': quantity,
         'unitPrice': unitPrice,
       },

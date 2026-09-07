@@ -93,13 +93,7 @@ Widget billCartWidget(CartControllerProvider controller, BuildContext context) {
               // Packaging fee (server may include this)
               if (controller.useServerCheckoutPricing &&
                   controller.packagingFee > 0) ...[
-                _billRow(
-                  label: 'Packaging fee',
-                  value: Constant.amountShow(
-                    amount: controller.packagingFee.toString(),
-                  ),
-                  controller: controller,
-                ),
+                _buildPackagingFeeRow(controller),
                 const SizedBox(height: 10),
               ],
 
@@ -334,8 +328,29 @@ Widget _buildDeliveryFeeRow(
   );
 }
 
+Widget _buildPackagingFeeRow(CartControllerProvider controller) {
+  // When packagingFeeToggle is false the fee is waived → show it struck out.
+  final fee = controller.packagingFee;
+  final isFree = !controller.packagingFeeToggle;
+  return _billRow(
+    label: 'Packaging fee',
+    value: isFree
+        ? 'Free'
+        : Constant.amountShow(amount: fee.toString()),
+    strikeValue: isFree
+        ? Constant.amountShow(amount: fee.toString())
+        : null,
+    valueColor: isFree ? AppThemeData.success400 : null,
+    controller: controller,
+  );
+}
+
 Widget _buildSurgeFeeRow(CartControllerProvider controller) {
-  final isFree = controller.surgePercent <= 0;
+  // When surgeFeeToggle is false the fee is waived → show it struck out.
+  final surgeFee = controller.surgePercent;
+  final hasSurge = surgeFee > 0;
+  final isFree = !hasSurge || !controller.surgeFeeToggle;
+
   return Row(
     children: [
       Expanded(
@@ -348,33 +363,27 @@ Widget _buildSurgeFeeRow(CartControllerProvider controller) {
           ),
         ),
       ),
-      if (isFree) ...[
-        Text(
-          'Free',
-          style: TextStyle(
-            fontSize: 13,
-            fontFamily: AppThemeData.medium,
-            color: AppThemeData.success400,
-          ),
+      Text(
+        isFree
+            ? 'Free'
+            : Constant.amountShow(amount: surgeFee.toString()),
+        style: TextStyle(
+          fontSize: 13,
+          fontFamily: AppThemeData.medium,
+          color: isFree ? AppThemeData.success400 : AppThemeData.grey900,
         ),
+      ),
+      if (isFree && hasSurge) ...[
         const SizedBox(width: 6),
         Text(
-          '₹10',
+          Constant.amountShow(amount: surgeFee.toString()),
           style: TextStyle(
             fontSize: 12,
             color: AppThemeData.grey400,
             decoration: TextDecoration.lineThrough,
           ),
         ),
-      ] else
-        Text(
-          '₹${controller.surgePercent}',
-          style: TextStyle(
-            fontSize: 13,
-            fontFamily: AppThemeData.medium,
-            color: AppThemeData.grey900,
-          ),
-        ),
+      ],
     ],
   );
 }

@@ -15,8 +15,6 @@ import 'package:jippymart_customer/models/email_template_model.dart';
 import 'package:jippymart_customer/models/inbox_model.dart';
 import 'package:jippymart_customer/models/notification_model.dart';
 import 'package:jippymart_customer/models/order_model.dart';
-import 'package:jippymart_customer/models/payment_model/cod_setting_model.dart';
-import 'package:jippymart_customer/models/payment_model/razorpay_model.dart';
 import 'package:jippymart_customer/models/cart_product_model.dart';
 import 'package:jippymart_customer/models/product_model.dart';
 import 'package:jippymart_customer/models/rating_model.dart';
@@ -25,7 +23,6 @@ import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/vendor_category_model.dart';
 import 'package:jippymart_customer/models/outlet_details.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
-import 'package:jippymart_customer/utils/preferences.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
@@ -115,10 +112,6 @@ class OrdersPageResult {
 }
 
 class FireStoreUtils {
-  static Future<void>? _paymentSettingsInFlight;
-  static DateTime? _lastPaymentSettingsFetchAt;
-  static String? _lastPaymentSettingsZoneId;
-  static const Duration _paymentSettingsCacheTtl = Duration(minutes: 2);
   static const Duration _paymentSettingsRequestTimeout = Duration(seconds: 6);
 
   // static FirebaseFirestore fireStore = FirebaseFirestore.instance;
@@ -131,7 +124,7 @@ class FireStoreUtils {
     dynamic responseData,
   ) {
     if (responseData is! Map) return <String, dynamic>{};
-    final root = Map<String, dynamic>.from(responseData as Map);
+    final root = Map<String, dynamic>.from(responseData);
     final data = root['data'];
     final fields = data is Map ? data['fields'] : null;
 
@@ -148,7 +141,7 @@ class FireStoreUtils {
     if (zoneSettings is Map) {
       zoneSettings.forEach((key, value) {
         if (key == null || value is! Map) return;
-        normalized[key.toString()] = Map<String, dynamic>.from(value as Map);
+        normalized[key.toString()] = Map<String, dynamic>.from(value);
       });
     }
 
@@ -228,143 +221,6 @@ class FireStoreUtils {
       page: page,
     );
   }
-
-  static Future getPaymentSettingsData() async {
-    final selectedZoneId = Constant.selectedZone?.id?.toString().trim();
-    final normalizedZoneId = (selectedZoneId == null || selectedZoneId.isEmpty)
-        ? null
-        : selectedZoneId;
-    if (_paymentSettingsInFlight != null) {
-      return _paymentSettingsInFlight!;
-    }
-    final canUseRecentFetch =
-        _lastPaymentSettingsFetchAt != null &&
-        _lastPaymentSettingsZoneId == normalizedZoneId &&
-        DateTime.now().difference(_lastPaymentSettingsFetchAt!) <
-            _paymentSettingsCacheTtl;
-    if (canUseRecentFetch) return;
-
-    _paymentSettingsInFlight = () async {
-      try {
-        final headers = await getHeaders();
-        final responses = await Future.wait<http.Response?>([
-          _safeGet(
-            Uri.parse('${AppConst.baseUrl}firestore/settings/razorpay'),
-            headers,
-          ),
-          _safeGet(
-            Uri.parse('${AppConst.baseUrl}firestore/settings/cod'),
-            headers,
-          ),
-          if (normalizedZoneId != null)
-            _safeGet(
-              Uri.parse(
-                '${AppConst.baseUrl}zone-payment-settings',
-              ).replace(queryParameters: {'zone_id': normalizedZoneId}),
-              headers,
-            ),
-        ]);
-        final razorpayResponse = responses[0];
-        final codResponse = responses[1];
-        var zonePaymentSettings = <String, dynamic>{};
-        var hasAnySuccessfulFetch = false;
-
-        if (razorpayResponse?.statusCode == 200) {
-          hasAnySuccessfulFetch = true;
-          final responseData = jsonDecode(razorpayResponse!.body);
-          zonePaymentSettings = _mergeZonePaymentSettings(
-            zonePaymentSettings,
-            _extractZonePaymentSettings(responseData),
-          );
-          if (responseData['success'] == true) {
-            final razorpayData = responseData['data']['fields'];
-            final razorPayModel = RazorPayModel.fromJson(razorpayData);
-            await Preferences.setString(
-              Preferences.razorpaySettings,
-              jsonEncode(razorPayModel.toJson()),
-            );
-          }
-        }
-
-        if (codResponse?.statusCode == 200) {
-          hasAnySuccessfulFetch = true;
-          final responseData = jsonDecode(codResponse!.body);
-          zonePaymentSettings = _mergeZonePaymentSettings(
-            zonePaymentSettings,
-            _extractZonePaymentSettings(responseData),
-          );
-          if (responseData['success'] == true) {
-            final codData = responseData['data']['fields'];
-            final codSettingModel = CodSettingModel.fromJson(codData);
-            await Preferences.setString(
-              Preferences.codSettings,
-              jsonEncode(codSettingModel.toJson()),
-            );
-          }
-        }
-
-        if (normalizedZoneId != null && responses.length > 2) {
-          final zonePaymentResponse = responses[2];
-          if (zonePaymentResponse?.statusCode == 200) {
-            hasAnySuccessfulFetch = true;
-            final responseData = jsonDecode(zonePaymentResponse!.body);
-            zonePaymentSettings = _mergeZonePaymentSettings(
-              zonePaymentSettings,
-              _extractZonePaymentSettings(responseData),
-            );
-          } else {
-            if (kDebugMode) {
-              dev.log(
-                'Zone payment settings fetch failed: ${zonePaymentResponse?.statusCode ?? 'no response'}',
-              );
-            }
-          }
-        }
-
-        if (zonePaymentSettings.isNotEmpty) {
-          await Preferences.setString(
-            Preferences.zonePaymentSettings,
-            jsonEncode(zonePaymentSettings),
-          );
-        }
-        if (hasAnySuccessfulFetch) {
-          _lastPaymentSettingsFetchAt = DateTime.now();
-          _lastPaymentSettingsZoneId = normalizedZoneId;
-        }
-      } catch (e) {
-        debugPrint('Error fetching payment settings: $e');
-      } finally {
-        _paymentSettingsInFlight = null;
-      }
-    }();
-
-    return _paymentSettingsInFlight!;
-  }
-
-  // static Future<VendorModel?> getVendorById(String vendorId) async {
-  //   VendorModel? vendorModel;
-  //   try {
-  //     final response = await http.get(
-  //       Uri.parse('${AppConst.baseUrl}restaurants/$vendorId'),
-  //       headers: await getHeaders(),
-  //     );
-  //     dev.log("getVendorById ${response.body}  ");
-  //     if (response.statusCode == 200) {
-  //       final jsonResponse = json.decode(response.body);
-  //       if (jsonResponse['success'] == true && jsonResponse['data'] != null) {
-  //         vendorModel = VendorModel.fromJson(jsonResponse['data']);
-  //       }
-  //     } else {
-  //       return null;
-  //     }
-  //   } catch (e) {
-  //     ShowToastDialog.closeLoader();
-  //     return null;
-  //   }
-  //   return vendorModel;
-  // }
-
-  // optimized — with in-memory cache (5 min TTL), pending-request deduplication, and ApiQueueManager
 
   static final Map<String, _CachedVendor> _vendorCache = {};
   static final Map<String, Future<VendorModel?>> _pendingVendorRequests = {};
