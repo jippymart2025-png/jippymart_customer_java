@@ -101,7 +101,9 @@ class WalletHomeScreenState extends State<WalletHomeScreen>
                         _QuickActionsRow(
                           wp: wp,
                           onRedeem: () => _openRedeemSheet(wp),
-                          onCheckin: () => _doCheckin(wp),
+                          ontransffer: () => _showTransferDrawer(
+                            context.read<WalletProvider>(),
+                          ),
                         ),
                         const SizedBox(height: 24),
                         _SectionHeader(title: 'Daily Rewards'),
@@ -179,6 +181,499 @@ class WalletHomeScreenState extends State<WalletHomeScreen>
           ),
         ),
       ],
+    );
+  }
+
+  void _showTransferDrawer(WalletProvider wp) {
+    final phoneController = TextEditingController();
+    final pointsController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      useSafeArea: true,
+      builder: (sheetContext) {
+        bool isLoading = false;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.82,
+                ),
+                decoration: BoxDecoration(
+                  color: W.bg,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(28),
+                  ),
+                ),
+                child: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // ─────────────────────────────────────────────
+                        // Drag handle
+                        // ─────────────────────────────────────────────
+                        Center(
+                          child: Container(
+                            width: 42,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade300,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ─────────────────────────────────────────────
+                        // Header
+                        // ─────────────────────────────────────────────
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: W.goldLight,
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: Icon(
+                                Icons.swap_horiz_rounded,
+                                color: W.goldDark,
+                                size: 26,
+                              ),
+                            ),
+
+                            const SizedBox(width: 13),
+
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Transfer Coins',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w800,
+                                      color: ZColors.textPrimary,
+                                      letterSpacing: -0.4,
+                                    ),
+                                  ),
+                                  SizedBox(height: 3),
+                                  Text(
+                                    'Send coins to another customer',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: ZColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            IconButton(
+                              onPressed: isLoading
+                                  ? null
+                                  : () => Navigator.pop(sheetContext),
+                              splashRadius: 22,
+                              icon: const Icon(
+                                Icons.close_rounded,
+                                color: ZColors.textSecondary,
+                                size: 22,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ─────────────────────────────────────────────
+                        // Available coins card
+                        // ─────────────────────────────────────────────
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: W.goldLight,
+                            borderRadius: BorderRadius.circular(W.cardRadius),
+                            border: Border.all(color: W.gold.withOpacity(0.12)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 42,
+                                height: 42,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(13),
+                                ),
+                                child: Icon(
+                                  Icons.monetization_on_rounded,
+                                  color: W.goldDark,
+                                  size: 24,
+                                ),
+                              ),
+
+                              const SizedBox(width: 12),
+
+                              const Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Available Coins',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: ZColors.textSecondary,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    SizedBox(height: 3),
+                                    Text(
+                                      'You can transfer from your wallet',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: ZColors.textPrimary,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                              Text(
+                                '${wp.coinBalance}',
+                                style: TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w800,
+                                  color: W.goldDark,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // ─────────────────────────────────────────────
+                        // Receiver
+                        // ─────────────────────────────────────────────
+                        const Text(
+                          'Receiver',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: ZColors.textPrimary,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        TextFormField(
+                          controller: phoneController,
+                          keyboardType: TextInputType.phone,
+                          textInputAction: TextInputAction.next,
+                          decoration: InputDecoration(
+                            hintText: 'Enter receiver phone number',
+                            prefixIcon: const Icon(
+                              Icons.phone_outlined,
+                              size: 20,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 15,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: W.gold, width: 1.4),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: W.red),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: W.red),
+                            ),
+                          ),
+                          validator: (value) {
+                            final phone = value?.trim() ?? '';
+
+                            if (phone.isEmpty) {
+                              return 'Enter receiver phone number';
+                            }
+
+                            if (phone.length < 10) {
+                              return 'Enter a valid phone number';
+                            }
+
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // ─────────────────────────────────────────────
+                        // Amount
+                        // ─────────────────────────────────────────────
+                        const Text(
+                          'Coins to Transfer',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: ZColors.textPrimary,
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        TextFormField(
+                          controller: pointsController,
+                          keyboardType: TextInputType.number,
+                          textInputAction: TextInputAction.done,
+                          decoration: InputDecoration(
+                            hintText: 'Enter amount',
+                            prefixIcon: const Icon(
+                              Icons.monetization_on_outlined,
+                              size: 20,
+                            ),
+                            suffixText: 'COINS',
+                            suffixStyle: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: W.goldDark,
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 15,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(
+                                color: Colors.grey.shade200,
+                              ),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: W.gold, width: 1.4),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: W.red),
+                            ),
+                            focusedErrorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(14),
+                              borderSide: BorderSide(color: W.red),
+                            ),
+                          ),
+                          validator: (value) {
+                            final text = value?.trim() ?? '';
+
+                            if (text.isEmpty) {
+                              return 'Enter coins to transfer';
+                            }
+
+                            final points = int.tryParse(text);
+
+                            if (points == null || points <= 0) {
+                              return 'Enter a valid amount';
+                            }
+
+                            if (points > wp.coinBalance) {
+                              return 'Insufficient coins';
+                            }
+
+                            return null;
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // ─────────────────────────────────────────────
+                        // Warning / info
+                        // ─────────────────────────────────────────────
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppThemeData.grey50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                Icons.info_outline_rounded,
+                                size: 16,
+                                color: ZColors.textTertiary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Double-check the receiver number before confirming the transfer.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    height: 1.4,
+                                    color: ZColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 22),
+
+                        // ─────────────────────────────────────────────
+                        // Transfer button
+                        // ─────────────────────────────────────────────
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: ElevatedButton(
+                            onPressed: isLoading
+                                ? null
+                                : () async {
+                                    if (!formKey.currentState!.validate()) {
+                                      return;
+                                    }
+
+                                    final points = int.tryParse(
+                                      pointsController.text.trim(),
+                                    );
+
+                                    if (points == null) {
+                                      return;
+                                    }
+
+                                    setState(() {
+                                      isLoading = true;
+                                    });
+
+                                    final error = await wp.transferPoints(
+                                      receiverPhoneNumber: phoneController.text
+                                          .trim(),
+                                      transferPoints: points,
+                                    );
+
+                                    if (!context.mounted) {
+                                      return;
+                                    }
+
+                                    if (error != null) {
+                                      setState(() {
+                                        isLoading = false;
+                                      });
+
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(error),
+                                          behavior: SnackBarBehavior.floating,
+                                          margin: const EdgeInsets.all(16),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                        ),
+                                      );
+
+                                      return;
+                                    }
+
+                                    Navigator.pop(sheetContext);
+
+                                    _showSnackOnce(
+                                      key: 'transfer_success',
+                                      title: 'Transfer Successful',
+                                      message:
+                                          '$points coins transferred successfully.',
+                                      backgroundColor: W.goldLight,
+                                      textColor: W.goldDark,
+                                    );
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: W.gold,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: W.gold.withOpacity(0.45),
+                              disabledForegroundColor: Colors.white,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                            ),
+                            child: isLoading
+                                ? const SizedBox(
+                                    width: 23,
+                                    height: 23,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.4,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.send_rounded, size: 19),
+                                      SizedBox(width: 9),
+                                      Text(
+                                        'Transfer Coins',
+                                        style: TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -455,12 +950,12 @@ class _QuickActionsRow extends StatelessWidget {
   const _QuickActionsRow({
     required this.wp,
     required this.onRedeem,
-    required this.onCheckin,
+    required this.ontransffer,
   });
 
   final WalletProvider wp;
   final VoidCallback onRedeem;
-  final VoidCallback onCheckin;
+  final VoidCallback ontransffer;
 
   @override
   Widget build(BuildContext context) {
@@ -478,12 +973,12 @@ class _QuickActionsRow extends StatelessWidget {
         const SizedBox(width: 12),
         Expanded(
           child: _ActionCard(
-            icon: Icons.today_rounded,
-            label: 'Check-in',
+            icon: Icons.transfer_within_a_station,
+            label: 'Transfer Coins',
             iconColor: W.gold,
             bgColor: W.goldLight,
             badge: wp.checkedInToday ? '✓' : null,
-            onTap: onCheckin,
+            onTap: ontransffer,
           ),
         ),
         const SizedBox(width: 12),

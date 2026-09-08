@@ -14,25 +14,18 @@ class CategoryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<CategoryViewProvider, CategoryRestaurantProvider>(
-      builder: (context, controller, categoryRestaurantProvider, _) {
-        return _CategoryViewBody(
-          controller: controller,
-          categoryRestaurantProvider: categoryRestaurantProvider,
-        );
+    return Consumer<CategoryViewProvider>(
+      builder: (context, controller, _) {
+        return _CategoryViewBody(controller: controller);
       },
     );
   }
 }
 
 class _CategoryViewBody extends StatelessWidget {
-  const _CategoryViewBody({
-    required this.controller,
-    required this.categoryRestaurantProvider,
-  });
+  const _CategoryViewBody({required this.controller});
 
   final CategoryViewProvider controller;
-  final CategoryRestaurantProvider categoryRestaurantProvider;
 
   // static const LinearGradient _cardAccentGradient = LinearGradient(
   //   colors: [Color(0xFFFF6B35), Color(0xFFFF3D77), Color(0xFFD7006A)],
@@ -42,6 +35,8 @@ class _CategoryViewBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final categoryRestaurantProvider = context
+        .read<CategoryRestaurantProvider>();
     final count = controller.vendorCategoryModel.length >= 8
         ? 8
         : controller.vendorCategoryModel.length;

@@ -59,8 +59,11 @@ class _BannerViewState extends State<BannerView> {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 160,
-      child: Consumer<HomeProvider>(
-        builder: (context, homeProvider, _) {
+      child: Selector<HomeProvider, int>(
+        selector: (_, provider) => provider.bannerModel.length,
+        builder: (context, _, _) {
+          final homeProvider = context.read<HomeProvider>();
+
           // This should be inside the builder function, not outside
           if (!_timerStarted && homeProvider.bannerModel.isNotEmpty) {
             WidgetsBinding.instance.addPostFrameCallback((_) async {

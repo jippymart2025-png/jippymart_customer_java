@@ -350,7 +350,6 @@ class RestaurantApiHelper {
 
     final uri = Uri.parse(
       '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=$latitude&lng=$longitude',
-      // '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=17.4156&lng=78.4479',
     );
 
     debugPrint('[OUTLET_API] Fetching nearby outlets from: $uri');
@@ -398,29 +397,29 @@ class RestaurantApiHelper {
   }
 
   /// Checks if food service is available at coordinates using outlet APIs.
-  static Future<bool> checkOutletServiceAvailable({
-    required double latitude,
-    required double longitude,
-    String? outletId,
-  }) async {
-    try {
-      final restaurants = await fetchNearbyOutlets(
-        latitude: latitude,
-        longitude: longitude,
-      );
-      if (restaurants.isNotEmpty) return true;
-
-      if (RestaurantApiHelper.isValidOutletId(outletId)) {
-        await getRestaurantProducts(restaurantId: outletId!);
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      debugPrint('[OUTLET_SERVICE] unavailable: $e');
-      return false;
-    }
-  }
+  // static Future<bool> checkOutletServiceAvailable({
+  //   required double latitude,
+  //   required double longitude,
+  //   String? outletId,
+  // }) async {
+  //   try {
+  //     final restaurants = await fetchNearbyOutlets(
+  //       latitude: latitude,
+  //       longitude: longitude,
+  //     );
+  //     if (restaurants.isNotEmpty) return true;
+  //
+  //     if (RestaurantApiHelper.isValidOutletId(outletId)) {
+  //       await getRestaurantProducts(restaurantId: outletId!);
+  //       return true;
+  //     }
+  //
+  //     return false;
+  //   } catch (e) {
+  //     debugPrint('[OUTLET_SERVICE] unavailable: $e');
+  //     return false;
+  //   }
+  // }
 }
 
 /// SMART CACHE SYSTEM

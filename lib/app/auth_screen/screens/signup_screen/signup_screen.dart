@@ -1,3 +1,4 @@
+import 'package:intl/intl.dart';
 import 'package:jippymart_customer/app/auth_screen/screens/signup_screen/provider/signup_provider.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
@@ -61,6 +62,8 @@ class _SignupScreenState extends State<SignupScreen> {
               _buildEmailField(),
               const SizedBox(height: 16),
               _buildPhoneField(),
+              const SizedBox(height: 16),
+              _buildDoB(),
               const SizedBox(height: 16),
               _buildReferralCodeField(),
               const SizedBox(height: 24),
@@ -142,6 +145,41 @@ class _SignupScreenState extends State<SignupScreen> {
           controller: controller.emailEditingController,
           hintText: 'Enter Email Address'.tr,
           prefix: _buildIcon("assets/icons/ic_mail.svg"),
+        );
+      },
+    );
+  }
+
+  Widget _buildDoB() {
+    return Consumer<SignupProvider>(
+      builder: (context, controller, _) {
+        return GestureDetector(
+          onTap: () async {
+            final DateTime? selectedDate = await showDatePicker(
+              context: context,
+              initialDate: DateTime.now(),
+              firstDate: DateTime(1900),
+              lastDate: DateTime.now(),
+            );
+
+            if (selectedDate != null) {
+              controller.dobEditingController.text = DateFormat(
+                'yyyy-MM-dd',
+              ).format(selectedDate);
+
+              controller.notifyListeners();
+            }
+          },
+          child: AbsorbPointer(
+            child: TextFieldWidget(
+              readOnly: true,
+              title: 'Date of Birth'.tr,
+              controller: controller.dobEditingController,
+              hintText: 'Select Date of Birth'.tr,
+              textInputAction: TextInputAction.done,
+              suffix: const Icon(Icons.calendar_month),
+            ),
+          ),
         );
       },
     );

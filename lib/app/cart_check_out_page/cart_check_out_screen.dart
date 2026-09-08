@@ -292,10 +292,10 @@ class _CartCheckOutScreenState extends State<CartCheckOutScreen> {
     final cartTheme = _getCartTheme();
     final themeColors = _getThemeColors(cartTheme);
 
-    return Consumer2<CartControllerProvider, DashBoardProvider>(
-      builder: (context, controller, dashboardProvider, _) {
+    return Consumer<CartControllerProvider>(
+      builder: (context, controller, _) {
         // Handle tab changes with optimization
-        _handleTabChange(dashboardProvider.selectedIndex);
+        _handleTabChange(context.read<DashBoardProvider>().selectedIndex);
 
         return WillPopScope(
           onWillPop: () async {

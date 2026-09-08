@@ -106,10 +106,7 @@ class LoginProvider extends ChangeNotifier {
     try {
       phoneNumber = fullPhoneNumber;
       final url = Uri.parse('${AppConst.outletBaseUrl}co/auth/send-otp');
-      final headers = {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      };
+      final headers = await getHeaders();
       final httpResponse = await SafeHttpClient.safePost(
         url,
         headers: headers,
@@ -251,6 +248,7 @@ class LoginProvider extends ChangeNotifier {
     final firstName = response['firstName']?.toString().trim() ?? '';
 
     final lastName = response['lastName']?.toString().trim() ?? '';
+    final email = response['email']?.toString().trim() ?? '';
 
     final mobileNumber =
         response['mobileNumber']?.toString().trim() ?? phoneNumber;
@@ -262,8 +260,8 @@ class LoginProvider extends ChangeNotifier {
     // ============================================================
 
     final isRegistered =
-        // email.isNotEmpty && firstName.isNotEmpty && lastName.isNotEmpty;
-        firstName.isNotEmpty && lastName.isNotEmpty;
+        email.isNotEmpty && firstName.isNotEmpty && lastName.isNotEmpty;
+    // firstName.isNotEmpty && lastName.isNotEmpty;
 
     // ============================================================
     // REGISTERED USER

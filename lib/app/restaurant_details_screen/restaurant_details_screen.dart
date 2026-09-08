@@ -1090,22 +1090,20 @@ class _RatingSection extends StatelessWidget {
             ],
           ),
         ),
-        Consumer<ReviewListProvider>(
-          builder: (context, reviewListProvider, _) => InkWell(
-            onTap: () {
-              reviewListProvider.initFunction(
-                vendorModels: controller.vendorModel,
-              );
-              Get.to(const ReviewListScreen());
-            },
-            child: Text(
-              "${controller.vendorModel.reviewsCount ?? 0} ${'Ratings'.tr}",
-              style: const TextStyle(
-                decoration: TextDecoration.underline,
-                decorationColor: AppThemeData.grey500,
-                color: AppThemeData.grey600,
-                fontFamily: AppThemeData.regular,
-              ),
+        InkWell(
+          onTap: () {
+            context.read<ReviewListProvider>().initFunction(
+              vendorModels: controller.vendorModel,
+            );
+            Get.to(const ReviewListScreen());
+          },
+          child: Text(
+            "${controller.vendorModel.reviewsCount ?? 0} ${'Ratings'.tr}",
+            style: const TextStyle(
+              decoration: TextDecoration.underline,
+              decorationColor: AppThemeData.grey500,
+              color: AppThemeData.grey600,
+              fontFamily: AppThemeData.regular,
             ),
           ),
         ),

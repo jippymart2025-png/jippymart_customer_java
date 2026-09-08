@@ -8,6 +8,8 @@ import 'package:jippymart_customer/models/referral_model.dart';
 import 'package:jippymart_customer/services/wallet_api_service.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
 
+import '../../../utils/utils/sql_storage_const.dart';
+
 class WalletProvider extends ChangeNotifier {
   final WalletApiService _api = WalletApiService.instance;
 
@@ -236,6 +238,39 @@ class WalletProvider extends ChangeNotifier {
       }
       return res?['message']?.toString() ??
           '"You have already applied a referral code"';
+    } catch (e) {
+      return e.toString();
+    }
+  }
+
+  Future<String?> transferPoints({
+    required String receiverPhoneNumber,
+    required int transferPoints,
+  }) async {
+    try {
+      final userIdString = await SqlStorageConst.getUserId();
+      final userId = int.tryParse(userIdString.toString());
+      if (userId == null) {
+        return 'Invalid user ID';
+      }
+      if (transferPoints <= 0) {
+        return 'Transfer amount must be greater than 0';
+      }
+      if (transferPoints > coinBalance) {
+        return 'Insufficient coins';
+      }
+      final res = await _api.transferWalletPoints(
+        senderCustomerId: userId,
+        receiverPhoneNumber: receiverPhoneNumber,
+        transferPoints: transferPoints,
+        createdBy: userId,
+      );
+      if (res != null) {
+        await refreshWallet(force: true);
+        notifyListeners();
+        return null;
+      }
+      return 'Point transfer failed';
     } catch (e) {
       return e.toString();
     }

@@ -21,6 +21,7 @@ class SignupProvider extends ChangeNotifier {
   TextEditingController lastNameEditingController = TextEditingController();
   TextEditingController emailEditingController = TextEditingController();
   TextEditingController phoneNUmberEditingController = TextEditingController();
+  TextEditingController dobEditingController = TextEditingController();
   TextEditingController countryCodeEditingController = TextEditingController(
     text: "+91",
   );
@@ -72,6 +73,7 @@ class SignupProvider extends ChangeNotifier {
         'lastName': lastNameEditingController.value.text.trim(),
         'email': emailEditingController.value.text.trim().toLowerCase(),
         'phoneNumber': phoneNUmberEditingController.value.text.trim(),
+        'dob': dobEditingController.value.text.trim(),
         'createdBy': customerId,
         'customerId': customerId,
         'referralCode': referralCode,
@@ -82,9 +84,7 @@ class SignupProvider extends ChangeNotifier {
       final headers = await getHeaders();
       final response = await http
           .put(
-            Uri.parse(
-              '${AppConst.outletBaseUrl}co/customers/updateCustomerProfile',
-            ),
+            Uri.parse('${AppConst.outletBaseUrl}co/customers/$customerId'),
             headers: headers,
             body: json.encode(profileData),
           )
@@ -184,7 +184,8 @@ class SignupProvider extends ChangeNotifier {
           : response;
 
       UserModel newUser = UserModel(
-        id: userData['customerId']?.toString() ??
+        id:
+            userData['customerId']?.toString() ??
             userData['id']?.toString() ??
             storedCustomerId,
         firebaseId: userData['firebase_id']?.toString() ?? storedCustomerId,

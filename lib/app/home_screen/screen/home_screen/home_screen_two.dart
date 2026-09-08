@@ -475,8 +475,10 @@ class _HomeContentCard extends StatelessWidget {
 class _CategorySection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final prov = context.watch<CategoryViewProvider>();
-    if (prov.vendorCategoryModel.isEmpty) return const SizedBox.shrink();
+    final isEmpty = context.select<CategoryViewProvider, bool>(
+      (p) => p.vendorCategoryModel.isEmpty,
+    );
+    if (isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

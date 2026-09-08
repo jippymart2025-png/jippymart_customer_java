@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
-import 'package:jippymart_customer/app/restaurant_details_screen/provider/restaurant_details_provider.dart';
 import 'package:provider/provider.dart';
 import '../../../../../utils/network_image_widget.dart';
 
@@ -37,8 +36,8 @@ class _BottomBannerViewState extends State<BottomBannerView> {
   Widget build(BuildContext context) {
     return SizedBox(
       height: bannerHeight,
-      child: Consumer2<RestaurantDetailsProvider, HomeProvider>(
-        builder: (context, restaurantDetailsProvider, homeProvider, _) {
+      child: Consumer<HomeProvider>(
+        builder: (context, homeProvider, _) {
           if (!_timerStarted &&
               homeProvider.bannerBottomModel.isNotEmpty &&
               homeProvider.pageBottomController.hasClients) {

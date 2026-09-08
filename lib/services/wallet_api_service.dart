@@ -282,6 +282,32 @@ class WalletApiService {
     await Preferences.setInt(Preferences.walletLastKnownPositiveStreak, streak);
   }
 
+  Future<Map<String, dynamic>?> transferWalletPoints({
+    required int senderCustomerId,
+    required String receiverPhoneNumber,
+    required int transferPoints,
+    required int createdBy,
+  }) async {
+    final response = await http.post(
+      Uri.parse('${AppConst.baseUrl}/api/co/customers/wallet/transfer'),
+      headers: await getHeaders(),
+      body: jsonEncode({
+        'senderCustomerId': senderCustomerId,
+        'receiverPhoneNumber': receiverPhoneNumber,
+        'transferPoints': transferPoints,
+        'createdBy': createdBy,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+
+    throw Exception(data['message']?.toString() ?? 'Unable to transfer points');
+  }
+
   /// Parse coin_wallet from GET /wallet response.
   CoinWalletModel? parseCoinWallet(Map<String, dynamic>? data) {
     if (data == null) return null;

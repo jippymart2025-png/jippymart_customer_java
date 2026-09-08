@@ -505,76 +505,72 @@ class HomeSearchBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<SwiggySearchProvider>(
-      builder: (context, swiggySearchProvider, _) {
-        return Material(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          child: InkWell(
-            onTap: () {
-              swiggySearchProvider.initFunction();
-              Get.to(() => const SwiggySearchScreen());
-            },
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () {
+          context.read<SwiggySearchProvider>().initFunction();
+          Get.to(() => const SwiggySearchScreen());
+        },
+        borderRadius: BorderRadius.circular(16),
+        splashColor: Colors.white.withOpacity(0.14),
+        highlightColor: Colors.white.withOpacity(0.08),
+        child: Container(
+          height: 50,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.96),
             borderRadius: BorderRadius.circular(16),
-            splashColor: Colors.white.withOpacity(0.14),
-            highlightColor: Colors.white.withOpacity(0.08),
-            child: Container(
-              height: 50,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.96),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.55),
-                  width: 0.8,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.14),
-                    blurRadius: 18,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: AppThemeData.primary50,
-                      borderRadius: BorderRadius.circular(9),
-                    ),
-                    alignment: Alignment.center,
-                    child: SvgPicture.asset(
-                      "assets/icons/ic_search.svg",
-                      color: AppThemeData.primary300,
-                      width: 16,
-                      height: 16,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      "Search for dishes, restaurants".tr,
-                      style: TextStyle(
-                        fontFamily: AppThemeData.medium,
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ),
-                  Icon(
-                    Icons.mic_none_rounded,
-                    size: 21,
-                    color: AppThemeData.grey600,
-                  ),
-                ],
-              ),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.55),
+              width: 0.8,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.14),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
           ),
-        );
-      },
+          child: Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: AppThemeData.primary50,
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                alignment: Alignment.center,
+                child: SvgPicture.asset(
+                  "assets/icons/ic_search.svg",
+                  color: AppThemeData.primary300,
+                  width: 16,
+                  height: 16,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  "Search for dishes, restaurants".tr,
+                  style: TextStyle(
+                    fontFamily: AppThemeData.medium,
+                    fontSize: 14,
+                    color: Colors.grey[700],
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.mic_none_rounded,
+                size: 21,
+                color: AppThemeData.grey600,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

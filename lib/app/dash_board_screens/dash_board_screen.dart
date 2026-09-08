@@ -52,6 +52,7 @@ class _DashBoardScreenState extends State<DashBoardScreen>
   bool _isOrderRefreshInFlight = false;
   final NotificationService _notificationService = NotificationService();
   int _lastCartItemCount = 0;
+  int _lastAppliedStatusBarIndex = -1;
   DateTime? _lastBackPressTime;
 
   @override
@@ -345,10 +346,13 @@ class _DashBoardScreenState extends State<DashBoardScreen>
     );
 
     // Apply now (avoids one white frame) and again after layout.
-    _applyStatusBarStyle(safeIndex);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _applyStatusBarStyle(safeIndex);
-    });
+    if (_lastAppliedStatusBarIndex != safeIndex) {
+      _applyStatusBarStyle(safeIndex);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _applyStatusBarStyle(safeIndex);
+      });
+      _lastAppliedStatusBarIndex = safeIndex;
+    }
 
     final cartControllerProvider = context.read<CartControllerProvider>();
     final cartItemCount = context.select<CartProvider, int>(

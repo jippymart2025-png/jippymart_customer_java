@@ -44,44 +44,50 @@ class _SelectPaymentScreenState extends State<SelectPaymentScreen>
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<CartControllerProvider>();
     return Scaffold(
       backgroundColor: W.bg,
       appBar: _buildAppBar(),
       body: FadeTransition(
         opacity: _fadeAnim,
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _OrderSummaryStrip(controller: controller),
-              if (controller.selectedFoodType != 'TakeAway') ...[
-                const SizedBox(height: 16),
-                _DeliveryAddressCard(controller: controller),
-              ],
-              const SizedBox(height: 20),
-              _sectionLabel('STEP 1  ·  Your Wallet'),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                child: _WalletToggleCard(controller: controller),
+        child: Consumer<CartControllerProvider>(
+          builder: (context, controller, _) {
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _OrderSummaryStrip(controller: controller),
+                  if (controller.selectedFoodType != 'TakeAway') ...[
+                    const SizedBox(height: 16),
+                    _DeliveryAddressCard(controller: controller),
+                  ],
+                  const SizedBox(height: 20),
+                  _sectionLabel('STEP 1  ·  Your Wallet'),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: _WalletToggleCard(controller: controller),
+                  ),
+                  if (!controller.isFullyPaidByWallet) ...[
+                    const SizedBox(height: 24),
+                    _sectionLabel('STEP 2  ·  Pay Remaining via'),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      child: _PaymentMethodsCard(controller: controller),
+                    ),
+                  ],
+                  const SizedBox(height: 120),
+                ],
               ),
-              if (!controller.isFullyPaidByWallet) ...[
-                const SizedBox(height: 24),
-                _sectionLabel('STEP 2  ·  Pay Remaining via'),
-                const SizedBox(height: 8),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  child: _PaymentMethodsCard(controller: controller),
-                ),
-              ],
-              const SizedBox(height: 120),
-            ],
-          ),
+            );
+          },
         ),
       ),
-      bottomNavigationBar: _ConfirmPayBar(controller: controller),
+      bottomNavigationBar: Consumer<CartControllerProvider>(
+        builder: (context, controller, _) =>
+            _ConfirmPayBar(controller: controller),
+      ),
     );
   }
 
@@ -562,7 +568,7 @@ class _PaymentMethodsCard extends StatelessWidget {
     final hasCod = _serverAuthority
         ? controller.checkoutCodAvailable
         : (controller.isCodEnabledForCurrentZone ||
-            controller.isCodActiveFromApi);
+              controller.isCodActiveFromApi);
     final showCodTile = hasCod;
 
     final showPaytm = controller.isPaytmActiveFromApi;
