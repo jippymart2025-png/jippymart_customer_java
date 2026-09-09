@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
-
 import 'package:jippymart_customer/app/edit_profile_screen/provider/edit_profile_provider.dart';
 import 'package:jippymart_customer/app/profile_screen/provider/my_profile_provider.dart';
 import 'package:jippymart_customer/app/splash_screen/provider/splash_provider.dart';
@@ -14,7 +13,6 @@ import 'package:jippymart_customer/themes/responsive.dart';
 import 'package:jippymart_customer/themes/round_button_fill.dart';
 import 'package:jippymart_customer/themes/text_field_widget.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
-
 import '../address_screens/screens/address_list_screen.dart';
 
 class EditProfileScreen extends StatefulWidget {
