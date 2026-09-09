@@ -1,10 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_maps_place_picker_mb/google_maps_place_picker.dart';
 import 'package:jippymart_customer/app/address_screens/provider/address_list_provider.dart';
 import 'package:jippymart_customer/app/address_screens/screens/widgets/AddressAppBar.dart';
 import 'package:jippymart_customer/app/address_screens/screens/widgets/AddressCard.dart';
@@ -16,16 +12,10 @@ import 'package:jippymart_customer/app/address_screens/screens/widgets/SectionHe
 import 'package:jippymart_customer/app/address_screens/screens/widgets/tokan.dart';
 import 'package:jippymart_customer/app/home_screen/screen/home_screen/provider/home_provider.dart';
 import 'package:jippymart_customer/utils/location_zone_navigation.dart';
-import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/themes/app_them_data.dart';
-import 'package:jippymart_customer/themes/round_button_fill.dart';
-import 'package:jippymart_customer/themes/text_field_widget.dart';
-import 'package:jippymart_customer/widget/osm_map/map_picker_page.dart';
 import 'package:provider/provider.dart';
-
-import '../../cart_screen/provider/cart_provider.dart';
 
 class AddressListScreen extends StatefulWidget {
   const AddressListScreen({super.key});
