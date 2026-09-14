@@ -43,80 +43,80 @@ class RestaurantApiHelper {
     return parsed != null && parsed > 0;
   }
 
-  static Future<List<CouponModel>> getRestaurantCoupons({
-    required String restaurantId,
-    required String zoneId,
-  }) async {
-    try {
-      String baseUrl = "${AppConst.baseUrl}coupons/restaurant";
-
-      Map<String, String> queryParams = {'zone_id': zoneId};
-
-      if (restaurantId.isNotEmpty) {
-        queryParams['resturant_id'] = restaurantId;
-      }
-
-      String url = Uri.parse(
-        baseUrl,
-      ).replace(queryParameters: queryParams).toString();
-
-      final response = await http.get(
-        Uri.parse(url),
-        headers: await getHeaders(),
-      );
-
-      debugPrint("getRestaurantCoupons $url");
-      debugPrint("getRestaurantCoupons ${response.body}");
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-
-        if (responseData['success'] == true) {
-          List<dynamic> data = responseData['data'];
-          return data.map((json) => CouponModel.fromJson(json)).toList();
-        } else {
-          throw Exception('Failed to load coupons: ${responseData['message']}');
-        }
-      } else {
-        throw Exception(
-          'Failed to load coupons. Status code: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      debugPrint('Error fetching coupons: $e');
-      rethrow;
-    }
-  }
-
-  static Future<List<CouponModel>> getMartCoupons({
-    required String restaurantId,
-  }) async {
-    try {
-      String url =
-          "${AppConst.baseUrl}coupons/mart${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
-      debugPrint(" getMartCoupons ${url}");
-      final response = await http.get(
-        Uri.parse(url),
-        headers: await getHeaders(),
-      );
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          List<dynamic> data = responseData['data'];
-          return data.map((json) => CouponModel.fromJson(json)).toList();
-        } else {
-          throw Exception('Failed to load coupons: ${responseData['message']}');
-        }
-      } else {
-        throw Exception(
-          'Failed to load coupons. Status code: ${response.statusCode}',
-        );
-      }
-    } catch (e) {
-      debugPrint('Error fetching mart coupons: $e');
-      rethrow;
-    }
-  }
+  // static Future<List<CouponModel>> getRestaurantCoupons({
+  //   required String restaurantId,
+  //   required String zoneId,
+  // }) async {
+  //   try {
+  //     String baseUrl = "${AppConst.baseUrl}coupons/restaurant";
+  //
+  //     Map<String, String> queryParams = {'zone_id': zoneId};
+  //
+  //     if (restaurantId.isNotEmpty) {
+  //       queryParams['resturant_id'] = restaurantId;
+  //     }
+  //
+  //     String url = Uri.parse(
+  //       baseUrl,
+  //     ).replace(queryParameters: queryParams).toString();
+  //
+  //     final response = await http.get(
+  //       Uri.parse(url),
+  //       headers: await getHeaders(),
+  //     );
+  //
+  //     debugPrint("getRestaurantCoupons $url");
+  //     debugPrint("getRestaurantCoupons ${response.body}");
+  //
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //
+  //       if (responseData['success'] == true) {
+  //         List<dynamic> data = responseData['data'];
+  //         return data.map((json) => CouponModel.fromJson(json)).toList();
+  //       } else {
+  //         throw Exception('Failed to load coupons: ${responseData['message']}');
+  //       }
+  //     } else {
+  //       throw Exception(
+  //         'Failed to load coupons. Status code: ${response.statusCode}',
+  //       );
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error fetching coupons: $e');
+  //     rethrow;
+  //   }
+  // }
+  //
+  // static Future<List<CouponModel>> getMartCoupons({
+  //   required String restaurantId,
+  // }) async {
+  //   try {
+  //     String url =
+  //         "${AppConst.baseUrl}coupons/mart${restaurantId == "" ? "" : "?resturant_id=$restaurantId"}";
+  //     debugPrint(" getMartCoupons ${url}");
+  //     final response = await http.get(
+  //       Uri.parse(url),
+  //       headers: await getHeaders(),
+  //     );
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //       if (responseData['success'] == true) {
+  //         List<dynamic> data = responseData['data'];
+  //         return data.map((json) => CouponModel.fromJson(json)).toList();
+  //       } else {
+  //         throw Exception('Failed to load coupons: ${responseData['message']}');
+  //       }
+  //     } else {
+  //       throw Exception(
+  //         'Failed to load coupons. Status code: ${response.statusCode}',
+  //       );
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error fetching mart coupons: $e');
+  //     rethrow;
+  //   }
+  // }
 
   /// Fetches active coupons from `GET /api/div/coupons/active`.
   ///
@@ -1813,6 +1813,222 @@ class RestaurantDetailsProvider extends ChangeNotifier {
   // }
 
   /// ADD TO CART METHOD - Fixed variant handling
+  // Future<void> addToCart({
+  //   required ProductModel productModel,
+  //   required String price,
+  //   required String discountPrice,
+  //   required bool isIncrement,
+  //   required int quantity,
+  //   List<VariantInfo>? variantInfo,
+  // }) async {
+  //   if (isGroupOrderMode) {
+  //     if (!isIncrement) {
+  //       ShowToastDialog.showToast(
+  //         'Remove items from the group cart is not supported yet',
+  //       );
+  //       return;
+  //     }
+  //
+  //     // await _addToGroupCart(
+  //     //   productModel: productModel,
+  //     //   price: price,
+  //     //   quantity: quantity,
+  //     //   variantInfo: variantInfo,
+  //     // );
+  //     return;
+  //   }
+  //
+  //   final productId = productModel.id?.toString() ?? '';
+  //   final vendorId = vendorModel.id?.toString() ?? '';
+  //
+  //   // Optimistically update UI before API round-trip
+  //   final baseId = productId.split('~').first;
+  //   final previousQty = _serverCartQuantities[baseId];
+  //
+  //   if (quantity <= 0) {
+  //     _serverCartQuantities.remove(baseId);
+  //   } else {
+  //     _serverCartQuantities[baseId] = quantity;
+  //   }
+  //
+  //   // Check promotion limits for increment
+  //   if (isIncrement) {
+  //     final cacheKey = '$productId-$vendorId';
+  //
+  //     final promo =
+  //         _promotionDataCache[cacheKey] ??
+  //         PromotionalCacheService.getCachedPromotionalData(productId, vendorId);
+  //
+  //     if (promo != null) {
+  //       final isAllowed = isPromotionalItemQuantityAllowed(
+  //         productId,
+  //         vendorId,
+  //         quantity,
+  //       );
+  //
+  //       if (!isAllowed) {
+  //         // Revert optimistic update
+  //         if (previousQty != null) {
+  //           _serverCartQuantities[baseId] = previousQty;
+  //         } else {
+  //           _serverCartQuantities.remove(baseId);
+  //         }
+  //
+  //         notifyListeners();
+  //
+  //         final limit = getPromotionalItemLimit(productId, vendorId);
+  //
+  //         ShowToastDialog.showToast(
+  //           "Maximum $limit items allowed for this promotional offer".tr,
+  //         );
+  //
+  //         return;
+  //       }
+  //     }
+  //   }
+  //
+  //   final CartProductModel cartProductModel = CartProductModel();
+  //
+  //   String adOnsPrice = "0";
+  //
+  //   // ------------------------------------------------------------
+  //   // Calculate add-ons price
+  //   // ------------------------------------------------------------
+  //   if (productModel.addOnsPrice != null &&
+  //       productModel.addOnsTitle != null &&
+  //       selectedAddOns.isNotEmpty) {
+  //     for (int i = 0; i < productModel.addOnsTitle!.length; i++) {
+  //       if (i < productModel.addOnsPrice!.length &&
+  //           selectedAddOns.contains(productModel.addOnsTitle![i]) &&
+  //           productModel.addOnsPrice![i] != '0') {
+  //         final addonPrice =
+  //             double.tryParse(
+  //               Constant.productCommissionPrice(
+  //                 vendorModel,
+  //                 productModel.addOnsPrice![i].toString(),
+  //               ),
+  //             ) ??
+  //             0;
+  //
+  //         adOnsPrice = (double.parse(adOnsPrice) + addonPrice).toString();
+  //       }
+  //     }
+  //   }
+  //
+  //   // ------------------------------------------------------------
+  //   // Build cart product model
+  //   // ------------------------------------------------------------
+  //   // ------------------------------------------------------------
+  //   // Resolve IDs
+  //   // ------------------------------------------------------------
+  //   final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+  //
+  //   final numericProductId = _resolveNumericProductId(productModel);
+  //
+  //   final outletId = int.tryParse(vendorId);
+  //
+  //   // ------------------------------------------------------------
+  //   // Build API variants
+  //   // ------------------------------------------------------------
+  //   final List<Map<String, dynamic>> apiVariants = [];
+  //
+  //   final bool productHasVariants =
+  //       (productModel.itemAttribute != null &&
+  //           productModel.itemAttribute!.attributes != null &&
+  //           productModel.itemAttribute!.attributes!.isNotEmpty) ||
+  //       (productModel.options != null && productModel.options!.isNotEmpty);
+  //
+  //   if (variantInfo != null && variantInfo.isNotEmpty) {
+  //     for (final variant in variantInfo) {
+  //       final int? variantOptionId = int.tryParse(variant.variantId ?? '');
+  //
+  //       if (variantOptionId == null) {
+  //         debugPrint('[addToCart] Invalid variant ID: ${variant.variantId}');
+  //         continue;
+  //       }
+  //
+  //       final double unitPrice =
+  //           double.tryParse(variant.variantPrice ?? price) ?? 0;
+  //
+  //       apiVariants.add({
+  //         'variantOptionId': variantOptionId,
+  //         'quantity': quantity,
+  //         'unitPrice': unitPrice,
+  //       });
+  //     }
+  //   } else if (productHasVariants) {
+  //     debugPrint(
+  //       '[addToCart] Product has variants but no variantInfo passed – '
+  //       'using local cart only',
+  //     );
+  //   }
+  //
+  //   // ------------------------------------------------------------
+  //   // Debug
+  //   // ------------------------------------------------------------
+  //   debugPrint('[addToCart] customerId=$customerId');
+  //   debugPrint('[addToCart] productId=$numericProductId');
+  //   debugPrint('[addToCart] outletId=$outletId');
+  //   debugPrint('[addToCart] apiVariants=$apiVariants');
+  //
+  //   // ------------------------------------------------------------
+  //   // Update server cart
+  //   // ------------------------------------------------------------
+  //   if (customerId != null && numericProductId != null && outletId != null) {
+  //     if (apiVariants.isEmpty) {
+  //       debugPrint(
+  //         '[addToCart] No variants built – skipping server API, using local cart',
+  //       );
+  //     } else {
+  //       final apiSuccess = await CartApiService.updateCart(
+  //         customerId: customerId,
+  //         outletId: outletId,
+  //         productId: numericProductId,
+  //         variants: apiVariants,
+  //       );
+  //
+  //       if (!apiSuccess) {
+  //         // Revert optimistic update
+  //         if (previousQty != null) {
+  //           _serverCartQuantities[baseId] = previousQty;
+  //         } else {
+  //           _serverCartQuantities.remove(baseId);
+  //         }
+  //
+  //         notifyListeners();
+  //
+  //         ShowToastDialog.showToast('Failed to update cart'.tr);
+  //
+  //         return;
+  //       }
+  //
+  //       // Sync server cart in background
+  //       Future.microtask(_syncServerCart);
+  //
+  //       if (isIncrement) {
+  //         ShowToastDialog.showToast('Item added to cart'.tr);
+  //       }
+  //     }
+  //   } else {
+  //     debugPrint(
+  //       '[addToCart] API skipped: '
+  //       'customerId=$customerId, '
+  //       'productId=$numericProductId, '
+  //       'outletId=$outletId',
+  //     );
+  //   }
+  //   // ------------------------------------------------------------
+  //   // Keep local cart in sync for checkout
+  //   // ------------------------------------------------------------
+  //   if (isIncrement) {
+  //     await cartProvider.addToCart(Get.context!, cartProductModel, quantity);
+  //   } else {
+  //     await cartProvider.removeFromCart(cartProductModel, quantity);
+  //   }
+  //
+  //   notifyListeners();
+  // }
+
   Future<void> addToCart({
     required ProductModel productModel,
     required String price,
@@ -1821,6 +2037,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     required int quantity,
     List<VariantInfo>? variantInfo,
   }) async {
+    // ------------------------------------------------------------
+    // GROUP ORDER MODE
+    // ------------------------------------------------------------
     if (isGroupOrderMode) {
       if (!isIncrement) {
         ShowToastDialog.showToast(
@@ -1835,14 +2054,27 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       //   quantity: quantity,
       //   variantInfo: variantInfo,
       // );
+
       return;
     }
 
+    // ------------------------------------------------------------
+    // RESOLVE IDS
+    // ------------------------------------------------------------
     final productId = productModel.id?.toString() ?? '';
     final vendorId = vendorModel.id?.toString() ?? '';
 
-    // Optimistically update UI before API round-trip
     final baseId = productId.split('~').first;
+
+    final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
+
+    final numericProductId = _resolveNumericProductId(productModel);
+
+    final outletId = int.tryParse(vendorId);
+
+    // ------------------------------------------------------------
+    // OPTIMISTIC SERVER CART QUANTITY UPDATE
+    // ------------------------------------------------------------
     final previousQty = _serverCartQuantities[baseId];
 
     if (quantity <= 0) {
@@ -1851,7 +2083,9 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       _serverCartQuantities[baseId] = quantity;
     }
 
-    // Check promotion limits for increment
+    // ------------------------------------------------------------
+    // CHECK PROMOTION LIMITS
+    // ------------------------------------------------------------
     if (isIncrement) {
       final cacheKey = '$productId-$vendorId';
 
@@ -1887,13 +2121,11 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
     }
 
-    final CartProductModel cartProductModel = CartProductModel();
-
+    // ------------------------------------------------------------
+    // CALCULATE ADD-ONS PRICE
+    // ------------------------------------------------------------
     String adOnsPrice = "0";
 
-    // ------------------------------------------------------------
-    // Calculate add-ons price
-    // ------------------------------------------------------------
     if (productModel.addOnsPrice != null &&
         productModel.addOnsTitle != null &&
         selectedAddOns.isNotEmpty) {
@@ -1916,27 +2148,18 @@ class RestaurantDetailsProvider extends ChangeNotifier {
     }
 
     // ------------------------------------------------------------
-    // Build cart product model
+    // CHECK WHETHER PRODUCT HAS VARIANTS
     // ------------------------------------------------------------
-    // ------------------------------------------------------------
-    // Resolve IDs
-    // ------------------------------------------------------------
-    final customerId = int.tryParse(await SqlStorageConst.getUserId() ?? '');
-
-    final numericProductId = _resolveNumericProductId(productModel);
-
-    final outletId = int.tryParse(vendorId);
-
-    // ------------------------------------------------------------
-    // Build API variants
-    // ------------------------------------------------------------
-    final List<Map<String, dynamic>> apiVariants = [];
-
     final bool productHasVariants =
         (productModel.itemAttribute != null &&
             productModel.itemAttribute!.attributes != null &&
             productModel.itemAttribute!.attributes!.isNotEmpty) ||
         (productModel.options != null && productModel.options!.isNotEmpty);
+
+    // ------------------------------------------------------------
+    // BUILD API VARIANTS
+    // ------------------------------------------------------------
+    final List<Map<String, dynamic>> apiVariants = [];
 
     if (variantInfo != null && variantInfo.isNotEmpty) {
       for (final variant in variantInfo) {
@@ -1958,75 +2181,132 @@ class RestaurantDetailsProvider extends ChangeNotifier {
       }
     } else if (productHasVariants) {
       debugPrint(
-        '[addToCart] Product has variants but no variantInfo passed – '
-        'using local cart only',
+        '[addToCart] Product has variants but no variantInfo was passed',
       );
     }
 
     // ------------------------------------------------------------
-    // Debug
+    // DEBUG
     // ------------------------------------------------------------
+    debugPrint('==========================================');
     debugPrint('[addToCart] customerId=$customerId');
     debugPrint('[addToCart] productId=$numericProductId');
     debugPrint('[addToCart] outletId=$outletId');
+    debugPrint('[addToCart] productHasVariants=$productHasVariants');
+    debugPrint('[addToCart] variantInfo=$variantInfo');
     debugPrint('[addToCart] apiVariants=$apiVariants');
+    debugPrint('[addToCart] price=$price');
+    debugPrint('[addToCart] discountPrice=$discountPrice');
+    debugPrint('[addToCart] quantity=$quantity');
+    debugPrint('==========================================');
 
     // ------------------------------------------------------------
-    // Update server cart
+    // UPDATE SERVER CART
+    //
+    // IMPORTANT:
+    // API IS CALLED EVEN WHEN apiVariants IS EMPTY.
+    //
+    // Product without variants:
+    // variants = []
+    //
+    // Product with variants:
+    // variants = [...]
     // ------------------------------------------------------------
     if (customerId != null && numericProductId != null && outletId != null) {
-      if (apiVariants.isEmpty) {
-        debugPrint(
-          '[addToCart] No variants built – skipping server API, using local cart',
-        );
-      } else {
-        final apiSuccess = await CartApiService.updateCart(
-          customerId: customerId,
-          outletId: outletId,
-          productId: numericProductId,
-          variants: apiVariants,
-        );
+      debugPrint('[addToCart] Calling CartApiService.updateCart...');
 
-        if (!apiSuccess) {
-          // Revert optimistic update
-          if (previousQty != null) {
-            _serverCartQuantities[baseId] = previousQty;
-          } else {
-            _serverCartQuantities.remove(baseId);
-          }
+      final apiSuccess = await CartApiService.updateCart(
+        customerId: customerId,
+        outletId: outletId,
+        productId: numericProductId,
+        variants: apiVariants,
+      );
 
-          notifyListeners();
+      if (!apiSuccess) {
+        debugPrint('[addToCart] Server API failed');
 
-          ShowToastDialog.showToast('Failed to update cart'.tr);
-
-          return;
+        // Revert optimistic update
+        if (previousQty != null) {
+          _serverCartQuantities[baseId] = previousQty;
+        } else {
+          _serverCartQuantities.remove(baseId);
         }
 
-        // Sync server cart in background
-        Future.microtask(_syncServerCart);
+        notifyListeners();
 
-        if (isIncrement) {
-          ShowToastDialog.showToast('Item added to cart'.tr);
-        }
+        ShowToastDialog.showToast('Failed to update cart'.tr);
+
+        return;
+      }
+
+      debugPrint('[addToCart] Server API success');
+
+      // ----------------------------------------------------------
+      // SYNC SERVER CART
+      // ----------------------------------------------------------
+      Future.microtask(_syncServerCart);
+
+      if (isIncrement) {
+        ShowToastDialog.showToast('Item added to cart'.tr);
       }
     } else {
       debugPrint(
-        '[addToCart] API skipped: '
+        '[addToCart] API skipped because IDs are invalid: '
         'customerId=$customerId, '
         'productId=$numericProductId, '
         'outletId=$outletId',
       );
     }
+
     // ------------------------------------------------------------
-    // Keep local cart in sync for checkout
+    // BUILD LOCAL CART MODEL
+    // ------------------------------------------------------------
+    //
+    // NOTE:
+    // Your previous code was doing:
+    //
+    // final CartProductModel cartProductModel = CartProductModel();
+    //
+    // without setting any values. That is why your logs showed:
+    //
+    // Product: null
+    // Price: null
+    // DiscountPrice: null
+    //
+    // Add the fields supported by your CartProductModel here.
+    // ------------------------------------------------------------
+
+    final CartProductModel cartProductModel = CartProductModel();
+
+    // If these fields exist in your CartProductModel,
+    // uncomment/use them:
+    //
+    // cartProductModel.product = productModel;
+    // cartProductModel.price = price;
+    // cartProductModel.discountPrice = discountPrice;
+    // cartProductModel.quantity = quantity;
+    // cartProductModel.productId = numericProductId;
+    // cartProductModel.vendorId = outletId;
+
+    // ------------------------------------------------------------
+    // LOCAL CART
     // ------------------------------------------------------------
     if (isIncrement) {
+      debugPrint('[addToCart] Adding item to local cart');
+
       await cartProvider.addToCart(Get.context!, cartProductModel, quantity);
     } else {
+      debugPrint('[addToCart] Removing item from local cart');
+
       await cartProvider.removeFromCart(cartProductModel, quantity);
     }
 
+    // ------------------------------------------------------------
+    // NOTIFY UI
+    // ------------------------------------------------------------
     notifyListeners();
+
+    debugPrint('[addToCart] Completed');
   }
 
   /// ADD/REMOVE PRODUCT FUNCTION

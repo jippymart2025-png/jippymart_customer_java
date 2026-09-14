@@ -34,72 +34,62 @@ class RestaurantStatusManager {
   }) {
     debugPrint('[RESTAURANT_STATUS] Checking restaurant status');
 
-    // No timings = closed for safety.
     if (outletTimings == null || outletTimings.isEmpty) {
       debugPrint('[RESTAURANT_STATUS] No outlet timings found');
-
       return false;
     }
 
-    final OutletTiming? todayTiming = _getTodayTiming(outletTimings);
+    final String today = _getCurrentDay();
 
-    if (todayTiming == null) {
-      debugPrint('[RESTAURANT_STATUS] No timing found for today');
+    // IMPORTANT:
+    // Get ALL timings for today.
+    final List<OutletTiming> todayTimings = outletTimings.where((timing) {
+      return timing.day.toLowerCase().trim() == today.toLowerCase().trim() &&
+          timing.isOpen;
+    }).toList();
 
-      return false;
-    }
-
-    debugPrint('[RESTAURANT_STATUS] Today: ${todayTiming.day}');
-
-    debugPrint('[RESTAURANT_STATUS] isOpen: ${todayTiming.isOpen}');
-
-    debugPrint('[RESTAURANT_STATUS] Opening: ${todayTiming.openingTime}');
-
-    debugPrint('[RESTAURANT_STATUS] Closing: ${todayTiming.closingTime}');
-
-    // ----------------------------------------------------------
-    // API says today's restaurant is manually closed
-    // ----------------------------------------------------------
-
-    if (!todayTiming.isOpen) {
-      debugPrint('[RESTAURANT_STATUS] CLOSED - isOpen is false');
-
-      return false;
-    }
-
-    // ----------------------------------------------------------
-    // Missing timing
-    // ----------------------------------------------------------
-
-    if (todayTiming.openingTime == null ||
-        todayTiming.closingTime == null ||
-        todayTiming.openingTime!.isEmpty ||
-        todayTiming.closingTime!.isEmpty) {
-      debugPrint('[RESTAURANT_STATUS] OPEN - no time restriction configured');
-
-      return true;
-    }
-
-    // ----------------------------------------------------------
-    // Check current time
-    // ----------------------------------------------------------
-
-    final bool withinHours = _isCurrentTimeWithinRange(
-      todayTiming.openingTime!,
-      todayTiming.closingTime!,
+    debugPrint('[RESTAURANT_STATUS] Today: $today');
+    debugPrint(
+      '[RESTAURANT_STATUS] Today timing slots: ${todayTimings.length}',
     );
 
-    debugPrint('[RESTAURANT_STATUS] Within working hours: $withinHours');
-
-    if (!withinHours) {
-      debugPrint('[RESTAURANT_STATUS] CLOSED - outside working hours');
-
+    if (todayTimings.isEmpty) {
+      debugPrint('[RESTAURANT_STATUS] No open timing found for today');
       return false;
     }
 
-    debugPrint('[RESTAURANT_STATUS] OPEN');
+    // Check every timing slot.
+    for (final OutletTiming timing in todayTimings) {
+      debugPrint(
+        '[RESTAURANT_STATUS] Checking: '
+        '${timing.openingTime} -> ${timing.closingTime}',
+      );
 
-    return true;
+      // No time restriction.
+      if (timing.openingTime == null ||
+          timing.closingTime == null ||
+          timing.openingTime!.isEmpty ||
+          timing.closingTime!.isEmpty) {
+        debugPrint('[RESTAURANT_STATUS] OPEN - no time restriction');
+        return true;
+      }
+
+      final bool withinHours = _isCurrentTimeWithinRange(
+        timing.openingTime!,
+        timing.closingTime!,
+      );
+
+      if (withinHours) {
+        debugPrint(
+          '[RESTAURANT_STATUS] OPEN - matched slot '
+          '${timing.openingTime} -> ${timing.closingTime}',
+        );
+        return true;
+      }
+    }
+
+    debugPrint('[RESTAURANT_STATUS] CLOSED - outside all working hours');
+    return false;
   }
 
   // ============================================================

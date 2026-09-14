@@ -455,14 +455,13 @@ class EditProfileProvider extends ChangeNotifier {
         'phoneNumber': userModel.phoneNumber ?? '',
         'customerStatusId': customerStatusId,
         'referralCode': referralCode,
+        'fcmToken': userModel.fcmToken,
       };
 
       print('[EDIT_PROFILE] updateCustomerProfile body: $body');
 
       final response = await http.put(
-        Uri.parse(
-          '${AppConst.outletBaseUrl}co/customers/updateCustomerProfile',
-        ),
+        Uri.parse('${AppConst.outletBaseUrl}co/customers/$customerId'),
         headers: headers,
         body: jsonEncode(body),
       );

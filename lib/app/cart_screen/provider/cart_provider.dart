@@ -4375,29 +4375,29 @@ class CartControllerProvider extends ChangeNotifier {
       );
     }
 
-    if (context == "mart") {
-      return await RestaurantApiHelper.getMartCoupons(
-        restaurantId: restaurantId,
-      ).timeout(
-        const Duration(seconds: 10),
-        onTimeout: () {
-          debugPrint('[COUPON_LOAD] ⏱️ Legacy mart coupon API call timed out');
-          return <CouponModel>[];
-        },
-      );
-    }
-    return await RestaurantApiHelper.getRestaurantCoupons(
-      restaurantId: restaurantId,
-      zoneId: Constant.selectedZone!.id.toString(),
-    ).timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        debugPrint(
-          '[COUPON_LOAD] ⏱️ Legacy restaurant coupon API call timed out',
-        );
-        return <CouponModel>[];
-      },
-    );
+    // if (context == "mart") {
+    //   return await RestaurantApiHelper.getMartCoupons(
+    //     restaurantId: restaurantId,
+    //   ).timeout(
+    //     const Duration(seconds: 10),
+    //     onTimeout: () {
+    //       debugPrint('[COUPON_LOAD] ⏱️ Legacy mart coupon API call timed out');
+    //       return <CouponModel>[];
+    //     },
+    //   );
+    // }
+    // return await RestaurantApiHelper.getRestaurantCoupons(
+    //   restaurantId: restaurantId,
+    //   zoneId: Constant.selectedZone!.id.toString(),
+    // ).timeout(
+    //   const Duration(seconds: 10),
+    //   onTimeout: () {
+    //     debugPrint(
+    //       '[COUPON_LOAD] ⏱️ Legacy restaurant coupon API call timed out',
+    //     );
+    return <CouponModel>[];
+    //   },
+    // );
   }
 
   Future<void> _loadCoupons({required String restaurantId}) async {

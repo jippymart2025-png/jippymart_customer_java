@@ -224,70 +224,70 @@ class BestRestaurantProvider extends ChangeNotifier {
   // }
 
   // Load related data (coupons, ads) in parallel; O(n) matching via Map
-  Future<void> _loadRelatedDataInParallel(List<VendorModel> restaurants) async {
-    final restaurantById = <String, VendorModel>{};
-    for (var r in restaurants) {
-      if (r.id != null) restaurantById[r.id!] = r;
-    }
-
-    final futures = <Future<void>>[];
-    final couponsKey = 'restaurant_coupons_all';
-    futures.add(
-      CacheManager()
-          .getOrSet<List<CouponModel>>(
-            couponsKey,
-            () => RestaurantApiHelper.getRestaurantCoupons(
-              restaurantId: '',
-              zoneId: Constant.selectedZone!.id.toString(),
-            ),
-            type: CacheType.general,
-          )
-          .then((value) {
-            couponRestaurantList.clear();
-            couponList.clear();
-            final now = DateTime.now();
-            for (var coupon in value) {
-              if (coupon.resturantId == null) continue;
-              final restaurant = restaurantById[coupon.resturantId!];
-              if (restaurant != null &&
-                  coupon.expiresAt != null &&
-                  coupon.expiresAt!.toDate().isAfter(now)) {
-                couponList.add(coupon);
-                couponRestaurantList.add(restaurant);
-              }
-            }
-            debugPrint('[DEBUG] Coupons loaded: ${couponList.length}');
-          }),
-    );
-
-    if (Constant.isEnableAdsFeature == true) {
-      final adsKey = 'advertisements_all';
-      futures.add(
-        CacheManager()
-            .getOrSet<List<AdvertisementModel>>(
-              adsKey,
-              () => FireStoreUtils.getAllAdvertisement(),
-              type: CacheType.banners,
-            )
-            .then((value) {
-              advertisementList.clear();
-              for (var ad in value) {
-                if (ad.vendorId == null) continue;
-                final restaurant = restaurantById[ad.vendorId!];
-                if (restaurant != null) {
-                  advertisementList.add(ad);
-                }
-              }
-              debugPrint(
-                '[DEBUG] Advertisements loaded: ${advertisementList.length}',
-              );
-            }),
-      );
-    }
-
-    await Future.wait(futures);
-    debugPrint('[DEBUG] All related data loaded');
-  }
+  // Future<void> _loadRelatedDataInParallel(List<VendorModel> restaurants) async {
+  //   final restaurantById = <String, VendorModel>{};
+  //   for (var r in restaurants) {
+  //     if (r.id != null) restaurantById[r.id!] = r;
+  //   }
+  //
+  //   final futures = <Future<void>>[];
+  //   final couponsKey = 'restaurant_coupons_all';
+  //   futures.add(
+  //     CacheManager()
+  //         .getOrSet<List<CouponModel>>(
+  //           couponsKey,
+  //           () => RestaurantApiHelper.getRestaurantCoupons(
+  //             restaurantId: '',
+  //             zoneId: Constant.selectedZone!.id.toString(),
+  //           ),
+  //           type: CacheType.general,
+  //         )
+  //         .then((value) {
+  //           couponRestaurantList.clear();
+  //           couponList.clear();
+  //           final now = DateTime.now();
+  //           for (var coupon in value) {
+  //             if (coupon.resturantId == null) continue;
+  //             final restaurant = restaurantById[coupon.resturantId!];
+  //             if (restaurant != null &&
+  //                 coupon.expiresAt != null &&
+  //                 coupon.expiresAt!.toDate().isAfter(now)) {
+  //               couponList.add(coupon);
+  //               couponRestaurantList.add(restaurant);
+  //             }
+  //           }
+  //           debugPrint('[DEBUG] Coupons loaded: ${couponList.length}');
+  //         }),
+  //   );
+  //
+  //   if (Constant.isEnableAdsFeature == true) {
+  //     final adsKey = 'advertisements_all';
+  //     futures.add(
+  //       CacheManager()
+  //           .getOrSet<List<AdvertisementModel>>(
+  //             adsKey,
+  //             () => FireStoreUtils.getAllAdvertisement(),
+  //             type: CacheType.banners,
+  //           )
+  //           .then((value) {
+  //             advertisementList.clear();
+  //             for (var ad in value) {
+  //               if (ad.vendorId == null) continue;
+  //               final restaurant = restaurantById[ad.vendorId!];
+  //               if (restaurant != null) {
+  //                 advertisementList.add(ad);
+  //               }
+  //             }
+  //             debugPrint(
+  //               '[DEBUG] Advertisements loaded: ${advertisementList.length}',
+  //             );
+  //           }),
+  //     );
+  //   }
+  //
+  //   await Future.wait(futures);
+  //   debugPrint('[DEBUG] All related data loaded');
+  // }
 
   // Get best restaurants from nearby outlets endpoint
   static Future<List<VendorModel>> getBestRestaurants({

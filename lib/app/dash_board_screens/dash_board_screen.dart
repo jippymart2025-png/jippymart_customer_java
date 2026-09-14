@@ -706,97 +706,95 @@ class _NavItem extends StatelessWidget {
     final isSelected = controller.selectedIndex == index;
     final hasCartBadge = cartItemCount != null && cartItemCount! > 0;
 
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => _handleTap(),
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Icon with badge
-              Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  Container(
-                    width: 25,
-                    height: 25,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppThemeData.primary300.withOpacity(0.08)
-                          : Colors.transparent,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Opacity(
-                      opacity: isSelected ? 0.9 : 0.6,
-                      child: SvgPicture.asset(
-                        svgIcon,
-                        height: 14,
-                        width: 14,
-                        colorFilter: ColorFilter.mode(
-                          isSelected ? AppThemeData.primary300 : Colors.black,
-                          BlendMode.srcIn,
-                        ),
+    return GestureDetector(
+      onTap: () => _handleTap(),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Icon with badge
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 25,
+                  height: 25,
+                  decoration: BoxDecoration(
+                    color: isSelected
+                        ? AppThemeData.primary300.withOpacity(0.08)
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Opacity(
+                    opacity: isSelected ? 0.9 : 0.6,
+                    child: SvgPicture.asset(
+                      svgIcon,
+                      height: 14,
+                      width: 14,
+                      colorFilter: ColorFilter.mode(
+                        isSelected ? AppThemeData.primary300 : Colors.black,
+                        BlendMode.srcIn,
                       ),
                     ),
                   ),
-                  // Cart badge
-                  if (hasCartBadge && cartItemCount! > 0)
-                    Positioned(
-                      right: -2,
-                      top: -2,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.orangeAccent,
-                          shape: BoxShape.circle,
+                ),
+                // Cart badge
+                if (hasCartBadge && cartItemCount! > 0)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.orangeAccent,
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      child: Text(
+                        cartItemCount! > 9 ? '9+' : cartItemCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          height: 1.0,
                         ),
-                        constraints: const BoxConstraints(
-                          minWidth: 18,
-                          minHeight: 18,
-                        ),
-                        child: Text(
-                          cartItemCount! > 9 ? '9+' : cartItemCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            height: 1.0,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                ],
+                  ),
+              ],
+            ),
+            const SizedBox(height: 1),
+            // Label
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                color: isSelected
+                    ? AppThemeData.primary300
+                    : AppThemeData.grey600,
+                fontFamily: AppThemeData.bold,
               ),
-              const SizedBox(height: 1),
-              // Label
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 9,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                  color: isSelected
-                      ? AppThemeData.primary300
-                      : AppThemeData.grey600,
-                  fontFamily: AppThemeData.bold,
-                ),
+            ),
+            // Selection indicator
+            const SizedBox(height: 1),
+            Container(
+              width: isSelected ? 3 : 0,
+              height: 3,
+              decoration: BoxDecoration(
+                color: AppThemeData.primary300,
+                shape: BoxShape.circle,
               ),
-              // Selection indicator
-              const SizedBox(height: 1),
-              Container(
-                width: isSelected ? 3 : 0,
-                height: 3,
-                decoration: BoxDecoration(
-                  color: AppThemeData.primary300,
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
