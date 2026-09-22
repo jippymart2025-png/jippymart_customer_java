@@ -69,13 +69,12 @@ class CoinLedgerModel {
   CoinLedgerType get typeEnum => CoinLedgerTypeExt.fromString(type);
 
   CoinLedgerModel.fromJson(Map<String, dynamic> json) {
-    id = json['id']?.toString();
+    id = (json['customerWalletTransactionsId'] ?? json['id'])?.toString();
     userId = json['userId']?.toString();
-    type = json['type']?.toString();
-    coins = json['coins'] is int
-        ? json['coins'] as int
-        : int.tryParse(json['coins']?.toString() ?? '0');
-    referenceId = json['referenceId']?.toString();
+    type = (json['transactionType'] ?? json['type'])?.toString();
+    final points = json['points'] ?? json['coins'];
+    coins = points is int ? points : int.tryParse(points?.toString() ?? '0');
+    referenceId = json['orderId']?.toString() ?? json['referenceId']?.toString();
     if (json['createdAt'] != null) {
       if (json['createdAt'] is String) {
         createdAt = DateTime.tryParse(json['createdAt'] as String);

@@ -714,10 +714,14 @@ class ProductOption {
 
   set variantSku(String? val) => subtitle = val;
 
-  /// True when this variant is an add-on (priceType ADD or "Add-ons" group).
-  bool get isAddOn =>
-      (priceType?.toUpperCase() == 'ADD') ||
-      (groupName?.toLowerCase().contains('add') ?? false);
+  /// True when this variant is an add-on (priceType ADD, or "Add-ons" group
+  /// when the API does not send an explicit priceType).
+  bool get isAddOn {
+    final pt = priceType?.toUpperCase();
+    if (pt == 'MAIN') return false;
+    if (pt == 'ADD') return true;
+    return (groupName?.toLowerCase().contains('add') ?? false);
+  }
 
   /// True when this variant is a main selectable option.
   bool get isMain => !isAddOn;

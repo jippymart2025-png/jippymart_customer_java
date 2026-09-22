@@ -536,6 +536,18 @@ class _LedgerTile extends StatelessWidget {
       color: Color(0xFF6B7280),
       bgColor: Color(0xFFF9FAFB),
     ),
+    'CREDIT': _TileConfig(
+      label: 'Credit',
+      icon: Icons.savings_rounded,
+      color: Color(0xFF16A34A),
+      bgColor: Color(0xFFF0FDF4),
+    ),
+    'DEBIT': _TileConfig(
+      label: 'Debit',
+      icon: Icons.arrow_upward_rounded,
+      color: Color(0xFFDC2626),
+      bgColor: Color(0xFFFFF1F2),
+    ),
   };
 
   String formatToIST(String? dateStr) {

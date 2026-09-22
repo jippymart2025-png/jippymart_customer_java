@@ -9,6 +9,7 @@ import 'package:jippymart_customer/app/address_screens/provider/address_list_pro
 import 'package:jippymart_customer/constant/constant.dart';
 import 'package:jippymart_customer/constant/show_toast_dialog.dart';
 import 'package:jippymart_customer/models/user_model.dart';
+import 'package:jippymart_customer/utils/notification_service.dart';
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 import 'package:jippymart_customer/utils/utils/sql_storage_const.dart';
@@ -445,6 +446,11 @@ class EditProfileProvider extends ChangeNotifier {
       }
 
       userModel.id = customerId.toString();
+
+      final fcmToken = userModel.fcmToken == null || userModel.fcmToken!.isEmpty
+          ? await NotificationService.getToken()
+          : userModel.fcmToken;
+      userModel.fcmToken = fcmToken;
 
       final headers = await getHeaders();
       final body = <String, dynamic>{

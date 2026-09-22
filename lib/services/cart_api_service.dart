@@ -126,15 +126,15 @@ class CartApiService {
         'deliveryTip': deliveryTip,
       };
 
-      print('[CartApi] POST $uri');
-      print('[CartApi] body: $body');
+      debugPrint('[CartApi] POST $uri');
+      debugPrint('[CartApi] body: $body');
 
       final response = await http
           .post(uri, headers: await getHeaders(), body: jsonEncode(body))
           .timeout(const Duration(seconds: 20));
 
-      print('[CartApi] status: ${response.statusCode}');
-      print('[CartApi] response: ${response.body}');
+      debugPrint('[CartApi] status: ${response.statusCode}');
+      debugPrint('[CartApi] response: ${response.body}');
 
       // Decode response first
       dynamic decoded;
@@ -176,7 +176,7 @@ class CartApiService {
 
       return CustomerCheckoutModel.fromJson(data);
     } catch (e) {
-      print('[CartApi] checkout error: $e');
+      debugPrint('[CartApi] checkout error: $e');
       rethrow;
     }
   }

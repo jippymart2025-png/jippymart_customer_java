@@ -97,7 +97,7 @@ class _ReferralScreenState extends State<ReferralScreen>
       // Fix: single provider read, two method calls
       final wp = context.read<WalletProvider>();
       wp.refreshWallet();
-      wp.refreshMyReferrals();
+      // wp.refreshMyReferrals();
     });
   }
 
@@ -111,7 +111,9 @@ class _ReferralScreenState extends State<ReferralScreen>
   @override
   Widget build(BuildContext context) {
     // Fix: compute ONCE, reuse everywhere — single MediaQuery subscription
-    final hPad = MediaQuery.sizeOf(context).width * 0.045;
+    final hPad = MediaQuery
+        .sizeOf(context)
+        .width * 0.045;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FB),
@@ -124,7 +126,7 @@ class _ReferralScreenState extends State<ReferralScreen>
           onRefresh: () async {
             final wp = context.read<WalletProvider>();
             wp.refreshWallet();
-            wp.refreshMyReferrals();
+            // wp.refreshMyReferrals();
           },
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(
@@ -285,9 +287,10 @@ class _ReferralScreenState extends State<ReferralScreen>
                     padding: EdgeInsets.fromLTRB(hPad, 0, hPad, 30),
                     sliver: SliverList(
                       delegate: SliverChildBuilderDelegate(
-                        (context, index) => RepaintBoundary(
-                          child: _ReferralTile(referral: referrals[index]),
-                        ),
+                            (context, index) =>
+                            RepaintBoundary(
+                              child: _ReferralTile(referral: referrals[index]),
+                            ),
                         childCount: referrals.length,
                       ),
                     ),
@@ -350,7 +353,9 @@ class _ReferralScreenState extends State<ReferralScreen>
     final wp = context.read<WalletProvider>();
     final err = await wp.applyReferralCode(
       code: code,
-      idempotencyKey: 'apply_${code}_${DateTime.now().millisecondsSinceEpoch}',
+      idempotencyKey: 'apply_${code}_${DateTime
+          .now()
+          .millisecondsSinceEpoch}',
     );
     setState(() => _applying = false);
     if (!mounted) return;
@@ -394,9 +399,9 @@ class _HeroCodeCard extends StatelessWidget {
         final id = Constant.userModel?.id ?? '';
         final code =
             wp.referralCode ??
-            (id.length >= 8
-                ? id.substring(0, 8)
-                : (id.isNotEmpty ? id : '------'));
+                (id.length >= 8
+                    ? id.substring(0, 8)
+                    : (id.isNotEmpty ? id : '------'));
 
         return Container(
           decoration: const BoxDecoration(
@@ -525,9 +530,9 @@ class _HeroCodeCard extends StatelessWidget {
                               'https://apps.apple.com/in/app/jippy-mart/id6755069616';
                           Share.share(
                             'Use my referral code $code on JippyMart to get rewards!\n\n'
-                            'Download the app:\n'
-                            'Android: $playStoreUrl\n'
-                            'iOS: $appStoreUrl',
+                                'Download the app:\n'
+                                'Android: $playStoreUrl\n'
+                                'iOS: $appStoreUrl',
                             subject: 'Referral code',
                           );
                         },
@@ -691,20 +696,20 @@ class _ApplyCodeCard extends StatelessWidget {
                   ),
                   child: applying
                       ? const SizedBox(
-                          height: 18,
-                          width: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
                       : Text(
-                          'Apply'.tr,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                          ),
-                        ),
+                    'Apply'.tr,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14,
+                    ),
+                  ),
                 ),
               ),
             ],

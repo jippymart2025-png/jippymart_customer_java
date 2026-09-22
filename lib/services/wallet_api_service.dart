@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:jippymart_customer/models/coin_ledger_model.dart';
-import 'package:jippymart_customer/models/coin_wallet_model.dart';
+import 'package:jippymart_customer/models/customer_wallet_model.dart';
 import 'package:jippymart_customer/models/daily_checkin_model.dart';
 import 'package:jippymart_customer/models/referral_model.dart';
 import 'package:jippymart_customer/utils/preferences.dart';
@@ -57,58 +57,79 @@ class WalletApiService {
   //   }
   // }
 
-  /// GET /wallet — returns wallet data (coin balance, money balance).
-  /// Sends firebase_id as query param for backend. Response: { "success": true, "data": { "coin_wallet": {...}, "money_balance_paise": int?, ... } }
-  Future<Map<String, dynamic>?> getWallet() async {
+  /// GET /co/customers/wallet/{customerId} — returns the customer wallet.
+  /// Backend responds with a flat object (see [CustomerWalletModel]); a
+  /// { success, data } wrapper is also handled if present.
+  Future<CustomerWalletModel?> getWallet() async {
     try {
-      final firebaseId = await SqlStorageConst.getFirebaseId() ?? '';
-      final uri = Uri.parse('${_base}wallet').replace(
-        queryParameters: firebaseId.isNotEmpty
-            ? {'firebase_id': firebaseId}
-            : null,
-      );
+      final customerId = await _customerId();
+      if (customerId == null) {
+        print('[WalletApiService] getWallet: missing customerId');
+        return null;
+      }
+      final uri = Uri.parse('${_base}co/customers/wallet/$customerId');
       final response = await http
           .get(uri, headers: await _headers())
           .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) return null;
-      final map = json.decode(response.body) as Map<String, dynamic>?;
-      if (map?['success'] != true || map?['data'] == null) return null;
-      return map!['data'] as Map<String, dynamic>;
+      final decoded = json.decode(response.body);
+      if (decoded is! Map) return null;
+      final map = Map<String, dynamic>.from(decoded);
+      final raw = map['success'] == true && map['data'] is Map
+          ? Map<String, dynamic>.from(map['data'] as Map)
+          : map;
+      return CustomerWalletModel.fromJson(raw);
     } catch (e) {
       print('[WalletApiService] getWallet error: $e');
       return null;
     }
   }
 
-  /// GET /wallet/coins/ledger — coin ledger list.
-  /// Response: { "success": true, "data": [ { "id", "userId", "type", "coins", "referenceId", "createdAt", "metadata" }, ... ] }
+  /// GET /co/wallet/transactions/{customerId} — coin ledger list.
+  /// Response:
+  /// - Non-empty: raw JSON array of { "customerWalletTransactionsId", "walletId",
+  ///   "orderId", "transactionType", "points", "amount", "createdAt", ... }
+  /// - Empty: { "success": true, "message": "No wallet transaction history found" }
   Future<List<CoinLedgerModel>> getCoinLedger({int? page, int? limit}) async {
     try {
-      final firebaseId = await SqlStorageConst.getFirebaseId() ?? '';
-      final q = <String, String>{};
-      if (firebaseId.isNotEmpty) q['firebase_id'] = firebaseId;
-      if (page != null) q['page'] = page.toString();
-      if (limit != null) q['limit'] = limit.toString();
-      final uri = Uri.parse(
-        '${_base}wallet/coins/ledger',
-      ).replace(queryParameters: q.isNotEmpty ? q : null);
+      final customerId = await _customerId();
+      if (customerId == null) {
+        print('[WalletApiService] getCoinLedger: missing customerId');
+        return [];
+      }
+      final uri = Uri.parse('${_base}co/wallet/transactions/$customerId');
       final response = await http
           .get(uri, headers: await _headers())
           .timeout(const Duration(seconds: 15));
       if (response.statusCode != 200) return [];
-      final map = json.decode(response.body) as Map<String, dynamic>?;
-      if (map?['success'] != true) return [];
-      final list = map!['data'];
-      if (list is! List) return [];
-      return list
-          .map(
-            (e) => CoinLedgerModel.fromJson(
-              e is Map<String, dynamic>
-                  ? e
-                  : Map<String, dynamic>.from(e as Map),
-            ),
-          )
-          .toList();
+      final decoded = json.decode(response.body);
+      if (decoded is List) {
+        return decoded
+            .where((e) => e is Map)
+            .map(
+              (e) =>
+                  CoinLedgerModel.fromJson(Map<String, dynamic>.from(e as Map)),
+            )
+            .toList();
+      }
+      if (decoded is Map) {
+        final map = Map<String, dynamic>.from(decoded);
+        if (map['success'] == true) {
+          final data = map['data'];
+          if (data is List) {
+            return data
+                .where((e) => e is Map)
+                .map(
+                  (e) => CoinLedgerModel.fromJson(
+                    Map<String, dynamic>.from(e as Map),
+                  ),
+                )
+                .toList();
+          }
+          return []; // e.g. "No wallet transaction history found"
+        }
+      }
+      return [];
     } catch (e) {
       print('[WalletApiService] getCoinLedger error: $e');
       return [];
@@ -173,36 +194,36 @@ class WalletApiService {
 
   /// GET /referral/my-referrals — my referrals list.
   /// Query: firebase_id. Response: { "success": true, "data": [ ReferralModel (extended), ... ] }
-  Future<List<ReferralModel>> getMyReferrals() async {
-    try {
-      final firebaseId = await SqlStorageConst.getFirebaseId() ?? '';
-      final uri = Uri.parse('${_base}referral/my-referrals').replace(
-        queryParameters: firebaseId.isNotEmpty
-            ? {'firebase_id': firebaseId}
-            : null,
-      );
-      final response = await http
-          .get(uri, headers: await _headers())
-          .timeout(const Duration(seconds: 15));
-      if (response.statusCode != 200) return [];
-      final map = json.decode(response.body) as Map<String, dynamic>?;
-      if (map?['success'] != true) return [];
-      final list = map!['data'];
-      if (list is! List) return [];
-      return list
-          .map(
-            (e) => ReferralModel.fromJson(
-              e is Map<String, dynamic>
-                  ? e
-                  : Map<String, dynamic>.from(e as Map),
-            ),
-          )
-          .toList();
-    } catch (e) {
-      print('[WalletApiService] getMyReferrals error: $e');
-      return [];
-    }
-  }
+  // Future<List<ReferralModel>> getMyReferrals() async {
+  //   try {
+  //     final firebaseId = await SqlStorageConst.getFirebaseId() ?? '';
+  //     final uri = Uri.parse('${_base}referral/my-referrals').replace(
+  //       queryParameters: firebaseId.isNotEmpty
+  //           ? {'firebase_id': firebaseId}
+  //           : null,
+  //     );
+  //     final response = await http
+  //         .get(uri, headers: await _headers())
+  //         .timeout(const Duration(seconds: 15));
+  //     if (response.statusCode != 200) return [];
+  //     final map = json.decode(response.body) as Map<String, dynamic>?;
+  //     if (map?['success'] != true) return [];
+  //     final list = map!['data'];
+  //     if (list is! List) return [];
+  //     return list
+  //         .map(
+  //           (e) => ReferralModel.fromJson(
+  //             e is Map<String, dynamic>
+  //                 ? e
+  //                 : Map<String, dynamic>.from(e as Map),
+  //           ),
+  //         )
+  //         .toList();
+  //   } catch (e) {
+  //     print('[WalletApiService] getMyReferrals error: $e');
+  //     return [];
+  //   }
+  // }
 
   static String _todayDateParam() {
     final now = DateTime.now();
@@ -306,15 +327,5 @@ class WalletApiService {
     }
 
     throw Exception(data['message']?.toString() ?? 'Unable to transfer points');
-  }
-
-  /// Parse coin_wallet from GET /wallet response.
-  CoinWalletModel? parseCoinWallet(Map<String, dynamic>? data) {
-    if (data == null) return null;
-    final cw = data['coin_wallet'];
-    if (cw is Map<String, dynamic>) {
-      return CoinWalletModel.fromJson(cw);
-    }
-    return null;
   }
 }

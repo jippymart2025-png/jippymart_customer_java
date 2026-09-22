@@ -29,13 +29,11 @@ import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
-
 import 'package:jippymart_customer/services/cart_api_service.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/paytm_service.dart';
 import 'package:jippymart_customer/services/smartlook_service.dart';
 import 'package:jippymart_customer/services/coupon_filter_service.dart';
-import 'package:jippymart_customer/services/database_helper.dart';
 import 'package:jippymart_customer/services/wallet_api_service.dart';
 import 'package:jippymart_customer/services/mart_vendor_service.dart';
 import 'package:jippymart_customer/services/promotional_cache_service.dart';
@@ -58,7 +56,6 @@ import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import '../../../models/DeliveryCharge.dart';
 import '../../../models/mart_item_model.dart';
-import '../../../services/mart_firestore_service.dart';
 import '../../address_screens/screens/address_list_screen.dart';
 import '../cart_screen.dart';
 
@@ -112,7 +109,6 @@ class CartControllerProvider extends ChangeNotifier {
   Timer? _codGuardTimer;
   StreamSubscription<List<CartProductModel>>? _cartStreamSubscription;
   bool _isBatchUpdateScheduled = false;
-  bool _isPriceSyncScheduled = false;
   bool _orderInProgress = false;
 
   // Add these fields to the class variables section:
@@ -623,32 +619,12 @@ class CartControllerProvider extends ChangeNotifier {
         : 0.0;
   }
 
-  /// Fetches wallet balance from same API as wallet screen (GET /wallet).
-  /// Uses money_balance_paise (paise -> rupees); fallback money_balance (rupees) if backend sends it.
+  /// Fetches wallet balance from same API as wallet screen (GET /co/customers/wallet/{id}).
   Future<void> refreshWalletBalance() async {
     try {
-      final data = await WalletApiService.instance.getWallet();
-      if (data == null) return;
-      // Prefer money_balance_paise (API spec)
-      final mb = data['money_balance_paise'];
-      if (mb != null) {
-        if (mb is int) {
-          _walletBalanceRupeesFromApi = mb / 100.0;
-        } else {
-          final paise = int.tryParse(mb.toString());
-          _walletBalanceRupeesFromApi = paise != null ? paise / 100.0 : null;
-        }
-      }
-      // Fallback: backend may send money_balance in rupees
-      if (_walletBalanceRupeesFromApi == null) {
-        final rupeesRaw = data['money_balance'];
-        if (rupeesRaw != null) {
-          final r = rupeesRaw is num
-              ? rupeesRaw.toDouble()
-              : double.tryParse(rupeesRaw.toString());
-          if (r != null) _walletBalanceRupeesFromApi = r;
-        }
-      }
+      final wallet = await WalletApiService.instance.getWallet();
+      if (wallet == null) return;
+      _walletBalanceRupeesFromApi = wallet.balanceAmount.toDouble();
     } catch (e) {
       // Keep previous cache or userModel fallback
     }
@@ -1089,10 +1065,10 @@ class CartControllerProvider extends ChangeNotifier {
         _cachedCustomerLat = null;
         _cachedCustomerLng = null;
 
-        await initialLiseSurgeValue(
-          homeScreenAddress.location?.latitude ?? 0.0,
-          homeScreenAddress.location?.longitude ?? 0.0,
-        );
+        // await initialLiseSurgeValue(
+        //   homeScreenAddress.location?.latitude ?? 0.0,
+        //   homeScreenAddress.location?.longitude ?? 0.0,
+        // );
 
         if (HomeProvider.cartItem.isNotEmpty) {
           await _loadFreshVendorForCart();
@@ -1121,10 +1097,10 @@ class CartControllerProvider extends ChangeNotifier {
         _cachedCustomerLat = null;
         _cachedCustomerLng = null;
 
-        await initialLiseSurgeValue(
-          defaultAddress.location?.latitude ?? 0.0,
-          defaultAddress.location?.longitude ?? 0.0,
-        );
+        // await initialLiseSurgeValue(
+        //   defaultAddress.location?.latitude ?? 0.0,
+        //   defaultAddress.location?.longitude ?? 0.0,
+        // );
 
         if (HomeProvider.cartItem.isNotEmpty) {
           await _loadFreshVendorForCart();
@@ -3429,34 +3405,34 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Add this method if it's missing (from CartControllerProvider):
-  Future<String> getAdminSurgeFee() async {
-    try {
-      final response = await http.get(
-        Uri.parse('${AppConst.baseUrl}mobile/surge-rules/admin-fee'),
-        headers: await getHeaders(),
-      );
-
-      debugPrint("getAdminSurgeFee ${response.body} ");
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-
-        if (responseData['success'] == true) {
-          final adminSurgeFee = responseData['data']['admin_surge_fee']
-              .toString();
-          debugPrint("Admin Surge Fee: $adminSurgeFee");
-          return adminSurgeFee;
-        } else {
-          throw Exception("API returned unsuccessful response");
-        }
-      } else {
-        throw Exception(
-          "Failed to fetch admin surge fee: ${response.statusCode}",
-        );
-      }
-    } catch (e) {
-      throw Exception("Error fetching admin surge fee: $e");
-    }
-  }
+  // Future<String> getAdminSurgeFee() async {
+  //   try {
+  //     final response = await http.get(
+  //       Uri.parse('${AppConst.baseUrl}mobile/surge-rules/admin-fee'),
+  //       headers: await getHeaders(),
+  //     );
+  //
+  //     debugPrint("getAdminSurgeFee ${response.body} ");
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //
+  //       if (responseData['success'] == true) {
+  //         final adminSurgeFee = responseData['data']['admin_surge_fee']
+  //             .toString();
+  //         debugPrint("Admin Surge Fee: $adminSurgeFee");
+  //         return adminSurgeFee;
+  //       } else {
+  //         throw Exception("API returned unsuccessful response");
+  //       }
+  //     } else {
+  //       throw Exception(
+  //         "Failed to fetch admin surge fee: ${response.statusCode}",
+  //       );
+  //     }
+  //   } catch (e) {
+  //     throw Exception("Error fetching admin surge fee: $e");
+  //   }
+  // }
 
   /// Cart rows use `baseId~variantId`; product APIs only accept [baseId].
   String _catalogProductIdForFetch(String? cartRowId) {
@@ -4209,7 +4185,7 @@ class CartControllerProvider extends ChangeNotifier {
           _cachedCustomerLat = null;
           _cachedCustomerLng = null;
 
-          await initialLiseSurgeValue(homeLat, homeLng);
+          // await initialLiseSurgeValue(homeLat, homeLng);
           await calculatePrice();
 
           debugPrint(
@@ -5314,18 +5290,18 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Add this if it's missing
-  Future<void> initialLiseSurgeValue(double lat, double lon) async {
-    try {
-      Map<String, dynamic> weather = await getWeather(lat, lon);
-      Map<String, dynamic> rules = await getSurgeRules();
-      surgePercent = calculateSurgeFee(weather, rules);
-      notifyListeners();
-    } catch (e) {
-      print('[SURGE_VALUE] ❌ Error: $e');
-      surgePercent = 0;
-      notifyListeners();
-    }
-  }
+  // Future<void> initialLiseSurgeValue(double lat, double lon) async {
+  //   try {
+  //     Map<String, dynamic> weather = await getWeather(lat, lon);
+  //     // Map<String, dynamic> rules = await getSurgeRules();
+  //     // surgePercent = calculateSurgeFee(weather, rules);
+  //     notifyListeners();
+  //   } catch (e) {
+  //     print('[SURGE_VALUE] ❌ Error: $e');
+  //     surgePercent = 0;
+  //     notifyListeners();
+  //   }
+  // }
 
   // Add this if it's missing
   Future<Map<String, dynamic>> getWeather(double lat, double lon) async {
@@ -5341,33 +5317,33 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   // Add this if it's missing
-  Future<Map<String, dynamic>> getSurgeRules() async {
-    try {
-      final response = await http
-          .get(
-            Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
-            headers: await getHeaders(),
-          )
-          .timeout(const Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> responseData = json.decode(response.body);
-        if (responseData['success'] == true) {
-          return responseData['data'] ?? {};
-        } else {
-          return {};
-        }
-      } else if (response.statusCode == 429) {
-        return {};
-      } else {
-        return {};
-      }
-    } on TimeoutException {
-      return {};
-    } catch (e) {
-      return {};
-    }
-  }
+  // Future<Map<String, dynamic>> getSurgeRules() async {
+  //   try {
+  //     final response = await http
+  //         .get(
+  //           Uri.parse('${AppConst.baseUrl}mobile/surge-rules'),
+  //           headers: await getHeaders(),
+  //         )
+  //         .timeout(const Duration(seconds: 10));
+  //
+  //     if (response.statusCode == 200) {
+  //       final Map<String, dynamic> responseData = json.decode(response.body);
+  //       if (responseData['success'] == true) {
+  //         return responseData['data'] ?? {};
+  //       } else {
+  //         return {};
+  //       }
+  //     } else if (response.statusCode == 429) {
+  //       return {};
+  //     } else {
+  //       return {};
+  //     }
+  //   } on TimeoutException {
+  //     return {};
+  //   } catch (e) {
+  //     return {};
+  //   }
+  // }
 
   // Add this if it's missing
   double calculateSurgeFee(
@@ -8762,7 +8738,7 @@ class CartControllerProvider extends ChangeNotifier {
         "discount": couponAmount,
         "schedule_time": scheduleDateTime.toIso8601String(),
         "surge_percent": surgePercent,
-        "admin_surge_fee": surgePercent > 0 ? await getAdminSurgeFee() : "0",
+        // "admin_surge_fee": surgePercent > 0 ? await getAdminSurgeFee() : "0",
         // 🔑 OPTIMIZATION: Only fetch if needed
         "special_discount": specialDiscountMap,
         "vendor_id": _getVendorIdForOrder(),
@@ -8829,24 +8805,6 @@ class CartControllerProvider extends ChangeNotifier {
 
       print('🌐 [ORDER_CREATION] API response status: ${response.statusCode}');
 
-      // if (response.statusCode != 200 && response.statusCode != 201) {
-      //   print(
-      //     '❌ [ORDER_CREATION] API returned error status: ${response
-      //         .statusCode}',
-      //   );
-      //
-      //   print('❌ [ORDER_CREATION] Response body: ${response.body}');
-      //
-      //   if (response.statusCode == 422) {
-      //     print('❌ [ORDER_CREATION_DEBUG] 422 = validation failed.');
-      //   }
-      //
-      //   throw Exception(
-      //     'API returned status code: ${response
-      //         .statusCode}. Response: ${response.body}',
-      //   );
-      // }
-
       final responseData = json.decode(response.body);
 
       if (responseData['success'] != true) {
@@ -8895,7 +8853,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       String adminFee = "0";
       if (surgePercent > 0) {
-        adminFee = await getAdminSurgeFee();
+        // adminFee = await getAdminSurgeFee();
       }
 
       additionalTasks.add(
@@ -9204,207 +9162,6 @@ class CartControllerProvider extends ChangeNotifier {
     return _productCache[productId];
   }
 
-  // Future<Map<String, PriceUpdateResult>> validateAndUpdateCartPrices() async {
-  //   final Map<String, PriceUpdateResult> results = {};
-  //   final items = List<CartProductModel>.from(HomeProvider.cartItem);
-  //
-  //   print(
-  //     '[PRICE_SYNC] 🔍 Starting IMMEDIATE price validation for ${items.length} items',
-  //   );
-  //
-  //   final foodCatalogIds = <String>{};
-  //   final martLineIds = <String>{};
-  //   for (final cartItem in items) {
-  //     if (cartItem.id == null || cartItem.id!.isEmpty) continue;
-  //     if (cartItem.promoId != null && cartItem.promoId!.isNotEmpty) continue;
-  //     if (_isMartItem(cartItem)) {
-  //       martLineIds.add(cartItem.id!);
-  //     } else {
-  //       final cid = _catalogProductIdForFetch(cartItem.id!);
-  //       if (cid.isNotEmpty) foodCatalogIds.add(cid);
-  //     }
-  //   }
-  //
-  //   var foodByCatalogId = <String, ProductModel?>{};
-  //   var martByLineId = <String, MartItemModel?>{};
-  //
-  //   try {
-  //     await Future.wait([
-  //       Future(() async {
-  //         if (foodCatalogIds.isEmpty) return;
-  //         foodByCatalogId.addAll(
-  //           await FireStoreUtils.getProductsByIds(
-  //             foodCatalogIds.toList(),
-  //             forceRefresh: true,
-  //           ),
-  //         );
-  //       }),
-  //       Future(() async {
-  //         if (martLineIds.isEmpty) return;
-  //         final martService = Get.find<MartFirestoreService>();
-  //         await Future.wait(
-  //           martLineIds.map((lineId) async {
-  //             try {
-  //               martByLineId[lineId] = await martService.getItemById(lineId);
-  //             } catch (_) {
-  //               martByLineId[lineId] = null;
-  //             }
-  //           }),
-  //         );
-  //       }),
-  //     ]);
-  //   } catch (e) {
-  //     print('[PRICE_SYNC] ❌ Prefetch failed: $e');
-  //   }
-  //
-  //   var cartDirty = false;
-  //
-  //   for (var cartItem in items) {
-  //     try {
-  //       if (cartItem.id == null || cartItem.id!.isEmpty) {
-  //         continue;
-  //       }
-  //
-  //       final isPromotionalItem =
-  //           cartItem.promoId != null && cartItem.promoId!.isNotEmpty;
-  //
-  //       if (isPromotionalItem) {
-  //         print('[PRICE_SYNC] 🎯 Skipping promotional item: ${cartItem.name}');
-  //         continue;
-  //       }
-  //
-  //       final isMart = _isMartItem(cartItem);
-  //       final itemType = isMart ? 'MART' : 'FOOD';
-  //
-  //       final storedDiscountPrice =
-  //           double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
-  //       final storedRegularPrice =
-  //           double.tryParse(cartItem.price ?? "0") ?? 0.0;
-  //       final storedPrice =
-  //           storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice
-  //           ? storedDiscountPrice
-  //           : storedRegularPrice;
-  //
-  //       print(
-  //         '[PRICE_SYNC] [$itemType] Checking ${cartItem.name}: Stored price in cart = ₹$storedPrice',
-  //       );
-  //
-  //       dynamic currentProduct;
-  //       double currentPrice = 0.0;
-  //
-  //       try {
-  //         if (isMart) {
-  //           currentProduct = martByLineId[cartItem.id!];
-  //           if (currentProduct != null && currentProduct is MartItemModel) {
-  //             currentPrice = currentProduct.finalPrice;
-  //           }
-  //         } else {
-  //           final catalogId = _catalogProductIdForFetch(cartItem.id!);
-  //           currentProduct = catalogId.isEmpty
-  //               ? null
-  //               : foodByCatalogId[catalogId];
-  //           if (currentProduct != null && currentProduct is ProductModel) {
-  //             currentPrice = _getCurrentProductPrice(currentProduct, cartItem);
-  //           }
-  //         }
-  //
-  //         print(
-  //           '[PRICE_SYNC] [$itemType] Current price from DB = ₹$currentPrice',
-  //         );
-  //
-  //         final priceDifference = (currentPrice - storedPrice).abs();
-  //         const tolerance = 0.01;
-  //
-  //         if (priceDifference > tolerance) {
-  //           print(
-  //             '[PRICE_SYNC] ✅✅✅ PRICE CHANGE DETECTED for ${cartItem.name}: ₹$storedPrice → ₹$currentPrice (difference: ₹$priceDifference)',
-  //           );
-  //
-  //           results[cartItem.id!] = PriceUpdateResult(
-  //             productId: cartItem.id!,
-  //             status: PriceStatus.priceChanged,
-  //             oldPrice: storedPrice.toStringAsFixed(2),
-  //             newPrice: currentPrice.toStringAsFixed(2),
-  //             productName: cartItem.name,
-  //           );
-  //
-  //           cartItem.price = currentPrice.toStringAsFixed(2);
-  //           cartItem.discountPrice = "0";
-  //           if (currentProduct is ProductModel &&
-  //               cartItem.variantInfo != null) {
-  //             _syncVariantInfoFieldsFromProduct(
-  //               cartItem.variantInfo!,
-  //               currentProduct,
-  //             );
-  //           }
-  //
-  //           await DatabaseHelper.instance.updateCartProduct(cartItem);
-  //           cartDirty = true;
-  //         } else {
-  //           print(
-  //             '[PRICE_SYNC] ℹ️ No significant price change for ${cartItem.name} (difference: ₹$priceDifference)',
-  //           );
-  //
-  //           results[cartItem.id!] = PriceUpdateResult(
-  //             productId: cartItem.id!,
-  //             status: PriceStatus.noChange,
-  //             oldPrice: storedPrice.toStringAsFixed(2),
-  //             newPrice: currentPrice.toStringAsFixed(2),
-  //           );
-  //
-  //           if (!isMart &&
-  //               currentProduct is ProductModel &&
-  //               cartItem.variantInfo != null) {
-  //             bool needSave = _syncVariantInfoFieldsFromProduct(
-  //               cartItem.variantInfo!,
-  //               currentProduct,
-  //             );
-  //             final liveLine = _getCurrentProductPrice(
-  //               currentProduct,
-  //               cartItem,
-  //             );
-  //             final sdDisc =
-  //                 double.tryParse(cartItem.discountPrice ?? '0') ?? 0.0;
-  //             final sdReg = double.tryParse(cartItem.price ?? '0') ?? 0.0;
-  //             final sdDisplay = sdDisc > 0 && sdDisc < sdReg ? sdDisc : sdReg;
-  //             if ((liveLine - sdDisplay).abs() > 0.01) {
-  //               cartItem.price = liveLine.toStringAsFixed(2);
-  //               cartItem.discountPrice = '0';
-  //               needSave = true;
-  //             }
-  //             if (needSave) {
-  //               await DatabaseHelper.instance.updateCartProduct(cartItem);
-  //               cartDirty = true;
-  //             }
-  //           }
-  //         }
-  //       } catch (e) {
-  //         print(
-  //           '[PRICE_SYNC] ❌ Error fetching current price for ${cartItem.id}: $e',
-  //         );
-  //         results[cartItem.id!] = PriceUpdateResult(
-  //           productId: cartItem.id!,
-  //           status: PriceStatus.error,
-  //           oldPrice: storedPrice.toStringAsFixed(2),
-  //           error: e.toString(),
-  //         );
-  //       }
-  //     } catch (e) {
-  //       print('[PRICE_SYNC] ❌ General error for item ${cartItem.id}: $e');
-  //     }
-  //   }
-  //
-  //   if (cartDirty) {
-  //     _priceSyncVersion++;
-  //     notifyListeners();
-  //     WidgetsBinding.instance.addPostFrameCallback((_) {
-  //       unawaited(calculatePrice());
-  //     });
-  //   }
-  //
-  //   return results;
-  // }
-
   Future<void> markCouponAsUsed(String couponId) async {
     try {
       await SqlStorageConst.getFirebaseId(); // Get user ID for authentication context
@@ -9433,22 +9190,6 @@ class CartControllerProvider extends ChangeNotifier {
       }
     } catch (e) {
       print('❌ Error marking coupon as used: $e');
-    }
-  }
-
-  double _getStoredDisplayPrice(CartProductModel cartItem) {
-    try {
-      final storedDiscountPrice =
-          double.tryParse(cartItem.discountPrice ?? "0") ?? 0.0;
-      final storedRegularPrice = double.tryParse(cartItem.price ?? "0") ?? 0.0;
-
-      // Use discount price if available and lower than regular price
-      if (storedDiscountPrice > 0 && storedDiscountPrice < storedRegularPrice) {
-        return storedDiscountPrice;
-      }
-      return storedRegularPrice;
-    } catch (e) {
-      return 0.0;
     }
   }
 

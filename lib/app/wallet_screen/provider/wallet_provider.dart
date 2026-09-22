@@ -111,16 +111,14 @@ class WalletProvider extends ChangeNotifier {
     _walletError = null;
     notifyListeners();
     try {
-      final data = await _api.getWallet();
-      if (data != null) {
-        _coinWallet = _api.parseCoinWallet(data);
-        final mb = data['money_balance_paise'];
-        if (mb is int) {
-          _moneyBalancePaise = mb;
-        } else if (mb != null) {
-          _moneyBalancePaise = int.tryParse(mb.toString());
-        }
-        _referralCode = data['referral_code']?.toString();
+      final wallet = await _api.getWallet();
+      if (wallet != null) {
+        _coinWallet = CoinWalletModel(
+          userId: wallet.customerId.toString(),
+          coinBalance: wallet.balancePoints,
+        );
+        _moneyBalancePaise = wallet.moneyBalancePaise;
+        _referralCode = wallet.referralCode;
         _lastWalletRefresh = DateTime.now();
       }
     } catch (e) {
@@ -142,17 +140,17 @@ class WalletProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> refreshMyReferrals() async {
-    _loadingReferrals = true;
-    notifyListeners();
-    try {
-      _myReferrals = await _api.getMyReferrals();
-    } catch (_) {
-      _myReferrals = [];
-    }
-    _loadingReferrals = false;
-    notifyListeners();
-  }
+  // Future<void> refreshMyReferrals() async {
+  //   _loadingReferrals = true;
+  //   notifyListeners();
+  //   try {
+  //     _myReferrals = await _api.getMyReferrals();
+  //   } catch (_) {
+  //     _myReferrals = [];
+  //   }
+  //   _loadingReferrals = false;
+  //   notifyListeners();
+  // }
 
   // Inside WalletProvider:
   int get totalCoinsEarned => coinLedger
@@ -233,7 +231,7 @@ class WalletProvider extends ChangeNotifier {
       );
       if (res != null && res['success'] == true) {
         await refreshWallet(force: true);
-        await refreshMyReferrals();
+        // await refreshMyReferrals();
         return null;
       }
       return res?['message']?.toString() ??
