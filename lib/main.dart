@@ -40,7 +40,6 @@ import 'package:get_storage/get_storage.dart';
 import 'package:provider/provider.dart' as prv;
 import 'app/address_screens/provider/address_list_provider.dart'
     show AddressListProvider;
-import 'app/advertisement_screens/provider/all_advertisement_provider.dart';
 import 'app/auth_screen/provider/login_provider.dart';
 import 'app/cart_screen/screens/order_placing_screen/provider/order_placing_provider.dart';
 import 'app/category_service/provider/category_sevice_provider.dart';
@@ -524,7 +523,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
         ),
         prv.ChangeNotifierProvider(create: (_) => RestaurantListProvider()),
         prv.ChangeNotifierProvider(create: (_) => StoryProvider()),
-        prv.ChangeNotifierProvider(create: (_) => AllAdvertisementProvider()),
+        // prv.ChangeNotifierProvider(create: (_) => AllAdvertisementProvider()),
         prv.ChangeNotifierProvider(create: (_) => CategoryServiceProvider()),
         prv.ChangeNotifierProvider(create: (_) => FavouriteProvider()),
         prv.ChangeNotifierProvider(create: (_) => MartProvider()),
