@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer';
-import 'dart:io';
 import 'package:jippymart_customer/utils/utils/common.dart' show getHeaders;
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -1745,16 +1744,16 @@ class CartControllerProvider extends ChangeNotifier {
 
       final outletId = _resolveOutletIdForCheckout();
 
-      print('========== CHECKOUT DEBUG ==========');
-      print('customerId: $customerId');
-      print('customerAddressId: $customerAddressId');
-      print('selectedAddress.id: ${selectedAddress?.id}');
-      print('outletId: $outletId');
-      print('couponId: ${selectedCouponModel?.id}');
-      print('couponDiscount: $couponAmount');
-      print('walletAmount: ${useWalletBalance ? walletToUse : 0.0}');
-      print('deliveryTip: $deliveryTips');
-      print('====================================');
+      debugPrint('========== CHECKOUT DEBUG ==========');
+      debugPrint('customerId: $customerId');
+      debugPrint('customerAddressId: $customerAddressId');
+      debugPrint('selectedAddress.id: ${selectedAddress?.id}');
+      debugPrint('outletId: $outletId');
+      debugPrint('couponId: ${selectedCouponModel?.id}');
+      debugPrint('couponDiscount: $couponAmount');
+      debugPrint('walletAmount: ${useWalletBalance ? walletToUse : 0.0}');
+      debugPrint('deliveryTip: $deliveryTips');
+      debugPrint('====================================');
 
       if (customerId == null) {
         ShowToastDialog.showToast('Please log in to continue'.tr);
@@ -1782,7 +1781,7 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       if (checkout == null) {
-        print('[CART_CHECKOUT] API returned NULL');
+        debugPrint('[CART_CHECKOUT] API returned NULL');
         return false;
       }
 
@@ -1793,12 +1792,12 @@ class CartControllerProvider extends ChangeNotifier {
 
       return true;
     } catch (e, stackTrace) {
-      print('========================================');
-      print('[CART_CHECKOUT] BACKEND/API ERROR');
-      print('[CART_CHECKOUT] $e');
-      print('[CART_CHECKOUT] STACK TRACE');
+      debugPrint('========================================');
+      debugPrint('[CART_CHECKOUT] BACKEND/API ERROR');
+      debugPrint('[CART_CHECKOUT] $e');
+      debugPrint('[CART_CHECKOUT] STACK TRACE');
       print(stackTrace);
-      print('========================================');
+      debugPrint('========================================');
 
       if (!silent) {
         String message = e.toString();
@@ -3942,10 +3941,10 @@ class CartControllerProvider extends ChangeNotifier {
 
     if (vendorModel.id != null &&
         (!_isCacheValid() || _cachedCouponList == null)) {
-      await _loadCoupons(restaurantId: vendorModel.id.toString());
+      // await _loadCoupons(restaurantId: vendorModel.id.toString());
     } else {
       if (vendorModel.id != null && _cachedCouponList == null) {
-        await _loadCoupons(restaurantId: vendorModel.id.toString());
+        // await _loadCoupons(restaurantId: vendorModel.id.toString());
       } else if (vendorModel.id == null && HomeProvider.cartItem.isNotEmpty) {
         final martItems = HomeProvider.cartItem
             .where((item) => _isMartItem(item))
@@ -3953,20 +3952,20 @@ class CartControllerProvider extends ChangeNotifier {
         if (martItems.isNotEmpty) {
           final vendorId = martItems.first.vendorID;
           if (vendorId != null && vendorId.isNotEmpty) {
-            await _loadCoupons(restaurantId: vendorId);
+            // await _loadCoupons(restaurantId: vendorId);
           } else {
-            await _loadGlobalCouponsOnly();
+            // await _loadGlobalCouponsOnly();
           }
         } else {
           final vendorId = HomeProvider.cartItem.first.vendorID;
           if (vendorId != null && vendorId.isNotEmpty) {
-            await _loadCoupons(restaurantId: vendorId);
+            // await _loadCoupons(restaurantId: vendorId);
           } else {
-            await _loadGlobalCouponsOnly();
+            // await _loadGlobalCouponsOnly();
           }
         }
       } else if (vendorModel.id == null) {
-        await _loadGlobalCouponsOnly();
+        // await _loadGlobalCouponsOnly();
       }
     }
 
@@ -4376,142 +4375,142 @@ class CartControllerProvider extends ChangeNotifier {
     // );
   }
 
-  Future<void> _loadCoupons({required String restaurantId}) async {
-    if (_isLoadingCoupons) {
-      debugPrint(
-        '[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...',
-      );
-      if (_couponLoadInFlight != null) {
-        await _couponLoadInFlight;
-      }
-      return;
-    }
-
-    if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
-      debugPrint('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
-      await _loadGlobalCouponsOnly();
-      return;
-    }
-
-    _isLoadingCoupons = true;
-    _startOperation('loadCoupons');
-    final couponLoadCompleter = Completer<void>();
-    _couponLoadInFlight = couponLoadCompleter.future;
-
-    try {
-      _detectCurrentContext();
-      debugPrint(
-        '[COUPON_LOAD] 🔍 Loading coupons for vendor: $restaurantId, Context: $_currentContext',
-      );
-
-      final allCoupons = await _fetchCouponsForContext(
-        restaurantId: restaurantId,
-      );
-
-      debugPrint(
-        '[COUPON_LOAD] ✅ Received ${allCoupons.length} coupons from ${_currentContext} API',
-      );
-
-      final filteredGlobalCoupons = allCoupons
-          .where(
-            (c) =>
-                c.resturantId == null ||
-                c.resturantId == '' ||
-                c.resturantId?.toUpperCase() == 'ALL',
-          )
-          .toList();
-
-      final vendorCoupons = allCoupons
-          .where(
-            (c) =>
-                c.resturantId != null &&
-                c.resturantId!.isNotEmpty &&
-                c.resturantId!.toUpperCase() != 'ALL' &&
-                c.resturantId == restaurantId,
-          )
-          .toList();
-
-      final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
-      final combinedAllCoupons = [...allCoupons];
-
-      final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
-        coupons: combinedCoupons.cast<CouponModel>(),
-        contextType: _currentContext,
-        fallbackEnabled: true,
-      );
-
-      final contextFilteredAllCoupons =
-          CouponFilterService.filterCouponsByContext(
-            coupons: combinedAllCoupons.cast<CouponModel>(),
-            contextType: _currentContext,
-            fallbackEnabled: true,
-          );
-
-      debugPrint(
-        '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} coupons for context: $_currentContext',
-      );
-
-      _cachedCouponList = contextFilteredCoupons;
-      _updateCacheTime();
-
-      couponList = contextFilteredCoupons;
-      allCouponList = contextFilteredAllCoupons;
-
-      await _markUsedCoupons();
-      notifyListeners();
-    } on SocketException catch (e) {
-      debugPrint('[COUPON_LOAD] ❌ Connection error: $e');
-      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-        couponList = _cachedCouponList!;
-        allCouponList = _cachedCouponList!;
-        await _markUsedCoupons();
-        notifyListeners();
-      } else {
-        couponList = [];
-        allCouponList = [];
-        notifyListeners();
-      }
-    } on http.ClientException catch (e) {
-      debugPrint('[COUPON_LOAD] ❌ ClientException: $e');
-      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-        couponList = _cachedCouponList!;
-        allCouponList = _cachedCouponList!;
-        await _markUsedCoupons();
-        notifyListeners();
-      } else {
-        couponList = [];
-        allCouponList = [];
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('[COUPON_LOAD] ❌ Error loading coupons: $e');
-      final errorString = e.toString();
-      if (errorString.contains('429') ||
-          errorString.contains('Status code: 429')) {
-        debugPrint('[COUPON_LOAD] ⚠️ Rate limit (429) - using cached coupons');
-        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-          couponList = _cachedCouponList!;
-          allCouponList = _cachedCouponList!;
-          await _markUsedCoupons();
-          notifyListeners();
-        } else {
-          couponList = [];
-          allCouponList = [];
-          notifyListeners();
-        }
-      } else {
-        await _loadCouponsWithoutFiltering(restaurantId: restaurantId);
-        notifyListeners();
-      }
-    } finally {
-      _isLoadingCoupons = false;
-      _endOperation('loadCoupons');
-      if (!couponLoadCompleter.isCompleted) {
-        couponLoadCompleter.complete();
-      }
-      _couponLoadInFlight = null;
-    }
-  }
+  // Future<void> _loadCoupons({required String restaurantId}) async {
+  //   if (_isLoadingCoupons) {
+  //     debugPrint(
+  //       '[COUPON_LOAD] ⚠️ Coupon load already in progress, skipping...',
+  //     );
+  //     if (_couponLoadInFlight != null) {
+  //       await _couponLoadInFlight;
+  //     }
+  //     return;
+  //   }
+  //
+  //   if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
+  //     debugPrint('[COUPON_LOAD] ⚠️ Skipping coupon load: empty restaurant ID');
+  //     await _loadGlobalCouponsOnly();
+  //     return;
+  //   }
+  //
+  //   _isLoadingCoupons = true;
+  //   _startOperation('loadCoupons');
+  //   final couponLoadCompleter = Completer<void>();
+  //   _couponLoadInFlight = couponLoadCompleter.future;
+  //
+  //   try {
+  //     _detectCurrentContext();
+  //     debugPrint(
+  //       '[COUPON_LOAD] 🔍 Loading coupons for vendor: $restaurantId, Context: $_currentContext',
+  //     );
+  //
+  //     final allCoupons = await _fetchCouponsForContext(
+  //       restaurantId: restaurantId,
+  //     );
+  //
+  //     debugPrint(
+  //       '[COUPON_LOAD] ✅ Received ${allCoupons.length} coupons from ${_currentContext} API',
+  //     );
+  //
+  //     final filteredGlobalCoupons = allCoupons
+  //         .where(
+  //           (c) =>
+  //               c.resturantId == null ||
+  //               c.resturantId == '' ||
+  //               c.resturantId?.toUpperCase() == 'ALL',
+  //         )
+  //         .toList();
+  //
+  //     final vendorCoupons = allCoupons
+  //         .where(
+  //           (c) =>
+  //               c.resturantId != null &&
+  //               c.resturantId!.isNotEmpty &&
+  //               c.resturantId!.toUpperCase() != 'ALL' &&
+  //               c.resturantId == restaurantId,
+  //         )
+  //         .toList();
+  //
+  //     final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
+  //     final combinedAllCoupons = [...allCoupons];
+  //
+  //     final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
+  //       coupons: combinedCoupons.cast<CouponModel>(),
+  //       contextType: _currentContext,
+  //       fallbackEnabled: true,
+  //     );
+  //
+  //     final contextFilteredAllCoupons =
+  //         CouponFilterService.filterCouponsByContext(
+  //           coupons: combinedAllCoupons.cast<CouponModel>(),
+  //           contextType: _currentContext,
+  //           fallbackEnabled: true,
+  //         );
+  //
+  //     debugPrint(
+  //       '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} coupons for context: $_currentContext',
+  //     );
+  //
+  //     _cachedCouponList = contextFilteredCoupons;
+  //     _updateCacheTime();
+  //
+  //     couponList = contextFilteredCoupons;
+  //     allCouponList = contextFilteredAllCoupons;
+  //
+  //     await _markUsedCoupons();
+  //     notifyListeners();
+  //   } on SocketException catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ Connection error: $e');
+  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //       couponList = _cachedCouponList!;
+  //       allCouponList = _cachedCouponList!;
+  //       await _markUsedCoupons();
+  //       notifyListeners();
+  //     } else {
+  //       couponList = [];
+  //       allCouponList = [];
+  //       notifyListeners();
+  //     }
+  //   } on http.ClientException catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ ClientException: $e');
+  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //       couponList = _cachedCouponList!;
+  //       allCouponList = _cachedCouponList!;
+  //       await _markUsedCoupons();
+  //       notifyListeners();
+  //     } else {
+  //       couponList = [];
+  //       allCouponList = [];
+  //       notifyListeners();
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ Error loading coupons: $e');
+  //     final errorString = e.toString();
+  //     if (errorString.contains('429') ||
+  //         errorString.contains('Status code: 429')) {
+  //       debugPrint('[COUPON_LOAD] ⚠️ Rate limit (429) - using cached coupons');
+  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //         couponList = _cachedCouponList!;
+  //         allCouponList = _cachedCouponList!;
+  //         await _markUsedCoupons();
+  //         notifyListeners();
+  //       } else {
+  //         couponList = [];
+  //         allCouponList = [];
+  //         notifyListeners();
+  //       }
+  //     } else {
+  //       await _loadCouponsWithoutFiltering(restaurantId: restaurantId);
+  //       notifyListeners();
+  //     }
+  //   } finally {
+  //     _isLoadingCoupons = false;
+  //     _endOperation('loadCoupons');
+  //     if (!couponLoadCompleter.isCompleted) {
+  //       couponLoadCompleter.complete();
+  //     }
+  //     _couponLoadInFlight = null;
+  //   }
+  // }
 
   // ============ ADDITIONAL HELPER METHODS ============
 
@@ -4523,314 +4522,314 @@ class CartControllerProvider extends ChangeNotifier {
             globalCouponCacheExpiry;
   }
 
-  Future<void> _loadGlobalCouponsOnly() async {
-    if (_isLoadingCoupons) {
-      debugPrint(
-        '[COUPON_LOAD] ⚠️ Global coupon load already in progress, skipping...',
-      );
-      if (_couponLoadInFlight != null) {
-        await _couponLoadInFlight;
-      }
-      return;
-    }
+  // Future<void> _loadGlobalCouponsOnly() async {
+  //   if (_isLoadingCoupons) {
+  //     debugPrint(
+  //       '[COUPON_LOAD] ⚠️ Global coupon load already in progress, skipping...',
+  //     );
+  //     if (_couponLoadInFlight != null) {
+  //       await _couponLoadInFlight;
+  //     }
+  //     return;
+  //   }
+  //
+  //   // Cache-first: use cached global coupons if valid (5 min TTL)
+  //   if (_cachedGlobalCouponList != null &&
+  //       _cachedGlobalCouponList!.isNotEmpty &&
+  //       _isGlobalCouponCacheValid()) {
+  //     couponList = _cachedGlobalCouponList!;
+  //     allCouponList = _cachedGlobalCouponList!;
+  //     await _markUsedCoupons();
+  //     notifyListeners();
+  //     return;
+  //   }
+  //
+  //   _isLoadingCoupons = true;
+  //   _startOperation('loadGlobalCoupons');
+  //   final globalCouponLoadCompleter = Completer<void>();
+  //   _couponLoadInFlight = globalCouponLoadCompleter.future;
+  //
+  //   try {
+  //     _detectCurrentContext();
+  //     debugPrint(
+  //       '[COUPON_LOAD] 🔍 Global coupon load - Context: $_currentContext',
+  //     );
+  //
+  //     final globalCoupons = await _fetchCouponsForContext(restaurantId: '');
+  //
+  //     debugPrint(
+  //       '[COUPON_LOAD] ✅ Received ${globalCoupons.length} global coupons from ${_currentContext} API',
+  //     );
+  //
+  //     final filteredGlobalCoupons = globalCoupons
+  //         .where(
+  //           (c) =>
+  //               c.resturantId == null ||
+  //               c.resturantId == '' ||
+  //               c.resturantId?.toUpperCase() == 'ALL',
+  //         )
+  //         .toList();
+  //
+  //     final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
+  //       coupons: filteredGlobalCoupons.cast<CouponModel>(),
+  //       contextType: _currentContext,
+  //       fallbackEnabled: true,
+  //     );
+  //
+  //     debugPrint(
+  //       '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} global coupons for context: $_currentContext',
+  //     );
+  //
+  //     _cachedCouponList = contextFilteredCoupons;
+  //     _cachedGlobalCouponList = contextFilteredCoupons;
+  //     _lastGlobalCouponCacheTime = DateTime.now();
+  //     _updateCacheTime();
+  //
+  //     couponList = contextFilteredCoupons;
+  //     allCouponList = filteredGlobalCoupons.cast<CouponModel>();
+  //
+  //     await _markUsedCoupons();
+  //     notifyListeners();
+  //   } on SocketException catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ Global: Connection error: $e');
+  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //       couponList = _cachedCouponList!;
+  //       allCouponList = _cachedCouponList!;
+  //       await _markUsedCoupons();
+  //       notifyListeners();
+  //     } else {
+  //       couponList = [];
+  //       allCouponList = [];
+  //       notifyListeners();
+  //     }
+  //   } on http.ClientException catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ Global: ClientException: $e');
+  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //       couponList = _cachedCouponList!;
+  //       allCouponList = _cachedCouponList!;
+  //       await _markUsedCoupons();
+  //       notifyListeners();
+  //     } else {
+  //       couponList = [];
+  //       allCouponList = [];
+  //       notifyListeners();
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ Error loading global coupons: $e');
+  //     final errorString = e.toString();
+  //     if (errorString.contains('429') ||
+  //         errorString.contains('400') ||
+  //         errorString.contains('Status code: 429') ||
+  //         errorString.contains('Status code: 400')) {
+  //       debugPrint(
+  //         '[COUPON_LOAD] ⚠️ Global: Rate limit or bad request - using cached coupons',
+  //       );
+  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //         couponList = _cachedCouponList!;
+  //         allCouponList = _cachedCouponList!;
+  //         await _markUsedCoupons();
+  //         notifyListeners();
+  //       } else {
+  //         couponList = [];
+  //         allCouponList = [];
+  //         notifyListeners();
+  //       }
+  //     } else {
+  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //         couponList = _cachedCouponList!;
+  //         allCouponList = _cachedCouponList!;
+  //         await _markUsedCoupons();
+  //         notifyListeners();
+  //       }
+  //     }
+  //   } finally {
+  //     _isLoadingCoupons = false;
+  //     _endOperation('loadGlobalCoupons');
+  //     if (!globalCouponLoadCompleter.isCompleted) {
+  //       globalCouponLoadCompleter.complete();
+  //     }
+  //     _couponLoadInFlight = null;
+  //   }
+  // }
 
-    // Cache-first: use cached global coupons if valid (5 min TTL)
-    if (_cachedGlobalCouponList != null &&
-        _cachedGlobalCouponList!.isNotEmpty &&
-        _isGlobalCouponCacheValid()) {
-      couponList = _cachedGlobalCouponList!;
-      allCouponList = _cachedGlobalCouponList!;
-      await _markUsedCoupons();
-      notifyListeners();
-      return;
-    }
+  // Future<void> _loadCouponsWithoutFiltering({
+  //   required String restaurantId,
+  // }) async {
+  //   if (_isLoadingCoupons) {
+  //     debugPrint(
+  //       '[COUPON_LOAD] ⚠️ Fallback coupon load already in progress, skipping...',
+  //     );
+  //     return;
+  //   }
+  //
+  //   if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
+  //     debugPrint('[COUPON_LOAD] ⚠️ Fallback: Skipping - empty restaurant ID');
+  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //       couponList = _cachedCouponList!;
+  //       allCouponList = _cachedCouponList!;
+  //       notifyListeners();
+  //     } else {
+  //       couponList = [];
+  //       allCouponList = [];
+  //       notifyListeners();
+  //     }
+  //     return;
+  //   }
+  //
+  //   _isLoadingCoupons = true;
+  //   _startOperation('loadCouponsWithoutFiltering');
+  //
+  //   try {
+  //     _detectCurrentContext();
+  //     debugPrint(
+  //       '[COUPON_LOAD] 🔍 Fallback: Loading coupons for vendor: $restaurantId, Context: $_currentContext',
+  //     );
+  //
+  //     final List<CouponModel> allCoupons = await _fetchCouponsForContext(
+  //       restaurantId: restaurantId,
+  //     );
+  //
+  //     debugPrint(
+  //       '[COUPON_LOAD] ✅ Fallback: Received ${allCoupons.length} coupons from ${_currentContext} API',
+  //     );
+  //
+  //     final filteredGlobalCoupons = allCoupons
+  //         .where(
+  //           (c) =>
+  //               c.resturantId == null ||
+  //               c.resturantId == '' ||
+  //               c.resturantId?.toUpperCase() == 'ALL',
+  //         )
+  //         .toList();
+  //
+  //     final vendorCoupons = allCoupons
+  //         .where(
+  //           (c) =>
+  //               c.resturantId != null &&
+  //               c.resturantId!.isNotEmpty &&
+  //               c.resturantId!.toUpperCase() != 'ALL' &&
+  //               c.resturantId == restaurantId,
+  //         )
+  //         .toList();
+  //
+  //     final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
+  //     final combinedAllCoupons = [...allCoupons];
+  //
+  //     _cachedCouponList = combinedCoupons.cast<CouponModel>();
+  //     _updateCacheTime();
+  //
+  //     couponList = combinedCoupons.cast<CouponModel>();
+  //     allCouponList = combinedAllCoupons.cast<CouponModel>();
+  //
+  //     // await _markUsedCoupons();
+  //     notifyListeners();
+  //   } on SocketException catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ Fallback: Connection error: $e');
+  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //       couponList = _cachedCouponList!;
+  //       allCouponList = _cachedCouponList!;
+  //       // await _markUsedCoupons();
+  //       notifyListeners();
+  //     } else {
+  //       couponList = [];
+  //       allCouponList = [];
+  //       notifyListeners();
+  //     }
+  //   } on http.ClientException catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ Fallback: ClientException: $e');
+  //     if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //       couponList = _cachedCouponList!;
+  //       allCouponList = _cachedCouponList!;
+  //       // await _markUsedCoupons();
+  //       notifyListeners();
+  //     } else {
+  //       couponList = [];
+  //       allCouponList = [];
+  //       notifyListeners();
+  //     }
+  //   } catch (e) {
+  //     debugPrint('[COUPON_LOAD] ❌ Fallback coupon loading also failed: $e');
+  //     final errorString = e.toString();
+  //     if (errorString.contains('429') ||
+  //         errorString.contains('Status code: 429')) {
+  //       debugPrint(
+  //         '[COUPON_LOAD] ⚠️ Fallback: Rate limit (429) - using cached coupons',
+  //       );
+  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //         couponList = _cachedCouponList!;
+  //         allCouponList = _cachedCouponList!;
+  //         // await _markUsedCoupons();
+  //         notifyListeners();
+  //       } else {
+  //         couponList = [];
+  //         allCouponList = [];
+  //         notifyListeners();
+  //       }
+  //     } else {
+  //       if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
+  //         couponList = _cachedCouponList!;
+  //         allCouponList = _cachedCouponList!;
+  //         // await _markUsedCoupons();
+  //         notifyListeners();
+  //       } else {
+  //         couponList = [];
+  //         allCouponList = [];
+  //         notifyListeners();
+  //       }
+  //     }
+  //   } finally {
+  //     _isLoadingCoupons = false;
+  //     _endOperation('loadCouponsWithoutFiltering');
+  //   }
+  // }
 
-    _isLoadingCoupons = true;
-    _startOperation('loadGlobalCoupons');
-    final globalCouponLoadCompleter = Completer<void>();
-    _couponLoadInFlight = globalCouponLoadCompleter.future;
-
-    try {
-      _detectCurrentContext();
-      debugPrint(
-        '[COUPON_LOAD] 🔍 Global coupon load - Context: $_currentContext',
-      );
-
-      final globalCoupons = await _fetchCouponsForContext(restaurantId: '');
-
-      print(
-        '[COUPON_LOAD] ✅ Received ${globalCoupons.length} global coupons from ${_currentContext} API',
-      );
-
-      final filteredGlobalCoupons = globalCoupons
-          .where(
-            (c) =>
-                c.resturantId == null ||
-                c.resturantId == '' ||
-                c.resturantId?.toUpperCase() == 'ALL',
-          )
-          .toList();
-
-      final contextFilteredCoupons = CouponFilterService.filterCouponsByContext(
-        coupons: filteredGlobalCoupons.cast<CouponModel>(),
-        contextType: _currentContext,
-        fallbackEnabled: true,
-      );
-
-      print(
-        '[COUPON_LOAD] ✅ Filtered ${contextFilteredCoupons.length} global coupons for context: $_currentContext',
-      );
-
-      _cachedCouponList = contextFilteredCoupons;
-      _cachedGlobalCouponList = contextFilteredCoupons;
-      _lastGlobalCouponCacheTime = DateTime.now();
-      _updateCacheTime();
-
-      couponList = contextFilteredCoupons;
-      allCouponList = filteredGlobalCoupons.cast<CouponModel>();
-
-      await _markUsedCoupons();
-      notifyListeners();
-    } on SocketException catch (e) {
-      print('[COUPON_LOAD] ❌ Global: Connection error: $e');
-      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-        couponList = _cachedCouponList!;
-        allCouponList = _cachedCouponList!;
-        await _markUsedCoupons();
-        notifyListeners();
-      } else {
-        couponList = [];
-        allCouponList = [];
-        notifyListeners();
-      }
-    } on http.ClientException catch (e) {
-      print('[COUPON_LOAD] ❌ Global: ClientException: $e');
-      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-        couponList = _cachedCouponList!;
-        allCouponList = _cachedCouponList!;
-        await _markUsedCoupons();
-        notifyListeners();
-      } else {
-        couponList = [];
-        allCouponList = [];
-        notifyListeners();
-      }
-    } catch (e) {
-      print('[COUPON_LOAD] ❌ Error loading global coupons: $e');
-      final errorString = e.toString();
-      if (errorString.contains('429') ||
-          errorString.contains('400') ||
-          errorString.contains('Status code: 429') ||
-          errorString.contains('Status code: 400')) {
-        print(
-          '[COUPON_LOAD] ⚠️ Global: Rate limit or bad request - using cached coupons',
-        );
-        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-          couponList = _cachedCouponList!;
-          allCouponList = _cachedCouponList!;
-          await _markUsedCoupons();
-          notifyListeners();
-        } else {
-          couponList = [];
-          allCouponList = [];
-          notifyListeners();
-        }
-      } else {
-        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-          couponList = _cachedCouponList!;
-          allCouponList = _cachedCouponList!;
-          await _markUsedCoupons();
-          notifyListeners();
-        }
-      }
-    } finally {
-      _isLoadingCoupons = false;
-      _endOperation('loadGlobalCoupons');
-      if (!globalCouponLoadCompleter.isCompleted) {
-        globalCouponLoadCompleter.complete();
-      }
-      _couponLoadInFlight = null;
-    }
-  }
-
-  Future<void> _loadCouponsWithoutFiltering({
-    required String restaurantId,
-  }) async {
-    if (_isLoadingCoupons) {
-      print(
-        '[COUPON_LOAD] ⚠️ Fallback coupon load already in progress, skipping...',
-      );
-      return;
-    }
-
-    if (restaurantId.isEmpty || restaurantId.trim().isEmpty) {
-      print('[COUPON_LOAD] ⚠️ Fallback: Skipping - empty restaurant ID');
-      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-        couponList = _cachedCouponList!;
-        allCouponList = _cachedCouponList!;
-        notifyListeners();
-      } else {
-        couponList = [];
-        allCouponList = [];
-        notifyListeners();
-      }
-      return;
-    }
-
-    _isLoadingCoupons = true;
-    _startOperation('loadCouponsWithoutFiltering');
-
-    try {
-      _detectCurrentContext();
-      print(
-        '[COUPON_LOAD] 🔍 Fallback: Loading coupons for vendor: $restaurantId, Context: $_currentContext',
-      );
-
-      final List<CouponModel> allCoupons = await _fetchCouponsForContext(
-        restaurantId: restaurantId,
-      );
-
-      print(
-        '[COUPON_LOAD] ✅ Fallback: Received ${allCoupons.length} coupons from ${_currentContext} API',
-      );
-
-      final filteredGlobalCoupons = allCoupons
-          .where(
-            (c) =>
-                c.resturantId == null ||
-                c.resturantId == '' ||
-                c.resturantId?.toUpperCase() == 'ALL',
-          )
-          .toList();
-
-      final vendorCoupons = allCoupons
-          .where(
-            (c) =>
-                c.resturantId != null &&
-                c.resturantId!.isNotEmpty &&
-                c.resturantId!.toUpperCase() != 'ALL' &&
-                c.resturantId == restaurantId,
-          )
-          .toList();
-
-      final combinedCoupons = [...vendorCoupons, ...filteredGlobalCoupons];
-      final combinedAllCoupons = [...allCoupons];
-
-      _cachedCouponList = combinedCoupons.cast<CouponModel>();
-      _updateCacheTime();
-
-      couponList = combinedCoupons.cast<CouponModel>();
-      allCouponList = combinedAllCoupons.cast<CouponModel>();
-
-      await _markUsedCoupons();
-      notifyListeners();
-    } on SocketException catch (e) {
-      print('[COUPON_LOAD] ❌ Fallback: Connection error: $e');
-      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-        couponList = _cachedCouponList!;
-        allCouponList = _cachedCouponList!;
-        await _markUsedCoupons();
-        notifyListeners();
-      } else {
-        couponList = [];
-        allCouponList = [];
-        notifyListeners();
-      }
-    } on http.ClientException catch (e) {
-      print('[COUPON_LOAD] ❌ Fallback: ClientException: $e');
-      if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-        couponList = _cachedCouponList!;
-        allCouponList = _cachedCouponList!;
-        await _markUsedCoupons();
-        notifyListeners();
-      } else {
-        couponList = [];
-        allCouponList = [];
-        notifyListeners();
-      }
-    } catch (e) {
-      print('[COUPON_LOAD] ❌ Fallback coupon loading also failed: $e');
-      final errorString = e.toString();
-      if (errorString.contains('429') ||
-          errorString.contains('Status code: 429')) {
-        print(
-          '[COUPON_LOAD] ⚠️ Fallback: Rate limit (429) - using cached coupons',
-        );
-        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-          couponList = _cachedCouponList!;
-          allCouponList = _cachedCouponList!;
-          await _markUsedCoupons();
-          notifyListeners();
-        } else {
-          couponList = [];
-          allCouponList = [];
-          notifyListeners();
-        }
-      } else {
-        if (_cachedCouponList != null && _cachedCouponList!.isNotEmpty) {
-          couponList = _cachedCouponList!;
-          allCouponList = _cachedCouponList!;
-          await _markUsedCoupons();
-          notifyListeners();
-        } else {
-          couponList = [];
-          allCouponList = [];
-          notifyListeners();
-        }
-      }
-    } finally {
-      _isLoadingCoupons = false;
-      _endOperation('loadCouponsWithoutFiltering');
-    }
-  }
-
-  Future<void> _markUsedCoupons({bool notify = true}) async {
-    if (_markUsedCouponsInFlight != null) {
-      await _markUsedCouponsInFlight!;
-      if (notify) notifyListeners();
-      return;
-    }
-
-    final canUseCache =
-        _lastUsedCouponsFetchAt != null &&
-        DateTime.now().difference(_lastUsedCouponsFetchAt!) <
-            _usedCouponsCacheExpiry;
-    if (canUseCache) {
-      _applyUsedCouponIds(_cachedUsedCouponIds);
-      if (notify) notifyListeners();
-      return;
-    }
-
-    _markUsedCouponsInFlight = () async {
-      try {
-        final userId = await SqlStorageConst.getFirebaseId();
-        final response = await http.get(
-          Uri.parse('${AppConst.baseUrl}mobile/coupons/used?userId=$userId'),
-          headers: await getHeaders(),
-        );
-
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> responseData = json.decode(response.body);
-          if (responseData['success'] == true) {
-            final List<dynamic> usedCoupons = responseData['data']['coupons'];
-            _cachedUsedCouponIds = usedCoupons
-                .map((coupon) => coupon['couponId']?.toString() ?? '')
-                .where((id) => id.isNotEmpty)
-                .toSet();
-            _lastUsedCouponsFetchAt = DateTime.now();
-          }
-        }
-      } catch (e) {
-        print('[MARK_USED_COUPONS] ❌ Error: $e');
-      } finally {
-        _markUsedCouponsInFlight = null;
-      }
-    }();
-
-    await _markUsedCouponsInFlight!;
-    _applyUsedCouponIds(_cachedUsedCouponIds);
-    if (notify) notifyListeners();
-  }
+  // Future<void> _markUsedCoupons({bool notify = true}) async {
+  //   if (_markUsedCouponsInFlight != null) {
+  //     await _markUsedCouponsInFlight!;
+  //     if (notify) notifyListeners();
+  //     return;
+  //   }
+  //
+  //   final canUseCache =
+  //       _lastUsedCouponsFetchAt != null &&
+  //       DateTime.now().difference(_lastUsedCouponsFetchAt!) <
+  //           _usedCouponsCacheExpiry;
+  //   if (canUseCache) {
+  //     _applyUsedCouponIds(_cachedUsedCouponIds);
+  //     if (notify) notifyListeners();
+  //     return;
+  //   }
+  //
+  //   _markUsedCouponsInFlight = () async {
+  //     try {
+  //       final userId = await SqlStorageConst.getFirebaseId();
+  //       final response = await http.get(
+  //         Uri.parse('${AppConst.baseUrl}mobile/coupons/used?userId=$userId'),
+  //         headers: await getHeaders(),
+  //       );
+  //
+  //       if (response.statusCode == 200) {
+  //         final Map<String, dynamic> responseData = json.decode(response.body);
+  //         if (responseData['success'] == true) {
+  //           final List<dynamic> usedCoupons = responseData['data']['coupons'];
+  //           _cachedUsedCouponIds = usedCoupons
+  //               .map((coupon) => coupon['couponId']?.toString() ?? '')
+  //               .where((id) => id.isNotEmpty)
+  //               .toSet();
+  //           _lastUsedCouponsFetchAt = DateTime.now();
+  //         }
+  //       }
+  //     } catch (e) {
+  //       debugPrint('[MARK_USED_COUPONS] ❌ Error: $e');
+  //     } finally {
+  //       _markUsedCouponsInFlight = null;
+  //     }
+  //   }();
+  //
+  //   await _markUsedCouponsInFlight!;
+  //   _applyUsedCouponIds(_cachedUsedCouponIds);
+  //   if (notify) notifyListeners();
+  // }
 
   void _applyUsedCouponIds(Set<String> usedCouponIds) {
     for (final coupon in couponList) {
@@ -5008,7 +5007,7 @@ class CartControllerProvider extends ChangeNotifier {
       await Preferences.setString(_paymentAmountKey, '');
       await Preferences.setString(_paymentOrderIdKey, '');
     } catch (e) {
-      print('[CLEAR_PERSISTENT] ❌ Error: $e');
+      debugPrint('[CLEAR_PERSISTENT] ❌ Error: $e');
     }
   }
 
@@ -5034,17 +5033,17 @@ class CartControllerProvider extends ChangeNotifier {
           else
             Future.value(),
         ]);
-        print(
+        debugPrint(
           '✅ [PAYMENT_STATE] Payment state saved persistently for recovery',
         );
       } catch (e) {
-        print('❌ [PAYMENT_STATE] Error saving payment state: $e');
+        debugPrint('❌ [PAYMENT_STATE] Error saving payment state: $e');
         // Try to save at least the critical payment ID
         try {
           await Preferences.setString(_paymentIdKey, paymentId);
           await Preferences.setString(_paymentStateKey, 'true');
         } catch (e2) {
-          print('❌ [PAYMENT_STATE] Critical save also failed: $e2');
+          debugPrint('❌ [PAYMENT_STATE] Critical save also failed: $e2');
         }
       }
     });
@@ -5067,17 +5066,19 @@ class CartControllerProvider extends ChangeNotifier {
         final paymentState = Preferences.getString(_paymentStateKey);
         if (paymentState != 'true') {
           // Order was placed successfully
-          print('✅ [BACKGROUND_CHECK] Order already placed, no retry needed');
+          debugPrint(
+            '✅ [BACKGROUND_CHECK] Order already placed, no retry needed',
+          );
           return;
         }
 
         // If payment state still exists, order wasn't placed - retry in background
-        print(
+        debugPrint(
           '🔄 [BACKGROUND_CHECK] Order not placed yet, retrying in background...',
         );
         unawaited(_placeOrderWithRetry(paymentId, signature, maxRetries: 2));
       } catch (e) {
-        print('⚠️ [BACKGROUND_CHECK] Error in background check: $e');
+        debugPrint('⚠️ [BACKGROUND_CHECK] Error in background check: $e');
       }
     });
   }
@@ -5094,7 +5095,7 @@ class CartControllerProvider extends ChangeNotifier {
     while (attempt < maxRetries && !orderPlaced) {
       attempt++;
       try {
-        print(
+        debugPrint(
           '🚀 [PAYMENT_SUCCESS] Attempt $attempt/$maxRetries: Starting order placement for payment ID: $paymentId',
         );
 
@@ -5109,18 +5110,18 @@ class CartControllerProvider extends ChangeNotifier {
 
         orderPlaced = true;
 
-        print(
+        debugPrint(
           '✅ [PAYMENT_SUCCESS] Order placed successfully for payment ID: $paymentId (attempt $attempt)',
         );
         break;
       } catch (e, stackTrace) {
-        print('❌ [PAYMENT_SUCCESS] Attempt $attempt failed: $e');
-        print('❌ [PAYMENT_SUCCESS] Stack trace: $stackTrace');
+        debugPrint('❌ [PAYMENT_SUCCESS] Attempt $attempt failed: $e');
+        debugPrint('❌ [PAYMENT_SUCCESS] Stack trace: $stackTrace');
 
         if (attempt < maxRetries) {
           // Wait before retry with exponential backoff (1s, 2s, 4s)
           final waitTime = Duration(seconds: attempt);
-          print(
+          debugPrint(
             '⏳ [PAYMENT_SUCCESS] Waiting ${waitTime.inSeconds}s before retry...',
           );
           await Future.delayed(waitTime);
@@ -5138,7 +5139,7 @@ class CartControllerProvider extends ChangeNotifier {
 
           // 🔑 CRITICAL: Keep payment state persisted for recovery on app resume
           // Don't clear persistent state on error - allow retry when app resumes
-          print(
+          debugPrint(
             '⚠️ [PAYMENT_SUCCESS] All retry attempts failed. Payment state kept for recovery. Order will be placed when app resumes.',
           );
 
@@ -5152,7 +5153,7 @@ class CartControllerProvider extends ChangeNotifier {
                   .tr,
             );
           } catch (e) {
-            print(
+            debugPrint(
               '⚠️ [PAYMENT_SUCCESS] Could not show toast (app may be closing): $e',
             );
           }
@@ -5187,7 +5188,9 @@ class CartControllerProvider extends ChangeNotifier {
         );
         final timeSincePayment = DateTime.now().difference(paymentTime);
         if (timeSincePayment > paymentTimeout) {
-          print('⚠️ [PENDING_PAYMENT] Payment session expired, clearing state');
+          debugPrint(
+            '⚠️ [PENDING_PAYMENT] Payment session expired, clearing state',
+          );
           await _clearPersistentPaymentState();
           ShowToastDialog.showToast(
             "Payment session expired. Please try again.".tr,
@@ -5206,19 +5209,21 @@ class CartControllerProvider extends ChangeNotifier {
       isPaymentCompleted = true;
       selectedPaymentMethod = PaymentGateway.razorpay.name;
 
-      print(
+      debugPrint(
         '✅ [PENDING_PAYMENT] Found pending payment: $savedPaymentId, attempting to place order',
       );
 
       // Check if order was already placed (prevent duplicate)
       if (_isOrderBeingCreated || _isOrderCreationInProgress) {
-        print('⚠️ [PENDING_PAYMENT] Order already being created, skipping');
+        debugPrint(
+          '⚠️ [PENDING_PAYMENT] Order already being created, skipping',
+        );
         return;
       }
 
       // Validate cart is not empty
       if (HomeProvider.cartItem.isEmpty) {
-        print('❌ [PENDING_PAYMENT] Cart is empty, cannot place order');
+        debugPrint('❌ [PENDING_PAYMENT] Cart is empty, cannot place order');
         await _clearPersistentPaymentState();
         ShowToastDialog.showToast(
           "Cart is empty. Payment will be refunded.".tr,
@@ -5236,11 +5241,11 @@ class CartControllerProvider extends ChangeNotifier {
         // 🔑 CRITICAL: Stop periodic retry timer since order is placed
         _stopPendingOrderRetryTimer();
 
-        print(
+        debugPrint(
           '✅ [PENDING_PAYMENT] Order placed successfully for pending payment',
         );
       } catch (e) {
-        print('❌ [PENDING_PAYMENT] Error placing order: $e');
+        debugPrint('❌ [PENDING_PAYMENT] Error placing order: $e');
         // Keep payment state persisted for retry
         // Start periodic retry timer if not already started
         _startPendingOrderRetryTimer();
@@ -5251,7 +5256,7 @@ class CartControllerProvider extends ChangeNotifier {
         );
       }
     } catch (e) {
-      print('❌ [PENDING_PAYMENT] Error checking pending payment: $e');
+      debugPrint('❌ [PENDING_PAYMENT] Error checking pending payment: $e');
     }
   }
 
@@ -5297,7 +5302,7 @@ class CartControllerProvider extends ChangeNotifier {
   //     // surgePercent = calculateSurgeFee(weather, rules);
   //     notifyListeners();
   //   } catch (e) {
-  //     print('[SURGE_VALUE] ❌ Error: $e');
+  //     debugPrint('[SURGE_VALUE] ❌ Error: $e');
   //     surgePercent = 0;
   //     notifyListeners();
   //   }
@@ -5379,7 +5384,7 @@ class CartControllerProvider extends ChangeNotifier {
         await _loadFreshRestaurantVendor(restaurantItems.first.vendorID);
       }
     } catch (e) {
-      print('[VENDOR_LOAD] ❌ Error: $e');
+      debugPrint('[VENDOR_LOAD] ❌ Error: $e');
     }
   }
 
@@ -5426,7 +5431,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
       if (!_isCalculatingPrice) notifyListeners();
     } catch (e) {
-      print('[MART_VENDOR] ❌ Error: $e');
+      debugPrint('[MART_VENDOR] ❌ Error: $e');
     }
   }
 
@@ -5440,7 +5445,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
       if (!_isCalculatingPrice) notifyListeners();
     } catch (e) {
-      print('[RESTAURANT_VENDOR] ❌ Error: $e');
+      debugPrint('[RESTAURANT_VENDOR] ❌ Error: $e');
     }
   }
 
@@ -5565,7 +5570,7 @@ class CartControllerProvider extends ChangeNotifier {
         );
 
         if (reFilteredCoupons.length != couponList.length) {
-          print('[COUPONS] 🔄 Context changed, reloading coupons...');
+          debugPrint('[COUPONS] 🔄 Context changed, reloading coupons...');
         } else {
           return;
         }
@@ -5587,9 +5592,9 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     if (vendorId != null && vendorId.isNotEmpty) {
-      _loadCoupons(restaurantId: vendorId);
+      // _loadCoupons(restaurantId: vendorId);
     } else {
-      _loadGlobalCouponsOnly();
+      // _loadGlobalCouponsOnly();
     }
   }
 
@@ -5622,7 +5627,7 @@ class CartControllerProvider extends ChangeNotifier {
   //       freeDeliveryKm = promoFreeKm;
   //       // Cache it for faster access next time
   //       _cachedFreeDeliveryKm[cacheKey] = promoFreeKm;
-  //       print(
+  //       debugPrint(
   //         '[PROMOTIONAL_DELIVERY] ✅ Using free delivery km from promotion table: $freeDeliveryKm km',
   //       );
   //     } else {
@@ -5630,14 +5635,14 @@ class CartControllerProvider extends ChangeNotifier {
   //       // check cached value (from previous fetch), but NEVER use global fallback
   //       if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
   //         freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
-  //         print(
+  //         debugPrint(
   //           '[PROMOTIONAL_DELIVERY] ⚠️ Promotion table missing free_delivery_km, using cached promotional value: $freeDeliveryKm km',
   //         );
   //       } else {
   //         // 🔑 CRITICAL: For promotional items, we MUST have promotional data
   //         // If cache is missing, trigger async load and use a safe default that will be updated
   //         // But don't use global fallback - use a reasonable promotional default
-  //         print(
+  //         debugPrint(
   //           '[PROMOTIONAL_DELIVERY] ⚠️ No promotional cache found, triggering load...',
   //         );
   //         // Trigger async cache load
@@ -5667,7 +5672,7 @@ class CartControllerProvider extends ChangeNotifier {
   //     // If not, trigger load and use promotional defaults (NOT global)
   //     if (_cachedFreeDeliveryKm.containsKey(cacheKey)) {
   //       freeDeliveryKm = _cachedFreeDeliveryKm[cacheKey]!;
-  //       print(
+  //       debugPrint(
   //         '[PROMOTIONAL_DELIVERY] ✅ Using cached promotional free delivery km: $freeDeliveryKm km',
   //       );
   //     } else {
@@ -5679,7 +5684,7 @@ class CartControllerProvider extends ChangeNotifier {
   //       );
   //       // Use promotional default (4km) instead of global fallback
   //       freeDeliveryKm = 4.0; // Default promotional free km
-  //       print(
+  //       debugPrint(
   //         '[PROMOTIONAL_DELIVERY] ⚠️ Promotion cache not loaded, using promotional default: $freeDeliveryKm km (will update when cache loads)',
   //       );
   //     }
@@ -5735,7 +5740,7 @@ class CartControllerProvider extends ChangeNotifier {
       } else {
         originalDeliveryFee = baseCharge;
       }
-      print(
+      debugPrint(
         '$logPrefix Free delivery within ${freeDeliveryKm}km - Customer pays: ₹$deliveryCharges, Base charge for GST: ₹$baseCharge',
       );
     } else {
@@ -5754,7 +5759,7 @@ class CartControllerProvider extends ChangeNotifier {
             ? baseCharge + deliveryCharges
             : deliveryCharges;
       }
-      print(
+      debugPrint(
         '$logPrefix Distance ${totalDistance}km exceeds free ${freeDeliveryKm}km - Extra km: $extraKm, Customer pays: ₹$deliveryCharges, Original fee (base + extra) for GST: ₹$originalDeliveryFee',
       );
     }
@@ -5800,7 +5805,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (distance <= freeKm) {
         deliveryCharges = baseCharge.toDouble();
         originalDeliveryFee = baseCharge.toDouble();
-        print(
+        debugPrint(
           '[MART_DELIVERY] Below threshold & within free km: distance=$distance km, baseCharge=₹$baseCharge',
         );
       } else {
@@ -5808,7 +5813,7 @@ class CartControllerProvider extends ChangeNotifier {
         final roundedDistance = distance.ceilToDouble();
         deliveryCharges = roundedDistance * perKm;
         originalDeliveryFee = deliveryCharges;
-        print(
+        debugPrint(
           '[MART_DELIVERY] Below threshold & beyond free km: distance=$distance km (rounded to $roundedDistance km), perKm=₹$perKm, charge=₹$deliveryCharges',
         );
       }
@@ -5850,7 +5855,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (totalDistance <= freeKm) {
         deliveryCharges = baseCharge.toDouble();
         originalDeliveryFee = baseCharge.toDouble();
-        print(
+        debugPrint(
           '[REGULAR_DELIVERY] Below threshold & within free km: distance=$totalDistance km, baseCharge=₹$baseCharge',
         );
       } else {
@@ -5858,7 +5863,7 @@ class CartControllerProvider extends ChangeNotifier {
         final roundedDistance = totalDistance.ceilToDouble();
         deliveryCharges = roundedDistance * perKm;
         originalDeliveryFee = deliveryCharges;
-        print(
+        debugPrint(
           '[REGULAR_DELIVERY] Below threshold & beyond free km: distance=$totalDistance km (rounded to $roundedDistance km), perKm=₹$perKm, charge=₹$deliveryCharges',
         );
       }
@@ -5890,7 +5895,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (freeKm != null && freeKm > 0) {
         // Cache it for next time
         _cachedFreeDeliveryKm[cacheKey] = freeKm;
-        print(
+        debugPrint(
           '[PROMOTIONAL_DELIVERY] ✅ Retrieved free delivery km from promotion cache: $freeKm km',
         );
         return freeKm;
@@ -5910,7 +5915,7 @@ class CartControllerProvider extends ChangeNotifier {
     if (isPromotionalItem) {
       // 🔑 CRITICAL: For promotional items, use promotional default (4km) instead of global
       // This ensures promotional items always use promotional delivery charges
-      print(
+      debugPrint(
         '[PROMOTIONAL_DELIVERY] ⚠️ Promotional item cache not loaded, using promotional default: 4.0 km',
       );
       return 4.0; // Promotional default, NOT global fallback
@@ -5953,7 +5958,7 @@ class CartControllerProvider extends ChangeNotifier {
   //     await Future.wait(futures);
   //     _calculationCacheLoaded = true;
   //   } catch (e) {
-  //     print('[CALC_CACHE] ❌ Error: $e');
+  //     debugPrint('[CALC_CACHE] ❌ Error: $e');
   //   }
   // }
 
@@ -6017,7 +6022,7 @@ class CartControllerProvider extends ChangeNotifier {
   //           includeBaseCharge;
   //     }
   //   } catch (e) {
-  //     print('[PROMO_CACHE] ❌ Error: $e');
+  //     debugPrint('[PROMO_CACHE] ❌ Error: $e');
   //   }
   // }
 
@@ -6039,7 +6044,7 @@ class CartControllerProvider extends ChangeNotifier {
     final outletId = int.tryParse(cartProductModel.vendorID ?? '');
 
     if (customerId == null || productId == null || outletId == null) {
-      print(
+      debugPrint(
         '[Cart] Invalid IDs: '
         'customerId=$customerId, '
         'productId=$productId, '
@@ -6073,7 +6078,7 @@ class CartControllerProvider extends ChangeNotifier {
       },
     ];
 
-    print('[Cart] variants=$variants');
+    debugPrint('[Cart] variants=$variants');
 
     // ------------------------------------------------------------
     // Update server cart
@@ -6153,7 +6158,7 @@ class CartControllerProvider extends ChangeNotifier {
       updateCartReadiness();
       notifyListeners();
     } catch (e) {
-      print('[CART_UPDATE] ❌ Error: $e');
+      debugPrint('[CART_UPDATE] ❌ Error: $e');
       await forceRefreshCart();
     }
   }
@@ -6200,7 +6205,7 @@ class CartControllerProvider extends ChangeNotifier {
   //         }
   //         notifyListeners();
   //       } catch (e) {
-  //         print('[INCREMENTAL_LOAD] ❌ Error: $e');
+  //         debugPrint('[INCREMENTAL_LOAD] ❌ Error: $e');
   //         _productCache[productId] = null;
   //       }
   //     }).toList();
@@ -6209,7 +6214,7 @@ class CartControllerProvider extends ChangeNotifier {
   //     _productsLoaded = true;
   //     notifyListeners();
   //   } catch (e) {
-  //     print('[INCREMENTAL_LOAD] ❌ Error: $e');
+  //     debugPrint('[INCREMENTAL_LOAD] ❌ Error: $e');
   //   }
   // }
 
@@ -6371,7 +6376,7 @@ class CartControllerProvider extends ChangeNotifier {
 
       return true;
     } catch (e) {
-      print('[VENDOR_STATUS] ❌ Error while validating vendor status: $e');
+      debugPrint('[VENDOR_STATUS] ❌ Error while validating vendor status: $e');
       return true;
     }
   }
@@ -6534,7 +6539,7 @@ class CartControllerProvider extends ChangeNotifier {
                 vendorModel.zoneId = address.zoneId;
               }
             } catch (e) {
-              print('[VENDOR_ZONE] ❌ Error: $e');
+              debugPrint('[VENDOR_ZONE] ❌ Error: $e');
             }
           }
         }
@@ -6613,15 +6618,15 @@ class CartControllerProvider extends ChangeNotifier {
   //         body: jsonEncode(requestBody),
   //       );
   //       if (response.statusCode == 200) {
-  //         print('Order rollback successful for order: $orderId');
+  //         debugPrint('Order rollback successful for order: $orderId');
   //         notifyListeners();
   //       } else {
   //         // Handle API error
-  //         print('Failed to rollback order: ${response.statusCode}');
+  //         debugPrint('Failed to rollback order: ${response.statusCode}');
   //         throw Exception('Failed to rollback order: ${response.statusCode}');
   //       }
   //     } catch (e) {
-  //       print('Error rolling back order: $e');
+  //       debugPrint('Error rolling back order: $e');
   //       // Re-throw the exception or handle it as needed
   //       rethrow;
   //     }
@@ -6673,7 +6678,7 @@ class CartControllerProvider extends ChangeNotifier {
   //
   //             checkAndUpdatePaymentMethod();
   //           } catch (e) {
-  //             print('[PAYMENT_SETTINGS] ❌ Error parsing: $e');
+  //             debugPrint('[PAYMENT_SETTINGS] ❌ Error parsing: $e');
   //             if (razorPayModel.isEnabled == true) {
   //               selectedPaymentMethod = PaymentGateway.razorpay.name;
   //               _preInitializeRazorpay();
@@ -6681,14 +6686,14 @@ class CartControllerProvider extends ChangeNotifier {
   //           }
   //         })
   //         .catchError((e) {
-  //           print('[PAYMENT_SETTINGS] ❌ Error fetching: $e');
+  //           debugPrint('[PAYMENT_SETTINGS] ❌ Error fetching: $e');
   //           if (razorPayModel.isEnabled == true) {
   //             selectedPaymentMethod = PaymentGateway.razorpay.name;
   //             _preInitializeRazorpay();
   //           }
   //         });
   //   } catch (e) {
-  //     print('[PAYMENT_SETTINGS] ❌ Error: $e');
+  //     debugPrint('[PAYMENT_SETTINGS] ❌ Error: $e');
   //   }
   //   notifyListeners();
   // }
@@ -6697,7 +6702,7 @@ class CartControllerProvider extends ChangeNotifier {
   Future<void> _preInitializeRazorpay() async {
     try {
       if (!_razorpayCrashPrevention.isInitialized) {
-        print(
+        debugPrint(
           '🚀 [RAZORPAY_PREINIT] Pre-initializing Razorpay for faster checkout...',
         );
         final initialized = await _razorpayCrashPrevention.safeInitialize(
@@ -6706,17 +6711,19 @@ class CartControllerProvider extends ChangeNotifier {
           onExternalWallet: handleExternalWallet,
         );
         if (initialized) {
-          print('✅ [RAZORPAY_PREINIT] Razorpay pre-initialized successfully');
+          debugPrint(
+            '✅ [RAZORPAY_PREINIT] Razorpay pre-initialized successfully',
+          );
         } else {
-          print(
+          debugPrint(
             '⚠️ [RAZORPAY_PREINIT] Pre-initialization failed, will initialize on demand',
           );
         }
       } else {
-        print('✅ [RAZORPAY_PREINIT] Razorpay already initialized');
+        debugPrint('✅ [RAZORPAY_PREINIT] Razorpay already initialized');
       }
     } catch (e) {
-      print('[RAZORPAY_PREINIT] ⚠️ Pre-initialization error: $e');
+      debugPrint('[RAZORPAY_PREINIT] ⚠️ Pre-initialization error: $e');
       // Don't throw - initialization will happen on demand
     }
   }
@@ -6825,15 +6832,15 @@ class CartControllerProvider extends ChangeNotifier {
         body: jsonEncode(requestBody),
       );
       if (response.statusCode == 200) {
-        print('Order rollback successful for order: $orderId');
+        debugPrint('Order rollback successful for order: $orderId');
         notifyListeners();
       } else {
         // Handle API error
-        print('Failed to rollback order: ${response.statusCode}');
+        debugPrint('Failed to rollback order: ${response.statusCode}');
         throw Exception('Failed to rollback order: ${response.statusCode}');
       }
     } catch (e) {
-      print('Error rolling back order: $e');
+      debugPrint('Error rolling back order: $e');
       // Re-throw the exception or handle it as needed
       rethrow;
     }
@@ -7263,7 +7270,7 @@ class CartControllerProvider extends ChangeNotifier {
   // Add this method if it's missing:
 
   void resetAllProcessingFlags() {
-    print('🔄 [SAFETY_RESET] Resetting all processing flags');
+    debugPrint('🔄 [SAFETY_RESET] Resetting all processing flags');
 
     isProcessingOrder = false;
     isPaymentInProgress = false;
@@ -7282,12 +7289,12 @@ class CartControllerProvider extends ChangeNotifier {
   }
 
   Future<bool> openCheckout({required amount, required orderId}) async {
-    print(
+    debugPrint(
       '🔑 [RAZORPAY_CHECKOUT] Starting openCheckout - amount: $amount, orderId: $orderId',
     );
 
     if (isPaymentInProgress) {
-      print('⚠️ [RAZORPAY_CHECKOUT] Payment already in progress');
+      debugPrint('⚠️ [RAZORPAY_CHECKOUT] Payment already in progress');
       ShowToastDialog.showToast(
         "Payment is already in progress. Please wait...".tr,
       );
@@ -7295,7 +7302,7 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     if (isPaymentCompleted) {
-      print('⚠️ [RAZORPAY_CHECKOUT] Payment already completed');
+      debugPrint('⚠️ [RAZORPAY_CHECKOUT] Payment already completed');
       ShowToastDialog.showToast(
         "Payment already completed. Please refresh the page.".tr,
       );
@@ -7303,7 +7310,7 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     if (!_razorpayCrashPrevention.isInitialized) {
-      print(
+      debugPrint(
         '⚠️ [RAZORPAY_CHECKOUT] Razorpay not initialized (unexpected), initializing now...',
       );
       final initialized = await _razorpayCrashPrevention.safeInitialize(
@@ -7313,26 +7320,26 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       if (!initialized) {
-        print('❌ [RAZORPAY_CHECKOUT] Razorpay initialization failed');
+        debugPrint('❌ [RAZORPAY_CHECKOUT] Razorpay initialization failed');
         ShowToastDialog.showToast(
           "Payment system is temporarily unavailable. Please try again later."
               .tr,
         );
         return false;
       }
-      print('✅ [RAZORPAY_CHECKOUT] Razorpay initialized (fallback)');
+      debugPrint('✅ [RAZORPAY_CHECKOUT] Razorpay initialized (fallback)');
     } else {
-      print(
+      debugPrint(
         '✅ [RAZORPAY_CHECKOUT] Razorpay already initialized (pre-initialized)',
       );
     }
 
     isPaymentInProgress = true;
-    print('🔑 [RAZORPAY_CHECKOUT] Payment in progress flag set');
+    debugPrint('🔑 [RAZORPAY_CHECKOUT] Payment in progress flag set');
 
     if (razorPayModel.razorpayKey == null ||
         razorPayModel.razorpayKey!.isEmpty) {
-      print('❌ [RAZORPAY_CHECKOUT] Razorpay key is null or empty');
+      debugPrint('❌ [RAZORPAY_CHECKOUT] Razorpay key is null or empty');
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Payment configuration error. Please contact support.".tr,
@@ -7341,7 +7348,7 @@ class CartControllerProvider extends ChangeNotifier {
     }
 
     if (!razorPayModel.razorpayKey!.startsWith('rzp_')) {
-      print(
+      debugPrint(
         '❌ [RAZORPAY_CHECKOUT] Invalid Razorpay key format: ${razorPayModel.razorpayKey}',
       );
       isPaymentInProgress = false;
@@ -7360,7 +7367,7 @@ class CartControllerProvider extends ChangeNotifier {
       amountInPaise = (double.parse(amount.toString()) * 100).round();
     }
 
-    print('🔑 [RAZORPAY_CHECKOUT] Amount in paise: $amountInPaise');
+    debugPrint('🔑 [RAZORPAY_CHECKOUT] Amount in paise: $amountInPaise');
 
     var options = {
       'key': razorPayModel.razorpayKey,
@@ -7377,18 +7384,18 @@ class CartControllerProvider extends ChangeNotifier {
       },
     };
 
-    print('🔑 [RAZORPAY_CHECKOUT] Payment options prepared');
+    debugPrint('🔑 [RAZORPAY_CHECKOUT] Payment options prepared');
     notifyListeners();
 
     try {
-      print('🔑 [RAZORPAY_CHECKOUT] Calling safeOpenPayment...');
+      debugPrint('🔑 [RAZORPAY_CHECKOUT] Calling safeOpenPayment...');
       final success = await _razorpayCrashPrevention.safeOpenPayment(options);
 
       if (success) {
-        print('✅ [RAZORPAY_CHECKOUT] Payment gateway opened successfully');
+        debugPrint('✅ [RAZORPAY_CHECKOUT] Payment gateway opened successfully');
         return true;
       } else {
-        print('❌ [RAZORPAY_CHECKOUT] safeOpenPayment returned false');
+        debugPrint('❌ [RAZORPAY_CHECKOUT] safeOpenPayment returned false');
         isPaymentInProgress = false;
         ShowToastDialog.showToast(
           "Failed to open payment gateway. Please try again.".tr,
@@ -7396,8 +7403,8 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
     } catch (e, stackTrace) {
-      print('❌ [RAZORPAY_CHECKOUT] Exception in openCheckout: $e');
-      print('❌ [RAZORPAY_CHECKOUT] Stack trace: $stackTrace');
+      debugPrint('❌ [RAZORPAY_CHECKOUT] Exception in openCheckout: $e');
+      debugPrint('❌ [RAZORPAY_CHECKOUT] Stack trace: $stackTrace');
       isPaymentInProgress = false;
       ShowToastDialog.showToast(
         "Failed to open payment gateway. Please try again.".tr,
@@ -7485,7 +7492,7 @@ class CartControllerProvider extends ChangeNotifier {
   //             return false;
   //           }
   //         } catch (e) {
-  //           print('[ORDER VALIDATION] ❌ Error validating mart items: $e');
+  //           debugPrint('[ORDER VALIDATION] ❌ Error validating mart items: $e');
   //           ShowToastDialog.showToast(
   //             "Error validating mart items. Please try again.",
   //           );
@@ -7497,7 +7504,7 @@ class CartControllerProvider extends ChangeNotifier {
   //             productId.isEmpty ||
   //             productId == 'null' ||
   //             productId.trim().isEmpty) {
-  //           print('[CART_VALIDATION] Invalid product ID: $productId');
+  //           debugPrint('[CART_VALIDATION] Invalid product ID: $productId');
   //           ShowToastDialog.showToast(
   //             "Some items in your cart have invalid product information.".tr,
   //           );
@@ -7533,7 +7540,7 @@ class CartControllerProvider extends ChangeNotifier {
   //
   //     return true;
   //   } catch (e) {
-  //     print('[ORDER_VALIDATION] ❌ Error: $e');
+  //     debugPrint('[ORDER_VALIDATION] ❌ Error: $e');
   //     ShowToastDialog.showToast("Error validating order. Please try again.".tr);
   //     return false;
   //   }
@@ -7573,7 +7580,7 @@ class CartControllerProvider extends ChangeNotifier {
                 "Jippy Mart is temporarily closed. Please try again later.",
               );
             } catch (e) {
-              print(
+              debugPrint(
                 '⚠️ [SET_ORDER] Could not show UI (app may be backgrounded): $e',
               );
             }
@@ -7587,7 +7594,7 @@ class CartControllerProvider extends ChangeNotifier {
               ShowToastDialog.closeLoader();
               ShowToastDialog.showToast("Restaurant Closed");
             } catch (e) {
-              print(
+              debugPrint(
                 '⚠️ [SET_ORDER] Could not show UI (app may be backgrounded): $e',
               );
             }
@@ -7600,7 +7607,7 @@ class CartControllerProvider extends ChangeNotifier {
       // Wait for order placement to complete
       return await orderFuture;
     } catch (e) {
-      print('❌ [SET_ORDER] Error: $e');
+      debugPrint('❌ [SET_ORDER] Error: $e');
       // 🔑 CRITICAL: Don't block on UI - continue even if UI fails
       try {
         ShowToastDialog.closeLoader();
@@ -7608,7 +7615,7 @@ class CartControllerProvider extends ChangeNotifier {
           "Failed to place order. Please try again.".tr,
         );
       } catch (uiError) {
-        print(
+        debugPrint(
           '⚠️ [SET_ORDER] Could not show UI (app may be backgrounded): $uiError',
         );
       }
@@ -7691,8 +7698,8 @@ class CartControllerProvider extends ChangeNotifier {
         await _processPaytmPayment(controller, context);
       }
     } catch (e, stackTrace) {
-      print('❌ [PROCESS_PAYMENT] Error: $e');
-      print('❌ [PROCESS_PAYMENT] Stack trace: $stackTrace');
+      debugPrint('❌ [PROCESS_PAYMENT] Error: $e');
+      debugPrint('❌ [PROCESS_PAYMENT] Stack trace: $stackTrace');
       ShowToastDialog.showToast(
         "Payment processing failed. Please try again.".tr,
       );
@@ -7707,19 +7714,21 @@ class CartControllerProvider extends ChangeNotifier {
   ) async {
     if (controller.razorPayModel.razorpayKey == null ||
         controller.razorPayModel.razorpayKey!.isEmpty) {
-      print('❌ [RAZORPAY] Razorpay key is missing or empty');
+      debugPrint('❌ [RAZORPAY] Razorpay key is missing or empty');
       try {
         ShowToastDialog.showToast(
           "Payment configuration error. Please contact support.".tr,
         );
       } catch (e) {
-        print('⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e');
+        debugPrint(
+          '⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e',
+        );
       }
       controller.endOrderProcessing();
       return;
     }
 
-    print(
+    debugPrint(
       '✅ [RAZORPAY] Razorpay key found: ${controller.razorPayModel.razorpayKey!.substring(0, 10)}...',
     );
 
@@ -7728,7 +7737,7 @@ class CartControllerProvider extends ChangeNotifier {
     controller.isPaymentCompleted = false;
     controller._lastPaymentId = null;
 
-    print(
+    debugPrint(
       '🔑 [RAZORPAY] Starting payment flow for amount: ${controller.totalAmount}',
     );
 
@@ -7737,7 +7746,7 @@ class CartControllerProvider extends ChangeNotifier {
       ShowToastDialog.showLoader("Opening payment gateway...".tr);
       await Future.delayed(const Duration(milliseconds: 100));
     } catch (e) {
-      print(
+      debugPrint(
         '⚠️ [RAZORPAY] Could not show loader (app may be backgrounded): $e',
       );
     }
@@ -7750,14 +7759,14 @@ class CartControllerProvider extends ChangeNotifier {
     // 🔑 OPTIMIZATION: Ensure Razorpay is initialized (should be pre-initialized)
     Future<bool> razorpayInitFuture;
     if (!controller._razorpayCrashPrevention.isInitialized) {
-      print('🔑 [RAZORPAY] Razorpay not initialized, initializing now...');
+      debugPrint('🔑 [RAZORPAY] Razorpay not initialized, initializing now...');
       razorpayInitFuture = controller._razorpayCrashPrevention.safeInitialize(
         onSuccess: controller.handlePaymentSuccess,
         onFailure: controller.handlePaymentError,
         onExternalWallet: controller.handleExternalWallet,
       );
     } else {
-      print('✅ [RAZORPAY] Razorpay already initialized (fast path)');
+      debugPrint('✅ [RAZORPAY] Razorpay already initialized (fast path)');
       razorpayInitFuture = Future.value(true);
     }
 
@@ -7776,7 +7785,7 @@ class CartControllerProvider extends ChangeNotifier {
               "Jippy Mart is temporarily closed. Please try again later.",
             );
           } catch (e) {
-            print(
+            debugPrint(
               '⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e',
             );
           }
@@ -7789,7 +7798,7 @@ class CartControllerProvider extends ChangeNotifier {
             ShowToastDialog.closeLoader();
             ShowToastDialog.showToast("Restaurant Closed");
           } catch (e) {
-            print(
+            debugPrint(
               '⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e',
             );
           }
@@ -7807,14 +7816,16 @@ class CartControllerProvider extends ChangeNotifier {
               .tr,
         );
       } catch (e) {
-        print('⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e');
+        debugPrint(
+          '⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e',
+        );
       }
       controller.endOrderProcessing();
       return;
     }
 
     // 🔑 OPTIMIZATION: Create Razorpay order immediately (no delays)
-    print('🚀 [RAZORPAY] Creating Razorpay order...');
+    debugPrint('🚀 [RAZORPAY] Creating Razorpay order...');
     final gatewayAmount = controller.amountToChargeViaGateway;
     if (gatewayAmount <= 0) {
       // Full wallet: place order without opening Razorpay
@@ -7828,24 +7839,26 @@ class CartControllerProvider extends ChangeNotifier {
     );
 
     if (orderResult == null) {
-      print('❌ [RAZORPAY] Order creation returned null');
+      debugPrint('❌ [RAZORPAY] Order creation returned null');
       try {
         ShowToastDialog.closeLoader();
         ShowToastDialog.showToast(
           "Selected address is outside the delivery area. Please change your location.",
         );
       } catch (e) {
-        print('⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e');
+        debugPrint(
+          '⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e',
+        );
       }
       controller.endOrderProcessing();
       return;
     }
 
-    print('✅ [RAZORPAY] Order created successfully: ${orderResult.id}');
+    debugPrint('✅ [RAZORPAY] Order created successfully: ${orderResult.id}');
 
     // Keep loader visible until checkout is opened so user sees feedback; close only after openCheckout returns.
     // 🔑 OPTIMIZATION: Open checkout immediately without delays
-    print('🚀 [RAZORPAY] Opening checkout immediately...');
+    debugPrint('🚀 [RAZORPAY] Opening checkout immediately...');
     final checkoutOpened = await controller.openCheckout(
       amount: orderResult.amount / 100.0,
       orderId: orderResult.id,
@@ -7854,23 +7867,25 @@ class CartControllerProvider extends ChangeNotifier {
     try {
       ShowToastDialog.closeLoader();
     } catch (e) {
-      print(
+      debugPrint(
         '⚠️ [RAZORPAY] Could not close loader (app may be backgrounded): $e',
       );
     }
 
     if (!checkoutOpened) {
-      print('❌ [RAZORPAY] Checkout failed to open');
+      debugPrint('❌ [RAZORPAY] Checkout failed to open');
       try {
         ShowToastDialog.showToast(
           "Failed to open payment gateway. Please try again.".tr,
         );
       } catch (e) {
-        print('⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e');
+        debugPrint(
+          '⚠️ [RAZORPAY] Could not show UI (app may be backgrounded): $e',
+        );
       }
       controller.endOrderProcessing();
     } else {
-      print('✅ [RAZORPAY] Checkout opened successfully');
+      debugPrint('✅ [RAZORPAY] Checkout opened successfully');
     }
   }
 
@@ -7887,8 +7902,8 @@ class CartControllerProvider extends ChangeNotifier {
 
       await startPaytmPaymentFlow(context);
     } catch (e, stackTrace) {
-      print('❌ [PAYTM_PAYMENT] Error: $e');
-      print('❌ [PAYTM_PAYMENT] Stack trace: $stackTrace');
+      debugPrint('❌ [PAYTM_PAYMENT] Error: $e');
+      debugPrint('❌ [PAYTM_PAYMENT] Stack trace: $stackTrace');
       ShowToastDialog.showToast("Paytm payment failed. Please try again.".tr);
       controller.endOrderProcessing();
     }
@@ -8034,7 +8049,7 @@ class CartControllerProvider extends ChangeNotifier {
   //         final op = Provider.of<OrderPlacingProvider>(context, listen: false);
   //         op.initFunction(orderModels: m);
   //       } catch (e) {
-  //         print('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
+  //         debugPrint('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
   //       }
   //       try {
   //         ShowToastDialog.closeLoader();
@@ -8158,7 +8173,7 @@ class CartControllerProvider extends ChangeNotifier {
   //       final op = Provider.of<OrderPlacingProvider>(context, listen: false);
   //       op.initFunction(orderModels: m);
   //     } catch (e) {
-  //       print('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
+  //       debugPrint('⚠️ [PAYTM_FLOW] Could not init OrderPlacingProvider: $e');
   //     }
   //     try {
   //       ShowToastDialog.closeLoader();
@@ -8167,8 +8182,8 @@ class CartControllerProvider extends ChangeNotifier {
   //     // Use offAll to avoid any stuck payment routes on back-stack.
   //     Get.offAll(() => const OrderPlacingScreen());
   //   } catch (e, st) {
-  //     print("❌ [PAYTM_FLOW] $e");
-  //     print(st);
+  //     debugPrint("❌ [PAYTM_FLOW] $e");
+  //     debugPrint(st);
   //     try {
   //       ShowToastDialog.closeLoader();
   //     } catch (_) {}
@@ -8431,7 +8446,7 @@ class CartControllerProvider extends ChangeNotifier {
       if (selectedPaymentMethod == PaymentGateway.razorpay.name) {
         if (_isOrderCreationInProgress &&
             _currentOrderPaymentId == _lastPaymentId) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_CREATION] Order creation already in progress for payment ID $_lastPaymentId, preventing duplicate',
           );
           return;
@@ -8443,7 +8458,7 @@ class CartControllerProvider extends ChangeNotifier {
             _lastOrderCreationTime!,
           );
           if (timeSinceLastOrder < _orderCreationCooldown) {
-            print(
+            debugPrint(
               '⚠️ [ORDER_CREATION] Order creation cooldown active, preventing duplicate for payment ID: $_lastPaymentId',
             );
             return;
@@ -8456,7 +8471,7 @@ class CartControllerProvider extends ChangeNotifier {
       _currentOrderPaymentId = _lastPaymentId;
       _lastOrderCreationTime = DateTime.now();
 
-      print(
+      debugPrint(
         '✅ [ORDER_CREATION] Starting order creation for payment ID: $_lastPaymentId, Payment method: $selectedPaymentMethod',
       );
 
@@ -8469,14 +8484,14 @@ class CartControllerProvider extends ChangeNotifier {
 
       // 🔑 OPTIMIZATION: Fast validation checks (non-blocking UI)
       if (HomeProvider.cartItem.isEmpty) {
-        print('❌ [ORDER_CREATION] Cart is empty, cannot create order');
+        debugPrint('❌ [ORDER_CREATION] Cart is empty, cannot create order');
         try {
           ShowToastDialog.closeLoader();
           ShowToastDialog.showToast(
             "Cart is empty. Please add items to cart.".tr,
           );
         } catch (e) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_CREATION] Could not show UI (app may be backgrounded): $e',
           );
         }
@@ -8491,7 +8506,7 @@ class CartControllerProvider extends ChangeNotifier {
       await calculatePrice();
 
       if (subTotal <= 0 || subTotal.isNaN || subTotal.isInfinite) {
-        print(
+        debugPrint(
           '❌ [ORDER_CREATION] Invalid subTotal: $subTotal, cannot create order',
         );
         try {
@@ -8500,7 +8515,7 @@ class CartControllerProvider extends ChangeNotifier {
             "Order calculation error. Please refresh and try again.".tr,
           );
         } catch (e) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_CREATION] Could not show UI (app may be backgrounded): $e',
           );
         }
@@ -8512,7 +8527,7 @@ class CartControllerProvider extends ChangeNotifier {
       }
 
       if (totalAmount <= 0 || totalAmount.isNaN || totalAmount.isInfinite) {
-        print(
+        debugPrint(
           '❌ [ORDER_CREATION] Invalid totalAmount: $totalAmount, cannot create order',
         );
         try {
@@ -8521,7 +8536,7 @@ class CartControllerProvider extends ChangeNotifier {
             "Order total is invalid. Please refresh and try again.".tr,
           );
         } catch (e) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_CREATION] Could not show UI (app may be backgrounded): $e',
           );
         }
@@ -8532,7 +8547,7 @@ class CartControllerProvider extends ChangeNotifier {
         return;
       }
 
-      print(
+      debugPrint(
         '✅ [ORDER_CREATION] Final validation passed - SubTotal: ₹$subTotal, Total: ₹$totalAmount',
       );
 
@@ -8546,14 +8561,16 @@ class CartControllerProvider extends ChangeNotifier {
                 vendorModel.id!.isEmpty ||
                 vendorModel.id == 'mart_default')) {
           await _loadFreshMartVendor(martItems);
-          print(
+          debugPrint(
             '[ORDER_CREATION] Loaded mart vendor for order: ${vendorModel.id}',
           );
         }
         // Validate we have a real vendor ID (not mart_default) before proceeding
         final vendorId = _getVendorIdForOrder();
         if (vendorId == 'mart_default') {
-          print('❌ [ORDER_CREATION] No valid mart vendor found in cart items');
+          debugPrint(
+            '❌ [ORDER_CREATION] No valid mart vendor found in cart items',
+          );
           try {
             ShowToastDialog.closeLoader();
             ShowToastDialog.showToast(
@@ -8561,7 +8578,7 @@ class CartControllerProvider extends ChangeNotifier {
                   .tr,
             );
           } catch (e) {
-            print(
+            debugPrint(
               '⚠️ [ORDER_CREATION] Could not show UI (app may be backgrounded): $e',
             );
           }
@@ -8651,7 +8668,7 @@ class CartControllerProvider extends ChangeNotifier {
             return maxNumber;
           })
           .catchError((e) {
-            print(
+            debugPrint(
               '⚠️ [ORDER_CREATION] Error fetching latest order (non-critical): $e',
             );
             return maxNumber; // Return default on error
@@ -8682,7 +8699,7 @@ class CartControllerProvider extends ChangeNotifier {
         try {
           await vendorSubscriptionCheck;
         } catch (e) {
-          print('❌ [ORDER_CREATION] Vendor subscription check failed: $e');
+          debugPrint('❌ [ORDER_CREATION] Vendor subscription check failed: $e');
           try {
             ShowToastDialog.closeLoader();
             ShowToastDialog.showToast(
@@ -8690,7 +8707,7 @@ class CartControllerProvider extends ChangeNotifier {
                   .tr,
             );
           } catch (uiError) {
-            print(
+            debugPrint(
               '⚠️ [ORDER_CREATION] Could not show UI (app may be backgrounded): $uiError',
             );
           }
@@ -8752,29 +8769,29 @@ class CartControllerProvider extends ChangeNotifier {
       };
 
       // 🔑 DEBUG: Payload summary for backend wallet/referral debugging (grep ORDER_CREATION_PAYLOAD)
-      print(
+      debugPrint(
         '🌐 [ORDER_CREATION_PAYLOAD] author_id=$authorId | total_amount=$totalAmount | '
         'wallet_amount=$walletToUse | payment_gateway_amount=$paymentGatewayAmount | '
         'payment_method=$selectedPaymentMethod',
       );
       if (walletToUse > 0) {
-        print(
+        debugPrint(
           '🌐 [ORDER_CREATION_PAYLOAD] Wallet used: ₹$walletToUse (backend must deduct this from user money_wallet)',
         );
       }
 
-      print('🌐 [ORDER_CREATION] Creating order via API...');
-      print(
+      debugPrint('🌐 [ORDER_CREATION] Creating order via API...');
+      debugPrint(
         '🌐 [ORDER_CREATION] vendor_id: ${orderPayload["vendor_id"]}, v_type: ${orderPayload["v_type"]}',
       );
-      print('🌐 [ORDER_CREATION] Payment method: $selectedPaymentMethod');
-      print('🌐 [ORDER_CREATION] Total amount: ₹$totalAmount');
+      debugPrint('🌐 [ORDER_CREATION] Payment method: $selectedPaymentMethod');
+      debugPrint('🌐 [ORDER_CREATION] Total amount: ₹$totalAmount');
 
       // 🔑 OPTIMIZATION: Show loader for user feedback (non-blocking, works in background)
       try {
         ShowToastDialog.showLoader("Creating your order...".tr);
       } catch (e) {
-        print(
+        debugPrint(
           '⚠️ [ORDER_CREATION] Could not show loader (app may be backgrounded): $e',
         );
         // Continue with order placement even if loader fails
@@ -8803,7 +8820,9 @@ class CartControllerProvider extends ChangeNotifier {
             },
           );
 
-      print('🌐 [ORDER_CREATION] API response status: ${response.statusCode}');
+      debugPrint(
+        '🌐 [ORDER_CREATION] API response status: ${response.statusCode}',
+      );
 
       final responseData = json.decode(response.body);
 
@@ -8811,7 +8830,7 @@ class CartControllerProvider extends ChangeNotifier {
         final backendMessage =
             responseData['message']?.toString() ?? 'Unable to place your order';
 
-        print('❌ [ORDER_CREATION] API returned error: $backendMessage');
+        debugPrint('❌ [ORDER_CREATION] API returned error: $backendMessage');
 
         try {
           ShowToastDialog.closeLoader();
@@ -8829,16 +8848,16 @@ class CartControllerProvider extends ChangeNotifier {
       }
       if (responseData['data'] == null ||
           responseData['data']['order_id'] == null) {
-        print('❌ [ORDER_CREATION] API response missing order_id');
+        debugPrint('❌ [ORDER_CREATION] API response missing order_id');
         throw Exception('API response missing order_id');
       }
 
       orderModel.id = responseData['data']['order_id'];
-      print(
+      debugPrint(
         '✅ [ORDER_CREATION] Order created successfully with ID: ${orderModel.id}',
       );
       if (walletToUse > 0) {
-        print(
+        debugPrint(
           '✅ [ORDER_CREATION] Wallet was used (₹$walletToUse). Backend should have deducted; refresh wallet balance to see update.',
         );
       }
@@ -8945,7 +8964,7 @@ class CartControllerProvider extends ChangeNotifier {
       try {
         ShowToastDialog.closeLoader();
       } catch (e) {
-        print(
+        debugPrint(
           '⚠️ [ORDER_CREATION] Could not close loader (app may be backgrounded): $e',
         );
       }
@@ -8956,7 +8975,7 @@ class CartControllerProvider extends ChangeNotifier {
         orderPlacingProvider.initFunction(orderModels: orderModel);
         Get.off(() => OrderPlacingScreen());
       } catch (e) {
-        print(
+        debugPrint(
           '⚠️ [ORDER_CREATION] Could not navigate (app may be backgrounded): $e',
         );
         // Order is still placed successfully, navigation can happen when app resumes
@@ -8964,10 +8983,10 @@ class CartControllerProvider extends ChangeNotifier {
 
       ShowToastDialog.showToast("Order placed successfully!".tr);
 
-      print('✅ [ORDER_CREATION] Order completed successfully');
+      debugPrint('✅ [ORDER_CREATION] Order completed successfully');
     } catch (e, stackTrace) {
-      print("❌ [ORDER_CREATION] Error: $e");
-      print("❌ [ORDER_CREATION] Stack trace: $stackTrace");
+      debugPrint("❌ [ORDER_CREATION] Error: $e");
+      debugPrint("❌ [ORDER_CREATION] Stack trace: $stackTrace");
 
       _isOrderBeingCreated = false;
       _isOrderCreationInProgress = false;
@@ -8977,7 +8996,7 @@ class CartControllerProvider extends ChangeNotifier {
       try {
         ShowToastDialog.closeLoader();
       } catch (uiError) {
-        print(
+        debugPrint(
           '⚠️ [ORDER_CREATION] Could not close loader (app may be backgrounded): $uiError',
         );
       }
@@ -8991,7 +9010,7 @@ class CartControllerProvider extends ChangeNotifier {
                 .tr,
           );
         } catch (uiError) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_CREATION] Could not show toast (app may be backgrounded): $uiError',
           );
         }
@@ -9002,7 +9021,7 @@ class CartControllerProvider extends ChangeNotifier {
             "Failed to place order. Please try again.".tr,
           );
         } catch (uiError) {
-          print(
+          debugPrint(
             '⚠️ [ORDER_CREATION] Could not show toast (app may be backgrounded): $uiError',
           );
         }
@@ -9137,7 +9156,7 @@ class CartControllerProvider extends ChangeNotifier {
         }
       }
     } catch (e) {
-      print('[ADDRESS_CHANGE] ❌ Error detecting zone: $e');
+      debugPrint('[ADDRESS_CHANGE] ❌ Error detecting zone: $e');
     }
 
     selectedAddress = addressModel;
@@ -9171,7 +9190,7 @@ class CartControllerProvider extends ChangeNotifier {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print('✅ Coupon marked as used: $couponId');
+        debugPrint('✅ Coupon marked as used: $couponId');
 
         // Update local state to mark coupon as used
         for (var coupon in couponList) {
@@ -9186,10 +9205,10 @@ class CartControllerProvider extends ChangeNotifier {
         }
         notifyListeners();
       } else {
-        print('❌ Failed to mark coupon as used: ${response.statusCode}');
+        debugPrint('❌ Failed to mark coupon as used: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Error marking coupon as used: $e');
+      debugPrint('❌ Error marking coupon as used: $e');
     }
   }
 

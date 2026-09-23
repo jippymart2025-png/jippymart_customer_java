@@ -342,58 +342,85 @@ class RestaurantApiHelper {
     bool forceRefresh = false,
   }) async {
     final cacheKey = '$latitude|$longitude';
+
     if (!forceRefresh &&
         _nearbyCacheKey == cacheKey &&
         _nearbyCache.isNotEmpty) {
+      debugPrint('[OUTLET_API] Returning cached outlets');
       return List<VendorModel>.from(_nearbyCache);
     }
 
     final uri = Uri.parse(
-      '${AppConst.outletBaseUrl}fm/outlets/customer/nearby?lat=$latitude&lng=$longitude',
+      '${AppConst.outletBaseUrl}fm/outlets/customer/nearby'
+      '?lat=$latitude&lng=$longitude',
     );
 
-    debugPrint('[OUTLET_API] Fetching nearby outlets from: $uri');
+    debugPrint('[OUTLET_API] URL: $uri');
 
-    final response = await http
-        .get(uri, headers: await getHeaders())
-        .timeout(const Duration(seconds: 15));
+    try {
+      final response = await http
+          .get(uri, headers: await getHeaders())
+          .timeout(const Duration(seconds: 15));
 
-    if (response.statusCode != 200) {
-      debugPrint('[OUTLET_API] HTTP error: ${response.statusCode}');
+      debugPrint('[OUTLET_API] Status: ${response.statusCode}');
+      debugPrint('[OUTLET_API] Response: ${response.body}');
+
+      if (response.statusCode != 200) {
+        debugPrint('[OUTLET_API] HTTP error: ${response.statusCode}');
+        return [];
+      }
+
+      final decoded = json.decode(response.body);
+
+      if (decoded is! Map<String, dynamic>) {
+        debugPrint('[OUTLET_API] Invalid response format');
+        return [];
+      }
+
+      final outletsList = _parseNearbyOutletsList(decoded);
+
+      debugPrint('[OUTLET_API] Parsed outlet count: ${outletsList.length}');
+
+      final restaurants = <VendorModel>[];
+
+      for (final item in outletsList) {
+        if (item is! Map) {
+          debugPrint('[OUTLET_API] Skipping invalid item: ${item.runtimeType}');
+          continue;
+        }
+
+        try {
+          final outletJson = Map<String, dynamic>.from(item);
+
+          debugPrint('[OUTLET_API] Parsing outlet: $outletJson');
+
+          final vendor = VendorModel.fromJson(outletJson);
+
+          debugPrint(
+            '[OUTLET_API] Vendor created: '
+            'id=${vendor.id}, '
+            'title=${vendor.title}, '
+            'distance=${vendor.distanceKm}',
+          );
+
+          restaurants.add(vendor);
+        } catch (e, stackTrace) {
+          debugPrint('[OUTLET_API] Vendor parsing failed: $e');
+          debugPrint('$stackTrace');
+        }
+      }
+
+      debugPrint('[OUTLET_API] FINAL OUTLET COUNT: ${restaurants.length}');
+
+      _nearbyCacheKey = cacheKey;
+      _nearbyCache = List<VendorModel>.from(restaurants);
+
+      return restaurants;
+    } catch (e, stackTrace) {
+      debugPrint('[OUTLET_API] Exception: $e');
+      debugPrint('$stackTrace');
       return [];
     }
-
-    final jsonResponse = json.decode(response.body);
-    if (jsonResponse is! Map<String, dynamic>) return [];
-
-    final outletsList = _parseNearbyOutletsList(jsonResponse);
-    final restaurants = <VendorModel>[];
-    for (final item in outletsList) {
-      if (item is! Map) continue;
-
-      try {
-        final VendorModel vendor = VendorModel.fromJson(
-          Map<String, dynamic>.from(item),
-        );
-
-        restaurants.add(vendor);
-
-        debugPrint(
-          '[OUTLET_API] Added outlet: '
-          '${vendor.title} '
-          '(ID: ${vendor.id}) '
-          'distance=${vendor.distanceKm} '
-          'roadDistance=${vendor.roadDistance}',
-        );
-      } catch (e) {
-        debugPrint('[OUTLET_API] Skipping invalid outlet: $e');
-      }
-    }
-    debugPrint('[OUTLET_API] Outlets fetched: ${restaurants.length}');
-
-    _nearbyCacheKey = cacheKey;
-    _nearbyCache = List<VendorModel>.from(restaurants);
-    return restaurants;
   }
 
   /// Checks if food service is available at coordinates using outlet APIs.

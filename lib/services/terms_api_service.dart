@@ -5,20 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:jippymart_customer/utils/utils/app_constant.dart';
 import 'package:jippymart_customer/utils/utils/common.dart';
 
-/// Fetches the legal documents (privacy policy / terms & conditions) from:
-///
-/// GET /fm/terms-and-conditions/getTermsAndConditionsForAppType
-///   ?appType=customer&appPolicyType=PRIVACYPOLICY | TERMSANDCONDITIONS
-///
-/// Response shape:
-/// {
-///   "terms_and_conditions_id": 1,
-///   "app_type": "customer",
-///   "content": "\n{\n  \"termsAndConditions\": \"<p>...</p>\"\n}\n"
-/// }
-///
-/// The [content] field is itself a JSON string; the HTML lives inside its
-/// `termsAndConditions` key.
 class TermsApiService {
   static const String appTypeCustomer = 'customer';
   static const String policyTypePrivacy = 'PRIVACYPOLICY';
@@ -66,16 +52,6 @@ class TermsApiService {
     }
   }
 
-  /// Turns the API [content] field into renderable HTML.
-  ///
-  /// The backend returns content in a few shapes depending on the policy type:
-  ///  * `{"termsAndConditions": "<p>..."}`  (JSON string wrapper)
-  ///  * `{"privacyPolicy": "<p>..."}`        (same wrapper, different key)
-  ///  * `"<p>..."`                           (plain HTML, possibly entity-escaped)
-  ///
-  /// Returns the extracted HTML with common entities decoded so the
-  /// `flutter_html` widget renders the text (escaped markup like `&lt;p&gt;`)
-  /// as real tags instead of showing raw characters.
   static String _extractHtml(String content) {
     String? html;
 

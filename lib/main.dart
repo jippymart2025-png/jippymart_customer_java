@@ -304,35 +304,35 @@ void _runFacebookAppEventsTests() {
   });
 }
 
-void _initializeSmartLookInBackground() {
-  Future.microtask(() async {
-    final smartlookService = SmartlookService();
-    try {
-      await smartlookService.preventSessionRecordingStorageCrash();
-      await smartlookService
-          .initialize(
-            SmartlookConfig.projectKey,
-            region: SmartlookConfig.region,
-          )
-          .timeout(const Duration(seconds: 3));
-      if (smartlookService.isInitialized) {
-        if (SmartlookConfig.enableSensitiveDataMasking) {
-          smartlookService.setSensitiveDataMasking(true);
-        }
-        smartlookService.setRecordingQuality(SmartlookConfig.recordingQuality);
-      }
-    } catch (e) {
-      try {
-        await smartlookService.preventSessionRecordingStorageCrash();
-        await smartlookService.forceReinitialize(
-          SmartlookConfig.projectKey,
-          region: SmartlookConfig.region,
-        );
-        if (smartlookService.isInitialized) {}
-      } catch (e2) {}
-    }
-  });
-}
+// void _initializeSmartLookInBackground() {
+//   Future.microtask(() async {
+//     final smartlookService = SmartlookService();
+//     try {
+//       await smartlookService.preventSessionRecordingStorageCrash();
+//       await smartlookService
+//           .initialize(
+//             SmartlookConfig.projectKey,
+//             region: SmartlookConfig.region,
+//           )
+//           .timeout(const Duration(seconds: 3));
+//       if (smartlookService.isInitialized) {
+//         if (SmartlookConfig.enableSensitiveDataMasking) {
+//           smartlookService.setSensitiveDataMasking(true);
+//         }
+//         smartlookService.setRecordingQuality(SmartlookConfig.recordingQuality);
+//       }
+//     } catch (e) {
+//       try {
+//         await smartlookService.preventSessionRecordingStorageCrash();
+//         await smartlookService.forceReinitialize(
+//           SmartlookConfig.projectKey,
+//           region: SmartlookConfig.region,
+//         );
+//         if (smartlookService.isInitialized) {}
+//       } catch (e2) {}
+//     }
+//   });
+// }
 
 /// Runs deferred inits after first frame so launch is not blocked.
 /// Must be a descendant of MultiProvider so CartProvider is available.
@@ -405,7 +405,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     super.initState();
 
     _initializeHeavyServicesInBackground();
-    _initializeSmartLookInBackground();
+    // _initializeSmartLookInBackground();
 
     WidgetsBinding.instance.addObserver(this);
 

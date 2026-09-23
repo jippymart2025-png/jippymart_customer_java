@@ -710,36 +710,7 @@ class _SwiggySearchScreenState extends State<SwiggySearchScreen> {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          trailing: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            // children: [
-            //   if (product.disPrice != null &&
-            //       product.disPrice!.isNotEmpty &&
-            //       product.disPrice != "0")
-            //     Text(
-            //       "₹${product.disPrice}",
-            //       style: TextStyle(
-            //         fontFamily: AppThemeData.semiBold,
-            //         color: AppThemeData.primary300,
-            //         fontSize: 16,
-            //       ),
-            //     )
-            //   else
-            //     Text(
-            //       "₹${product.price ?? '0'}",
-            //       style: TextStyle(
-            //         fontFamily: AppThemeData.semiBold,
-            //         color: AppThemeData.primary300,
-            //         fontSize: 16,
-            //       ),
-            //     ),
-            //   Icon(
-            //     Icons.arrow_forward_ios,
-            //     color: AppThemeData.grey400,
-            //     size: 16,
-            //   ),
-            // ],
-          ),
+          trailing: Column(mainAxisAlignment: MainAxisAlignment.center),
           onTap: () {
             _showProductDetailsBottomSheet(context, product);
           },

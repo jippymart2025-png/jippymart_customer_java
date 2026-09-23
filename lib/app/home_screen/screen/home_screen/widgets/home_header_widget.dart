@@ -12,12 +12,6 @@ import 'package:jippymart_customer/themes/app_them_data.dart';
 import 'package:jippymart_customer/widget/initials_avatar.dart';
 import 'package:jippymart_customer/app/swiggy_search_screen/provider/swiggy_search_provider.dart';
 import 'package:jippymart_customer/app/swiggy_search_screen/swiggy_search_screen.dart';
-import 'package:jippymart_customer/app/mart/mart_home_screen/provider/mart_provider.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/provider/mart_navigation_provider.dart';
-import 'package:jippymart_customer/app/mart/screens/mart_navigation_screen/mart_navigation_screen.dart';
-import 'package:jippymart_customer/constant/show_toast_dialog.dart';
-import 'package:jippymart_customer/utils/mart_zone_utils.dart';
-import 'package:jippymart_customer/widgets/coming_soon_dialog.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 import 'package:jippymart_customer/utils/network_image_widget.dart';
@@ -62,72 +56,7 @@ class _HomeHeaderWidgetState extends State<HomeHeaderWidget> {
     }
   }
 
-  // Future<void> _checkMart() async {
-  //   MartZoneUtils.prefetchMartVendors();
-  //   // final available = await MartZoneUtils.isMartAvailableInCurrentZone();
-  //   if (mounted) setState(() => _martAvailableInZone = available);
-  // }
-
   static bool _isMartChecking = false;
-
-  // Future<void> _onMartTap() async {
-  //   if (_isMartChecking) return;
-  //   _isMartChecking = true;
-  //   final martProvider = context.read<MartProvider>();
-  //   final martNav = context.read<MartNavigationProvider>();
-  //   final location = Constant.selectedLocation.location;
-  //   final zoneId = Constant.selectedZone?.id;
-  //   if (location?.latitude == null ||
-  //       location?.longitude == null ||
-  //       location!.latitude == 0.0 ||
-  //       location.longitude == 0.0) {
-  //     ComingSoonDialogHelper.show(
-  //       title: "LOCATION REQUIRED".tr,
-  //       message:
-  //           "Please set your location to check mart availability in your area.",
-  //     );
-  //     _isMartChecking = false;
-  //     return;
-  //   }
-  //   if (zoneId == null || zoneId.isEmpty) {
-  //     ComingSoonDialogHelper.show(
-  //       title: "COMING SOON".tr,
-  //       message:
-  //           "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-  //     );
-  //     _isMartChecking = false;
-  //     return;
-  //   }
-  //   bool loaderShown = false;
-  //   Future.delayed(const Duration(milliseconds: 150), () {
-  //     if (_isMartChecking && !loaderShown) {
-  //       loaderShown = true;
-  //       ShowToastDialog.showLoader("Checking mart availability...".tr);
-  //     }
-  //   });
-  //   try {
-  //     final isMartAvailable =
-  //         await MartZoneUtils.isMartAvailableInCurrentZone();
-  //     if (loaderShown) ShowToastDialog.closeLoader();
-  //     if (!isMartAvailable) {
-  //       ComingSoonDialogHelper.show(
-  //         title: "COMING SOON".tr,
-  //         message:
-  //             "We're working hard to bring Jippy Mart to your area. Stay tuned!",
-  //       );
-  //       _isMartChecking = false;
-  //       return;
-  //     }
-  //     martNav.initFunction(context: context);
-  //     Get.to(() => const MartNavigationScreen());
-  //     martProvider.initFunction();
-  //   } catch (_) {
-  //     if (loaderShown) ShowToastDialog.closeLoader();
-  //   } finally {
-  //     ShowToastDialog.closeLoader();
-  //     _isMartChecking = false;
-  //   }
-  // }
 
   @override
   Widget build(BuildContext context) {
