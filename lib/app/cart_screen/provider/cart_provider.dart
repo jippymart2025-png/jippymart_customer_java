@@ -28,6 +28,8 @@ import 'package:jippymart_customer/models/tax_model.dart';
 import 'package:jippymart_customer/models/user_model.dart';
 import 'package:jippymart_customer/models/vendor_model.dart';
 import 'package:jippymart_customer/payment/rozorpayConroller.dart';
+import 'package:jippymart_customer/payment/payu/model/payupayload.dart';
+import 'package:jippymart_customer/payment/payu/payuwebview.dart';
 import 'package:jippymart_customer/services/cart_api_service.dart';
 import 'package:jippymart_customer/services/cart_provider.dart';
 import 'package:jippymart_customer/services/paytm_service.dart';
@@ -310,6 +312,7 @@ class CartControllerProvider extends ChangeNotifier {
 
   /// Payment/transaction reference from POST /div/payment/initiate.
   String? _lastInitiatePaymentId;
+  Map<String, dynamic>? _lastInitiatePaymentResponse;
   String _lastInitiateConfigKey = '';
 
   String? get initiatePaymentId => _lastInitiatePaymentId;
@@ -579,6 +582,7 @@ class CartControllerProvider extends ChangeNotifier {
         return false;
       }
       final response = await CartApiService.initiatePayment(payload: payload);
+      _lastInitiatePaymentResponse = response;
       _lastInitiatePaymentId = _extractPaymentReference(response);
       _lastInitiateConfigKey = configKey;
       debugPrint(
@@ -588,6 +592,7 @@ class CartControllerProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('[INITIATE_PAYMENT] Error: $e');
       _lastInitiatePaymentId = null;
+      _lastInitiatePaymentResponse = null;
       _lastInitiateConfigKey = '';
       if (!_isCalculatingPrice) {
         try {
@@ -1711,6 +1716,7 @@ class CartControllerProvider extends ChangeNotifier {
     totalAmount = checkout.toPay;
     _useServerCheckoutPricing = true;
     _lastInitiatePaymentId = null;
+    _lastInitiatePaymentResponse = null;
     _lastInitiateConfigKey = '';
   }
 
@@ -7696,6 +7702,8 @@ class CartControllerProvider extends ChangeNotifier {
       } else if (controller.selectedPaymentMethod ==
           PaymentGateway.paytm.name) {
         await _processPaytmPayment(controller, context);
+      } else if (controller.selectedPaymentMethod == PaymentGateway.payu.name) {
+        await _processPayUPayment(controller, context);
       }
     } catch (e, stackTrace) {
       debugPrint('❌ [PROCESS_PAYMENT] Error: $e');
@@ -7706,6 +7714,58 @@ class CartControllerProvider extends ChangeNotifier {
       controller.endOrderProcessing();
     } finally {
       _endOperation('processPayment');
+    }
+  }
+
+  Future<void> _processPayUPayment(
+    CartControllerProvider controller,
+    BuildContext context,
+  ) async {
+    final response = controller._lastInitiatePaymentResponse;
+    if (response == null ||
+        !response.containsKey('payuUrl') ||
+        !response.containsKey('payUParams')) {
+      ShowToastDialog.showToast('Invalid PayU payment initialization'.tr);
+      controller.endOrderProcessing();
+      return;
+    }
+
+    final payuUrl = response['payuUrl'] as String;
+    final payUParams = response['payUParams'] as Map<String, dynamic>;
+
+    final surl = 'https://jippymart.com/success';
+    final furl = 'https://jippymart.com/failure';
+
+    final payload = PayUPayload(
+      key: payUParams['key']?.toString() ?? '',
+      txnid: payUParams['txnid']?.toString() ?? '',
+      amount: payUParams['amount']?.toString() ?? '',
+      productinfo: payUParams['productinfo']?.toString() ?? '',
+      firstname: payUParams['firstname']?.toString() ?? '',
+      lastname: payUParams['lastname']?.toString() ?? '',
+      email: payUParams['email']?.toString() ?? '',
+      phone: payUParams['phone']?.toString() ?? Constant.userModel?.phoneNumber?.trim() ?? '',
+      surl: surl,
+      furl: furl,
+      hash: response['payUHash']?.toString() ?? '',
+      udf1: '',
+      udf2: '',
+      udf3: '',
+      udf4: '',
+      udf5: '',
+    );
+
+    final result = await PayUWebView.open(
+      context,
+      paymentUrl: payuUrl,
+      payload: payload,
+    );
+
+    if (result != null && result.outcome == PayUCheckoutOutcome.success) {
+      await controller.placeOrder(context);
+    } else {
+      ShowToastDialog.showToast('Payment failed or cancelled'.tr);
+      controller.endOrderProcessing();
     }
   }
 

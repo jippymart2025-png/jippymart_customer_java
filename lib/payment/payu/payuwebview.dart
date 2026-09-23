@@ -72,7 +72,6 @@ class _PayUWebViewState extends State<PayUWebView> {
   @override
   void initState() {
     super.initState();
-    ensurePayUWebViewPlatform();
 
     final PlatformWebViewControllerCreationParams params;
     if (WebViewPlatform.instance is WebKitWebViewPlatform) {
